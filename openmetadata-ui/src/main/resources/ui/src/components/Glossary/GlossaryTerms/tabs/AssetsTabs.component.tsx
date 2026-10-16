@@ -12,22 +12,18 @@
  */
 import {
   Alert,
+  Box,
   Button,
+  ButtonUtility,
   Checkbox,
-  Col,
   Dropdown,
-  MenuProps,
-  notification,
-  Row,
-  Skeleton,
-  Space,
-  Tooltip,
+  Grid,
+  SkeletonParagraph,
   Typography,
-} from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { isObject } from 'lodash';
+import { isEmpty, isObject } from 'lodash';
 import { EntityDetailUnion } from 'Models';
 import {
   forwardRef,
@@ -39,18 +35,17 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../../../assets/svg/folder-empty.svg';
+import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ASSET_MENU_KEYS } from '../../../../constants/Assets.constants';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
+import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../../generated/entity/data/glossaryTerm';
+import { Metric } from '../../../../generated/entity/data/metric';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { Response as BulkResponse } from '../../../../generated/type/bulkOperationResult';
@@ -58,6 +53,7 @@ import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
+import { queryClient } from '../../../../queryClient';
 import {
   getDataProductByName,
   getDataProductOutputPorts,
@@ -72,29 +68,37 @@ import {
   getGlossaryTermByFQN,
   removeAssetsFromGlossaryTerm,
 } from '../../../../rest/glossaryAPI';
+import { getMetricByFqn } from '../../../../rest/metricsAPI';
+import { removeMetricTabAssets } from '../../../../rest/metricTabsAPI';
+import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
-import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
+import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { getDomainDryRunImpacts } from '../../../../utils/Domain/DomainDryRunUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { getCombinedQueryFilterObject } from '../../../../utils/ExplorePage/ExplorePageUtils';
 import {
   getAggregations,
   getQuickFilterQuery,
-} from '../../../../utils/ExploreUtils';
+} from '../../../../utils/ExplorePureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getMetricAssetsQueryFilter } from '../../../../utils/MetricEntityUtils/MetricPureUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
-} from '../../../../utils/StringsUtils';
-import { getTagAssetsQueryFilter } from '../../../../utils/TagsUtils';
+} from '../../../../utils/StringUtils';
+import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import {
+  ManageMenu,
+  ManageMenuItem,
+} from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
@@ -110,12 +114,295 @@ import {
   SourceType,
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
-import { AssetsOfEntity, AssetsTabsProps } from './AssetsTabs.interface';
+import { AssetsTabsProps } from './AssetsTabs.interface';
+
+type AssetsTabEntity = Domain | DataProduct | GlossaryTerm | Tag | Metric;
 
 export interface AssetsTabRef {
   refreshAssets: () => void;
   closeSummaryPanel: () => void;
 }
+
+const checkDomainDryRunImpacts = async (
+  activeEntity: AssetsTabEntity,
+  entities: EntityReference[]
+): Promise<BulkResponse[] | undefined> => {
+  const dryRunResult = await removeAssetsFromDomain(
+    activeEntity.fullyQualifiedName ?? '',
+    entities,
+    { dryRun: true }
+  );
+  const impacts = getDomainDryRunImpacts(dryRunResult);
+
+  return impacts.length > 0 ? impacts : undefined;
+};
+
+const removePortsHandler =
+  (
+    portType:
+      | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+      | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+  ) =>
+  async (activeEntity: AssetsTabEntity, entities: EntityReference[]) => {
+    await removePortsFromDataProduct(
+      activeEntity.fullyQualifiedName ?? '',
+      entities,
+      portType
+    );
+  };
+
+const removeAssetsHandlers: Partial<
+  Record<
+    AssetsOfEntity,
+    (
+      activeEntity: AssetsTabEntity,
+      entities: EntityReference[]
+    ) => Promise<void>
+  >
+> = {
+  [AssetsOfEntity.DATA_PRODUCT]: async (activeEntity, entities) => {
+    await removeAssetsFromDataProduct(
+      activeEntity.fullyQualifiedName ?? '',
+      entities
+    );
+  },
+  [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: removePortsHandler(
+    AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
+  ),
+  [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: removePortsHandler(
+    AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+  ),
+  [AssetsOfEntity.GLOSSARY]: async (activeEntity, entities) => {
+    await removeAssetsFromGlossaryTerm(activeEntity as GlossaryTerm, entities);
+  },
+  [AssetsOfEntity.TAG]: async (activeEntity, entities) => {
+    await removeAssetsFromTags(activeEntity.id ?? '', entities);
+  },
+  [AssetsOfEntity.METRIC]: async (activeEntity, entities) => {
+    await removeMetricTabAssets(
+      activeEntity.fullyQualifiedName ?? '',
+      entities
+    );
+  },
+  [AssetsOfEntity.DOMAIN]: async (activeEntity, entities) => {
+    await removeAssetsFromDomain(
+      activeEntity.fullyQualifiedName ?? '',
+      entities
+    );
+    queryClient.invalidateQueries({
+      queryKey: domainAssetsCountQueryKey,
+    });
+  },
+};
+
+const removeAssetsByType = async (
+  type: AssetsOfEntity,
+  activeEntity: AssetsTabEntity,
+  entities: EntityReference[]
+) => {
+  await removeAssetsHandlers[type]?.(activeEntity, entities);
+};
+
+type AssetsQueryFilter = AssetsTabsProps['queryFilter'];
+
+const getPortsQueryParam = (
+  entityFqn: string | undefined,
+  queryFilter: AssetsQueryFilter
+) =>
+  queryFilter ??
+  getTermQuery({
+    'dataProducts.fullyQualifiedName': entityFqn ?? '',
+  });
+
+const getFollowedTeamQueryParam = (
+  _entityFqn: string | undefined,
+  queryFilter: AssetsQueryFilter
+) => queryFilter ?? undefined;
+
+const queryParamBuilders: Partial<
+  Record<
+    AssetsOfEntity,
+    (
+      entityFqn: string | undefined,
+      queryFilter: AssetsQueryFilter
+    ) => AssetsQueryFilter | ReturnType<typeof getTermQuery>
+  >
+> = {
+  [AssetsOfEntity.DOMAIN]: (entityFqn, queryFilter) =>
+    queryFilter ??
+    getTermQuery(
+      { 'domains.fullyQualifiedName': entityFqn ?? '' },
+      'must',
+      undefined,
+      {
+        mustNotTerms: { entityType: 'dataProduct' },
+      }
+    ),
+  [AssetsOfEntity.DATA_PRODUCT]: (entityFqn) =>
+    getTermQuery({
+      'dataProducts.fullyQualifiedName': entityFqn ?? '',
+    }),
+  // Use the provided queryFilter (which filters by specific port FQNs)
+  // Fall back to default data product query if no filter provided
+  [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: getPortsQueryParam,
+  [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: getPortsQueryParam,
+  [AssetsOfEntity.TEAM]: getFollowedTeamQueryParam,
+  [AssetsOfEntity.MY_DATA]: getFollowedTeamQueryParam,
+  [AssetsOfEntity.FOLLOWING]: getFollowedTeamQueryParam,
+  [AssetsOfEntity.GLOSSARY]: (entityFqn) =>
+    getTermQuery({ 'tags.tagFQN': entityFqn ?? '' }),
+  [AssetsOfEntity.TAG]: (entityFqn) => getTagAssetsQueryFilter(entityFqn ?? ''),
+  // Without the caller's filter of linked asset ids, match nothing rather than every asset.
+  [AssetsOfEntity.METRIC]: (_entityFqn, queryFilter) =>
+    queryFilter ?? getMetricAssetsQueryFilter([]),
+};
+
+interface AssetsFilterBarProps {
+  type: AssetsOfEntity;
+  totalAssetCount: number;
+  filterMenu: { key: string; label: string }[];
+  selectedFilter: string[];
+  onFilterSelect: (key: string) => void;
+  searchValue: string;
+  onSearchChange: (value: string) => void;
+  selectedQuickFilters: ExploreQuickFilterField[];
+  aggregations: Aggregations | undefined;
+  quickFilterQuery: QueryFilterInterface | undefined;
+  onFieldValueSelect: (field: ExploreQuickFilterField) => void;
+  onClearFilters: () => void;
+}
+
+const AssetsFilterBar = ({
+  type,
+  totalAssetCount,
+  filterMenu,
+  selectedFilter,
+  onFilterSelect,
+  searchValue,
+  onSearchChange,
+  selectedQuickFilters,
+  aggregations,
+  quickFilterQuery,
+  onFieldValueSelect,
+  onClearFilters,
+}: AssetsFilterBarProps) => {
+  const { t } = useTranslation();
+
+  if (type !== AssetsOfEntity.MY_DATA && totalAssetCount <= 0) {
+    return null;
+  }
+
+  return (
+    <>
+      <Grid.Item className="layout-column d-flex gap-3" span={24}>
+        <Dropdown.Root>
+          <ButtonUtility
+            className="tw:size-9"
+            color="secondary"
+            data-testid="asset-filter-button"
+            icon={FilterIcon}
+            size="sm"
+            tooltip={t('label.filter-plural')}
+          />
+          <Dropdown.Popover className="tw:w-auto" placement="bottom start">
+            <Dropdown.Menu
+              aria-label={t('label.filter-plural')}
+              selectedKeys={selectedFilter}
+              selectionMode="multiple"
+              onAction={(key) => onFilterSelect(String(key))}>
+              {filterMenu.map((item) => (
+                <Dropdown.Item
+                  shouldCloseOnSelect
+                  id={item.key}
+                  key={item.key}
+                  label={item.label}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+        <div className="flex-1">
+          <Searchbar
+            removeMargin
+            showClearSearch
+            placeholder={t('label.search-entity', {
+              entity: t('label.asset-plural'),
+            })}
+            searchValue={searchValue}
+            onSearch={onSearchChange}
+          />
+        </div>
+      </Grid.Item>
+      {selectedFilter.length > 0 && (
+        <Grid.Item className="layout-column searched-data-container" span={24}>
+          <div className="d-flex justify-between">
+            <ExploreQuickFilters
+              aggregations={aggregations}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={onFieldValueSelect}
+            />
+            {quickFilterQuery && (
+              <Typography
+                className="text-primary self-center cursor-pointer"
+                onClick={onClearFilters}>
+                {t('label.clear-entity', {
+                  entity: '',
+                })}
+              </Typography>
+            )}
+          </div>
+        </Grid.Item>
+      )}
+    </>
+  );
+};
+
+interface BulkDeleteNotificationProps {
+  isLoading: boolean;
+  hasEditAllPermission: boolean;
+  totalAssetCount: number;
+  selectedItemsCount: number;
+  assetRemoving: boolean;
+  onBulkDeleteClick: () => void;
+}
+
+const BulkDeleteNotification = ({
+  isLoading,
+  hasEditAllPermission,
+  totalAssetCount,
+  selectedItemsCount,
+  assetRemoving,
+  onBulkDeleteClick,
+}: BulkDeleteNotificationProps) => {
+  const { t } = useTranslation();
+
+  if (isLoading || !hasEditAllPermission || totalAssetCount <= 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className={classNames('asset-tab-delete-notification', {
+        visible: selectedItemsCount > 0,
+      })}>
+      <div className="d-flex items-center justify-between">
+        <Typography className="text-white">
+          {selectedItemsCount} {t('label.items-selected-lowercase')}
+        </Typography>
+        <Button
+          showTextWhileLoading
+          color="primary-destructive"
+          data-testid="delete-all-button"
+          isLoading={assetRemoving}
+          onPress={onBulkDeleteClick}>
+          {t('label.delete')}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 const AssetsTabs = forwardRef(
   (
@@ -129,6 +416,7 @@ const AssetsTabs = forwardRef(
       isEntityDeleted = false,
       type = AssetsOfEntity.GLOSSARY,
       noDataPlaceholder,
+      addDisabledMessage,
       entityFqn,
       assetCount,
       preloadedData,
@@ -164,18 +452,15 @@ const AssetsTabs = forwardRef(
           AssetsOfEntity.DOMAIN,
           AssetsOfEntity.GLOSSARY,
           AssetsOfEntity.TAG,
+          AssetsOfEntity.METRIC,
         ].includes(type),
       [type]
     );
 
     const [selectedCard, setSelectedCard] = useState<SourceType>();
-    const [visible, setVisible] = useState<boolean>(false);
-    const [openKeys, setOpenKeys] = useState<EntityType[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [assetToDelete, setAssetToDelete] = useState<SourceType>();
-    const [activeEntity, setActiveEntity] = useState<
-      Domain | DataProduct | GlossaryTerm | Tag
-    >();
+    const [activeEntity, setActiveEntity] = useState<AssetsTabEntity>();
 
     const [selectedItems, setSelectedItems] = useState<
       Map<string, EntityDetailUnion>
@@ -200,63 +485,39 @@ const AssetsTabs = forwardRef(
 
     const entityTypeString = getEntityTypeString(type);
 
-    const handleMenuClick = ({ key }: { key: string }) => {
-      setSelectedFilter((prevSelected) => [...prevSelected, key]);
+    // Consumer via prop. No `deleted` argument: `isEntityDeleted` is destructured but
+    // never referenced anywhere in this file's permission logic (only listed, unused, in
+    // a dependency array) — old expressions here read a bare permissions.EditAll with no
+    // deleted gating, so getDerivedPermissionFlags defaults to its `deleted = false`.
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
+
+    const handleMenuClick = (key: string) => {
+      setSelectedFilter((prevSelected) =>
+        prevSelected.includes(key)
+          ? prevSelected.filter((selectedKey) => selectedKey !== key)
+          : [...prevSelected, key]
+      );
     };
 
-    const filterMenu: ItemType[] = useMemo(() => {
-      return filters.map((filter) => ({
-        key: filter.key,
-        label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
-        onClick: handleMenuClick,
-      }));
-    }, [filters]);
+    const filterMenu = useMemo(
+      () =>
+        filters.map((filter) => ({
+          key: filter.key,
+          label: translateWithNestedKeys(filter.label, filter.labelKeyOptions),
+        })),
+      [filters]
+    );
 
     const queryParam = useMemo(() => {
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
-      switch (type) {
-        case AssetsOfEntity.DOMAIN:
-          return (
-            queryFilter ??
-            getTermQuery(
-              { 'domains.fullyQualifiedName': entityFqn ?? '' },
-              'must',
-              undefined,
-              {
-                mustNotTerms: { entityType: 'dataProduct' },
-              }
-            )
-          );
-        case AssetsOfEntity.DATA_PRODUCT:
-          return getTermQuery({
-            'dataProducts.fullyQualifiedName': entityFqn ?? '',
-          });
+      const builder = queryParamBuilders[type];
 
-        case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-        case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-          // Use the provided queryFilter (which filters by specific port FQNs)
-          // Fall back to default data product query if no filter provided
-          return (
-            queryFilter ??
-            getTermQuery({
-              'dataProducts.fullyQualifiedName': entityFqn ?? '',
-            })
-          );
-
-        case AssetsOfEntity.TEAM:
-        case AssetsOfEntity.MY_DATA:
-        case AssetsOfEntity.FOLLOWING:
-          return queryFilter ?? undefined;
-
-        case AssetsOfEntity.GLOSSARY:
-          return getTermQuery({ 'tags.tagFQN': entityFqn ?? '' });
-
-        case AssetsOfEntity.TAG:
-          return getTagAssetsQueryFilter(entityFqn ?? '');
-
-        default:
-          return getTagAssetsQueryFilter(encodedFqn);
-      }
+      return builder
+        ? builder(entityFqn, queryFilter)
+        : getTagAssetsQueryFilter(encodedFqn);
     }, [type, entityFqn, queryFilter]);
 
     const fetchAssets = useCallback(
@@ -330,24 +591,6 @@ const AssetsTabs = forwardRef(
       ]
     );
 
-    const hideNotification = () => {
-      notification.close('asset-tab-notification-key');
-    };
-
-    const onOpenChange: MenuProps['onOpenChange'] = (keys) => {
-      const latestOpenKey = keys.find(
-        (key) => !openKeys.includes(key as EntityType)
-      );
-      if (ASSET_MENU_KEYS.includes(latestOpenKey as EntityType)) {
-        setOpenKeys(latestOpenKey ? [latestOpenKey as EntityType] : []);
-      } else {
-        setOpenKeys(keys as EntityType[]);
-      }
-    };
-
-    const handleAssetButtonVisibleChange = (newVisible: boolean) =>
-      setVisible(newVisible);
-
     const fetchCurrentEntity = useCallback(async () => {
       let data;
       const fqn = entityFqn ?? '';
@@ -371,6 +614,11 @@ const AssetsTabs = forwardRef(
 
         case AssetsOfEntity.TAG:
           data = await getTagByFqn(fqn);
+
+          break;
+
+        case AssetsOfEntity.METRIC:
+          data = await getMetricByFqn(fqn);
 
           break;
         default:
@@ -444,26 +692,25 @@ const AssetsTabs = forwardRef(
 
         return (
           <>
-            <Typography.Text>{baseMessage}</Typography.Text>
+            <Typography>{baseMessage}</Typography>
             <Alert
               showIcon
-              className="m-t-sm"
-              description={
-                assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
-                  <ul className="m-b-0 p-l-md">
-                    {assetsInOutputPorts.map((asset) => (
-                      <li key={asset.id}>{getEntityName(asset)}</li>
-                    ))}
-                  </ul>
-                ) : undefined
-              }
-              message={
+              className="tw:mt-2"
+              data-testid="output-port-removal-warning"
+              title={
                 assetsInOutputPorts.length === 1 && assetsToRemove.length === 1
                   ? t('message.remove-asset-will-also-remove-from-output-ports')
                   : t('message.remove-asset-output-port-warning')
               }
-              type="warning"
-            />
+              variant="warning">
+              {assetsInOutputPorts.length > 1 || assetsToRemove.length > 1 ? (
+                <ul className="tw:mb-0 tw:list-disc tw:pl-4">
+                  {assetsInOutputPorts.map((asset) => (
+                    <li key={asset.id}>{getEntityName(asset)}</li>
+                  ))}
+                </ul>
+              ) : undefined}
+            </Alert>
           </>
         );
       },
@@ -479,7 +726,7 @@ const AssetsTabs = forwardRef(
       [getRemovalWarningContent]
     );
 
-    const items: ItemType[] = [
+    const getCardMenuItems = (source: SourceType): ManageMenuItem[] => [
       {
         label: (
           <ManageButtonItemLabel
@@ -492,11 +739,7 @@ const AssetsTabs = forwardRef(
           />
         ),
         key: 'delete-button',
-        onClick: () => {
-          if (selectedCard) {
-            onExploreCardDelete(selectedCard);
-          }
-        },
+        onClick: () => onExploreCardDelete(source),
       },
     ];
 
@@ -534,13 +777,11 @@ const AssetsTabs = forwardRef(
           });
 
           if (type === AssetsOfEntity.DOMAIN) {
-            const dryRunResult = await removeAssetsFromDomain(
-              activeEntity.fullyQualifiedName ?? '',
-              entities,
-              { dryRun: true }
+            const impacts = await checkDomainDryRunImpacts(
+              activeEntity,
+              entities
             );
-            const impacts = getDomainDryRunImpacts(dryRunResult);
-            if (impacts.length > 0) {
+            if (impacts) {
               setRemoveDryRunWarnings(impacts);
               setPendingRemoveEntities(entities);
               dryRunImpactDetected = true;
@@ -549,48 +790,7 @@ const AssetsTabs = forwardRef(
             }
           }
 
-          switch (type) {
-            case AssetsOfEntity.DATA_PRODUCT:
-              await removeAssetsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.DATA_PRODUCT_INPUT_PORT:
-            case AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT:
-              await removePortsFromDataProduct(
-                activeEntity.fullyQualifiedName ?? '',
-                entities,
-                type
-              );
-
-              break;
-
-            case AssetsOfEntity.GLOSSARY:
-              await removeAssetsFromGlossaryTerm(
-                activeEntity as GlossaryTerm,
-                entities
-              );
-
-              break;
-
-            case AssetsOfEntity.TAG:
-              await removeAssetsFromTags(activeEntity.id ?? '', entities);
-
-              break;
-
-            case AssetsOfEntity.DOMAIN:
-              await removeAssetsFromDomain(
-                activeEntity.fullyQualifiedName ?? '',
-                entities
-              );
-
-              break;
-            default:
-              break;
-          }
+          await removeAssetsByType(type, activeEntity, entities);
 
           await new Promise((resolve) => {
             setTimeout(() => {
@@ -605,7 +805,6 @@ const AssetsTabs = forwardRef(
           setAssetRemoving(false);
           if (!dryRunImpactDetected) {
             onRemoveAsset?.();
-            hideNotification();
             setSelectedItems(new Map()); // Reset selected items
             if (type === AssetsOfEntity.DATA_PRODUCT) {
               fetchOutputPorts();
@@ -626,6 +825,7 @@ const AssetsTabs = forwardRef(
           activeEntity.fullyQualifiedName ?? '',
           pendingRemoveEntities
         );
+        queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
         setRemoveDryRunWarnings(undefined);
         setPendingRemoveEntities(undefined);
         await new Promise((resolve) => {
@@ -634,7 +834,6 @@ const AssetsTabs = forwardRef(
           }, ES_UPDATE_DELAY);
         });
         onRemoveAsset?.();
-        hideNotification();
         setSelectedItems(new Map());
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -681,7 +880,6 @@ const AssetsTabs = forwardRef(
     useEffect(() => {
       return () => {
         onAssetClick?.(undefined);
-        hideNotification();
       };
     }, []);
 
@@ -709,52 +907,62 @@ const AssetsTabs = forwardRef(
             }>
             {searchValue && type !== AssetsOfEntity.MY_DATA && (
               <div className="gap-4">
-                <Typography.Paragraph>
+                <Typography as="p">
                   {t('label.no-matching-data-asset')}
-                </Typography.Paragraph>
+                </Typography>
               </div>
             )}
             {isObject(noDataPlaceholder) && (
               <div className="gap-4">
-                <Typography.Paragraph>
-                  {noDataPlaceholder.message}
-                </Typography.Paragraph>
+                <Typography as="p">{noDataPlaceholder.message}</Typography>
               </div>
             )}
           </ErrorPlaceHolderNew>
         );
       } else {
         return (
-          <ErrorPlaceHolder
-            buttonId="data-assets-add-button"
-            buttonTitle={t('label.add-entity', { entity: t('label.asset') })}
-            className="border-none"
-            heading={t('message.no-data-message', {
-              entity: t('label.data-asset-lowercase-plural'),
-            })}
-            icon={<FolderEmptyIcon />}
-            permission={permissions.Create}
-            type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-            onClick={onAddAsset}
+          <CreatePlaceholder
+            actions={
+              permissions.Create && !addDisabledMessage
+                ? [
+                    {
+                      key: 'add-asset',
+                      id: 'data-assets-add-button',
+                      label: t('label.add-entity', {
+                        entity: t('label.asset'),
+                      }),
+                      color: 'primary',
+                      onPress: onAddAsset,
+                    },
+                  ]
+                : undefined
+            }
+            description={
+              addDisabledMessage ??
+              t('message.link-assets-description', {
+                entity: getEntityTypeString(type),
+              })
+            }
+            icon={<EmptyAssetIcon className="tw:text-utility-brand-600" />}
+            title={t('label.no-assets-linked-yet')}
           />
         );
       }
     }, [
       searchValue,
       noDataPlaceholder,
+      addDisabledMessage,
       permissions,
       onAddAsset,
       isEntityDeleted,
     ]);
 
-    const renderDropdownContainer = useCallback((menus: ReactNode) => {
-      return <div data-testid="manage-dropdown-list-container">{menus}</div>;
-    }, []);
-
-    const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-      const quickFilterQuery = getQuickFilterQuery(data);
-      setQuickFilterQuery(quickFilterQuery);
-    };
+    const handleQuickFiltersChange = useCallback(
+      (data: ExploreQuickFilterField[]) => {
+        setQuickFilterQuery(getQuickFilterQuery(data));
+      },
+      []
+    );
 
     const handleQuickFiltersValueSelect = useCallback(
       (field: ExploreQuickFilterField) => {
@@ -772,39 +980,25 @@ const AssetsTabs = forwardRef(
           return data;
         });
       },
-      [setSelectedQuickFilters]
+      [handleQuickFiltersChange]
     );
 
     const assetListing = useMemo(
       () =>
         data.length ? (
           <div className="assets-data-container">
-            {data.map(({ _source, _id = '' }) => (
+            {data.map(({ _source, _id = '', highlight }) => (
               <ExploreSearchCard
                 showEntityIcon
                 actionPopoverContent={
-                  isRemovable && permissions.EditAll ? (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      dropdownRender={renderDropdownContainer}
-                      menu={{ items }}
-                      overlayClassName="manage-dropdown-list-container"
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
-                          entity: t('label.asset'),
-                        })}>
-                        <Button
-                          className={classNames('flex-center px-1.5')}
-                          data-testid={`manage-button-${_source.fullyQualifiedName}`}
-                          type="text">
-                          <IconDropdown className="anticon self-center manage-dropdown-icon" />
-                        </Button>
-                      </Tooltip>
-                    </Dropdown>
+                  isRemovable && canEditAll ? (
+                    <ManageMenu
+                      data-testid={`manage-button-${_source.fullyQualifiedName}`}
+                      items={getCardMenuItems(_source)}
+                      label={t('label.manage-entity', {
+                        entity: t('label.asset'),
+                      })}
+                    />
                   ) : null
                 }
                 checked={selectedItems?.has(_source.id ?? '')}
@@ -813,9 +1007,9 @@ const AssetsTabs = forwardRef(
                   selectedCard?.id === _source.id ? 'highlight-card' : ''
                 )}
                 handleSummaryPanelDisplay={setSelectedCard}
+                highlight={highlight}
                 id={_id}
                 key={'assets_' + _id}
-                searchValue={searchValue}
                 showCheckboxes={Boolean(activeEntity) && permissions.Create}
                 showTags={false}
                 source={_source}
@@ -837,19 +1031,23 @@ const AssetsTabs = forwardRef(
             />
           </div>
         ) : (
-          <div className="h-full">{assetErrorPlaceHolder}</div>
+          <div className="h-full tw:relative tw:min-h-90">
+            {assetErrorPlaceHolder}
+          </div>
         ),
       [
         type,
         data,
         activeEntity,
         permissions,
+        canEditAll,
         paging,
         currentPage,
         selectedCard,
         assetErrorPlaceHolder,
         selectedItems,
         setSelectedCard,
+        onExploreCardDelete,
         handlePageChange,
         handlePageSizeChange,
         handleCheckboxChange,
@@ -883,52 +1081,32 @@ const AssetsTabs = forwardRef(
         data.length > 0 && (
           <div className="w-full d-flex justify-between items-center m-b-sm">
             <Checkbox
-              className="assets-checkbox p-x-sm"
-              onChange={(e) => onSelectAll(e.target.checked)}>
-              {t('label.select-field', {
+              className="tw:px-2"
+              data-testid="select-all-assets"
+              label={t('label.select-field', {
                 field: t('label.all'),
               })}
-            </Checkbox>
+              onChange={onSelectAll}
+            />
           </div>
         )
       );
-    }, [
-      activeEntity,
-      isLoading,
-      data,
-      openKeys,
-      visible,
-      currentPage,
-      onOpenChange,
-      handleAssetButtonVisibleChange,
-      onSelectAll,
-    ]);
+    }, [activeEntity, isLoading, data, currentPage, onSelectAll]);
 
     const layout = useMemo(() => {
       return (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           {assetsHeader}
           {assetListing}
-        </Col>
+        </Grid.Item>
       );
     }, [assetsHeader, assetListing, selectedCard]);
 
     const clearFilters = useCallback(() => {
       setQuickFilterQuery(undefined);
-      setSelectedQuickFilters((pre) => {
-        const data = pre.map((preField) => {
-          return { ...preField, value: [] };
-        });
-
-        handleQuickFiltersChange(data);
-
-        return data;
-      });
-    }, [
-      setQuickFilterQuery,
-      handleQuickFiltersChange,
-      setSelectedQuickFilters,
-    ]);
+      setSelectedFilter([]);
+      setSelectedQuickFilters([]);
+    }, []);
 
     useEffect(() => {
       fetchAssets({
@@ -949,30 +1127,36 @@ const AssetsTabs = forwardRef(
     }, [type]);
 
     useEffect(() => {
-      const updatedQuickFilters = filters
-        .filter((filter) => selectedFilter.includes(filter.key))
-        .map((selectedFilterItem) => {
-          const originalFilterItem = selectedQuickFilters?.find(
-            (filter) => filter.key === selectedFilterItem.key
-          );
-
-          return originalFilterItem || selectedFilterItem;
-        });
-
-      const newItems = updatedQuickFilters.filter(
-        (item) =>
-          !selectedQuickFilters.some(
-            (existingItem) => item.key === existingItem.key
-          )
+      const retainedFilters = selectedQuickFilters.filter((field) =>
+        selectedFilter.includes(field.key)
+      );
+      const newFilters = filters.filter(
+        (filter) =>
+          selectedFilter.includes(filter.key) &&
+          !retainedFilters.some((field) => field.key === filter.key)
       );
 
-      if (newItems.length > 0) {
-        setSelectedQuickFilters((prevSelected) => [
-          ...prevSelected,
-          ...newItems,
-        ]);
+      if (
+        newFilters.length > 0 ||
+        retainedFilters.length !== selectedQuickFilters.length
+      ) {
+        const updatedQuickFilters = [...retainedFilters, ...newFilters];
+        setSelectedQuickFilters(updatedQuickFilters);
+
+        const removedFilterHadValue = selectedQuickFilters.some(
+          (field) =>
+            !selectedFilter.includes(field.key) && !isEmpty(field.value)
+        );
+        if (removedFilterHadValue) {
+          handleQuickFiltersChange(updatedQuickFilters);
+        }
       }
-    }, [selectedFilter, selectedQuickFilters, filters]);
+    }, [
+      selectedFilter,
+      selectedQuickFilters,
+      filters,
+      handleQuickFiltersChange,
+    ]);
 
     useImperativeHandle(ref, () => ({
       refreshAssets() {
@@ -1020,78 +1204,49 @@ const AssetsTabs = forwardRef(
           )}
           data-testid="table-container"
           id="asset-tab">
-          <Row
-            className={classNames('filters-row gap-2 p-md', {
-              'h-full': totalAssetCount === 0,
-            })}
-            gutter={[0, 20]}>
-            {(type === AssetsOfEntity.MY_DATA || totalAssetCount > 0) && (
-              <>
-                <Col className="d-flex gap-3" span={24}>
-                  <Dropdown
-                    menu={{
-                      items: filterMenu,
-                      selectedKeys: selectedFilter,
-                    }}
-                    trigger={['click']}>
-                    <Button
-                      className={classNames('feed-filter-icon')}
-                      data-testid="asset-filter-button"
-                      icon={<FilterIcon height={16} />}
-                    />
-                  </Dropdown>
-                  <div className="flex-1">
-                    <Searchbar
-                      removeMargin
-                      showClearSearch
-                      placeholder={t('label.search-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                      searchValue={searchValue}
-                      onSearch={setSearchValue}
-                    />
-                  </div>
-                </Col>
-                {selectedFilter.length > 0 && (
-                  <Col className="searched-data-container" span={24}>
-                    <div className="d-flex justify-between">
-                      <ExploreQuickFilters
-                        aggregations={aggregations}
-                        fields={selectedQuickFilters}
-                        index={SearchIndex.ALL}
-                        showDeleted={false}
-                        onFieldValueSelect={handleQuickFiltersValueSelect}
-                      />
-                      {quickFilterQuery && (
-                        <Typography.Text
-                          className="text-primary self-center cursor-pointer"
-                          onClick={clearFilters}>
-                          {t('label.clear-entity', {
-                            entity: '',
-                          })}
-                        </Typography.Text>
-                      )}
-                    </div>
-                  </Col>
-                )}
-              </>
-            )}
+          <Grid
+            className={`layout-row layout-grid ${classNames(
+              'filters-row gap-2 p-md',
+              {
+                'h-full': totalAssetCount === 0,
+              }
+            )}`}
+            style={{ ...getLayoutGutter(0, 20) }}>
+            <AssetsFilterBar
+              aggregations={aggregations}
+              filterMenu={filterMenu}
+              quickFilterQuery={quickFilterQuery}
+              searchValue={searchValue}
+              selectedFilter={selectedFilter}
+              selectedQuickFilters={selectedQuickFilters}
+              totalAssetCount={totalAssetCount}
+              type={type}
+              onClearFilters={clearFilters}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+              onFilterSelect={handleMenuClick}
+              onSearchChange={setSearchValue}
+            />
             {isLoading ? (
-              <Col className="border-default border-radius-sm p-lg" span={24}>
-                <Space
-                  className="w-full"
+              <Grid.Item
+                className="layout-column border-default border-radius-sm p-lg"
+                span={24}>
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space w-full"
                   data-testid="loader"
-                  direction="vertical"
-                  size={16}>
-                  <Skeleton />
-                  <Skeleton />
-                  <Skeleton />
-                </Space>
-              </Col>
+                  direction="col"
+                  gap={4}
+                  itemClassName="layout-space-item">
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
+                  <SkeletonParagraph animation={false} />
+                </Box>
+              </Grid.Item>
             ) : (
               layout
             )}
-          </Row>
+          </Grid>
 
           <ConfirmationModal
             bodyText={confirmationBodyText}
@@ -1134,26 +1289,14 @@ const AssetsTabs = forwardRef(
             onConfirm={confirmDomainAssetRemove}
           />
         </div>
-        {!isLoading && permissions?.EditAll && totalAssetCount > 0 && (
-          <div
-            className={classNames('asset-tab-delete-notification', {
-              visible: selectedItems.size > 0,
-            })}>
-            <div className="d-flex items-center justify-between">
-              <Typography.Text className="text-white">
-                {selectedItems.size} {t('label.items-selected-lowercase')}
-              </Typography.Text>
-              <Button
-                danger
-                data-testid="delete-all-button"
-                loading={assetRemoving}
-                type="primary"
-                onClick={handleBulkDeleteClick}>
-                {t('label.delete')}
-              </Button>
-            </div>
-          </div>
-        )}
+        <BulkDeleteNotification
+          assetRemoving={assetRemoving}
+          hasEditAllPermission={canEditAll}
+          isLoading={isLoading}
+          selectedItemsCount={selectedItems.size}
+          totalAssetCount={totalAssetCount}
+          onBulkDeleteClick={handleBulkDeleteClick}
+        />
       </>
     );
   }

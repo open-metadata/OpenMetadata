@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchExplanation } from '../../../interface/search.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 
 export interface ExploreSearchCardProps {
@@ -33,7 +34,9 @@ export interface ExploreSearchCardProps {
   hideBreadcrumbs?: boolean;
   actionPopoverContent?: React.ReactNode;
   onCheckboxChange?: (checked: boolean) => void;
-  searchValue?: string;
   score?: number;
+  scoreExplanation?: SearchExplanation;
+  matchedQueries?: string[];
+  highlight?: SearchedDataProps['data'][number]['highlight'];
   classNameForBreadcrumb?: string;
 }

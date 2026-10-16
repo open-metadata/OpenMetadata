@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/dataAccessRequestPayload.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DataAccessRequestPayload",
   "description": "Payload for Data Access Request tasks.",
   "javaType": "org.openmetadata.schema.type.DataAccessRequestPayload",
@@ -66,6 +66,10 @@
     "expirationDate": {
       "description": "When the access should expire.",
       "$ref": "basic.json#/definitions/timestamp"
+    },
+    "manualGrantReason": {
+      "description": "System-generated summary of why this request was routed to manual approval instead of being granted automatically — for example a partial automatic grant, an enforcement failure, or a timeout during automated evaluation. Absent when access was granted automatically.",
+      "type": "string"
     }
   },
   "required": ["accessType", "reason"],

@@ -11,11 +11,14 @@
  *  limitations under the License.
  */
 
-import { Col, Row } from 'antd';
+import { Grid } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { compare } from 'fast-json-patch';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DataProductIcon } from '../../assets/svg/ic-data-product.svg';
+import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
@@ -27,8 +30,8 @@ import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Page } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
-import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getDummyDataByPage } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import '../CustomizeDetailsPage/customize-details-page.less';
 
@@ -83,41 +86,45 @@ const CustomizableDataProductPage = ({
   }, [currentPage, currentPageType, getPage]);
 
   return (
-    <PageLayoutV1
-      className="bg-grey"
-      pageTitle={t('label.customize-entity', {
-        entity: t('label.data-product'),
-      })}>
-      <Row className="customize-details-page" gutter={[0, 20]}>
-        <Col span={24}>
-          <CustomizablePageHeader
-            disableSave={disableSave}
-            personaName={getEntityName(personaDetails)}
-            onReset={handleReset}
-            onSave={handleSave}
-          />
-        </Col>
-        <Col className="p-l-xs" span={24}>
-          <EntityHeader
-            breadcrumb={breadcrumbs}
-            entityData={entityDummyData}
-            entityType={EntityType.DATA_PRODUCT}
-            icon={
-              <DataProductIcon
-                className="align-middle"
-                color={DE_ACTIVE_COLOR}
-                height={36}
-                name="data-product"
-                width={32}
-              />
-            }
-            serviceName=""
-          />
-        </Col>
-        {/* It will render cols inside the row */}
-        <CustomizeTabWidget />
-      </Row>
-    </PageLayoutV1>
+    <NavigationBlocker enabled={!disableSave} onConfirm={handleSave}>
+      <PageLayoutV1
+        className="bg-grey"
+        pageTitle={t('label.customize-entity', {
+          entity: t('label.data-product'),
+        })}>
+        <Grid
+          className="layout-row layout-grid customize-details-page"
+          style={getLayoutGutter(0, 20)}>
+          <Grid.Item className="layout-column" span={24}>
+            <CustomizablePageHeader
+              disableSave={disableSave}
+              personaName={getEntityName(personaDetails)}
+              onReset={handleReset}
+              onSave={handleSave}
+            />
+          </Grid.Item>
+          <Grid.Item className="layout-column p-l-xs" span={24}>
+            <EntityHeader
+              breadcrumb={breadcrumbs}
+              entityData={entityDummyData}
+              entityType={EntityType.DATA_PRODUCT}
+              icon={
+                <DataProductIcon
+                  className="align-middle"
+                  color={DE_ACTIVE_COLOR}
+                  height={36}
+                  name="data-product"
+                  width={32}
+                />
+              }
+              serviceName=""
+            />
+          </Grid.Item>
+          {/* It will render cols inside the row */}
+          <CustomizeTabWidget />
+        </Grid>
+      </PageLayoutV1>
+    </NavigationBlocker>
   );
 };
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,22 +12,25 @@
  */
 
 import {
+  act,
   fireEvent,
   getByText,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
 } from '../../../mocks/Glossary.mock';
-import { findExpandableKeysForArray } from '../../../utils/GlossaryUtils';
+import { findExpandableKeysForArray } from '../../../utils/GlossaryPureUtils';
 import GlossaryTermTab from './GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from './GlossaryTermTab.interface';
-
 const mockOnAddGlossaryTerm = jest.fn();
 const mockRefreshGlossaryTerms = jest.fn();
 const mockOnEditGlossaryTerm = jest.fn();
@@ -90,8 +93,9 @@ jest.mock('../../../utils/TableUtils', () => ({
 }));
 
 // Mock where the component actually imports this util
-jest.mock('../../../utils/GlossaryUtils', () => ({
-  ...jest.requireActual('../../../utils/GlossaryUtils'),
+jest.mock('../../../utils/GlossaryPureUtils', () => ({
+  ...jest.requireActual('../../../utils/GlossaryPureUtils'),
+  buildTree: jest.fn((data) => data),
   findExpandableKeysForArray: jest.fn().mockReturnValue([]),
   glossaryTermTableColumnsWidth: jest.fn().mockReturnValue({
     name: 250,
@@ -134,20 +138,64 @@ jest.mock('../../../utils/EntityStatusUtils', () => ({
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(({ onClick }) => (
-      <div onClick={onClick}>ErrorPlaceHolder</div>
-    ))
+  jest.fn().mockImplementation(({ onClick }) => (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onClick?.(e);
+        }
+      }}>
+      ErrorPlaceHolder
+    </div>
+  ))
 );
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(
+      ({ footer }: { footer?: { props?: { onPress?: () => void } } }) => (
+        <div
+          data-testid="empty-placeholder"
+          role="button"
+          tabIndex={0}
+          onClick={() => footer?.props?.onPress?.()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              footer?.props?.onPress?.();
+            }
+          }}>
+          EmptyPlaceholder
+        </div>
+      )
+    ),
+}));
+
+// The real wrapper div in GlossaryTermTab.component.tsx now carries these
+// same testids (for Playwright), so the mocks render plain content instead
+// of duplicating them — a duplicate testid makes screen.getByTestId ambiguous.
+jest.mock('../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ description }: { description?: ReactNode }) => (
+      <div>{description}</div>
+    )),
+}));
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div />),
+}));
 
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
-
-jest.mock('../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
   ownerTableObject: jest.fn().mockReturnValue([
@@ -156,7 +204,7 @@ jest.mock('../../../utils/TableColumn.util', () => ({
       dataIndex: 'owners',
       key: 'owners',
       width: 180,
-      render: () => <div>OwnerLabel</div>,
+      render: () => <div>Owner</div>,
     },
   ]),
   descriptionTableObject: jest.fn().mockImplementation(() => []),
@@ -176,7 +224,7 @@ jest.mock('../useGlossary.store', () => ({
   useGlossaryStore: jest.fn().mockImplementation(() => mockUseGlossaryStore),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     permissions: MOCK_PERMISSIONS,
     type: 'glossary',
@@ -201,15 +249,72 @@ jest.mock('../../../utils/ToastUtils', () => ({
     .mockImplementation((...args) => mockShowSuccessToast(...args)),
 }));
 
-jest.mock('react-dnd', () => ({
-  useDrag: jest.fn().mockReturnValue([{ isDragging: false }, jest.fn()]),
-  useDrop: jest.fn().mockReturnValue([{ isOver: false }, jest.fn()]),
-  DndProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+interface MockTableColumn {
+  key?: string;
+  dataIndex?: string;
+  render?: (value: unknown, record: unknown, index: number) => ReactNode;
+}
 
-jest.mock('react-dnd-html5-backend', () => ({
-  HTML5Backend: jest.fn(),
-}));
+interface MockTableProps {
+  columns?: MockTableColumn[];
+  dataSource?: Record<string, unknown>[];
+  loading?: boolean;
+  locale?: { emptyText?: ReactNode };
+  expandable?: {
+    expandIcon?: (props: {
+      expanded: boolean;
+      onExpand: (record: unknown) => void;
+      record: unknown;
+    }) => ReactNode;
+    onExpand?: (expanded: boolean, record: unknown) => void;
+  };
+  extraTableFilters?: ReactNode;
+  'data-testid'?: string;
+}
+
+jest.mock('../../common/Table/TableV2', () =>
+  jest.fn().mockImplementation((props: MockTableProps) => {
+    const {
+      columns = [],
+      dataSource = [],
+      loading,
+      locale,
+      expandable,
+      extraTableFilters,
+    } = props;
+
+    return (
+      <div data-testid={props['data-testid']}>
+        {extraTableFilters}
+        {loading && <div data-testid="table-loading">Loading...</div>}
+        {dataSource.length === 0
+          ? !loading && locale?.emptyText
+          : dataSource.map((record, index) => (
+              <div
+                data-testid={`glossary-row-${index}`}
+                key={record.fullyQualifiedName as string}>
+                {expandable?.expandIcon?.({
+                  expanded: false,
+                  onExpand: (rec) => expandable?.onExpand?.(true, rec),
+                  record,
+                })}
+                {columns.map((col, colIndex) =>
+                  col.render ? (
+                    <span key={col.key ?? col.dataIndex ?? colIndex}>
+                      {col.render(
+                        col.dataIndex ? record[col.dataIndex] : undefined,
+                        record,
+                        index
+                      )}
+                    </span>
+                  ) : null
+                )}
+              </div>
+            ))}
+      </div>
+    );
+  })
+);
 
 jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEditButton: jest.fn().mockReturnValue(null),
@@ -277,7 +382,7 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   describe('Empty State', () => {
-    it('should show the ErrorPlaceHolder component when no glossary terms are present', async () => {
+    it('should show the EmptyPlaceholder component when no glossary terms are present', async () => {
       // Make sure the API returns empty data
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
@@ -289,26 +394,57 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
       });
     });
 
-    it('should call the onAddGlossaryTerm function when clicking add button in ErrorPlaceHolder', async () => {
+    it('should call the onAddGlossaryTerm function when clicking add button in EmptyPlaceholder', async () => {
       // Make sure the API returns empty data
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
         paging: { after: null },
       });
 
+      // The add action only renders for an approved glossary term
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: EntityStatus.Approved,
+      };
+
       const { container } = render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
       });
 
-      fireEvent.click(getByText(container, 'ErrorPlaceHolder'));
+      fireEvent.click(getByText(container, 'EmptyPlaceholder'));
+
+      expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
+    });
+
+    it('should show the add term action for a glossary regardless of term status', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { after: null },
+      });
+
+      // A non-approved active entity should still allow adding terms to a glossary
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: EntityStatus.Draft,
+      };
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText(container, 'EmptyPlaceholder'));
 
       expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
     });
@@ -376,7 +512,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const ownerLabels = screen.getAllByText('OwnerLabel');
+        const ownerLabels = screen.getAllByText('Owner');
 
         expect(ownerLabels.length).toBeGreaterThan(0);
       });
@@ -460,6 +596,78 @@ describe('Test GlossaryTermTab component', () => {
     });
   });
 
+  describe('Filter/Search Empty State', () => {
+    beforeEach(() => {
+      // Unlike the sibling blocks above, this one needs the table's own
+      // zero-rows branch (`glossaryTerms.length > 0` in renderTableSection),
+      // which reads the store's glossaryChildTerms directly — not the
+      // mocked API response, since setGlossaryChildTerms is a no-op mock
+      // here. A prior describe block's beforeEach leaves this non-empty, so
+      // it's reset here rather than copying the sibling pattern verbatim.
+      mockUseGlossaryStore.glossaryChildTerms = [];
+    });
+
+    it('should render NoSearchResultsPlaceholder for the empty-terms + active-search branch', async () => {
+      // The table's own zero-rows state comes from the store's
+      // glossaryChildTerms (reset to [] above), not this response — so this
+      // covers the isSearchActive placeholder-selection branch, not a real
+      // API-driven zero-result search flow.
+      mockSearchGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 0, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const searchInput = await screen.findByPlaceholderText(
+        'label.search-entity'
+      );
+      fireEvent.change(searchInput, { target: { value: 'doesnotexist' } });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('no-search-results-placeholder')
+        ).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByTestId('no-filtered-results-placeholder')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render NoFilteredResultsPlaceholder with the translated description for the empty-terms + no-search branch', async () => {
+      // As above, the store's glossaryChildTerms (not this response's
+      // `data`) is what makes the table show zero rows; `paging.total: 5`
+      // only exists to keep totalTermsCount non-zero so the render reaches
+      // this branch instead of the "Add first term" onboarding placeholder.
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { total: 5, after: null },
+      });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        const placeholder = screen.getByTestId(
+          'no-filtered-results-placeholder'
+        );
+
+        expect(placeholder).toBeInTheDocument();
+        expect(placeholder).toHaveTextContent(
+          'message.filter-no-matching-terms'
+        );
+      });
+
+      expect(
+        screen.queryByTestId('no-search-results-placeholder')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('Expand/Collapse Functionality', () => {
     beforeEach(() => {
       const termsWithChildren = [
@@ -509,6 +717,43 @@ describe('Test GlossaryTermTab component', () => {
         50,
         undefined
       );
+    });
+
+    it('should not let a first-level page in flight overwrite the expanded tree', async () => {
+      let resolveFirstLevel!: (value: unknown) => void;
+      mockGetFirstLevelGlossaryTermsPaginated.mockReturnValue(
+        new Promise((resolve) => {
+          resolveFirstLevel = resolve;
+        })
+      );
+      const staleFirstLevelPage = [mockedGlossaryTerms[1]];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() =>
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled()
+      );
+
+      fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+      await waitFor(() =>
+        expect(mockSetGlossaryChildTerms).toHaveBeenLastCalledWith(
+          mockedGlossaryTerms
+        )
+      );
+
+      await act(async () => {
+        resolveFirstLevel({ data: staleFirstLevelPage, paging: {} });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalledWith(
+        staleFirstLevelPage
+      );
+      expect(
+        screen.getByTestId('expand-collapse-all-button')
+      ).toHaveTextContent('label.collapse-all');
     });
   });
 
@@ -566,7 +811,7 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       const { useGenericContext } = jest.requireMock(
-        '../../Customization/GenericProvider/GenericProvider'
+        '../../Customization/GenericProvider/GenericContext'
       );
       useGenericContext.mockImplementation(mockGenericContext);
 
@@ -659,7 +904,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -677,7 +923,8 @@ describe('Test GlossaryTermTab component', () => {
             status: 'Open',
             category: 'Approval',
             type: 'RequestApproval',
-            limit: 100000,
+            aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
+            limit: PAGE_SIZE_LARGE,
             fields: 'about,assignees',
           })
         );
@@ -820,6 +1067,55 @@ describe('Test GlossaryTermTab component', () => {
       expect(mockShowSuccessToast).toHaveBeenCalledWith('Vote recorded.');
       expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
     });
+
+    it('should require and submit a comment when rejecting from the glossary list', async () => {
+      const term = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: 'In Review',
+      };
+      mockUseGlossaryStore.glossaryChildTerms = [term];
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-1',
+            about: { fullyQualifiedName: term.fullyQualifiedName },
+            assignees: [{ id: 'user-1' }],
+          },
+        ],
+      });
+      mockPermissionForApproveOrReject.mockReturnValue({
+        permission: true,
+        taskId: 'task-1',
+      });
+      mockResolveTask.mockResolvedValue({ id: 'task-1', status: 'Rejected' });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const rejectButton = await screen.findByTestId(`${term.name}-reject-btn`);
+      fireEvent.click(rejectButton);
+
+      const confirmButton = screen.getByTestId('confirm-reject-glossary-term');
+
+      expect(confirmButton).toBeDisabled();
+
+      fireEvent.change(
+        within(screen.getByTestId('glossary-term-reject-comment')).getByRole(
+          'textbox'
+        ),
+        { target: { value: 'Duplicate glossary term' } }
+      );
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+          comment: 'Duplicate glossary term',
+          newValue: 'rejected',
+          resolutionType: 'Rejected',
+        });
+      });
+    });
   });
 
   describe('Advanced Pagination', () => {
@@ -864,32 +1160,96 @@ describe('Test GlossaryTermTab component', () => {
       mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
     });
 
-    it('should handle status selection save action', async () => {
+    const reopenStatusFilter = () => {
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+
+      return screen.findByTestId('glossary-status-dropdown-menu');
+    };
+
+    const openStatusFilter = async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
-        fireEvent.click(statusDropdown);
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled();
+      });
 
-        // The dropdown menu should be rendered but we can't easily test the save action
-        // due to the complex dropdown structure
-        expect(statusDropdown).toBeInTheDocument();
+      return reopenStatusFilter();
+    };
+
+    const getStatusCheckbox = (value: string) =>
+      within(screen.getByTestId(`glossary-status-option-${value}`)).getByRole(
+        'checkbox'
+      );
+
+    it('should reflect the default status selection in the filter popover', async () => {
+      await openStatusFilter();
+
+      expect(getStatusCheckbox(EntityStatus.Approved)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.InReview)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.Rejected)).not.toBeChecked();
+      expect(getStatusCheckbox('all')).not.toBeChecked();
+    });
+
+    it('should refetch with the saved status selection', async () => {
+      await openStatusFilter();
+      mockGetFirstLevelGlossaryTermsPaginated.mockClear();
+
+      fireEvent.click(getStatusCheckbox(EntityStatus.Draft));
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+          mockedGlossaryTerms[0].fullyQualifiedName,
+          expect.any(Number),
+          undefined,
+          `${EntityStatus.Approved},${EntityStatus.InReview}`,
+          undefined
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('glossary-status-dropdown-menu')
+        ).not.toBeInTheDocument();
       });
     });
 
-    it('should handle status selection cancel action', async () => {
-      render(<GlossaryTermTab isGlossary={false} />, {
-        wrapper: MemoryRouter,
-      });
+    it('should discard unsaved status changes on cancel', async () => {
+      await openStatusFilter();
+      mockGetFirstLevelGlossaryTermsPaginated.mockClear();
+
+      fireEvent.click(getStatusCheckbox(EntityStatus.Draft));
+      fireEvent.click(screen.getByTestId('glossary-status-cancel-btn'));
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
-        fireEvent.click(statusDropdown);
-
-        expect(statusDropdown).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('glossary-status-dropdown-menu')
+        ).not.toBeInTheDocument();
       });
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+
+      await reopenStatusFilter();
+
+      expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
+    });
+
+    it('should select every general status when "all" is checked', async () => {
+      await openStatusFilter();
+
+      expect(screen.queryByText('Superseded')).not.toBeInTheDocument();
+      expect(screen.queryByText('Invalidated')).not.toBeInTheDocument();
+
+      fireEvent.click(getStatusCheckbox('all'));
+
+      Object.values(EntityStatus)
+        .filter((status) => !['Superseded', 'Invalidated'].includes(status))
+        .forEach((status) => {
+          expect(getStatusCheckbox(status)).toBeChecked();
+        });
     });
   });
 
@@ -935,9 +1295,10 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        const tagIcon = screen.getByTestId('tag-icon');
-
-        expect(tagIcon).toBeInTheDocument();
+        expect(screen.getByTestId('icon-image')).toHaveAttribute(
+          'src',
+          'https://example.com/icon.png'
+        );
       });
     });
 

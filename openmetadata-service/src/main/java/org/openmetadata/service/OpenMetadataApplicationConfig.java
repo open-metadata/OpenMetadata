@@ -14,7 +14,6 @@
 package org.openmetadata.service;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.core.Configuration;
 import io.dropwizard.core.server.DefaultServerFactory;
 import jakarta.validation.Valid;
@@ -23,6 +22,7 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.DefaultOperationalConfigProvider;
+import org.openmetadata.schema.api.configuration.AppConfiguration;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
@@ -34,17 +34,23 @@ import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.configuration.AdminOpsConfiguration;
 import org.openmetadata.schema.configuration.AiPlatformConfiguration;
+import org.openmetadata.schema.configuration.CdnConfiguration;
+import org.openmetadata.schema.configuration.ConfigSourceConfiguration;
+import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.config.AlertingConfiguration;
+import org.openmetadata.service.config.AsyncOperationsConfiguration;
 import org.openmetadata.service.config.BulkOperationConfiguration;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.config.QoSConfiguration;
+import org.openmetadata.service.config.StartupConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
@@ -74,14 +80,25 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("authenticationConfiguration")
   private AuthenticationConfiguration authenticationConfiguration;
 
+  @JsonProperty("configSource")
+  @Valid
+  private ConfigSourceConfiguration configSourceConfiguration;
+
+  public ConfigSourceConfiguration getConfigSourceConfiguration() {
+    if (configSourceConfiguration == null) {
+      configSourceConfiguration = new ConfigSourceConfiguration();
+    }
+    return configSourceConfiguration;
+  }
+
   @JsonProperty("jwtTokenConfiguration")
   private JWTTokenConfiguration jwtTokenConfiguration;
 
   @JsonProperty("elasticsearch")
   private ElasticSearchConfiguration elasticSearchConfiguration;
 
-  @JsonProperty("nlqHybridSearch")
-  private JsonNode nlqHybridSearch;
+  @JsonProperty("llmConfiguration")
+  private LLMConfiguration llmConfiguration;
 
   @JsonProperty("eventHandlerConfiguration")
   private EventHandlerConfiguration eventHandlerConfiguration;
@@ -188,6 +205,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("rdf")
   private RdfConfiguration rdfConfiguration = new RdfConfiguration();
 
+  @JsonProperty("appConfiguration")
+  @Valid
+  private AppConfiguration appConfiguration = new AppConfiguration();
+
   @JsonProperty("cache")
   private org.openmetadata.service.cache.CacheConfig cacheConfig;
 
@@ -202,6 +223,28 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @Valid
   private BulkOperationConfiguration bulkOperationConfiguration;
 
+  @JsonProperty("alerting")
+  @Valid
+  private AlertingConfiguration alertingConfiguration;
+
+  @JsonProperty("startupConfiguration")
+  @Valid
+  private StartupConfiguration startupConfiguration = new StartupConfiguration();
+
+  public StartupConfiguration getStartupConfiguration() {
+    if (startupConfiguration == null) {
+      startupConfiguration = new StartupConfiguration();
+    }
+    return startupConfiguration;
+  }
+
+  public AlertingConfiguration getAlertingConfiguration() {
+    if (alertingConfiguration == null) {
+      alertingConfiguration = new AlertingConfiguration();
+    }
+    return alertingConfiguration;
+  }
+
   public BulkOperationConfiguration getBulkOperationConfiguration() {
     if (bulkOperationConfiguration == null) {
       bulkOperationConfiguration = new BulkOperationConfiguration();
@@ -209,12 +252,33 @@ public class OpenMetadataApplicationConfig extends Configuration {
     return bulkOperationConfiguration;
   }
 
+  @JsonProperty("asyncOperations")
+  @Valid
+  private AsyncOperationsConfiguration asyncOperationsConfiguration;
+
+  public AsyncOperationsConfiguration getAsyncOperationsConfiguration() {
+    if (asyncOperationsConfiguration == null) {
+      asyncOperationsConfiguration = new AsyncOperationsConfiguration();
+    }
+    return asyncOperationsConfiguration;
+  }
+
+  @JsonProperty("cdn")
+  private CdnConfiguration cdnConfiguration;
+
   @JsonProperty("qos")
   private QoSConfiguration qosConfiguration;
 
   @JsonProperty("cacheMemory")
   @Valid
   private CacheConfiguration cacheMemoryConfiguration = new CacheConfiguration();
+
+  public CdnConfiguration getCdnConfiguration() {
+    if (cdnConfiguration == null) {
+      cdnConfiguration = new CdnConfiguration();
+    }
+    return cdnConfiguration;
+  }
 
   public QoSConfiguration getQosConfiguration() {
     if (qosConfiguration == null) {

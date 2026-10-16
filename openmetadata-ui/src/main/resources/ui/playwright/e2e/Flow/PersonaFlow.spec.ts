@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
@@ -22,12 +21,12 @@ import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
 import {
-  navigateToCustomizeLandingPage,
-  openAddCustomizeWidgetModal,
+  addCuratedAssetPlaceholder,
   selectAssetTypes,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -41,6 +40,7 @@ import {
   updatePersonaDisplayName,
 } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const PERSONA_DETAILS = {
   name: `persona-with-%-${uuid()}`,
@@ -48,7 +48,6 @@ const PERSONA_DETAILS = {
   description: `Persona description ${uuid()}.`,
 };
 
-const user = new UserClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
 
@@ -96,7 +95,7 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByTestId('displayName').fill(PERSONA_DETAILS.displayName);
 
-    await page.locator(descriptionBox).fill(PERSONA_DETAILS.description);
+    await fillDescriptionBox(page, PERSONA_DETAILS.description);
 
     const userListResponse = page.waitForResponse(
       '/api/v1/users?limit=*&isBot=false*'
@@ -117,25 +116,26 @@ test.describe.serial('Persona operations', () => {
     await searchUser;
 
     await page
-      .getByRole('listitem', { name: user.responseData.displayName })
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: user.responseData.displayName })
       .click();
     await page.getByTestId('selectable-list-update-btn').click();
 
+    const createPersonaResponse = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname.endsWith('/api/v1/personas'),
+      201
+    );
     await page.getByRole('button', { name: 'Create' }).click();
+    await createPersonaResponse;
 
     await navigateToPersonaSettings(page);
 
     await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
-    const personaResponse = page.waitForResponse(
-      `/api/v1/personas/name/${encodeURIComponent(
-        PERSONA_DETAILS.name
-      )}?fields=users`
-    );
-
     await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
-
-    await personaResponse;
 
     await expect(page).toHaveURL(/.*#customize-ui/);
 
@@ -275,25 +275,9 @@ test.describe.serial('Persona operations', () => {
 
     await page.click('[data-testid="delete-button-title"]');
 
-    await expect(page.locator('.ant-modal-header')).toContainText(
-      PERSONA_DETAILS.displayName
-    );
-
-    await page.click(`[data-testid="hard-delete-option"]`);
-
-    await expect(page.locator('[data-testid="confirm-button"]')).toBeDisabled();
-
-    await page
-      .locator('[data-testid="confirmation-text-input"]')
-      .fill(DELETE_TERM);
-
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`
     );
-
-    await expect(
-      page.locator('[data-testid="confirm-button"]')
-    ).not.toBeDisabled();
 
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
@@ -303,14 +287,16 @@ test.describe.serial('Persona operations', () => {
 });
 
 test.describe.serial('Default persona setting and removal flow', () => {
+  const user1 = new UserClass();
+
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
+    await user1.create(apiContext);
     const adminResponse = await apiContext.get('/api/v1/users/name/admin');
     const adminData = await adminResponse.json();
 
-    await persona1.create(apiContext, [user.responseData.id, adminData.id]);
-    await persona2.create(apiContext, [user.responseData.id]);
+    await persona1.create(apiContext, [user1.responseData.id, adminData.id]);
+    await persona2.create(apiContext, [user1.responseData.id]);
     await afterAction();
   });
 
@@ -319,9 +305,14 @@ test.describe.serial('Default persona setting and removal flow', () => {
     async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await Promise.all([
-        user.delete(apiContext),
+        user1.delete(apiContext),
         persona1.delete(apiContext),
         persona2.delete(apiContext),
+        apiContext.delete(
+          `/api/v1/personas/name/${encodeURIComponent(
+            PERSONA_DETAILS.name
+          )}?hardDelete=true`
+        ),
       ]);
       await afterAction();
     }
@@ -333,138 +324,151 @@ test.describe.serial('Default persona setting and removal flow', () => {
   }) => {
     const userContext = await browser.newContext({ storageState: undefined });
     const userPage = await userContext.newPage();
-    await user.login(userPage);
+
+    await user1.signIn(userPage);
 
     test.slow(true);
 
-    await test.step('Admin creates a persona and sets the default persona', async () => {
-      await navigateToPersonaSettings(adminPage);
-      await adminPage.getByTestId('add-persona-button').click();
+    try {
+      await test.step('Admin creates a persona and sets the default persona', async () => {
+        await navigateToPersonaSettings(adminPage);
+        await adminPage.getByTestId('add-persona-button').click();
 
-      await validateFormNameFieldInput({
-        page: adminPage,
-        value: PERSONA_DETAILS.name,
-        fieldName: 'Name',
-        fieldSelector: '[data-testid="name"]',
-        errorDivSelector: '#name_help',
-      });
+        await validateFormNameFieldInput({
+          page: adminPage,
+          value: PERSONA_DETAILS.name,
+          fieldName: 'Name',
+          fieldSelector: '[data-testid="name"]',
+          errorDivSelector: '#name_help',
+        });
 
-      await adminPage
-        .getByTestId('displayName')
-        .fill(PERSONA_DETAILS.displayName);
+        await adminPage
+          .getByTestId('displayName')
+          .fill(PERSONA_DETAILS.displayName);
 
-      await adminPage.locator(descriptionBox).fill(PERSONA_DETAILS.description);
+        await adminPage
+          .locator(descriptionBox)
+          .fill(PERSONA_DETAILS.description);
 
-      const userListResponse = adminPage.waitForResponse(
-        '/api/v1/users?limit=*&isBot=false*'
-      );
-      await adminPage.getByTestId('add-users').click();
-      await userListResponse;
+        const userListResponse = adminPage.waitForResponse(
+          '/api/v1/users?limit=*&isBot=false*'
+        );
+        await adminPage.getByTestId('add-users').click();
+        await userListResponse;
 
-      await waitForAllLoadersToDisappear(adminPage);
+        await waitForAllLoadersToDisappear(adminPage);
 
-      const searchUser = adminPage.waitForResponse(
-        `/api/v1/search/query?q=*${encodeURIComponent(
-          user.responseData.displayName
-        )}*`
-      );
-      await adminPage
-        .getByTestId('searchbar')
-        .fill(user.responseData.displayName);
-      await searchUser;
+        const searchUser = adminPage.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent(
+            user1.responseData.displayName
+          )}*`
+        );
+        await adminPage
+          .getByTestId('searchbar')
+          .fill(user1.responseData.displayName);
+        await searchUser;
 
-      await adminPage
-        .getByRole('listitem', { name: user.responseData.displayName })
-        .click();
-      await adminPage.getByTestId('selectable-list-update-btn').click();
+        await adminPage
+          .locator('[data-testid="owner-option"]')
+          .filter({ hasText: user1.responseData.displayName })
+          .click();
+        await adminPage.getByTestId('selectable-list-update-btn').click();
 
-      await adminPage.getByRole('button', { name: 'Create' }).click();
+        const createPersonaResponse = waitForResponseWithStatus(
+          adminPage,
+          (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname.endsWith('/api/v1/personas'),
+          201
+        );
+        await adminPage.getByRole('button', { name: 'Create' }).click();
+        await createPersonaResponse;
 
-      await navigateToPersonaSettings(adminPage);
+        await navigateToPersonaSettings(adminPage);
 
-      await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
+        await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
 
-      const personaResponse = adminPage.waitForResponse(
-        `/api/v1/personas/name/${encodeURIComponent(
+        await navigateToPersonaWithPagination(
+          adminPage,
+          PERSONA_DETAILS.name,
+          true
+        );
+
+        await adminPage.getByRole('tab', { name: 'Users' }).click();
+
+        await adminPage.getByTestId('entity-header-name').waitFor({
+          state: 'visible',
+        });
+
+        await expect(adminPage.getByTestId('entity-header-name')).toContainText(
           PERSONA_DETAILS.name
-        )}?fields=users`
-      );
+        );
 
-      await navigateToPersonaWithPagination(
-        adminPage,
-        PERSONA_DETAILS.name,
-        true
-      );
+        await expect(
+          adminPage.getByTestId('entity-header-display-name')
+        ).toContainText(PERSONA_DETAILS.displayName);
 
-      await personaResponse;
+        await expect(
+          adminPage.locator(
+            '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
+          )
+        ).toContainText(PERSONA_DETAILS.description);
 
-      await adminPage.getByRole('tab', { name: 'Users' }).click();
+        await expect(
+          adminPage.getByTestId(user1.responseData.name)
+        ).toContainText(user1.responseData.name);
 
-      await adminPage.getByTestId('entity-header-name').waitFor({
-        state: 'visible',
+        await setPersonaAsDefault(adminPage);
       });
 
-      await expect(adminPage.getByTestId('entity-header-name')).toContainText(
-        PERSONA_DETAILS.name
-      );
+      await test.step('User refreshes and checks the default persona is applied', async () => {
+        await userPage.reload();
+        await waitForAllLoadersToDisappear(userPage);
+        await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
+        await redirectToHomePage(userPage);
+      });
 
-      await expect(
-        adminPage.getByTestId('entity-header-display-name')
-      ).toContainText(PERSONA_DETAILS.displayName);
+      await test.step('Changing default persona', async () => {
+        const personaListResponse =
+          adminPage.waitForResponse(`/api/v1/personas?*`);
 
-      await expect(
-        adminPage.locator(
-          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
-        )
-      ).toContainText(PERSONA_DETAILS.description);
+        await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+        await personaListResponse;
+        await navigateToPersonaWithPagination(
+          adminPage,
+          persona1.responseData.fullyQualifiedName ??
+            persona1.responseData.name,
+          true
+        );
 
-      await expect(adminPage.getByTestId(user.responseData.name)).toContainText(
-        user.responseData.name
-      );
+        await setPersonaAsDefault(adminPage);
+      });
 
-      await setPersonaAsDefault(adminPage);
-    });
+      await test.step('Verify changed default persona for new user', async () => {
+        await userPage.reload();
+        await waitForAllLoadersToDisappear(userPage);
+        await checkPersonaInProfile(
+          userPage,
+          persona1.responseData.displayName
+        );
+      });
 
-    await test.step('User refreshes and checks the default persona is applied', async () => {
-      await userPage.reload();
-      await waitForAllLoadersToDisappear(userPage);
-      await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
-    });
+      await test.step('Admin removes the default persona', async () => {
+        await navigateToPersonaSettings(adminPage);
+        await removePersonaDefault(
+          adminPage,
+          persona1.responseData?.fullyQualifiedName
+        );
+      });
 
-    await test.step('Changing default persona', async () => {
-      const personaListResponse =
-        adminPage.waitForResponse(`/api/v1/personas?*`);
-
-      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-      await personaListResponse;
-      await navigateToPersonaWithPagination(
-        adminPage,
-        persona1.responseData.fullyQualifiedName ?? persona1.responseData.name,
-        true
-      );
-
-      await setPersonaAsDefault(adminPage);
-    });
-
-    await test.step('Verify changed default persona for new user', async () => {
-      await userPage.reload();
-      await waitForAllLoadersToDisappear(userPage);
-      await checkPersonaInProfile(userPage, persona1.responseData.displayName);
-    });
-
-    await test.step('Admin removes the default persona', async () => {
-      await navigateToPersonaSettings(adminPage);
-      await removePersonaDefault(
-        adminPage,
-        persona1.responseData?.fullyQualifiedName
-      );
-    });
-
-    await test.step('User refreshes and sees no default persona', async () => {
-      await userPage.reload();
-      await waitForAllLoadersToDisappear(userPage);
-      await checkPersonaInProfile(userPage); // Expect no persona again
-    });
+      await test.step('User refreshes and sees no default persona', async () => {
+        await userPage.reload();
+        await waitForAllLoadersToDisappear(userPage);
+        await checkPersonaInProfile(userPage); // Expect no persona again
+      });
+    } finally {
+      await userContext.close();
+    }
   });
 });
 
@@ -517,25 +521,25 @@ test.describe.serial('Team persona setting flow', () => {
 
       // Wait for dropdown to open and options to load
       await adminPage.getByTestId('default-persona-select-list').waitFor();
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
+      await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
       const personaResponse = await personasLoadResponse;
       expect(personaResponse.status()).toBe(200);
 
-      const option = adminPage.locator(
-        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
-      );
+      const option = adminPage.getByRole('option', {
+        name: teamPersona.responseData.displayName,
+      });
 
       await expect(option).toBeVisible();
       await option.click();
 
+      const selectedPersona = adminPage
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item');
+
       // Verify the selected option is correct
-      await expect(
-        adminPage.locator(
-          `span.ant-select-selection-item[title="${teamPersona.responseData.displayName}"]`
-        )
-      ).toBeVisible();
+      await expect(selectedPersona).toContainText(
+        teamPersona.responseData.displayName
+      );
 
       const teamPatchResponse = adminPage.waitForResponse('/api/v1/teams/*');
 
@@ -546,9 +550,7 @@ test.describe.serial('Team persona setting flow', () => {
       await teamPatchResponse;
 
       // Ensure dropdown closed
-      await expect(
-        adminPage.locator('.ant-select-dropdown:visible')
-      ).not.toBeVisible();
+      await expect(adminPage.getByRole('listbox')).not.toBeVisible();
 
       // Verify persona renders in team UI
       await expect(adminPage.getByTestId('team-persona')).toContainText(
@@ -561,30 +563,37 @@ test.describe.serial('Team persona setting flow', () => {
       );
       await adminPage.getByTestId('default-edit-user-persona').click();
       await adminPage.getByTestId('default-persona-select-list').waitFor();
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
       const personaResponse2 = await personasLoadResponse2;
       expect(personaResponse2.status()).toBe(200);
 
-      // Click the new persona (teamPersona2)
-      const userPersonaOption = adminPage.locator(
-        `.ant-select-dropdown:visible [title="${teamPersona2.responseData.displayName}"]`
+      // Single select: the current default is removed before picking another.
+      await selectedPersona.getByRole('button').click();
+
+      // Typing filters via the server-side search endpoint, not client-side.
+      const personaSearchResponse = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/personas/search') &&
+          response.request().method() === 'GET'
       );
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .fill(teamPersona2.responseData.displayName);
+      const searchResponse = await personaSearchResponse;
+      expect(searchResponse.status()).toBe(200);
+
+      // Click the new persona (teamPersona2)
+      const userPersonaOption = adminPage.getByRole('option', {
+        name: teamPersona2.responseData.displayName,
+      });
       await expect(userPersonaOption).toBeVisible();
       await userPersonaOption.click();
 
-      // Verify the new option replaces the old option in the dropdown selection display
-      await expect(
-        adminPage.locator(
-          `span.ant-select-selection-item[title="${teamPersona2.responseData.displayName}"]`
-        )
-      ).toBeVisible();
-      await expect(
-        adminPage.locator(
-          `span.ant-select-selection-item[title="${teamPersona.responseData.displayName}"]`
-        )
-      ).not.toBeVisible();
+      // Verify the new option replaces the old option in the selection display
+      await expect(selectedPersona).toHaveCount(1);
+      await expect(selectedPersona).toContainText(
+        teamPersona2.responseData.displayName
+      );
 
       // Save it and re-verify
       const teamPatchSwitchResponse =
@@ -603,13 +612,15 @@ test.describe.serial('Team persona setting flow', () => {
         response.url().includes('/api/v1/personas')
       );
       await adminPage.getByTestId('default-edit-user-persona').click();
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
       await personasLoadResponse3;
-      const revertOption = adminPage.locator(
-        `.ant-select-dropdown:visible [title="${teamPersona.responseData.displayName}"]`
-      );
+      await selectedPersona.getByRole('button').click();
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .click();
+      const revertOption = adminPage.getByRole('option', {
+        name: teamPersona.responseData.displayName,
+      });
       await expect(revertOption).toBeVisible();
       await revertOption.click();
       const teamPatchRevertResponse =
@@ -621,7 +632,7 @@ test.describe.serial('Team persona setting flow', () => {
       expect(teamPatchRevertResponseData.status()).toBe(200);
     });
 
-    await test.step('Admin can verify the team persona is applied to the team user', async () => {
+    await test.step('Team persona is not auto-applied as the user default persona', async () => {
       // Navigate to the Users tab in the Team page
       await adminPage.getByTestId('users').click();
 
@@ -635,22 +646,32 @@ test.describe.serial('Team persona setting flow', () => {
       await adminPage.getByTestId(teamUser.responseData.name).click();
       await userProfileResponse;
 
-      // Verify the user inherited the team's default persona
       await adminPage.getByTestId('persona-details-card').waitFor();
-      const defaultPersonaChip = adminPage
-        .locator(
-          '[data-testid="default-persona-chip"] [data-testid="tag-chip"]'
-        )
-        .first();
 
-      await expect(defaultPersonaChip).toContainText(
+      const defaultPersonaChip = adminPage.getByTestId('default-persona-chip');
+      // Asserted so the negative check below cannot pass against a chip that
+      // never rendered.
+      await expect(defaultPersonaChip).toBeVisible();
+
+      // The inherited team persona must NOT be shown as the user's default
+      // persona.
+      //
+      // Deliberately not asserting the literal "No default persona"
+      // placeholder: when a user has no default persona the backend resolves
+      // the field to the *system* default persona, which is global state this
+      // test does not own. The sibling describe in this file sets and clears a
+      // system default, and the environment ships with one pre-seeded, so the
+      // placeholder only appears when unrelated work happens to have cleared
+      // it. The invariant under test is just that the team's persona is not
+      // auto-applied.
+      await expect(defaultPersonaChip).not.toContainText(
         teamPersona.responseData.displayName
       );
 
-      // Verify the inherited icon is displayed
+      // The misleading inherited icon must not be rendered on the default persona
       await expect(
         adminPage.locator('[data-testid="default-persona-chip"] .inherit-icon')
-      ).toBeVisible();
+      ).toHaveCount(0);
     });
   });
 
@@ -687,16 +708,17 @@ test.describe.serial('Team persona setting flow', () => {
 
       await adminPage.getByTestId('default-persona-select-list').waitFor();
 
-      // Hover over the select to reveal the clear button, then click it
       await adminPage
-        .locator('[data-testid="default-persona-select-list"]')
-        .hover();
-
-      await adminPage
-        .locator(
-          '[data-testid="default-persona-select-list"] .ant-select-clear'
-        )
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item')
+        .getByRole('button')
         .click();
+
+      // Removing the chip refocuses the field, which reopens the list over Save.
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .press('Escape');
 
       const defaultPersonaChangeResponse =
         adminPage.waitForResponse('/api/v1/teams/*');
@@ -799,42 +821,21 @@ test.describe('Curated Assets – Description filter', () => {
     await afterAction();
   });
 
-  const addCuratedAssetWidget = async (
-    adminPage: import('@playwright/test').Page
-  ) => {
-    await navigateToCustomizeLandingPage(adminPage, {
-      personaName: curatedPersona.responseData.name,
-    });
-
-    await openAddCustomizeWidgetModal(adminPage);
-    await waitForAllLoadersToDisappear(adminPage);
-
-    await adminPage
-      .getByRole('dialog', { name: 'Customize Home' })
-      .getByTestId('KnowledgePanel.CuratedAssets')
-      .click();
-
-    await adminPage.locator('[data-testid="apply-btn"]').click();
-
-    await expect(
-      adminPage
-        .getByTestId('page-layout-v1')
-        .getByTestId('KnowledgePanel.CuratedAssets')
-    ).toBeVisible();
-  };
-
   test('Description Contains filter – table with matching description appears in widget', async ({
     adminPage,
   }) => {
     await test.step('Navigate to persona settings and add curated assets widget', async () => {
       await redirectToHomePage(adminPage);
-      await addCuratedAssetWidget(adminPage);
+      await addCuratedAssetPlaceholder({
+        page: adminPage,
+        personaName: curatedPersona.responseData.name,
+      });
     });
 
     await test.step('Click Create in curated assets widget and fill Description Contains filter', async () => {
       await adminPage
         .getByTestId('KnowledgePanel.CuratedAssets')
-        .getByText('Create')
+        .getByRole('button', { name: 'Create', exact: true })
         .click();
 
       await adminPage.locator('[data-testid="title-input"]').clear();
@@ -844,21 +845,23 @@ test.describe('Curated Assets – Description filter', () => {
 
       await selectAssetTypes(adminPage, ['Table']);
 
-      const rule0 = adminPage.locator('.rule').nth(0);
+      const rule0 = adminPage.getByTestId('query-builder-rule-0');
 
       await selectOption(
         adminPage,
-        rule0.locator('.rule--field .ant-select'),
+        rule0.getByTestId('advanced-search-field-select'),
         'Description',
         true
       );
       await selectOption(
         adminPage,
-        rule0.locator('.rule--operator .ant-select'),
+        rule0.getByTestId('advanced-search-operator-select'),
         'Contains'
       );
       await rule0
-        .locator('.rule--widget--TEXT input[type="text"]')
+        .locator(
+          '[data-testid=advanced-search-value] input[type="text"]:not([role="combobox"])'
+        )
         .fill(WORD_TO_SEARCH.toLowerCase());
     });
 
@@ -882,9 +885,7 @@ test.describe('Curated Assets – Description filter', () => {
       await expect(
         adminPage
           .getByTestId('KnowledgePanel.CuratedAssets')
-          .locator('.entity-list-item-title')
-          .filter({ hasText: tableName })
-          .first()
+          .getByTestId(`curated-asset-${tableName}`)
       ).toBeVisible();
     });
   });

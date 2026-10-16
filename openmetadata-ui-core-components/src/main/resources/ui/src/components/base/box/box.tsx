@@ -16,9 +16,10 @@ import {
   rowGapClassMapping,
 } from '@/constants/tailwindClasses.constants';
 import { cx } from '@/utils/cx';
+import { Children, Fragment, forwardRef, isValidElement } from 'react';
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
+export type Direction = 'row' | 'col' | 'row-reverse' | 'col-reverse';
 type Align = 'start' | 'center' | 'end' | 'stretch' | 'baseline';
 type Justify = 'start' | 'center' | 'end' | 'between' | 'around' | 'evenly';
 type Wrap = 'wrap' | 'nowrap' | 'wrap-reverse';
@@ -94,30 +95,67 @@ export interface BoxProps extends HTMLAttributes<HTMLDivElement> {
   rowGap?: GapValues;
   colGap?: GapValues;
   inline?: boolean;
+  /** Group children so flex sizing applies to each item rather than its control. */
+  itemClassName?: string;
   children?: ReactNode;
 }
 
-export const Box = ({
-  direction,
-  align,
-  justify,
-  wrap,
-  gap,
-  rowGap,
-  colGap,
-  inline,
-  className,
-  children,
-  ...props
-}: BoxProps) => {
+const getBoxItems = (
+  children: ReactNode,
+  itemClassName: string,
+  keyPrefix = ''
+): ReactNode[] =>
+  Children.toArray(children).flatMap<ReactNode>((child, index) => {
+    const key = `${keyPrefix}/${isValidElement(child) ? child.key : index}`;
+
+    // Fragments group JSX, not layout items; keep their children independently spaced.
+    if (
+      isValidElement<{ children?: ReactNode }>(child) &&
+      child.type === Fragment
+    ) {
+      return getBoxItems(child.props.children, itemClassName, key);
+    }
+
+    return [
+      <div className={itemClassName} key={key}>
+        {child}
+      </div>,
+    ];
+  });
+
+export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
+  {
+    direction,
+    align,
+    justify,
+    wrap,
+    gap,
+    rowGap,
+    colGap,
+    inline,
+    itemClassName,
+    className,
+    children,
+    ...props
+  },
+  ref
+) {
   const gapClassName = gap === undefined ? undefined : gapClassMapping[gap];
   const rowGapClassName =
     rowGap === undefined ? undefined : rowGapClassMapping[rowGap];
   const colGapClassName =
     colGap === undefined ? undefined : colGapClassMapping[colGap];
+  const items = itemClassName
+    ? getBoxItems(children, itemClassName)
+    : undefined;
+
+  if (items?.length === 0) {
+    return null;
+  }
 
   return (
     <div
+      ref={ref}
       {...props}
       className={cx(
         inline ? 'tw:inline-flex' : 'tw:flex',
@@ -130,9 +168,9 @@ export const Box = ({
         colGapClassName,
         className
       )}>
-      {children}
+      {items ?? children}
     </div>
   );
-};
+});
 
 Box.displayName = 'Box';

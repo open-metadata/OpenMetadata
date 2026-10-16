@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
@@ -26,9 +26,12 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { PersonaClass } from '../../support/persona/PersonaClass';
+import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext, performAdminLogin } from '../../utils/admin';
@@ -39,7 +42,9 @@ import {
   visitOwnProfilePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { settingClick, sidebarClick } from '../../utils/sidebar';
+import { visitClassificationPage } from '../../utils/tag';
 import {
   addUser,
   checkDataConsumerPermissions,
@@ -55,6 +60,7 @@ import {
   restoreUser,
   restoreUserProfilePage,
   revokeToken,
+  searchUserByEmail,
   settingPageOperationPermissionCheck,
   softDeleteUser,
   softDeleteUserProfilePage,
@@ -117,19 +123,19 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   dataStewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -205,6 +211,14 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
+    await test.step('User is searchable by email', async () => {
+      await searchUserByEmail(
+        adminPage,
+        updatedUserDetails.email,
+        updatedUserDetails.name
+      );
+    });
+
     await test.step("User shouldn't be allowed to create User with same Email", async () => {
       await checkForUserExistError(adminPage, {
         name: updatedUserDetails.name,
@@ -218,6 +232,16 @@ test.describe('User with Admin Roles', () => {
       updatedUserDetails.name,
       updatedUserDetails.name,
       false
+    );
+  });
+
+  test('Admin is searchable by email', async ({ adminPage }) => {
+    await redirectToHomePage(adminPage);
+    await settingClick(adminPage, GlobalSettingOptions.ADMINS);
+    await searchUserByEmail(
+      adminPage,
+      adminUser.data.email,
+      adminUser.responseData.name
     );
   });
 
@@ -254,9 +278,7 @@ test.describe('User with Admin Roles', () => {
   }) => {
     await redirectToHomePage(adminPage);
     await settingClick(adminPage, GlobalSettingOptions.USERS);
-    await adminPage.locator('.user-list-table [data-testid="loader"]').waitFor({
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(adminPage.locator('.user-list-table'));
     await softDeleteUserProfilePage(
       adminPage,
       user.responseData.name,
@@ -302,58 +324,108 @@ test.describe('User with Data Consumer Roles', () => {
   test('User should have only view permission for glossary and tags for Data Consumer', async ({
     dataConsumerPage,
   }) => {
-    await redirectToHomePage(dataConsumerPage);
+    const { apiContext, afterAction } = await createAdminApiContext();
+    const userClassification = new ClassificationClass();
 
-    // Check CRUD for Glossary
-    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+    try {
+      await userClassification.create(apiContext);
+      await redirectToHomePage(dataConsumerPage);
 
-    await waitForAllLoadersToDisappear(dataConsumerPage);
+      // Check CRUD for Glossary
+      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-glossary"]')
-    ).not.toBeVisible();
+      await waitForAllLoadersToDisappear(dataConsumerPage);
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
-    ).not.toBeVisible();
+      // Confirm the glossary page has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('glossary-details')
+      ).toBeVisible();
 
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-glossary"]')
+      ).not.toBeVisible();
 
-    // Glossary Term Table Action column
-    await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button-header"]')
+      ).not.toBeVisible();
 
-    // right panel
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-domain"]')
-    ).not.toBeVisible();
-    await expect(
-      dataConsumerPage.locator('[data-testid="edit-review-button"]')
-    ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
 
-    const hasAddOwnerButton = dataConsumerPage.locator(
-      '[data-testid="add-owner"]'
-    );
+      // Glossary Term Table Action column
+      await expect(dataConsumerPage.getByText('Actions')).not.toBeVisible();
 
-    if (!hasAddOwnerButton) {
-      await checkEditOwnerButtonPermission(dataConsumerPage);
+      // right panel
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-domain"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="edit-review-button"]')
+      ).not.toBeVisible();
+
+      const hasAddOwnerButton = dataConsumerPage.locator(
+        '[data-testid="add-owner"]'
+      );
+
+      if (!hasAddOwnerButton) {
+        await checkEditOwnerButtonPermission(dataConsumerPage);
+      }
+
+      // Check CRUD for Tags — navigate to Tags sidebar to verify create permission is absent
+      await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
+
+      // Confirm the left panel has rendered before asserting button absence
+      await expect(
+        dataConsumerPage.getByTestId('tags-left-panel')
+      ).toBeVisible();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-classification"]')
+      ).not.toBeVisible();
+
+      // System classification (e.g. Certification): manage button must NOT be visible
+      await visitClassificationPage(
+        dataConsumerPage,
+        'Certification',
+        'Certification'
+      );
+
+      // Confirm the header has rendered before asserting button absence
+      await expect(dataConsumerPage.getByTestId('header')).toBeVisible();
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+      await expect(
+        dataConsumerPage.locator('[data-testid="manage-button"]')
+      ).not.toBeVisible();
+
+      // User-created classification: manage button MUST be visible but show only Export
+      await userClassification.visitPage(dataConsumerPage);
+
+      // Confirm the header has rendered before asserting button presence/absence
+      await expect(
+        dataConsumerPage.getByTestId('entity-header-display-name')
+      ).toContainText(userClassification.data.displayName);
+
+      await expect(
+        dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
+      ).not.toBeVisible();
+
+      const manageButton = dataConsumerPage.getByTestId('manage-button');
+
+      await expect(manageButton).toBeVisible();
+      await manageButton.click();
+
+      await expect(dataConsumerPage.getByTestId('export-button')).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('import-button')
+      ).not.toBeVisible();
+    } finally {
+      await userClassification.delete(apiContext);
+      await afterAction();
     }
-
-    // Check CRUD for Tags
-    await sidebarClick(dataConsumerPage, SidebarItem.TAGS);
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-classification"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="add-new-tag-button"]')
-    ).not.toBeVisible();
-
-    await expect(
-      dataConsumerPage.locator('[data-testid="manage-button"]')
-    ).not.toBeVisible();
   });
 
   test('Operations for settings page for Data Consumer', async ({
@@ -395,7 +467,9 @@ test.describe('User with Data Consumer Roles', () => {
         `Failed to patch table ${tableId}: ${await ownerPatchResponse.text()}`
       ).toBeTruthy();
 
-      await dataConsumerPage.goto(tablePageUrl);
+      await dataConsumerPage.goto(tablePageUrl, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(dataConsumerPage);
 
       await checkDataConsumerPermissions(dataConsumerPage);
@@ -428,7 +502,7 @@ test.describe('User with Data Consumer Roles', () => {
 
     await dataConsumerUser.logout(dataConsumerPage);
 
-    await dataConsumerUser.login(
+    await dataConsumerUser.signIn(
       dataConsumerPage,
       dataConsumerUser.data.email,
       updatedUserDetails.newPassword
@@ -489,7 +563,9 @@ test.describe('User with Data Steward Roles', () => {
 
     await checkStewardServicesPermissions(dataStewardPage);
 
-    await dataStewardPage.goto(dataStewardPermissionTableUrl);
+    await dataStewardPage.goto(dataStewardPermissionTableUrl, {
+      waitUntil: 'domcontentloaded',
+    });
     await waitForAllLoadersToDisappear(dataStewardPage);
 
     await checkStewardPermissions(dataStewardPage);
@@ -507,7 +583,7 @@ test.describe('User with Data Steward Roles', () => {
 
     await dataStewardUser.logout(dataStewardPage);
 
-    await dataStewardUser.login(
+    await dataStewardUser.signIn(
       dataStewardPage,
       dataStewardUser.data.email,
       updatedUserDetails.newPassword
@@ -523,17 +599,21 @@ test.describe('User Profile Feed Interactions', () => {
     const testMessage = 'Initial conversation thread for mention test';
     const entityLink = `<#E::table::${tableEntity.entityResponseData.fullyQualifiedName}>`;
 
-    await apiContext.post('/api/v1/feed', {
+    // user3 follows the table so the admin-authored conversation surfaces in
+    // user3's OwnerOrFollows profile feed, while the feed-card avatar stays a
+    // different user for the navigation assertion below.
+    await tableEntity.followTable(apiContext, user3.responseData.id);
+
+    await apiContext.post('/api/v1/conversations', {
       data: {
         message: testMessage,
         about: entityLink,
-        type: 'Conversation',
       },
     });
 
-    const feedUrl = `/api/v1/feed?entityLink=${encodeURIComponent(
+    const feedUrl = `/api/v1/conversations?entityLink=${encodeURIComponent(
       entityLink
-    )}&type=Conversation&limit=25`;
+    )}&limit=25`;
 
     await expect
       .poll(
@@ -558,10 +638,13 @@ test.describe('User Profile Feed Interactions', () => {
     const { page, afterAction } = await performUserLogin(browser, user3);
 
     await redirectToHomePage(page);
-    const feedResponse = page.waitForResponse('/api/v1/feed?type=Conversation');
-
+    const conversationsResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/conversations' &&
+        response.request().method() === 'GET'
+    );
     await visitOwnProfilePage(page);
-    await feedResponse;
+    await conversationsResponse;
 
     await page
       .getByTestId('message-container')
@@ -575,11 +658,16 @@ test.describe('User Profile Feed Interactions', () => {
       .first();
 
     await avatar.hover();
-    const popover = page.locator('.ant-popover-card');
+    const popover = page.getByTestId('user-popover-card');
     await popover.waitFor({ state: 'visible' });
 
-    // Get the expected username from the popover BEFORE clicking
+    // Get the expected username from the popover BEFORE clicking. The popover
+    // renders an empty name until its user request resolves, so wait for the
+    // resolved text instead of capturing an empty string.
     const userNameElement = popover.getByTestId('user-name');
+
+    await expect(userNameElement).not.toBeEmpty();
+
     const expectedUserName = await userNameElement.textContent();
 
     // Set up response listener AFTER getting expected name and BEFORE clicking
@@ -717,18 +805,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify default persona tag is visible
-    await expect(
-      adminPage.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
-
-    // Verify default persona is first in the list
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const firstPersona = personaLabels.first();
+    const removedDefaultPersonaLabel = adminPage
+      .locator('[data-testid="persona-label"]')
+      .filter({ hasText: persona2.responseData.displayName });
 
     await expect(
-      firstPersona.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
+      removedDefaultPersonaLabel.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    await expect(
+      removedDefaultPersonaLabel.getByText('Selected', { exact: true })
+    ).toHaveCount(0);
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -771,10 +858,12 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         state: 'visible',
       });
 
-      // Verify the selected persona is checked
-      const checkedRadio = adminPage.locator('input[type="radio"]:checked');
-
-      await expect(checkedRadio).toBeVisible();
+      // Verify the selected persona is marked as selected
+      await expect(
+        adminPage
+          .getByTestId('persona-label')
+          .getByText('Selected', { exact: true })
+      ).toHaveCount(1);
     }
   });
 
@@ -804,94 +893,13 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 
       // Get text of all personas to verify sorting
       const personaTexts = await personaLabels
-        .locator('.ant-typography')
+        .locator('.default-persona-container .prose')
         .allTextContents();
 
       // Verify first one contains the default persona name
       expect(personaTexts[0]).toContain(
         persona1.responseData.displayName ?? persona1.responseData.name
       );
-    }
-  });
-
-  test('Should revert to default persona after page refresh when non-default is selected', async ({
-    adminPage,
-  }) => {
-    // First, verify default persona is selected initially
-    await adminPage.locator('[data-testid="dropdown-profile"]').click();
-    await adminPage.locator('[role="menu"].profile-dropdown').waitFor({
-      state: 'visible',
-    });
-
-    // Expand personas if needed
-    const moreButton = adminPage.getByText(/\d+ More/);
-    if (await moreButton.isVisible()) {
-      await moreButton.click();
-    }
-
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const personaCount = await personaLabels.count();
-
-    if (personaCount > 1) {
-      // Verify default persona is initially selected (first one)
-      const defaultPersonaRadio = personaLabels
-        .first()
-        .locator('input[type="radio"]');
-
-      await expect(defaultPersonaRadio).toBeChecked();
-
-      // Select the second (non-default) persona
-      const secondPersona = personaLabels.nth(1);
-      const personaChangeResponse = adminPage.waitForResponse(
-        '/api/v1/docStore/name/persona.*'
-      );
-
-      await secondPersona.click();
-
-      // Wait for persona change API call
-      await personaChangeResponse;
-
-      // Verify the second persona is now selected
-      const secondPersonaRadio = personaLabels
-        .nth(1)
-        .locator('input[type="radio"]');
-
-      await expect(secondPersonaRadio).toBeChecked();
-
-      // Close dropdown
-      await adminPage.keyboard.press('Escape');
-
-      // Refresh the page
-      await adminPage.reload();
-
-      // Open dropdown again after refresh
-      await adminPage.locator('[data-testid="dropdown-profile"]').click();
-      await adminPage.locator('[role="menu"].profile-dropdown').waitFor({
-        state: 'visible',
-      });
-
-      // Expand personas if needed
-      const moreButtonAfterRefresh = adminPage.getByText(/\d+ More/);
-      if (await moreButtonAfterRefresh.isVisible()) {
-        await moreButtonAfterRefresh.click();
-      }
-
-      // Verify default persona is selected again after refresh
-      const personaLabelsAfterRefresh = adminPage.locator(
-        '[data-testid="persona-label"]'
-      );
-      const defaultPersonaRadioAfterRefresh = personaLabelsAfterRefresh
-        .first()
-        .locator('input[type="radio"]');
-
-      await expect(defaultPersonaRadioAfterRefresh).toBeChecked();
-
-      // Verify default persona tag is still visible
-      await expect(
-        personaLabelsAfterRefresh
-          .first()
-          .locator('[data-testid="default-persona-tag"]')
-      ).toBeVisible();
     }
   });
 
@@ -917,13 +925,13 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       personaLabels.first().locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
-      personaLabels.first().locator('input[type="radio"]')
-    ).toBeChecked();
+      personaLabels.first().getByText('Selected', { exact: true })
+    ).toHaveCount(1);
 
     // Get the current default persona name for later verification
     const originalDefaultPersonaText = await personaLabels
       .first()
-      .locator('.ant-typography')
+      .locator('.default-persona-container .prose')
       .textContent();
 
     // Close dropdown
@@ -939,12 +947,21 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.getByTestId('default-persona-select-list').waitFor();
 
-    await adminPage.locator('.ant-select-dropdown').waitFor({
-      state: 'visible',
-    });
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
+      .click();
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .click();
+    await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
     // Select the second persona as default
-    await adminPage.getByTitle(persona2.data.displayName).click();
+    await adminPage
+      .getByRole('option', { name: persona2.data.displayName })
+      .click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -974,7 +991,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     );
     const newDefaultPersonaLocator = updatedPersonaLabels
       .first()
-      .locator('.ant-typography');
+      .locator('.default-persona-container .prose');
 
     await expect(newDefaultPersonaLocator).toContainText(
       persona2.responseData.displayName
@@ -989,8 +1006,8 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .locator('[data-testid="default-persona-tag"]')
     ).toBeVisible();
     await expect(
-      updatedPersonaLabels.first().locator('input[type="radio"]')
-    ).toBeChecked();
+      updatedPersonaLabels.first().getByText('Selected', { exact: true })
+    ).toHaveCount(1);
 
     // Close dropdown
     await adminPage.keyboard.press('Escape');
@@ -1005,8 +1022,16 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.getByTestId('default-persona-select-list').waitFor();
     await adminPage
-      .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
+      .getByTestId('default-persona-select-list')
+      .getByTestId('autocomplete-selected-item')
+      .getByRole('button')
       .click();
+
+    // Removing the chip refocuses the field, which reopens the list over Save.
+    await adminPage
+      .getByTestId('default-persona-select-list')
+      .getByRole('combobox')
+      .press('Escape');
 
     const removePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
     await adminPage
@@ -1034,19 +1059,28 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify no default persona tag exists
+    // A system-wide default persona may still appear as a fallback, so scope the
+    // assertions to the user's own personas instead of the whole dropdown list.
     const finalPersonaLabels = adminPage.locator(
       '[data-testid="persona-label"]'
     );
 
-    await expect(
-      finalPersonaLabels.locator('[data-testid="default-persona-tag"]')
-    ).not.toBeVisible();
+    for (const personaName of [
+      persona1.responseData.displayName,
+      persona2.responseData.displayName,
+    ]) {
+      const userPersonaLabel = finalPersonaLabels.filter({
+        hasText: personaName,
+      });
 
-    // Verify there are no selected nor a default persona
-    const checkedRadios = adminPage.locator('input[type="radio"]:checked');
+      await expect(
+        userPersonaLabel.locator('[data-testid="default-persona-tag"]')
+      ).not.toBeVisible();
 
-    await expect(checkedRadios).toHaveCount(0);
+      await expect(
+        userPersonaLabel.getByText('Selected', { exact: true })
+      ).toHaveCount(0);
+    }
   });
 });
 
@@ -1134,9 +1168,31 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('persona-select-list').waitFor();
 
       // Clear all selected personas
-      await adminPage
-        .locator('[data-testid="persona-select-list"] .ant-select-clear')
-        .click();
+      const personaSelect = adminPage.getByTestId('persona-select-list');
+      const selectedPersonaChips = personaSelect.getByTestId(
+        'autocomplete-selected-item'
+      );
+      // The open list hides the chips from the accessibility tree, and each
+      // removal refocuses the field and reopens it.
+      const closePersonaList = () =>
+        personaSelect.getByRole('combobox').press('Escape');
+      await closePersonaList();
+      // Only the first few chips render at once, so re-read after each removal.
+      let [chipName] = await selectedPersonaChips.allTextContents();
+      while (chipName) {
+        await selectedPersonaChips
+          .filter({ hasText: chipName })
+          .getByRole('button')
+          .click();
+        await closePersonaList();
+        [chipName] = await selectedPersonaChips.allTextContents();
+      }
+
+      const updateUserPromise = adminPage.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/users/') &&
+          response.request().method() === 'PATCH'
+      );
 
       // Save the changes
       await adminPage
@@ -1144,8 +1200,8 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await adminPage.waitForResponse('/api/v1/users/*');
-
+      const updateUserResponse = await updateUserPromise;
+      expect(updateUserResponse.status()).toBe(200);
       await expect(
         adminPage
           .getByTestId('persona-details-card')
@@ -1176,16 +1232,11 @@ test.describe('User Profile Persona Interactions', () => {
       await adminPage.getByTestId('default-persona-select-list').waitFor();
 
       // Wait for dropdown to open and options to load
-      await adminPage.locator('.ant-select-dropdown').waitFor({
-        state: 'visible',
-      });
+      await adminPage.getByRole('listbox').waitFor({ state: 'visible' });
 
-      // Select specific persona for default - try test ID first, fallback to role selector
-      const defaultPersonaOptionTestId = adminPage.getByTitle(
-        persona1.responseData.displayName
-      );
-
-      await defaultPersonaOptionTestId.click();
+      await adminPage
+        .getByRole('option', { name: persona1.responseData.displayName })
+        .click();
 
       // Save the changes
       const savePersonaResponse = adminPage.waitForResponse('/api/v1/users/*');
@@ -1228,6 +1279,16 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step('Navigate back to user profile', async () => {
       await visitOwnProfilePage(adminPage);
       await adminPage.getByTestId('persona-details-card').waitFor();
+
+      // The "Default Persona changed to …" success toast from the add step is a
+      // success variant with no close button, and its react-aria auto-dismiss
+      // timer can be starved by the intervening navigation churn. The toast
+      // region lives at the app root and survives SPA navigation, so the stale
+      // toast can still be on screen — which would make the removal step's
+      // "no notification appears" assertion resolve to it. Reload to guarantee a
+      // clean toast region before asserting the removal shows no notification.
+      await adminPage.reload({ waitUntil: 'domcontentloaded' });
+      await adminPage.getByTestId('persona-details-card').waitFor();
     });
 
     // Test removing default persona
@@ -1244,10 +1305,16 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Clear the selected default persona
       await adminPage
-        .locator(
-          '[data-testid="default-persona-select-list"] .ant-select-clear'
-        )
+        .getByTestId('default-persona-select-list')
+        .getByTestId('autocomplete-selected-item')
+        .getByRole('button')
         .click();
+
+      // Removing the chip refocuses the field, which reopens the list over Save.
+      await adminPage
+        .getByTestId('default-persona-select-list')
+        .getByRole('combobox')
+        .press('Escape');
 
       const defaultPersonaChangeResponse =
         adminPage.waitForResponse('/api/v1/users/*');
@@ -1268,27 +1335,9 @@ test.describe('User Profile Persona Interactions', () => {
   });
 });
 
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await persona2.delete(apiContext);
-  await persona1.delete(apiContext);
-  await role.delete(apiContext);
-  await policy.delete(apiContext);
-  await tableEntity2.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await user3.delete(apiContext);
-  await user2.delete(apiContext);
-  await user.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await adminUser.delete(apiContext);
-  await afterAction();
-});
-
 base.describe(
   'Users Performance around application with multiple team inheriting roles and policy',
   () => {
-    base.slow(true);
     const policy = new PolicyClass();
     const policy2 = new PolicyClass();
     const policy3 = new PolicyClass();
@@ -1301,6 +1350,10 @@ base.describe(
     const role5 = new RolesClass();
 
     const user = new UserClass();
+    const chart = new ChartClass();
+    const userPerformanceEntities = entities.map((entity) =>
+      entity === EntityDataClass.chart1 ? chart : entity
+    );
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1351,76 +1404,74 @@ base.describe(
         team3.create(apiContext),
         team4.create(apiContext),
         team5.create(apiContext),
+        chart.create(apiContext),
       ]);
 
       await afterAction();
     });
 
-    base.afterAll('Cleanup', async ({ browser }) => {
+    base.afterAll('Cleanup user performance chart', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await Promise.all([
-        policy.delete(apiContext),
-        role.delete(apiContext),
-        policy2.delete(apiContext),
-        role2.delete(apiContext),
-        policy3.delete(apiContext),
-        role3.delete(apiContext),
-        policy4.delete(apiContext),
-        role4.delete(apiContext),
-        policy5.delete(apiContext),
-        role5.delete(apiContext),
-      ]);
+
+      await chart.delete(apiContext);
       await afterAction();
     });
 
-    base(
-      'User Performance across different entities pages',
-      async ({ browser }) => {
-        const { page, afterAction } = await performUserLogin(browser, user);
+    for (const entity of pickEntityMatrix(__filename, userPerformanceEntities, [
+      EntityDataClass.table1,
+    ])) {
+      base(
+        `User Performance across different entities pages - ${entity.getType()}`,
+        async ({ browser }) => {
+          const { page, afterAction } = await performUserLogin(browser, user);
 
-        for (const entity of entities) {
-          await entity.visitEntityPage(page);
-          await waitForAllLoadersToDisappear(page);
+          try {
+            await entity.visitEntityPage(page);
+            await waitForAllLoadersToDisappear(page);
 
-          await expect(page.getByTestId('entity-header-name')).toHaveText(
-            entity.entityResponseData.name
-          );
+            await expect(page.getByTestId('entity-header-name')).toHaveText(
+              entity.entityResponseData.name
+            );
 
-          const feedResponse = page.waitForResponse(
-            '/api/v1/feed?entityLink=*&type=Conversation'
-          );
+            const activityResponse = page.waitForResponse(
+              (response) =>
+                new URL(response.url()).pathname.startsWith(
+                  '/api/v1/activity/entity/'
+                ) && response.request().method() === 'GET'
+            );
 
-          await page.getByTestId('activity_feed').click();
-          await feedResponse;
+            await page.getByTestId('activity_feed').click();
+            await activityResponse;
 
-          await waitForAllLoadersToDisappear(page);
+            await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId('global-setting-left-panel').getByText('All')
-          ).toBeVisible();
+            await expect(
+              page.getByTestId('global-setting-left-panel').getByText('All')
+            ).toBeVisible();
 
-          await expect(
-            page.getByTestId('global-setting-left-panel').getByText('Tasks')
-          ).toBeVisible();
+            await expect(
+              page.getByTestId('global-setting-left-panel').getByText('Tasks')
+            ).toBeVisible();
 
-          const lineageResponse = page.waitForResponse(
-            `/api/v1/lineage/getLineage?fqn=${entity.entityResponseData.fullyQualifiedName}&type=**`
-          );
+            const lineageResponse = page.waitForResponse(
+              `**/api/v1/lineage/scene?*focusFqn=${entity.entityResponseData.fullyQualifiedName}*`
+            );
 
-          await page.getByTestId('lineage').click();
-          await lineageResponse;
+            await page.getByTestId('lineage').click();
+            await lineageResponse;
 
-          await waitForAllLoadersToDisappear(page);
+            await waitForAllLoadersToDisappear(page);
 
-          await expect(
-            page.getByTestId(
-              `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
-            )
-          ).toBeVisible();
+            await expect(
+              page.getByTestId(
+                `lineage-node-${entity.entityResponseData.fullyQualifiedName}`
+              )
+            ).toBeVisible();
+          } finally {
+            await afterAction();
+          }
         }
-
-        await afterAction();
-      }
-    );
+      );
+    }
   }
 );

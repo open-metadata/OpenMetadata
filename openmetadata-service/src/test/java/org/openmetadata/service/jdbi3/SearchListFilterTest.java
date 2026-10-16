@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -32,53 +31,84 @@ public class SearchListFilterTest {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("includeFields", "field1,field2");
     searchListFilter.addQueryParam("excludeFields", "field3,field4");
-    searchListFilter.addQueryParam("testCaseStatus", "failed");
+    searchListFilter.addQueryParam("testCaseStatus", "Failed");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\",\"field3\",\"field4\"],\n\"include\": [\"field1\",\"field2\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testCaseResult.testCaseStatus\": \"failed\"}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\",\"field3\",\"field4\"],\n\"include\": [\"field1\",\"field2\"]},\"query\": {\"bool\": {\"filter\": [{\"terms\": {\"testCaseResult.testCaseStatus\": [\"Failed\"]}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testMultipleTestCaseStatusesAreMatchedAsOr() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testCaseStatus", "Failed,Aborted");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"terms\": {\"testCaseResult.testCaseStatus\": [\"Failed\", \"Aborted\"]}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testBlankTestCaseStatusesAreIgnored() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testCaseStatus", " , ");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"match_all\": {}}}";
     assertEquals(expected, actual);
   }
 
   @Test
   void testDataQualityDimensionCondition() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam("dataQualityDimension", DataQualityDimensions.ACCURACY.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "Accuracy");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"dataQualityDimension\": \"Accuracy\"}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"dataQualityDimensionName\": \"Accuracy\"}}]}}}";
     assertEquals(expected, actual);
+  }
+
+  @Test
+  void testCustomDataQualityDimensionIsJsonEscaped() {
+    // Custom dimensions are free-form, so backslashes, quotes and control characters must not be
+    // able to break the generated filter JSON.
+    String dimension = "Back\\slash \"quoted\"\ttabbed";
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("dataQualityDimension", dimension);
+
+    JsonNode actual = parse(searchListFilter.getCondition(Entity.TEST_CASE));
+
+    assertEquals(
+        dimension, actual.at("/query/bool/filter/0/term/dataQualityDimensionName").asText());
   }
 
   @Test
   void testDataQualityDimensionNoDimensionCondition() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.NO_DIMENSION.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "NoDimension");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"dataQualityDimension\"}}]}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"dataQualityDimensionName\"}}]}}]}}}";
     assertEquals(expected, actual);
   }
 
   @Test
   void testDataQualityDimensionConditionForTestCaseResult() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.COMPLETENESS.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "Completeness");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testDefinition.dataQualityDimension\": \"Completeness\"}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testDefinition.dataQualityDimensionName\": \"Completeness\"}}]}}}";
     assertEquals(expected, actual);
   }
 
   @Test
   void testDataQualityDimensionNoDimensionConditionForTestCaseResult() {
     SearchListFilter searchListFilter = new SearchListFilter();
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.NO_DIMENSION.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "NoDimension");
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
     String expected =
-        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"testDefinition.dataQualityDimension\"}}]}}]}}}";
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"testDefinition.dataQualityDimensionName\"}}]}}]}}}";
     assertEquals(expected, actual);
   }
 
@@ -147,6 +177,31 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testContextMemoryFiltersBuildPinnedAndAssetClauses() {
+    SearchListFilter searchListFilter = new SearchListFilter(Include.ALL);
+    searchListFilter.addQueryParam("pinned", true);
+    searchListFilter.addQueryParam("assets", "asset-1,asset-2");
+
+    JsonNode actual = parse(searchListFilter.getCondition(Entity.CONTEXT_MEMORY));
+
+    assertTrue(actual.at("/query/bool/filter/0/term/pinned").asBoolean());
+    assertEquals(
+        "asset-1",
+        actual.at("/query/bool/filter/1/bool/should/0/terms/primaryEntity.id/0").asText());
+    assertEquals(
+        "asset-2",
+        actual.at("/query/bool/filter/1/bool/should/0/terms/primaryEntity.id/1").asText());
+    assertEquals(
+        "relatedEntities", actual.at("/query/bool/filter/1/bool/should/1/nested/path").asText());
+    assertEquals(
+        "asset-1",
+        actual
+            .at("/query/bool/filter/1/bool/should/1/nested/query/terms/relatedEntities.id/0")
+            .asText());
+    assertTrue(actual.at("/query/bool/filter/1/bool/should/1/nested/ignore_unmapped").asBoolean());
+  }
+
+  @Test
   void testTestCaseConditionBuildsAllEntitySpecificFilters() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("entityFQN", "service.db.schema.table");
@@ -160,7 +215,7 @@ public class SearchListFilterTest {
     searchListFilter.addQueryParam("tags", "PII,Sensitive");
     searchListFilter.addQueryParam("tier", "Tier.Tier1");
     searchListFilter.addQueryParam("serviceName", "sample-service");
-    searchListFilter.addQueryParam("dataQualityDimension", DataQualityDimensions.ACCURACY.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "Accuracy");
     searchListFilter.addQueryParam("followedBy", "follower-id");
 
     String actual = searchListFilter.getCondition(Entity.TEST_CASE);
@@ -168,7 +223,7 @@ public class SearchListFilterTest {
     assertTrue(
         actual.contains(
             "{\"bool\":{\"should\": [{\"prefix\": {\"entityFQN\": \"service.db.schema.table.\"}},{\"term\": {\"entityFQN\": \"service.db.schema.table\"}}]}}"));
-    assertTrue(actual.contains("{\"term\": {\"testCaseResult.testCaseStatus\": \"Failed\"}}"));
+    assertTrue(actual.contains("{\"terms\": {\"testCaseResult.testCaseStatus\": [\"Failed\"]}}"));
     assertTrue(
         actual.contains(
             "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"suite-id\"}}}}"));
@@ -180,7 +235,7 @@ public class SearchListFilterTest {
     assertTrue(actual.contains("{\"terms\":{\"tags.tagFQN\":[\"PII\", \"Sensitive\"]}}"));
     assertTrue(actual.contains("{\"term\":{\"tier.tagFQN\":\"tier.tier1\"}}"));
     assertTrue(actual.contains("{\"term\": {\"service.name\": \"sample-service\"}}"));
-    assertTrue(actual.contains("{\"term\": {\"dataQualityDimension\": \"Accuracy\"}}"));
+    assertTrue(actual.contains("{\"term\": {\"dataQualityDimensionName\": \"Accuracy\"}}"));
     assertTrue(actual.contains("{\"term\": {\"followers.keyword\": \"follower-id\"}}"));
   }
 
@@ -194,8 +249,7 @@ public class SearchListFilterTest {
     searchListFilter.addQueryParam("testCaseStatus", "Success");
     searchListFilter.addQueryParam("testCaseType", Entity.TABLE);
     searchListFilter.addQueryParam("testSuiteId", "suite-id");
-    searchListFilter.addQueryParam(
-        "dataQualityDimension", DataQualityDimensions.COMPLETENESS.value());
+    searchListFilter.addQueryParam("dataQualityDimension", "Completeness");
 
     String actual = searchListFilter.getCondition(Entity.TEST_CASE_RESULT);
 
@@ -215,7 +269,8 @@ public class SearchListFilterTest {
         actual.contains(
             "{\"nested\":{\"path\":\"testSuites\",\"query\":{\"term\":{\"testSuites.id\":\"suite-id\"}}}}"));
     assertTrue(
-        actual.contains("{\"term\": {\"testDefinition.dataQualityDimension\": \"Completeness\"}}"));
+        actual.contains(
+            "{\"term\": {\"testDefinition.dataQualityDimensionName\": \"Completeness\"}}"));
   }
 
   @Test

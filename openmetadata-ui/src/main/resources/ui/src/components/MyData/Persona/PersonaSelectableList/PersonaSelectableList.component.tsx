@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
+  Autocomplete,
+  Box,
   Button,
+  ButtonUtility,
   Popover,
-  RefSelectProps,
-  Select,
-  Space,
-  Tooltip,
+  PopoverTrigger,
   Typography,
-} from 'antd';
-import classNames from 'classnames';
-import { useCallback, useEffect, useRef, useState } from 'react';
+} from '@openmetadata/ui-core-components';
+import { debounce } from 'lodash';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
@@ -30,28 +30,29 @@ import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-pop
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { getAllPersonas } from '../../../../rest/PersonaAPI';
-import { normalizeToArray } from '../../../../utils/CommonUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../../utils/EntityUtils';
-import { TagRenderer } from '../../../common/TagRenderer/TagRenderer';
+import { getAllPersonas, searchPersonas } from '../../../../rest/PersonaAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
   const { t } = useTranslation();
 
   return (
-    <Space>
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
       {props ? (
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
+        <Typography>{getEntityName(props)}</Typography>
       ) : (
-        <Typography.Text className="text-grey-body">
+        <Typography className="text-grey-body">
           {t('message.no-data-available')}
-        </Typography.Text>
+        </Typography>
       )}
-    </Space>
+    </Box>
   );
 };
 
@@ -59,108 +60,126 @@ export const PersonaSelectableList = ({
   hasPermission,
   selectedPersonas = [],
   onUpdate,
-  children,
-  popoverProps,
   personaList,
   isDefaultPersona,
   multiSelect,
 }: PersonaSelectableListProps) => {
   const [popupVisible, setPopupVisible] = useState(false);
   const { t } = useTranslation();
-  const [allPersona, setAllPersona] = useState<EntityReference[]>(
-    personaList ?? []
-  );
   const [isSaving, setIsSaving] = useState(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [currentlySelectedPersonas, setCurrentlySelectedPersonas] = useState<
     EntityReference[]
   >([]);
-  const [popoverHeight, setPopoverHeight] = useState<number>(
-    isDefaultPersona ? 116 : 156
-  );
-  const dropdownRef = useRef<RefSelectProps | null>(null);
 
-  useEffect(() => {
-    setIsDropdownOpen(popupVisible);
-  }, [popupVisible]);
+  const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
+  // Server-side search replaces selectOptions per query, so the selected FQNs are
+  // resolved against this cache of every persona ever seen — otherwise a persona
+  // picked under a previous query is dropped on save.
+  const personaByFqnRef = useRef<Map<string, EntityReference>>(new Map());
+  const latestRequestIdRef = useRef(0);
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.persona-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        setPopoverHeight(
-          dropdown.scrollHeight + (isDefaultPersona ? 116 : 156)
-        );
+  const cachePersonasByFqn = useCallback((personas: EntityReference[]) => {
+    personas.forEach((persona) => {
+      if (persona.fullyQualifiedName) {
+        personaByFqnRef.current.set(persona.fullyQualifiedName, persona);
       }
     });
+  }, []);
 
-    const dropdown = document.querySelector('.persona-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
+  useEffect(() => {
+    cachePersonasByFqn(selectedPersonas);
+    if (personaList) {
+      cachePersonasByFqn(personaList);
     }
+  }, [selectedPersonas, personaList, cachePersonasByFqn]);
 
-    return () => observer.disconnect();
-  }, [isDropdownOpen, isDefaultPersona]);
-
-  const fetchOptions = async (searchText: string, after?: string) => {
-    if (searchText) {
-      try {
-        const filteredData = allPersona.filter(
-          (persona) =>
-            persona.displayName?.includes(searchText) ||
-            persona.name?.includes(searchText) ||
-            persona.description?.includes(searchText)
-        );
-
-        return { data: filteredData, paging: { total: filteredData.length } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
+  // A caller-provided `personaList` is a fixed set filtered locally (case-
+  // insensitively, like the server); otherwise search hits the server endpoint.
+  const fetchOptions = useCallback(
+    async (searchText: string): Promise<EntityReference[]> => {
+      let options: EntityReference[] = [];
       try {
         if (personaList) {
-          return { data: personaList, paging: { total: personaList.length } };
+          const query = searchText.toLowerCase();
+          options = searchText
+            ? personaList.filter(
+                (persona) =>
+                  persona.displayName?.toLowerCase().includes(query) ||
+                  persona.name?.toLowerCase().includes(query)
+              )
+            : personaList;
+        } else if (searchText) {
+          const results = await searchPersonas(searchText, PAGE_SIZE_LARGE);
+          options = getEntityReferenceListFromEntities(
+            results,
+            EntityType.PERSONA
+          );
+        } else {
+          const { data } = await getAllPersonas({ limit: PAGE_SIZE_LARGE });
+          options = getEntityReferenceListFromEntities(
+            data,
+            EntityType.PERSONA
+          );
         }
-        const { data, paging } = await getAllPersonas({
-          limit: PAGE_SIZE_LARGE,
-          after: after ?? undefined,
-        });
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.PERSONA
-        );
-
-        setAllPersona(filterData);
-
-        return { data: filterData, paging };
       } catch (error) {
-        return { data: [], paging: { total: 0 } };
+        options = [];
       }
-    }
-  };
-  const [selectOptions, setSelectOptions] = useState<EntityReference[]>([]);
+      cachePersonasByFqn(options);
 
-  const loadOptions = async () => {
-    const { data } = await fetchOptions('');
-    setSelectOptions(data);
-  };
+      return options;
+    },
+    [personaList, cachePersonasByFqn]
+  );
+
+  const runSearch = useCallback(
+    async (searchText: string) => {
+      const requestId = ++latestRequestIdRef.current;
+      const options = await fetchOptions(searchText);
+      // Drop a slow earlier response that resolves after a newer query.
+      if (requestId === latestRequestIdRef.current) {
+        setSelectOptions(options);
+      }
+    },
+    [fetchOptions]
+  );
+
+  const loadOptions = useCallback(() => runSearch(''), [runSearch]);
+
+  const handleSearch = useMemo(
+    () => debounce((searchText: string) => runSearch(searchText), 300),
+    [runSearch]
+  );
+
+  useEffect(() => () => handleSearch.cancel(), [handleSearch]);
 
   useEffect(() => {
     loadOptions();
-  }, [personaList]);
+  }, [loadOptions]);
 
   useEffect(() => {
     if (popupVisible) {
+      setCurrentlySelectedPersonas(selectedPersonas);
       loadOptions();
     }
-  }, [popupVisible]);
+  }, [popupVisible, loadOptions]);
+
+  const autocompleteItems = useMemo(
+    () =>
+      selectOptions.map((persona) => ({
+        id: persona.fullyQualifiedName ?? '',
+        label: getEntityName(persona),
+      })),
+    [selectOptions]
+  );
+
+  const selectedItems = useMemo(
+    () =>
+      currentlySelectedPersonas.map((persona) => ({
+        id: persona.fullyQualifiedName ?? '',
+        label: getEntityName(persona),
+      })),
+    [currentlySelectedPersonas]
+  );
 
   const handlePersonaUpdate = () => {
     setIsSaving(true);
@@ -178,19 +197,18 @@ export const PersonaSelectableList = ({
     }
   };
 
-  const handleChange = useCallback(
-    (selectedPersonas: string | string[]) => {
-      const selectedArr = normalizeToArray(selectedPersonas);
+  const handleItemInserted = useCallback((key: Key) => {
+    const persona = personaByFqnRef.current.get(String(key));
+    if (persona) {
+      setCurrentlySelectedPersonas((prev) => [...prev, persona]);
+    }
+  }, []);
 
-      const selectedPersonasList = selectOptions.filter(
-        (persona) =>
-          persona.fullyQualifiedName &&
-          selectedArr.includes(persona.fullyQualifiedName)
-      );
-      setCurrentlySelectedPersonas(selectedPersonasList);
-    },
-    [selectOptions]
-  );
+  const handleItemCleared = useCallback((key: Key) => {
+    setCurrentlySelectedPersonas((prev) =>
+      prev.filter((persona) => persona.fullyQualifiedName !== key)
+    );
+  }, []);
 
   if (!hasPermission) {
     return null;
@@ -200,115 +218,94 @@ export const PersonaSelectableList = ({
   };
 
   return (
-    <Popover
-      destroyTooltipOnHide
-      content={
-        <div
+    <PopoverTrigger isOpen={popupVisible} onOpenChange={setPopupVisible}>
+      <ButtonUtility
+        color="tertiary"
+        data-testid={`${isDefaultPersona ? 'default-' : ''}edit-user-persona`}
+        icon={<EditIcon height={16} width={16} />}
+        size="xs"
+        tooltip={t('label.edit-entity', {
+          entity: t('label.persona'),
+        })}
+      />
+      <Popover
+        className="profile-edit-popover-card"
+        containerClassName="tw:w-95 tw:p-5"
+        data-testid="persona-popover"
+        placement="bottom start">
+        <Box
           className="user-profile-edit-popover-card relative"
-          style={{
-            height: `${popoverHeight}px`,
-          }}>
+          direction="col">
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
               <PersonaIcon height={16} />
             </div>
 
-            <Typography.Text className="user-profile-edit-popover-card-title">
+            <Typography className="user-profile-edit-popover-card-title">
               {isDefaultPersona
                 ? t('label.default-persona')
                 : t('label.persona')}
-            </Typography.Text>
+            </Typography>
           </div>
 
-          <div className="border" id="area" style={{ borderRadius: '5px' }}>
-            <Select
-              allowClear
-              className={classNames('profile-edit-popover', {
-                'single-select': isDefaultPersona,
-              })}
+          <Box className="tw:mb-3" direction="col">
+            <Autocomplete
+              // eslint-disable-next-line jsx-a11y/no-autofocus -- the list opens with the popover, as before
+              autoFocus
+              aria-label={
+                isDefaultPersona
+                  ? t('label.default-persona')
+                  : t('label.persona')
+              }
               data-testid={`${
                 isDefaultPersona ? 'default-' : ''
               }persona-select-list`}
-              defaultValue={selectedPersonas.map(
-                (persona) => persona.fullyQualifiedName as string
+              filterOption={() => true}
+              items={autocompleteItems}
+              maxVisibleItems={3}
+              multiple={!isDefaultPersona}
+              placeholder={t('label.select-entity', {
+                entity: t('label.persona'),
+              })}
+              selectedItems={selectedItems}
+              onItemCleared={handleItemCleared}
+              onItemInserted={handleItemInserted}
+              onSearchChange={handleSearch}>
+              {(item) => (
+                <Autocomplete.Item
+                  data-testid={`persona-option-${item.label}`}
+                  id={item.id}
+                  label={item.label}
+                />
               )}
-              dropdownStyle={{
-                maxHeight: 'fit-content',
-                overflow: 'auto',
-              }}
-              maxTagCount={3}
-              maxTagPlaceholder={(omittedValues) => (
-                <span className="max-tag-text">
-                  {t('label.plus-count-more', { count: omittedValues.length })}
-                </span>
-              )}
-              mode={isDefaultPersona ? undefined : 'multiple'}
-              open={isDropdownOpen}
-              options={selectOptions?.map((persona) => ({
-                label: getEntityName(persona),
-                value: persona.fullyQualifiedName,
-              }))}
-              placeholder="Please select"
-              popupClassName="persona-custom-dropdown-class"
-              ref={dropdownRef}
-              style={{ width: '100%' }}
-              tagRender={TagRenderer}
-              virtual={false}
-              onChange={handleChange}
-              onDropdownVisibleChange={(open) => {
-                setIsDropdownOpen(open);
-              }}
-            />
-          </div>
+            </Autocomplete>
+          </Box>
 
           <div className="flex justify-end gap-2">
             <Button
-              className="persona-profile-edit-save"
+              aria-label={t('label.cancel')}
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              icon={<ClosePopoverIcon height={24} />}
-              size="small"
-              type="primary"
+              iconLeading={<ClosePopoverIcon height={24} />}
+              size="xs"
               onClick={handleCloseEditTeam}
             />
             <Button
-              className="persona-profile-edit-cancel"
+              aria-label={t('label.save')}
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              icon={<SavePopoverIcon height={24} />}
-              loading={isSaving}
-              size="small"
-              type="primary"
+              iconLeading={<SavePopoverIcon height={24} />}
+              isLoading={isSaving}
+              size="xs"
               onClick={handlePersonaUpdate}
             />
           </div>
-        </div>
-      }
-      data-testid="persona-popover"
-      open={popupVisible}
-      overlayClassName="profile-edit-popover-card"
-      placement="bottomLeft"
-      showArrow={false}
-      style={{ borderRadius: '12px' }}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
-      {children ?? (
-        <Tooltip
-          title={t('label.edit-entity', {
-            entity: t('label.persona'),
-          })}>
-          <EditIcon
-            className="cursor-pointer"
-            data-testid={`${
-              isDefaultPersona ? 'default-' : ''
-            }edit-user-persona`}
-            height={16}
-          />
-        </Tooltip>
-      )}
-    </Popover>
+        </Box>
+      </Popover>
+    </PopoverTrigger>
   );
 };

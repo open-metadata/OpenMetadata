@@ -11,36 +11,44 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../../enums/entity.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { Tag } from '../../../../generated/entity/classification/tag';
 import { DashboardDataModel } from '../../../../generated/entity/data/dashboardDataModel';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomPages } from '../../../../hooks/useCustomPages';
 import { useFqn } from '../../../../hooks/useFqn';
 import { FeedCounts } from '../../../../interface/feed.interface';
 import { restoreDataModel } from '../../../../rest/dataModelsAPI';
-import { getFeedCounts } from '../../../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
-} from '../../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../../utils/RouterUtils';
-import { updateCertificationTag } from '../../../../utils/TagsUtils';
+import { updateCertificationTag } from '../../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../../AppRouter/withActivityFeed';
@@ -51,7 +59,6 @@ import { DataAssetsHeader } from '../../../DataAssets/DataAssetsHeader/DataAsset
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
 import { DataModelDetailsProps } from './DataModelDetails.interface';
-
 const DataModelDetails = ({
   updateDataModelDetailsState,
   dataModelData,
@@ -99,8 +106,27 @@ const DataModelDetails = ({
     );
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityTaskCountsInto(decodedDataModelFQN, setFeedCount);
+    }
+  }, [decodedDataModelFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDataModelFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DASHBOARD_DATA_MODEL,
+        decodedDataModelFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDataModelFQN]);
+
   useEffect(() => {
-    decodedDataModelFQN && getEntityFeedCount();
+    if (decodedDataModelFQN) {
+      fetchTaskCounts();
+      fetchActivityCount();
+    }
   }, [decodedDataModelFQN]);
 
   const handleUpdateDisplayName = async (data: EntityName) => {
@@ -152,6 +178,8 @@ const DataModelDetails = ({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -159,21 +187,28 @@ const DataModelDetails = ({
           entity: t('label.data-model'),
         })
       );
+
+      return false;
     }
   };
 
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DASHBOARD_SERVICES,
+          getPartialNameFromTableFQN(decodedDataModelFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedDataModelFQN, navigate]
   );
 
   const { editLineagePermission } = useMemo(() => {
     return {
       editLineagePermission:
-        getPrioritizedEditPermission(
-          dataModelPermissions,
-          Operation.EditLineage
-        ) && !deleted,
+        getDerivedPermissionFlags(dataModelPermissions).canEditLineage &&
+        !deleted,
     };
   }, [dataModelPermissions, deleted]);
 
@@ -245,8 +280,8 @@ const DataModelDetails = ({
     <PageLayoutV1
       pageTitle={getEntityName(dataModelData)}
       title="Data Model Details">
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -265,7 +300,7 @@ const DataModelDetails = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<DashboardDataModel>
           customizedPage={customizedPage}
           data={dataModelData}
@@ -273,30 +308,44 @@ const DataModelDetails = ({
           permissions={dataModelPermissions}
           type={EntityType.DASHBOARD_DATA_MODEL}
           onUpdate={onUpdateDataModel}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={(activeKey: string) =>
-                handleTabChange(activeKey as EntityTabs)
-              }
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) =>
+                handleTabChange(String(key) as EntityTabs)
+              }>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
     </PageLayoutV1>
   );
 };

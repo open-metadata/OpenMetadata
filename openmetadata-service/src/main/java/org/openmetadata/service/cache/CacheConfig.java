@@ -19,6 +19,34 @@ public class CacheConfig {
   public int relationshipTtlSeconds = 3600; // 1 hour
   public int tagTtlSeconds = 3600; // 1 hour
 
+  // /api/v1/search/query response cache. Very short TTL because search results must
+  // reflect entity writes promptly: user creates X → searches for X → expects to find X.
+  // The integration suite caught this with a 30s TTL: tests that create an entity and
+  // wait for it in search timed out because the cache served the pre-create empty
+  // result for the full 30s. 2s caps that staleness while still catching the typical
+  // UI pattern where multiple components in the same render frame fire identical search
+  // queries (those happen within milliseconds, well inside any reasonable TTL). Set to
+  // 0 to disable.
+  public int searchTtlSeconds = 2;
+
+  // /api/v1/lineage/* response cache. Hybrid TTL + direct-invalidation strategy: a 60s TTL
+  // backstops cases where a transitive change (an entity deep in the cached graph) wasn't
+  // explicitly invalidated. Direct edits (entity rename/delete, lineage edge add/remove)
+  // still invalidate the affected root cache entries immediately. Set to 0 to disable —
+  // the read path falls through to LineageRepository.computeLineage as if no cache existed.
+  public int lineageTtlSeconds = 60;
+
+  // Threshold (ms) above which a cache read is logged as slow. A healthy local Redis returns
+  // in <2ms; production Redis under load runs ~5ms; sustained reads >50ms typically mean
+  // network glitch, Redis pressure, or a hot key. Set to 0 to disable slow-read logging.
+  public int slowReadThresholdMs = 50;
+
+  // Negative cache TTL (seconds). When an entity isn't found, we cache that fact for this
+  // long so repeated lookups of stale FQNs / typo'd IDs don't hammer the DB. Short window
+  // because entities CAN be created at any time — we don't want to cache absence for too
+  // long. Invalidated on entity create. Set to 0 to disable.
+  public int notFoundTtlSeconds = 30;
+
   // Listing total-row counts. Short TTL because counts are best-effort: a freshly created
   // entity may not show up in paging.total for up to listCountTtlSeconds, but the list
   // itself is always live. Keeps repeated /containers, /tables, /dashboards listings

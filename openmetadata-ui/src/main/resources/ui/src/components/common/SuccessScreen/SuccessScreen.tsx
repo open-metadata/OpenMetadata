@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +26,6 @@ import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { FormSubmitType } from '../../../enums/form.enum';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 
@@ -63,15 +67,11 @@ const SuccessScreen = ({
         <div data-testid="airflow-platform-message">
           <div>
             <h6 className="text-base text-grey-body font-medium">
-              {t('message.manage-airflow-api-failed', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
+              {t('message.manage-airflow-api-failed')}
             </h6>
 
             <p className="text-grey-body text-sm m-b-md">
-              {t('message.airflow-guide-message', {
-                brandName: brandClassBase.getPageTitle(),
-              })}
+              {t('message.airflow-guide-message')}
             </p>
           </div>
 
@@ -82,23 +82,23 @@ const SuccessScreen = ({
           </p>
         </div>
       ) : (
-        <Space
+        <Box
+          inline
           align="center"
-          className="justify-center w-full m-t-sm"
+          className="layout-space justify-center w-full m-t-sm"
           data-testid="argo-platform-message"
-          direction="vertical"
-          size={16}>
+          direction="col"
+          gap={4}
+          itemClassName="layout-space-item">
           <IconCollateSupport
             data-testid="collate-support"
             height={100}
             width={100}
           />
-          <Typography>
-            {t('message.pipeline-scheduler-message', {
-              brandName: brandClassBase.getPageTitle(),
-            })}
+          <Typography as="article">
+            {t('message.pipeline-scheduler-message')}
           </Typography>
-        </Space>
+        </Box>
       ),
     [isAirflowPlatform]
   );
@@ -108,22 +108,33 @@ const SuccessScreen = ({
       className="d-flex flex-col mt-14 mb-24 mx-8 p-x-xss"
       data-testid="success-screen-container">
       <Card>
-        <Space>
-          <IconSuccessBadge data-testid="success-icon" width="20px" />
-          <Typography.Paragraph className="m-b-0" data-testid="success-line">
-            {isUndefined(successMessage) ? (
-              <span>
-                <span className="m-r-xss font-semibold">
-                  {`"${name || 'demo_mysql'}"`}
+        <Card.Content>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
+            <IconSuccessBadge data-testid="success-icon" width="20px" />
+            <Typography as="p" className="m-b-0" data-testid="success-line">
+              {isUndefined(successMessage) ? (
+                <span>
+                  <Typography className="m-r-xss" weight="semibold">
+                    {`"${name || 'demo_mysql'}"`}
+                  </Typography>
+                  {suffix && (
+                    <Typography className="m-r-xss">{suffix}</Typography>
+                  )}
+                  <Typography>
+                    {t('message.has-been-created-successfully')}
+                  </Typography>
                 </span>
-                {suffix && <span className="m-r-xss">{suffix}</span>}
-                <span>{t('message.has-been-created-successfully')}</span>
-              </span>
-            ) : (
-              successMessage
-            )}
-          </Typography.Paragraph>
-        </Space>
+              ) : (
+                successMessage
+              )}
+            </Typography>
+          </Box>
+        </Card.Content>
       </Card>
       <div className="m-t-sm">
         {isFetchingStatus ? (
@@ -133,7 +144,9 @@ const SuccessScreen = ({
             {!isAirflowAvailable && (
               <>
                 <AirflowMessageBanner />
-                <Card className="m-t-sm">{messageElement}</Card>
+                <Card className="m-t-sm">
+                  <Card.Content>{messageElement}</Card.Content>
+                </Card>
               </>
             )}
           </>
@@ -142,37 +155,34 @@ const SuccessScreen = ({
 
       <div className="mt-7 text-center">
         <Button
-          ghost
+          color="secondary-brand"
           data-testid="view-service-button"
-          type="primary"
           onClick={handleViewServiceClick}>
-          <span>
+          <Typography>
             {viewServiceText ??
               t('label.view-entity', { entity: t('label.service') })}
-          </span>
+          </Typography>
         </Button>
 
         {showIngestionButton && (
           <Button
-            className="m-l-3.5"
+            color="primary"
             data-testid="add-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
+            isDisabled={!isAirflowAvailable}
             onClick={handleIngestionClick}>
-            <span>
+            <Typography>
               {t('label.add-entity', { entity: t('label.ingestion') })}
-            </span>
+            </Typography>
           </Button>
         )}
 
         {showDeployButton && (
           <Button
-            className="m-l-3.5"
+            color="primary"
             data-testid="deploy-ingestion-button"
-            disabled={!isAirflowAvailable}
-            type="primary"
+            isDisabled={!isAirflowAvailable}
             onClick={handleDeployClick}>
-            <span>{t('label.deploy')}</span>
+            <Typography>{t('label.deploy')}</Typography>
           </Button>
         )}
       </div>

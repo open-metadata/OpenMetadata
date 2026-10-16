@@ -10,66 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
-import { Toggle, ToggleProps } from '@openmetadata/ui-core-components';
-import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
-  Checkbox,
   Divider,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  Switch,
-  TooltipProps,
+  Input as UTInput,
+  Select as UTSelect,
+  SelectItemType,
+  Toggle,
+  ToggleProps,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+import { Form, FormItemProps, Input, Select } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { compact, isString, startCase, toString } from 'lodash';
-import React, { Fragment, ReactNode } from 'react';
+import { isString, startCase, toString } from 'lodash';
+import { ComponentProps, Fragment, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { MUIColorPicker } from '../components/common/ColorPicker';
-import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
-import { MUICoverImageUpload } from '../components/common/CoverImageUpload';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
-import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
-import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
-import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
-import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
-import MUISelect from '../components/common/MUISelect/MUISelect';
-import MUITextField from '../components/common/MUITextField/MUITextField';
-import MUIUserTeamSelect, {
-  MUIUserTeamSelectProps,
-} from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
 import SliderWithInput from '../components/common/SliderWithInput/SliderWithInput';
 import { SliderWithInputProps } from '../components/common/SliderWithInput/SliderWithInput.interface';
-import TagSuggestion, {
-  TagSuggestionProps,
-} from '../components/common/TagSuggestion/TagSuggestion';
 import { UserSelectableList } from '../components/common/UserSelectableList/UserSelectableList.component';
 import { UserSelectableListProps } from '../components/common/UserSelectableList/UserSelectableList.interface';
 import { UserTeamSelectableList } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { UserSelectDropdownProps } from '../components/common/UserTeamSelectableList/UserTeamSelectableList.interface';
 import UserTeamSelectableListSearchInput from '../components/common/UserTeamSelectableListSearchInput/UserTeamSelectableListSearchInput.component';
-import MUIAutocomplete, {
-  MUIAutocompleteProps,
-} from '../components/form/MUIAutocomplete';
 import { HTTP_STATUS_CODE } from '../constants/Auth.constants';
 import {
   FieldProp,
@@ -81,7 +56,236 @@ import AntDTagSuggestion, {
   TagSuggestionProps as AntDTagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
+
+type FieldPropsBag = Record<string, unknown> & { children?: ReactNode };
+
+interface FieldRenderContext {
+  props: FieldPropsBag;
+  id: string;
+  placeholder?: string;
+  label: ReactNode;
+  formProps: FormItemProps;
+  fieldRules: FieldProp['rules'];
+}
+
+interface FieldElementResult {
+  element: ReactNode;
+  formPropsPatch?: Partial<FormItemProps>;
+}
+
+// Maps a field type to the element it renders, keeping getField's own
+// complexity independent of how many field types exist.
+const FIELD_ELEMENT_RENDERERS: Partial<
+  Record<FieldTypes, (ctx: FieldRenderContext) => FieldElementResult>
+> = {
+  [FieldTypes.TEXT]: ({ props, id, placeholder }) => ({
+    element: <SanitizedInput {...props} id={id} placeholder={placeholder} />,
+  }),
+  [FieldTypes.PASSWORD]: ({ props, id, placeholder }) => ({
+    element: (
+      <Input.Password
+        {...props}
+        autoComplete="off"
+        id={id}
+        placeholder={placeholder}
+      />
+    ),
+  }),
+
+  [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
+    element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
+  }),
+  [FieldTypes.SWITCH]: ({ props, id }) => {
+    // Callers still pass antd's `disabled`; map it so they need no change.
+    const { disabled, ...rest } = props as ToggleProps & {
+      disabled?: boolean;
+    };
+
+    return {
+      element: <Toggle isDisabled={disabled} {...rest} id={id} />,
+      formPropsPatch: { valuePropName: 'isSelected' },
+    };
+  },
+
+  [FieldTypes.SELECT]: ({ props, id }) => ({
+    element: <Select {...props} id={id} />,
+  }),
+  [FieldTypes.SLIDER_INPUT]: ({ props }) => ({
+    element: (
+      <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
+    ),
+  }),
+  [FieldTypes.DESCRIPTION]: ({ props }) => ({
+    element: <RichTextEditor {...(props as unknown as RichTextEditorProp)} />,
+    formPropsPatch: {
+      trigger: 'onTextChange',
+      initialValue: props?.initialValue ?? '',
+    },
+  }),
+  [FieldTypes.TAG_SUGGESTION]: ({ props }) => ({
+    element: (
+      <AntDTagSuggestion
+        {...(props as unknown as AntDTagSuggestionProps)}
+        newLook
+      />
+    ),
+  }),
+  [FieldTypes.ASYNC_SELECT_LIST]: ({ props }) => ({
+    element: (
+      <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
+    ),
+  }),
+  [FieldTypes.DOMAIN_SELECT]: ({ props }) => {
+    const { children, ...rest } = props;
+
+    return {
+      element: (
+        <DomainSelectableList
+          {...(rest as unknown as DomainSelectableListProps)}>
+          {children}
+        </DomainSelectableList>
+      ),
+    };
+  },
+  [FieldTypes.USER_TEAM_SELECT]: ({ props }) => {
+    const { children, ...rest } = props;
+
+    return {
+      element: (
+        <UserTeamSelectableList
+          {...(rest as unknown as UserSelectDropdownProps)}>
+          {children}
+        </UserTeamSelectableList>
+      ),
+    };
+  },
+  [FieldTypes.USER_TEAM_SELECT_INPUT]: ({ props }) => ({
+    element: (
+      <UserTeamSelectableListSearchInput
+        {...(props as unknown as UserSelectDropdownProps)}
+      />
+    ),
+  }),
+  [FieldTypes.USER_MULTI_SELECT]: ({ props }) => {
+    const { children, ...rest } = props;
+
+    return {
+      element: (
+        <UserSelectableList {...(rest as unknown as UserSelectableListProps)}>
+          {children}
+        </UserSelectableList>
+      ),
+    };
+  },
+  [FieldTypes.COMPONENT]: ({ props }) => ({
+    element: props.children,
+  }),
+};
+
+const renderUtTextField = ({
+  formProps,
+  props,
+  id,
+  placeholder,
+  label,
+  fieldRules,
+}: FieldRenderContext) => {
+  const isRequired = (fieldRules ?? []).some(
+    (rule) => (rule as RuleObject).required
+  );
+  const { 'data-testid': dataTestId, ...inputRest } = props;
+
+  return (
+    <Form.Item
+      {...formProps}
+      getValueProps={(value) => ({ value: (value as string) ?? '' })}>
+      <UTInput
+        {...(inputRest as Partial<ComponentProps<typeof UTInput>>)}
+        id={id}
+        inputDataTestId={dataTestId as string}
+        isRequired={isRequired}
+        label={isString(label) ? label : undefined}
+        placeholder={placeholder}
+      />
+    </Form.Item>
+  );
+};
+
+const renderUtSelectField = ({
+  formProps,
+  props,
+  id,
+  placeholder,
+  label,
+  fieldRules,
+}: FieldRenderContext) => {
+  const isRequired = (fieldRules ?? []).some(
+    (rule) => (rule as RuleObject).required
+  );
+  const { items = [], ...selectRest } = props as {
+    items?: SelectItemType[];
+  } & Record<string, unknown>;
+
+  return (
+    <Form.Item
+      {...formProps}
+      getValueProps={(value) => ({ selectedKey: value ?? null })}
+      trigger="onSelectionChange"
+      validateTrigger="onSelectionChange"
+      valuePropName="selectedKey">
+      <UTSelect
+        {...(selectRest as Partial<ComponentProps<typeof UTSelect>>)}
+        id={id}
+        isRequired={isRequired}
+        items={items}
+        label={isString(label) ? label : undefined}
+        placeholder={placeholder}>
+        {(item: SelectItemType) => <UTSelect.Item {...item} />}
+      </UTSelect>
+    </Form.Item>
+  );
+};
+
+const renderUtSwitchField = ({
+  formProps,
+  props,
+  label,
+}: FieldRenderContext) => {
+  const { isDisabled, onChange, size, ...switchRest } = props as ToggleProps;
+
+  return (
+    <Form.Item {...formProps} valuePropName="isSelected">
+      <Toggle
+        isDisabled={isDisabled}
+        label={isString(label) ? label : undefined}
+        size={size}
+        onChange={onChange}
+        {...switchRest}
+      />
+    </Form.Item>
+  );
+};
+
+// These field types render their own complete Form.Item (a different shape
+// than the common wrapper below) and return immediately, matching the
+// original switch-case early returns.
+const CUSTOM_FIELD_RENDERERS: Partial<
+  Record<FieldTypes, (ctx: FieldRenderContext) => ReactNode>
+> = {
+  [FieldTypes.UT_TEXT]: renderUtTextField,
+  [FieldTypes.UT_SELECT]: renderUtSelectField,
+  [FieldTypes.UT_SWITCH]: renderUtSwitchField,
+};
+
+const shouldShowHelperAlert = (
+  helperTextType: HelperTextType | undefined,
+  helperText: ReactNode,
+  showHelperText: boolean
+): boolean =>
+  helperTextType === HelperTextType.ALERT &&
+  Boolean(helperText) &&
+  showHelperText;
 
 export const getField = (field: FieldProp) => {
   const {
@@ -129,381 +333,34 @@ export const getField = (field: FieldProp) => {
     ...formItemProps,
   };
 
-  // Define MUI label for MUI field types
-  const muiLabel = field.muiLabel || (
-    <MUIFormItemLabel
-      helperText={helperText}
-      helperTextType={helperTextType}
-      isBeta={isBeta}
-      label={label}
-      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
-      showHelperText={showHelperText}
-      slotProps={props?.slotProps as Partial<MUITooltipProps>}
-    />
-  );
+  const renderContext: FieldRenderContext = {
+    props,
+    id,
+    placeholder,
+    label,
+    formProps,
+    fieldRules,
+  };
 
-  switch (type) {
-    case FieldTypes.TEXT:
-      fieldElement = (
-        <SanitizedInput {...props} id={id} placeholder={placeholder} />
-      );
+  const customRenderer = CUSTOM_FIELD_RENDERERS[type];
+  if (customRenderer) {
+    return customRenderer(renderContext);
+  }
 
-      break;
-
-    case FieldTypes.TEXT_MUI: {
-      const { error, ...muiProps } = props;
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUITextField
-            error={Boolean(error)}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-            {...muiProps}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.PASSWORD_MUI: {
-      const { error, ...muiProps } = props;
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUITextField
-            error={Boolean(error)}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-            type="password"
-            {...muiProps}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.PASSWORD:
-      fieldElement = (
-        <Input.Password
-          {...props}
-          autoComplete="off"
-          id={id}
-          placeholder={placeholder}
-        />
-      );
-
-      break;
-    case FieldTypes.NUMBER:
-      fieldElement = (
-        <InputNumber
-          id={id}
-          placeholder={placeholder}
-          size="small"
-          {...props}
-        />
-      );
-
-      break;
-
-    case FieldTypes.FILTER_PATTERN:
-      fieldElement = (
-        <FilterPattern {...(props as unknown as FilterPatternProps)} />
-      );
-
-      break;
-
-    case FieldTypes.SWITCH:
-      fieldElement = <Switch {...props} id={id} />;
-      formProps.valuePropName = 'checked';
-
-      break;
-    case FieldTypes.CHECK_BOX:
-      fieldElement = <Checkbox {...props} id={id} />;
-      formProps.valuePropName = 'checked';
-
-      break;
-    case FieldTypes.SELECT:
-      fieldElement = <Select {...props} id={id} />;
-
-      break;
-
-    case FieldTypes.SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUISelect
-            {...props}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-    case FieldTypes.SLIDER_INPUT:
-      fieldElement = (
-        <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
-      );
-
-      break;
-    case FieldTypes.DESCRIPTION:
-      fieldElement = (
-        <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
-      );
-      formProps.trigger = 'onTextChange';
-      formProps.initialValue = props?.initialValue ?? '';
-
-      break;
-    case FieldTypes.TAG_SUGGESTION:
-      fieldElement = (
-        <AntDTagSuggestion
-          {...(props as unknown as AntDTagSuggestionProps)}
-          newLook
-        />
-      );
-
-      break;
-
-    case FieldTypes.UT_TAG_SUGGESTION: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <TagSuggestion
-            {...(props as unknown as TagSuggestionProps)}
-            label={typeof label === 'string' ? label : undefined}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUIGlossaryTagSuggestion
-            {...(props as unknown as AntDTagSuggestionProps)}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.TREE_ASYNC_SELECT_LIST:
-      fieldElement = (
-        <TreeAsyncSelectList
-          {...(props as unknown as Omit<AsyncSelectListProps, 'fetchOptions'>)}
-        />
-      );
-
-      break;
-
-    case FieldTypes.ASYNC_SELECT_LIST:
-      fieldElement = (
-        <AsyncSelectList {...(props as unknown as AsyncSelectListProps)} />
-      );
-
-      break;
-    case FieldTypes.DOMAIN_SELECT:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <DomainSelectableList
-            {...(rest as unknown as DomainSelectableListProps)}>
-            {children}
-          </DomainSelectableList>
-        );
-      }
-
-      break;
-    case FieldTypes.DOMAIN_SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUIDomainSelect
-            {...(props as unknown as MUIDomainSelectProps)}
-            label={muiLabel as string}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-    case FieldTypes.USER_TEAM_SELECT:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <UserTeamSelectableList
-            {...(rest as unknown as UserSelectDropdownProps)}>
-            {children}
-          </UserTeamSelectableList>
-        );
-      }
-
-      break;
-
-    case FieldTypes.USER_TEAM_SELECT_INPUT:
-      fieldElement = (
-        <UserTeamSelectableListSearchInput
-          {...(props as unknown as UserSelectDropdownProps)}
-        />
-      );
-
-      break;
-
-    case FieldTypes.USER_MULTI_SELECT:
-      {
-        const { children, ...rest } = props;
-
-        fieldElement = (
-          <UserSelectableList {...(rest as unknown as UserSelectableListProps)}>
-            {children}
-          </UserSelectableList>
-        );
-      }
-
-      break;
-    case FieldTypes.COLOR_PICKER:
-      fieldElement = <ColorPicker {...props} />;
-
-      break;
-
-    case FieldTypes.COLOR_PICKER_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUIColorPicker
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.USER_TEAM_SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUIUserTeamSelect
-            {...(props as unknown as MUIUserTeamSelectProps)}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.ICON_PICKER_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUIIconPicker
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-            toolTip={helperText}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.COVER_IMAGE_UPLOAD_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUICoverImageUpload
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.AUTOCOMPLETE_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUIAutocomplete
-            label={muiLabel as string}
-            placeholder={placeholder}
-            {...(props as MUIAutocompleteProps)}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.UT_SWITCH: {
-      const { isDisabled, onChange, size, ...switchRest } =
-        props as ToggleProps;
-
-      return (
-        <Form.Item {...formProps} valuePropName="isSelected">
-          <Toggle
-            isDisabled={isDisabled}
-            label={isString(label) ? label : undefined}
-            size={size}
-            onChange={onChange}
-            {...switchRest}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.COMPONENT: {
-      fieldElement = props.children;
-
-      break;
-    }
-
-    default:
-      break;
+  const elementRenderer = FIELD_ELEMENT_RENDERERS[type];
+  if (elementRenderer) {
+    const { element, formPropsPatch } = elementRenderer(renderContext);
+    fieldElement = element;
+    Object.assign(formProps, formPropsPatch);
   }
 
   const labelValue = (
     <FormItemLabel
-      align={props.tooltipAlign as TooltipProps['align']}
       helperText={helperText}
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      overlayClassName={props.overlayClassName as string}
-      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-      placement={props.tooltipPlacement as TooltipPlacement}
+      placement={props.tooltipPlacement as Placement}
       showHelperText={showHelperText}
     />
   );
@@ -512,9 +369,9 @@ export const getField = (field: FieldProp) => {
     return (
       <div className="d-flex gap-2 form-switch-container">
         <Form.Item className="m-b-0" {...formProps}>
-          <Switch />
+          <Toggle />
         </Form.Item>
-        <Typography.Text className="font-medium">{labelValue}</Typography.Text>
+        <Typography className="font-medium">{labelValue}</Typography>
       </div>
     );
   }
@@ -532,19 +389,17 @@ export const getField = (field: FieldProp) => {
         {fieldElement}
       </Form.Item>
 
-      {helperTextType === HelperTextType.ALERT &&
-        helperText &&
-        showHelperText && (
-          <Alert
-            showIcon
-            className="m-b-lg alert-icon"
-            data-testid="form-item-alert"
-            message={helperText}
-            type="warning"
-          />
-        )}
+      {shouldShowHelperAlert(helperTextType, helperText, showHelperText) && (
+        <Alert
+          showIcon
+          className="m-b-lg alert-icon"
+          data-testid="form-item-alert"
+          title={helperText}
+          variant="warning"
+        />
+      )}
 
-      {hasSeparator && <Divider />}
+      {hasSeparator && <Divider className="tw:my-6" />}
     </Fragment>
   );
 };
@@ -557,50 +412,6 @@ export const generateFormFields = (fields: FieldProp[]) => {
       ))}
     </>
   );
-};
-
-export const transformErrors: ErrorTransformer = (errors) => {
-  const errorRet = errors.map((error) => {
-    const { property, params, name } = error;
-
-    /**
-     * For nested fields we have to check if it's property start with "."
-     * else we will just prepend the root to property
-     */
-    const id = property?.startsWith('.')
-      ? 'root' + property?.replaceAll('.', '/')
-      : `root/${property}`;
-
-    // If element is not present in DOM, ignore error
-    if (document.getElementById(id)) {
-      const fieldName = startCase(property?.split('/').pop() ?? '');
-
-      const errorMessages = {
-        required: () => ({
-          message: t('message.field-text-is-required', {
-            fieldText: startCase(params?.missingProperty),
-          }),
-        }),
-        minimum: () => ({
-          message: t('message.value-must-be-greater-than', {
-            field: fieldName,
-            minimum: params?.limit,
-          }),
-        }),
-      };
-
-      const errorHandler = errorMessages[name as keyof typeof errorMessages];
-      if (errorHandler && params) {
-        error.message = errorHandler().message;
-
-        return error;
-      }
-    }
-
-    return null;
-  });
-
-  return compact(errorRet);
 };
 
 export const setInlineErrorValue = (
@@ -669,93 +480,4 @@ export const handleEntityCreationError = ({
     getErrorText(error, t('server.unexpected-error')),
     setInlineAlertDetails
   );
-};
-
-export const getPopupContainer = (triggerNode: HTMLElement) =>
-  triggerNode.parentElement || document.body;
-
-/**
- * Configuration options for custom scroll-to-error behavior
- */
-export interface ScrollToErrorOptions {
-  /** CSS selector for the scrollable container. Defaults to '.drawer-form-content' for drawer layouts */
-  scrollContainer?: string;
-  /** CSS selector for form error elements. Defaults to '.ant-form-item-has-error' */
-  errorSelector?: string;
-  /** Offset from top in pixels for better visibility. Defaults to 100 */
-  offsetTop?: number;
-  /** Delay in milliseconds before scrolling. Defaults to 100 */
-  delay?: number;
-  /** Scroll behavior. Defaults to 'smooth' */
-  behavior?: ScrollBehavior;
-}
-
-/**
- * Creates a reusable scroll-to-error handler for forms in complex layouts
- *
- * This utility is particularly useful when:
- * - Form is inside a drawer or modal with custom scroll containers
- * - Ant Design's built-in scrollToFirstError doesn't work due to layout complexity
- * - Form is nested within grid layouts or other complex structures
- *
- * @param options - Configuration options for scroll behavior
- * @returns Function to be used as onFinishFailed handler for Ant Design forms
- *
- * @example
- * ```tsx
- * // Basic usage for drawer forms
- * const scrollToError = createScrollToErrorHandler();
- *
- * <Form onFinishFailed={scrollToError}>
- *   // form content
- * </Form>
- *
- * // Custom configuration
- * const scrollToError = createScrollToErrorHandler({
- *   scrollContainer: '.my-custom-scroll-container',
- *   offsetTop: 150,
- *   delay: 50
- * });
- * ```
- */
-export const createScrollToErrorHandler = (
-  options: ScrollToErrorOptions = {}
-) => {
-  const {
-    scrollContainer = '.drawer-form-content',
-    errorSelector = '.ant-form-item-has-error',
-    offsetTop = 100,
-    delay = 100,
-    behavior = 'smooth',
-  } = options;
-
-  return () => {
-    setTimeout(() => {
-      const firstError = document.querySelector(errorSelector);
-      if (firstError) {
-        const scrollableContainer = document.querySelector(scrollContainer);
-        if (scrollableContainer) {
-          const errorRect = firstError.getBoundingClientRect();
-          const containerRect = scrollableContainer.getBoundingClientRect();
-          const scrollTop =
-            scrollableContainer.scrollTop +
-            errorRect.top -
-            containerRect.top -
-            offsetTop;
-
-          scrollableContainer.scrollTo({
-            top: Math.max(0, scrollTop), // Ensure we don't scroll to negative values
-            behavior,
-          });
-        } else {
-          // Fallback to standard scrollIntoView if container not found
-          firstError.scrollIntoView({
-            behavior,
-            block: 'center',
-            inline: 'nearest',
-          });
-        }
-      }
-    }, delay);
-  };
 };

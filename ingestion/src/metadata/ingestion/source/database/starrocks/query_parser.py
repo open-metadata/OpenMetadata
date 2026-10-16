@@ -14,7 +14,6 @@ StarRocks query parser module - base for Usage and Lineage
 
 from abc import ABC
 from datetime import datetime
-from typing import Optional
 
 from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
     StarRocksConnection,
@@ -37,7 +36,7 @@ class StarRocksQueryParserSource(QueryParserSource, ABC):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: StarRocksConnection = config.serviceConnection.root.config
         if not isinstance(connection, StarRocksConnection):
@@ -52,5 +51,5 @@ class StarRocksQueryParserSource(QueryParserSource, ABC):
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
-            result_limit=self.source_config.resultLimit,
+            result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue]
         )

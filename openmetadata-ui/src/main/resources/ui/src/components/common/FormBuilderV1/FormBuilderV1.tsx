@@ -11,34 +11,45 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RJSFSchema } from '@rjsf/utils';
+import { FieldProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { transformErrors } from '../../../utils/formUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
+import CoreEnumMultiSelectField from './fields/CoreEnumMultiSelectField';
 import CoreOneOfField from './fields/CoreOneOfField';
 import LayoutGridField from './fields/LayoutGridField';
 import { FormBuilderV1Props } from './FormBuilderV1.interface';
 import { CoreArrayFieldTemplate } from './templates/CoreArrayFieldTemplate';
 import { CoreFieldErrorTemplate } from './templates/CoreFieldErrorTemplate';
-import { CoreFieldTemplate } from './templates/CoreFieldTemplate';
+import {
+  CoreFieldTemplate,
+  FieldDocsContext,
+} from './templates/CoreFieldTemplate';
 import { CoreObjectFieldTemplate } from './templates/CoreObjectFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from './templates/CoreWrapIfAdditionalTemplate';
 import CoreCheckboxWidget from './widgets/CoreCheckboxWidget';
+import CoreDateWidget from './widgets/CoreDateWidget';
 import CoreInputWidget from './widgets/CoreInputWidget';
 import CorePasswordWidget from './widgets/CorePasswordWidget';
 import CoreRadioWidget from './widgets/CoreRadioWidget';
 import CoreSelectWidget from './widgets/CoreSelectWidget';
 import CoreTextAreaWidget from './widgets/CoreTextAreaWidget';
+const ArrayField = (props: FieldProps) =>
+  props.schema.uiFieldType === 'treeSelect' ? (
+    <CoreEnumMultiSelectField {...props} />
+  ) : (
+    <CoreArrayField {...props} />
+  );
 
 const defaultFields = {
   AnyOfField: CoreOneOfField,
-  ArrayField: CoreArrayField,
+  ArrayField,
   BooleanField: CoreBooleanField,
   OneOfField: CoreOneOfField,
   LayoutGridField,
@@ -46,6 +57,7 @@ const defaultFields = {
 
 const defaultWidgets = {
   CheckboxWidget: CoreCheckboxWidget,
+  DateWidget: CoreDateWidget,
   EmailWidget: CoreInputWidget,
   PasswordWidget: CorePasswordWidget,
   RadioWidget: CoreRadioWidget,
@@ -64,11 +76,14 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       okText,
       cancelText,
       isLoading,
+      isSubmitDisabled = false,
       hideCancelButton = false,
+      hideFooter = false,
       status = 'initial',
       onCancel,
       onSubmit,
       uiSchema,
+      fieldDocs,
       children,
       ...props
     },
@@ -95,7 +110,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
 
     const handleFormChange = (e: IChangeEvent) => {
       setLocalFormData(e.formData ?? {});
-      props.onChange && props.onChange(e);
+      props.onChange?.(e);
     };
 
     const isSubmitting = status === 'waiting';
@@ -116,53 +131,85 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.widgets]
     );
 
+    const mergedTemplates = useMemo(
+      () => ({
+        ArrayFieldTemplate: CoreArrayFieldTemplate,
+        FieldTemplate: CoreFieldTemplate,
+        ObjectFieldTemplate: CoreObjectFieldTemplate,
+        FieldErrorTemplate: CoreFieldErrorTemplate,
+        WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
+        ...(props.templates ?? {}),
+      }),
+      [props.templates]
+    );
+
+    // Custom fields (toggles, tag arrays) report focus through
+    // formContext.handleFocus, so a form-level onFocus has to reach them too.
+    const { onFocus, formContext: consumerFormContext } = props;
+    const formContext = useMemo(
+      () => ({
+        handleFocus: onFocus
+          ? (id: string) => onFocus(id, undefined)
+          : undefined,
+        ...consumerFormContext,
+      }),
+      [consumerFormContext, onFocus]
+    );
+
     return (
-      <Form
-        {...props}
-        focusOnFirstError
-        noHtml5Validate
-        omitExtraData
-        className="rjsf no-header"
-        fields={mergedFields}
-        formData={localFormData}
-        idSeparator="/"
-        ref={ref}
-        schema={schema as RJSFSchema}
-        showErrorList={false}
-        templates={{
-          ArrayFieldTemplate: CoreArrayFieldTemplate,
-          FieldTemplate: CoreFieldTemplate,
-          ObjectFieldTemplate: CoreObjectFieldTemplate,
-          FieldErrorTemplate: CoreFieldErrorTemplate,
-          WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
-        }}
-        transformErrors={transformErrors}
-        uiSchema={uiSchema}
-        validator={validator}
-        widgets={mergedWidgets}
-        onChange={handleFormChange}
-        onSubmit={onSubmit}>
-        {children}
-        <div className="tw:mt-4 tw:flex tw:justify-end tw:gap-2">
-          {!hideCancelButton && (
-            <Button
-              color="secondary"
-              size="sm"
-              type="button"
-              onClick={handleCancel}>
-              {cancelText ?? t('label.cancel')}
-            </Button>
+      <FieldDocsContext.Provider value={fieldDocs}>
+        <Form
+          {...props}
+          focusOnFirstError
+          noHtml5Validate
+          omitExtraData
+          className="rjsf no-header"
+          fields={mergedFields}
+          formContext={formContext}
+          formData={localFormData}
+          idSeparator="/"
+          ref={ref}
+          schema={schema}
+          showErrorList={false}
+          templates={mergedTemplates}
+          transformErrors={transformErrors}
+          uiSchema={uiSchema}
+          validator={props.validator ?? validator}
+          widgets={mergedWidgets}
+          onChange={handleFormChange}
+          onSubmit={onSubmit}>
+          {children}
+          {/* When hideFooter is true, the parent card renders the footer to span full width
+           * and keep the card's bottom border-radius visible during scroll. */}
+          {!hideFooter && (
+            <Box
+              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-surface tw:pt-4 tw:pb-1"
+              direction="row"
+              gap={2}
+              justify="end">
+              {!hideCancelButton && (
+                <Button
+                  color="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={handleCancel}>
+                  {cancelText ?? t('label.cancel')}
+                </Button>
+              )}
+              <Button
+                color="primary"
+                data-testid="submit-btn"
+                isDisabled={isSubmitting || isLoading || isSubmitDisabled}
+                size="sm"
+                type="submit">
+                {isSubmitting
+                  ? t('label.submitting')
+                  : okText ?? t('label.submit')}
+              </Button>
+            </Box>
           )}
-          <Button
-            color="primary"
-            data-testid="submit-btn"
-            isDisabled={isSubmitting || isLoading}
-            size="sm"
-            type="submit">
-            {isSubmitting ? t('label.submitting') : okText ?? t('label.submit')}
-          </Button>
-        </div>
-      </Form>
+        </Form>
+      </FieldDocsContext.Provider>
     );
   }
 );

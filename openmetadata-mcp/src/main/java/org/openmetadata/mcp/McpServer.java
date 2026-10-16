@@ -2,35 +2,42 @@ package org.openmetadata.mcp;
 
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
+import org.openmetadata.mcp.usage.McpUsageRecorder;
+import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
+import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
-  private static final String MCP_APP_NAME = "McpApplication";
-  private static final String DEFAULT_MCP_BOT_NAME = MCP_APP_NAME + "Bot";
+  private static final String DEFAULT_MCP_BOT_NAME = McpAppConstants.MCP_APP_NAME + "Bot";
 
-  protected JwtFilter jwtFilter;
+  protected volatile JwtFilter jwtFilter;
   protected Authorizer authorizer;
   protected Limits limits;
   protected DefaultToolContext toolContext;
@@ -59,6 +66,12 @@ public class McpServer implements McpServerProvider {
         new JwtFilter(
             SecurityConfigurationManager.getCurrentAuthConfig(),
             SecurityConfigurationManager.getCurrentAuthzConfig());
+    // Tokens must be checked against the security settings in effect, which reload without a
+    // restart.
+    SecurityConfigurationManager.getInstance()
+        .addConfigurationChangeListener(
+            (authConfig, authzConfig, mcpConfig) ->
+                this.jwtFilter = new JwtFilter(authConfig, authzConfig));
     this.authorizer = authorizer;
     this.limits = limits;
     this.environment = environment;
@@ -68,8 +81,55 @@ public class McpServer implements McpServerProvider {
     addStatelessTransport(contextHandler, tools, prompts, config);
   }
 
+  /**
+   * Advertises only the features this server can actually handle.
+   *
+   * <p>Clients trust what we advertise and call it. If we claim a capability we have no handler for,
+   * the call comes back as MethodNotFound. So: no logging, because there is no logging/setLevel
+   * handler (VSCode used to call it), and no resources, because no resources are registered here.
+   * The resources flag would also advertise resources/subscribe, which protocol 2026-07-28 has
+   * replaced with subscriptions/listen.
+   */
+  protected McpSchema.ServerCapabilities buildServerCapabilities() {
+    return McpSchema.ServerCapabilities.builder().tools(true).prompts(true).build();
+  }
+
+  /**
+   * Tools that cannot work without a live triplestore, and are therefore withheld when RDF is off.
+   *
+   * <p>{@code ontology_describe} is deliberately absent: its default path serves the bundled
+   * ontology document straight off the classpath and works with RDF disabled.
+   */
+  private static final Set<String> RDF_DEPENDENT_TOOLS =
+      Set.of("sparql_query", "entity_neighborhood", "find_by_tag", "shacl_validate");
+
+  /**
+   * Advertises the knowledge-graph tools only where they can actually run.
+   *
+   * <p>{@code rdf.enabled} defaults to false, so on a stock deployment these tools were listed to
+   * every client and then failed on every call. That contradicts the rule stated on {@link
+   * #buildServerCapabilities()} - clients trust what we advertise and call it - and it spends the
+   * model's context on four tool schemas that cannot succeed. RDF is initialized during core
+   * infrastructure startup, well before MCP registration, so the repository state is already settled
+   * by the time this runs.
+   */
   protected List<McpSchema.Tool> getTools() {
-    return toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
+    List<McpSchema.Tool> tools =
+        toolContext.loadToolsDefinitionsFromJson("json/data/mcp/tools.json");
+    if (rdfEnabled()) {
+      return tools;
+    }
+    List<McpSchema.Tool> available =
+        tools.stream().filter(tool -> !RDF_DEPENDENT_TOOLS.contains(tool.name())).toList();
+    LOG.info(
+        "[MCP] RDF is disabled; withholding {} knowledge-graph tool(s) from tools/list",
+        tools.size() - available.size());
+    return available;
+  }
+
+  private static boolean rdfEnabled() {
+    RdfRepository repository = RdfRepository.getInstanceOrNull();
+    return repository != null && repository.isEnabled();
   }
 
   protected List<McpSchema.Prompt> getPrompts() {
@@ -82,12 +142,7 @@ public class McpServer implements McpServerProvider {
       List<McpSchema.Prompt> prompts,
       OpenMetadataApplicationConfig config) {
     try {
-      McpSchema.ServerCapabilities serverCapabilities =
-          McpSchema.ServerCapabilities.builder()
-              .tools(true)
-              .prompts(true)
-              .resources(true, true)
-              .build();
+      McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
       String baseUrl = getBaseUrlFromConfig();
@@ -188,6 +243,41 @@ public class McpServer implements McpServerProvider {
           state -> pendingAuthRepo.findByPac4jState(state) != null);
       LOG.info("Registered MCP state checker for SSO callback forwarding");
 
+      // Register the persister so handleLogin() links the OIDC round-trip state to the MCP pending
+      // request before it redirects to the provider, keeping the returning /callback resolvable.
+      org.openmetadata.service.security.AuthenticationCodeFlowHandler.setMcpPendingStatePersister(
+          (request, state, nonce, codeVerifier) -> {
+            jakarta.servlet.http.HttpSession session = request.getSession(false);
+            Object authRequestId =
+                session == null
+                    ? null
+                    : session.getAttribute(
+                        org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                            .MCP_AUTH_REQUEST_ID);
+            if (authRequestId instanceof String id) {
+              pendingAuthRepo.updatePac4jSession(id, state, nonce, codeVerifier);
+              request.setAttribute(
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider.MCP_STATE_LINKED,
+                  Boolean.TRUE);
+            } else {
+              LOG.warn(
+                  "MCP pending-state persister could not resolve {} from the session; "
+                      + "the returning /callback will not match a pending request",
+                  org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider
+                      .MCP_AUTH_REQUEST_ID);
+            }
+          });
+      LOG.info("Registered MCP pending-state persister for OIDC round-trip linking");
+
+      // Register the SAML MCP bridge so the SAML ACS callback (service module) can hand the
+      // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
+      // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
+      // invokes this handler, which mints the MCP authorization code and redirects to the client.
+      org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
+          (req, resp, username, email, relayState) ->
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+      LOG.info("Registered MCP SAML callback handler for SAML SSO support");
+
       // Register MCP callback servlet unconditionally — SSO availability is checked at
       // request time, not startup time. This follows the same pattern as the regular auth
       // servlets (AuthCallbackServlet, AuthLoginServlet) which are always registered and
@@ -221,7 +311,7 @@ public class McpServer implements McpServerProvider {
     if (mcpBotName == null) {
       try {
         AbstractNativeApplication mcpApp =
-            ApplicationContext.getInstance().getAppIfExists(MCP_APP_NAME);
+            ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
         if (mcpApp != null && mcpApp.getApp().getBot() != null) {
           mcpBotName = mcpApp.getApp().getBot().getName();
         }
@@ -235,23 +325,62 @@ public class McpServer implements McpServerProvider {
 
   protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
-        tool,
-        (context, req) -> {
-          try {
-            CatalogSecurityContext securityContext =
-                jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
-            ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            return toolContext.callTool(authorizer, limits, tool.name(), securityContext, req);
-          } finally {
-            ImpersonationContext.clear();
-          }
-        });
+        tool, (context, req) -> runInCleanRequestContext(() -> executeTool(tool, context, req)));
   }
 
-  private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
+  private McpSchema.CallToolResult executeTool(
+      McpSchema.Tool tool, McpTransportContext context, McpSchema.CallToolRequest req) {
+    String token = (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER);
+    String activePersona =
+        (String) context.get(AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER);
+    CatalogSecurityContext securityContext =
+        activePersona == null
+            ? jwtFilter.getCatalogSecurityContext(token)
+            : jwtFilter.getCatalogSecurityContext(token, activePersona);
+    String userName = securityContext.getUserPrincipal().getName();
+    String clientName = (String) context.get(AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+    DefaultToolContext.CallToolOutcome outcome = null;
+    try {
+      ImpersonationContext.setImpersonatedBy(getMcpBotName());
+      outcome =
+          toolContext.callToolWithMetadata(authorizer, limits, tool.name(), securityContext, req);
+      return outcome.result();
+    } finally {
+      recordUsage(tool.name(), userName, clientName, outcome);
+    }
+  }
+
+  private void recordUsage(
+      String toolName,
+      String userName,
+      String clientName,
+      DefaultToolContext.CallToolOutcome outcome) {
+    boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+    Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+    McpToolCallUsage.ErrorCategory category = outcome != null ? outcome.errorCategory() : null;
+    McpUsageRecorder.record(toolName, userName, success, latencyMs, category, clientName);
+  }
+
+  McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
-        (exchange, arguments) -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments));
+        (exchange, arguments) ->
+            runInCleanRequestContext(
+                () -> promptsContext.callPrompt(jwtFilter, prompt.name(), arguments)));
+  }
+
+  /**
+   * The SDK runs each callback on a Reactor bounded-elastic worker that outlives the call, so the
+   * entity cache and impersonation state a call leaves on its thread would otherwise answer the
+   * next call that lands there. A servlet filter cannot clear them: it runs on a different thread.
+   */
+  private static <T> T runInCleanRequestContext(Supplier<T> callback) {
+    PerRequestContextCleaner.clear();
+    try {
+      return callback.get();
+    } finally {
+      PerRequestContextCleaner.clear();
+    }
   }
 
   private String getBaseUrlFromConfig() {

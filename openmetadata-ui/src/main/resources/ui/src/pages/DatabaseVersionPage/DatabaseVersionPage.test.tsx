@@ -12,7 +12,9 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs } from '../../enums/entity.enum';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import DatabaseVersionPage from './DatabaseVersionPage';
 
 const ERROR_PLACEHOLDER = 'ErrorPlaceHolder';
@@ -20,7 +22,7 @@ const DATA_ASSET_VERSION_HEADER = 'DataAssetVersionHeader';
 const CUSTOM_PROPERTY_TABLE = 'CustomPropertyTable';
 const DATA_PRODUCT_CONTAINER = 'DataProductsContainer';
 const ENTITY_VERSION_TIMELINE = 'EntityVersionTimeLine';
-const DESCRIPTION_V1 = 'DescriptionV1';
+const DESCRIPTION_V1 = 'Description';
 const DATABASE_SCHEMA_TABLE = 'DatabaseSchemaTable';
 const TAGS_CONTAINER_V2 = 'TagsContainerV2';
 const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';
@@ -45,7 +47,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>{DESCRIPTION_V1}</div>)
 );
 
@@ -95,15 +97,31 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-const mockGetEntityPermissionByFqn = jest.fn().mockReturnValue({
-  ViewAll: true,
-  ViewCustomFields: true,
-});
+// DatabaseVersionPage now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final) rather than an imperative usePermissionProvider().getEntityPermissionByFqn
+// call — mock the hook directly, mirroring ServiceVersionPage.test.tsx's setMockPermissions
+// helper.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn(() => mockGetEntityPermissionByFqn()),
-  }),
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {
+    ViewAll: true,
+    ViewCustomFields: true,
+  }
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
@@ -130,7 +148,7 @@ jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseVersions: jest.fn(() => mockGetDatabaseVersions()),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
@@ -152,6 +170,10 @@ jest.mock(
 );
 
 describe('DatabaseVersionPage', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('should render all necessary components', async () => {
     await act(async () => {
       render(
@@ -205,7 +227,7 @@ describe('DatabaseVersionPage', () => {
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({});
+    setMockPermissions({});
 
     await act(async () => {
       render(

@@ -11,244 +11,71 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import RGL, { ReactGridLayoutProps, WidthProvider } from 'react-grid-layout';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import Loader from '../../components/common/Loader/Loader';
-import { AdvanceSearchProvider } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
-import CustomiseLandingPageHeader from '../../components/MyData/CustomizableComponents/CustomiseLandingPageHeader/CustomiseLandingPageHeader';
-import WelcomeScreen from '../../components/MyData/WelcomeScreen/WelcomeScreen.component';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import HomeLandingPage from '../../components/MyData/HomeLandingPage/HomeLandingPage';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
-import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
-import { EntityType } from '../../enums/entity.enum';
-import { Page, PageType } from '../../generated/system/ui/page';
-import { PersonaPreferences } from '../../generated/type/personaPreferences';
+import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { useWelcomeStore } from '../../hooks/useWelcomeStore';
-import {
-  AnnouncementEntity,
-  getActiveAnnouncements,
-} from '../../rest/announcementsAPI';
-import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import { updateUserDetail } from '../../rest/userAPI';
-import {
-  getConstrainedWidgetWidth,
-  getWidgetFromKey,
-} from '../../utils/CustomizableLandingPageUtils';
-import customizePageClassBase from '../../utils/CustomizeMyDataPageClassBase';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
-import './my-data.less';
 
-const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
-  ReactGridLayoutProps & { children?: React.ReactNode }
->;
+const WelcomeScreen = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/MyData/WelcomeScreen/WelcomeScreen.component')
+  )
+);
 
+/**
+ * Classic mode's home route.
+ *
+ * The page itself is {@link HomeLandingPage}, which both app modes render —
+ * this wrapper only adds what is specific to classic: the first-login welcome
+ * screen and the asset-limit banner. AI mode mounts the same component with its
+ * own chrome instead.
+ */
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser, selectedPersona, setCurrentUser } =
-    useApplicationStore();
+  const { currentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-
-  const [isLoading, setIsLoading] = useState(true);
-  const [layout, setLayout] = useState<Array<WidgetConfig>>([]);
+  const { isTourPage } = useTourProvider();
 
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
-  const [isAnnouncementLoading, setIsAnnouncementLoading] =
-    useState<boolean>(true);
-  const [announcements, setAnnouncements] = useState<AnnouncementEntity[]>([]);
-  const [personaPreferences, setPersonaPreferences] = useState<
-    PersonaPreferences[]
-  >([]);
-  const storageData = localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY);
 
-  const loggedInUserName = useMemo(() => {
-    return currentUser?.name ?? '';
-  }, [currentUser]);
-
-  const usernameExistsInCookie = useMemo(() => {
-    return storageData
-      ? storageData.split(',').includes(loggedInUserName)
-      : false;
-  }, [storageData, loggedInUserName]);
-
-  const userPersonaBackgroundColor = useMemo(() => {
-    return currentUser?.personaPreferences?.find(
-      (persona) => persona.personaId === selectedPersona?.id
-    )?.landingPageSettings?.headerColor;
-  }, [currentUser, selectedPersona]);
-
-  const adminPersonaBackgroundColor = useMemo(() => {
-    return personaPreferences?.find(
-      (persona) => persona.personaId === selectedPersona?.id
-    )?.landingPageSettings?.headerColor;
-  }, [personaPreferences, selectedPersona]);
-
-  const backgroundColor = useMemo(() => {
-    return userPersonaBackgroundColor ?? adminPersonaBackgroundColor;
-  }, [userPersonaBackgroundColor, adminPersonaBackgroundColor]);
-
-  const fetchDocument = async () => {
-    try {
-      setIsLoading(true);
-      if (selectedPersona) {
-        const pageFQN = `${EntityType.PERSONA}.${selectedPersona.fullyQualifiedName}`;
-        const docData = await getDocumentByFQN(pageFQN);
-
-        setPersonaPreferences(docData.data?.personPreferences ?? []);
-
-        const pageData = docData.data?.pages?.find(
-          (p: Page) => p.pageType === PageType.LandingPage
-        ) ?? { layout: [], pageType: PageType.LandingPage };
-
-        const filteredLayout = pageData.layout
-          .filter(
-            (widget: WidgetConfig) =>
-              !widget.i.startsWith(LandingPageWidgetKeys.CURATED_ASSETS) ||
-              !isEmpty(widget.config)
-          )
-          .map((widget: WidgetConfig) => {
-            return {
-              ...widget,
-              w: getConstrainedWidgetWidth(widget.w),
-              h: 3,
-            };
-          });
-
-        setLayout(
-          isEmpty(filteredLayout)
-            ? customizePageClassBase.defaultLayout
-            : filteredLayout
-        );
-      } else {
-        setLayout(customizePageClassBase.defaultLayout);
-      }
-    } catch {
-      setLayout(customizePageClassBase.defaultLayout);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const storageData = useMemo(
+    () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
+    []
+  );
+  const loggedInUserName = currentUser?.name ?? '';
+  const usernameExistsInCookie = useMemo(
+    () =>
+      storageData ? storageData.split(',').includes(loggedInUserName) : false,
+    [storageData, loggedInUserName]
+  );
 
   const updateWelcomeScreen = (show: boolean) => {
     if (loggedInUserName) {
-      const arr = storageData ? storageData.split(',') : [];
-      if (!arr.includes(loggedInUserName)) {
-        arr.push(loggedInUserName);
-        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, arr.join(','));
+      const seen = storageData ? storageData.split(',') : [];
+      if (!seen.includes(loggedInUserName)) {
+        seen.push(loggedInUserName);
+        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, seen.join(','));
       }
     }
     setShowWelcomeScreen(show);
   };
 
   useEffect(() => {
-    fetchDocument();
-  }, [selectedPersona, customizePageClassBase.defaultLayout]);
-
-  useEffect(() => {
-    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
+    // The welcome screen replaces the landing page, so on the tour it would hide the step targets.
+    updateWelcomeScreen(
+      !usernameExistsInCookie && isWelcomeVisible && !isTourPage
+    );
 
     return () => updateWelcomeScreen(false);
   }, []);
-
-  const widgets = useMemo(
-    () =>
-      layout.map((widget) => (
-        <div data-grid={widget} key={widget.i}>
-          {getWidgetFromKey({
-            widgetConfig: widget,
-            currentLayout: layout,
-          })}
-        </div>
-      )),
-    [layout, isAnnouncementLoading, announcements]
-  );
-
-  const fetchAnnouncements = useCallback(async () => {
-    try {
-      setIsAnnouncementLoading(true);
-      const response = await getActiveAnnouncements();
-
-      setAnnouncements(response.data);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsAnnouncementLoading(false);
-    }
-  }, []);
-
-  const handleBackgroundColorUpdate = async (color: string) => {
-    try {
-      if (!currentUser?.id) {
-        return;
-      }
-
-      //   Find the persona preference for the selected persona
-      const hasPersonaPreference = currentUser.personaPreferences?.find(
-        (persona) => persona.personaId === selectedPersona?.id
-      );
-
-      //   If the persona preference is found, update the landing page settings else add a new persona preference
-      const updatedPersonaPreferences = hasPersonaPreference
-        ? currentUser.personaPreferences?.map((persona) =>
-            persona.personaId === selectedPersona?.id
-              ? {
-                  ...persona,
-                  landingPageSettings: {
-                    ...persona.landingPageSettings,
-                    headerColor: color,
-                  },
-                }
-              : persona
-          )
-        : [
-            ...(currentUser.personaPreferences ?? []),
-            {
-              personaName: selectedPersona?.name,
-              personaId: selectedPersona?.id,
-              landingPageSettings: {
-                headerColor: color,
-              },
-            },
-          ];
-
-      //   Compare the current user with the updated user to get the json patch
-      const jsonPatch = compare(currentUser, {
-        ...currentUser,
-        personaPreferences: updatedPersonaPreferences,
-      });
-
-      const response = await updateUserDetail(currentUser.id, jsonPatch);
-
-      //   Update the current user with the updated persona preferences
-      if (response) {
-        setCurrentUser({
-          ...currentUser,
-          personaPreferences: updatedPersonaPreferences as PersonaPreferences[],
-        });
-        showSuccessToast(t('message.persona-preference-updated'));
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
-  // call the hook to set the direction of the grid layout
-  useGridLayoutDirection(isLoading);
-
-  if (isLoading) {
-    return <Loader fullScreen />;
-  }
 
   if (showWelcomeScreen) {
     return (
@@ -258,46 +85,26 @@ const MyDataPage = () => {
     );
   }
 
+  // HomeLandingPage is laid out with the core PageLayout, which does not claim
+  // the tab title the way PageLayoutV1 does — claimed here so classic's home
+  // tab keeps the title it had, without imposing it on AI mode's chrome.
   return (
-    <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
-      <PageLayoutV1
-        className="p-b-lg"
-        mainContainerClassName="p-t-0 my-data-page-main-container"
-        pageTitle={t('label.my-data')}>
-        {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
-        {/*
-            ReactGridLayout has known issues with RTL layouts, 
-            setting dir="ltr" on the container ensures correct behavior
-            without affecting the overall RTL layout of the page
-        */}
-        <div className="grid-wrapper" dir="ltr">
-          <CustomiseLandingPageHeader
-            overlappedContainer
-            backgroundColor={backgroundColor}
-            dataTestId="landing-page-header"
-            hideCustomiseButton={!selectedPersona}
-            onHomePage
-            onBackgroundColorUpdate={handleBackgroundColorUpdate}
-          />
-          <ReactGridLayout
-            className="grid-container p-x-box"
-            cols={customizePageClassBase.landingPageMaxGridSize}
-            containerPadding={[0, 0]}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={customizePageClassBase.landingPageRowHeight}>
-            {widgets}
-          </ReactGridLayout>
+    <>
+      <DocumentTitle title={t('label.my-data')} />
+      {/* The same white panel AI mode's shell draws around routed pages
+        (`assistant-content`): white in light, the canvas step in dark. Classic
+        has no such shell, so without it the cards sit on the page ground. */}
+      <div className="tw:h-full tw:pb-1.5 tw:pl-3 tw:pr-1.5">
+        <div
+          className="tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
+          data-testid="home-page-surface">
+          <HomeLandingPage />
         </div>
-        <LimitWrapper resource="dataAssets">
-          <br />
-        </LimitWrapper>
-      </PageLayoutV1>
-    </AdvanceSearchProvider>
+      </div>
+      <LimitWrapper resource="dataAssets">
+        <br />
+      </LimitWrapper>
+    </>
   );
 };
 

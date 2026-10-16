@@ -53,7 +53,7 @@
       "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
         "relatedEntity": "global",
-        "updatedBy": "global",
+        "updatedBy": "ReviewFeedback",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"
       }
@@ -66,7 +66,7 @@
       "input": ["relatedEntity", "updatedBy", "triggeringObjectId", "recognizerFeedback"],
       "inputNamespaceMap": {
         "relatedEntity": "global",
-        "updatedBy": "global",
+        "updatedBy": "ReviewFeedback",
         "triggeringObjectId": "global",
         "recognizerFeedback": "global"
       }
@@ -92,12 +92,12 @@
     {
       "from": "ReviewFeedback",
       "to": "ApplyApprovedFeedback",
-      "condition": "true"
+      "condition": "approve"
     },
     {
       "from": "ReviewFeedback",
       "to": "RejectFeedback",
-      "condition": "false"
+      "condition": "reject"
     },
     {
       "from": "ApplyApprovedFeedback",

@@ -80,7 +80,7 @@ def update_pyproject_version(args):
 
     regex_sub(
         file_path,
-        r'version\s*=\s*"[^"]+"',
+        r'(?m)^version\s*=\s*"[^"]+"',
         f'version = "{version}"',
     )
 

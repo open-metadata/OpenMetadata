@@ -1,12 +1,13 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -16,9 +17,9 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityFieldUtils;
 
@@ -27,54 +28,23 @@ public class SetEntityAttributeImpl implements JavaDelegate {
   private Expression fieldNameExpr;
   private Expression fieldValueExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      // Extract entity from workflow context
-      Map<String, Object> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-      String relatedEntityNamespace = (String) inputNamespaceMap.get(RELATED_ENTITY_VARIABLE);
-      String relatedEntityValue =
-          (String)
-              varHandler.getNamespacedVariable(relatedEntityNamespace, RELATED_ENTITY_VARIABLE);
-      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
-
-      String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
-
-      String fieldName = fieldNameExpr != null ? (String) fieldNameExpr.getValue(execution) : "";
-
-      // Simple null check - if fieldValueExpr is null, treat as empty/null value
-      String fieldValue = null;
-      if (fieldValueExpr != null) {
-        Object value = fieldValueExpr.getValue(execution);
-        if (value != null && !value.toString().isEmpty()) {
-          fieldValue = value.toString();
-        }
-      }
-
-      String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
-      String actualUser =
-          Optional.ofNullable(updatedByNamespace)
-              .map(ns -> (String) varHandler.getNamespacedVariable(ns, UPDATED_BY_VARIABLE))
-              .orElse(null);
-
-      // Apply the field change using shared utility with bot impersonation
-      // Note: fieldValue can be null to clear/remove a field value
-      // When actualUser is available, use it as the user and mark 'governance-bot' as impersonator
-      // Otherwise, use 'governance-bot' directly (for system-initiated workflows)
-      if (actualUser != null && !actualUser.isEmpty()) {
-        // User-initiated workflow: preserve actual user, mark bot as impersonator
-        EntityFieldUtils.setEntityField(
-            entity, entityType, actualUser, fieldName, fieldValue, true, "governance-bot");
-      } else {
-        // System-initiated workflow: use governance-bot directly
-        EntityFieldUtils.setEntityField(
-            entity, entityType, "governance-bot", fieldName, fieldValue, true, null);
-      }
-
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
+      FieldUpdate update = fieldUpdate(execution, varHandler, inputNamespaces);
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> setEntityField(entityOf(entityLink), entityLink, update),
+          () -> setRelatedEntityField(varHandler, inputNamespaces, update));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -82,4 +52,71 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
   }
+
+  private static void setRelatedEntityField(
+      WorkflowVariableHandler varHandler, InputNamespaces inputNamespaces, FieldUpdate update) {
+    String relatedEntityValue =
+        (String)
+            varHandler.getNamespacedVariable(
+                inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE);
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(relatedEntityValue);
+    setEntityField(
+        varHandler.getRelatedEntity(entityLink, "*", Include.ALL), relatedEntityValue, update);
+  }
+
+  private FieldUpdate fieldUpdate(
+      DelegateExecution execution,
+      WorkflowVariableHandler varHandler,
+      InputNamespaces inputNamespaces) {
+    String fieldName = fieldNameExpr != null ? (String) fieldNameExpr.getValue(execution) : "";
+
+    String fieldValue = null;
+    if (fieldValueExpr != null) {
+      Object value = fieldValueExpr.getValue(execution);
+      if (value != null && !value.toString().isEmpty()) {
+        fieldValue = value.toString();
+      }
+    }
+
+    String updatedByNamespace = inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE);
+    String actualUser =
+        Optional.ofNullable(updatedByNamespace)
+            .map(ns -> (String) varHandler.getNamespacedVariable(ns, UPDATED_BY_VARIABLE))
+            .orElse(null);
+    if (actualUser == null || actualUser.isEmpty()) {
+      // The configured namespace had no acting user (e.g. an auto-approved user task was bypassed
+      // and set no updatedBy). Use the global editor (the requester) so the write is attributed to
+      // a real user with governance-bot as impersonator.
+      actualUser = (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE);
+    }
+    return new FieldUpdate(fieldName, fieldValue, actualUser);
+  }
+
+  private static EntityInterface<?> entityOf(String entityLink) {
+    return Entity.getEntity(MessageParser.EntityLink.parse(entityLink), "*", Include.ALL);
+  }
+
+  private static void setEntityField(
+      EntityInterface<?> entity, String entityLinkValue, FieldUpdate update) {
+    String entityType = MessageParser.EntityLink.parse(entityLinkValue).getEntityType();
+    // fieldValue==null clears the field. With an acting user, attribute the write to that user and
+    // mark governance-bot as impersonator; only when no user resolves at all does the write fall to
+    // governance-bot directly.
+    if (update.actualUser() != null && !update.actualUser().isEmpty()) {
+      EntityFieldUtils.setEntityField(
+          entity,
+          entityType,
+          update.actualUser(),
+          update.fieldName(),
+          update.fieldValue(),
+          true,
+          GOVERNANCE_BOT);
+    } else {
+      EntityFieldUtils.setEntityField(
+          entity, entityType, GOVERNANCE_BOT, update.fieldName(), update.fieldValue(), true, null);
+    }
+  }
+
+  /** The field a node sets, the value it sets it to, and the user it acts for, if any. */
+  private record FieldUpdate(String fieldName, String fieldValue, String actualUser) {}
 }

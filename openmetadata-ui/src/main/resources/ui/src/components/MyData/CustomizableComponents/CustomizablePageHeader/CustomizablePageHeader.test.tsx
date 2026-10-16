@@ -21,10 +21,16 @@ import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
+import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
+import { CustomizePageChromeContext } from './CustomizePageChrome.context';
 
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'test-persona' }),
+}));
+
+jest.mock('../../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../pages/CustomizablePage/CustomizeStore');
@@ -40,6 +46,7 @@ describe('CustomizablePageHeader', () => {
     (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
       currentPageType: PageType.LandingPage,
     });
+    (useRequiredParams as jest.Mock).mockReturnValue({});
   });
 
   afterEach(() => {
@@ -230,5 +237,161 @@ describe('CustomizablePageHeader', () => {
       'href',
       '/settings/persona/test-persona'
     );
+  });
+
+  describe('subTitle i18n key selection', () => {
+    it('uses navigation subheader key when pageFqn is "navigation"', () => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        pageFqn: 'navigation',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId('message.customize-your-navigation-subheader')
+      ).toBeInTheDocument();
+    });
+
+    it('uses app-layout subheader key when pageFqn is "app-layout"', () => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        pageFqn: 'app-layout',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId('message.customize-your-app-layout-subheader')
+      ).toBeInTheDocument();
+    });
+
+    it('uses home-page subheader key for PageType.LandingPage', () => {
+      (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
+        currentPageType: PageType.LandingPage,
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId(
+          'message.customize-home-page-page-header-for-persona'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('uses home-page subheader key for currentPageType "homepage"', () => {
+      (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
+        currentPageType: 'homepage',
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId(
+          'message.customize-home-page-page-header-for-persona'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('uses entity landing subheader key for non-landing entity page types', () => {
+      (useCustomizeStore as unknown as jest.Mock).mockReturnValue({
+        currentPageType: PageType.Table,
+      });
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      expect(
+        screen.getByTestId(
+          'message.customize-entity-landing-page-header-for-persona'
+        )
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('inside the persona settings fullscreen view', () => {
+    const chrome = {
+      breadcrumbs: [
+        { id: 'persona', label: 'Test Persona' },
+        { id: 'current', label: 'Table' },
+      ],
+      onNavigate: jest.fn(),
+    };
+
+    const renderInChrome = (disableSave: boolean) =>
+      render(
+        <MemoryRouter initialEntries={['/my-data']}>
+          <CustomizePageChromeContext.Provider value={chrome}>
+            <CustomizablePageHeader {...mockProps} disableSave={disableSave} />
+          </CustomizePageChromeContext.Provider>
+        </MemoryRouter>
+      );
+
+    it('leaves straight away when there are no unsaved changes', () => {
+      renderInChrome(true);
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+
+      expect(chrome.onNavigate).toHaveBeenCalledWith('back');
+      expect(
+        screen.queryByTestId('unsaved-changes-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    it('asks before leaving with unsaved changes and discards back into persona settings', async () => {
+      renderInChrome(false);
+
+      fireEvent.click(screen.getByTestId('customize-minimize-button'));
+
+      expect(chrome.onNavigate).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        await screen.findByTestId('unsaved-changes-modal-discard')
+      );
+
+      expect(chrome.onNavigate).toHaveBeenCalledWith('back');
+      expect(mockProps.onSave).not.toHaveBeenCalled();
+    });
+
+    it('saves, then leaves, on "save and leave"', async () => {
+      renderInChrome(false);
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+
+      await act(async () => {
+        fireEvent.click(
+          await screen.findByTestId('unsaved-changes-modal-save')
+        );
+      });
+
+      expect(mockProps.onSave).toHaveBeenCalledTimes(1);
+      expect(chrome.onNavigate).toHaveBeenCalledWith('back');
+    });
+
+    it('renders the persona breadcrumb trail', () => {
+      renderInChrome(true);
+
+      expect(
+        screen.getByTestId('customize-page-breadcrumbs')
+      ).toHaveTextContent('Test Persona');
+    });
   });
 });

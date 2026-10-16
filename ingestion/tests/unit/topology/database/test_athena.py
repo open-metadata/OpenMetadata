@@ -13,13 +13,19 @@ Test athena source
 """
 
 import hashlib
+import json
 import unittest
+from copy import deepcopy
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import MagicMock, PropertyMock, patch
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import pytest
 from pydantic import AnyUrl
+from requests import Response
+from sqlalchemy.types import INTEGER
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.container import (
@@ -36,6 +42,9 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     Table,
     TableType,
+)
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -58,10 +67,16 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
 from metadata.ingestion.source.database.athena.models import AthenaStatus
 from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
+from metadata.ingestion.source.database.athena.utils import get_columns
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    PROPERTY_NAME_MAX_LENGTH,
+)
 
 EXPECTED_DATABASE_NAMES = ["mydatabase"]
 MOCK_DATABASE_SCHEMA = DatabaseSchema(
@@ -266,6 +281,14 @@ mock_athena_config = {
     },
 }
 
+S3_TABLES_CATALOG_ID = "s3tablescatalog/my-bucket"
+
+
+def _athena_config_with_catalog_id(catalog_id):
+    config = deepcopy(mock_athena_config)
+    config["source"]["serviceConnection"]["config"]["catalogId"] = catalog_id
+    return config
+
 
 class TestAthenaService(unittest.TestCase):
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
@@ -413,6 +436,12 @@ def _get_request(mock_metadata, call_index=0):
     return mock_metadata.create_or_update_custom_property.call_args_list[call_index].args[0].createCustomPropertyRequest
 
 
+def _disambiguated(base, raw):
+    """A name the sanitizer had to rewrite carries a digest of the raw key, so two source keys
+    that reduce to the same base stay distinct."""
+    return f"{base}_{hashlib.md5(raw.encode('utf-8'), usedforsecurity=False).hexdigest()[:8]}"
+
+
 class TestGetTableExtensionsEarlyExits:
     """Cover the early-return branches of get_table_extensions."""
 
@@ -500,7 +529,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"myprop__airflow__dag__id__prod": "v"}
+        assert result == {_disambiguated("myprop__airflow__dag__id__prod", "myprop/airflow:dag id@prod"): "v"}
         request = _get_request(mock_metadata)
         assert request.displayName == "myprop/airflow:dag id@prod"
 
@@ -513,7 +542,7 @@ class TestGetTableExtensionsSanitization:
         ):
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
-        assert result == {"myprop.data__type-v1__beta": "v"}
+        assert result == {_disambiguated("myprop.data__type-v1__beta", "myprop.data/type-v1 beta"): "v"}
 
     def test_already_valid_name_unchanged(self, athena_source):
         props = {"simple_key": "value"}
@@ -584,6 +613,64 @@ class TestGetTableExtensionsSanitization:
 
         assert list(r1.keys()) == list(r2.keys())
 
+    def test_leading_underscore_is_prefixed(self, athena_source):
+        """The server requires an alphanumeric first character; a name that fails the pattern is
+        rejected at registration and the property is silently lost."""
+        props = {"_internal": "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata") as mock_metadata,
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {_disambiguated("p__internal", "_internal"): "value"}
+        assert _get_request(mock_metadata).displayName == "_internal"
+
+    def test_leading_dot_is_prefixed(self, athena_source):
+        props = {".hidden": "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {_disambiguated("p_.hidden", ".hidden"): "value"}
+
+    def test_leading_invalid_char_is_prefixed_after_substitution(self, athena_source):
+        """`/` maps to `__`, which would still leave a non-alphanumeric first character."""
+        props = {"/foo": "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {_disambiguated("p___foo", "/foo"): "value"}
+
+    def test_alphanumeric_leading_name_is_untouched(self, athena_source):
+        """Names that already satisfy the server pattern must keep the name they have today."""
+        props = {"write.format.default": "parquet"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        assert result == {"write.format.default": "parquet"}
+
+    def test_name_pushed_over_the_limit_by_the_prefix_is_hashed(self, athena_source):
+        """The prefix is applied before the length check, so it cannot produce an over-long name."""
+        original = "_" + ("a" * PROPERTY_NAME_MAX_LENGTH)
+        props = {original: "value"}
+        with (
+            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(athena_source, "metadata"),
+        ):
+            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+
+        expected_hash = hashlib.md5(original.encode("utf-8"), usedforsecurity=False).hexdigest()
+        assert result == {expected_hash: "value"}
+
 
 class TestGetTableExtensionsValueFiltering:
     """Filter out null and empty-string property values."""
@@ -642,7 +729,7 @@ class TestGetTableExtensionsDedup:
             athena_source.get_table_extensions("tbl2", TableType.Iceberg)
 
         assert mock_metadata.create_or_update_custom_property.call_count == 1
-        assert "shared_key" in athena_source._processed_prop
+        assert "Table:shared_key" in athena_source._processed_prop
 
     def test_distinct_props_each_registered_once(self, athena_source):
         with (
@@ -669,7 +756,7 @@ class TestGetTableExtensionsDedup:
             result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
 
         assert result is None
-        assert "k1" not in athena_source._processed_prop
+        assert "Table:k1" not in athena_source._processed_prop
 
     def test_registration_failure_for_one_prop_does_not_block_others(self, athena_source):
         """Registration errors on one prop don't prevent others from being returned."""
@@ -756,6 +843,264 @@ class TestQueryTableNamesAndTypesIcebergConstant:
         assert ICEBERG_TABLE_TYPE == "ICEBERG"
 
 
+def _make_source_with_glue(config, table_list, metadata=None):
+    """Build an AthenaSource from config and attach a Glue client whose
+    get_tables paginator yields a single page with the given TableList."""
+    workflow_config = OpenMetadataWorkflowConfig.model_validate(config)
+    with patch(
+        "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection",
+        return_value=False,
+    ):
+        source = AthenaSource.create(
+            config["source"],
+            metadata or workflow_config.workflowConfig.openMetadataServerConfig,
+        )
+    mock_paginator = MagicMock()
+    mock_paginator.paginate.return_value = [{"TableList": table_list}]
+    mock_glue_client = MagicMock()
+    mock_glue_client.get_paginator.return_value = mock_paginator
+    source.glue_client = mock_glue_client
+    return source, mock_paginator
+
+
+class TestQueryTableNamesAndTypesCatalogId:
+    """get_tables enumeration must target the configured catalogId.
+
+    Regression coverage for S3 Tables / cross-account Glue catalogs, where
+    omitting CatalogId queries the default catalog and returns 0 tables.
+    """
+
+    def test_catalog_id_passed_to_paginate_when_configured(self):
+        config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
+        source, mock_paginator = _make_source_with_glue(config, [{"Name": MOCK_TABLE_NAME, "Parameters": {}}])
+
+        result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_paginator.paginate.assert_called_once_with(
+            DatabaseName=MOCK_DATABASE_SCHEMA.name.root,
+            CatalogId=S3_TABLES_CATALOG_ID,
+        )
+
+    def test_catalog_id_omitted_when_not_configured(self):
+        source, mock_paginator = _make_source_with_glue(
+            deepcopy(mock_athena_config), [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]
+        )
+
+        result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_paginator.paginate.assert_called_once_with(DatabaseName=MOCK_DATABASE_SCHEMA.name.root)
+        assert "CatalogId" not in mock_paginator.paginate.call_args.kwargs
+
+    def test_empty_table_list_returns_empty_without_inspector_fallback(self):
+        """A successful Glue call with an empty TableList is returned as-is;
+        the inspector fallback only fires on exception or missing Glue client."""
+        config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
+        source, _ = _make_source_with_glue(config, [])
+        mock_inspector = MagicMock()
+
+        with patch.object(type(source), "inspector", new_callable=PropertyMock, return_value=mock_inspector):
+            result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == []
+        mock_inspector.get_table_names.assert_not_called()
+
+    def test_falls_back_to_inspector_when_glue_call_raises(self):
+        config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
+        source, mock_paginator = _make_source_with_glue(config, [])
+        mock_paginator.paginate.side_effect = Exception("AccessDenied")
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_names.return_value = [MOCK_TABLE_NAME]
+
+        with patch.object(type(source), "inspector", new_callable=PropertyMock, return_value=mock_inspector):
+            result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
+
+        assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
+        mock_inspector.get_table_names.assert_called_once_with(MOCK_DATABASE_SCHEMA.name.root)
+
+
+class TestQueryTableNamesAndTypesDelta:
+    """Delta Lake detection from the Glue table Parameters."""
+
+    @pytest.mark.parametrize(
+        "parameters",
+        [
+            # Captured byte-for-byte from a real AWS Glue get_table response, written by the Athena
+            # CREATE EXTERNAL TABLE ... TBLPROPERTIES ('table_type'='DELTA') DDL against a live
+            # delta-rs table. Athena writes table_type in lowercase ("delta") and also
+            # spark.sql.sources.provider=delta, so the match must be case-insensitive.
+            {
+                "EXTERNAL": "TRUE",
+                "spark.sql.sources.schema.part.0": (
+                    '{"type":"struct","fields":[{"name":"id","type":"long",'
+                    '"nullable":true,"metadata":{}},{"name":"name","type":"string",'
+                    '"nullable":true,"metadata":{}}]}'
+                ),
+                "spark.sql.partitionProvider": "catalog",
+                "spark.sql.sources.schema.numParts": "1",
+                "spark.sql.sources.provider": "delta",
+                "delta.lastUpdateVersion": "0",
+                "delta.lastCommitTimestamp": "1791387883367",
+                "table_type": "delta",
+            },
+            # Either marker alone is enough.
+            {"table_type": "DELTA"},
+            {"spark.sql.sources.provider": "delta"},
+        ],
+        ids=["athena_ddl_capture", "table_type_only", "provider_only"],
+    )
+    def test_delta_table_types_as_delta_lake(self, parameters):
+        source, _ = _make_source_with_glue(
+            deepcopy(mock_athena_config),
+            [{"Name": MOCK_TABLE_NAME, "Parameters": parameters}],
+        )
+
+        assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.DeltaLake)
+        ]
+
+    def test_iceberg_wins_over_delta(self):
+        # A UniForm table can carry both markers. The Iceberg check runs first, so it stays Iceberg.
+        source, _ = _make_source_with_glue(
+            deepcopy(mock_athena_config),
+            [
+                {
+                    "Name": MOCK_TABLE_NAME,
+                    "Parameters": {
+                        "table_type": "ICEBERG",
+                        "spark.sql.sources.provider": "delta",
+                    },
+                }
+            ],
+        )
+
+        assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name=MOCK_TABLE_NAME, type_=TableType.Iceberg)
+        ]
+
+
+class TestAthenaColumnDeduplication:
+    @staticmethod
+    def _column(name, type_="string", comment=None):
+        return SimpleNamespace(name=name, type=type_, comment=comment)
+
+    @staticmethod
+    def _dialect(metadata):
+        dialect = SimpleNamespace()
+        dialect._get_table = MagicMock(return_value=metadata)
+        dialect._get_column_type = MagicMock(return_value="string")
+        dialect._raw_connection = MagicMock(return_value=SimpleNamespace(schema_name="sample_schema"))
+        return dialect
+
+    def test_standard_get_columns_preserves_partition_for_exact_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period")],
+            columns=[
+                self._column("event_id"),
+                self._column("time_period"),
+            ],
+            parameters={},
+        )
+
+        result = get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        assert [col["name"] for col in result] == ["time_period", "event_id"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+
+    def test_standard_get_columns_logs_dropped_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period", "date")],
+            columns=[
+                self._column("time_period", "string"),
+            ],
+            parameters={},
+        )
+
+        with patch("metadata.ingestion.source.database.athena.utils.logger.warning") as warning:
+            get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        warning.assert_called_once_with(
+            "Table '%s': dropping duplicate Athena column '%s' (type %s); keeping the first definition",
+            "sample_table",
+            "time_period",
+            "string",
+        )
+
+    def test_standard_get_columns_keeps_case_distinct_regular_column(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("dt")],
+            columns=[
+                self._column("DT"),
+            ],
+            parameters={},
+        )
+
+        result = get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        assert [col["name"] for col in result] == ["dt", "DT"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+        assert result[1]["dialect_options"]["awsathena_partition"] is None
+
+    def test_iceberg_get_columns_preserves_partition_for_exact_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period")],
+            columns=[],
+            parameters={"table_type": "ICEBERG"},
+        )
+        glue_client = MagicMock()
+        glue_client.get_table.return_value = {
+            "Table": {
+                "StorageDescriptor": {
+                    "Columns": [
+                        {"Name": "event_id", "Type": "string"},
+                        {"Name": "time_period", "Type": "string"},
+                    ]
+                }
+            }
+        }
+
+        result = get_columns(
+            self._dialect(metadata),
+            MagicMock(),
+            "sample_table",
+            schema="sample_schema",
+            glue_client=glue_client,
+        )
+
+        assert [col["name"] for col in result] == ["time_period", "event_id"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+
+    def test_iceberg_get_columns_keeps_case_distinct_physical_column(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("ts_day")],
+            columns=[],
+            parameters={"table_type": "ICEBERG"},
+        )
+        glue_client = MagicMock()
+        glue_client.get_table.return_value = {
+            "Table": {
+                "StorageDescriptor": {
+                    "Columns": [
+                        {"Name": "TS_DAY", "Type": "string"},
+                    ]
+                }
+            }
+        }
+
+        result = get_columns(
+            self._dialect(metadata),
+            MagicMock(),
+            "sample_table",
+            schema="sample_schema",
+            glue_client=glue_client,
+        )
+
+        assert [col["name"] for col in result] == ["ts_day", "TS_DAY"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+        assert result[1]["dialect_options"]["awsathena_partition"] is None
+
+
 class TestIncludeCustomPropertiesSchema:
     """The includeCustomProperties config flag defaults to False."""
 
@@ -774,3 +1119,187 @@ class TestIncludeCustomPropertiesSchema:
 
         pipeline = DatabaseServiceMetadataPipeline(includeCustomProperties=True)
         assert pipeline.includeCustomProperties is True
+
+
+class TestAthenaPrepareTypeRef:
+    """prepare() resolves the string property type once per workflow, and only when enabled."""
+
+    def test_prepare_fetches_type_ref_when_enabled(self, athena_source):
+        athena_source._string_property_type_ref = None
+
+        with patch.object(athena_source, "metadata") as mock_metadata:
+            athena_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 1
+
+    def test_prepare_skips_fetch_when_disabled(self, athena_source):
+        """A disabled pipeline must not call the server at all."""
+        athena_source.source_config.includeCustomProperties = False
+
+        with patch.object(athena_source, "metadata") as mock_metadata:
+            athena_source.prepare()
+
+        assert mock_metadata.get_property_type_ref.call_count == 0
+
+
+class TestQueryTableNamesAndTypesLeavesViewsToTheViewPass:
+    """Glue lists Athena views as VIRTUAL_VIEW; the table pass must not emit them."""
+
+    def test_virtual_views_are_skipped_including_iceberg_views(self):
+        source, _ = _make_source_with_glue(
+            deepcopy(mock_athena_config),
+            [
+                {"Name": "plain_table", "TableType": "EXTERNAL_TABLE", "Parameters": {}},
+                {"Name": "plain_view", "TableType": "VIRTUAL_VIEW", "Parameters": {}},
+                {"Name": "iceberg_table", "TableType": "EXTERNAL_TABLE", "Parameters": {"table_type": "ICEBERG"}},
+                {"Name": "iceberg_view", "TableType": "VIRTUAL_VIEW", "Parameters": {"table_type": "ICEBERG"}},
+            ],
+        )
+
+        assert source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root) == [
+            TableNameAndType(name="plain_table", type_=TableType.External),
+            TableNameAndType(name="iceberg_table", type_=TableType.Iceberg),
+        ]
+
+
+MOCK_VIEW_NAME = "sample_view"
+MOCK_VIEW_DEFINITION = (
+    f'CREATE VIEW "{MOCK_DATABASE_SCHEMA.name.root}"."{MOCK_VIEW_NAME}" AS SELECT id FROM {MOCK_TABLE_NAME}'
+)
+GLUE_TABLE_AND_VIEW = [
+    {"Name": MOCK_TABLE_NAME, "TableType": "EXTERNAL_TABLE", "Parameters": {}},
+    {"Name": MOCK_VIEW_NAME, "TableType": "VIRTUAL_VIEW", "Parameters": {}},
+]
+
+
+class BulkTablesCatalog:
+    """Stands in for the OpenMetadata server. Keeps every /tables/bulk payload exactly as sent,
+    so an entity emitted twice in one run stays visible instead of collapsing into one record."""
+
+    def __init__(self):
+        self.bulk_payloads: list[list[dict]] = []
+
+    @property
+    def sent_tables(self) -> list[dict]:
+        return [table for payload in self.bulk_payloads for table in payload]
+
+    def request(self, method, url, **kwargs):
+        path = urlsplit(url).path
+        if method.upper() == "GET" and path.endswith("/search/fieldQuery"):
+            body = {"hits": {"hits": [], "total": {"value": 0}}}
+        elif method.upper() == "PUT" and path.endswith("/tables/bulk"):
+            payload = kwargs.get("json")
+            if payload is None:
+                payload = json.loads(kwargs["data"])
+            self.bulk_payloads.append(payload)
+            body = {
+                "status": "success",
+                "numberOfRowsProcessed": len(payload),
+                "numberOfRowsFailed": 0,
+                "successRequest": [],
+                "failedRequest": [],
+            }
+        else:
+            raise AssertionError(f"Unexpected HTTP request: {method} {path}")
+
+        response = Response()
+        response.status_code = 200
+        response._content = json.dumps(body).encode()
+        response.headers["Content-Type"] = "application/json"
+        response.url = url
+        return response
+
+
+@pytest.fixture
+def bulk_tables_catalog(monkeypatch):
+    catalog = BulkTablesCatalog()
+    monkeypatch.setattr("requests.Session.request", lambda _, *args, **kwargs: catalog.request(*args, **kwargs))
+    return catalog
+
+
+def _inspector_for_table_and_view():
+    columns = [{"name": "id", "type": INTEGER(), "nullable": True, "default": None, "comment": None}]
+    inspector = MagicMock()
+    inspector.get_view_names.return_value = [MOCK_VIEW_NAME]
+    # Athena probes partitions through get_columns too; answering it with the table's columns
+    # would type the table Partitioned.
+    inspector.get_columns.side_effect = lambda *_args, only_partition_columns=False, **_kwargs: (
+        [] if only_partition_columns else columns
+    )
+    inspector.get_view_definition.return_value = MOCK_VIEW_DEFINITION
+    inspector.get_table_comment.return_value = {"text": None}
+    inspector.get_table_options.return_value = {}
+    inspector.get_unique_constraints.return_value = []
+    inspector.get_foreign_keys.return_value = []
+    inspector.get_pk_constraint.return_value = {}
+    return inspector
+
+
+def _ingest_tables_through_bulk_sink(include_views: bool) -> None:
+    """Run Athena's table and view passes for one schema into the real REST sink, which flushes
+    them as a single /tables/bulk request: the shape in which a duplicate FQN flips its type."""
+    config = deepcopy(mock_athena_config)
+    config["source"]["sourceConfig"]["config"]["includeViews"] = include_views
+    metadata = OpenMetadata(
+        OpenMetadataConnection(
+            hostPort="http://localhost:8585/api",
+            authProvider="openmetadata",
+            securityConfig={"jwtToken": "athena"},
+            enableVersionValidation=False,
+        ),
+        additional_client_config_arguments={"retry": 0, "retry_wait": 0},
+    )
+    try:
+        source, _ = _make_source_with_glue(config, GLUE_TABLE_AND_VIEW, metadata=metadata)
+        source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+
+        with patch.object(
+            type(source), "inspector", new_callable=PropertyMock, return_value=_inspector_for_table_and_view()
+        ):
+            for table_name_and_type in source.get_tables_name_and_type():
+                for record in source.yield_table(table_name_and_type):
+                    assert record.left is None
+                    sink.run(record.right)
+        sink.close()
+
+        assert source.status.failures == sink.status.failures == []
+    finally:
+        metadata.close()
+
+
+class TestAthenaViewsReachTheBulkPayloadOnce:
+    """collate#5937: each view reaches the sink once, typed View with its definition, and only when
+    includeViews is on. Drives the real producers and sink; asserts on the /tables/bulk payload."""
+
+    def test_view_is_sent_once_as_view_with_its_definition(self, bulk_tables_catalog):
+        _ingest_tables_through_bulk_sink(include_views=True)
+
+        sent = bulk_tables_catalog.sent_tables
+        assert sorted(table["name"] for table in sent) == sorted([MOCK_TABLE_NAME, MOCK_VIEW_NAME])
+        by_name = {table["name"]: table for table in sent}
+        assert by_name[MOCK_VIEW_NAME]["tableType"] == TableType.View.value
+        assert by_name[MOCK_VIEW_NAME]["schemaDefinition"] == MOCK_VIEW_DEFINITION
+        assert by_name[MOCK_TABLE_NAME]["tableType"] == TableType.External.value
+
+    def test_include_views_false_sends_only_the_table(self, bulk_tables_catalog):
+        _ingest_tables_through_bulk_sink(include_views=False)
+
+        sent = bulk_tables_catalog.sent_tables
+        assert [(table["name"], table["tableType"]) for table in sent] == [(MOCK_TABLE_NAME, TableType.External.value)]
+
+    @pytest.mark.parametrize("include_views", [True, False])
+    def test_rerun_sends_the_same_payload_and_never_a_view_as_external(self, bulk_tables_catalog, include_views):
+        _ingest_tables_through_bulk_sink(include_views=include_views)
+        first_run = list(bulk_tables_catalog.bulk_payloads)
+        bulk_tables_catalog.bulk_payloads.clear()
+
+        _ingest_tables_through_bulk_sink(include_views=include_views)
+
+        assert bulk_tables_catalog.bulk_payloads == first_run
+        assert len(first_run) == 1
+        assert all(
+            table["tableType"] == TableType.View.value for table in first_run[0] if table["name"] == MOCK_VIEW_NAME
+        )

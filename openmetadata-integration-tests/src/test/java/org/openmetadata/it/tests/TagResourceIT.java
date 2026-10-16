@@ -11,14 +11,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -26,16 +29,22 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.PredefinedRecognizer;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -43,6 +52,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * Integration tests for Tag entity operations.
@@ -59,6 +71,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   {
     supportsFollowers = false; // Tags don't support followers
     supportsTags = false; // Tags don't support tags on themselves
+    supportsDataProductAssetsSearch = false;
     supportsListHistoryByTimestamp = true;
   }
 
@@ -202,6 +215,85 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         Exception.class,
         () -> createEntity(request),
         "Creating tag without classification should fail");
+  }
+
+  @Test
+  void patch_tagWhileClassificationDisabled_doesNotStrandTag(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    Tag tag = createTagUnder(classification, ns, "tag_disable_inheritance");
+
+    setClassificationDisabled(classification.getId().toString(), true);
+
+    // While the parent Classification is disabled the Tag reports disabled by inheritance
+    Tag disabledTag = getEntityByName(tag.getFullyQualifiedName());
+    assertTrue(
+        Boolean.TRUE.equals(disabledTag.getDisabled()),
+        "Tag should report disabled while its Classification is disabled");
+
+    // Any unrelated write to the Tag must not persist that inherited value
+    disabledTag.setDescription("Updated while the parent Classification was disabled");
+    patchEntity(disabledTag.getId().toString(), disabledTag);
+
+    setClassificationDisabled(classification.getId().toString(), false);
+
+    // Assert the precondition separately from the behaviour under test. If the re-enable did
+    // not take effect the Tag is correctly still inheriting disabled, and conflating the two
+    // makes the failure look like the fix regressed when it did not.
+    Classification parentAfter =
+        SdkClients.adminClient().classifications().get(classification.getId().toString());
+    assertFalse(
+        Boolean.TRUE.equals(parentAfter.getDisabled()),
+        "precondition: Classification should be re-enabled, but disabled="
+            + parentAfter.getDisabled());
+
+    Tag reEnabledTag = getEntityByName(tag.getFullyQualifiedName());
+    assertFalse(
+        Boolean.TRUE.equals(reEnabledTag.getDisabled()),
+        "Tag must be usable again once its Classification is re-enabled."
+            + " If this fails the Tag was written while the parent was disabled by something"
+            + " other than this test - the details below identify the writer."
+            + " tag.version="
+            + reEnabledTag.getVersion()
+            + " tag.updatedBy="
+            + reEnabledTag.getUpdatedBy()
+            + " tag.changeDescription="
+            + reEnabledTag.getChangeDescription());
+  }
+
+  @Test
+  void patch_tagDisabledIndividually_survivesClassificationDisableCycle(TestNamespace ns) {
+    Classification classification = createClassification(ns);
+    Tag tag = createTagUnder(classification, ns, "tag_own_disable");
+
+    // Disable the Tag on its own, while its Classification is enabled
+    tag.setDisabled(true);
+    patchEntity(tag.getId().toString(), tag);
+
+    setClassificationDisabled(classification.getId().toString(), true);
+    Tag disabledTag = getEntityByName(tag.getFullyQualifiedName());
+    disabledTag.setDescription("Updated while the parent Classification was disabled");
+    patchEntity(disabledTag.getId().toString(), disabledTag);
+    setClassificationDisabled(classification.getId().toString(), false);
+
+    Tag afterCycle = getEntityByName(tag.getFullyQualifiedName());
+    assertTrue(
+        Boolean.TRUE.equals(afterCycle.getDisabled()),
+        "A Tag disabled on its own must stay disabled after a Classification disable cycle");
+  }
+
+  private Tag createTagUnder(Classification classification, TestNamespace ns, String name) {
+    CreateTag request = new CreateTag();
+    request.setName(ns.shortPrefix(name));
+    request.setClassification(classification.getFullyQualifiedName());
+    request.setDescription("Tag used to verify disabled inheritance handling");
+    return createEntity(request);
+  }
+
+  private void setClassificationDisabled(String classificationId, boolean disabled) {
+    Classification classification =
+        SdkClients.adminClient().classifications().get(classificationId);
+    classification.setDisabled(disabled);
+    SdkClients.adminClient().classifications().update(classificationId, classification);
   }
 
   @Test
@@ -666,7 +758,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
-    String displayName = "PW Classification " + ns.uniqueShortId();
+    String searchToken = ("xqz" + RandomStringUtils.randomAlphabetic(16)).toLowerCase(Locale.ROOT);
+    String displayName = "PW Classification " + searchToken;
 
     Classification classification =
         client
@@ -690,7 +783,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .untilAsserted(
             () -> {
               String response =
-                  client.search().query(displayName).index("tag_search_index").size(25).execute();
+                  client.search().query(searchToken).index("tag_search_index").size(25).execute();
               JsonNode root = mapper.readTree(response);
               JsonNode hits = root.path("hits").path("hits");
               boolean found =
@@ -758,6 +851,96 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         fetchedTag1.getDisabled(), "Tag1 should not be disabled after classification is enabled");
     assertFalse(
         fetchedTag2.getDisabled(), "Tag2 should not be disabled after classification is enabled");
+  }
+
+  @Test
+  void test_putPreservesRecognizers_ingestionScenario(TestNamespace ns) {
+    // A metadata connector re-creates a source tag with a bare PUT (name + classification +
+    // description only, no recognizers). This must NOT wipe the tag's configured recognizers
+    // nor turn off autoClassificationEnabled.
+    Classification classification = createClassification(ns);
+
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("pii_tag"));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag with recognizers");
+    createTag.setAutoClassificationEnabled(true);
+    createTag.setRecognizers(
+        List.of(
+            new Recognizer()
+                .withName("email_pattern_recognizer")
+                .withEnabled(true)
+                .withRecognizerConfig(
+                    new PredefinedRecognizer()
+                        .withName(PredefinedRecognizer.Name.EMAIL_RECOGNIZER))));
+
+    Tag tag = createEntity(createTag);
+    Tag created = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertNotNull(created.getRecognizers());
+    assertEquals(1, created.getRecognizers().size());
+    assertTrue(created.getAutoClassificationEnabled());
+
+    // Byte-for-byte the ingestion sink's body: CreateTagRequest.model_dump_json() with no
+    // exclude_none, so every unset field is serialized as its Pydantic default.
+    String ingestionBody =
+        "{\"classification\":\""
+            + classification.getFullyQualifiedName()
+            + "\",\"parent\":null,\"name\":\""
+            + tag.getName()
+            + "\",\"displayName\":null,\"description\":\"Updated by metadata ingestion\","
+            + "\"style\":null,\"associatedTags\":null,\"provider\":null,\"mutuallyExclusive\":false,"
+            + "\"domains\":null,\"owners\":null,\"reviewers\":null,\"recognizers\":null,"
+            + "\"autoClassificationEnabled\":false,\"autoClassificationPriority\":50}";
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags", ingestionBody, Tag.class);
+
+    Tag afterIngestion =
+        getEntityWithFields(tag.getId().toString(), "recognizers,autoClassificationEnabled");
+    int recognizerCount =
+        afterIngestion.getRecognizers() == null ? -1 : afterIngestion.getRecognizers().size();
+    assertEquals(
+        1,
+        recognizerCount,
+        "Bare PUT from ingestion must not drop recognizers (-1 means the field was deleted);"
+            + " autoClassificationEnabled is now "
+            + afterIngestion.getAutoClassificationEnabled());
+    assertTrue(
+        afterIngestion.getAutoClassificationEnabled(),
+        "Bare PUT from ingestion must not disable autoClassificationEnabled");
+
+    // A PUT that does name recognizers is an intentional write and must still apply.
+    CreateTag explicitUpsert =
+        new CreateTag()
+            .withName(tag.getName())
+            .withClassification(classification.getFullyQualifiedName())
+            .withDescription("Explicit recognizer update")
+            .withRecognizers(
+                List.of(
+                    new Recognizer()
+                        .withName("us_ssn_recognizer")
+                        .withEnabled(true)
+                        .withRecognizerConfig(
+                            new PredefinedRecognizer()
+                                .withName(PredefinedRecognizer.Name.US_SSN_RECOGNIZER))));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags", explicitUpsert, Tag.class);
+
+    Tag afterExplicitPut = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertEquals(1, afterExplicitPut.getRecognizers().size());
+    assertEquals(
+        "us_ssn_recognizer",
+        afterExplicitPut.getRecognizers().get(0).getName(),
+        "PUT naming recognizers must replace them");
+
+    // An explicit PATCH clearing recognizers must still delete them.
+    afterExplicitPut.setRecognizers(null);
+    patchEntity(afterExplicitPut.getId().toString(), afterExplicitPut);
+    Tag afterPatch = getEntityWithFields(tag.getId().toString(), "recognizers");
+    assertTrue(
+        afterPatch.getRecognizers() == null || afterPatch.getRecognizers().isEmpty(),
+        "Explicit PATCH clearing recognizers must still delete them");
   }
 
   @Test
@@ -1677,6 +1860,57 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void patch_systemTagProvider_rejected(TestNamespace ns) throws Exception {
+    // #29974: a seeded system tag (its provider inherited from the system classification, see
+    // TagResource) must not have its provider flipped to user via PATCH - that strips the delete
+    // protection that keeps system tags from being removed.
+    Tag goldTag = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(ProviderType.SYSTEM, goldTag.getProvider());
+
+    JsonNode providerToUser =
+        new ObjectMapper()
+            .readTree("[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"user\"}]");
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PATCH, "/v1/tags/" + goldTag.getId(), providerToUser, Tag.class),
+        "Changing the provider of a system tag should be rejected");
+
+    Tag reloaded = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain unchanged");
+  }
+
+  @Test
+  void put_systemTagProvider_preserved(TestNamespace ns) throws Exception {
+    // A PUT carrying a user provider must not downgrade a seeded system tag - the system provider
+    // is preserved silently instead of stored as user.
+    Tag goldTag = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(ProviderType.SYSTEM, goldTag.getProvider());
+
+    CreateTag putBody =
+        new CreateTag()
+            .withName(goldTag.getName())
+            .withClassification("Certification")
+            .withDescription(goldTag.getDescription())
+            .withProvider(ProviderType.USER);
+    Tag updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/tags", putBody, Tag.class);
+    assertEquals(
+        ProviderType.SYSTEM, updated.getProvider(), "PUT must not downgrade the system provider");
+
+    // Reload to confirm the system provider was persisted, not just reflected in the response.
+    Tag reloaded = SdkClients.adminClient().tags().getByName("Certification.Gold");
+    assertEquals(
+        ProviderType.SYSTEM, reloaded.getProvider(), "System provider must remain persisted");
+  }
+
+  @Test
   void test_certificationTagRenamePropagatesToEntityAndSearch(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
@@ -1891,6 +2125,366 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
                   StreamSupport.stream(owners.spliterator(), false)
                       .anyMatch(o -> testUser1().getId().toString().equals(o.path("id").asText())),
                   "Owner should match the user set on the classification");
+            });
+  }
+
+  // ===================================================================
+  // BULK REMOVE TAG FROM ASSETS — dryRun behavior (issue #27954)
+  // ===================================================================
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunTrue_doesNotRemove(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_true");
+    Table table = createTableTaggedWith(ns, tag, "dr_true");
+
+    AddTagToAssetsRequest dryRunRemove =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunRemove, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunFalse_removes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_false");
+    Table table = createTableTaggedWith(ns, tag, "dr_false");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(table.getTags()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
+
+    AddTagToAssetsRequest realRemove =
+        new AddTagToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, realRemove, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag should be removed from asset when dryRun=false")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(45))
+        .untilAsserted(() -> assertFalse(tableHasTag(client, tableId, tagFqn)));
+  }
+
+  @Test
+  void test_bulkAddTagToAssets_dryRunTrue_doesNotApply(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_dr_true");
+    Table table = createBareTable(ns, "add_dr_true");
+
+    AddTagToAssetsRequest dryRunAdd =
+        new AddTagToAssetsRequest()
+            .withDryRun(true)
+            .withAssets(List.of(table.getEntityReference()));
+    String path = "/v1/tags/" + tag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, dryRunAdd, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must NOT be applied to asset throughout dryRun window")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> !tableHasTag(client, tableId, tagFqn));
+  }
+
+  @Test
+  void test_bulkAddTagToAssets_dryRunFalse_updatesCachedTable(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "add_cached");
+    Table table = createBareTable(ns, "add_cached");
+    var tagCache = CacheBundle.getCachedTagUsageDao();
+    if (tagCache != null) {
+      tagCache.putTags(
+          Entity.TABLE,
+          table.getId(),
+          JsonUtils.pojoToJson(List.of()),
+          SettingsCache.isGlossaryTagPropagationEnabled());
+    }
+
+    AddTagToAssetsRequest request =
+        new AddTagToAssetsRequest()
+            .withDryRun(false)
+            .withAssets(List.of(table.getEntityReference()));
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tags/" + tag.getId() + "/assets/add", request, Void.class);
+
+    Awaitility.await("Tag should be applied to asset when dryRun=false")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(45))
+        .untilAsserted(
+            () -> assertTrue(tableHasTag(client, table.getId(), tag.getFullyQualifiedName())));
+  }
+
+  @Test
+  void test_bulkAddTagsToAssets_partialFailure_onePassRestFail_reportsPartialSuccess(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    // Mutually-exclusive classification with two sibling tags; an asset that
+    // already carries one sibling fails the per-asset mutual-exclusion check
+    // when the other sibling is bulk-added. One bare asset passes; the rest
+    // fail → status must be PARTIAL_SUCCESS (the old `> 1` threshold reported
+    // FAILURE, hiding the single passing asset).
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.shortPrefix("mx_cls_pf"))
+                    .withDescription("Mutually-exclusive classification for partial-failure")
+                    .withMutuallyExclusive(true));
+    Tag conflictTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_conf_pf"))
+                    .withClassification(classification.getName())
+                    .withDescription("conflicting sibling already on the failing assets"));
+    Tag addingTag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.shortPrefix("mx_add_pf"))
+                    .withClassification(classification.getName())
+                    .withDescription("the tag being bulk-added"));
+    TagLabel conflictLabel =
+        new TagLabel()
+            .withTagFQN(conflictTag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table passTable = createBareTable(ns, "mx_pass_pf");
+    List<Table> failTables = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      Table t = createBareTable(ns, "mx_fail_pf" + i);
+      Table fetched = client.tables().get(t.getId().toString(), "tags");
+      fetched.setTags(List.of(conflictLabel));
+      client.tables().update(t.getId().toString(), fetched);
+      failTables.add(t);
+    }
+
+    // Pass-before-fail ordering: the lone passing asset is iterated first, so the
+    // apply-while-no-failures gate writes `addingTag` to it before any failure
+    // closes the gate. The /v1/tags/{id}/assets/add endpoint is *asynchronous*
+    // (EntityResource.bulkAddToAssetsAsync): the HTTP body is just a jobId ack,
+    // and the final BulkOperationResult — whose status is computed by the shared
+    // deriveBulkOperationStatus helper (the `> 0` fix) — is delivered via
+    // websocket, not in the HTTP body. The Tag path's status fix is therefore
+    // covered by EntityRepositoryBulkOperationStatusTest plus the synchronous
+    // glossary ITs; this test verifies the Tag path's validation+apply behavior
+    // via the observable side effect — exactly one asset passes (gets the tag)
+    // and the rest are gated off — which only happens when numberOfRowsPassed
+    // reaches 1.
+    List<EntityReference> assets = new ArrayList<>();
+    assets.add(passTable.getEntityReference());
+    assets.addAll(failTables.stream().map(Table::getEntityReference).toList());
+
+    AddTagToAssetsRequest add = new AddTagToAssetsRequest().withDryRun(false).withAssets(assets);
+    String path = "/v1/tags/" + addingTag.getId() + "/assets/add";
+    client.getHttpClient().execute(HttpMethod.PUT, path, add, Void.class);
+
+    UUID passTableId = passTable.getId();
+    String addingTagFqn = addingTag.getFullyQualifiedName();
+    Awaitility.await("lone passing asset must receive the adding tag (1 validation pass)")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertTrue(tableHasTag(client, passTableId, addingTagFqn)));
+    // The failing assets already carry the mutually-exclusive sibling, so the
+    // apply gate (closed after the first failure) must leave them untouched by
+    // addingTag.
+    for (Table t : failTables) {
+      assertFalse(
+          tableHasTag(client, t.getId(), addingTagFqn),
+          "failing assets must not receive the mutually-exclusive adding tag");
+    }
+  }
+
+  @Test
+  void test_bulkRemoveTagFromAssets_dryRunOmitted_defaultsToPreview(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createTagForBulk(ns, "dr_omit");
+    Table table = createTableTaggedWith(ns, tag, "dr_omit");
+
+    String rawBody = "{\"assets\":[{\"id\":\"" + table.getId() + "\",\"type\":\"table\"}]}";
+    String path = "/v1/tags/" + tag.getId() + "/assets/remove";
+    client.getHttpClient().execute(HttpMethod.PUT, path, rawBody, Void.class);
+
+    UUID tableId = table.getId();
+    String tagFqn = tag.getFullyQualifiedName();
+    Awaitility.await("Tag must remain on asset when dryRun is omitted (default preview)")
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(45))
+        .during(Duration.ofSeconds(20))
+        .until(() -> tableHasTag(client, tableId, tagFqn));
+  }
+
+  private Tag createTagForBulk(TestNamespace ns, String suffix) {
+    Classification classification = createClassification(ns);
+    CreateTag createTag = new CreateTag();
+    createTag.setName(ns.shortPrefix("br_" + suffix));
+    createTag.setClassification(classification.getFullyQualifiedName());
+    createTag.setDescription("Tag for bulk remove dryRun test");
+    return createEntity(createTag);
+  }
+
+  private Table createBareTable(TestNamespace ns, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    org.openmetadata.schema.entity.services.DatabaseService dbService =
+        createDatabaseService(ns, "br_svc_" + suffix);
+    org.openmetadata.schema.entity.data.Database db =
+        createDatabase(ns, dbService.getFullyQualifiedName());
+    DatabaseSchema schema = createDatabaseSchema(ns, db.getFullyQualifiedName());
+
+    org.openmetadata.schema.api.data.CreateTable createTable =
+        new org.openmetadata.schema.api.data.CreateTable();
+    createTable.setName(ns.shortPrefix("br_tbl_" + suffix));
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setColumns(
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("id")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.BIGINT)));
+    return client.tables().create(createTable);
+  }
+
+  private Table createTableTaggedWith(TestNamespace ns, Tag tag, String suffix) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createBareTable(ns, suffix);
+
+    TagLabel tagLabel =
+        new TagLabel()
+            .withTagFQN(tag.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Table fetched = client.tables().get(table.getId().toString(), "tags");
+    fetched.setTags(List.of(tagLabel));
+    Table tagged = client.tables().update(table.getId().toString(), fetched);
+    assertNotNull(tagged.getTags(), "Patched table should expose tags");
+    assertTrue(
+        tableHasTag(client, table.getId(), tag.getFullyQualifiedName()),
+        "Patched table should already have the tag applied");
+    return tagged;
+  }
+
+  private boolean tableHasTag(OpenMetadataClient client, UUID tableId, String tagFqn) {
+    Table refreshed = client.tables().get(tableId.toString(), "tags");
+    return refreshed.getTags() != null
+        && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
+  }
+
+  // ===================================================================
+  // Issue #28696 (tag analogue): renaming a tag so the new name keeps the old
+  // name as a PREFIX must rewrite that tag's FQN on linked assets and must NOT
+  // corrupt a sibling tag under the same classification that merely shares the
+  // textual prefix. Tag asset propagation runs through the shared, now
+  // boundary-aware UPDATE_FQN_PREFIX_SCRIPT (propagateToRelatedEntities, gated
+  // on the displayName change a UI rename sends) — single-pass, so the exact
+  // rename was already fine; the sibling assertion is what the boundary fix
+  // protects.
+  // ===================================================================
+  @Test
+  void test_renameTagPrefixExtension_rewritesAssetTagButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Classification classification = createClassification(ns);
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptag")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("tag renamed via prefix extension (#28696)"));
+    Tag sibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptagx")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("sibling tag sharing the textual prefix"));
+    String oldTagFqn = tag.getFullyQualifiedName();
+    String siblingFqn = sibling.getFullyQualifiedName();
+
+    Table asset = createTableTaggedWith(ns, tag, "p");
+    Table assetSibling = createTableTaggedWith(ns, sibling, "px");
+
+    awaitTableTag(client, mapper, asset.getId().toString(), oldTagFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+
+    tag.setName("ptag renamed");
+    tag.setDisplayName("Renamed Tag");
+    Tag renamed = patchEntity(tag.getId().toString(), tag);
+    String newTagFqn = renamed.getFullyQualifiedName();
+    assertTrue(
+        !oldTagFqn.equals(newTagFqn) && newTagFqn.startsWith(oldTagFqn),
+        "rename must extend the FQN as a prefix: " + newTagFqn);
+
+    // The renamed tag's FQN follows on the linked asset...
+    awaitTableTag(client, mapper, asset.getId().toString(), newTagFqn);
+    // ...and the prefix-sharing sibling tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
             });
   }
 }

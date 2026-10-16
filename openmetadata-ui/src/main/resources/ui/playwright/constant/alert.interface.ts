@@ -58,6 +58,7 @@ export interface ObservabilityCreationDetails {
     inputs?: Array<{
       inputSelector: string;
       inputValue: string;
+      inputValueId?: string;
       waitForAPI?: boolean;
     }>;
   }>;

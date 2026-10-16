@@ -26,6 +26,15 @@ export interface Pipeline {
      */
     concurrency?: number;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Reference to the data contract for this entity.
      */
     dataContract?: EntityReference;
@@ -513,8 +522,10 @@ export interface EntityReference {
 /**
  * Status of the Pipeline.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -577,7 +588,8 @@ export interface AccessDetails {
  */
 export interface PipelineStatus {
     /**
-     * Execution end time
+     * Wall clock time the execution finished. With the per-task `startTime`/`endTime` this is
+     * what alerting reads to decide whether an execution predates a subscription.
      */
     endTime?: number;
     /**
@@ -617,7 +629,10 @@ export interface PipelineStatus {
      */
     taskStatus?: TaskStatus[];
     /**
-     * Timestamp where the job was executed.
+     * Unique key identifying this execution within the pipeline's status history. Connector
+     * defined and NOT a reliable wall clock: sources fill it with whatever is stable per run,
+     * from a scheduler's logical date to the ingestion time. For when the execution actually
+     * ran, use `endTime` or the per-task `startTime`/`endTime`.
      */
     timestamp: number;
     /**
@@ -819,6 +834,7 @@ export enum PipelineServiceType {
     CustomPipeline = "CustomPipeline",
     DBTCloud = "DBTCloud",
     Dagster = "Dagster",
+    Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
     DatabricksPipeline = "DatabricksPipeline",
     DomoPipeline = "DomoPipeline",
@@ -832,11 +848,14 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    Prefect = "Prefect",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssis = "SSIS",
     Stitch = "Stitch",
+    TableauPipeline = "TableauPipeline",
     Wherescape = "Wherescape",
 }
 

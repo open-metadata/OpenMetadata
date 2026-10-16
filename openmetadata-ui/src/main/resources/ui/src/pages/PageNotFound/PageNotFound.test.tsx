@@ -15,6 +15,10 @@ import { getByTestId, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageNotFound from './PageNotFound';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 jest.mock('../../constants/constants', () => ({
   ROUTES: {},
 }));

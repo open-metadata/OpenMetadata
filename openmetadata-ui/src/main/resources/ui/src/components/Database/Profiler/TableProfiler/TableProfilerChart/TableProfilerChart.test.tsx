@@ -17,7 +17,6 @@ import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
-import '../../../../../test/unit/mocks/mui.mock';
 import TableProfilerChart from './TableProfilerChart';
 
 const MOCK_START_TS = 1640995200000;
@@ -45,9 +44,6 @@ jest.mock('../../ProfilerDetailsCard/ProfilerDetailsCard', () => {
 });
 jest.mock('../../../../Visualisations/Chart/CustomBarChart', () => {
   return jest.fn().mockImplementation(() => <div>CustomBarChart</div>);
-});
-jest.mock('../../../../Visualisations/Chart/OperationDateBarChart', () => {
-  return jest.fn().mockImplementation(() => <div>OperationDateBarChart</div>);
 });
 jest.mock('../../../../PageHeader/PageHeader.component', () => {
   return jest.fn().mockImplementation(() => <div>PageHeader</div>);
@@ -92,7 +88,6 @@ jest.mock('../../../../../rest/tableAPI', () => ({
 }));
 
 jest.mock('../../../../../utils/RouterUtils', () => ({
-  getAddCustomMetricPath: jest.fn(),
   getAddDataQualityTableTestPath: jest.fn(),
 }));
 
@@ -115,7 +110,8 @@ jest.mock('../../../../../utils/DocumentationLinksClassBase', () => {
     })),
   };
 });
-jest.mock('../../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../../utils/i18next/LocalUtil'),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => <div>{i18nKey}</div>),

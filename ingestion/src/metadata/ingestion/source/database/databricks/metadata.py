@@ -13,13 +13,12 @@
 import json
 import re
 import traceback
+from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
+from typing import TYPE_CHECKING, Any, NamedTuple, cast
 
-from pydantic import EmailStr
-from pydantic_core import PydanticCustomError
 from sqlalchemy import exc, text, types, util
-from sqlalchemy.engine import reflection
+from sqlalchemy.engine import Connection, reflection
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql.sqltypes import String
@@ -41,8 +40,10 @@ from metadata.generated.schema.type.basic import Markdown
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -56,17 +57,25 @@ from metadata.ingestion.source.database.databricks.models import (
     NestedDescriptions,
     NestedFieldPath,
 )
+from metadata.ingestion.source.database.databricks.ownership import (
+    DatabricksOwnerResolver,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
+    DATABRICKS_GET_ALL_SCHEMAS,
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
+    DATABRICKS_GET_COLUMN_TYPE,
     DATABRICKS_GET_SCHEMA_COMMENTS,
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
+    DATABRICKS_GET_TABLE_DESCRIBE_JSON,
     DATABRICKS_GET_TABLE_TAGS,
+    DATABRICKS_GET_TABLE_TYPES,
     DATABRICKS_VIEW_DEFINITIONS,
 )
+from metadata.ingestion.source.database.databricks.tags import TagMappingConfig, map_databricks_tag
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
@@ -83,13 +92,49 @@ from metadata.utils.sqlalchemy_utils import (
     get_table_comment_results,
     get_view_definition_wrapper,
 )
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksConnection as DatabricksConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
 DATABRICKS_TAG = "DATABRICKS TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
-DEFAULT_TAG_VALUE = "NONE"
+DATABRICKS_VALUELESS_CLASSIFICATION = "DATABRICKS_TAGS"
+DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION = "Databricks tags ingested as key-only (no associated value)."
+DATABRICKS_TAG_MAPPING = TagMappingConfig(
+    classification_description=DATABRICKS_TAG_CLASSIFICATION,
+    tag_description=DATABRICKS_TAG,
+    valueless_classification=DATABRICKS_VALUELESS_CLASSIFICATION,
+    valueless_description=DATABRICKS_VALUELESS_CLASSIFICATION_DESCRIPTION,
+)
+
+# Keys for the bounded, per-connection caches stored on ``connection.info``.
+# Scoping to the connection (one per thread, see CommonDbSourceService.connection)
+# keeps the size-1 caches thread-safe instead of sharing them on the engine-wide
+# dialect object.
+_DESCRIBE_JSON_CACHE_KEY = "databricks_describe_json"
+_DESCRIBE_JSON_SUPPORTED_KEY = "databricks_describe_json_supported"
+_TABLE_INFO_CACHE_KEY = "databricks_table_info"
+
+
+def _quote_identifier(identifier: str) -> str:
+    """Quote one Databricks identifier without interpreting dots as separators."""
+    escaped_identifier = identifier.replace("`", "``")
+    return f"`{escaped_identifier}`"
+
+
+def _qualified_identifier(*identifiers: str | None) -> str:
+    """Build a safely quoted Databricks identifier from individual name parts."""
+    return ".".join(_quote_identifier(identifier) for identifier in identifiers if identifier is not None)
+
+
+def _format_identifier_query(query: str, **identifiers: str) -> str:
+    """Format a query using only dialect-quoted identifier substitutions."""
+    return query.format(**{name: _quote_identifier(value) for name, value in identifiers.items()})
 
 
 class STRUCT(String):
@@ -138,7 +183,7 @@ _type_map = {
 
 
 def _fetch_nested_descriptions_via_describe_json(
-    connection,
+    connection: Connection,
     db_name: str | None,
     schema: str | None,
     table_name: str,
@@ -146,7 +191,7 @@ def _fetch_nested_descriptions_via_describe_json(
     """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` and return a per-column
     map of ``{field_path_tuple: comment}``.
 
-    ``DESCRIBE ... AS JSON`` is supported on Databricks Runtime 16.4+ and
+    ``DESCRIBE ... AS JSON`` is supported on Databricks Runtime 16.2+ and
     returns a structured payload with ``columns[].type.fields[].comment`` on
     nested struct fields — the only SQL path that exposes nested COMMENTs
     (Spark's regular ``simpleString`` output strips them).
@@ -157,10 +202,14 @@ def _fetch_nested_descriptions_via_describe_json(
     """
     if not db_name or not schema:
         return {}
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_DESCRIBE_JSON,
+        database_name=db_name,
+        schema_name=schema,
+        table_name=table_name,
+    )
     try:
-        result = connection.execute(
-            text(f"DESCRIBE TABLE EXTENDED `{db_name}`.`{schema}`.`{table_name}` AS JSON")
-        ).fetchone()
+        result = connection.execute(text(query)).fetchone()
         if not result or not result[0]:
             return {}
         payload = json.loads(result[0])
@@ -171,22 +220,13 @@ def _fetch_nested_descriptions_via_describe_json(
     return _build_column_descriptions_map(payload)
 
 
-def _build_column_descriptions_map(
-    payload: object,
+def _collect_descriptions_from_payload(
+    payload: DescribeJsonPayload,
 ) -> ColumnDescriptions:
-    """From a DESCRIBE-AS-JSON payload, return ``{column_name: {path: comment}}``
-    for every top-level column whose type contains commented nested fields.
-
-    Accepts a raw JSON-decoded value (``object``) and validates it into a
-    ``DescribeJsonPayload``. On any validation failure (older runtime,
-    schema variation, malformed JSON) returns an empty dict so the caller
-    cleanly degrades to top-level-only descriptions."""
-    try:
-        validated = DescribeJsonPayload.model_validate(payload)
-    except Exception:  # pylint: disable=broad-except
-        return {}
+    """From a parsed AS JSON payload, return ``{column_name: {path: comment}}``
+    for every top-level column whose type contains commented nested fields."""
     result: ColumnDescriptions = {}
-    for col in validated.columns:
+    for col in payload.columns:
         if not col.name:
             continue
         descriptions: NestedDescriptions = {}
@@ -194,6 +234,20 @@ def _build_column_descriptions_map(
         if descriptions:
             result[col.name] = descriptions
     return result
+
+
+def _build_column_descriptions_map(
+    payload: object,
+) -> ColumnDescriptions:
+    """Validate a raw JSON-decoded AS JSON payload and extract nested-field
+    descriptions. On any validation failure (older runtime, schema variation,
+    malformed JSON) returns an empty dict so the caller cleanly degrades to
+    top-level-only descriptions."""
+    try:
+        validated = DescribeJsonPayload.model_validate(payload)
+    except Exception:  # pylint: disable=broad-except
+        return {}
+    return _collect_descriptions_from_payload(validated)
 
 
 def _collect_nested_descriptions(
@@ -239,6 +293,109 @@ def _apply_nested_descriptions(
         _apply_nested_descriptions(child, descriptions, child_path)
 
 
+# AS JSON renders timestamps as timestamp_ltz/ntz; the legacy text DESCRIBE
+# (and _type_map) only know "timestamp", so normalise to keep both paths equal.
+_JSON_TYPE_NORMALIZATION = {
+    "timestamp_ltz": "timestamp",
+    "timestamp_ntz": "timestamp",
+}
+
+
+def _json_type_to_sql_string(type_node: DescribeJsonType | None) -> str:
+    """Render a ``DESCRIBE ... AS JSON`` type node as the SQL type string the
+    legacy column parser already consumes (``decimal(10,2)``, ``struct<a:int>``,
+    ``array<...>``, ``map<k,v>``) so the AS JSON path reuses the existing, tested
+    type handling. Returns ``""`` for an unusable node so the caller skips the
+    column — matching the legacy path's behaviour for unparseable types."""
+    if type_node is None or not type_node.name:
+        return ""
+    name = type_node.name.lower()
+    name = _JSON_TYPE_NORMALIZATION.get(name, name)
+    if name == "struct":
+        fields = []
+        for field in type_node.fields or []:
+            field_type = _json_type_to_sql_string(field.type)
+            if field.name and field_type:
+                fields.append(f"{field.name}:{field_type}")
+        return f"struct<{','.join(fields)}>"
+    if name == "array":
+        element = _json_type_to_sql_string(type_node.element_type)
+        # An array whose element type is missing/unusable can't be rendered as a
+        # valid type — return "" so the caller skips the column (same as the
+        # legacy path for unparseable types) instead of emitting "array<>".
+        return f"array<{element}>" if element else ""
+    if name == "map":
+        key = _json_type_to_sql_string(type_node.key_type)
+        value = _json_type_to_sql_string(type_node.value_type)
+        return f"map<{key},{value}>" if key and value else ""
+    if name == "decimal" and type_node.precision is not None:
+        if type_node.scale is not None:
+            return f"decimal({type_node.precision},{type_node.scale})"
+        return f"decimal({type_node.precision})"
+    if name in {"varchar", "char"} and type_node.length is not None:
+        return f"{name}({type_node.length})"
+    return name
+
+
+def _fetch_table_describe_json(
+    self,
+    connection: Connection,
+    db_name: str | None,
+    schema: str | None,
+    table_name: str,
+) -> DescribeJsonPayload | None:
+    """Run ``DESCRIBE TABLE EXTENDED <fqn> AS JSON`` once per table — one
+    round-trip that yields columns, comment, owner, location and view
+    definition. The parsed payload is held in a size-1 cache: ``get_columns``,
+    ``get_view_definition``, ``get_table_description`` and ``get_owner_ref`` all
+    run consecutively within one ``yield_table``, so the current table's payload
+    is reused by all four, then evicted when the next table is fetched — it is
+    never accumulated across the run.
+
+    Returns ``None`` on any failure (older runtime without ``AS JSON``, JSON or
+    validation error, missing db/schema) so callers fall back to the legacy
+    per-statement ``DESCRIBE`` path. State lives on ``connection.info`` so it is
+    scoped to the current thread's connection (the source hands each thread its
+    own connection) rather than the engine-shared dialect. After the first
+    ``AS JSON`` query errors, the ``supported`` flag short-circuits every later
+    table on that connection so a Databricks Runtime < 16.2 pays no repeated
+    failed-query cost."""
+    info = connection.info
+    if info.get(_DESCRIBE_JSON_SUPPORTED_KEY) is False:
+        return None
+    if not db_name or not schema:
+        return None
+    cache_key = (db_name, schema, table_name)
+    cached = info.get(_DESCRIBE_JSON_CACHE_KEY)
+    if isinstance(cached, dict) and cache_key in cached:
+        return cached[cache_key]
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_DESCRIBE_JSON,
+        database_name=db_name,
+        schema_name=schema,
+        table_name=table_name,
+    )
+    try:
+        result = connection.execute(text(query)).fetchone()
+    except Exception as err:  # pylint: disable=broad-except
+        # The query itself erroring is the "older runtime / unsupported" signal.
+        logger.debug(f"DESCRIBE AS JSON unsupported for {db_name}.{schema}.{table_name}: {err}")
+        info[_DESCRIBE_JSON_SUPPORTED_KEY] = False
+        return None
+    info[_DESCRIBE_JSON_SUPPORTED_KEY] = True
+    payload = None
+    try:
+        if result and result[0]:
+            payload = DescribeJsonPayload.model_validate(json.loads(result[0]))
+    except Exception as err:  # pylint: disable=broad-except
+        # Supported runtime, but this table's payload is unusable — fall back
+        # for this table only without disabling AS JSON for the whole run.
+        logger.debug(f"DESCRIBE AS JSON unparseable for {db_name}.{schema}.{table_name}: {err}")
+    # Size-1: replace, don't accumulate — the previous table's payload is dead.
+    info[_DESCRIBE_JSON_CACHE_KEY] = {cache_key: payload}
+    return payload
+
+
 # This method is from hive dialect originally but
 # is overridden to optimize DESCRIBE query execution
 def _get_table_columns(self, connection, table_name, schema, db_name):
@@ -249,7 +406,12 @@ def _get_table_columns(self, connection, table_name, schema, db_name):
     # Using DESCRIBE works but is uglier.
     try:
         # This needs the table name to be unescaped (no backticks).
-        query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=db_name, schema_name=schema, table_name=table_name)
+        query = _format_identifier_query(
+            DATABRICKS_GET_TABLE_COMMENTS,
+            database_name=db_name,
+            schema_name=schema,
+            table_name=table_name,
+        )
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -285,6 +447,44 @@ def _get_column_rows(self, connection, table_name, schema, db_name):
     return [row for row in column_rows if row[0] and row[0] != "# col_name"]
 
 
+def _columns_from_describe_json(payload: DescribeJsonPayload):
+    """Build SQLAlchemy column dicts from an AS JSON payload — the same shape the
+    legacy text-DESCRIBE path produces, so all downstream column processing is
+    shared between the two paths."""
+    nested_by_column = _collect_descriptions_from_payload(payload)
+    result = []
+    for col in payload.columns:
+        if not col.name:
+            continue
+        raw_col_type = _json_type_to_sql_string(col.type)
+        type_match = re.search(r"^\w+", raw_col_type)
+        if type_match is None:
+            logger.warning(f"Skipping column '{col.name}': unparseable type '{raw_col_type}'")
+            continue
+        col_type = type_match.group(0)
+        try:
+            coltype = _type_map[col_type]
+        except KeyError:
+            util.warn(f"Did not recognize type '{col_type}' of column '{col.name}'")
+            coltype = types.NullType
+        col_info = {
+            "name": col.name,
+            "type": coltype,
+            "nullable": True,
+            "default": None,
+            "comment": col.comment,
+            "system_data_type": raw_col_type,
+            "ordinal_position": len(result),
+        }
+        if col_type in {"array", "struct", "map"}:
+            col_info["is_complex"] = True
+            nested_descriptions = nested_by_column.get(col.name)
+            if nested_descriptions:
+                col_info["nested_descriptions"] = nested_descriptions
+        result.append(col_info)
+    return result
+
+
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
@@ -295,8 +495,13 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     value should match what is provided in the 'source.config.database' field in the
     Databricks ingest config file.
     """
+    db_name = kw.get("db_name")
+    payload = _fetch_table_describe_json(self, connection, db_name, schema, table_name)
+    if payload is not None and payload.columns:
+        return _columns_from_describe_json(payload)
 
-    rows = _get_column_rows(self, connection, table_name, schema, kw.get("db_name"))
+    # Legacy path (Databricks Runtime < 16.2): parse the text DESCRIBE output.
+    rows = _get_column_rows(self, connection, table_name, schema, db_name)
     # Lazily populated on the first struct / array<struct> column — most tables
     # are primitives-only and shouldn't pay the AS JSON round-trip, and map
     # values aren't surfaced as named children so they don't need it either.
@@ -343,12 +548,22 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             }
             if col_type in {"array", "struct", "map"}:
                 try:
-                    sub_rows = {
-                        r[0]: r[1]
-                        for r in connection.execute(
-                            text(f"DESCRIBE TABLE `{kw.get('db_name')}`.`{schema}`.`{table_name}` `{col_name}`")
-                        ).fetchall()
-                    }
+                    if db_name and schema:
+                        column_type_query = _format_identifier_query(
+                            DATABRICKS_GET_COLUMN_TYPE,
+                            database_name=db_name,
+                            schema_name=schema,
+                            table_name=table_name,
+                            column_name=col_name,
+                        )
+                    else:
+                        # No catalog (older Hive-metastore path), or no schema:
+                        # compose the table reference the same way get_table_type's
+                        # fallback does, and quote the column on its own.
+                        column_type_query = (
+                            f"DESCRIBE TABLE {_qualified_identifier(schema, table_name)} {_quote_identifier(col_name)}"
+                        )
+                    sub_rows = {r[0]: r[1] for r in connection.execute(text(column_type_query)).fetchall()}
                     col_info["system_data_type"] = sub_rows["data_type"]
                     col_info["is_complex"] = True
                     # Map values aren't surfaced as named children, so map
@@ -387,8 +602,9 @@ def get_columns(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_schema_names(self, connection, **kw):  # pylint: disable=unused-argument
     # Equivalent to SHOW DATABASES
-    if kw.get("database") and kw.get("is_old_version") is not True:
-        connection.execute(text(f"USE CATALOG '{kw.get('database')}'"))
+    database = kw.get("database")
+    if database and kw.get("is_old_version") is not True:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(database)}"))
     return [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
 
 
@@ -427,11 +643,12 @@ def get_view_names(  # pylint: disable=unused-argument
     only_temp: bool = False,  # pyright: ignore[reportUnusedParameter]
     **kw: Any,
 ) -> list[str]:
-    if kw.get("db_name"):
-        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
+    db_name = kw.get("db_name")
+    if db_name:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(db_name)}"))
     query = "SHOW VIEWS"
     if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+        query += " IN " + _quote_identifier(schema)
     view_in_schema = connection.execute(text(query))
     views = []
     for row in view_in_schema:
@@ -452,7 +669,8 @@ def get_table_comment(  # pylint: disable=unused-argument
     """
     Returns comment of table
     """
-    query = DATABRICKS_GET_TABLE_COMMENTS.format(
+    query = _format_identifier_query(
+        DATABRICKS_GET_TABLE_COMMENTS,
         database_name=self.context.get().database,
         schema_name=schema_name,
         table_name=table_name,
@@ -483,8 +701,19 @@ def get_view_definition(
     schema=None,
     **kw,  # pylint: disable=unused-argument
 ):
-    schema_name = [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
-    if "information_schema" in schema_name:
+    current_catalog = connection.engine.url.database
+    payload = _fetch_table_describe_json(self, connection, current_catalog, schema, table_name)
+    if payload is not None:
+        return payload.view_text or payload.view_original_text or None
+
+    # Legacy path: Databricks Runtime < 16.2 (no AS JSON), or when the catalog
+    # name is absent from the engine URL so the AS JSON FQN can't be built.
+    # The dialect is recreated per catalog (set_inspector), so caching the
+    # SHOW SCHEMAS check on it is effectively per-catalog.
+    if not hasattr(self, "_has_information_schema"):
+        schema_names = [row[0] for row in connection.execute(text("SHOW SCHEMAS"))]
+        self._has_information_schema = "information_schema" in schema_names
+    if self._has_information_schema:
         return get_view_definition_wrapper(
             self,
             connection,
@@ -539,7 +768,7 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
     Gets the Table DDL
     """
     schema = schema or self.default_schema_name
-    table_name = f"{schema}.{table_name}" if schema else table_name
+    table_name = _qualified_identifier(schema, table_name)
     cursor = connection.execute(text(DATABRICKS_DDL.format(table_name=table_name)))
     try:
         result = cursor.fetchone()
@@ -552,11 +781,12 @@ def get_table_ddl(self, connection, table_name, schema=None, **kw):  # pylint: d
 
 @reflection.cache
 def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
-    if kw.get("db_name"):
-        connection.execute(text(f"USE CATALOG {self.identifier_preparer.quote_identifier(kw.get('db_name'))}"))
+    db_name = kw.get("db_name")
+    if db_name:
+        connection.execute(text(f"USE CATALOG {_quote_identifier(db_name)}"))
     query = "SHOW TABLES"
     if schema:
-        query += " IN " + self.identifier_preparer.quote_identifier(schema)
+        query += " IN " + _quote_identifier(schema)
     tables_in_schema = connection.execute(text(query))
     tables = []
     for row in tables_in_schema:
@@ -582,13 +812,96 @@ def get_table_names(self, connection, schema=None, **kw):  # pylint: disable=unu
     return [table for table in tables if table not in views]
 
 
+class _TableInfo(NamedTuple):
+    """The two ``information_schema.tables`` columns the dialect reads: the raw
+    Databricks table type (to skip FOREIGN tables) and the storage format (to
+    classify Delta/Iceberg)."""
+
+    table_type: str
+    data_source_format: str | None
+
+
+_UNKNOWN_TABLE_INFO = _TableInfo(table_type="", data_source_format=None)
+
+
+def _get_schema_table_info(
+    self,
+    connection: Connection,
+    database: str | None,
+    schema: str,
+) -> dict[str, _TableInfo]:
+    """The schema's tables mapped to their ``_TableInfo``, from one
+    ``information_schema.tables`` query in place of a per-table ``DESCRIBE``.
+
+    Held in a size-1 cache on ``connection.info`` so it is scoped to the current
+    thread's connection (the source hands each thread its own connection) and
+    bounded: every ``get_table_type`` call for a schema's tables runs inside one
+    ``get_table_names`` pass, so the current schema's map is reused, then evicted
+    when the next schema is fetched — never accumulated across the catalog.
+    Returns an empty mapping on failure so callers fall back to a per-table
+    ``DESCRIBE``."""
+    cache_key = (database, schema)
+    cached = connection.info.get(_TABLE_INFO_CACHE_KEY)
+    if isinstance(cached, dict) and cache_key in cached:
+        return cached[cache_key]
+    table_info: dict[str, _TableInfo] = {}
+    if database:
+        try:
+            rows = connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_TABLE_TYPES,
+                        database_name=database,
+                    )
+                ).bindparams(schema_name=schema)
+            )
+            table_info = {row[0]: _TableInfo(table_type=row[1], data_source_format=row[2]) for row in rows}
+        except Exception as err:  # pylint: disable=broad-except
+            logger.debug(
+                "Bulk table-info fetch failed for %s.%s, falling back to per-table DESCRIBE: %s",
+                database,
+                schema,
+                err,
+            )
+    # Size-1: replace, don't accumulate — the previous schema's map is dead.
+    connection.info[_TABLE_INFO_CACHE_KEY] = {cache_key: table_info}
+    return table_info
+
+
+def _table_type_from_data_source_format(data_source_format: str | None) -> TableType | None:
+    """Map a Databricks ``information_schema.tables.data_source_format`` to an
+    OpenMetadata table type. Unity Catalog reports every Delta table — managed,
+    partitioned and UniForm(Iceberg) alike — as ``DELTA``, while native Iceberg
+    tables report ``ICEBERG``. Both are matched exactly: DELTASHARING shares the
+    prefix but is a Delta Sharing table. Any other/unknown/missing value returns
+    ``None`` so the caller keeps its default type."""
+    if not data_source_format:
+        return None
+    normalized = data_source_format.strip().upper()
+    if normalized == "DELTA":
+        return TableType.DeltaLake
+    if normalized == "ICEBERG":
+        return TableType.Iceberg
+    return None
+
+
 def get_table_type(self, connection, database, schema, table):
-    """get table type (regular/foreign)"""
+    """The table's raw Databricks type string (MANAGED/EXTERNAL/VIEW/FOREIGN/...),
+    read from the schema's bulk map or, failing that, a per-table ``DESCRIBE``.
+    ``get_table_names`` uses it to skip FOREIGN tables."""
     try:
+        table_info = _get_schema_table_info(self, connection, database, schema)
+        if table in table_info:
+            return table_info[table].table_type
         if database:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(database_name=database, schema_name=schema, table_name=table)
+            query = _format_identifier_query(
+                DATABRICKS_GET_TABLE_COMMENTS,
+                database_name=database,
+                schema_name=schema,
+                table_name=table,
+            )
         else:
-            query = f"DESCRIBE TABLE EXTENDED `{schema}`.`{table}`"
+            query = f"DESCRIBE TABLE EXTENDED {_qualified_identifier(schema, table)}"
         rows = get_table_comment_result(
             self,
             connection=connection,
@@ -600,7 +913,6 @@ def get_table_type(self, connection, database, schema, table):
         for row in rows:
             row_dict = row._asdict() if hasattr(row, "_asdict") else row
             if row_dict.get("col_name") == "Type":
-                # get type of table
                 return row_dict.get("data_type")
     except DatabaseError as err:
         logger.error(f"Failed to fetch table type for table {table} due to: {err}")
@@ -640,6 +952,12 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.table_tags = {}
         self.external_location_map = {}
         self.column_tags = {}
+        self.api_client = cast("DatabricksConnectionHandler", self._connection).api.client
+        self.owner_resolver = DatabricksOwnerResolver(
+            api_client=self.api_client,
+            metadata=self.metadata,
+            include_owners=self.source_config.includeOwners,
+        )
 
     def _init_version(self):
         try:
@@ -657,7 +975,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         return om_column
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: DatabricksConnection = config.serviceConnection.root.config
         if not isinstance(connection, DatabricksConnection):
@@ -670,21 +988,22 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         to setup multiple inspectors. They can use this function.
         :param database_name: new database to set
         """
+        self._release_engine()
         logger.info(f"Ingesting from catalog: {database_name}")
+        self.external_location_map.clear()
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.catalog = database_name
         self.engine = get_connection(new_service_connection)
+        self.session = create_and_bind_thread_safe_session(self.engine)
+        self.connection_obj = self.engine
 
-        self._connection_map = {}  # Lazy init as well
-        self._inspector_map = {}
-
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.catalog
 
     def get_database_names_raw(self) -> Iterable[str]:
         if not self.is_older_version:
-            results = self.connection.execute(text(DATABRICKS_GET_CATALOGS))
+            results = self.connection.execute(text(DATABRICKS_GET_CATALOGS)).fetchall()
             for res in results:
                 if res:
                     row = list(res)
@@ -716,12 +1035,24 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
         This is useful for sources where we need fine-grained
         logic on how to handle table types, e.g., external, foreign,...
-        """
 
+        Delta/Iceberg storage is stamped from the schema's cached
+        ``data_source_format`` (populated while listing the tables) so managed,
+        partitioned and UniForm Delta tables surface as DeltaLake and native
+        Iceberg tables as Iceberg, without a per-table query.
+        """
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        table_names = self.inspector.get_table_names(schema=schema_name, db_name=database) or []
+        table_info = _get_schema_table_info(self.connection.dialect, self.connection, database, schema_name)
         return [
-            TableNameAndType(name=table_name)
-            for table_name in self.inspector.get_table_names(schema=schema_name, db_name=self.context.get().database)
-            or []
+            TableNameAndType(
+                name=table_name,
+                type_=_table_type_from_data_source_format(
+                    table_info.get(table_name, _UNKNOWN_TABLE_INFO).data_source_format
+                )
+                or TableType.Regular,
+            )
+            for table_name in table_names
         ]
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
@@ -749,7 +1080,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.schema_tags.clear()
         self.column_tags.clear()
 
-    def _add_to_tag_cache(self, tag_dict: dict, key: Union[str, Tuple], value: Tuple[str, str]):  # noqa: UP006, UP007
+    def _add_to_tag_cache(self, tag_dict: dict, key: str | tuple, value: tuple[str, str | None]):
         if tag_dict.get(key):
             tag_dict.get(key).append(value)
         else:
@@ -763,62 +1094,79 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         if self.source_config.includeTags is False:
             return
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_CATALOGS_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_CATALOGS_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
 
             for tag in tags:
                 self._add_to_tag_cache(
                     self.catalog_tags,
                     tag.catalog_name,
-                    # tag value is an optional field, if tag value is not available use default tag value
-                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
             logger.debug(f"Failed to fetch catalog tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_SCHEMA_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_SCHEMA_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 self._add_to_tag_cache(
                     self.schema_tags,
                     (tag.catalog_name, tag.schema_name),
-                    # tag value is an optional field, if tag value is not available use default tag value
-                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
             logger.debug(f"Failed to fetch schema tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_TABLE_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_TABLE_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 self._add_to_tag_cache(
                     self.table_tags,
                     (tag.catalog_name, tag.schema_name, tag.table_name),
-                    # tag value is an optional field, if tag value is not available use default tag value
-                    (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                    (tag.tag_name, tag.tag_value),
                 )
         except Exception as exc:
             logger.debug(f"Failed to fetch table tags due to - {exc}")
 
         try:
-            tags = self.connection.execute(text(DATABRICKS_GET_COLUMN_TAGS.format(database_name=database_name)))
+            tags = self.connection.execute(
+                text(
+                    _format_identifier_query(
+                        DATABRICKS_GET_COLUMN_TAGS,
+                        database_name=database_name,
+                    )
+                )
+            )
             for tag in tags:
                 tag_table_id = (tag.catalog_name, tag.schema_name, tag.table_name)
                 if self.column_tags.get(tag_table_id):
                     self._add_to_tag_cache(
                         self.column_tags.get(tag_table_id),
                         tag.column_name,
-                        # tag value is an optional field, if tag value is not available use default tag value
-                        (tag.tag_name, tag.tag_value or DEFAULT_TAG_VALUE),
+                        (tag.tag_name, tag.tag_value),
                     )
                 else:
-                    self.column_tags[tag_table_id] = {
-                        tag.column_name: [
-                            (
-                                tag.tag_name,
-                                tag.tag_value or DEFAULT_TAG_VALUE,
-                            )
-                        ]
-                    }
+                    self.column_tags[tag_table_id] = {tag.column_name: [(tag.tag_name, tag.tag_value)]}
         except Exception as exc:
             logger.debug(f"Failed to fetch column tags due to - {exc}")
 
@@ -867,19 +1215,20 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         try:
             catalog_tags = self.catalog_tags.get(database_name, [])
             for tag_name, tag_value in catalog_tags:
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        Database,
-                        service_name=self.context.get().database_service,
-                        database_name=database_name,
+                if not tag_name:
+                    continue
+                yield from self.register_tag(
+                    entity_fqn=cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            Database,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=database_name,
+                            skip_es_search=True,
+                        ),
                     ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
         except Exception as exc:
@@ -896,22 +1245,23 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         Method to yield schema tags
         """
         try:
-            schema_tags = self.schema_tags.get((self.context.get().database, schema_name), [])
+            schema_tags = self.schema_tags.get((self.context.get().database, schema_name), [])  # pyright: ignore[reportAttributeAccessIssue]
             for tag_name, tag_value in schema_tags:
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=schema_name,
+                if not tag_name:
+                    continue
+                yield from self.register_tag(
+                    entity_fqn=cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            DatabaseSchema,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                            schema_name=schema_name,
+                            skip_es_search=True,
+                        ),
                     ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
         except Exception as exc:
@@ -925,62 +1275,63 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
 
     def yield_table_tags(
         self,
-        table_name_and_type: Tuple[str, TableType],  # noqa: UP006
+        table_name_and_type: tuple[str, TableType],
     ) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type
         try:
             table_tags = self.table_tags.get(
                 (
-                    self.context.get().database,
-                    self.context.get().database_schema,
+                    self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     table_name,
                 ),
                 [],
             )
             for tag_name, tag_value in table_tags:
-                yield from get_ometa_tag_and_classification(
-                    tag_fqn=fqn.build(
-                        self.metadata,
-                        Table,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
-                        table_name=table_name,
+                if not tag_name:
+                    continue
+                yield from self.register_tag(
+                    entity_fqn=cast(
+                        "str",
+                        fqn.build(
+                            self.metadata,
+                            Table,
+                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                            schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                            table_name=table_name,
+                            skip_es_search=True,
+                        ),
                     ),
-                    tags=[tag_value],
-                    classification_name=tag_name,
-                    tag_description=DATABRICKS_TAG,
-                    classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                    metadata=self.metadata,
-                    system_tags=True,
+                    definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                 )
 
             column_tags = self.column_tags.get(
                 (
-                    self.context.get().database,
-                    self.context.get().database_schema,
+                    self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
                     table_name,
                 ),
                 {},
             )
             for column_name, tags in column_tags.items():
                 for tag_name, tag_value in tags or []:
-                    yield from get_ometa_tag_and_classification(
-                        tag_fqn=fqn.build(
-                            self.metadata,
-                            Column,
-                            service_name=self.context.get().database_service,
-                            database_name=self.context.get().database,
-                            schema_name=self.context.get().database_schema,
-                            table_name=table_name,
-                            column_name=column_name,
+                    if not tag_name:
+                        continue
+                    yield from self.register_tag(
+                        entity_fqn=cast(
+                            "str",
+                            fqn.build(
+                                self.metadata,
+                                Column,
+                                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                                database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                                schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                                table_name=table_name,
+                                column_name=column_name,
+                            ),
                         ),
-                        tags=[tag_value],
-                        classification_name=tag_name,
-                        tag_description=DATABRICKS_TAG,
-                        classification_description=DATABRICKS_TAG_CLASSIFICATION,
-                        metadata=self.metadata,
-                        system_tags=True,
+                        definition=map_databricks_tag(tag_name, tag_value, DATABRICKS_TAG_MAPPING),
                     )
 
         except Exception as exc:
@@ -995,7 +1346,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
     def get_schema_description(self, schema_name: str) -> str:
         description = None
         try:
-            query = DATABRICKS_GET_SCHEMA_COMMENTS.format(
+            query = _format_identifier_query(
+                DATABRICKS_GET_SCHEMA_COMMENTS,
                 database_name=self.context.get().database,
                 schema_name=schema_name,
             )
@@ -1017,18 +1369,29 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Schema description error for schema [{schema_name}]: {exep}")
         return description
 
-    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str:
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
+        database = self.context.get().database
+        payload = _fetch_table_describe_json(inspector.dialect, self.connection, database, schema_name, table_name)
+        if payload is not None:
+            location = payload.location
+            self.external_location_map[(database, schema_name, table_name)] = (
+                location if location and not location.startswith("dbfs") else None
+            )
+            return payload.comment
+
+        # Legacy path (Databricks Runtime < 16.2): parse the text DESCRIBE output.
         description = None
         try:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(
-                database_name=self.context.get().database,
+            query = _format_identifier_query(
+                DATABRICKS_GET_TABLE_COMMENTS,
+                database_name=database,
                 schema_name=schema_name,
                 table_name=table_name,
             )
             cursor = inspector.dialect.get_table_comment_result(
                 connection=self.connection,
                 query=query,
-                database=self.context.get().database,
+                database=database,
                 table_name=table_name,
                 schema=schema_name,
             )
@@ -1037,7 +1400,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
-                    self.external_location_map[(self.context.get().database, schema_name, table_name)] = (
+                    self.external_location_map[(database, schema_name, table_name)] = (
                         data[1] if data and data[1] and not data[1].startswith("dbfs") else None
                     )
 
@@ -1047,7 +1410,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")
         return description
 
-    def get_location_path(self, table_name: str, schema_name: str) -> Optional[str]:  # noqa: UP045
+    def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
         """
@@ -1059,41 +1422,102 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         filtered_name = re.sub(pattern, "", owner_name).strip()
         return filtered_name  # noqa: RET504
 
-    def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, table_name: str) -> EntityReferenceList | None:
         """
         Method to process the table owners
         """
         try:
-            query = DATABRICKS_GET_TABLE_COMMENTS.format(
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
-                table_name=table_name,
+            database = self.context.get().database
+            schema_name = self.context.get().database_schema
+            payload = _fetch_table_describe_json(
+                self.inspector.dialect, self.connection, database, schema_name, table_name
             )
-            result = self.inspector.dialect.get_table_comment_result(
-                connection=self.connection,
-                query=query,
-                database=self.context.get().database,
-                table_name=table_name,
-                schema=self.context.get().database_schema,
-            )
-            owner = None
-            for row in result:
-                row_dict = row._asdict() if hasattr(row, "_asdict") else row
-                if row_dict.get("col_name") == "Owner":
-                    owner = row_dict.get("data_type")
-                    break
+            if payload is not None:
+                owner = payload.owner
+            else:
+                # Legacy path (Databricks Runtime < 16.2).
+                query = _format_identifier_query(
+                    DATABRICKS_GET_TABLE_COMMENTS,
+                    database_name=database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                )
+                result = self.inspector.dialect.get_table_comment_result(
+                    connection=self.connection,
+                    query=query,
+                    database=database,
+                    table_name=table_name,
+                    schema=schema_name,
+                )
+                owner = None
+                for row in result:
+                    row_dict = row._asdict() if hasattr(row, "_asdict") else row
+                    if row_dict.get("col_name") == "Owner":
+                        owner = row_dict.get("data_type")
+                        break
             if not owner:
                 return  # noqa: RET502
 
             owner = self._filter_owner_name(owner)
-            owner_ref = None
-            try:
-                owner_email = EmailStr._validate(owner)
-                owner_ref = self.metadata.get_reference_by_email(email=owner_email)
-            except PydanticCustomError:
-                owner_ref = self.metadata.get_reference_by_name(name=owner)
-            return owner_ref  # noqa: TRY300
+            return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return  # noqa: RET502
+
+    def _filtered_database_names_for_totals(self) -> list[str]:
+        """Filtered database names for the progress denominator. Single configured
+        catalog when one is set on the connection, else the filtered result of the
+        catalog enumeration. Emits no status side effects."""
+        configured_db = self.get_configured_database()
+        if configured_db:
+            result = [configured_db]
+        else:
+            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
+        return result
+
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
+        """``{database: [schema_names]}`` for every visible catalog from a single
+        cross-catalog ``system.information_schema.schemata`` query — one round-trip,
+        no per-catalog reconnect. Returns ``None`` when the view is unavailable
+        (missing permissions or the system schema not enabled) so the caller falls
+        back to reconcile-only."""
+        try:
+            rows = self.connection.execute(text(DATABRICKS_GET_ALL_SCHEMAS)).fetchall()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "system.information_schema.schemata unavailable (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        by_database: dict[str, list[str]] = {}
+        for row in rows:
+            database_name = row[0]
+            schema_name = row[1]
+            if database_name is not None and schema_name is not None:
+                by_database.setdefault(str(database_name), []).append(str(schema_name))
+        return by_database
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` and ``DatabaseSchema`` counters upfront.
+        ``Database`` is the filtered DB count; ``DatabaseSchema`` is the post-filter
+        schema count per database from the cross-catalog
+        ``system.information_schema.schemata``. When that view is unavailable the
+        schema counter is marked reconcilable so the walk fills its total instead."""
+        database_names = self._filtered_database_names_for_totals()
+        totals.set_total(Database.__name__, len(database_names))
+        schemas_by_database = self._schema_names_by_database()
+        if schemas_by_database is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            # Catalog identifiers are case-insensitive: the walk's scope key keeps the
+            # configured/SHOW CATALOGS casing while the view returns catalog_name in its
+            # own casing, so match case-insensitively to avoid seeding a spurious 0.
+            schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
+            for database_name in database_names:
+                kept = [
+                    schema_name
+                    for schema_name in schemas_by_lower.get(database_name.lower(), [])
+                    if not self._is_schema_filtered(database_name, schema_name)
+                ]
+                totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))

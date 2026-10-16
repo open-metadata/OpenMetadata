@@ -13,6 +13,7 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getAirflowStatus } from '../../rest/ingestionPipelineAPI';
 import AirflowStatusProvider, {
   useAirflowStatus,
@@ -174,5 +175,27 @@ describe('AirflowStatusProvider', () => {
     await waitFor(() => {
       expect(screen.getByTestId('reason').textContent).toBe('Refreshed status');
     });
+  });
+
+  // Consumers gate their "Airflow is unavailable" states on `isFetchingStatus`. Until the user
+  // resolves, the status endpoint has not been asked, so reporting a terminal status here makes
+  // every one of them render its error placeholder on first paint.
+  it('should keep reporting a fetch in progress until the user resolves', async () => {
+    (useApplicationStore as unknown as jest.Mock).mockReturnValue({
+      currentUser: undefined,
+    });
+
+    render(
+      <AirflowStatusProvider>
+        <TestComponent />
+      </AirflowStatusProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('isFetchingStatus').textContent).toBe('true');
+    });
+
+    expect(getAirflowStatus).not.toHaveBeenCalled();
+    expect(screen.getByTestId('isAirflowAvailable').textContent).toBe('false');
   });
 });

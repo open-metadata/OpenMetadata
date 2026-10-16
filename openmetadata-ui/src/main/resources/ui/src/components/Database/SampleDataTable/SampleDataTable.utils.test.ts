@@ -47,7 +47,10 @@ describe('stringifySampleDataValue', () => {
 });
 
 describe('buildSampleDataCSVContent', () => {
-  const columns = ['id', 'name', 'age'];
+  const toColumns = (names: string[]) =>
+    names.map((name) => ({ key: name, name }));
+
+  const columns = toColumns(['id', 'name', 'age']);
   const rows = [
     { id: 1, name: 'Alice', age: 30 },
     { id: 2, name: 'Bob', age: 25 },
@@ -76,9 +79,40 @@ describe('buildSampleDataCSVContent', () => {
     expect(lines).toHaveLength(3); // header + 2 data rows
   });
 
+  it('reads cells by column key while writing the column name as the header', () => {
+    const csv = buildSampleDataCSVContent(
+      [
+        { key: '0-children', name: 'children' },
+        { key: '1-label', name: 'label' },
+      ],
+      [{ '0-children': 'child-value', '1-label': 'label-value' }],
+      10
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe('children,label');
+    expect(lines[1]).toBe('child-value,label-value');
+  });
+
+  it('keeps one column per occurrence when column names repeat', () => {
+    const csv = buildSampleDataCSVContent(
+      [
+        { key: '0-dup', name: 'dup' },
+        { key: '1-dup', name: 'dup' },
+        { key: '2-x', name: 'x' },
+      ],
+      [{ '0-dup': 'A', '1-dup': 'B', '2-x': 'C' }],
+      10
+    );
+    const lines = csv.split('\n');
+
+    expect(lines[0]).toBe('dup,dup,x');
+    expect(lines[1]).toBe('A,B,C');
+  });
+
   it('handles null cell values as empty strings', () => {
     const csv = buildSampleDataCSVContent(
-      ['a', 'b'],
+      toColumns(['a', 'b']),
       [{ a: null, b: null }],
       10
     );
@@ -89,7 +123,7 @@ describe('buildSampleDataCSVContent', () => {
 
   it('quotes values that contain commas', () => {
     const csv = buildSampleDataCSVContent(
-      ['col'],
+      toColumns(['col']),
       [{ col: 'hello, world' }],
       10
     );
@@ -98,14 +132,18 @@ describe('buildSampleDataCSVContent', () => {
   });
 
   it('quotes values that contain double quotes, escaping them', () => {
-    const csv = buildSampleDataCSVContent(['col'], [{ col: 'say "hi"' }], 10);
+    const csv = buildSampleDataCSVContent(
+      toColumns(['col']),
+      [{ col: 'say "hi"' }],
+      10
+    );
 
     expect(csv).toContain('"say ""hi"""');
   });
 
   it('quotes values that contain newlines', () => {
     const csv = buildSampleDataCSVContent(
-      ['col'],
+      toColumns(['col']),
       [{ col: 'line1\nline2' }],
       10
     );
@@ -115,7 +153,7 @@ describe('buildSampleDataCSVContent', () => {
 
   it('serializes object values as JSON in RFC 4180 encoding', () => {
     const csv = buildSampleDataCSVContent(
-      ['meta'],
+      toColumns(['meta']),
       [{ meta: { nested: true } }],
       10
     );

@@ -37,8 +37,8 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () =>
-  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
+jest.mock('../../common/EntityDescription/Description', () =>
+  jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
@@ -81,7 +81,7 @@ describe('ContainerVersion tests', () => {
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
-    const description = screen.getByText('DescriptionV1');
+    const description = screen.getByText('Description');
     const schemaTabLabel = screen.getByText('label.schema');
     const customPropertyTabLabel = screen.getByText(
       'label.custom-property-plural'
@@ -145,6 +145,49 @@ describe('ContainerVersion tests', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith(
       '/container/s3_storage_sample.departments.finance.expenditures/versions/0.3/custom_properties'
+    );
+  });
+});
+
+describe('ContainerVersion ViewCustomFields permission', () => {
+  const mockCustomPropertyTable = jest.requireMock(
+    '../../common/CustomPropertyTable/CustomPropertyTable'
+  ).CustomPropertyTable;
+
+  const renderWithViewCustomFields = (viewCustomFields: boolean) => {
+    render(
+      <ContainerVersion
+        {...containerVersionMockProps}
+        entityPermissions={{
+          ...containerVersionMockProps.entityPermissions,
+          ViewCustomFields: viewCustomFields,
+        }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    fireEvent.click(screen.getByText('label.custom-property-plural'));
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('should pass hasPermission=true to CustomPropertyTable when ViewCustomFields is granted', () => {
+    renderWithViewCustomFields(true);
+
+    expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+      expect.objectContaining({ hasPermission: true }),
+      expect.any(Object)
+    );
+  });
+
+  it('should pass hasPermission=false to CustomPropertyTable when ViewCustomFields is denied', () => {
+    renderWithViewCustomFields(false);
+
+    expect(mockCustomPropertyTable).toHaveBeenCalledWith(
+      expect.objectContaining({ hasPermission: false }),
+      expect.any(Object)
     );
   });
 });

@@ -9,6 +9,7 @@ import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.type.MessagingConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating MessagingService entities in integration tests.
@@ -36,7 +37,8 @@ public class MessagingServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Kafka service");
 
-    return SdkClients.adminClient().messagingServices().create(request);
+    return ns.trackRoot(
+        Entity.MESSAGING_SERVICE, SdkClients.adminClient().messagingServices().create(request));
   }
 
   /**
@@ -60,7 +62,8 @@ public class MessagingServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Redpanda service");
 
-    return SdkClients.adminClient().messagingServices().create(request);
+    return ns.trackRoot(
+        Entity.MESSAGING_SERVICE, SdkClients.adminClient().messagingServices().create(request));
   }
 
   /** Get messaging service by ID. */

@@ -12,15 +12,13 @@
  */
 
 import {
+  Box,
   Card,
-  Col,
   Divider,
-  Row,
-  Space,
   Tabs,
-  TabsProps,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,24 +27,25 @@ import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ChangeDescription } from '../../../generated/entity/data/dashboard';
 import { MlFeature } from '../../../generated/entity/data/mlmodel';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getMlFeatureVersionData } from '../../../utils/MlModelVersionUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
+import { TabProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/DataAssetsVersionHeader';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
@@ -55,7 +54,6 @@ import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import SourceList from '../MlModelDetail/SourceList.component';
 import { MlModelVersionProp } from './MlModelVersion.interface';
-
 const MlModelVersion: FC<MlModelVersionProp> = ({
   version,
   currentVersionData,
@@ -79,17 +77,22 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
     currentVersionData.changeDescription as ChangeDescription
   );
 
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          changeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [changeDescription, owners, tier, domains]
-    );
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
+    () =>
+      getCommonExtraInfoForVersionDetails(
+        changeDescription,
+        owners,
+        tier,
+        domains
+      ),
+    [changeDescription, owners, tier, domains]
+  );
 
   const mlFeaturesData = useMemo(
     () => getMlFeatureVersionData(currentVersionData, changeDescription),
@@ -137,15 +140,11 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
   }, [currentVersionData, changeDescription]);
 
   const viewCustomPropertiesPermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        entityPermissions,
-        Operation.ViewCustomFields
-      ),
+    () => getDerivedPermissionFlags(entityPermissions).canViewCustomFields,
     [entityPermissions]
   );
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: TabProps[] = useMemo(
     () => [
       {
         key: EntityTabs.FEATURES,
@@ -156,149 +155,175 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
           />
         ),
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" flex="auto">
-              <Row gutter={[0, 16]}>
-                <Col span={24}>
-                  <DescriptionV1
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
+              <Box direction="col" gap={4}>
+                <div>
+                  <Description
                     description={description}
                     entityType={EntityType.PIPELINE}
                     showActions={false}
                   />
-                </Col>
-                <Col span={24}>
+                </div>
+                <div>
                   {currentVersionData.mlFeatures?.length ? (
-                    <Row data-testid="feature-list">
-                      <Col span={24}>
+                    <Box data-testid="feature-list" direction="col">
+                      <div>
                         <Divider className="m-y-md" />
-                      </Col>
-                      <Col span={24}>
-                        <Typography.Title level={5}>
+                      </div>
+                      <div>
+                        <Typography as="h5" size="text-md" weight="semibold">
                           {t('label.feature-plural-used')}
-                        </Typography.Title>
-                      </Col>
+                        </Typography>
+                      </div>
 
                       {mlFeaturesData?.map((feature: MlFeature) => (
-                        <Col key={feature.fullyQualifiedName} span={24}>
+                        <div key={feature.fullyQualifiedName}>
                           <Card
-                            bordered
                             className="m-b-xlg"
                             data-testid={`feature-card-${feature.name ?? ''}`}
                             key={feature.fullyQualifiedName}>
-                            <Row>
-                              <Col className="m-b-xs" span={24}>
-                                <Typography.Text className="font-semibold">
-                                  {feature.name}
-                                </Typography.Text>
-                              </Col>
-                              <Col className="m-b-xs" span={24}>
-                                <Space align="start">
-                                  <Space>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.type')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
-                                      {feature.dataType || '--'}
-                                    </Typography.Text>
-                                  </Space>
-                                  <Divider
-                                    className="border-gray"
-                                    type="vertical"
-                                  />
-                                  <Space>
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.algorithm')}:`}
-                                    </Typography.Text>{' '}
-                                    <Typography.Text>
-                                      {feature.featureAlgorithm || '--'}
-                                    </Typography.Text>
-                                  </Space>
-                                </Space>
-                              </Col>
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="130px">
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.glossary-term-plural')} :`}
-                                    </Typography.Text>
-                                  </Col>
-
-                                  <Col flex="auto">
-                                    <TagsViewer
-                                      sizeCap={-1}
-                                      tags={
-                                        getFilterTags(feature.tags ?? [])
-                                          .Glossary
-                                      }
+                            <Card.Content>
+                              <Box direction="col">
+                                <div className="m-b-xs">
+                                  <Typography className="font-semibold">
+                                    {feature.name}
+                                  </Typography>
+                                </div>
+                                <div className="m-b-xs">
+                                  <Box
+                                    inline
+                                    align="start"
+                                    className="layout-space layout-space-horizontal"
+                                    gap={2}
+                                    itemClassName="layout-space-item">
+                                    <Box
+                                      inline
+                                      align="center"
+                                      className="layout-space layout-space-horizontal"
+                                      gap={2}
+                                      itemClassName="layout-space-item">
+                                      <Typography color="secondary">
+                                        {`${t('label.type')}:`}
+                                      </Typography>{' '}
+                                      <Typography>
+                                        {feature.dataType || '--'}
+                                      </Typography>
+                                    </Box>
+                                    <Divider
+                                      className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
+                                      orientation="vertical"
                                     />
-                                  </Col>
-                                </Row>
-                              </Col>
+                                    <Box
+                                      inline
+                                      align="center"
+                                      className="layout-space layout-space-horizontal"
+                                      gap={2}
+                                      itemClassName="layout-space-item">
+                                      <Typography color="secondary">
+                                        {`${t('label.algorithm')}:`}
+                                      </Typography>{' '}
+                                      <Typography>
+                                        {feature.featureAlgorithm || '--'}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </div>
+                                <div className="m-b-xs">
+                                  <Box gap={2}>
+                                    <div className="tw:flex-[0_0_130px]">
+                                      <Typography color="secondary">
+                                        {`${t('label.glossary-term-plural')} :`}
+                                      </Typography>
+                                    </div>
 
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="130px">
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.tag-plural')} :`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col flex="auto">
-                                    <TagsViewer
-                                      sizeCap={-1}
-                                      tags={
-                                        getFilterTags(feature.tags ?? [])
-                                          .Classification
-                                      }
-                                    />
-                                  </Col>
-                                </Row>
-                              </Col>
+                                    <div className="tw:min-w-0 tw:flex-auto">
+                                      <TagsViewer
+                                        sizeCap={-1}
+                                        tags={
+                                          getFilterTags(feature.tags ?? [])
+                                            .Glossary
+                                        }
+                                      />
+                                    </div>
+                                  </Box>
+                                </div>
 
-                              <Col className="m-b-xs" span={24}>
-                                <Row gutter={8} wrap={false}>
-                                  <Col flex="120px">
-                                    <Typography.Text className="text-grey-muted">
-                                      {`${t('label.description')} :`}
-                                    </Typography.Text>
-                                  </Col>
-                                  <Col flex="auto">
-                                    <Space align="start">
-                                      {feature.description ? (
-                                        <RichTextEditorPreviewerV1
-                                          enableSeeMoreVariant={false}
-                                          markdown={feature.description}
-                                        />
-                                      ) : (
-                                        <Typography.Text className="text-grey-muted">
-                                          {t('label.no-entity', {
-                                            entity: t('label.description'),
-                                          })}
-                                        </Typography.Text>
-                                      )}
-                                    </Space>
-                                  </Col>
-                                </Row>
-                              </Col>
+                                <div className="m-b-xs">
+                                  <Box gap={2}>
+                                    <div className="tw:flex-[0_0_130px]">
+                                      <Typography color="secondary">
+                                        {`${t('label.tag-plural')} :`}
+                                      </Typography>
+                                    </div>
+                                    <div className="tw:min-w-0 tw:flex-auto">
+                                      <TagsViewer
+                                        sizeCap={-1}
+                                        tags={
+                                          getFilterTags(feature.tags ?? [])
+                                            .Classification
+                                        }
+                                      />
+                                    </div>
+                                  </Box>
+                                </div>
 
-                              <Col span={24}>
-                                <SourceList feature={feature} />
-                              </Col>
-                            </Row>
+                                <div className="m-b-xs">
+                                  <Box gap={2}>
+                                    <div className="tw:flex-[0_0_120px]">
+                                      <Typography color="secondary">
+                                        {`${t('label.description')} :`}
+                                      </Typography>
+                                    </div>
+                                    <div className="tw:min-w-0 tw:flex-auto">
+                                      <Box
+                                        inline
+                                        align="start"
+                                        className="layout-space layout-space-horizontal"
+                                        gap={2}
+                                        itemClassName="layout-space-item">
+                                        {feature.description ? (
+                                          <RichTextEditorPreviewerV1
+                                            enableSeeMoreVariant={false}
+                                            markdown={feature.description}
+                                          />
+                                        ) : (
+                                          <Typography color="secondary">
+                                            {t('label.no-entity', {
+                                              entity: t('label.description'),
+                                            })}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </div>
+                                  </Box>
+                                </div>
+
+                                <div>
+                                  <SourceList feature={feature} />
+                                </div>
+                              </Box>
+                            </Card.Content>
                           </Card>
-                        </Col>
+                        </div>
                       ))}
-                    </Row>
+                    </Box>
                   ) : (
                     <ErrorPlaceHolder />
                   )}
-                </Col>
-              </Row>
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
-              <Space className="w-full" direction="vertical" size="large">
+                </div>
+              </Box>
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -315,9 +340,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
-            </Col>
-          </Row>
+              </Box>
+            </div>
+          </Box>
         ),
       },
       {
@@ -352,14 +377,15 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
         <Loader />
       ) : (
         <div className={classNames('version-data')} data-testid="version-data">
-          <Row gutter={[0, 12]}>
-            <Col span={24}>
+          <Box direction="col" gap={3}>
+            <div>
               <DataAssetsVersionHeader
                 breadcrumbLinks={slashedMlModelName}
                 currentVersionData={currentVersionData}
                 deleted={deleted}
                 displayName={displayName}
                 domainDisplayName={domainDisplayName}
+                domains={domainRef}
                 entityType={EntityType.MLMODEL}
                 ownerDisplayName={ownerDisplayName}
                 ownerRef={ownerRef}
@@ -368,7 +394,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                 version={version}
                 onVersionClick={backHandler}
               />
-            </Col>
+            </div>
             <GenericProvider
               isVersionView
               currentVersionData={currentVersionData}
@@ -376,16 +402,27 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
               permissions={entityPermissions}
               type={EntityType.MLMODEL}
               onUpdate={() => Promise.resolve()}>
-              <Col className="entity-version-page-tabs" span={24}>
+              <div className="entity-version-page-tabs">
                 <Tabs
-                  className="tabs-new"
-                  defaultActiveKey={tab}
-                  items={tabItems}
-                  onChange={handleTabChange}
-                />
-              </Col>
+                  className="tw:gap-3"
+                  defaultSelectedKey={getRenderedActiveTab(tabItems, tab)}
+                  onSelectionChange={(key) => handleTabChange(String(key))}>
+                  <Tabs.List size="sm" type="underline" variant="card">
+                    {tabItems.map(({ key, label }) => (
+                      <Tabs.Item id={key} key={key}>
+                        {label}
+                      </Tabs.Item>
+                    ))}
+                  </Tabs.List>
+                  {tabItems.map(({ key, children }) => (
+                    <Tabs.Panel id={key} key={key}>
+                      {children}
+                    </Tabs.Panel>
+                  ))}
+                </Tabs>
+              </div>
             </GenericProvider>
-          </Row>
+          </Box>
         </div>
       )}
 

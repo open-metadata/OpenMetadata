@@ -8,25 +8,41 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Validate the logic and status handling of the base workflow
-"""
+"""Validate the logic and status handling of the base workflow."""
 
-from typing import Iterable, Tuple  # noqa: UP035
+import json
+import logging
+import uuid
+from collections.abc import Iterable
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.cli.common import execute_workflow
+from metadata.cmd import metadata as metadata_cli
 from metadata.config.common import WorkflowExecutionError
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
+from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
+    ProgressUpdateType,
 )
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+    DatabaseServiceQueryLineagePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -41,6 +57,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.utils.streamable_logger import (
+    StreamableLogHandler,
+    StreamableLogHandlerManager,
+)
 from metadata.workflow.ingestion import IngestionWorkflow
 
 
@@ -107,6 +128,36 @@ class SimpleSink(Sink):
         """Nothing to do"""
 
 
+class OkSink(Sink):
+    """Sink that never produces failures — every element succeeds."""
+
+    def _run(self, element: int) -> Either:
+        return Either(right=element)
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "OkSink":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+
+class EmptyErrorSink(Sink):
+    """Sink that yields failures with empty error strings — the production
+    trigger for the build_ingestion_status ValidationError (e.g.
+    ``str(NotImplementedError())`` returns ``""``)."""
+
+    def _run(self, element: int) -> Either:
+        return Either(left=StackTraceError(name="empty-error", error="", stackTrace="trace"))
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "EmptyErrorSink":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+
 class SimpleWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
@@ -115,7 +166,25 @@ class SimpleWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = SimpleSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
+
+
+class OkWorkflow(IngestionWorkflow):
+    """Workflow wired to OkSink — produces zero failures."""
+
+    def set_steps(self):
+        self.source = SimpleSource()
+        self.steps: tuple[Step] = (OkSink(),)
+
+
+class EmptyErrorWorkflow(IngestionWorkflow):
+    """Workflow wired to EmptyErrorSink — every record produces a failure
+    with an empty error string (the production trigger for the
+    build_ingestion_status ValidationError)."""
+
+    def set_steps(self):
+        self.source = SimpleSource()
+        self.steps: tuple[Step] = (EmptyErrorSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -126,10 +195,9 @@ class BrokenWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = BrokenSource()
 
-        self.steps: Tuple[Step] = (SimpleSink(),)  # noqa: UP006
+        self.steps: tuple[Step] = (SimpleSink(),)
 
 
-# Pass only the required details so that the workflow can be initialized
 config = OpenMetadataWorkflowConfig(
     source=Source(
         type="simple",
@@ -195,29 +263,199 @@ class TestBaseWorkflow(TestCase):
         self.assertEqual(workflow_config.ingestionRunnerName, "test-runner")
 
 
+def _self_registration_workflow(source_config: SourceConfig) -> SimpleWorkflow:
+    workflow_config = config.model_copy(
+        update={"source": config.source.model_copy(update={"type": "mysql", "sourceConfig": source_config})},
+        deep=True,
+    )
+
+    metadata = MagicMock()
+    metadata.config.forceEntityOverwriting = True
+    with patch("metadata.workflow.base.create_ometa_client", return_value=metadata):
+        workflow = SimpleWorkflow(config=workflow_config)
+
+    workflow.config = workflow_config.model_copy(
+        update={"ingestionPipelineFQN": "test-service.self-registered-pipeline"}
+    )
+    workflow.metadata.get_by_name.return_value = None
+    return workflow
+
+
+def _self_registration_request(source_config):
+    workflow = _self_registration_workflow(SourceConfig(config=source_config))
+    with patch.object(
+        workflow,
+        "_get_ingestion_pipeline_service",
+        return_value=SimpleNamespace(id=uuid.uuid4()),
+    ):
+        workflow.get_or_create_ingestion_pipeline()
+
+    return workflow.metadata.create_or_update.call_args.args[0]
+
+
+def test_self_registration_serializes_default_source_config_type():
+    source_config = DatabaseServiceMetadataPipeline()
+
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+    request = _self_registration_request(source_config)
+    payload = json.loads(request.model_dump_json(context={"mask_secrets": False}, by_alias=True, exclude_unset=True))
+
+    assert payload["sourceConfig"]["config"]["type"] == "DatabaseMetadata"
+    assert "type" not in source_config.model_dump(exclude_unset=True)
+
+
+def test_self_registration_marks_default_type_on_a_copy():
+    source_config = SourceConfig(config=DatabaseServiceMetadataPipeline())
+    workflow = _self_registration_workflow(source_config)
+
+    copied_source_config = workflow._source_config_with_explicit_type()
+
+    assert copied_source_config is not source_config
+    assert copied_source_config.config is not source_config.config
+    assert "type" in copied_source_config.config.model_fields_set
+    assert "type" not in source_config.config.model_fields_set
+
+
+def test_self_registration_preserves_raw_source_config_without_copying_or_mutating_it():
+    raw_config = {"type": "DatabaseMetadata", "markDeletedTables": True}
+    source_config = SourceConfig.model_construct(config=raw_config)
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config is raw_config
+
+
+def test_self_registration_does_not_invent_a_missing_model_type():
+    source_config = SourceConfig.model_construct(config=DatabaseServiceMetadataPipeline(type=None))
+    workflow = _self_registration_workflow(source_config)
+
+    explicit_source_config = workflow._source_config_with_explicit_type()
+
+    assert explicit_source_config is source_config
+    assert explicit_source_config.config.type is None
+
+
 class TestWorkflowExecuteTeardown:
     """
-    Validates the execute() teardown contract: status must be printed before
-    stop() tears down resources (so final records are flushed while the
-    metadata client and steps are alive), and stop() must still run when
-    print_status() raises so we never leak the timer thread or OM client.
+    Validates the execute() teardown contract:
+      1. close_steps() flushes step buffers before any consumer reads from the
+         step statuses. Both the persisted pipeline status (built from
+         Summary.from_step) and the printed summary share those same step
+         status objects, so the flush must happen before either reads them.
+      2. print_status() runs before stop() so the streamable logging handler
+         (torn down inside stop()) is still alive when the final summary is
+         emitted.
+      3. stop() must still run when an inner step raises so we never leak the
+         timer thread, OM client, or any step resources.
     """
 
-    def test_print_status_runs_before_stop(self):
+    def test_close_steps_runs_before_status_publishing_and_stop(self):
         workflow = SimpleWorkflow(config=config)
         manager = MagicMock()
 
         with (
+            patch.object(workflow, "close_steps", wraps=workflow.close_steps) as mock_close_steps,
+            patch.object(
+                workflow,
+                "build_ingestion_status",
+                wraps=workflow.build_ingestion_status,
+            ) as mock_build_ingestion_status,
+            patch.object(
+                workflow,
+                "set_ingestion_pipeline_status",
+                wraps=workflow.set_ingestion_pipeline_status,
+            ) as mock_set_ingestion_pipeline_status,
             patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
+            patch.object(
+                workflow,
+                "send_progress_update",
+                wraps=workflow.send_progress_update,
+            ) as mock_send_progress_update,
             patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
         ):
+            manager.attach_mock(mock_close_steps, "close_steps")
+            manager.attach_mock(mock_build_ingestion_status, "build_ingestion_status")
+            manager.attach_mock(mock_set_ingestion_pipeline_status, "set_ingestion_pipeline_status")
+            manager.attach_mock(mock_send_progress_update, "send_progress_update")
             manager.attach_mock(mock_print_status, "print_status")
             manager.attach_mock(mock_stop, "stop")
 
             workflow.execute()
 
         ordered_names = [mock_call[0] for mock_call in manager.mock_calls]
-        assert ordered_names == ["print_status", "stop"]
+        # An initial `send_progress_update` fires at the very start so short
+        # runs (shorter than the reporting interval) still emit a "run started"
+        # event. `close_steps` is recorded twice: once from execute() before
+        # print_status, and once from inside stop() to keep the public cleanup
+        # contract. The second call is a no-op via _steps_closed.
+        assert ordered_names == [
+            "send_progress_update",
+            "close_steps",
+            "build_ingestion_status",
+            "set_ingestion_pipeline_status",
+            "send_progress_update",
+            "print_status",
+            "stop",
+            "close_steps",
+        ]
+        progress_types = [call.args[0] for call in mock_send_progress_update.call_args_list]
+        assert progress_types == [ProgressUpdateType.DISCOVERY, ProgressUpdateType.ERROR]
+
+    def test_success_states_map_to_pipeline_complete_progress(self):
+        workflow = SimpleWorkflow(config=config)
+
+        assert workflow.terminal_progress_update_type(PipelineState.success) is ProgressUpdateType.PIPELINE_COMPLETE
+        assert (
+            workflow.terminal_progress_update_type(PipelineState.partialSuccess) is ProgressUpdateType.PIPELINE_COMPLETE
+        )
+
+    def test_failed_workflow_sends_terminal_error_progress(self):
+        workflow = BrokenWorkflow(config=config)
+
+        with patch.object(
+            workflow,
+            "send_progress_update",
+            wraps=workflow.send_progress_update,
+        ) as mock_send_progress_update:
+            workflow.execute()
+
+        progress_types = [call.args[0] for call in mock_send_progress_update.call_args_list]
+        assert progress_types == [ProgressUpdateType.DISCOVERY, ProgressUpdateType.ERROR]
+
+    def test_execute_emits_initial_progress_before_work(self):
+        """A run shorter than the reporting interval still emits events: an
+        initial DISCOVERY at start (so the run is registered/visible live) and
+        a terminal update at the end — never zero events."""
+        workflow = SimpleWorkflow(config=config)
+
+        emitted = []
+        original = workflow.send_progress_update
+
+        def record(update_type=ProgressUpdateType.PROCESSING):
+            emitted.append((update_type, workflow.execute_internal_started))
+            return original(update_type)
+
+        workflow.execute_internal_started = False
+        real_execute_internal = workflow.execute_internal
+
+        def flag_execute_internal():
+            workflow.execute_internal_started = True
+            return real_execute_internal()
+
+        with (
+            patch.object(workflow, "send_progress_update", side_effect=record),
+            patch.object(workflow, "execute_internal", side_effect=flag_execute_internal),
+        ):
+            workflow.execute()
+
+        # First emit is DISCOVERY and happens before execute_internal runs.
+        assert emitted[0][0] is ProgressUpdateType.DISCOVERY
+        assert emitted[0][1] is False
+        # At least the initial + a terminal event, so never zero.
+        assert len(emitted) >= 2
 
     def test_stop_still_runs_when_print_status_raises(self):
         workflow = SimpleWorkflow(config=config)
@@ -235,3 +473,353 @@ class TestWorkflowExecuteTeardown:
 
             mock_print_status.assert_called_once()
             mock_stop.assert_called_once()
+
+    def test_pipeline_status_is_persisted_when_close_steps_raises(self):
+        """
+        Even on a catastrophic close_steps() failure, the pipeline status must
+        still be persisted to the server and stop() must still run. This
+        preserves the pre-existing "status is always sent" invariant; the
+        flushed counts may be missing in this edge case but a status record is
+        better than none.
+        """
+        workflow = SimpleWorkflow(config=config)
+
+        with (
+            patch.object(
+                workflow,
+                "close_steps",
+                side_effect=RuntimeError("flush-boom"),
+            ) as mock_close_steps,
+            patch.object(
+                workflow,
+                "set_ingestion_pipeline_status",
+                wraps=workflow.set_ingestion_pipeline_status,
+            ) as mock_set_ingestion_pipeline_status,
+            patch.object(workflow, "print_status", wraps=workflow.print_status) as mock_print_status,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+        ):
+            workflow.execute()
+
+            # close_steps is invoked twice: once from execute() before
+            # print_status and once from inside stop() (the public-cleanup
+            # contract). The invariant we care about here is that the
+            # pipeline status is still persisted, print_status still runs,
+            # and stop() still runs.
+            assert mock_close_steps.call_count == 2
+            mock_set_ingestion_pipeline_status.assert_called_once()
+            mock_print_status.assert_called_once()
+            mock_stop.assert_called_once()
+
+    def test_stop_closes_steps_when_called_standalone(self):
+        """
+        stop() is part of the public cleanup contract — callers that invoke
+        it without going through execute() (or in addition to execute()) must
+        still get step buffers flushed and step resources released, and must
+        not crash even when the status timer was never started. The real
+        RepeatedTimer is used here (no mock) so this exercises the
+        unstarted-thread teardown path. The OM client teardown is stubbed so
+        we exercise just the cleanup contract without hitting the server.
+        """
+        workflow = SimpleWorkflow(config=config)
+        assert workflow._timer is None
+        step = workflow.steps[0]
+
+        with (
+            patch.object(workflow.metadata, "close"),
+            patch.object(step, "close", wraps=step.close) as mock_step_close,
+        ):
+            workflow.stop()
+
+            mock_step_close.assert_called_once()
+
+    def test_execute_persists_failed_status_when_trigger_raises(self):
+        """
+        If the status timer cannot be started (e.g. OS thread-resource
+        exhaustion makes `Thread.start()` raise inside `trigger()`), `trigger()`
+        now runs inside `execute()`'s try/finally, so the `finally` still runs:
+        the terminal `failed` pipeline status is persisted, steps are flushed
+        via `close_steps()`, and `stop()` cleans up — instead of skipping all
+        teardown because `trigger()` was outside the try/finally. The original
+        error must propagate unmasked (no `RuntimeError: cannot join thread
+        before it is started` from an unstarted-timer `stop()`).
+        """
+        workflow = SimpleWorkflow(config=config)
+        assert workflow._timer is None
+
+        with (
+            patch.object(RepeatedTimer, "trigger", side_effect=RuntimeError("can't start new thread")),
+            patch.object(
+                workflow,
+                "set_ingestion_pipeline_status",
+                wraps=workflow.set_ingestion_pipeline_status,
+            ) as mock_set_status,
+            patch.object(workflow, "close_steps", wraps=workflow.close_steps) as mock_close_steps,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+            pytest.raises(RuntimeError, match="can't start new thread"),
+        ):
+            workflow.execute()
+
+        mock_set_status.assert_called_once()
+        assert mock_set_status.call_args.args[0] is PipelineState.failed
+        # close_steps runs in execute()'s finally (flush) and again inside
+        # stop() (idempotent no-op via _steps_closed).
+        assert mock_close_steps.call_count == 2
+        mock_stop.assert_called_once()
+        # The timer thread was created but never started; stop() must not
+        # have raised on join, so the workflow's _timer is set.
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+
+    def test_close_steps_is_idempotent_across_execute_and_stop(self):
+        """
+        execute() flushes via close_steps() before print_status, and stop()
+        also calls close_steps() to keep the public cleanup contract. The
+        _steps_closed flag must prevent the second call from re-running
+        step.close() (some sinks are not idempotent across repeat closes).
+        """
+        workflow = SimpleWorkflow(config=config)
+        step = workflow.steps[0]
+
+        with patch.object(step, "close", wraps=step.close) as mock_step_close:
+            workflow.execute()
+
+            mock_step_close.assert_called_once()
+
+    def test_stop_still_runs_when_build_ingestion_status_raises(self):
+        """
+        stop() must run even if build_ingestion_status() raises — e.g. when a
+        step failure has an empty error string that, after TruncatedStr converts
+        it to None, fails StepSummary re-validation. Before the fix, stop()
+        was nested under an inner try/finally only reached after
+        build_ingestion_status() returned, so a raise here skipped stop()
+        entirely — leaking the RepeatedTimer thread and OM client and hanging
+        the process at shutdown.
+        """
+        workflow = SimpleWorkflow(config=config)
+
+        with (
+            patch.object(
+                workflow,
+                "build_ingestion_status",
+                side_effect=RuntimeError("status build boom"),
+            ) as mock_build,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+            patch("metadata.workflow.base.cleanup_streamable_logging") as mock_cleanup,
+        ):
+            with pytest.raises(RuntimeError, match="status build boom"):
+                workflow.execute()
+
+            mock_build.assert_called_once()
+            mock_stop.assert_called_once()
+            mock_cleanup.assert_called_once()
+            assert workflow._timer is not None
+            assert not workflow._timer.thread.is_alive()
+
+    def test_empty_error_string_does_not_break_execute_or_leak_teardown(self):
+        """
+        End-to-end: a step failure with an empty error string (the production
+        trigger — e.g. ``str(NotImplementedError()) == ""``) must not cause
+        build_ingestion_status() to raise ValidationError. After the
+        TruncatedStr fix, empty strings are preserved (not converted to None),
+        so StepSummary.model_validate round-trips cleanly, execute() completes
+        without raising, and stop() runs exactly once.
+        """
+        workflow = EmptyErrorWorkflow(config=config)
+
+        with patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop:
+            workflow.execute()
+
+        mock_stop.assert_called_once()
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+
+
+def test_streamable_handler_is_released_when_client_close_raises():
+    workflow = OkWorkflow(config=config)
+    handler = StreamableLogHandler(
+        metadata=workflow.metadata,
+        pipeline_fqn="test-service.test-pipeline",
+        run_id=uuid.uuid4(),
+        enable_streaming=False,
+    )
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    StreamableLogHandlerManager.set_handler(handler)
+
+    try:
+        with (
+            patch.object(workflow.metadata, "close", side_effect=RuntimeError("client close failed")),
+            pytest.raises(RuntimeError, match="client close failed"),
+        ):
+            workflow.execute()
+
+        assert StreamableLogHandlerManager.get_handler() is None
+        assert handler not in root_logger.handlers
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+    finally:
+        StreamableLogHandlerManager.cleanup()
+
+
+@pytest.mark.parametrize(
+    "source_type,pipeline,expected_source_type",
+    [
+        ("mysql", DatabaseServiceMetadataPipeline(), "mysql"),
+        ("mysql", DatabaseServiceProfilerPipeline(), "mysql"),
+        ("mysql-lineage", DatabaseServiceQueryLineagePipeline(), "mysql-lineage"),
+    ],
+    ids=["metadata", "profiler", "lineage"],
+)
+def test_write_status_file_reports_source_type_not_pipeline_type(tmp_path, source_type, pipeline, expected_source_type):
+    source = Source(
+        type=source_type,
+        serviceName="test",
+        serviceConnection={"config": {"type": "Mysql", "username": "user", "hostPort": "localhost:3306"}},
+        sourceConfig=SourceConfig(config=pipeline),
+    )
+    workflow = OkWorkflow(config=config.model_copy(update={"source": source}))
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    assert status_file.exists()
+    payload = json.loads(status_file.read_text())
+
+    assert payload["source_type"] == expected_source_type
+    assert "pipeline_type" not in payload
+    assert payload["ingestion_pipeline_fqn"] is None
+    assert payload["success"] is True
+    assert isinstance(payload["steps"], list)
+    assert len(payload["steps"]) >= 2
+
+
+def test_write_status_file_reports_failure_shape_with_sink_errors(tmp_path):
+    workflow = SimpleWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+
+    assert isinstance(payload["steps"], list)
+    assert len(payload["steps"]) >= 2
+    sink_steps_with_failures = [s for s in payload["steps"] if s.get("failures")]
+    assert len(sink_steps_with_failures) >= 1
+    assert payload["success"] is False
+
+
+def test_write_status_file_reports_failure_when_source_fails(tmp_path):
+    workflow = BrokenWorkflow(config=config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+    assert payload["success"] is False
+
+
+def test_write_status_file_includes_ingestion_pipeline_fqn(tmp_path):
+    fqn_config = config.model_copy(update={"ingestionPipelineFQN": "test_service.test_pipeline"})
+    workflow = SimpleWorkflow(config=fqn_config)
+    workflow.execute()
+
+    status_file = tmp_path / "status.json"
+    workflow.write_status_file(status_file)
+
+    payload = json.loads(status_file.read_text())
+
+    assert payload["ingestion_pipeline_fqn"] == "test_service.test_pipeline"
+
+
+@pytest.mark.parametrize("raise_on_error", [True, False])
+def test_execute_workflow_fails_when_status_file_cannot_be_written(tmp_path, raise_on_error):
+    workflow = OkWorkflow(config=config)
+
+    with pytest.raises(IsADirectoryError) as error:
+        execute_workflow(
+            workflow,
+            {"workflowConfig": {"raiseOnError": raise_on_error}},
+            status_file=tmp_path,
+        )
+
+    assert error.value.filename == str(tmp_path)
+
+
+def test_execute_workflow_preserves_execution_error_when_status_write_also_fails(tmp_path):
+    class FailingWorkflow(OkWorkflow):
+        def execute_internal(self):
+            raise RuntimeError("source execution failed")
+
+    workflow = FailingWorkflow(config=config)
+
+    with pytest.raises(IsADirectoryError) as error:
+        execute_workflow(workflow, {}, status_file=tmp_path)
+
+    assert isinstance(error.value.__context__, RuntimeError)
+    assert str(error.value.__context__) == "source execution failed"
+
+
+def test_execute_workflow_propagates_trigger_error_unmasked(tmp_path):
+    """
+    When the status timer cannot be started, `execute_workflow` must propagate
+    the original `Thread.start()` error (`RuntimeError("can't start new thread")`)
+    and NOT mask it with `RuntimeError("cannot join thread before it is
+    started")` from the unstarted-timer teardown. The CLI `finally` must also
+    still run `stop()` cleanly and write the status file, proving teardown is
+    not skipped due to the timer error.
+    """
+    workflow = SimpleWorkflow(config=config)
+    status_file = tmp_path / "status.json"
+
+    with (
+        patch.object(RepeatedTimer, "trigger", side_effect=RuntimeError("can't start new thread")),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        execute_workflow(
+            workflow=workflow,
+            config_dict={"workflowConfig": {"raiseOnError": False}},
+            status_file=status_file,
+        )
+
+    msg = str(exc_info.value)
+    assert "can't start new thread" in msg
+    assert "cannot join thread before it is started" not in msg
+    # The CLI finally still ran stop() cleanly and wrote the status file,
+    # proving teardown was not skipped due to the timer error.
+    assert status_file.exists()
+    assert json.loads(status_file.read_text())["steps"] is not None
+
+
+@pytest.mark.parametrize("workflow_class,success", [(OkWorkflow, True), (SimpleWorkflow, False)])
+@pytest.mark.parametrize("status_writable", [True, False])
+def test_ingest_dbt_cli_status_file_contract(tmp_path, workflow_class, success, status_writable):
+    project = tmp_path / "my_dbt_project"
+    target = project / "target"
+    target.mkdir(parents=True)
+    (target / "manifest.json").write_text("{}")
+    (project / "dbt_project.yml").write_text(
+        "name: my_project\nvars:\n"
+        "  openmetadata_host_port: http://localhost:8585/api\n"
+        "  openmetadata_jwt_token: placeholder\n"
+        "  openmetadata_service_name: my_service\n"
+    )
+    status_path = tmp_path / "status.json" if status_writable else tmp_path
+    workflow = workflow_class(config=config)
+
+    with patch("metadata.cli.ingest_dbt.MetadataWorkflow.create", return_value=workflow):
+        args = ["ingest-dbt", "-c", str(project), "--status-file", str(status_path)]
+        if success and status_writable:
+            metadata_cli(args)
+        else:
+            with pytest.raises(SystemExit) as error:
+                metadata_cli(args)
+            assert error.value.code == 1
+
+    if status_writable:
+        payload = json.loads(status_path.read_text())
+        assert payload["success"] is success
+        failures = [failure for step in payload["steps"] for failure in step["failures"] or []]
+        assert [failure["name"] for failure in failures] == ([] if success else ["bum"])

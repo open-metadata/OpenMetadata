@@ -59,10 +59,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVFormat.Builder;
@@ -100,13 +102,19 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -118,7 +126,7 @@ import org.openmetadata.service.util.ValidatorUtil;
  * record, and import an entity from a CSV record.
  */
 @Slf4j
-public abstract class EntityCsv<T extends EntityInterface> {
+public abstract class EntityCsv<T extends EntityInterface<?>> {
   public static final String FIELD_ERROR_MSG = "#%s: Field %d error - %s";
   public static final String IMPORT_STATUS_HEADER = "status";
   public static final String IMPORT_STATUS_DETAILS = "details";
@@ -127,12 +135,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
   public static final String IMPORT_SKIPPED = "skipped";
   public static final String ENTITY_CREATED = "Entity created";
   public static final String ENTITY_UPDATED = "Entity updated";
+  public static final String ENTITY_PENDING_APPROVAL = "Pending approval";
+  private static final String NAME_PATTERN_VALIDATION_PREFIX = "name must match ";
+  private static final String EMAIL_FORMAT_VALIDATION = "email must be a well-formed email address";
 
   // Additional fields for export/import with multiple entity types
   public static final String FIELD_ENTITY_TYPE = "entityType";
   public static final String FIELD_FULLY_QUALIFIED_NAME = "fullyQualifiedName";
 
   public static final int DEFAULT_BATCH_SIZE = 100;
+
+  // Glossary terms are imported and exported through GlossaryCsv, so they share its documentation.
+  private static final Map<String, String> CSV_DOCUMENTATION_TYPES =
+      Map.of(Entity.GLOSSARY_TERM, Entity.GLOSSARY);
 
   private final String entityType;
   private final List<CsvHeader> csvHeaders;
@@ -141,6 +156,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
   protected boolean processRecord; // When set to false record processing is discontinued
   protected final Map<String, T> dryRunCreatedEntities = new HashMap<>();
   protected final String importedBy;
+  // Whether a hook workflow gates each entity type, resolved once per import rather than per row.
+  private final Map<String, Boolean> gatedEntityTypes = new HashMap<>();
   protected int recordIndex = 0;
   protected String rowEntityType = null;
   private final Set<Long> countedFailureRecords = new HashSet<>();
@@ -152,15 +169,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   /** Holder for pending entity create/update operations */
   protected static class PendingEntityOperation {
-    EntityInterface entity;
-    EntityInterface originalEntity;
+    EntityInterface<?> entity;
+    EntityInterface<?> originalEntity;
     CSVRecord csvRecord;
     String entityType;
     boolean isCreate;
 
     PendingEntityOperation(
-        EntityInterface entity,
-        EntityInterface originalEntity,
+        EntityInterface<?> entity,
+        EntityInterface<?> originalEntity,
         CSVRecord csvRecord,
         String entityType,
         boolean isCreate) {
@@ -173,7 +190,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   // Queue for batching OpenSearch updates - processed after each batch of CSV records
-  protected final List<EntityInterface> pendingSearchIndexUpdates = new ArrayList<>();
+  protected final List<EntityInterface<?>> pendingSearchIndexUpdates = new ArrayList<>();
   // Queue for batching change event inserts - processed after each batch of CSV records
   protected final List<String> pendingChangeEvents = new ArrayList<>();
   // Track CSV results to write after batch operations complete
@@ -233,11 +250,17 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     // Validate and load each record with batch progress tracking
     while (recordIndex < records.size()) {
+      if (callback != null) {
+        callback.checkpoint();
+      }
       processRecord(resultsPrinter, records);
       rowsInBatch++;
 
       // Send progress notification after each batch
       if (rowsInBatch >= DEFAULT_BATCH_SIZE || recordIndex >= records.size()) {
+        if (callback != null) {
+          callback.checkpoint();
+        }
         // Flush pending entity operations using batch DB operations
         flushPendingEntityOperations();
         // Flush any pending batched updates (e.g., column updates for tables)
@@ -294,6 +317,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
     int batchNumber = 0;
 
     for (T entity : entities) {
+      if (callback != null) {
+        callback.checkpoint();
+      }
       addRecord(csvFile, entity);
       exported++;
 
@@ -311,33 +337,30 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   public static CsvDocumentation getCsvDocumentation(String entityType, boolean recursive) {
-    String effectiveEntityType = (recursive) ? "entity" : entityType;
+    String effectiveEntityType =
+        recursive ? "entity" : CSV_DOCUMENTATION_TYPES.getOrDefault(entityType, entityType);
     LOG.info("Initializing CSV documentation for entity {}", effectiveEntityType);
 
     String path =
         String.format(
-            ".*json/data/%s/%sCsvDocumentation.json$", effectiveEntityType, effectiveEntityType);
+            ".*json/data/%s/%sCsvDocumentation\\.json$",
+            Pattern.quote(effectiveEntityType), Pattern.quote(effectiveEntityType));
     try {
       List<String> jsonDataFiles = EntityUtil.getJsonDataResources(path);
       if (jsonDataFiles.isEmpty()) {
-        String message =
-            String.format(
-                "Failed to load CSV documentation for entity %s from path %s",
-                effectiveEntityType, path);
-        LOG.error("FATAL - {}", message);
-        throw new IllegalStateException(message);
+        throw EntityNotFoundException.byMessage(
+            String.format("No CSV documentation exists for entity type %s", entityType));
       }
       String json =
           CommonUtil.getResourceAsStream(
               EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
       return JsonUtils.readValue(json, CsvDocumentation.class);
     } catch (IOException | JsonParsingException e) {
-      String message =
+      throw new IllegalStateException(
           String.format(
               "Failed to load CSV documentation for entity %s from path %s",
-              effectiveEntityType, path);
-      LOG.error("FATAL - {}", message, e);
-      throw new IllegalStateException(message, e);
+              effectiveEntityType, path),
+          e);
     }
   }
 
@@ -411,6 +434,53 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs;
   }
 
+  /**
+   * An empty domain column clears direct domains (unchanged behavior) but must not wipe the
+   * entity's inherited domains: they are never exported to the CSV, and rules such as "Data Product
+   * Domain Validation" need them to evaluate the entity's effective domain. So on an empty column
+   * only the inherited references from the already-loaded entity are carried over; they are dropped
+   * again after rule evaluation (see {@link #dropInheritedDomains}), so they are never persisted as
+   * a direct domain.
+   */
+  public List<EntityReference> getDomains(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      List<EntityReference> existingDomains) {
+    List<EntityReference> result = null;
+    if (processRecord) {
+      List<EntityReference> parsedFromCsv = getDomains(printer, csvRecord, fieldNumber);
+      result = parsedFromCsv;
+      if (parsedFromCsv == null) {
+        List<EntityReference> inheritedDomains =
+            listOrEmpty(existingDomains).stream()
+                .filter(domain -> Boolean.TRUE.equals(domain.getInherited()))
+                .toList();
+        result = inheritedDomains.isEmpty() ? null : inheritedDomains;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Inherited domains are supplied to an updated entity only so platform rules evaluate against its
+   * effective domain. The import persistence path stores whatever domains the entity carries as
+   * direct relationships, so the inherited ones must be removed once the rules have run; the entity
+   * keeps re-inheriting from its parent on read.
+   */
+  private void dropInheritedDomains(EntityInterface<?> entity) {
+    List<EntityReference> domains = entity.getDomains();
+    if (!nullOrEmpty(domains)) {
+      List<EntityReference> directDomains = new ArrayList<>();
+      for (EntityReference domain : domains) {
+        if (!Boolean.TRUE.equals(domain.getInherited())) {
+          directDomains.add(domain);
+        }
+      }
+      entity.setDomains(directDomains.isEmpty() ? null : directDomains);
+    }
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
     if (!processRecord) {
@@ -447,8 +517,8 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return getEntityReference(printer, csvRecord, fieldNumber, entityType, fqn);
   }
 
-  protected EntityInterface getEntityByName(String entityType, String fqn) {
-    EntityInterface entity =
+  protected EntityInterface<?> getEntityByName(String entityType, String fqn) {
+    EntityInterface<?> entity =
         entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
     if (entity == null) {
       EntityRepository<?> entityRepository = Entity.getEntityRepository(entityType);
@@ -457,17 +527,25 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return entity;
   }
 
+  protected EntityReference getEntityReferenceByName(String entityType, String fqn) {
+    EntityInterface<?> entity =
+        entityType.equals(this.entityType) ? dryRunCreatedEntities.get(fqn) : null;
+    return entity != null
+        ? entity.getEntityReference()
+        : Entity.getEntityReferenceByName(entityType, fqn, Include.NON_DELETED);
+  }
+
   protected final EntityReference getEntityReference(
       CSVPrinter printer, CSVRecord csvRecord, int fieldNumber, String entityType, String fqn) {
     if (nullOrEmpty(fqn)) {
       return null;
     }
-    EntityInterface entity = getEntityByName(entityType, fqn);
-    if (entity == null) {
+    try {
+      return getEntityReferenceByName(entityType, fqn);
+    } catch (EntityNotFoundException ex) {
       deferredFailure(csvRecord, entityNotFound(fieldNumber, entityType, fqn));
       return null;
     }
-    return entity.getEntityReference();
   }
 
   protected final List<EntityReference> getEntityReferences(
@@ -506,7 +584,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     List<String> fqnList = listOrEmpty(CsvUtil.fieldToStrings(fqns));
     List<EntityReference> refs = new ArrayList<>();
     for (String fqn : fqnList) {
-      EntityInterface entity = getEntityByName(Entity.GLOSSARY_TERM, fqn);
+      EntityInterface<?> entity = getEntityByName(Entity.GLOSSARY_TERM, fqn);
       if (entity == null) {
         deferredFailure(csvRecord, entityNotFound(fieldNumber, Entity.GLOSSARY_TERM, fqn));
         return null;
@@ -1057,9 +1135,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
         RuleEngine.getInstance().evaluateUpdate(original, entity);
+        repository.applyEntityStatusRulesForImport(original, entity, importedBy);
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         if (isUpdate) {
@@ -1082,12 +1162,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
             throw ex;
           }
         }
+        if (stagedForApproval(csvRecord, entityType, original, entity)) {
+          return;
+        }
         // Queue for batch processing instead of immediate persist
         pendingEntityOperations.add(
             new PendingEntityOperation(entity, original, csvRecord, entityType, !isUpdate));
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } else { // Dry run don't create the entity
+        if (stagedForApproval(csvRecord, entityType, original, entity)) {
+          return;
+        }
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
         // Track the dryRun created entities, as they may be referred by other entities being
         // created
@@ -1123,15 +1209,15 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
   @Transaction
   protected void createEntity(
-      CSVPrinter resultsPrinter, CSVRecord csvRecord, EntityInterface entity, String type)
+      CSVPrinter resultsPrinter, CSVRecord csvRecord, EntityInterface<?> entity, String type)
       throws IOException {
 
     entity.setId(UUID.randomUUID());
     entity.setUpdatedBy(importedBy);
     entity.setUpdatedAt(System.currentTimeMillis());
 
-    EntityRepository<EntityInterface> repository =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
+    EntityRepository<EntityInterface<?>> repository =
+        (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(type);
 
     String violations = ValidatorUtil.validate(entity);
     if (violations != null) {
@@ -1150,9 +1236,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
         RuleEngine.getInstance().evaluateUpdate(original, entity);
+        repository.applyEntityStatusRulesForImport(original, entity, importedBy);
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         if (isUpdate) {
@@ -1175,12 +1263,18 @@ public abstract class EntityCsv<T extends EntityInterface> {
             throw ex;
           }
         }
+        if (stagedForApproval(csvRecord, type, original, entity)) {
+          return;
+        }
         // Queue for batch processing instead of immediate persist
         pendingEntityOperations.add(
             new PendingEntityOperation(entity, original, csvRecord, type, !isUpdate));
         pendingEntityFQNs.add(entity.getFullyQualifiedName());
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
       } else {
+        if (stagedForApproval(csvRecord, type, original, entity)) {
+          return;
+        }
         responseStatus = isUpdate ? Response.Status.OK : Response.Status.CREATED;
         dryRunCreatedEntities.put(entity.getFullyQualifiedName(), (T) entity);
       }
@@ -1214,14 +1308,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
   private void createChangeEventAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
+          ChangeEvents.createChangeEventForEntity(
               importedBy, response.getChangeType(), response.getEntity());
       Object entity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
+      pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
       pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
@@ -1229,7 +1321,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   private void createChangeEventForUserAndUpdateInES(PutResponse<T> response, String importedBy) {
     if (!response.getChangeType().equals(EventType.ENTITY_NO_CHANGE)) {
       T entity = response.getEntity();
-      EntityInterface entityForEvent = entity;
+      EntityInterface<?> entityForEvent = entity;
       if (entity instanceof User user) {
         entityForEvent =
             new User()
@@ -1256,21 +1348,19 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withDefaultPersona(user.getDefaultPersona());
       }
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(
+          ChangeEvents.createChangeEventForEntity(
               importedBy, response.getChangeType(), entityForEvent);
       Object eventEntity = changeEvent.getEntity();
       changeEvent = copyChangeEvent(changeEvent);
       changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
-      // Persist change event
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      // Queue for bulk ES update instead of immediate indexing
+      pendingChangeEvents.add(JsonUtils.pojoToJson(changeEvent));
       pendingSearchIndexUpdates.add(response.getEntity());
     }
   }
 
-  private void createChangeEventForBatchedEntity(EntityInterface entity, EventType eventType) {
+  private void createChangeEventForBatchedEntity(EntityInterface<?> entity, EventType eventType) {
     ChangeEvent changeEvent =
-        FormatterUtil.createChangeEventForEntity(importedBy, eventType, entity);
+        ChangeEvents.createChangeEventForEntity(importedBy, eventType, entity);
     Object eventEntity = changeEvent.getEntity();
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(eventEntity));
@@ -1298,10 +1388,11 @@ public abstract class EntityCsv<T extends EntityInterface> {
       return;
     }
     List<String> eventsToInsert = new ArrayList<>(pendingChangeEvents);
-    pendingChangeEvents.clear(); // Clear immediately to avoid race condition
+    pendingChangeEvents.clear();
     AsyncService.getInstance()
-        .getExecutorService()
-        .submit(
+        .executeDatabaseTask(
+            DatabaseOperation.CSV_CHANGE_EVENT,
+            entityType + ":" + eventsToInsert.size(),
             () -> {
               try {
                 Entity.getCollectionDAO().changeEventDAO().insertBatch(eventsToInsert);
@@ -1313,12 +1404,67 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   /** Write pending CSV results to output */
+  /**
+   * A row that changes a field gated by an approval workflow is submitted as a change request (or,
+   * on a dry run, reported as needing approval) instead of being written. Returns true when the row
+   * was handled that way. The original is re-read with every field so the change request records
+   * the true published values it was based on.
+   */
+  private boolean stagedForApproval(
+      CSVRecord csvRecord, String type, EntityInterface original, EntityInterface entity) {
+    Optional<StagedChange> staged = admission(type, original, entity);
+    staged.ifPresent(change -> recordPendingApproval(csvRecord, change));
+    return staged.isPresent();
+  }
+
+  private boolean isGated(String type) {
+    return gatedEntityTypes.computeIfAbsent(
+        type, t -> !GovernanceApprovalRegistry.gatingRules(t).isEmpty());
+  }
+
+  private Optional<StagedChange> admission(
+      String type, EntityInterface original, EntityInterface entity) {
+    Optional<StagedChange> staged = Optional.empty();
+    if (original != null && isGated(type)) {
+      EntityRepository<?> repository = Entity.getEntityRepository(type);
+      EntityInterface hydrated =
+          repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);
+      // A row entity carries a fresh id until the write aligns it; compare it as the same asset.
+      entity.setId(original.getId());
+      staged = ApprovalGate.admit(hydrated, entity, importedBy, null, Edit.importRow());
+    }
+    return staged;
+  }
+
+  private void recordPendingApproval(CSVRecord csvRecord, StagedChange change) {
+    String detail =
+        Boolean.TRUE.equals(importResult.getDryRun())
+            ? ENTITY_PENDING_APPROVAL
+            : pendingApprovalDetail(ChangeRequestService.submit(change).getId());
+    pendingCsvResults.put(csvRecord, detail);
+    importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
+    importResult.withNumberOfRowsPassed(importResult.getNumberOfRowsPassed() + 1);
+    countPendingApproval();
+  }
+
+  // Pending rows are successful submissions; they also count as passed (see csvImportResult).
+  protected void countPendingApproval() {
+    importResult.withNumberOfRowsPendingApproval(
+        Objects.requireNonNullElse(importResult.getNumberOfRowsPendingApproval(), 0) + 1);
+  }
+
+  protected static String pendingApprovalDetail(UUID changeRequestId) {
+    return "%s: change request %s".formatted(ENTITY_PENDING_APPROVAL, changeRequestId);
+  }
+
   protected void flushPendingCsvResults(CSVPrinter printer) throws IOException {
     for (Map.Entry<CSVRecord, String> entry : pendingCsvResults.entrySet()) {
       CSVRecord csvRecord = entry.getKey();
       String result = entry.getValue();
 
-      if (ENTITY_CREATED.equals(result) || ENTITY_UPDATED.equals(result)) {
+      if (ENTITY_CREATED.equals(result)
+          || ENTITY_UPDATED.equals(result)
+          || result.startsWith(ENTITY_PENDING_APPROVAL)) {
         writeSuccessResult(printer, csvRecord, result);
       } else {
         // It's an error message
@@ -1362,13 +1508,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
     for (Map.Entry<String, List<PendingEntityOperation>> entry : byType.entrySet()) {
       String type = entry.getKey();
       List<PendingEntityOperation> ops = entry.getValue();
-      EntityRepository<EntityInterface> repository =
-          (EntityRepository<EntityInterface>) Entity.getEntityRepository(type);
+      EntityRepository<EntityInterface<?>> repository =
+          (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(type);
 
       // Separate creates and updates
-      List<EntityInterface> toCreate = new ArrayList<>();
-      List<EntityInterface> toUpdate = new ArrayList<>();
-      List<EntityInterface> originals = new ArrayList<>();
+      List<EntityInterface<?>> toCreate = new ArrayList<>();
+      List<EntityInterface<?>> toUpdate = new ArrayList<>();
+      List<EntityInterface<?>> originals = new ArrayList<>();
 
       for (PendingEntityOperation op : ops) {
         if (op.isCreate) {
@@ -1392,9 +1538,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         // Batch create
         if (!toCreate.isEmpty()) {
-          List<EntityInterface> created =
+          List<EntityInterface<?>> created =
               repository.createManyEntitiesForImport(toCreate, importedBy);
-          for (EntityInterface entity : created) {
+          for (EntityInterface<?> entity : created) {
             createChangeEventForBatchedEntity(entity, EventType.ENTITY_CREATED);
             pendingSearchIndexUpdates.add(entity);
           }
@@ -1405,9 +1551,9 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
         // Batch update
         if (!toUpdate.isEmpty()) {
-          List<EntityInterface> updated =
+          List<EntityInterface<?>> updated =
               repository.updateManyEntitiesForImport(originals, toUpdate, importedBy, importedBy);
-          for (EntityInterface entity : updated) {
+          for (EntityInterface<?> entity : updated) {
             createChangeEventForBatchedEntity(entity, EventType.ENTITY_UPDATED);
             pendingSearchIndexUpdates.add(entity);
           }
@@ -1420,7 +1566,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         // Fallback to individual operations
         for (PendingEntityOperation op : ops) {
           try {
-            PutResponse<EntityInterface> response =
+            PutResponse<EntityInterface<?>> response =
                 repository.createOrUpdate(null, op.entity, importedBy);
             pendingSearchIndexUpdates.add(response.getEntity());
             // Count successful individual operations as passed
@@ -1448,7 +1594,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
   }
 
   @SuppressWarnings("unchecked")
-  protected <E extends EntityInterface> E getEntityWithDependencyResolution(
+  protected <E extends EntityInterface<?>> E getEntityWithDependencyResolution(
       String entityType, String fqn, String fields, Include include) {
     try {
       return Entity.getEntityByName(entityType, fqn, fields, include);
@@ -1483,10 +1629,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
 
     String userNameEmailViolation = "";
 
-    if (violations == null || violations.isEmpty()) {
-      userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
-    } else if (!violations.contains("name must match \"^((?!::).)*$\"")
-        && !violations.contains("email must be a well-formed email address")) {
+    if (shouldValidateUserNameWithEmailPrefix(violationList)) {
       userNameEmailViolation = ValidatorUtil.validateUserNameWithEmailPrefix(csvRecord);
     }
 
@@ -1506,10 +1649,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
         boolean update = repository.isUpdateForImport(entity);
         repository.prepareInternal(entity, update);
         PutResponse<T> response = repository.createOrUpdate(null, entity, importedBy);
+        if (response.getPendingChangeRequestId() != null) {
+          countPendingApproval();
+          importSuccess(
+              resultsPrinter,
+              csvRecord,
+              pendingApprovalDetail(response.getPendingChangeRequestId()));
+          return;
+        }
         responseStatus = response.getStatus();
-        AsyncService.getInstance()
-            .getExecutorService()
-            .submit(() -> createChangeEventForUserAndUpdateInES(response, importedBy));
+        createChangeEventForUserAndUpdateInES(response, importedBy);
       } catch (Exception ex) {
         pendingCsvResults.put(csvRecord, ex.getMessage());
         importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
@@ -1520,6 +1669,12 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else { // Dry run don't create the entity
       repository.setFullyQualifiedName(entity);
       boolean exists = repository.isUpdateForImport(entity);
+      T original = exists ? repository.findMatchForImport(entity) : null;
+      if (admission(entityType, original, entity).isPresent()) {
+        countPendingApproval();
+        importSuccess(resultsPrinter, csvRecord, ENTITY_PENDING_APPROVAL);
+        return;
+      }
       responseStatus = exists ? Response.Status.OK : Response.Status.CREATED;
       // Track the dryRun created entities, as they may be referred by other entities being created
       // during import
@@ -1531,6 +1686,14 @@ public abstract class EntityCsv<T extends EntityInterface> {
     } else {
       importSuccess(resultsPrinter, csvRecord, ENTITY_UPDATED);
     }
+  }
+
+  private static boolean shouldValidateUserNameWithEmailPrefix(List<String> violationList) {
+    return violationList.stream()
+        .noneMatch(
+            violation ->
+                violation.startsWith(NAME_PATTERN_VALIDATION_PREFIX)
+                    || EMAIL_FORMAT_VALIDATION.equals(violation));
   }
 
   protected void createSchemaEntity(CSVPrinter printer, CSVRecord csvRecord, String entityFQN)
@@ -1564,7 +1727,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       schema =
           Entity.getEntityByNameWithExcludedFields(
-              DATABASE_SCHEMA, schemaFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+              DATABASE_SCHEMA, schemaFqn, "owners,tags,extension", Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1596,7 +1759,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, schema.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1658,7 +1821,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         table =
             Entity.getEntityByNameWithExcludedFields(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE, tableFqn, "owners,tags,extension", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Simulate a table for validation without persisting it
         table =
@@ -1672,11 +1835,16 @@ public abstract class EntityCsv<T extends EntityInterface> {
                 .withId(UUID.randomUUID());
       }
     } else {
-      // Dry Run = false, True Run: Use dependency resolution helper
+      // Dry Run = false, True Run: Use dependency resolution helper.
+      // Fetch tableConstraints/tablePartition too: the recursive CSV has no column for them, so
+      // they must be carried through the createOrUpdate below or they would be dropped.
       try {
         table =
             getEntityWithDependencyResolution(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE,
+                tableFqn,
+                "owners,tags,domains,extension,tableConstraints,tablePartition",
+                Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Table not found, create a new one
         LOG.warn("Table not found: {}, it will be created with Import.", tableFqn);
@@ -1712,7 +1880,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1779,7 +1947,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             Entity.getEntityByName(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         // Simulate a stored procedure for validation without persisting it
@@ -1798,7 +1966,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             getEntityWithDependencyResolution(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
@@ -1840,7 +2008,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, sp.getDomains()))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 
@@ -1862,7 +2030,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     // Check if table is in the current batch's pending operations (not yet persisted)
     // If so, we add columns directly to the cached object - they'll be persisted with the table
     if (pendingEntityFQNs.contains(tableFQN)) {
-      EntityInterface cachedEntity = dryRunCreatedEntities.get(tableFQN);
+      EntityInterface<?> cachedEntity = dryRunCreatedEntities.get(tableFQN);
       if (cachedEntity instanceof Table cachedTable) {
         updateColumnsFromCsvRecursive(cachedTable, csvRecord, printer);
         // Count this row as processed and passed - it will be persisted with the table
@@ -1997,7 +2165,13 @@ public abstract class EntityCsv<T extends EntityInterface> {
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(context.originalTable, context.updatedTable);
-          tableRepo.patch(null, context.updatedTable.getId(), importedBy, jsonPatch);
+          UUID pendingChangeRequestId =
+              tableRepo
+                  .patch(null, context.updatedTable.getId(), importedBy, jsonPatch)
+                  .pendingChangeRequestId();
+          if (pendingChangeRequestId != null) {
+            markPendingApproval(context.csvRecords, pendingApprovalDetail(pendingChangeRequestId));
+          }
           LOG.info(
               "Batch patched table {} with {} column updates", tableFQN, context.csvRecords.size());
         } catch (Exception ex) {
@@ -2017,10 +2191,47 @@ public abstract class EntityCsv<T extends EntityInterface> {
         tableRepo.setFullyQualifiedName(context.updatedTable);
         dryRunCreatedEntities.put(
             context.updatedTable.getFullyQualifiedName(), (T) context.updatedTable);
+        if (wouldBeHeld(tableRepo, context)) {
+          markPendingApproval(context.csvRecords, ENTITY_PENDING_APPROVAL);
+        }
       }
     }
 
     pendingTableUpdates.clear();
+  }
+
+  // The column rows of one table are written as a single patch; when that patch is held for
+  // approval, every row in it is reported as pending instead of updated.
+  private void markPendingApproval(List<CSVRecord> records, String detail) {
+    for (CSVRecord record : records) {
+      pendingCsvResults.put(record, detail);
+      countPendingApproval();
+    }
+  }
+
+  private boolean wouldBeHeld(TableRepository tableRepo, TableUpdateContext context) {
+    return wouldBeHeld(tableRepo, context.originalTable, context.updatedTable);
+  }
+
+  /**
+   * Whether writing {@code updated} over {@code original} would be held for approval, for a dry run
+   * that saves nothing.
+   */
+  protected <E extends EntityInterface<?>> boolean wouldBeHeld(
+      EntityRepository<E> repository, E original, E updated) {
+    boolean held = false;
+    if (original.getId() != null && isGated(repository.getEntityType())) {
+      try {
+        held =
+            repository
+                .previewPatch(
+                    original.getId(), importedBy, JsonUtils.getJsonPatch(original, updated))
+                .isPresent();
+      } catch (RuntimeException e) {
+        LOG.debug("Could not preview approval for {}: {}", original.getId(), e.getMessage());
+      }
+    }
+    return held;
   }
 
   private void updateColumnsFromCsvRecursive(Table table, CSVRecord csvRecord, CSVPrinter printer) {

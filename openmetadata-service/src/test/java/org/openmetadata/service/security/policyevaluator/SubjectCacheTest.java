@@ -15,17 +15,28 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +58,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
+import org.openmetadata.service.util.RequestEntityCache;
 
 public class SubjectCacheTest {
   private static List<Role> team1Roles;
@@ -57,10 +69,12 @@ public class SubjectCacheTest {
   private static User user;
   private static Team team1;
   private static Team team11;
+  private static UserRepository userRepository;
+  private static PolicyRepository policyRepository;
 
   @BeforeAll
   public static void setup() {
-    UserRepository userRepository = mock(UserRepository.class);
+    userRepository = mock(UserRepository.class);
     Entity.registerEntity(User.class, Entity.USER, userRepository);
     Mockito.when(
             userRepository.getByName(
@@ -96,7 +110,7 @@ public class SubjectCacheTest {
                         new ImmutablePair<>(Entity.ROLE, i.getArgument(1))),
                     Role.class));
 
-    PolicyRepository policyRepository = mock(PolicyRepository.class);
+    policyRepository = mock(PolicyRepository.class);
     Entity.registerEntity(Policy.class, Entity.POLICY, policyRepository);
     Mockito.when(
             policyRepository.get(
@@ -107,6 +121,13 @@ public class SubjectCacheTest {
                     EntityRepository.CACHE_WITH_ID.get(
                         new ImmutablePair<>(Entity.POLICY, i.getArgument(1))),
                     Policy.class));
+
+    // TeamHierarchyResolver reads the team graph out of entity_relationship rather than loading a
+    // Team per node, so the graph has to exist as relationship rows, not only as cached entities.
+    TeamGraphFixture.install();
+    TeamGraphFixture.stubReferences(teamRepository, Entity.TEAM);
+    TeamGraphFixture.stubReferences(roleRepository, Entity.ROLE);
+    TeamGraphFixture.stubReferences(policyRepository, Entity.POLICY);
 
     // Create team hierarchy: team1 -> team11 -> user
     team1Roles = getRoles("team1");
@@ -131,6 +152,166 @@ public class SubjectCacheTest {
   @BeforeEach
   public void resetCache() {
     SubjectCache.invalidateAll();
+    clearInvocations(userRepository);
+  }
+
+  /**
+   * Issue #19778: {@code inAnyTeam()} and {@code hasAnyRole()} are rule conditions, so they run
+   * once per rule per entity in a listing. Resolving the subject's team hierarchy on each call is
+   * what turned a page load for a member of many teams into thousands of queries.
+   */
+  @Test
+  void testRepeatedRuleConditionsResolveTheTeamHierarchyOnce() {
+    SubjectContext subjectContext = SubjectContext.getSubjectContext("testUser");
+    assertTrue(subjectContext.isUserUnderTeam("team1"));
+    TeamGraphFixture.resetQueryCount();
+
+    for (int i = 0; i < 20; i++) {
+      assertTrue(subjectContext.isUserUnderTeam("team11"));
+      assertTrue(subjectContext.isUserUnderTeam("team1"));
+      assertFalse(subjectContext.isUserUnderTeam("unrelatedTeam"));
+      assertTrue(subjectContext.hasAnyRole("team1_role_1"));
+      assertTrue(subjectContext.hasAnyRole("user_role_1"));
+      assertFalse(subjectContext.hasAnyRole("unrelatedRole"));
+    }
+
+    assertEquals(
+        0,
+        TeamGraphFixture.queryCount(),
+        "The subject's team hierarchy must be resolved once, not once per condition");
+  }
+
+  @Test
+  void testRepeatedSubjectContextReadsLoadUserOnce() {
+    SubjectContext first = SubjectContext.getSubjectContext("testUser");
+    SubjectContext second = SubjectContext.getSubjectContext("testUser");
+
+    assertSame(first.user(), second.user());
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testUserContextInvalidationLeavesPolicyCacheWarm() {
+    SubjectCache.getPolicies("testUser");
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidateUserContext("testUser");
+    SubjectCache.getPolicies("testUser");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testIdOnlyReferenceInvalidatesAllUserContexts() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidateUserContexts(List.of(new EntityReference().withId(UUID.randomUUID())));
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemoteUserWriteDropsThatUserContext() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    // A user's FQN is the lower-cased name while the cache is keyed by the principal name as the
+    // request presented it, so the match has to be case-insensitive to hit anything at all.
+    SubjectCache.invalidator().invalidate(Entity.USER, UUID.randomUUID(), "testuser");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  /**
+   * The policy entry carries the team names and inherited role names that {@code inAnyTeam()} and
+   * {@code hasAnyRole()} answer from, and both used to be read from the database on every
+   * evaluation. A peer's team write has to drop it, or this pod keeps authorizing against the
+   * hierarchy as it was before that write.
+   */
+  @Test
+  void testRemoteTeamWriteDropsPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  /** Role names reach the summary the same way, so a rename on a peer has to drop it too. */
+  @Test
+  void testRemoteRoleWriteDropsPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.ROLE, UUID.randomUUID(), "DataSteward");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  /** A membership or role change reaches peers as a user write; the policy entry holds both. */
+  @Test
+  void testRemoteUserWriteDropsThatUsersPolicies() {
+    SubjectCache.getPolicies("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.USER, UUID.randomUUID(), "testuser");
+    SubjectCache.getPolicies("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemotePersonaWriteDropsAllUserContexts() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.PERSONA, UUID.randomUUID(), "analyst");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemoteTeamWriteDropsAllUserContexts() {
+    // A team's defaultPersona reaches users as inheritedPersonas, and membership/hierarchy edits
+    // change which teams contribute — all of which arrive as a TEAM message, not a PERSONA one.
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator().invalidate(Entity.TEAM, UUID.randomUUID(), "team11");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testRemoteUnrelatedWriteLeavesUserContextWarm() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidator()
+        .invalidate(Entity.TABLE, UUID.randomUUID(), "service.database.schema.table");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, never())
+        .getByName(isNull(), anyString(), isNull(), any(Include.class), anyBoolean());
   }
 
   @Test
@@ -301,6 +482,145 @@ public class SubjectCacheTest {
     assertEquals(expectedPolicyCount, botPolicies.size());
   }
 
+  /**
+   * A policy load that has read the pre-edit rules when the edit commits and the caches are
+   * invalidated must not become what the next authorization decision is made from.
+   */
+  @Test
+  void testPolicyLoadCrossingInvalidationDoesNotServeTheRemovedRule() throws Exception {
+    Policy policy = twoRulePolicy();
+    putUserWithPolicy("racingUser", policy);
+    CountDownLatch loadReadOldRules = new CountDownLatch(1);
+    CountDownLatch invalidationDone = new CountDownLatch(1);
+    pauseFirstReadOf(policy, loadReadOldRules, invalidationDone);
+
+    try {
+      CompletableFuture<List<PolicyContext>> inFlight =
+          CompletableFuture.supplyAsync(() -> SubjectCache.getPolicies("racingUser"));
+      assertTrue(loadReadOldRules.await(10, TimeUnit.SECONDS));
+
+      EntityRepository.CACHE_WITH_ID.put(
+          new ImmutablePair<>(Entity.POLICY, policy.getId()),
+          JsonUtils.pojoToJson(policy.withRules(List.of(policy.getRules().getFirst()))));
+      SubjectCache.invalidateAll();
+      invalidationDone.countDown();
+      inFlight.get(10, TimeUnit.SECONDS);
+    } finally {
+      invalidationDone.countDown();
+      restorePolicyReads();
+    }
+
+    List<PolicyContext> afterEdit = SubjectCache.getPolicies("racingUser");
+    assertEquals(1, afterEdit.size());
+    assertEquals(1, afterEdit.getFirst().getRules().size());
+  }
+
+  /**
+   * The request entity cache is thread-local and outlives a request on pool threads. A policy load
+   * must not read from it, or the rules cached before an edit are compiled into the shared cache
+   * again, including on the retry that follows an invalidation.
+   */
+  @Test
+  void testLoadIgnoresPolicyLeftInTheThreadsRequestCache() {
+    Policy policy = twoRulePolicy();
+    putUserWithPolicy("leakyUser", policy);
+    Policy leaked = JsonUtils.readValue(JsonUtils.pojoToJson(policy), Policy.class);
+    answerPolicyReadsLikeTheRepository();
+
+    try {
+      EntityRepository.CACHE_WITH_ID.put(
+          new ImmutablePair<>(Entity.POLICY, policy.getId()),
+          JsonUtils.pojoToJson(policy.withRules(List.of(policy.getRules().getFirst()))));
+      RequestEntityCache.putById(
+          Entity.POLICY, policy.getId(), null, null, false, leaked, Policy.class);
+
+      List<PolicyContext> loaded = SubjectCache.getPolicies("leakyUser");
+
+      assertEquals(1, loaded.size());
+      assertEquals(1, loaded.getFirst().getRules().size());
+    } finally {
+      RequestEntityCache.clear();
+      restorePolicyReads();
+    }
+  }
+
+  /** Reads the request cache first and fills it, as {@code EntityRepository.get} does. */
+  private static void answerPolicyReadsLikeTheRepository() {
+    doAnswer(
+            invocation -> {
+              UUID id = invocation.getArgument(1);
+              Policy cached =
+                  RequestEntityCache.getById(Entity.POLICY, id, null, null, false, Policy.class);
+              Policy loaded =
+                  cached != null
+                      ? cached
+                      : JsonUtils.readValue(
+                          EntityRepository.CACHE_WITH_ID.get(
+                              new ImmutablePair<>(Entity.POLICY, id)),
+                          Policy.class);
+              RequestEntityCache.putById(
+                  Entity.POLICY, id, null, null, false, loaded, Policy.class);
+              return loaded;
+            })
+        .when(policyRepository)
+        .get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean());
+  }
+
+  private static Policy twoRulePolicy() {
+    Policy policy =
+        new Policy()
+            .withName("racing_policy")
+            .withId(UUID.randomUUID())
+            .withRules(getRules("racing_policy").subList(0, 2));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.POLICY, policy.getId()), JsonUtils.pojoToJson(policy));
+    return policy;
+  }
+
+  private static void putUserWithPolicy(String userName, Policy policy) {
+    Role role =
+        new Role()
+            .withName(userName + "_role")
+            .withId(UUID.randomUUID())
+            .withPolicies(toEntityReferences(List.of(policy)));
+    EntityRepository.CACHE_WITH_ID.put(
+        new ImmutablePair<>(Entity.ROLE, role.getId()), JsonUtils.pojoToJson(role));
+    User racingUser = new User().withName(userName).withRoles(toEntityReferences(List.of(role)));
+    EntityRepository.CACHE_WITH_NAME.put(
+        new ImmutablePair<>(Entity.USER, userName), JsonUtils.pojoToJson(racingUser));
+  }
+
+  private static void pauseFirstReadOf(
+      Policy policy, CountDownLatch readOldRules, CountDownLatch resume) {
+    AtomicBoolean paused = new AtomicBoolean();
+    doAnswer(
+            invocation -> {
+              Policy loaded =
+                  JsonUtils.readValue(
+                      EntityRepository.CACHE_WITH_ID.get(
+                          new ImmutablePair<>(Entity.POLICY, invocation.getArgument(1))),
+                      Policy.class);
+              if (policy.getId().equals(loaded.getId()) && paused.compareAndSet(false, true)) {
+                readOldRules.countDown();
+                assertTrue(resume.await(10, TimeUnit.SECONDS));
+              }
+              return loaded;
+            })
+        .when(policyRepository)
+        .get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean());
+  }
+
+  private static void restorePolicyReads() {
+    doAnswer(
+            invocation ->
+                JsonUtils.readValue(
+                    EntityRepository.CACHE_WITH_ID.get(
+                        new ImmutablePair<>(Entity.POLICY, invocation.getArgument(1))),
+                    Policy.class))
+        .when(policyRepository)
+        .get(isNull(), any(UUID.class), isNull(), any(Include.class), anyBoolean());
+  }
+
   private static List<Role> getRoles(String prefix) {
     List<Role> roles = new ArrayList<>(3);
     for (int i = 1; i <= 3; i++) {
@@ -335,7 +655,7 @@ public class SubjectCacheTest {
     return rules;
   }
 
-  private static <T extends EntityInterface> List<EntityReference> toEntityReferences(
+  private static <T extends EntityInterface<?>> List<EntityReference> toEntityReferences(
       List<T> entities) {
     List<EntityReference> references = new ArrayList<>();
     for (T entity : entities) {
@@ -356,6 +676,7 @@ public class SubjectCacheTest {
             .withParents(parentList);
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.TEAM, team.getId()), JsonUtils.pojoToJson(team));
+    TeamGraphFixture.register(team);
     return team;
   }
 }

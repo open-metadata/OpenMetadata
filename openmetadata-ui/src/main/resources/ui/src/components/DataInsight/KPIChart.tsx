@@ -11,33 +11,27 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
+import {
+  chartColor,
+  ChartSeries,
+  LineChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
 import {
-  CartesianGrid,
-  Legend,
-  LegendProps,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import {
-  DEFAULT_CHART_OPACITY,
-  GRAPH_BACKGROUND_COLOR,
-  HOVER_CHART_OPACITY,
-  ROUTES,
-} from '../../constants/constants';
-import {
-  BAR_CHART_MARGIN,
-  DATA_INSIGHT_GRAPH_COLORS,
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
@@ -53,9 +47,10 @@ import {
 } from '../../interface/data-insight.interface';
 import { DataInsightCustomChartResult } from '../../rest/DataInsightAPI';
 import { getLatestKpiResult, getListKpiResult } from '../../rest/KpiAPI';
-import { updateActiveChartFilter } from '../../utils/ChartUtils';
-import { CustomTooltip, renderLegend } from '../../utils/DataInsightUtils';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+import { getDataInsightTooltip } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
+import { buildKpiChartRows, KpiChartRow } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import PageHeader from '../PageHeader/PageHeader.component';
@@ -80,6 +75,7 @@ const KPIChart: FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const palette = useChartPalette();
 
   const [kpiResults, setKpiResults] = useState<
     Record<string, DataInsightCustomChartResult['results']>
@@ -87,8 +83,6 @@ const KPIChart: FC<Props> = ({
   const [kpiLatestResults, setKpiLatestResults] =
     useState<Record<string, UIKpiResult>>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [activeKeys, setActiveKeys] = useState<string[]>([]);
-  const [activeMouseHoverKey, setActiveMouseHoverKey] = useState('');
 
   const handleAddKpi = () => navigate(ROUTES.ADD_KPI);
 
@@ -170,18 +164,6 @@ const KPIChart: FC<Props> = ({
     }
   };
 
-  const handleLegendClick: LegendProps['onClick'] = (event) => {
-    setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(event.value, prevActiveKeys)
-    );
-  };
-  const handleLegendMouseEnter: LegendProps['onMouseEnter'] = (event) => {
-    setActiveMouseHoverKey(event.value);
-  };
-  const handleLegendMouseLeave: LegendProps['onMouseLeave'] = () => {
-    setActiveMouseHoverKey('');
-  };
-
   const mapKPIMetricType = useMemo(() => {
     return kpiList.reduce(
       (acc, kpi) => {
@@ -196,16 +178,37 @@ const KPIChart: FC<Props> = ({
 
   const kpiNames = useMemo(() => Object.keys(kpiResults), [kpiResults]);
 
-  const kpiTooltipValueFormatter = (
-    value: string | number,
-    key?: string
-  ): string => {
-    const isPercentage = key
-      ? mapKPIMetricType[key] === KpiTargetType.Percentage
-      : KpiTargetType.Number;
+  const rows = useMemo(() => buildKpiChartRows(kpiResults), [kpiResults]);
 
-    return isPercentage ? round(Number(value), 2) + '%' : value + '';
-  };
+  const series = useMemo<ChartSeries[]>(
+    () =>
+      kpiNames.map((key, index) => ({
+        key,
+        name: key,
+        color: chartColor(palette, index),
+        seriesOption: { connectNulls: true, emphasis: { focus: 'series' } },
+      })),
+    [kpiNames, palette]
+  );
+
+  const tooltip = useMemo(
+    () =>
+      getDataInsightTooltip<KpiChartRow>({
+        timeKey: 'day',
+        valueFormatter: (value, key) =>
+          key && mapKPIMetricType[key] === KpiTargetType.Percentage
+            ? round(Number(value), 2) + '%'
+            : value + '',
+      }),
+    [mapKPIMetricType]
+  );
+
+  const xAxis = useMemo(
+    () => ({
+      formatter: (value: string | number) => formatDate(Number(value)),
+    }),
+    []
+  );
 
   useEffect(() => {
     setKpiResults({});
@@ -229,138 +232,108 @@ const KPIChart: FC<Props> = ({
     <Card
       className="data-insight-card data-insight-card-chart"
       data-testid="kpi-card"
-      id="kpi-charts"
-      loading={isLoading || isKpiLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.kpi-title'),
-            subHeader: t('message.kpi-subtitle'),
-          }}
-        />
-      }>
-      {kpiList.length ? (
-        <Row gutter={DI_STRUCTURE.rowContainerGutter}>
-          {hasAtLeastOneData ? (
-            <>
-              <Col span={DI_STRUCTURE.leftContainerSpan}>
-                <ResponsiveContainer
-                  debounce={1}
-                  height={GRAPH_HEIGHT}
-                  id="kpi-chart">
-                  <LineChart margin={BAR_CHART_MARGIN}>
-                    <CartesianGrid
-                      stroke={GRAPH_BACKGROUND_COLOR}
-                      vertical={false}
-                    />
-                    <Tooltip
-                      content={
-                        <CustomTooltip
-                          timeStampKey="day"
-                          valueFormatter={kpiTooltipValueFormatter}
+      id="kpi-charts">
+      <Card.Header
+        title={
+          <PageHeader
+            data={{
+              header: t('label.kpi-title'),
+              subHeader: t('message.kpi-subtitle'),
+            }}
+          />
+        }
+      />
+      <Card.Content>
+        {isLoading || isKpiLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <>
+            {kpiList.length ? (
+              <Grid
+                className="layout-row layout-grid"
+                style={getLayoutGutter(32)}>
+                {hasAtLeastOneData ? (
+                  <>
+                    <Grid.Item
+                      className="layout-column"
+                      span={DI_STRUCTURE.leftContainerSpan}>
+                      <div id="kpi-chart">
+                        <LineChart<KpiChartRow>
+                          ariaLabel={t('label.kpi-title')}
+                          data={rows}
+                          height={GRAPH_HEIGHT}
+                          series={series}
+                          tooltip={tooltip}
+                          xAxis={xAxis}
+                          xKey="day"
                         />
-                      }
-                    />
-                    <XAxis
-                      allowDuplicatedCategory={false}
-                      dataKey="day"
-                      tickFormatter={(value) => formatDate(value)}
-                      type="category"
-                    />
-                    <YAxis dataKey="count" />
-                    <Legend
-                      align="left"
-                      content={(props) =>
-                        renderLegend(props as LegendProps, activeKeys)
-                      }
-                      key="name"
-                      layout="horizontal"
-                      verticalAlign="top"
-                      wrapperStyle={{ left: '0px', top: '0px' }}
-                      onClick={handleLegendClick}
-                      onMouseEnter={handleLegendMouseEnter}
-                      onMouseLeave={handleLegendMouseLeave}
-                    />
-
-                    {kpiNames.map((key, i) => (
-                      <Line
-                        data={kpiResults[key]}
-                        dataKey="count"
-                        hide={
-                          activeKeys.length && key !== activeMouseHoverKey
-                            ? !activeKeys.includes(key)
-                            : false
-                        }
-                        key={key}
-                        name={key}
-                        stroke={DATA_INSIGHT_GRAPH_COLORS[i]}
-                        strokeOpacity={
-                          isEmpty(activeMouseHoverKey) ||
-                          key === activeMouseHoverKey
-                            ? DEFAULT_CHART_OPACITY
-                            : HOVER_CHART_OPACITY
-                        }
-                        type="monotone"
+                      </div>
+                    </Grid.Item>
+                    {!isUndefined(kpiLatestResults) &&
+                      !isEmpty(kpiLatestResults) && (
+                        <Grid.Item
+                          className="layout-column"
+                          span={DI_STRUCTURE.rightContainerSpan}>
+                          <KPILatestResultsV1
+                            kpiLatestResultsRecord={kpiLatestResults}
+                          />
+                        </Grid.Item>
+                      )}
+                  </>
+                ) : (
+                  <Grid.Item className="layout-column justify-center" span={24}>
+                    {viewKPIPermission ? (
+                      <EmptyGraphPlaceholder />
+                    ) : (
+                      <ErrorPlaceHolder
+                        className="border-none"
+                        permissionValue={t('label.view-entity', {
+                          entity: t('label.kpi-uppercase'),
+                        })}
+                        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
                       />
-                    ))}
-                  </LineChart>
-                </ResponsiveContainer>
-              </Col>
-              {!isUndefined(kpiLatestResults) && !isEmpty(kpiLatestResults) && (
-                <Col span={DI_STRUCTURE.rightContainerSpan}>
-                  <KPILatestResultsV1
-                    kpiLatestResultsRecord={kpiLatestResults}
-                  />
-                </Col>
-              )}
-            </>
-          ) : (
-            <Col className="justify-center" span={24}>
-              {viewKPIPermission ? (
-                <EmptyGraphPlaceholder />
-              ) : (
+                    )}
+                  </Grid.Item>
+                )}
+              </Grid>
+            ) : (
+              <Box
+                inline
+                align="center"
+                className="layout-space w-full justify-center"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
                 <ErrorPlaceHolder
-                  className="border-none"
-                  permissionValue={t('label.view-entity', {
+                  button={
+                    <Button
+                      color="secondary-brand"
+                      iconLeading={Plus}
+                      onClick={handleAddKpi}>
+                      {t('label.add-entity', {
+                        entity: t('label.kpi-uppercase'),
+                      })}
+                    </Button>
+                  }
+                  className="m-0 border-none"
+                  permission={createKPIPermission}
+                  permissionValue={t('label.create-entity', {
                     entity: t('label.kpi-uppercase'),
                   })}
-                  type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-                />
-              )}
-            </Col>
-          )}
-        </Row>
-      ) : (
-        <Space
-          className="w-full justify-center items-center"
-          direction="vertical">
-          <ErrorPlaceHolder
-            button={
-              <Button
-                ghost
-                icon={<PlusOutlined />}
-                type="primary"
-                onClick={handleAddKpi}>
-                {t('label.add-entity', {
-                  entity: t('label.kpi-uppercase'),
-                })}
-              </Button>
-            }
-            className="m-0 border-none"
-            permission={createKPIPermission}
-            permissionValue={t('label.create-entity', {
-              entity: t('label.kpi-uppercase'),
-            })}
-            size={SIZE.MEDIUM}
-            type={
-              createKPIPermission
-                ? ERROR_PLACEHOLDER_TYPE.ASSIGN
-                : ERROR_PLACEHOLDER_TYPE.NO_DATA
-            }>
-            {createKPIPermission && t('message.no-kpi-available-add-new-one')}
-          </ErrorPlaceHolder>
-        </Space>
-      )}
+                  size={SIZE.MEDIUM}
+                  type={
+                    createKPIPermission
+                      ? ERROR_PLACEHOLDER_TYPE.ASSIGN
+                      : ERROR_PLACEHOLDER_TYPE.NO_DATA
+                  }>
+                  {createKPIPermission &&
+                    t('message.no-kpi-available-add-new-one')}
+                </ErrorPlaceHolder>
+              </Box>
+            )}
+          </>
+        )}
+      </Card.Content>
     </Card>
   );
 };

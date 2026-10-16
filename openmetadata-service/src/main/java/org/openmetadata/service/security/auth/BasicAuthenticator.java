@@ -37,6 +37,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.SELF_SI
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.TOKEN_EXPIRY_ERROR;
 import static org.openmetadata.service.resources.teams.UserResource.USER_PROTECTED_FIELDS;
+import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
@@ -59,12 +60,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -80,12 +83,14 @@ import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
@@ -103,26 +108,35 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   private static final int HASHING_COST = 12;
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private AuthorizerConfiguration authorizerConfiguration;
-  private boolean isSelfSignUpAvailable;
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.isSelfSignUpAvailable =
-        SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
+  }
+
+  /** Read per request: a change saved in the UI applies without reinitializing authentication. */
+  private static boolean isSelfSignUpAvailable() {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    return authConfig != null && Boolean.TRUE.equals(authConfig.getEnableSelfSignup());
+  }
+
+  private static Set<String> allowedRegistrationDomains() {
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    return authorizer == null || authorizer.getAllowedEmailRegistrationDomains() == null
+        ? Set.of()
+        : authorizer.getAllowedEmailRegistrationDomains();
   }
 
   @Override
   public User registerUser(RegistrationRequest newRegistrationRequest) {
-    if (isSelfSignUpAvailable) {
+    if (isSelfSignUpAvailable()) {
       String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
       String[] tokens = newRegistrationRequest.getEmail().split("@");
       String emailDomain = tokens[1];
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-      if (!allowedDomains.contains("all") && !allowedDomains.contains(emailDomain)) {
+      Set<String> allowedDomains = allowedRegistrationDomains();
+      if (!allowedDomains.contains("all")
+          && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
         LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
         throw new BadRequestException(
             "Email with the given domain is not allowed. Contact Administrator");
@@ -149,7 +163,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.get(
             null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
-      LOG.info("User [{}] already registered.", emailToken);
+      LOG.info("User [{}] already registered.", registeredUser.getName());
       return;
     }
 
@@ -181,7 +195,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
-      LOG.info("Generated Email verification token [{}]", mailVerificationToken);
+      LOG.info("Generated an email verification token for user [{}]", user.getName());
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
@@ -202,25 +216,28 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public void sendPasswordResetLink(
       UriInfo uriInfo, User user, String subject, String templateFilePath) throws IOException {
-    UUID mailVerificationToken = UUID.randomUUID();
-    PasswordResetToken resetToken =
-        TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
-    LOG.info("Generated Password Reset verification token [{}]", mailVerificationToken);
-    String passwordResetLink =
-        String.format(
-            "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.getOMBaseURL(),
-            URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
-            mailVerificationToken);
-    try {
-      EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
-    } catch (TemplateException e) {
-      LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
-      throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
+    // Without SMTP the link reaches nobody, so a stored token could only ever be misused.
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      UUID mailVerificationToken = UUID.randomUUID();
+      PasswordResetToken resetToken =
+          TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
+      LOG.info("Generated a password reset token for user [{}]", user.getName());
+      String passwordResetLink =
+          String.format(
+              "%s/users/password/reset?user=%s&token=%s",
+              EmailUtil.getOMBaseURL(),
+              URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
+              mailVerificationToken);
+      try {
+        EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
+      } catch (TemplateException e) {
+        LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
+        throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
+      }
+      // don't persist tokens delete existing
+      tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
+      tokenRepository.insertToken(resetToken);
     }
-    // don't persist tokens delete existing
-    tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
-    tokenRepository.insertToken(resetToken);
   }
 
   @Override
@@ -373,7 +390,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
-      throw new BadRequestException("Token Cannot be Null or Empty String");
+      throw new AuthenticationException("Refresh token is required. Please login again.");
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
@@ -425,10 +442,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken =
         (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new CustomExceptionMessage(
-          BAD_REQUEST,
-          PASSWORD_RESET_TOKEN_EXPIRED,
-          "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new AuthenticationException("Refresh token expired. Please login again.");
     }
     // TODO: currently allow single login from a place, later multiple login can be added
     // just delete the existing token
@@ -441,7 +455,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   }
 
   private User getUserFromRegistrationRequest(RegistrationRequest create) {
-    String username = create.getEmail().split("@")[0];
+    String username =
+        generateUsernameFromEmail(create.getEmail(), userRepository::checkUserNameExists);
     String hashedPwd =
         BCrypt.withDefaults().hashToString(HASHING_COST, create.getPassword().toCharArray());
 
@@ -450,10 +465,11 @@ public class BasicAuthenticator implements AuthenticatorHandler {
             username,
             new CreateUser()
                 .withName(username)
-                .withEmail(create.getEmail())
+                .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
                 .withDisplayName(String.format("%s%s", create.getFirstName(), create.getLastName()))
                 .withIsBot(false)
                 .withIsAdmin(false))
+        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(username))
         .withAuthenticationMechanism(
             new AuthenticationMechanism()
                 .withAuthType(AuthenticationMechanism.AuthType.BASIC)
@@ -512,32 +528,45 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (omUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
-    @SuppressWarnings("unchecked")
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
-    String storedHashPassword = storedData.get("password");
-    if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
+    if (!matchesStoredPassword(omUser, reqPassword)) {
       // record Failed Login Attempts
       recordFailedLoginAttempt(omUser.getEmail(), omUser.getName());
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
   }
 
+  /**
+   * The password check alone, with none of login's failed-attempt bookkeeping — so the Test Login
+   * dry-run can verify a password without ever counting towards locking the account.
+   */
+  static boolean matchesStoredPassword(User omUser, String password) {
+    if (omUser.getAuthenticationMechanism() == null) {
+      return false;
+    }
+    @SuppressWarnings("unchecked")
+    LinkedHashMap<String, String> storedData =
+        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
+    String storedHashPassword = storedData.get("password");
+    return BCrypt.verifyer().verify(password.toCharArray(), storedHashPassword).verified;
+  }
+
   @Override
   public User lookUserInProvider(String email, String pwd) {
     User storedUser = null;
-    try {
-      if (email.contains("@")) {
-        // lookup by User Email
+    if (email.contains("@")) {
+      try {
+        // Authenticating by email: the same lookup the SSO flows use, so a deactivated account or
+        // a duplicate-email collision fails with its own message instead of being reported as bad
+        // credentials. Only "no such account" falls through to the generic response, which is what
+        // keeps this from telling an attacker which addresses are registered.
         storedUser =
-            userRepository.getByEmail(
-                null,
+            userRepository.getActiveUserByEmailForAuth(
                 email,
                 new EntityUtil.Fields(
                     Set.of(USER_PROTECTED_FIELDS, "roles"), "authenticationMechanism,roles"));
+      } catch (EntityNotFoundException ignored) {
+        LOG.debug("No account registered for {}", email);
       }
-    } catch (Exception ignored) {
-
     }
 
     if (storedUser == null || Boolean.TRUE.equals(storedUser.getIsBot())) {

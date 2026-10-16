@@ -21,19 +21,35 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.Json;
+import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.json.JsonPatchBuilder;
+import jakarta.json.JsonReader;
+import jakarta.json.JsonStructure;
+import jakarta.json.JsonValue;
+import java.io.IOException;
+import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
@@ -45,6 +61,147 @@ import org.openmetadata.schema.utils.JsonUtils;
 /** This test provides examples of how to use applyPatch */
 @Slf4j
 class JsonUtilsTest {
+  @Test
+  void typeNameExtractionMatchesSchemaAnnotations() {
+    String fieldSchema =
+        """
+        {
+          "definitions": {
+            "seedField": {"$comment": "@om-field-type"},
+            "ordinaryField": {"type": "string"}
+          }
+        }
+        """;
+    String entitySchema = "{\"$comment\":\"@om-entity-type\"}";
+
+    assertEquals(
+        List.of("seedField"),
+        JsonUtils.getTypeNames(
+            "json/schema/type/example.json", fieldSchema.getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        List.of("exampleEntity"),
+        JsonUtils.getTypeNames(
+            "json/schema/entity/data/exampleEntity.json",
+            entitySchema.getBytes(StandardCharsets.UTF_8)));
+    assertTrue(
+        JsonUtils.getTypeNames(
+                "json/schema/entity/data/unannotated.json", "{}".getBytes(StandardCharsets.UTF_8))
+            .isEmpty());
+  }
+
+  @Test
+  void typeNameExtractionSupportsWindowsResourcePaths() {
+    String fieldSchema = "{\"definitions\":{\"seedField\":{\"$comment\":\"@om-field-type\"}}}";
+    String entitySchema = "{\"$comment\":\"@om-entity-type\"}";
+
+    assertEquals(
+        List.of("seedField"),
+        JsonUtils.getTypeNames(
+            "json\\schema\\type\\example.json", fieldSchema.getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        List.of("exampleEntity"),
+        JsonUtils.getTypeNames(
+            "json\\schema\\entity\\data\\exampleEntity.json",
+            entitySchema.getBytes(StandardCharsets.UTF_8)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("patchConversionCases")
+  void applyPatchConversionMatchesTheStringBridge(String originalJson, String patchJson) {
+    JsonNode original = JsonUtils.readTree(originalJson);
+    JsonPatch patch = readPatch(patchJson);
+
+    JsonNode expected = applyPatchThroughStringBridge(original, patch, JsonNode.class);
+    JsonNode actual = JsonUtils.applyPatch(original, patch, JsonNode.class);
+
+    assertEquals(expected.toString(), actual.toString());
+  }
+
+  @ParameterizedTest
+  @MethodSource("failingPatchConversionCases")
+  void applyPatchConversionPreservesFailures(String originalJson, String patchJson) {
+    JsonNode original = JsonUtils.readTree(originalJson);
+    JsonPatch patch = readPatch(patchJson);
+
+    RuntimeException expected =
+        assertThrows(
+            RuntimeException.class,
+            () -> applyPatchThroughStringBridge(original, patch, JsonNode.class));
+    RuntimeException actual =
+        assertThrows(
+            RuntimeException.class, () -> JsonUtils.applyPatch(original, patch, JsonNode.class));
+
+    assertEquals(expected.getClass(), actual.getClass());
+    assertEquals(expected.getMessage(), actual.getMessage());
+  }
+
+  private static Stream<Arguments> patchConversionCases() {
+    return Stream.of(
+        Arguments.of(
+            "{\"items\":[1,2],\"ratio\":1.25}",
+            "[{\"op\":\"add\",\"path\":\"/items/-\",\"value\":3}]"),
+        Arguments.of("[1,2]", "[{\"op\":\"add\",\"path\":\"/-\",\"value\":3}]"),
+        Arguments.of(
+            "{\"name\":\"old\",\"removeMe\":true}",
+            "[{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"new\"},"
+                + "{\"op\":\"remove\",\"path\":\"/removeMe\"}]"),
+        Arguments.of(
+            "{\"a/b\":{\"tilde~key\":\"value\"},\"target\":{}}",
+            "[{\"op\":\"copy\",\"from\":\"/a~1b/tilde~0key\",\"path\":\"/target/copied\"},"
+                + "{\"op\":\"move\",\"from\":\"/target/copied\",\"path\":\"/target/moved\"}]"),
+        Arguments.of(
+            "{\"extension\":{\"integer\":7,\"float\":1.5,\"enabled\":true,\"date\":\"2026-07-13\"}}",
+            "[{\"op\":\"test\",\"path\":\"/extension/float\",\"value\":1.5},"
+                + "{\"op\":\"replace\",\"path\":\"/extension/integer\",\"value\":8}]"));
+  }
+
+  private static Stream<Arguments> failingPatchConversionCases() {
+    return Stream.of(
+        Arguments.of("{\"value\":1}", "[{\"op\":\"test\",\"path\":\"/value\",\"value\":2}]"),
+        Arguments.of("{\"items\":[1]}", "[{\"op\":\"add\",\"path\":\"/items/3\",\"value\":2}]"));
+  }
+
+  private static JsonPatch readPatch(String patchJson) {
+    try (JsonReader reader = Json.createReader(new StringReader(patchJson))) {
+      return Json.createPatch(reader.readArray());
+    }
+  }
+
+  private static <T> T applyPatchThroughStringBridge(
+      Object original, JsonPatch patch, Class<T> targetClass) {
+    JsonStructure target;
+    try (JsonReader reader = Json.createReader(new StringReader(JsonUtils.pojoToJson(original)))) {
+      target = reader.read();
+    }
+    JsonValue patched = patch.apply(target);
+    JsonNode tree = JsonUtils.readTree(patched.toString());
+    return JsonUtils.convertValue(tree, targetClass);
+  }
+
+  @Test
+  void tokenBufferSnapshotCanRestoreAnObjectAcrossRetries() {
+    Team team = new Team().withId(UUID.randomUUID()).withName("original");
+    var snapshot = JsonUtils.toTokenBuffer(team);
+
+    team.setName("first-attempt");
+    JsonUtils.overwriteFromTokenBuffer(team, snapshot);
+    assertEquals("original", team.getName());
+
+    team.setName("second-attempt");
+    JsonUtils.overwriteFromTokenBuffer(team, snapshot);
+    assertEquals("original", team.getName());
+  }
+
+  @Test
+  void getJsonDataResourcesUsesCommonClasspathIndex() throws IOException {
+    Pattern pattern = Pattern.compile(".*json/schema/type/changeEvent\\.json$");
+
+    List<String> resources = JsonUtils.getJsonDataResources(pattern);
+
+    assertFalse(resources.isEmpty());
+    assertEquals(CommonUtil.getResources(pattern), resources);
+  }
+
   /** Test apply patch method with different operations. */
   @Test
   void applyPatch() {
@@ -115,6 +272,141 @@ class JsonUtilsTest {
             JsonException.class,
             () -> JsonUtils.applyPatch(original, jsonPatchBuilder2.build(), Team.class));
     assertTrue(jsonException.getMessage().contains("An array item index is out of range"));
+  }
+
+  @Test
+  void applyPatchRejectsRenamedFieldWithSuggestion() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    // "status" was renamed to "entityStatus" in #22904. Clients (and LLMs trained before the
+    // rename) still send the old name; the failure must read as a client error, not a 500.
+    JsonPatch patch = Json.createPatchBuilder().add("/status", "Approved").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid field 'status'"));
+    assertTrue(ex.getMessage().contains("GlossaryTerm"));
+    assertTrue(ex.getMessage().contains("Did you mean 'entityStatus'"));
+    assertTrue(ex.getMessage().contains("Valid fields are:"));
+  }
+
+  @Test
+  void applyPatchSuggestsPluralFormOfSingularField() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/reviewer", "alice").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Did you mean 'reviewers'"));
+  }
+
+  @Test
+  void applyPatchRejectsUnknownFieldWithoutSuggestionWhenNothingMatches() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/zzzNoSuchField", "x").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid field 'zzzNoSuchField'"));
+    assertFalse(ex.getMessage().contains("Did you mean"));
+    assertTrue(ex.getMessage().contains("entityStatus"));
+  }
+
+  @Test
+  void applyPatchRejectsInvalidEnumValueAndListsAllowedValues() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    // The field name is right but the value is not one this enum accepts. That is still the
+    // caller's mistake, so it must not read as an internal fault either.
+    JsonPatch patch = Json.createPatchBuilder().add("/entityStatus", "Bogus").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'entityStatus'"));
+    assertTrue(ex.getMessage().contains("GlossaryTerm"));
+    assertTrue(ex.getMessage().contains("Allowed values are:"));
+    assertTrue(ex.getMessage().contains("Approved"));
+  }
+
+  @Test
+  void applyPatchRejectsWronglyTypedValue() {
+    JsonObjectBuilder termJson = Json.createObjectBuilder();
+    termJson.add("id", UUID.randomUUID().toString()).add("name", "Anthropic");
+    GlossaryTerm original = JsonUtils.readValue(termJson.build().toString(), GlossaryTerm.class);
+
+    JsonPatch patch = Json.createPatchBuilder().add("/synonyms", "not-an-array").build();
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, GlossaryTerm.class));
+    assertTrue(ex.getMessage().contains("Invalid value for field 'synonyms'"));
+  }
+
+  @Test
+  void applyPatchRejectsMalformedJsonPointerPath() {
+    JsonObjectBuilder teamJson = Json.createObjectBuilder();
+    teamJson.add("id", UUID.randomUUID().toString()).add("name", "finance");
+    Team original = JsonUtils.readValue(teamJson.build().toString(), Team.class);
+
+    JsonArray malformedPatch =
+        Json.createArrayBuilder()
+            .add(
+                Json.createObjectBuilder()
+                    .add("op", "replace")
+                    .add("path", "displayName")
+                    .add("value", "Finance Team"))
+            .build();
+    JsonPatch patch = Json.createPatch(malformedPatch);
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, Team.class));
+    assertTrue(ex.getMessage().contains("displayName"));
+    assertTrue(ex.getMessage().contains("must begin with '/'"));
+  }
+
+  @Test
+  void applyPatchRejectsMalformedFromPointer() {
+    JsonObjectBuilder teamJson = Json.createObjectBuilder();
+    teamJson.add("id", UUID.randomUUID().toString()).add("name", "finance");
+    Team original = JsonUtils.readValue(teamJson.build().toString(), Team.class);
+
+    JsonArray malformedPatch =
+        Json.createArrayBuilder()
+            .add(
+                Json.createObjectBuilder()
+                    .add("op", "move")
+                    .add("from", "name")
+                    .add("path", "/displayName"))
+            .build();
+    JsonPatch patch = Json.createPatch(malformedPatch);
+
+    IllegalArgumentException ex =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> JsonUtils.applyPatch(original, patch, Team.class));
+    assertTrue(ex.getMessage().contains("from"));
+    assertTrue(ex.getMessage().contains("must begin with '/'"));
   }
 
   @Test

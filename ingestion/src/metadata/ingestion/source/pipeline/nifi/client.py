@@ -13,7 +13,8 @@ Client to interact with Nifi apis
 """
 
 import traceback
-from typing import Dict, Iterable, List  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.services.connections.pipeline.nifi.basicAuth import (
     NifiBasicAuth,
@@ -29,6 +30,10 @@ from metadata.ingestion.ometa.client import ClientConfig, HTTPError
 from metadata.utils.constants import AUTHORIZATION_HEADER, NO_ACCESS_TOKEN
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from requests import Response
+
 
 logger = ingestion_logger()
 
@@ -109,7 +114,7 @@ class NifiClient:
                 self._token = res.text
 
                 if res.status_code not in (200, 201):
-                    raise HTTPError(res.text)  # noqa: TRY301
+                    raise HTTPError(res.text, response=cast("Response", res))  # noqa: TRY301
 
             except HTTPError as err:
                 logger.error(f"Connection error retrieving the Bearer Token to access Nifi - {err}")
@@ -127,7 +132,7 @@ class NifiClient:
         return self._token
 
     @property
-    def resources(self) -> List[dict]:  # noqa: UP006
+    def resources(self) -> list[dict]:
         """
         This can be expensive. Only query it once.
         """
@@ -140,17 +145,17 @@ class NifiClient:
         except AttributeError:
             return []
 
-    def _get_process_group_ids(self) -> List[str]:  # noqa: UP006
+    def _get_process_group_ids(self) -> list[str]:
         return [
             elem.get(IDENTIFIER).replace(PROCESS_GROUPS_STARTER, "")
             for elem in self.resources
             if elem.get(IDENTIFIER).startswith(PROCESS_GROUPS_STARTER)
         ]
 
-    def get_process_group(self, id_: str) -> Dict:  # noqa: UP006
+    def get_process_group(self, id_: str) -> dict:
         return self.client.get(f"flow/process-groups/{id_}")
 
-    def list_process_groups(self) -> Iterable[Dict]:  # noqa: UP006
+    def list_process_groups(self) -> Iterable[dict]:
         """
         This will call the API endpoints
         one at a time.

@@ -12,8 +12,6 @@
 Alation Sink Data Models
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from pydantic import BaseModel
 
 
@@ -25,9 +23,9 @@ class CreateDatasourceRequest(BaseModel):
     uri: str
     connector_id: int
     db_username: str
-    db_password: Optional[str] = None  # noqa: UP045
+    db_password: str | None = None
     title: str
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
 
 
 class DataSource(BaseModel):
@@ -47,7 +45,7 @@ class CreateSchemaRequest(BaseModel):
 
     key: str
     title: str
-    description: Optional[str] = None  # noqa: UP045
+    description: str | None = None
 
 
 class CreateSchemaRequestList(BaseModel):
@@ -55,7 +53,7 @@ class CreateSchemaRequestList(BaseModel):
     Alation CreateSchemaRequestList Model
     """
 
-    root: List[CreateSchemaRequest]  # noqa: UP006
+    root: list[CreateSchemaRequest]
 
 
 class Schema(BaseModel):
@@ -65,8 +63,8 @@ class Schema(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
+    title: str | None = None
+    description: str | None = None
 
 
 class CreateTableRequest(BaseModel):
@@ -76,9 +74,9 @@ class CreateTableRequest(BaseModel):
 
     key: str
     title: str
-    description: Optional[str] = None  # noqa: UP045
-    table_type: Optional[str] = None  # noqa: UP045
-    sql: Optional[str] = None  # noqa: UP045
+    description: str | None = None
+    table_type: str | None = None
+    sql: str | None = None
 
 
 class CreateTableRequestList(BaseModel):
@@ -86,7 +84,7 @@ class CreateTableRequestList(BaseModel):
     Alation CreateTableRequestList Model
     """
 
-    root: List[CreateTableRequest]  # noqa: UP006
+    root: list[CreateTableRequest]
 
 
 class Table(BaseModel):
@@ -96,7 +94,7 @@ class Table(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None  # noqa: UP045
+    title: str | None = None
 
 
 class ColumnIndex(BaseModel):
@@ -104,10 +102,10 @@ class ColumnIndex(BaseModel):
     Alation Index Model
     """
 
-    isPrimaryKey: Optional[bool] = None  # noqa: N815, UP045
-    isForeignKey: Optional[bool] = None  # noqa: N815, UP045
-    referencedColumnId: Optional[str] = None  # noqa: N815, UP045
-    isOtherIndex: Optional[bool] = None  # noqa: N815, UP045
+    isPrimaryKey: bool | None = None  # noqa: N815
+    isForeignKey: bool | None = None  # noqa: N815
+    referencedColumnId: str | None = None  # noqa: N815
+    isOtherIndex: bool | None = None  # noqa: N815
 
 
 class CreateColumnRequest(BaseModel):
@@ -117,12 +115,12 @@ class CreateColumnRequest(BaseModel):
 
     key: str
     column_type: str
-    title: Optional[str]  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    nullable: Optional[bool] = None  # noqa: UP045
-    position: Optional[str] = None  # noqa: UP045
-    index: Optional[ColumnIndex] = None  # noqa: UP045
-    nullable: Optional[bool] = None  # noqa: PIE794, UP045
+    title: str | None
+    description: str | None = None
+    nullable: bool | None = None
+    position: str | None = None
+    index: ColumnIndex | None = None
+    nullable: bool | None = None  # noqa: PIE794
 
 
 class CreateColumnRequestList(BaseModel):
@@ -130,7 +128,7 @@ class CreateColumnRequestList(BaseModel):
     Alation CreateColumnRequestList Model
     """
 
-    root: List[CreateColumnRequest]  # noqa: UP006
+    root: list[CreateColumnRequest]
 
 
 class Column(BaseModel):
@@ -140,10 +138,10 @@ class Column(BaseModel):
 
     id: str
     name: str
-    title: Optional[str] = None  # noqa: UP045
-    description: Optional[str] = None  # noqa: UP045
-    column_comment: Optional[str] = None  # noqa: UP045
+    title: str | None = None
+    description: str | None = None
+    column_comment: str | None = None
     column_type: str
-    position: Optional[str] = None  # noqa: UP045
-    nullable: Optional[bool] = None  # noqa: UP045
-    index: Optional[ColumnIndex] = None  # noqa: UP045
+    position: str | None = None
+    nullable: bool | None = None
+    index: ColumnIndex | None = None

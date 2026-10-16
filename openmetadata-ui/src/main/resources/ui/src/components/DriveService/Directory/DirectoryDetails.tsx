@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
 import {
@@ -25,11 +26,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Directory } from '../../../generated/entity/data/directory';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -38,28 +39,30 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreDriveAsset } from '../../../rest/driveAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import directoryClassBase from '../../../utils/DirectoryClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../utils/EntityReferenceUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../utils/EntityUtils';
-import {
-  getPrioritizedEditPermission,
-  getPrioritizedViewPermission,
-} from '../../../utils/PermissionsUtils';
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
@@ -74,7 +77,6 @@ import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interfa
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { DirectoryDetailsProps } from './DirectoryDetails.interface';
-
 const EntityLineageTab = lazy(() =>
   import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
     default: module.EntityLineageTab,
@@ -184,6 +186,8 @@ function DirectoryDetails({
         })
       );
       handleToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -191,6 +195,8 @@ function DirectoryDetails({
           entity: t('label.directory'),
         })
       );
+
+      return false;
     }
   };
 
@@ -271,59 +277,53 @@ function DirectoryDetails({
   const getEntityFeedCount = () =>
     getFeedCounts(EntityType.DIRECTORY, decodedDirectoryFQN, handleFeedCount);
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedDirectoryFQN) {
+      fetchEntityTaskCountsInto(decodedDirectoryFQN, setFeedCount);
+    }
+  }, [decodedDirectoryFQN]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedDirectoryFQN) {
+      fetchEntityActivityCountInto(
+        EntityType.DIRECTORY,
+        decodedDirectoryFQN,
+        setFeedCount
+      );
+    }
+  }, [decodedDirectoryFQN]);
+
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    []
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        connectionsRouterClassBase.getServiceDataAssetsTabPath(
+          ServiceCategory.DRIVE_SERVICES,
+          getPartialNameFromTableFQN(decodedDirectoryFQN, [FqnPart.Service])
+        )
+      ),
+    [decodedDirectoryFQN]
   );
 
+  // editAllPermission/viewAllPermission (raw directoryPermissions.EditAll/.ViewAll
+  // reads) dropped here: computed but never consumed anywhere in this component (only
+  // ever listed, unused, in the tabs useMemo's dependency array) — dead-code precedent
+  // (Task 7/8, e.g. CommonWidgets).
   const {
-    editTagsPermission,
-    editGlossaryTermsPermission,
-    editDescriptionPermission,
-    editCustomAttributePermission,
-    editAllPermission,
-    editLineagePermission,
-    viewAllPermission,
-    viewCustomPropertiesPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditDescription: editDescriptionPermission,
+    canEditCustomFields: editCustomAttributePermission,
+    canEditLineage: editLineagePermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
   } = useMemo(
-    () => ({
-      editTagsPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditTags
-        ) && !deleted,
-      editGlossaryTermsPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditGlossaryTerms
-        ) && !deleted,
-      editDescriptionPermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditDescription
-        ) && !deleted,
-      editCustomAttributePermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditCustomFields
-        ) && !deleted,
-      editAllPermission: directoryPermissions.EditAll && !deleted,
-      editLineagePermission:
-        getPrioritizedEditPermission(
-          directoryPermissions,
-          Operation.EditLineage
-        ) && !deleted,
-      viewAllPermission: directoryPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        directoryPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
+    () => getDerivedPermissionFlags(directoryPermissions, deleted),
     [directoryPermissions, deleted]
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [directoryPermissions, decodedDirectoryFQN]);
 
   const tabs = useMemo(() => {
@@ -390,8 +390,6 @@ function DirectoryDetails({
     editDescriptionPermission,
     editCustomAttributePermission,
     editLineagePermission,
-    editAllPermission,
-    viewAllPermission,
     viewCustomPropertiesPermission,
   ]);
   const onCertificationUpdate = useCallback(
@@ -424,8 +422,8 @@ function DirectoryDetails({
 
   return (
     <PageLayoutV1 pageTitle={entityName}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -444,7 +442,7 @@ function DirectoryDetails({
             onUpdateVote={onUpdateVote}
             onVersionClick={versionHandler}
           />
-        </Col>
+        </div>
         <GenericProvider<Directory>
           customizedPage={customizedPage}
           data={directoryDetails}
@@ -452,28 +450,42 @@ function DirectoryDetails({
           permissions={directoryPermissions}
           type={EntityType.DIRECTORY}
           onUpdate={onDirectoryUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="directory">
         <></>
       </LimitWrapper>

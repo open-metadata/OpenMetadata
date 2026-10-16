@@ -9,7 +9,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -18,7 +19,9 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_analyzer_jp": {
@@ -35,14 +38,16 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -63,6 +68,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -80,6 +89,9 @@
   },
   "mappings": {
     "properties": {
+      "deleted": {
+        "type": "boolean"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -207,6 +219,22 @@
         }
       },
       "entityStatus": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "dataProductType": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "visibility": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "portfolioPriority": {
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
+      },
+      "lifecycleStage": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
@@ -487,7 +515,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -512,7 +541,8 @@
         "normalizer": "lowercase_normalizer"
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "totalVotes": {
         "type": "long",

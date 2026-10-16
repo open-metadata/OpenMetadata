@@ -24,6 +24,7 @@ import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.secretsmanager.model.CreateSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.DeleteSecretRequest;
 import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.secretsmanager.model.Tag;
 import software.amazon.awssdk.services.secretsmanager.model.UpdateSecretRequest;
 
@@ -88,6 +89,11 @@ public class AWSSecretsManager extends AWSBasedSecretsManager {
     DeleteSecretRequest deleteSecretRequest =
         DeleteSecretRequest.builder().secretId(secretName).forceDeleteWithoutRecovery(true).build();
     this.secretsClient.deleteSecret(deleteSecretRequest);
+  }
+
+  @Override
+  protected boolean isNotFoundException(Exception exception) {
+    return exception instanceof ResourceNotFoundException;
   }
 
   public static AWSSecretsManager getInstance(SecretsConfig secretsConfig) {

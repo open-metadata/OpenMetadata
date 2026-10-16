@@ -20,6 +20,8 @@ import { TagSource } from '../generated/type/tagLabel';
 import i18n from '../utils/i18next/LocalUtil';
 
 export const TAB_GRID_MAX_COLUMNS = 8;
+export const GRID_ROW_HEIGHT = 100;
+export const GRID_VERTICAL_MARGIN = 16;
 
 export type GridSizes = keyof typeof WidgetWidths;
 export interface CommonWidgetType {
@@ -54,7 +56,7 @@ export const GLOSSARY_TERMS_WIDGET: CommonWidgetType = {
 export const CUSTOM_PROPERTIES_WIDGET: CommonWidgetType = {
   fullyQualifiedName: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
   name: i18n.t('label.custom-property-plural'),
-  data: { gridSizes: ['small'] },
+  data: { gridSizes: ['small', 'large'] },
 };
 
 export const DOMAIN_WIDGET: CommonWidgetType = {
@@ -115,7 +117,7 @@ export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
 
 export const KNOWLEDGE_ARTICLE_WIDGET = {
   fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-  name: i18n.t('label.knowledge-page-plural'),
+  name: i18n.t('label.article-plural'),
   data: {
     gridSizes: ['large'] as GridSizes[],
   },
@@ -154,30 +156,5 @@ export const DUMMY_OWNER_LIST = [
     name: 'Engineering',
     type: EntityType.TEAM,
     id: '123',
-  },
-];
-
-export const WIDGET_CUSTOM_PROPERTIES = [
-  {
-    name: 'name',
-    value: 'OpenMetadata',
-    propertyType: {
-      name: 'string',
-      type: 'string',
-      id: '123',
-    },
-    description: 'Name',
-    displayName: 'Name',
-  },
-  {
-    name: 'email',
-    value: 'customproperty@OpenMetadata.com',
-    propertyType: {
-      name: 'string',
-      type: 'string',
-      id: '123',
-    },
-    description: 'Email',
-    displayName: 'Email',
   },
 ];

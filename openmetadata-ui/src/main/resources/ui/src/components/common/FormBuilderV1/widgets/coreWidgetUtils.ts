@@ -12,7 +12,7 @@
  */
 
 import { WidgetProps } from '@rjsf/utils';
-import { startCase } from 'lodash';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 export const getWidgetHint = ({
   rawErrors,
@@ -28,9 +28,9 @@ export const getWidgetLabel = ({
 }: Pick<WidgetProps, 'hideLabel' | 'label'>) => {
   const looksLikeRawKey = (s: string) => /^[a-z][a-zA-Z0-9]*$/.test(s); // camelCase id
 
-  return hideLabel
-    ? undefined
-    : looksLikeRawKey(label)
-    ? startCase(label)
-    : label;
+  if (hideLabel) {
+    return undefined;
+  }
+
+  return looksLikeRawKey(label) ? getFormDisplayLabel(label) : label;
 };

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/mcpServiceMetadataPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "McpServiceMetadataPipeline",
   "description": "McpService Metadata Pipeline Configuration.",
   "type": "object",

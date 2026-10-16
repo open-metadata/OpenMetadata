@@ -12,6 +12,7 @@
  */
 
 import { Extensions } from '@tiptap/react';
+import { LinkExtension } from '../components/BlockEditor/Extensions/link';
 import blockEditorExtensionsClassBase, {
   BlockEditorExtensionsClassBase,
 } from './BlockEditorExtensionsClassBase';
@@ -107,7 +108,7 @@ jest.mock('../components/BlockEditor/Extensions/focus', () => ({
   },
 }));
 
-jest.mock('../components/BlockEditor/Extensions/hashtag', () => ({
+jest.mock('../components/BlockEditor/Extensions/hashtag/Hashtag', () => ({
   Hashtag: {
     configure: jest.fn(() => ({ name: 'Hashtag' })),
   },
@@ -128,19 +129,22 @@ jest.mock(
   })
 );
 
-jest.mock('../components/BlockEditor/Extensions/mention', () => ({
+jest.mock('../components/BlockEditor/Extensions/mention/Mention', () => ({
   Mention: {
     configure: jest.fn(() => ({ name: 'Mention' })),
   },
   mentionSuggestion: jest.fn(() => ({ name: 'mentionSuggestion' })),
 }));
 
-jest.mock('../components/BlockEditor/Extensions/slash-command', () => ({
-  __esModule: true,
-  default: {
-    configure: jest.fn(() => ({ name: 'slashCommand' })),
-  },
-}));
+jest.mock(
+  '../components/BlockEditor/Extensions/slash-command/slashCommand',
+  () => ({
+    __esModule: true,
+    default: {
+      configure: jest.fn(() => ({ name: 'slashCommand' })),
+    },
+  })
+);
 
 jest.mock('../components/BlockEditor/Extensions/slash-command/items', () => ({
   getSuggestionItems: jest.fn(),
@@ -222,6 +226,18 @@ describe('BlockEditorExtensionsClassBase', () => {
       );
 
       expect(link).toBeDefined();
+    });
+
+    it('should configure links to open on click only in read-only previews', () => {
+      (
+        extensionsClass as unknown as {
+          getCoreExtensions: () => Extensions;
+        }
+      ).getCoreExtensions();
+
+      expect(LinkExtension.configure).toHaveBeenCalledWith(
+        expect.objectContaining({ openOnClick: 'whenNotEditable' })
+      );
     });
 
     it('should include slash command extension', () => {

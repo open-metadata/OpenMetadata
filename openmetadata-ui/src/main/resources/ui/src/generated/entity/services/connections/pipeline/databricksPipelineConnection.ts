@@ -14,6 +14,10 @@
  * Databricks Connection Config
  */
 export interface DatabricksPipelineConnection {
+    /**
+     * Choose between different authentication types for Databricks.
+     */
+    authType:             AuthenticationType;
     connectionArguments?: { [key: string]: any };
     /**
      * Connection timeout in seconds.
@@ -38,13 +42,50 @@ export interface DatabricksPipelineConnection {
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
-     * Generated Token to connect to Databricks.
-     */
-    token: string;
-    /**
      * Service Type
      */
     type?: DatabricksType;
+}
+
+/**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ */
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
 }
 
 /**

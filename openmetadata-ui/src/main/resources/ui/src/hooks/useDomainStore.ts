@@ -16,8 +16,8 @@ import {
   DEFAULT_DOMAIN_VALUE,
   DOMAIN_STORAGE_KEY,
 } from '../constants/constants';
-import { EntityReference } from '../generated/entity/type';
-import { DomainStore } from '../interface/store.interface';
+import type { EntityReference } from '../generated/entity/type';
+import type { DomainStore } from '../interface/store.interface';
 
 export const useDomainStore = create<DomainStore>()(
   persist(
@@ -25,6 +25,7 @@ export const useDomainStore = create<DomainStore>()(
       userDomains: [],
       activeDomain: DEFAULT_DOMAIN_VALUE, // Set default value here
       activeDomainEntityRef: undefined,
+      isDomainRestricted: false,
       updateActiveDomain: (domain?: EntityReference) => {
         set({
           activeDomain: domain?.fullyQualifiedName ?? DEFAULT_DOMAIN_VALUE,
@@ -34,6 +35,11 @@ export const useDomainStore = create<DomainStore>()(
       setUserDomains: (userDomainsArr: EntityReference[]) => {
         set({
           userDomains: userDomainsArr,
+        });
+      },
+      setDomainRestriction: (restricted: boolean) => {
+        set({
+          isDomainRestricted: restricted,
         });
       },
     }),

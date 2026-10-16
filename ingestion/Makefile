@@ -15,9 +15,8 @@ install:  ## Install the ingestion module to the current environment
 
 .PHONY: install_dev_env
 install_dev_env:  ## Install all dependencies for development (in edit mode)
-	pip install --upgrade pip "setuptools<81"
+	pip install --upgrade pip
 	pip install nox
-	pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
 	python -m pip install -e "$(INGESTION_DIR)[all-dev-env, dev, test-unit]"
 
 .PHONY: install_dev
@@ -26,14 +25,12 @@ install_dev:  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	python -m pip install --upgrade pip
 	python -m pip install "$(INGESTION_DIR)[test]/"
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	python -m pip install --upgrade pip "setuptools<81"
-	python -m pip install --no-build-isolation "cx_Oracle>=8.3.0,<9"
+	python -m pip install --upgrade pip
 	python -m pip install "$(INGESTION_DIR)[all]/"
 
 .PHONY: install_apis
@@ -53,12 +50,22 @@ precommit_install:  ## Install the project's precommit hooks from .pre-commit-co
 .PHONY: py_format
 py_format:  ## Run ruff to lint-fix and format the Python codebase
 	ruff check --fix $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --prune
 	ruff format $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
 	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	python $(INGESTION_DIR)/scripts/check_ruff_suppressions.py --check
 	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+
+.PHONY: generate_settings_docs
+generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
+	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
+
+.PHONY: check_import_layers
+check_import_layers:  ## Fail if a module imports a higher layer (import-cost guard, see ingestion/.importlinter)
+	cd $(INGESTION_DIR) && lint-imports
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
@@ -69,10 +76,8 @@ unit_ingestion:  ## Run Python unit tests
 .PHONY: unit_ingestion_dev_env
 unit_ingestion_dev_env:  ## Run Python unit tests except some specific ones. Only for local development!
 	# Ignores tests:
-	# test_ometa_validation_action.py: require great_expectations 0.18.x, the test installs the required package version thus corrupting the environment
 	# test_azuresql_sampling.py: requires pymssql, which is not straightforward to install in some platforms
 	pytest -c $(INGESTION_DIR)/pyproject.toml $(INGESTION_DIR)/tests/unit \
-	 	--ignore=$(INGESTION_DIR)/tests/unit/great_expectations/test_ometa_validation_action.py \
 	 	--ignore=$(INGESTION_DIR)/tests/unit/profiler/sqlalchemy/azuresql/test_azuresql_sampling.py \
 	 	--ignore-glob="*airflow*"
 
@@ -102,7 +107,7 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests
 	coverage erase
-	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
+	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
 	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
 
 .PHONY: coverage_apis
@@ -115,7 +120,7 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
 	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
-	sed 's|filename="[^"]*\(/metadata/[^"]*"\)|filename="src\1|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
+	sed 's|filename="[^"]*/site-packages/metadata/|filename="src/metadata/|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox
 clean-nox:

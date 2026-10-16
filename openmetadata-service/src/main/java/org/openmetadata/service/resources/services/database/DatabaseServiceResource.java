@@ -437,9 +437,7 @@ public class DatabaseServiceResource
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -467,9 +465,7 @@ public class DatabaseServiceResource
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @PATCH
@@ -769,7 +765,10 @@ public class DatabaseServiceResource
   @Operation(
       operationId = "restore",
       summary = "Restore a soft deleted database service",
-      description = "Restore a soft deleted database service.",
+      description =
+          "Restore a soft deleted database service. Pass async=true to run the restore in the"
+              + " background and receive a 202 Accepted response with a job id; strongly"
+              + " recommended for services that contain many databases / schemas / tables.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -777,13 +776,27 @@ public class DatabaseServiceResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = DatabaseService.class)))
+                    schema = @Schema(implementation = DatabaseService.class))),
+        @ApiResponse(
+            responseCode = "202",
+            description = "Async restore started. Track completion via the jobId.",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.service.util.RestoreEntityResponse.class)))
       })
   public Response restoreDatabaseService(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Parameter(description = "Run the restore asynchronously. (Default = `false`)")
+          @QueryParam("async")
+          @DefaultValue("false")
+          boolean async,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return restoreEntity(uriInfo, securityContext, restore.getId(), async);
   }
 
   @Override

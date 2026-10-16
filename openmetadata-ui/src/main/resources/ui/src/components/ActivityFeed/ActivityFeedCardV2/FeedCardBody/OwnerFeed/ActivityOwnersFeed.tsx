@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import {
+  Box,
+  Owner,
+  OwnerChip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -25,8 +30,7 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { OwnerItem } from '../../../../common/OwnerItem/OwnerItem';
-import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
+import { toOwnerRef } from '../../../../../utils/Owner/ownerConversionUtils';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
@@ -50,7 +54,11 @@ function ActivityOwnersFeed({
     try {
       if (activity.oldValue) {
         const parsed = JSON.parse(activity.oldValue);
-        oldOwners = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+        if (Array.isArray(parsed)) {
+          oldOwners = parsed;
+        } else if (parsed) {
+          oldOwners = [parsed];
+        }
       }
     } catch {
       oldOwners = [];
@@ -59,7 +67,11 @@ function ActivityOwnersFeed({
     try {
       if (activity.newValue) {
         const parsed = JSON.parse(activity.newValue);
-        newOwners = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+        if (Array.isArray(parsed)) {
+          newOwners = parsed;
+        } else if (parsed) {
+          newOwners = [parsed];
+        }
       }
     } catch {
       newOwners = [];
@@ -88,7 +100,7 @@ function ActivityOwnersFeed({
   const getOwnerItems = useCallback(
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
-        <Row wrap align="middle">
+        <Box align="center" className="tw:min-w-0" wrap="wrap">
           {ownerList.map((owner: EntityReference) =>
             owner.type === EntityType.USER ? (
               <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
@@ -102,9 +114,9 @@ function ActivityOwnersFeed({
                     name={owner.name ?? ''}
                     width="24"
                   />
-                  <Typography.Text className="owner-chip-text">
+                  <Typography className="owner-chip-text">
                     {owner.displayName}
-                  </Typography.Text>
+                  </Typography>
                 </div>
               </UserPopOverCard>
             ) : (
@@ -113,18 +125,17 @@ function ActivityOwnersFeed({
                   'bg-white': showThread,
                 })}
                 key={owner.id}>
-                <OwnerItem
-                  isCompactView
+                <OwnerChip
                   avatarSize={24}
-                  className="owner-chip-text"
-                  owner={owner}
+                  isCompactView={false}
+                  owner={toOwnerRef(owner)}
                 />
               </div>
             )
           )}
-        </Row>
+        </Box>
       ) : (
-        <OwnerLabel
+        <Owner
           avatarSize={24}
           isCompactView={false}
           maxVisibleOwners={maxVisibleOwners}
@@ -147,37 +158,33 @@ function ActivityOwnersFeed({
   );
 
   return (
-    <Row gutter={[8, 8]}>
+    <Box direction="col" gap={2}>
       {!isEmpty(updatedOwner) && (
-        <Col span={24}>
-          <Row wrap align="middle">
-            <Row align="middle">
-              <AddIcon className="text-success-hover" height={16} width={16} />
-              <Typography.Text className="owners-label">
-                {t('label.owner-plural-with-colon')}
-              </Typography.Text>
-            </Row>
+        <Box align="center" wrap="wrap">
+          <Box align="center" className="tw:min-w-0" wrap="wrap">
+            <AddIcon className="text-success-hover" height={16} width={16} />
+            <Typography className="owners-label">
+              {t('label.owner-plural-with-colon')}
+            </Typography>
+          </Box>
 
-            <Col>{renderUpdatedOwner}</Col>
-          </Row>
-        </Col>
+          <div className="tw:max-w-full">{renderUpdatedOwner}</div>
+        </Box>
       )}
       {!isEmpty(previousOwner) && (
-        <Col span={24}>
-          <Row wrap align="middle">
-            <Col>
-              <Row align="middle">
-                <DeletedIcon className="text-error" height={14} width={14} />
-                <Typography.Text className="owners-label">
-                  {t('label.owner-plural-with-colon')}
-                </Typography.Text>
-              </Row>
-            </Col>
-            <Col>{renderPreviousOwner}</Col>
-          </Row>
-        </Col>
+        <Box align="center" wrap="wrap">
+          <div className="tw:max-w-full">
+            <Box align="center" className="tw:min-w-0" wrap="wrap">
+              <DeletedIcon className="text-error" height={14} width={14} />
+              <Typography className="owners-label">
+                {t('label.owner-plural-with-colon')}
+              </Typography>
+            </Box>
+          </div>
+          <div className="tw:max-w-full">{renderPreviousOwner}</div>
+        </Box>
       )}
-    </Row>
+    </Box>
   );
 }
 

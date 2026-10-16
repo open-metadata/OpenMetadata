@@ -15,7 +15,6 @@ import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
-import { t } from '../i18next/LocalUtil';
 
 class BrandClassBase {
   public getMonogram() {
@@ -26,8 +25,23 @@ class BrandClassBase {
     return { src: LogoSrc, svg: Logo };
   }
 
-  public getPageTitle() {
-    return t('label.open-metadata');
+  /**
+   * Brand logo for the expanded app-mode (AI) sidebar header. Defaults
+   * to the standard wordmark; a downstream build (e.g. Collate) overrides this
+   * to show its sidebar-specific full logo without affecting the NavBar/login
+   * brand from `getLogo()`.
+   */
+  public getSidebarLogo() {
+    return this.getLogo();
+  }
+
+  /**
+   * Compact brand mark for the collapsed app-mode (AI) sidebar rail.
+   * Defaults to the standard monogram; overridable per build independently of
+   * `getMonogram()`.
+   */
+  public getSidebarMonogram() {
+    return this.getMonogram();
   }
 
   public getReleaseLink(version: string) {
@@ -38,7 +52,7 @@ class BrandClassBase {
 
   public getBlogLink(_version: string) {
     // Since medium doens't follow any fixed structure we will just return the blog link
-    return 'https://blog.open-metadata.org/announcing-openmetadata-1-8-948eb14d41c7';
+    return 'https://blog.open-metadata.org/announcing-openmetadata-1-13-123d66609468';
   }
 
   public getWelcomeScreenImg() {

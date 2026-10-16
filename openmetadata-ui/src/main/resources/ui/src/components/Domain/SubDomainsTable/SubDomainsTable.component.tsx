@@ -11,25 +11,31 @@
  *  limitations under the License.
  */
 
-import { Box, Card } from '@openmetadata/ui-core-components';
-import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Card,
+  Input,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
+import { Globe01, Plus, Search } from '@openmetadata/ui-core-components/icons';
+import { debounce, isEmpty } from 'lodash';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.constants';
+import { PageViewMode } from '../../../generated/type/personaPreferences';
+import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
-import { useSearch } from '../../common/atoms/navigation/useSearch';
-import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
-import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import ViewToggle from '../../common/ViewToggle/ViewToggle';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
@@ -59,37 +65,35 @@ const SubDomainsTable = ({
     onFilterChange: subdomainListing.handleFilterChange,
   });
 
-  const { titleAndCount } = useTitleAndCount({
-    titleKey: 'label.sub-domain-plural',
-    count: subdomainListing.totalEntities,
-    loading: subdomainListing.loading,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    subdomainListing.urlState.searchQuery ?? ''
+  );
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search-entity', {
-      entity: t('label.sub-domain'),
-    }),
-    onSearchChange: subdomainListing.handleSearchChange,
-    initialSearchQuery: subdomainListing.urlState.searchQuery,
-  });
+  const debouncedSearch = useMemo(
+    () => debounce(subdomainListing.handleSearchChange, 300),
+    [subdomainListing.handleSearchChange]
+  );
 
-  const { view, viewToggle } = useViewToggle();
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(subdomainListing.urlState.searchQuery ?? '');
+  }, [subdomainListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
     useDomainTableColumns({
       nameLabelKey: 'label.sub-domain',
-      tagSize: 'lg',
     });
-
-  const { paginationControls } = usePaginationControls({
-    currentPage: subdomainListing.currentPage,
-    totalPages: subdomainListing.totalPages,
-    totalEntities: subdomainListing.totalEntities,
-    pageSize: subdomainListing.pageSize,
-    onPageChange: subdomainListing.handlePageChange,
-    loading: subdomainListing.loading,
-  });
 
   const selectedSubdomainEntities = useMemo(
     () =>
@@ -125,30 +129,47 @@ const SubDomainsTable = ({
     if (!subdomainListing.loading && isEmpty(subdomainListing.entities)) {
       if (isSearchOrFilterActive()) {
         return (
-          <ErrorPlaceHolder
-            className="border-none"
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:min-h-70">
+            {subdomainListing.urlState.searchQuery?.trim() ? (
+              <NoSearchResultsPlaceholder />
+            ) : (
+              <NoFilteredResultsPlaceholder
+                onClearFilters={subdomainListing.handleClearAll}
+              />
+            )}
+          </div>
         );
       }
 
       return (
-        <ErrorPlaceHolder
-          buttonId="subdomain-add-button"
-          buttonTitle={t('label.add-entity', { entity: t('label.sub-domain') })}
-          className="border-none"
-          heading={t('message.no-data-message', {
-            entity: t('label.sub-domain-lowercase-plural'),
-          })}
-          icon={<FolderEmptyIcon />}
-          permission={permissions.Create}
-          type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}
-          onClick={onAddSubDomain}
-        />
+        <div className="tw:relative tw:min-h-70">
+          <CreatePlaceholder
+            actions={[
+              {
+                color: 'primary',
+                iconLeading: Plus,
+                id: 'subdomain-add-button',
+                key: 'add-sub-domain',
+                label: t('label.add-entity', {
+                  entity: t('label.sub-domain'),
+                }),
+                onPress: onAddSubDomain,
+              },
+            ]}
+            description={t('message.no-data-message', {
+              entity: t('label.sub-domain-lowercase-plural'),
+            })}
+            icon={<Globe01 className="tw:text-fg-brand-primary" />}
+            permission={permissions.Create}
+            title={t('label.no-entity', {
+              entity: t('label.sub-domain-plural'),
+            })}
+          />
+        </div>
       );
     }
 
-    if (view === 'table') {
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -162,7 +183,11 @@ const SubDomainsTable = ({
             onSelect={subdomainListing.handleSelect}
             onSelectAll={subdomainListing.handleSelectAll}
           />
-          {paginationControls}
+          <PaginationCardDefault
+            page={subdomainListing.currentPage}
+            total={subdomainListing.totalPages}
+            onPageChange={subdomainListing.handlePageChange}
+          />
         </>
       );
     }
@@ -175,7 +200,11 @@ const SubDomainsTable = ({
           renderCard={renderDomainCard}
           onEntityClick={subdomainListing.actionHandlers.onEntityClick}
         />
-        {paginationControls}
+        <PaginationCardDefault
+          page={subdomainListing.currentPage}
+          total={subdomainListing.totalPages}
+          onPageChange={subdomainListing.handlePageChange}
+        />
       </>
     );
   }, [
@@ -183,11 +212,13 @@ const SubDomainsTable = ({
     subdomainListing.entities,
     subdomainListing.selectedEntities,
     subdomainListing.actionHandlers,
+    subdomainListing.currentPage,
+    subdomainListing.totalPages,
+    subdomainListing.handlePageChange,
     isSearchOrFilterActive,
     view,
     renderSubDomainCell,
     renderDomainCard,
-    paginationControls,
     permissions.Create,
     onAddSubDomain,
     t,
@@ -201,11 +232,21 @@ const SubDomainsTable = ({
           direction="col"
           gap={4}>
           <Box align="center" direction="row" gap={5}>
-            {titleAndCount}
-            {search}
+            <Input
+              className="tw:max-w-60"
+              icon={Search}
+              placeholder={t('label.search-entity', {
+                entity: t('label.sub-domain'),
+              })}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
             {quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle value={view} onChange={setView} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

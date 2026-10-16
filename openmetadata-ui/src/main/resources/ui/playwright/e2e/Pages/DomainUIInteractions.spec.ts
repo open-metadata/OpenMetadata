@@ -11,39 +11,52 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { getApiContext, toastNotification, uuid } from '../../utils/common';
 import {
   checkAssetsCount,
+  clearDomainFromNavbar,
   selectDataProduct,
   selectDomain,
+  switchNavbarDomain,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
+import { fillStyleIconUrl } from '../../utils/glossaryForm';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const test = base.extend<{
   page: Page;
 }>({
   page: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await use(page);
-    await page.close();
+    await afterAction();
   },
 });
 
 test.describe('Domain Owner Management', () => {
-  test.slow(true);
-
   test('Add owner to domain via UI', async ({ page }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
+    // Same reasoning as `Add expert to domain via UI` — allow room for the
+    // 60 s user_search_index poll on top of UI work.
+    test.setTimeout(180_000);
+    const { apiContext, afterAction } = await getApiContext(page);
     const domain = new Domain();
     const user = new UserClass();
 
@@ -66,37 +79,40 @@ test.describe('Domain Owner Management', () => {
       await page.getByRole('tab', { name: 'Users' }).click();
       await waitForAllLoadersToDisappear(page);
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
-      const ownerItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
-      const maxRetries = 5;
+      // main's #32252 made this option a `<button data-testid=
+      // "owner-option">`, so the listitem role is gone. Its locator, but
+      // not its retry loop -- the deterministic wait below replaced that.
+      const ownerItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await ownerItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.responseData.fullyQualifiedName,
+        'user_search_index',
+        { timeout: 60_000 }
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
@@ -117,7 +133,9 @@ test.describe('Domain Owner Management', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await domain.delete(apiContext);
       await user.delete(apiContext);
@@ -159,7 +177,9 @@ test.describe('Domain Owner Management', () => {
         timeout: 10000,
       });
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
 
       // Click edit owner button
       await page.getByTestId('edit-owner').click();
@@ -192,9 +212,11 @@ test.describe('Domain Owner Management', () => {
 });
 
 test.describe('Domain Expert Management', () => {
-  test.slow(true);
-
   test('Add expert to domain via UI', async ({ page }) => {
+    // Allow room for waitForSearchIndexed to sit on user_search_index for up
+    // to 60 s under parallel-suite ES pressure without exhausting the
+    // default 60 s test budget on the poll alone.
+    test.setTimeout(180_000);
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const user = new UserClass();
@@ -214,40 +236,40 @@ test.describe('Domain Expert Management', () => {
         state: 'visible',
       });
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
-      const maxRetries = 5;
+      // main's #32252 made this option a `<button data-testid=
+      // "owner-option">`, so the listitem role is gone. Its locator, but
+      // not its retry loop -- the deterministic wait below replaced that.
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        // Clear and fill search bar
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        // Check if user is visible
-        const isVisible = await expertItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        // Wait before retry (ES indexing delay)
-        if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.responseData.fullyQualifiedName,
+        'user_search_index',
+        { timeout: 60_000 }
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await expertItem.waitFor({ state: 'visible', timeout: 5000 });
       await expertItem.click();
@@ -270,8 +292,6 @@ test.describe('Domain Expert Management', () => {
 });
 
 test.describe('Domain Style Editing', () => {
-  test.slow(true);
-
   test('Edit domain style - change icon URL', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -289,12 +309,16 @@ test.describe('Domain Style Editing', () => {
       await page.getByTestId('edit-style-button').click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
-      // Fill icon URL input (data-testid="icon-url")
-      await page.getByTestId('icon-url').fill('https://example.com/icon.png');
+      await fillStyleIconUrl(
+        page,
+        page.getByTestId('icon-color-modal'),
+        'https://example.com/icon.png'
+      );
 
-      // Click Save button (Ant Design Modal uses getByRole for OK button)
       const patchRes = page.waitForResponse('/api/v1/domains/*');
       await page.getByRole('button', { name: 'Save' }).click();
       await patchRes;
@@ -309,8 +333,6 @@ test.describe('Domain Style Editing', () => {
 });
 
 test.describe('Data Product UI Operations', () => {
-  test.slow(true);
-
   test('Rename data product via UI', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -328,7 +350,9 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const newName = `Renamed DP ${uuid()}`;
       await page.locator('#displayName').clear();
@@ -363,11 +387,12 @@ test.describe('Data Product UI Operations', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -379,7 +404,10 @@ test.describe('Data Product UI Operations', () => {
   });
 
   test('Add owner to data product via UI', async ({ page }) => {
-    const { afterAction, apiContext } = await getApiContext(page);
+    // Same reasoning as `Add owner to domain via UI` — allow room for the
+    // 60 s user_search_index poll on top of UI work.
+    test.setTimeout(180_000);
+    const { apiContext, afterAction } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
     const user = new UserClass();
@@ -404,37 +432,40 @@ test.describe('Data Product UI Operations', () => {
       await page.getByRole('tab', { name: 'Users' }).click();
       await waitForAllLoadersToDisappear(page);
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('owner-select-users-search-bar');
       // Use displayName for selecting from list (UI shows displayName)
-      const ownerItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
-      const maxRetries = 5;
+      // main's #32252 made this option a `<button data-testid=
+      // "owner-option">`, so the listitem role is gone. Its locator, but
+      // not its retry loop -- the deterministic wait below replaced that.
+      const ownerItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        await searchBar.clear();
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await ownerItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.responseData.fullyQualifiedName,
+        'user_search_index',
+        { timeout: 60_000 }
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await ownerItem.waitFor({ state: 'visible', timeout: 5000 });
       await ownerItem.click();
@@ -455,7 +486,9 @@ test.describe('Data Product UI Operations', () => {
       });
 
       // Verify owner link is visible (UI shows avatar with link, not plain text)
-      await expect(page.getByTestId('owner-link').first()).toBeVisible();
+      await expect(
+        page.getByTestId('owner-link').filter({ visible: true })
+      ).not.toHaveCount(0);
     } finally {
       await dataProduct.delete(apiContext);
       await domain.delete(apiContext);
@@ -466,8 +499,6 @@ test.describe('Data Product UI Operations', () => {
 });
 
 test.describe('Subdomain Management', () => {
-  test.slow(true);
-
   test('Delete subdomain via UI', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -488,7 +519,9 @@ test.describe('Subdomain Management', () => {
         throw new Error('SubDomain FQN is undefined');
       }
 
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       // Wait for page to fully load
@@ -499,11 +532,12 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -535,7 +569,9 @@ test.describe('Subdomain Management', () => {
         throw new Error('SubDomain FQN is undefined');
       }
 
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await waitForAllLoadersToDisappear(page);
 
       // Wait for page to fully load
@@ -547,7 +583,9 @@ test.describe('Subdomain Management', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for modal to appear
-      await expect(page.getByRole('dialog')).toBeVisible();
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const newName = `Renamed SubDomain ${uuid()}`;
       await page.locator('#displayName').clear();
@@ -571,8 +609,6 @@ test.describe('Subdomain Management', () => {
 });
 
 test.describe('Domain Form Validation', () => {
-  test.slow(true);
-
   test('Domain name validation - special characters', async ({ page }) => {
     await sidebarClick(page, SidebarItem.DOMAIN);
 
@@ -623,8 +659,6 @@ test.describe('Domain Form Validation', () => {
 });
 
 test.describe('Domain Assets Tab Operations', () => {
-  test.slow(true);
-
   test('Search assets within domain', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -641,8 +675,8 @@ test.describe('Domain Assets Tab Operations', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -652,8 +686,8 @@ test.describe('Domain Assets Tab Operations', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -686,23 +720,25 @@ test.describe('Domain Assets Tab Operations', () => {
 });
 
 test.describe('Domain Global Dropdown', () => {
-  test.slow(true);
-
   test('Select domain from global dropdown filters explore', async ({
-    page,
+    browser,
   }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
     try {
       await domain.create(apiContext);
 
-      await page.goto('/explore/tables');
+      await page.goto('/explore/tables', { waitUntil: 'domcontentloaded' });
 
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
@@ -715,29 +751,32 @@ test.describe('Domain Global Dropdown', () => {
     } finally {
       await domain.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 
-  test('Clear domain selection returns to All Domains', async ({ page }) => {
+  test('Clear domain selection returns to All Domains', async ({ browser }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
 
     try {
       await domain.create(apiContext);
 
-      await page.goto('/explore/tables');
+      await page.goto('/explore/tables', { waitUntil: 'domcontentloaded' });
 
       await page.getByTestId('domain-dropdown').click();
 
       const domainOption = page.getByTestId(
-        `tag-${domain.responseData.fullyQualifiedName}`
+        `tree-node-${domain.responseData.fullyQualifiedName}`
       );
 
       if (await domainOption.isVisible()) {
-        await domainOption.click();
-
-        await page.getByTestId('domain-dropdown').click();
-        await page.getByTestId('all-domains-selector').click();
+        await switchNavbarDomain(page, () => domainOption.click());
+        await clearDomainFromNavbar(page);
 
         await expect(page.getByTestId('domain-dropdown')).toContainText(
           'All Domains'
@@ -746,13 +785,12 @@ test.describe('Domain Global Dropdown', () => {
     } finally {
       await domain.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 });
 
 test.describe('Domain Breadcrumb Navigation', () => {
-  test.slow(true);
-
   test('Navigate from subdomain to parent domain via breadcrumb', async ({
     page,
   }) => {
@@ -765,7 +803,9 @@ test.describe('Domain Breadcrumb Navigation', () => {
       await subDomain.create(apiContext);
 
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       const parentLink = page.getByRole('link', {
         name: domain.responseData.fullyQualifiedName,
@@ -815,8 +855,6 @@ test.describe('Domain Breadcrumb Navigation', () => {
 });
 
 test.describe('Delete Domain with Dependencies', () => {
-  test.slow(true);
-
   test('Delete domain with subdomains shows warning', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
@@ -832,11 +870,12 @@ test.describe('Delete Domain with Dependencies', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
     } finally {
@@ -860,8 +899,8 @@ test.describe('Delete Domain with Dependencies', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -871,7 +910,8 @@ test.describe('Delete Domain with Dependencies', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       const domainLinks = page.locator('[data-testid="domain-link"]');
@@ -886,8 +926,6 @@ test.describe('Delete Domain with Dependencies', () => {
 });
 
 test.describe('Copy FQN Functionality', () => {
-  test.slow(true);
-
   test('Copy domain FQN to clipboard', async ({ page, context }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();

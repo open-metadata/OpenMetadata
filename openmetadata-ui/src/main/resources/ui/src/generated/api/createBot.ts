@@ -15,6 +15,12 @@
  */
 export interface CreateBot {
     /**
+     * When true, the bot user is allowed to impersonate users via the X-Impersonate-User
+     * header, subject to policy checks on the target user. Can only be enabled by an admin when
+     * the bot is created. Omit to keep the current value; set to false to revoke.
+     */
+    allowImpersonation?: boolean;
+    /**
      * Bot user name created for this bot on behalf of which the bot performs all the
      * operations, such as updating description, responding on the conversation threads, etc.
      */

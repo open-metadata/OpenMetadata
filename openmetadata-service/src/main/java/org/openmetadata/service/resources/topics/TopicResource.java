@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -28,6 +29,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -46,6 +48,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -54,6 +57,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -99,6 +103,77 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
 
   public static class TopicList extends ResultList<Topic> {
     /* Required for serde */
+  }
+
+  public static class TopicSchemaFieldList extends ResultList<FieldInterface> {
+    /* Required for serde */
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getTopicSchemaFieldsByFQN",
+      summary = "Get paginated schema fields of a topic by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated schema fields",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TopicSchemaFieldList.class))),
+        @ApiResponse(responseCode = "404", description = "Topic not found")
+      })
+  public TopicSchemaFieldList getSchemaFieldsByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the topic",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of fields returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned schema fields (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description = "Sort fields by. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    ResultList<FieldInterface> page =
+        getChildFieldPage(
+            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+    TopicSchemaFieldList result = new TopicSchemaFieldList();
+    result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   @GET
@@ -356,12 +431,61 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
                                 org.openmetadata.schema.type.api.BulkOperationResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
+  @Parameter(
+      name = "overrideMetadata",
+      in = ParameterIn.QUERY,
+      description =
+          "When true, allows the bulk update to overwrite user-curated fields "
+              + "(description, displayName, owners, tags) that bot-driven updates "
+              + "normally preserve, and disables the sourceHash fast-path so unchanged "
+              + "entities are re-evaluated. Defaults to false.",
+      schema = @Schema(type = "boolean", defaultValue = "false"))
   public Response bulkCreateOrUpdate(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @DefaultValue("false") @QueryParam("async") boolean async,
       List<CreateTopic> createRequests) {
     return processBulkRequest(uriInfo, securityContext, createRequests, mapper, async);
+  }
+
+  @DELETE
+  @Path("/deleteStale")
+  @Operation(
+      operationId = "bulkDeleteStaleTopics",
+      summary = "Delete stale topics within a scope",
+      description =
+          "Delete entities within the given scope (service, database, or databaseSchema) "
+              + "that the ingestion connector did not report in the current run. The connector "
+              + "sends the set of FQNs it saw; entities in scope not in that set are considered "
+              + "stale. By default the deletion is soft; pass hardDelete=true to hard-delete "
+              + "instead. Returns a BulkOperationResult of deleted (or, for dryRun, would-be-deleted) "
+              + "entities.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Stale deletion results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(
+                            implementation =
+                                org.openmetadata.schema.type.api.BulkOperationResult.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response deleteStale(
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              required = true,
+              description =
+                  "Scope to reconcile and the FQNs the connector saw this run. Carried as a"
+                      + " request body on DELETE; a topology that strips it is rejected with 400"
+                      + " rather than being read as an empty seen-set.",
+              content = @Content(schema = @Schema(implementation = BulkDeleteStaleRequest.class)))
+          @NotNull
+          @Valid
+          BulkDeleteStaleRequest request) {
+    return deleteStaleEntities(securityContext, request);
   }
 
   @PATCH
@@ -501,6 +625,33 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
     return addHref(uriInfo, topic);
   }
 
+  @DELETE
+  @Path("/{id}/sampleData")
+  @Operation(
+      operationId = "deleteSampleData",
+      summary = "Delete sample data",
+      description = "Delete sample data from the topic.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Successfully deleted sample data from the Topic",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Topic.class)))
+      })
+  public Topic deleteSampleData(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the topic", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_SAMPLE_DATA);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Topic topic = repository.deleteSampleData(id);
+    return addHref(uriInfo, topic);
+  }
+
   @PUT
   @Path("/{id}/followers")
   @Operation(
@@ -526,9 +677,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -555,9 +704,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
               schema = @Schema(type = "string"))
           @PathParam("userId")
           String userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
 
   @PUT
@@ -582,9 +729,7 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE

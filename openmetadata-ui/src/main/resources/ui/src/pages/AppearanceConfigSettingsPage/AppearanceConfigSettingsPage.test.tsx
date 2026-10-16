@@ -58,12 +58,18 @@ describe('Test appearance config page', () => {
     expect(screen.getByTestId('successColor-color-input')).toBeInTheDocument();
     expect(screen.getByTestId('warningColor-color-input')).toBeInTheDocument();
     expect(screen.getByTestId('infoColor-color-input')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('panelBackgroundColor-color-input')
+    ).toBeInTheDocument();
 
     expect(screen.getByTestId('primaryColor-color-picker')).toBeInTheDocument();
     expect(screen.getByTestId('errorColor-color-picker')).toBeInTheDocument();
     expect(screen.getByTestId('successColor-color-picker')).toBeInTheDocument();
     expect(screen.getByTestId('warningColor-color-picker')).toBeInTheDocument();
     expect(screen.getByTestId('infoColor-color-picker')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('panelBackgroundColor-color-picker')
+    ).toBeInTheDocument();
 
     expect(screen.getByTestId('save-btn')).toBeInTheDocument();
     expect(screen.getByTestId('cancel-btn')).toBeInTheDocument();
@@ -104,6 +110,9 @@ describe('Test appearance config page', () => {
       'warningColor-color-input'
     );
     const infoColorColorInput = screen.getByTestId('infoColor-color-input');
+    const panelBackgroundColorInput = screen.getByTestId(
+      'panelBackgroundColor-color-input'
+    );
     const saveButton = screen.getByTestId('save-btn');
 
     fireEvent.change(customLogoUrlPath, {
@@ -136,6 +145,9 @@ describe('Test appearance config page', () => {
     fireEvent.change(infoColorColorInput, {
       target: { value: '#ffffff' },
     });
+    fireEvent.change(panelBackgroundColorInput, {
+      target: { value: '#ffffff' },
+    });
 
     fireEvent.click(saveButton);
 
@@ -156,9 +168,24 @@ describe('Test appearance config page', () => {
             selectedColor: '#ffffff',
             successColor: '#ffffff',
             warningColor: '#ffffff',
+            panelBackgroundColor: '#ffffff',
           },
         },
       })
     );
+  });
+
+  it('regenerates hover and selected colours from a new primary colour', async () => {
+    render(<AppearanceConfigSettingsPage />);
+
+    fireEvent.change(screen.getByTestId('primaryColor-color-input'), {
+      target: { value: '#6809dc' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('hoverColor-color-input')).not.toHaveValue('')
+    );
+
+    expect(screen.getByTestId('selectedColor-color-input')).not.toHaveValue('');
   });
 });

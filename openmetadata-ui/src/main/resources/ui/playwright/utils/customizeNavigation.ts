@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   'Incident Manager',
   'Alerts',
   'Insights',
-  'Marketplace',
+  'Data Marketplace',
   'Govern',
   'Glossary',
   'Classification',
@@ -31,16 +31,12 @@ const NAV_ITEMS = [
 
 export const checkDefaultStateForNavigationTree = async (page: Page) => {
   for (const item of NAV_ITEMS) {
-    await expect(
-      page.getByTestId('page-layout-v1').getByText(item).first()
-    ).toBeVisible();
-    await expect(
-      page
-        .getByTestId('page-layout-v1')
-        .getByText(item)
-        .first()
-        .getByRole('switch')
-    ).toBeChecked();
+    const navRow = page
+      .getByTestId('page-layout-v1')
+      .getByRole('row', { name: item, exact: true });
+
+    await expect(navRow).toBeVisible();
+    await expect(navRow.getByRole('switch')).toBeChecked();
   }
 };
 
@@ -53,7 +49,8 @@ export const validateLeftSidebarWithHiddenItems = async (
     if (
       item === SidebarItem.OBSERVABILITY ||
       item === SidebarItem.GOVERNANCE ||
-      item === SidebarItem.DATA_MARKETPLACE_SECTION
+      item === SidebarItem.DATA_MARKETPLACE_SECTION ||
+      item === SidebarItem.CONTEXT_CENTER
     ) {
       await expect(page.getByTestId(item)).toBeVisible();
     } else {

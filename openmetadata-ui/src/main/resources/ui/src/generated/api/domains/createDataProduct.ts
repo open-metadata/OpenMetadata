@@ -19,6 +19,10 @@ export interface CreateDataProduct {
      */
     assets?: EntityReference[];
     /**
+     * Type of the data product (ODPS-aligned taxonomy).
+     */
+    dataProductType?: DataProductType;
+    /**
      * Description of the DataProduct.
      */
     description: string;
@@ -51,6 +55,10 @@ export interface CreateDataProduct {
      */
     owners?: EntityReference[];
     /**
+     * Portfolio-level priority of this data product.
+     */
+    portfolioPriority?: PortfolioPriority;
+    /**
      * User references of the reviewers for this DataProduct.
      */
     reviewers?: EntityReference[];
@@ -59,6 +67,10 @@ export interface CreateDataProduct {
      * Tags for this Data Product.
      */
     tags?: TagLabel[];
+    /**
+     * Visibility level of the data product in the marketplace.
+     */
+    visibility?: Visibility;
 }
 
 /**
@@ -115,6 +127,41 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Type of the data product (ODPS-aligned taxonomy).
+ *
+ * Type of the data product, aligned with the Open Data Product Standard (ODPS) v4.1 type
+ * taxonomy.
+ */
+export enum DataProductType {
+    Algorithm = "ALGORITHM",
+    AnalyticView = "ANALYTIC_VIEW",
+    AutomatedDecisionMaking = "AUTOMATED_DECISION_MAKING",
+    BIDirectional = "BI_DIRECTIONAL",
+    DataDrivenService = "DATA_DRIVEN_SERVICE",
+    DataEnabledPerformance = "DATA_ENABLED_PERFORMANCE",
+    DataEnhancedProduct = "DATA_ENHANCED_PRODUCT",
+    Dataset = "DATASET",
+    DecisionSupport = "DECISION_SUPPORT",
+    DerivedData = "DERIVED_DATA",
+    RawData = "RAW_DATA",
+    Reports = "REPORTS",
+    Visualisation3D = "VISUALISATION_3D",
+}
+
+/**
+ * Portfolio-level priority of this data product.
+ *
+ * Portfolio-level priority of this data product, indicating its importance in the
+ * organization's data product portfolio.
+ */
+export enum PortfolioPriority {
+    Critical = "CRITICAL",
+    High = "HIGH",
+    Low = "LOW",
+    Medium = "MEDIUM",
 }
 
 /**
@@ -315,4 +362,19 @@ export enum TagSource {
 export enum State {
     Confirmed = "Confirmed",
     Suggested = "Suggested",
+}
+
+/**
+ * Visibility level of the data product in the marketplace.
+ *
+ * Visibility level of the data product. Controls who can discover and access this data
+ * product. Promotion to more open levels (e.g., ORGANISATION, PUBLIC) should go through the
+ * governance workflow.
+ */
+export enum Visibility {
+    Dataspace = "DATASPACE",
+    Invitation = "INVITATION",
+    Organisation = "ORGANISATION",
+    Private = "PRIVATE",
+    Public = "PUBLIC",
 }

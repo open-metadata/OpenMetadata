@@ -18,9 +18,10 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_KNOWLEDGE_PAGE_LIST } from '../../../pages/KnowledgeCenterListPage/KnowledgeCenterListPage.mock';
+import { PageType } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgeCenterWidget from './KnowledgeCenterWidget';
+import { MOCK_KNOWLEDGE_PAGE_LIST } from './KnowledgeCenterWidget.mock';
 
 const mockHandleRemoveWidget = jest.fn();
 
@@ -55,7 +56,7 @@ jest.mock(
       ))
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -174,8 +175,35 @@ describe('Knowledge center widget', () => {
       expect(knowledgePage[0]).toHaveAttribute('target', '_self');
       expect(knowledgePage[0]).toHaveAttribute(
         'href',
-        '/knowledge-center/Article_oRKYYTCu'
+        '/context-center/articles/Article_oRKYYTCu'
       );
+    });
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    const quickLink = MOCK_KNOWLEDGE_PAGE_LIST.find(
+      (page) => page.pageType === PageType.QUICK_LINK
+    );
+    (getListKnowledgePages as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [{ ...quickLink, page: { url: 'javascript:alert(1)' } }],
+        paging: { total: 15 },
+      })
+    );
+
+    await act(async () => {
+      render(<KnowledgeCenterWidget widgetKey="KnowledgeCenterWidget" />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    await waitFor(() => {
+      const quickLinkAnchor = screen.getAllByTestId('quick-link-link')[0];
+
+      // getSafeHttpUrl drops the javascript: scheme, so the '#' fallback is
+      // used — React Router renders that as href="/", never the script url.
+      expect(quickLinkAnchor.getAttribute('href')).not.toContain('javascript:');
+      expect(quickLinkAnchor).toHaveAttribute('href', '/');
     });
   });
 });

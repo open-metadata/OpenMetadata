@@ -21,6 +21,8 @@ import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.SecurityContext;
@@ -39,10 +41,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -62,22 +66,30 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.*;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
-import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
+import org.openmetadata.service.jdbi3.DomainNavFilter;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.ActiveDomainContext;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public final class EntityUtil {
+  private static final String ALL_ALIAS = "all";
   //
   // Comparators used for sorting list based on the given type
   //
@@ -408,16 +420,14 @@ public final class EntityUtil {
     }
 
     // Convert UUIDs to strings for the batch query
-    List<String> entityIdStrings =
-        entityIds.stream().map(UUID::toString).collect(java.util.stream.Collectors.toList());
+    List<String> entityIdStrings = entityIds.stream().map(UUID::toString).toList();
 
     // Use the new batch query method for efficient bulk fetching
-    List<org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId>
-        usageDetailsList = usageDAO.getLatestUsageBatch(entityIdStrings);
+    List<UsageDAO.UsageDetailsWithId> usageDetailsList =
+        usageDAO.getLatestUsageBatch(entityIdStrings);
 
     // Convert the list back to a map keyed by UUID
-    for (org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsWithId usageWithId :
-        usageDetailsList) {
+    for (UsageDAO.UsageDetailsWithId usageWithId : usageDetailsList) {
       if (usageWithId != null && usageWithId.getEntityId() != null) {
         usageMap.put(UUID.fromString(usageWithId.getEntityId()), usageWithId.getUsageDetails());
       }
@@ -458,7 +468,7 @@ public final class EntityUtil {
     return CommonUtil.getResources(Pattern.compile(path));
   }
 
-  public static <T extends EntityInterface> List<String> toFQNs(List<T> entities) {
+  public static <T extends EntityInterface<?>> List<String> toFQNs(List<T> entities) {
     if (entities == null) {
       return Collections.emptyList();
     }
@@ -878,7 +888,7 @@ public final class EntityUtil {
     return ref == null ? null : ref.getFullyQualifiedName();
   }
 
-  public static String getFqn(EntityInterface entity) {
+  public static String getFqn(EntityInterface<?> entity) {
     return entity == null ? null : entity.getFullyQualifiedName();
   }
 
@@ -893,7 +903,7 @@ public final class EntityUtil {
     return fqns;
   }
 
-  public static EntityReference getEntityReference(EntityInterface entity) {
+  public static EntityReference getEntityReference(EntityInterface<?> entity) {
     return entity == null ? null : entity.getEntityReference();
   }
 
@@ -938,9 +948,9 @@ public final class EntityUtil {
         .orElse(null);
   }
 
-  public static void sortByFQN(List<? extends EntityInterface> entities) {
+  public static void sortByFQN(List<? extends EntityInterface<?>> entities) {
     // Sort entities by fullyQualifiedName
-    entities.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    entities.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
   }
 
   /**
@@ -1003,22 +1013,6 @@ public final class EntityUtil {
       return Hex.encodeHexString(checksum);
     }
     return null;
-  }
-
-  public static boolean isDescriptionTask(TaskType taskType) {
-    return taskType == TaskType.RequestDescription || taskType == TaskType.UpdateDescription;
-  }
-
-  public static boolean isTagTask(TaskType taskType) {
-    return taskType == TaskType.RequestTag || taskType == TaskType.UpdateTag;
-  }
-
-  public static boolean isApprovalTask(TaskType taskType) {
-    return taskType == TaskType.RequestApproval;
-  }
-
-  public static boolean isTestCaseFailureResolutionTask(TaskType taskType) {
-    return taskType == TaskType.RequestTestCaseFailureResolution;
   }
 
   public static Column findColumn(List<Column> columns, String columnName) {
@@ -1086,21 +1080,282 @@ public final class EntityUtil {
 
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
+    applyDomainQueryParam(
+        securityContext, filter, entityType, () -> listParent(filter, entityType));
+  }
+
+  // The parent is only resolved when a navbar selection is actually applied.
+  private static void applyDomainQueryParam(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      Supplier<ResourceContextInterface> parent) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    // If the User is admin then no need to add domainId in the query param
-    // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
-      if (!nullOrEmpty(subjectContext.getUserDomains())) {
+    if (subjectContext.isBot()) {
+      return;
+    }
+    // Domain-only role: admins are exempt; everyone else is restricted to their assigned domains.
+    boolean domainRestricted =
+        !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+    if (domainRestricted) {
+      List<EntityReference> allowed = subjectContext.getUserDomains();
+      if (!nullOrEmpty(allowed)) {
+        // The navbar selection narrows within the role's scope; it can never widen past it.
+        EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+        boolean selectedAllowed =
+            selected != null && allowed.stream().anyMatch(d -> coversDomain(d, selected));
         filter.addQueryParam(
-            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+            "domainId",
+            getCommaSeparatedIdsFromRefs(selectedAllowed ? List.of(selected) : allowed));
         filter.addQueryParam("domainAccessControl", "true");
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);
       }
+      return;
     }
+    applyNavbarDomain(securityContext, filter, entityType, parent);
+  }
+
+  /**
+   * The navbar domain filter alone, without the domain-only role's access condition, for lists that
+   * never enforced domain access (e.g. glossary terms, which are access-checked per entity).
+   */
+  public static void addNavbarDomainFilter(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      Supplier<ResourceContextInterface> parent) {
+    if (!getSubjectContext(securityContext).isBot()) {
+      applyNavbarDomain(securityContext, filter, entityType, parent);
+    }
+  }
+
+  // Global (navbar) domain filter: a view preference that narrows lists to the selected domain and
+  // never restricts access, so it applies to admins too.
+  private static void applyNavbarDomain(
+      SecurityContext securityContext,
+      ListFilter filter,
+      String entityType,
+      Supplier<ResourceContextInterface> parent) {
+    EntityReference selected = resolveSelectedDomain(activeDomain(securityContext));
+    String selectedFqn = selected == null ? null : selected.getFullyQualifiedName();
+    DomainNavFilter.apply(
+        filter,
+        entityType,
+        supportsDomains(entityType),
+        selected == null ? null : selected.getId().toString(),
+        () -> domainAndSubDomainIds(selected),
+        () ->
+            nullOrEmpty(selectedFqn)
+                ? DomainNavFilter.ParentScope.NONE
+                : parentScope(parent.get(), selectedFqn));
+  }
+
+  // Resolved up front so list queries bind plain ids: planners estimate an id list well, but not a
+  // fqnHash LIKE inside the query (e.g. Postgres generic plans then probe every domain asset).
+  private static String domainAndSubDomainIds(EntityReference domain) {
+    String fqn = domain.getFullyQualifiedName();
+    if (nullOrEmpty(fqn)) {
+      return domain.getId().toString();
+    }
+    String fqnHash = FullyQualifiedName.buildHash(fqn);
+    List<String> ids =
+        Entity.getCollectionDAO()
+            .domainDAO()
+            .listSubtreeIds(fqnHash, fqnHash + Entity.SEPARATOR + "%");
+    return ids.isEmpty() ? domain.getId().toString() : String.join(",", ids);
+  }
+
+  // An allowed domain covers itself and its sub-domains, as domain access does.
+  private static boolean coversDomain(EntityReference allowed, EntityReference selected) {
+    return allowed.getId().equals(selected.getId())
+        || (allowed.getFullyQualifiedName() != null
+            && FullyQualifiedName.isParent(
+                selected.getFullyQualifiedName(), allowed.getFullyQualifiedName()));
+  }
+
+  /** The entity a list is confined to, as identified for its authorization; null if none. */
+  private static ResourceContextInterface listParent(ListFilter filter, String entityType) {
+    ResourceContextInterface parent = filter.getResourceContext(entityType);
+    if (!entityType.equals(parent.getResource())) {
+      return parent;
+    }
+    // entityId may hold several ids (e.g. a quoted id list): then there is no single parent.
+    return isSingleId(filter.getQueryParam("entityId")) ? filter.getParentResourceContext() : null;
+  }
+
+  private static boolean isSingleId(String id) {
+    if (nullOrEmpty(id)) {
+      return false;
+    }
+    try {
+      UUID.fromString(id);
+      return true;
+    } catch (IllegalArgumentException e) {
+      return false;
+    }
+  }
+
+  /** Where {@code parent}'s effective domain (own or inherited) sits relative to the selection. */
+  private static DomainNavFilter.ParentScope parentScope(
+      ResourceContextInterface parent, String selectedFqn) {
+    if (parent == null || nullOrEmpty(selectedFqn)) {
+      return DomainNavFilter.ParentScope.NONE;
+    }
+    try {
+      if (parent.getEntity() == null) {
+        return DomainNavFilter.ParentScope.UNRESOLVED;
+      }
+      boolean inSelection =
+          listOrEmpty(parent.getDomains()).stream()
+              .map(EntityReference::getFullyQualifiedName)
+              .anyMatch(
+                  fqn ->
+                      selectedFqn.equals(fqn)
+                          || (fqn != null && fqn.startsWith(selectedFqn + Entity.SEPARATOR)));
+      return inSelection
+          ? DomainNavFilter.ParentScope.IN_SELECTION
+          : DomainNavFilter.ParentScope.OUTSIDE_SELECTION;
+    } catch (EntityNotFoundException e) {
+      return DomainNavFilter.ParentScope.UNRESOLVED;
+    }
+  }
+
+  /**
+   * The caller's selected domain, resolved once per request by the auth filter from the user's
+   * persisted {@code defaultDomain}. Our security context carries its own user's selection, so it
+   * wins over the thread-local (e.g. a context built for another user on the same request).
+   */
+  private static EntityReference activeDomain(SecurityContext securityContext) {
+    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        ? catalogSecurityContext.activeDomain()
+        : ActiveDomainContext.getActiveDomain();
+  }
+
+  /**
+   * A persisted selection may outlive its domain (e.g. the domain was deleted after the pick). A
+   * stale reference must fall back to "no selection" rather than scope lists to a domain that no
+   * longer exists, which would return nothing.
+   */
+  private static EntityReference resolveSelectedDomain(EntityReference selected) {
+    if (selected == null) {
+      return null;
+    }
+    try {
+      return Entity.getEntityReferenceById(Entity.DOMAIN, selected.getId(), NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
+  }
+
+  private static boolean supportsDomains(String entityType) {
+    return Entity.hasEntityRepository(entityType)
+        && Entity.getEntityRepository(entityType).isSupportsDomains()
+        && isUserFacingData(entityType);
+  }
+
+  /**
+   * True for entities the platform treats as user-facing data: those whose search index is part of
+   * the "all" alias (data assets, services, glossaries, domains, ...). Platform configuration such
+   * as custom property types, alerts, apps, bots and policies isn't, so a navbar pick never empties
+   * those lists. Without a search registry (e.g. unit tests) the domain support alone decides.
+   */
+  private static boolean isUserFacingData(String entityType) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    if (searchRepository == null) {
+      return true;
+    }
+    IndexMapping mapping = searchRepository.getIndexMapping(entityType);
+    return mapping != null && listOrEmpty(mapping.getParentAliases(null)).contains(ALL_ALIAS);
+  }
+
+  /**
+   * Restricts a Domain listing to the user's own domains and their sub-domains when the user is
+   * domain-restricted (holds {@code DomainOnlyAccessRole}). Domains are not themselves tagged with a
+   * domain, so the generic {@link #addDomainQueryParam} filter does not apply to them — this adds a
+   * self-referential filter on the Domain entity's id and fully-qualified-name hierarchy. Inert for
+   * admins, bots, and users without the role.
+   */
+  public static void applyDomainSelfRestriction(
+      SecurityContext securityContext, ListFilter filter) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
+      List<EntityReference> userDomains = subjectContext.getUserDomains();
+      filter.addQueryParam("restrictToDomainIds", getCommaSeparatedIdsFromRefs(userDomains));
+      filter.addQueryParam(
+          "restrictToDomainFqnHashes", getCommaSeparatedDomainFqnHashes(userDomains));
+    }
+  }
+
+  // Sentinel owner id that matches no entity_relationship row. Used when an owner filter was
+  // requested but nothing resolved, so the filter yields an empty result rather than every entity.
+  private static final String NO_MATCH_OWNER_ID = "00000000-0000-0000-0000-000000000000";
+
+  /**
+   * Resolves a comma-separated list of owner identifiers to a comma-separated list of ids, so an
+   * owner filter can hit the indexed entity_relationship.fromId directly instead of joining
+   * user/team tables. A value that is already a UUID is accepted as-is (it is not existence-checked);
+   * a name/FQN is resolved to a user or team id, and is dropped if it matches neither. Returns null
+   * when the input is blank (no filter); when a non-blank input resolves to nothing, returns a
+   * sentinel id that matches no rows so the caller filters to an empty result instead of the full
+   * list.
+   */
+  public static String resolveOwnersToIds(String owners) {
+    if (nullOrEmpty(owners)) {
+      return null;
+    }
+    List<String> ids = new ArrayList<>();
+    for (String owner : owners.split(",")) {
+      String id = resolveOwnerToId(owner.trim());
+      if (id != null) {
+        ids.add(id);
+      }
+    }
+    return ids.isEmpty() ? NO_MATCH_OWNER_ID : String.join(",", ids);
+  }
+
+  private static String resolveOwnerToId(String owner) {
+    if (nullOrEmpty(owner)) {
+      return null;
+    }
+    if (isUuid(owner)) {
+      return owner;
+    }
+    EntityReference reference = resolveUserOrTeam(owner);
+    return reference == null ? null : reference.getId().toString();
+  }
+
+  private static EntityReference resolveUserOrTeam(String name) {
+    try {
+      return Entity.getEntityReferenceByName(Entity.USER, name, NON_DELETED);
+    } catch (EntityNotFoundException userNotFound) {
+      try {
+        return Entity.getEntityReferenceByName(Entity.TEAM, name, NON_DELETED);
+      } catch (EntityNotFoundException teamNotFound) {
+        LOG.debug("Owner filter: '{}' did not resolve to a user or team", name);
+        return null;
+      }
+    }
+  }
+
+  private static boolean isUuid(String value) {
+    try {
+      UUID.fromString(value);
+      return true;
+    } catch (IllegalArgumentException notUuid) {
+      return false;
+    }
+  }
+
+  private static String getCommaSeparatedDomainFqnHashes(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(EntityReference::getFullyQualifiedName)
+        .filter(fqn -> !nullOrEmpty(fqn))
+        .map(FullyQualifiedName::buildHash)
+        .collect(Collectors.joining(","));
   }
 
   public static String encodeEntityFqn(String fqn) {
@@ -1146,7 +1401,7 @@ public final class EntityUtil {
    * This method checks if the entity supports the given field and returns its value.
    * If the field is not supported, returns null.
    */
-  public static Object getEntityField(EntityInterface entity, String fieldName) {
+  public static Object getEntityField(EntityInterface<?> entity, String fieldName) {
     if (entity == null || fieldName == null || fieldName.isEmpty()) {
       return null;
     }
@@ -1207,5 +1462,174 @@ public final class EntityUtil {
     return changeDescription.getFieldsAdded().isEmpty()
         && changeDescription.getFieldsUpdated().isEmpty()
         && changeDescription.getFieldsDeleted().isEmpty();
+  }
+
+  // Field names of an EntityReference stored on a custom property, per the
+  // EntityReference JSON Schema. Either ID or FQN is a valid lookup key alongside TYPE.
+  private static final String REF_FIELD_TYPE = "type";
+  private static final String REF_FIELD_ID = "id";
+  private static final String REF_FIELD_FQN = Entity.FIELD_FULLY_QUALIFIED_NAME;
+  private static final String CUSTOM_PROPERTY_ERROR_PREFIX = "Custom property '%s' %s";
+
+  /**
+   * Validate a single entity reference stored on an {@code entityReference} custom property and
+   * confirm the referenced entity exists. The value must be an object carrying {@code type} plus
+   * either {@code id} or {@code fullyQualifiedName}. Throws {@link IllegalArgumentException} with a
+   * descriptive message when the reference is malformed or its target cannot be found.
+   */
+  public static void validateCustomPropertyEntityReference(JsonNode fieldValue, String fieldName) {
+    if (fieldValue != null && !fieldValue.isNull()) {
+      if (!fieldValue.isObject()) {
+        throw new IllegalArgumentException(
+            customPropertyError(fieldName, "must be an object with " + referenceShapeHint()));
+      }
+      resolveEntityReference(fieldValue, fieldName);
+    }
+  }
+
+  /**
+   * Validate an {@code entityReferenceList} custom property: the value must be an array of entity
+   * references, each resolvable to an existing entity (see {@link
+   * #validateCustomPropertyEntityReference}).
+   */
+  public static void validateCustomPropertyEntityReferenceList(
+      JsonNode fieldValue, String fieldName) {
+    if (fieldValue != null && !fieldValue.isNull()) {
+      if (!fieldValue.isArray()) {
+        throw new IllegalArgumentException(
+            customPropertyError(fieldName, "must be an array of entity references"));
+      }
+      int index = 0;
+      for (JsonNode ref : fieldValue) {
+        validateReferenceElement(ref, fieldName, index);
+        index++;
+      }
+    }
+  }
+
+  private static void validateReferenceElement(JsonNode ref, String fieldName, int index) {
+    if (ref == null || ref.isNull()) {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName, "must contain only non-null entity references at index " + index));
+    }
+    if (!ref.isObject()) {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName,
+              "must contain only objects with " + referenceShapeHint() + " at index " + index));
+    }
+    resolveEntityReference(ref, fieldName);
+  }
+
+  private static void resolveEntityReference(JsonNode ref, String fieldName) {
+    String type =
+        requireText(
+            ref.get(REF_FIELD_TYPE), fieldName, "reference requires " + referenceShapeHint());
+    JsonNode idNode = ref.get(REF_FIELD_ID);
+    JsonNode fqnNode = ref.get(REF_FIELD_FQN);
+    if (hasText(idNode)) {
+      resolveReferenceById(type, idNode.asText(), fieldName);
+    } else if (hasText(fqnNode)) {
+      EntityReference resolved = resolveReferenceByName(type, fqnNode.asText(), fieldName);
+      // Stored values are matched by id downstream, so a name-only reference is completed here.
+      ((ObjectNode) ref).put(REF_FIELD_ID, resolved.getId().toString());
+    } else {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName,
+              String.format(
+                  "reference requires either '%s' or '%s'", REF_FIELD_ID, REF_FIELD_FQN)));
+    }
+  }
+
+  private static void resolveReferenceById(String type, String idText, String fieldName) {
+    UUID id = parseReferenceId(idText, fieldName);
+    try {
+      Entity.getEntityReferenceById(type, id, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException(missingReferenceError(fieldName, type, idText), e);
+    }
+  }
+
+  private static EntityReference resolveReferenceByName(String type, String fqn, String fieldName) {
+    try {
+      return Entity.getEntityReferenceByName(type, fqn, NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw new IllegalArgumentException(missingReferenceError(fieldName, type, fqn), e);
+    }
+  }
+
+  /**
+   * Completes name-only references with the id of the entity they name, without validating them,
+   * so an update that echoes a stored value compares equal to it by id. Names that resolve to
+   * nothing are left as they are for the validator to reject if the field changed.
+   */
+  public static void fillCustomPropertyReferenceIds(JsonNode value) {
+    if (value == null || value.isNull()) {
+      return;
+    }
+    if (value.isArray()) {
+      value.forEach(EntityUtil::fillReferenceId);
+    } else {
+      fillReferenceId(value);
+    }
+  }
+
+  private static void fillReferenceId(JsonNode ref) {
+    boolean nameOnly =
+        ref.isObject()
+            && !hasText(ref.get(REF_FIELD_ID))
+            && hasText(ref.get(REF_FIELD_TYPE))
+            && hasText(ref.get(REF_FIELD_FQN));
+    if (nameOnly) {
+      lookUpReferenceByName(ref.get(REF_FIELD_TYPE).asText(), ref.get(REF_FIELD_FQN).asText())
+          .ifPresent(id -> ((ObjectNode) ref).put(REF_FIELD_ID, id.toString()));
+    }
+  }
+
+  private static Optional<UUID> lookUpReferenceByName(String type, String fqn) {
+    try {
+      return Optional.of(Entity.getEntityReferenceByName(type, fqn, ALL).getId());
+    } catch (EntityNotFoundException | IllegalArgumentException e) {
+      return Optional.empty();
+    }
+  }
+
+  private static UUID parseReferenceId(String idText, String fieldName) {
+    UUID id;
+    try {
+      id = UUID.fromString(idText);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException(
+          customPropertyError(
+              fieldName, String.format("reference has an invalid '%s': %s", REF_FIELD_ID, idText)));
+    }
+    return id;
+  }
+
+  private static boolean hasText(JsonNode node) {
+    return node != null && !node.isNull() && !node.asText().isEmpty();
+  }
+
+  private static String requireText(JsonNode node, String fieldName, String requirement) {
+    if (!hasText(node)) {
+      throw new IllegalArgumentException(customPropertyError(fieldName, requirement));
+    }
+    return node.asText();
+  }
+
+  private static String referenceShapeHint() {
+    return String.format(
+        "'%s' and either '%s' or '%s'", REF_FIELD_TYPE, REF_FIELD_ID, REF_FIELD_FQN);
+  }
+
+  private static String customPropertyError(String fieldName, String detail) {
+    return String.format(CUSTOM_PROPERTY_ERROR_PREFIX, fieldName, detail);
+  }
+
+  private static String missingReferenceError(String fieldName, String type, String key) {
+    return String.format(
+        "Custom property '%s' references %s '%s' that does not exist", fieldName, type, key);
   }
 }

@@ -1,0 +1,230 @@
+{
+  "name": "AIAssetApprovalWorkflow",
+  "fullyQualifiedName": "AIAssetApprovalWorkflow",
+  "displayName": "AI Asset Approval Workflow",
+  "description": "When an AI asset (AI Application, LLM Model, or MCP Server) is submitted for review, route it to the Risk Council reviewers for approval, mirroring the Glossary Term approval process.",
+  "config": {
+    "storeStageStatus": true
+  },
+  "trigger": {
+    "type": "eventBasedEntity",
+    "config": {
+      "entityTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "events": ["Created", "Updated"],
+      "exclude": [],
+      "include": [],
+      "filter": {}
+    },
+    "output": ["relatedEntity", "updatedBy"]
+  },
+  "nodes": [
+    {
+      "type": "startEvent",
+      "subType": "startEvent",
+      "name": "AIAssetSubmitted",
+      "displayName": "AI Asset Created or Updated"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "NoActionEnd",
+      "displayName": "No Approval Action Required"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "ApprovedEnd",
+      "displayName": "AI Asset Status: Approved"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "RejectedEnd",
+      "displayName": "AI Asset Status: Rejected"
+    },
+    {
+      "type": "endEvent",
+      "subType": "endEvent",
+      "name": "AutoApprovedByReviewerEnd",
+      "displayName": "Auto-Approved by Reviewer"
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckAIAssetInReview",
+      "displayName": "Check if AI Asset is In Review",
+      "config": {
+        "rules": "{\"and\":[{\"==\":[{\"var\":\"entityStatus\"},\"In Review\"]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckAIAssetHasReviewers",
+      "displayName": "Check if AI Asset has Reviewers",
+      "config": {
+        "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "checkEntityAttributesTask",
+      "name": "CheckAIAssetUpdatedByIsReviewer",
+      "displayName": "Check if AI Asset Updated By is Reviewer",
+      "config": {
+        "rules": "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAIAssetApprovedByReviewer",
+      "displayName": "Set Status to 'Approved' (By Reviewer)",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "global"
+      }
+    },
+    {
+      "type": "userTask",
+      "subType": "userApprovalTask",
+      "name": "ApproveAIAsset",
+      "displayName": "Create Risk Council Approval Task",
+      "config": {
+        "assignees": {
+          "addReviewers": true,
+          "addOwners": false,
+          "candidates": []
+        },
+        "approvalThreshold": 1,
+        "rejectionThreshold": 1,
+        "stageId": "review",
+        "stageDisplayName": "Review",
+        "taskStatus": "Open",
+        "assigneeStrategy": "reviewers-and-assignees",
+        "transitionMetadata": [
+          {
+            "id": "approve",
+            "label": "Approve",
+            "targetStageId": "approved",
+            "targetTaskStatus": "Approved",
+            "resolutionType": "Approved",
+            "formRef": "approve",
+            "requiresComment": false
+          },
+          {
+            "id": "reject",
+            "label": "Reject",
+            "targetStageId": "rejected",
+            "targetTaskStatus": "Rejected",
+            "resolutionType": "Rejected",
+            "formRef": "reject",
+            "requiresComment": true
+          }
+        ]
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAIAssetApproved",
+      "displayName": "Set Status to 'Approved'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Approved"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveAIAsset"
+      }
+    },
+    {
+      "type": "automatedTask",
+      "subType": "setEntityAttributeTask",
+      "name": "SetAIAssetRejected",
+      "displayName": "Set Status to 'Rejected'",
+      "config": {
+        "fieldName": "status",
+        "fieldValue": "Rejected"
+      },
+      "inputNamespaceMap": {
+        "relatedEntity": "global",
+        "updatedBy": "ApproveAIAsset"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "AIAssetSubmitted",
+      "to": "CheckAIAssetInReview"
+    },
+    {
+      "from": "CheckAIAssetInReview",
+      "to": "NoActionEnd",
+      "condition": "false"
+    },
+    {
+      "from": "CheckAIAssetInReview",
+      "to": "CheckAIAssetHasReviewers",
+      "condition": "true"
+    },
+    {
+      "from": "CheckAIAssetHasReviewers",
+      "to": "NoActionEnd",
+      "condition": "false"
+    },
+    {
+      "from": "CheckAIAssetHasReviewers",
+      "to": "CheckAIAssetUpdatedByIsReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckAIAssetUpdatedByIsReviewer",
+      "to": "SetAIAssetApprovedByReviewer",
+      "condition": "true"
+    },
+    {
+      "from": "CheckAIAssetUpdatedByIsReviewer",
+      "to": "ApproveAIAsset",
+      "condition": "false"
+    },
+    {
+      "from": "SetAIAssetApprovedByReviewer",
+      "to": "AutoApprovedByReviewerEnd"
+    },
+    {
+      "from": "ApproveAIAsset",
+      "to": "SetAIAssetApproved",
+      "condition": "approve"
+    },
+    {
+      "from": "ApproveAIAsset",
+      "to": "SetAIAssetRejected",
+      "condition": "reject"
+    },
+    {
+      "from": "SetAIAssetApproved",
+      "to": "ApprovedEnd"
+    },
+    {
+      "from": "SetAIAssetRejected",
+      "to": "RejectedEnd"
+    }
+  ]
+}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { map, startCase } from 'lodash';
 import { ServiceTypes, StepperStepType } from 'Models';
 import { EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
@@ -66,31 +65,32 @@ export const SERVICE_CATEGORY: { [key: string]: ServiceCategory } = {
   drives: ServiceCategory.DRIVE_SERVICES,
 };
 
-export const servicesDisplayName: Record<
-  string,
-  { key: string; entity: string }
-> = {
-  databaseServices: { key: 'label.entity-service', entity: 'label.database' },
-  messagingServices: { key: 'label.entity-service', entity: 'label.messaging' },
-  dashboardServices: { key: 'label.entity-service', entity: 'label.dashboard' },
-  pipelineServices: { key: 'label.entity-service', entity: 'label.pipeline' },
-  mlmodelServices: { key: 'label.entity-service', entity: 'label.ml-model' },
-  metadataServices: { key: 'label.entity-service', entity: 'label.metadata' },
-  storageServices: { key: 'label.entity-service', entity: 'label.storage' },
-  searchServices: { key: 'label.entity-service', entity: 'label.search' },
-  dashboardDataModel: {
-    key: 'label.entity-service',
-    entity: 'label.data-model',
-  },
-  apiServices: { key: 'label.entity-service', entity: 'label.api-uppercase' },
-  securityServices: { key: 'label.entity-service', entity: 'label.security' },
-  driveServices: { key: 'label.entity-service', entity: 'label.drive' },
+// Category names deliberately omit "Service": they label a kind of source (Connections tabs,
+// breadcrumbs, the add-service picker), whereas the `*-service` labels name the service entity.
+// Entry order is the add-service picker's order; keep it in step with the Connections tabs.
+export const SERVICE_CATEGORY_TITLE_KEYS: Record<ServiceCategory, string> = {
+  [ServiceCategory.DATABASE_SERVICES]: 'label.database-plural',
+  [ServiceCategory.DASHBOARD_SERVICES]: 'label.dashboard-plural',
+  [ServiceCategory.MESSAGING_SERVICES]: 'label.messaging',
+  [ServiceCategory.PIPELINE_SERVICES]: 'label.pipeline-plural',
+  [ServiceCategory.STORAGE_SERVICES]: 'label.storage',
+  [ServiceCategory.API_SERVICES]: 'label.api-uppercase-plural',
+  [ServiceCategory.ML_MODEL_SERVICES]: 'label.ml-model-plural',
+  [ServiceCategory.METADATA_SERVICES]: 'label.catalog-plural',
+  [ServiceCategory.SEARCH_SERVICES]: 'label.search-engine-plural',
+  [ServiceCategory.DRIVE_SERVICES]: 'label.drive-plural',
+  [ServiceCategory.SECURITY_SERVICES]: 'label.security',
 };
 
-export const SERVICE_CATEGORY_OPTIONS = map(ServiceCategory, (value) => ({
-  label: startCase(value),
-  value,
-}));
+// Sentinel for "no specific category chosen" on the add-service wizard's category-agnostic entry
+// points (the All Connections tab, the /settings/services landing page) — deliberately not a
+// ServiceCategory member, since that enum is consumed exhaustively elsewhere (search index maps,
+// resource-permission maps, entity-type maps) and a fake member would force all of those to handle
+// a non-category. Mirrors Collate's own `ConnectionsCategory = ConnectionsServiceCategory | 'all'`.
+export const ALL_SERVICES_CATEGORY = 'all' as const;
+export type ServiceCategoryParam =
+  | ServiceCategory
+  | typeof ALL_SERVICES_CATEGORY;
 
 export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
   {
@@ -99,18 +99,12 @@ export const STEPS_FOR_ADD_SERVICE: Array<StepperStepType> = [
     step: 1,
   },
   {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.service' },
+    name: 'label.connect',
     step: 2,
   },
   {
-    name: 'label.connection-entity',
-    nameData: { entity: 'label.detail-plural' },
+    name: 'label.what-to-ingest',
     step: 3,
-  },
-  {
-    name: 'label.set-default-filters',
-    step: 4,
   },
 ];
 
@@ -180,13 +174,12 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Ssas,
   DatabaseServiceType.Epic,
   DashboardServiceType.Hex,
+  DashboardServiceType.Omni,
   DatabaseServiceType.SapSuccessFactors,
   DatabaseServiceType.ServiceNow,
   DatabaseServiceType.Dremio,
   MetadataServiceType.Collibra,
   PipelineServiceType.Mulesoft,
-  DatabaseServiceType.MicrosoftFabric,
-  PipelineServiceType.MicrosoftFabricPipeline,
   DatabaseServiceType.BurstIQ,
   DatabaseServiceType.StarRocks,
   DriveServiceType.SFTP,
@@ -194,7 +187,17 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Informix,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
+  MessagingServiceType.Nats,
   DashboardServiceType.SapS4Hana,
+  DatabaseServiceType.Data360,
+  PipelineServiceType.Data360Pipeline,
+  DatabaseServiceType.SapBw4Hana,
+  PipelineServiceType.SapBw4HanaPipeline,
+  PipelineServiceType.Prefect,
+  PipelineServiceType.TableauPipeline,
+  DatabaseServiceType.Iomete,
+  DatabaseServiceType.Clickzetta,
+  DatabaseServiceType.Databend,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -214,8 +217,9 @@ export const TEST_CONNECTION_WARNING_MESSAGE =
 export const ADVANCED_PROPERTIES = [
   'connectionArguments',
   'connectionOptions',
+  'useAccessHistory',
+  'accessHistoryChunkSize',
   'scheme',
-  'sampleDataStorageConfig',
   'computeTableMetrics',
   'computeColumnMetrics',
   'includeViews',
@@ -237,7 +241,66 @@ export const ADVANCED_PROPERTIES = [
   'maxClockSkew',
   'tokenValidity',
   'maxAge',
-  'sessionExpiry',
+];
+
+export const CONNECTION_AUTH_TYPE_PROPERTY = 'authType';
+
+// Optional identity fields that belong in the Connection section (next to
+// host/database) even when the schema doesn't mark them required.
+export const OPTIONAL_CONNECTION_PROPERTIES = new Set([
+  'billingProjectId',
+  'hostPort',
+  'username',
+  'clientId',
+]);
+
+export const OPTIONAL_SCOPE_PROPERTIES = new Set([
+  'apiCollectionFilterPattern',
+  'apiEndpointFilterPattern',
+  'chartFilterPattern',
+  'containerFilterPattern',
+  'dashboardFilterPattern',
+  'dataModelFilterPattern',
+  'databaseFilterPattern',
+  'databaseName',
+  'directoryFilterPattern',
+  'domainFilterPattern',
+  'fileFilterPattern',
+  'glossaryFilterPattern',
+  'mlModelFilterPattern',
+  'modelFilterPattern',
+  'pipelineFilterPattern',
+  'projectFilterPattern',
+  'schemaFilterPattern',
+  'searchIndexFilterPattern',
+  'serverFilterPattern',
+  'sobjectNames',
+  'spreadsheetFilterPattern',
+  'storedProcedureFilterPattern',
+  'supportsMetadataExtraction',
+  'tableFilterPattern',
+  'topicFilterPattern',
+  'worksheetFilterPattern',
+]);
+
+export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'includeTables',
+  'includeViews',
+  'includeTags',
+  'includeCustomProperties',
+  'includeOwners',
+  'includeStoredProcedures',
+  'includeDDL',
+  'markDeletedTables',
+  'markDeletedStoredProcedures',
+  'markDeletedSchemas',
+  'markDeletedDatabases',
+  'overrideMetadata',
+  'enableDebugLog',
+  'dbtUpdateDescriptions',
+  'dbtUpdateOwners',
+  'overrideLineage',
+  'searchAcrossDatabases',
 ];
 
 export const PIPELINE_SERVICE_PLATFORM = 'Airflow';
@@ -265,6 +328,8 @@ export const SERVICE_INGESTION_PIPELINE_TYPES = [
   PipelineType.Profiler,
   PipelineType.AutoClassification,
   PipelineType.Dbt,
+  PipelineType.PolicyAgent,
+  PipelineType.ReverseMetadata,
 ];
 
 export const SERVICE_AUTOPILOT_AGENT_TYPES = [
@@ -294,4 +359,7 @@ export const SERVICE_TYPE_WITH_DISPLAY_NAME = new Map<string, string>([
   [SearchServiceType.ElasticSearch, 'Elasticsearch'],
   [DatabaseServiceType.MicrosoftFabric, 'Microsoft Fabric'],
   [PipelineServiceType.MicrosoftFabricPipeline, 'Microsoft Fabric Pipeline'],
+  [DatabaseServiceType.Data360, 'Salesforce Data 360'],
+  [PipelineServiceType.Data360Pipeline, 'Salesforce Data 360 Pipeline'],
+  [PipelineServiceType.TableauPipeline, 'Tableau Pipeline'],
 ]);

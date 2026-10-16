@@ -5,26 +5,62 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RegexMode;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
+  /** The severity filter value for incidents with no severity. */
+  public static final String NO_INCIDENT_SEVERITY = "none";
+
+  private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
+
   public static final String NULL_PARAM = "null";
-  private static final String MCP_EXECUTION_TABLE_NAME = "mcp_execution_entity";
+
+  // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
+  // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
+  private String sortField;
+  private String sortOrder;
+  private String entityTableName;
+
+  private static final String TASK_STATUS_GROUP_OPEN = "open";
+  private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String TASK_STATUS_GROUP_CLOSED = "closed";
+  private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
+  private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  // An fqnHash joins one MD5 hex digest per FQN segment.
+  private static final int FQN_HASH_SEGMENT_LENGTH = 32;
+  private static final String FQN_HASH_COLUMN = "fqnHash";
+  private static final String DOMAIN_RELATION_ALIAS = "dr";
+  // Where a test case's table inherits its domain from, the table itself first.
+  private static final List<TestCaseAncestor> TEST_CASE_DOMAIN_ANCESTORS =
+      List.of(
+          new TestCaseAncestor(Entity.TABLE, "table_entity", FQN_HASH_COLUMN, 4),
+          new TestCaseAncestor(
+              Entity.DATABASE_SCHEMA, "database_schema_entity", FQN_HASH_COLUMN, 3),
+          new TestCaseAncestor(Entity.DATABASE, "database_entity", FQN_HASH_COLUMN, 2),
+          new TestCaseAncestor(Entity.DATABASE_SERVICE, "dbservice_entity", "nameHash", 1));
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -32,6 +68,25 @@ public class ListFilter extends Filter<ListFilter> {
 
   public ListFilter(Include include) {
     this.include = include;
+  }
+
+  public String getConditionForEntity(String tableName) {
+    entityTableName = tableName;
+    return getCondition();
+  }
+
+  public String getSortField() {
+    return sortField;
+  }
+
+  public String getSortOrder() {
+    return sortOrder;
+  }
+
+  public ListFilter withSort(String sortField, String sortOrder) {
+    this.sortField = sortField;
+    this.sortOrder = sortOrder;
+    return this;
   }
 
   public String getCondition(String tableName) {
@@ -55,17 +110,32 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTestSuiteTypeCondition(tableName));
     conditions.add(getTestSuiteFQNCondition());
     conditions.add(getDomainCondition(tableName));
+    conditions.add(getDomainSelfCondition(tableName));
     conditions.add(getOwnerCondition(tableName));
     conditions.add(getVisibleToCondition());
     conditions.add(getOwnedByCondition());
     conditions.add(getTierCondition(tableName));
+    conditions.add(getDomainTypeCondition(tableName));
+    conditions.add(getClassificationTagsCondition(tableName));
+    conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
     conditions.add(getTestCaseResolutionStatusType());
+    conditions.add(getTestDefinitionCondition());
+    conditions.add(getTestCaseOwnerCondition());
+    conditions.add(getTestCaseUnownedCondition());
+    conditions.add(getIncidentListDateRangeCondition());
+    conditions.add(getIncidentAssigneeCondition());
+    conditions.add(getIncidentSeverityCondition());
+    conditions.add(getIncidentListSeverityCondition());
+    conditions.add(getIncidentDomainCondition());
+    conditions.add(getIncidentListDomainCondition());
+    conditions.add(getIncidentDateRangeCondition());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -73,19 +143,91 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
-    conditions.add(getActiveCondition(tableName));
+    conditions.add(getActiveCondition());
+    conditions.add(getAnnouncementTypeCondition());
+    conditions.add(getAnnouncementStatusCondition());
+    conditions.add(getSystemAnnouncementCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getExcludeProviderCondition(tableName));
+    conditions.add(getConnectorTypeCondition(tableName));
     conditions.add(getTaskStatusCondition(tableName));
     conditions.add(getTaskFormTypeCondition(tableName));
     conditions.add(getTaskFormCategoryCondition(tableName));
     conditions.add(getTaskTypeCondition(tableName));
     conditions.add(getTaskPriorityCondition(tableName));
+    conditions.add(getTaskApproverCondition());
+    conditions.add(getTaskAboutServiceCondition());
+    conditions.add(getTaskAccessTypeCondition());
+    conditions.add(getTaskCreatedAtRangeCondition(tableName));
+    conditions.add(getTaskSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
-    conditions.add(getServerIdCondition(tableName));
+    conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
+    conditions.add(getSourceFileCondition());
+    conditions.add(getSourceEntityCondition());
+    conditions.add(getPrimaryEntityCondition());
+    conditions.add(getFolderCondition());
+    conditions.add(getAssetCondition());
+    conditions.add(getGlossaryIdCondition(tableName));
+    conditions.add(getOntologyChangeSetStateCondition(tableName));
+    conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
+  }
+
+  private String getGlossaryIdCondition(String tableName) {
+    String glossaryId = queryParams.get("glossaryId");
+    String condition = "";
+    if (!nullOrEmpty(glossaryId) && tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)) {
+      queryParams.put("glossaryIdParam", glossaryId);
+      condition = qualifyColumn(tableName, "glossaryId") + " = :glossaryIdParam";
+    }
+    return condition;
+  }
+
+  /** Matches any of the comma-separated states, each bound as its own parameter. */
+  private String getOntologyChangeSetStateCondition(String tableName) {
+    String state = queryParams.get("state");
+    String condition = "";
+    if (!nullOrEmpty(state) && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      String[] states = state.split(",");
+      List<String> placeholders = new ArrayList<>(states.length);
+      for (int index = 0; index < states.length; index++) {
+        String param = "ontologyChangeSetStateParam" + index;
+        queryParams.put(param, states[index]);
+        placeholders.add(":" + param);
+      }
+      condition =
+          qualifyColumn(tableName, "state") + " IN (" + String.join(", ", placeholders) + ")";
+    }
+    return condition;
+  }
+
+  /** Keeps only Studio drafts proposed from context memories (changeSet --DERIVED_FROM--> memory). */
+  private String getMemorySourcedChangeSetCondition(String tableName) {
+    String condition = "";
+    if (Boolean.parseBoolean(queryParams.get("memorySourced"))
+        && tableMatches(tableName, ONTOLOGY_CHANGE_SET_TABLE)) {
+      condition =
+          String.format(
+              "%s IN (SELECT entity_relationship.fromId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'ontologyChangeSet' "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d "
+                  + "AND entity_relationship.deleted = FALSE)",
+              qualifyColumn(tableName, "id"), Relationship.DERIVED_FROM.ordinal());
+    }
+    return condition;
+  }
+
+  private static String qualifyColumn(String tableName, String column) {
+    return nullOrEmpty(tableName) ? column : tableName + '.' + column;
+  }
+
+  private static boolean tableMatches(String tableName, String expectedTable) {
+    // EntityDAO's default list and count paths omit the table name when building conditions.
+    return nullOrEmpty(tableName) || tableName.contains(expectedTable);
   }
 
   public ResourceContext getResourceContext(String entityType) {
@@ -123,6 +265,90 @@ public class ListFilter extends Filter<ListFilter> {
     return null;
   }
 
+  /** Filters context memories down to the knowledge pills extracted from a given context file. */
+  private String getSourceFileCondition() {
+    String sourceFileId = queryParams.get("sourceFileId");
+    String result = "";
+    if (!nullOrEmpty(sourceFileId)) {
+      queryParams.put("sourceFileIdParam", sourceFileId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromEntity = 'contextFile' "
+                  + "AND entity_relationship.fromId = :sourceFileIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
+  }
+
+  /** Filters context memories down to the knowledge pills extracted from any source entity. */
+  private String getSourceEntityCondition() {
+    String sourceEntityId = queryParams.get("sourceEntityId");
+    String result = "";
+    if (!nullOrEmpty(sourceEntityId)) {
+      queryParams.put("sourceEntityIdParam", sourceEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
+  }
+
+  /**
+   * Filters context memories down to the knowledge pills whose primaryEntity is the given asset.
+   * Edge direction: primaryEntity --APPLIED_TO--> contextMemory, so the memory is the {@code toId}.
+   */
+  private String getPrimaryEntityCondition() {
+    String primaryEntityId = queryParams.get("primaryEntityId");
+    String result = "";
+    if (!nullOrEmpty(primaryEntityId)) {
+      queryParams.put("primaryEntityIdParam", primaryEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :primaryEntityIdParam "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.APPLIED_TO.ordinal());
+    }
+    return result;
+  }
+
+  /**
+   * Documents by the stored asset they are a view of. A chat attachment is one such asset, and this
+   * is how a link to it finds the document to open.
+   */
+  public String getAssetCondition() {
+    String assetId = queryParams.get("assetId");
+    if (nullOrEmpty(assetId)) {
+      return "";
+    }
+    queryParams.put("assetIdParam", assetId);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetIdParam";
+    }
+    return "json->>'assetId' = :assetIdParam";
+  }
+
+  public String getFolderCondition() {
+    String folderId = queryParams.get("folderId");
+    if (nullOrEmpty(folderId)) {
+      return "";
+    }
+    queryParams.put("folderIdParam", folderId);
+    return String.format(
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = %d))",
+        Relationship.CONTAINS.ordinal());
+  }
+
   private String getAssignee() {
     String assigneeIds = queryParams.get("assigneeIds");
     if (assigneeIds != null) {
@@ -146,23 +372,44 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     String assigneeFqn = queryParams.get("assignee");
-    if (assigneeFqn == null) {
+    if (nullOrEmpty(assigneeFqn)) {
       return "";
     }
-    String assigneeFqnHash = FullyQualifiedName.buildHash(assigneeFqn);
-    queryParams.put("assigneeFqnHashParam", assigneeFqnHash);
+    String hashCsv =
+        Arrays.stream(assigneeFqn.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(ListFilter::hashUserName)
+            .collect(Collectors.joining(","));
+    String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
         "(id IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN user_entity u ON er.fromId = u.id "
             + "WHERE er.fromEntity = 'user' "
-            + "AND u.nameHash = :assigneeFqnHashParam "
+            + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d) "
             + "OR id IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN team_entity t ON er.fromId = t.id "
             + "WHERE er.fromEntity = 'team' "
-            + "AND t.nameHash = :assigneeFqnHashParam "
+            + "AND t.nameHash IN (%s) "
             + "AND er.relation = %d))",
-        Relationship.ASSIGNED_TO.ordinal(), Relationship.ASSIGNED_TO.ordinal());
+        inCondition,
+        Relationship.ASSIGNED_TO.ordinal(),
+        inCondition,
+        Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
+   * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
+   * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
+   * buildHash} on the raw name would split it on the dot into two FQN parts and produce a compound
+   * hash that never matches, so any name containing a dot would resolve to zero tasks. Quoting first
+   * treats the whole name as a single FQN component; {@code quoteName} is a no-op for names that need
+   * no quoting, so non-dotted names are unaffected.
+   */
+  private static String hashUserName(String name) {
+    return FullyQualifiedName.buildHash(FullyQualifiedName.quoteName(name));
   }
 
   /**
@@ -172,13 +419,10 @@ public class ListFilter extends Filter<ListFilter> {
    */
   private String getAboutEntityCondition() {
     String aboutEntityFqn = queryParams.get("aboutEntity");
-    if (aboutEntityFqn == null) {
+    if (nullOrEmpty(aboutEntityFqn)) {
       return "";
     }
-    String fqnHash = FullyQualifiedName.buildHash(aboutEntityFqn);
-    queryParams.put("aboutFqnHashParam", fqnHash);
-    queryParams.put("aboutFqnHashPrefixParam", fqnHash + ".%");
-    return "(aboutFqnHash = :aboutFqnHashParam OR aboutFqnHash LIKE :aboutFqnHashPrefixParam)";
+    return buildFqnPrefixOrCondition("about", aboutEntityFqn);
   }
 
   /**
@@ -191,13 +435,19 @@ public class ListFilter extends Filter<ListFilter> {
     if (mentionedUser == null) {
       return "";
     }
-    queryParams.put("mentionedUserParam", mentionedUser);
+    // TaskRepository.storeMentions writes the task id into toFQN and the mentioned
+    // user into fromFQNHash (via @BindFQN). field_relationship has no toId column, so
+    // selecting one made every mentionedUser query fail with an SQLSyntaxErrorException.
+    // hashUserName quotes first, so a dotted name matches whether the caller sends the
+    // quoted FQN ("john.doe") or the bare name (john.doe) — bare would otherwise hash
+    // as three FQN segments and match nothing.
+    queryParams.put("mentionedUserHash", hashUserName(mentionedUser));
     return String.format(
-        "(id IN (SELECT fr.toId FROM field_relationship fr "
-            + "WHERE fr.fromFQN = :mentionedUserParam "
-            + "AND fr.toType = 'task' "
+        "(id IN (SELECT fr.toFQN FROM field_relationship fr "
+            + "WHERE fr.fromFQNHash = :mentionedUserHash "
+            + "AND fr.toType = '%s' "
             + "AND fr.relation = %d))",
-        Relationship.MENTIONED_IN.ordinal());
+        Entity.TASK, Relationship.MENTIONED_IN.ordinal());
   }
 
   /**
@@ -207,24 +457,46 @@ public class ListFilter extends Filter<ListFilter> {
    */
   private String getCreatedByCondition() {
     String createdById = queryParams.get("createdById");
-    if (createdById != null) {
-      queryParams.put("createdByIdParam", createdById);
-      return "createdById = :createdByIdParam";
+    if (!nullOrEmpty(createdById)) {
+      String inCondition = buildIndexedBindParams("createdById", createdById);
+      return String.format("createdById IN (%s)", inCondition);
     }
 
     String createdBy = queryParams.get("createdBy");
-    if (createdBy == null) {
+    if (nullOrEmpty(createdBy)) {
       return "";
     }
-    String createdByFqnHash = FullyQualifiedName.buildHash(createdBy);
-    queryParams.put("createdByFqnHashParam", createdByFqnHash);
+    String hashCsv =
+        Arrays.stream(createdBy.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(ListFilter::hashUserName)
+            .collect(Collectors.joining(","));
+    String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
         "(id IN (SELECT er.toId FROM entity_relationship er "
             + "INNER JOIN user_entity u ON er.fromId = u.id "
             + "WHERE er.fromEntity = 'user' "
-            + "AND u.nameHash = :createdByFqnHashParam "
+            + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
-        Relationship.CREATED.ordinal());
+        inCondition, Relationship.CREATED.ordinal());
+  }
+
+  /**
+   * Filter by the user recorded in the entity's {@code updatedBy} column (the last writer). For a
+   * soft-deleted entity this is the user who archived it, since an archived entity cannot be edited.
+   * Matches the generated {@code updatedBy} column directly (plain username, comma-separated list
+   * supported). Qualifies the column with the table name when available so it stays unambiguous if a
+   * joined table ever exposes its own {@code updatedBy}.
+   */
+  private String getUpdatedByCondition(String tableName) {
+    String updatedBy = queryParams.get("updatedBy");
+    if (nullOrEmpty(updatedBy)) {
+      return "";
+    }
+    String columnName = tableName == null ? "updatedBy" : tableName + ".updatedBy";
+    String inCondition = buildIndexedBindParams("updatedBy", updatedBy);
+    return String.format("%s IN (%s)", columnName, inCondition);
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -237,9 +509,30 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
-  private String getActiveCondition(String tableName) {
+  /**
+   * Both announcement conditions key off their query parameter alone rather than the table name:
+   * the generic list and count paths call {@link Filter#getCondition()}, which passes a null table
+   * name, so a name-based guard silently drops the predicate. Only {@code AnnouncementResource}
+   * sets these parameters, and {@code startTime}/{@code endTime} exist only on that table.
+   */
+  /**
+   * Whether any condition in this filter is derived from the wall clock rather than from stored
+   * state. {@code announcementStatus} and {@code active} both compare an announcement's window
+   * against {@code System.currentTimeMillis()}, so the same query returns different rows as
+   * announcements cross their start and end times — with no write to invalidate a cached count.
+   *
+   * <p>{@link org.openmetadata.service.cache.ListCountCache} hashes only {@code queryParams}, so
+   * such a count would be computed once and reused indefinitely; its TTL is refreshed by any write
+   * to the same entity type, and its invalidation hooks only fire on create/delete/restore. These
+   * filters therefore have to skip the cache rather than populate it.
+   */
+  public boolean isTimeDependent() {
+    return queryParams.containsKey("announcementStatus") || queryParams.containsKey("active");
+  }
+
+  private String getActiveCondition() {
     String active = queryParams.get("active");
-    if (active == null || !"announcement_entity".equals(tableName)) {
+    if (active == null) {
       return "";
     }
 
@@ -252,6 +545,48 @@ public class ListFilter extends Filter<ListFilter> {
     return String.format("(startTime > %d OR endTime < %d)", now, now);
   }
 
+  private String getAnnouncementTypeCondition() {
+    String announcementType = queryParams.get("announcementType");
+    return announcementType == null ? "" : "type = :announcementType";
+  }
+
+  /** A system announcement is one with no entityLink; only AnnouncementResource sets this. */
+  private String getSystemAnnouncementCondition() {
+    String systemAnnouncement = queryParams.get("systemAnnouncement");
+    String condition = "";
+    if (systemAnnouncement != null) {
+      condition =
+          Boolean.parseBoolean(systemAnnouncement)
+              ? "entityLink IS NULL"
+              : "entityLink IS NOT NULL";
+    }
+    return condition;
+  }
+
+  /**
+   * An announcement's stored {@code status} is only a snapshot of its last write, so the generated
+   * {@code status} column still reads {@code Active} once the window has closed. Deriving the
+   * status from the window instead keeps the filter honest, and both {@code startTime} and {@code
+   * endTime} are indexed.
+   *
+   * <p>Read from {@code announcementStatus} rather than {@code status} so the generic status
+   * condition, which other resources share, keeps matching the column it means.
+   */
+  private String getAnnouncementStatusCondition() {
+    String status = queryParams.get("announcementStatus");
+    if (status == null) {
+      return "";
+    }
+
+    long now = System.currentTimeMillis();
+
+    return switch (AnnouncementStatus.fromValue(status)) {
+      case Active -> String.format("(startTime <= %d AND endTime >= %d)", now, now);
+      case Expired -> String.format("endTime < %d", now);
+      case Scheduled -> String.format("startTime > %d", now);
+    };
+  }
+
   private String getEntityStatusCondition(String tableName) {
     String entityStatus = queryParams.get("entityStatus");
     if (entityStatus == null || entityStatus.trim().isEmpty()) {
@@ -259,7 +594,16 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     Set<String> validStatuses =
-        Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+        Entity.getEntityTypesWithLifecycleStage().stream()
+            .map(Entity::getEntityRepository)
+            .filter(
+                repository ->
+                    repository
+                        .getDao()
+                        .getTableName()
+                        .equals(entityTableName == null ? tableName : entityTableName))
+            .flatMap(repository -> repository.getEntityLifecycle().stageCodes().stream())
+            .collect(Collectors.toSet());
     List<String> statusValues =
         Arrays.stream(entityStatus.split(","))
             .map(String::trim)
@@ -268,7 +612,7 @@ public class ListFilter extends Filter<ListFilter> {
             .toList();
 
     if (statusValues.isEmpty()) {
-      return "";
+      return "1 = 0";
     }
 
     List<String> bindParams = new ArrayList<>();
@@ -323,6 +667,39 @@ public class ListFilter extends Filter<ListFilter> {
     }
   }
 
+  // Negated mirror of getProviderCondition, used to hide platform-managed services (provider
+  // 'system') from user-facing listings. COALESCE is required: user-created entities have no
+  // provider key at all, and in SQL `NULL <> 'system'` is NULL, which would drop every such row.
+  public String getExcludeProviderCondition(String tableName) {
+    String provider = queryParams.get("excludeProvider");
+    String result = "";
+    if (!nullOrEmpty(provider)) {
+      String column = tableName == null ? "json" : tableName + ".json";
+      result =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? String.format(
+                  "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(%s, '$.provider')), '') <> :excludeProvider",
+                  column)
+              : String.format("COALESCE(%s->>'provider', '') <> :excludeProvider", column);
+    }
+    return result;
+  }
+
+  // Filters service entities by connector type (e.g. 'Snowflake'). Deliberately separate from
+  // getServiceTypeCondition, whose `serviceType` param means "the service a pipeline belongs to"
+  // and which is a no-op for every table except pipeline_entity. Every service table exposes
+  // serviceType as a generated column, so this reads the column rather than the JSON blob.
+  public String getConnectorTypeCondition(String tableName) {
+    String connectorTypes = queryParams.get("connectorType");
+    String result = "";
+    if (!nullOrEmpty(connectorTypes)) {
+      String inCondition = buildIndexedBindParams("connectorType", connectorTypes);
+      String column = tableName == null ? "serviceType" : tableName + ".serviceType";
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
+  }
+
   private String getEventSubscriptionAlertType() {
     String alertType = queryParams.get("alertType");
     if (alertType == null) {
@@ -351,9 +728,244 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTestCaseResolutionStatusType() {
     String testFailureStatus = queryParams.get("testCaseResolutionStatusType");
-    return testFailureStatus == null
+    String result = "";
+    if (!nullOrEmpty(testFailureStatus)) {
+      String inCondition =
+          buildIndexedBindParams("testCaseResolutionStatusType", testFailureStatus);
+      result = String.format("testCaseResolutionStatusType IN (%s)", inCondition);
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases contained in
+  // a test definition; testDefinitionId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestDefinitionCondition() {
+    String testDefinitionId = queryParams.get("testDefinitionId");
+    String result = "";
+    if (!nullOrEmpty(testDefinitionId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tdtc.fqnHash FROM test_case tdtc "
+                  + "INNER JOIN entity_relationship tder ON tder.toId = tdtc.id "
+                  + "WHERE tder.fromId = :testDefinitionId AND tder.fromEntity = '%s' "
+                  + "AND tder.toEntity = '%s' AND tder.relation = %d)",
+              Entity.TEST_DEFINITION, Entity.TEST_CASE, Relationship.CONTAINS.ordinal());
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases directly owned
+  // by a user or team (owners inherited from the table are resolved at read time and are not
+  // visible to SQL); testCaseOwnerId is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseOwnerCondition() {
+    String testCaseOwnerId = queryParams.get("testCaseOwnerId");
+    String result = "";
+    if (!nullOrEmpty(testCaseOwnerId)) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT tcotc.fqnHash FROM test_case tcotc "
+                  + "INNER JOIN entity_relationship tcoer ON tcoer.toId = tcotc.id "
+                  + "WHERE tcoer.fromId = :testCaseOwnerId AND tcoer.fromEntity IN ('%s', '%s') "
+                  + "AND tcoer.toEntity = '%s' AND tcoer.relation = %d)",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // Scopes the test_case_resolution_status_time_series listing to the test cases with no direct
+  // user or team owner, which is what the owner dimension's "No Owner" incident group holds;
+  // testCaseUnowned is only set by TestCaseResolutionStatusResource#list.
+  private String getTestCaseUnownedCondition() {
+    String result = "";
+    if (Boolean.parseBoolean(queryParams.get("testCaseUnowned"))) {
+      result =
+          String.format(
+              "entityFQNHash IN (SELECT uotc.fqnHash FROM test_case uotc WHERE NOT EXISTS ("
+                  + "SELECT 1 FROM entity_relationship uoer WHERE uoer.toId = uotc.id "
+                  + "AND uoer.fromEntity IN ('%s', '%s') AND uoer.toEntity = '%s' "
+                  + "AND uoer.relation = %d))",
+              Entity.USER, Entity.TEAM, Entity.TEST_CASE, Relationship.OWNS.ordinal());
+    }
+    return result;
+  }
+
+  // The flat listing's take on getIncidentDateRangeCondition: the range applies to the incident a
+  // record belongs to, so a drill-down from a group lists the incidents that group counted.
+  private String getIncidentListDateRangeCondition() {
+    String column = "tli." + getIncidentDateColumn(queryParams.get("incidentListDateField"));
+    String clauses =
+        getIncidentDateClauses(
+            column, queryParams.get("incidentListStartTs"), queryParams.get("incidentListEndTs"));
+    return clauses.isEmpty()
         ? ""
-        : "testCaseResolutionStatusType = :testCaseResolutionStatusType";
+        : String.format(
+            "stateId IN (SELECT tli.stateId FROM test_case_incident tli WHERE %s)", clauses);
+  }
+
+  // The incident grouping query (TestCaseResolutionStatusRepository#listIncidentGroups) reduces
+  // test_case_resolution_status_time_series records to one latest row per stateId in a CTE
+  // aliased {@code i} (createdAt/updatedAt are the chain's first/last record timestamps) and
+  // joins test_case as {@code tc}. The incident* query params below are only set by
+  // TestCaseResolutionStatusResource (incidentAssignee also by the flat list, where it compares
+  // the record's assignee column — the generic "assignee" param belongs to the task listing).
+  private String getIncidentAssigneeCondition() {
+    String assignee = queryParams.get("incidentAssignee");
+    return nullOrEmpty(assignee) ? "" : "assignee = :incidentAssignee";
+  }
+
+  // An incident's severity as it stands, from the groups' incident summary column; the flat
+  // listing reads the same value off the status record itself. Both take comma-separated
+  // severities, with NO_INCIDENT_SEVERITY standing for an incident that has none.
+  private String getIncidentSeverityCondition() {
+    return incidentSeverityCondition("incidentSeverity", "severity");
+  }
+
+  private String getIncidentListSeverityCondition() {
+    String severity =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.severity'))"
+            : "json->>'severity'";
+    return incidentSeverityCondition("incidentListSeverity", severity);
+  }
+
+  private String incidentSeverityCondition(String param, String severity) {
+    String value = queryParams.get(param);
+    return nullOrEmpty(value)
+        ? ""
+        : "(" + String.join(" OR ", severityAlternatives(param, severity, value)) + ")";
+  }
+
+  private List<String> severityAlternatives(String param, String severity, String value) {
+    List<String> values = Arrays.stream(value.split(",")).map(String::trim).toList();
+    String graded =
+        values.stream()
+            .filter(severityValue -> !NO_INCIDENT_SEVERITY.equals(severityValue))
+            .collect(Collectors.joining(","));
+    List<String> alternatives = new ArrayList<>();
+    if (!graded.isEmpty()) {
+      alternatives.add(
+          String.format("%s IN (%s)", severity, buildIndexedBindParams(param, graded)));
+    }
+    if (values.contains(NO_INCIDENT_SEVERITY)) {
+      alternatives.add(severity + " IS NULL");
+    }
+    return alternatives;
+  }
+
+  private String getIncidentDomainCondition() {
+    return nullOrEmpty(queryParams.get("incidentDomainId"))
+        ? ""
+        : testCaseInDomainCondition("tc", "incidentDomainId");
+  }
+
+  // The flat listing's take on getIncidentDomainCondition, so a drill-down from a group in a
+  // domain lists the incidents that group counted.
+  private String getIncidentListDomainCondition() {
+    return nullOrEmpty(queryParams.get("incidentListDomainId"))
+        ? ""
+        : "entityFQNHash IN (SELECT dtc.fqnHash FROM test_case dtc WHERE "
+            + testCaseInDomainCondition("dtc", "incidentListDomainId")
+            + ")";
+  }
+
+  // A test case is in the domain it has itself or, as is usual, the one its table has — which the
+  // table may in turn inherit from its schema, database or service. Inherited domains are resolved
+  // at read time and leave no relationship on the entity that inherits them, and a level inherits
+  // only when it has no domain of its own: the nearest level with one decides.
+  private static String testCaseInDomainCondition(String testCaseAlias, String domainParam) {
+    String inDomain = " AND " + DOMAIN_RELATION_ALIAS + ".fromId = :" + domainParam;
+    List<UnaryOperator<String>> levels = testCaseDomainLevels(testCaseAlias);
+    return IntStream.range(0, levels.size())
+        .mapToObj(i -> nearestDomainLevel(levels.subList(0, i), levels.get(i), inDomain))
+        .collect(Collectors.joining(" OR ", "(", ")"));
+  }
+
+  private static String nearestDomainLevel(
+      List<UnaryOperator<String>> nearer, UnaryOperator<String> level, String inDomain) {
+    return Stream.concat(
+            nearer.stream().map(nearerLevel -> "NOT " + nearerLevel.apply("")),
+            Stream.of(level.apply(inDomain)))
+        .collect(Collectors.joining(" AND ", "(", ")"));
+  }
+
+  // Each level, nearest first, as a domain-relationship EXISTS narrowed by the filter it is given.
+  private static List<UnaryOperator<String>> testCaseDomainLevels(String testCaseAlias) {
+    return Stream.concat(
+            Stream.<UnaryOperator<String>>of(filter -> ownDomainExists(testCaseAlias, filter)),
+            TEST_CASE_DOMAIN_ANCESTORS.stream()
+                .map(ancestor -> filter -> ancestor.domainExists(testCaseAlias, filter)))
+        .toList();
+  }
+
+  private static String ownDomainExists(String testCaseAlias, String filter) {
+    return String.format(
+        "EXISTS (SELECT 1 FROM entity_relationship %s WHERE %s.toId = %s.id "
+            + "AND %s.toEntity = '%s' AND %s.fromEntity = '%s' AND %s.relation = %d%s)",
+        DOMAIN_RELATION_ALIAS,
+        DOMAIN_RELATION_ALIAS,
+        testCaseAlias,
+        DOMAIN_RELATION_ALIAS,
+        Entity.TEST_CASE,
+        DOMAIN_RELATION_ALIAS,
+        Entity.DOMAIN,
+        DOMAIN_RELATION_ALIAS,
+        Relationship.HAS.ordinal(),
+        filter);
+  }
+
+  // An ancestor of a test case found by its hash column, which holds the leading fqnDepth hashed
+  // segments of the test case's fqnHash.
+  private record TestCaseAncestor(
+      String entityType, String tableName, String hashColumn, int fqnDepth) {
+
+    String domainExists(String testCaseAlias, String filter) {
+      return String.format(
+          "EXISTS (SELECT 1 FROM %s da INNER JOIN entity_relationship %s "
+              + "ON %s.toId = da.id AND %s.toEntity = '%s' "
+              + "WHERE da.%s = LEFT(%s.fqnHash, %d) "
+              + "AND %s.fromEntity = '%s' AND %s.relation = %d%s)",
+          tableName,
+          DOMAIN_RELATION_ALIAS,
+          DOMAIN_RELATION_ALIAS,
+          DOMAIN_RELATION_ALIAS,
+          entityType,
+          hashColumn,
+          testCaseAlias,
+          fqnHashPrefixLength(),
+          DOMAIN_RELATION_ALIAS,
+          Entity.DOMAIN,
+          DOMAIN_RELATION_ALIAS,
+          Relationship.HAS.ordinal(),
+          filter);
+    }
+
+    private int fqnHashPrefixLength() {
+      return fqnDepth * FQN_HASH_SEGMENT_LENGTH + (fqnDepth - 1) * Entity.SEPARATOR.length();
+    }
+  }
+
+  private String getIncidentDateRangeCondition() {
+    return getIncidentDateClauses(
+        "i." + getIncidentDateColumn(queryParams.get("incidentDateField")),
+        queryParams.get("incidentStartTs"),
+        queryParams.get("incidentEndTs"));
+  }
+
+  private static String getIncidentDateClauses(String column, String start, String end) {
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+    }
+    return String.join(" AND ", clauses);
+  }
+
+  private static String getIncidentDateColumn(String dateField) {
+    return dateField == null
+        ? IncidentDateField.CREATED_AT.value()
+        : IncidentDateField.fromValue(dateField).value();
   }
 
   public String getIncludeCondition(String tableName) {
@@ -469,31 +1081,123 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
+    String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return String.format(
-          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
-          entityIdColumn, entityIdColumn, domainInClause);
+      return domainAccessCondition(entityIdColumn, domainInClause);
     }
 
     return String.format(
-        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
-        entityIdColumn, domainInClause);
+        entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
+  // database for the OR form before returning a row, so it gets one anti-join; MySQL checks the
+  // OR per row and is faster with it (e.g. one index lookup less per table that has a domain).
+  private String domainAccessCondition(String entityIdColumn, String domainIds) {
+    String hasDomain =
+        "SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'"
+            + domainEntityTypeCondition("er")
+            + " AND er.toId = "
+            + entityIdColumn;
+    String listedDomain =
+        "SELECT er2.toId FROM entity_relationship er2 WHERE er2.relation=10 AND er2.fromEntity='domain'"
+            + domainEntityTypeCondition("er2")
+            + " AND er2.fromId IN ("
+            + domainIds
+            + ")";
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? String.format("(NOT EXISTS (%s) OR %s IN (%s))", hasDomain, entityIdColumn, listedDomain)
+        : String.format(
+            "(NOT EXISTS (%s AND NOT EXISTS (%s AND er2.toId = er.toId)))",
+            hasDomain, listedDomain);
+  }
+
+  // Domain ids are inlined as canonical UUIDs rather than bound, so Postgres plans each statement
+  // with the selected domains' real asset counts; a generic plan guesses an average domain (e.g. it
+  // scans a whole schema for an empty domain, or probes every asset of a large one).
+  private String domainIdList(String domainIds) {
+    List<String> ids =
+        Arrays.stream(domainIds.split(",")).map(String::trim).filter(id -> !id.isEmpty()).toList();
+    List<String> uuids = ids.stream().map(ListFilter::canonicalUuid).toList();
+    return ids.isEmpty() || uuids.contains(null)
+        ? buildIndexedBindParams("domainId", domainIds)
+        : uuids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+  }
+
+  private static String canonicalUuid(String value) {
+    try {
+      return UUID.fromString(value).toString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  // Keeps a domain's membership rows to the listed type, so a table list doesn't collect the
+  // domain's other assets (e.g. its dashboards) before matching ids. Inlined for the same planning
+  // reason as the ids; it is an entity type name (e.g. "table"), never user input.
+  private String domainEntityTypeCondition(String alias) {
+    String entityType = getQueryParam("domainEntityType");
+    return entityType == null || !ENTITY_TYPE_NAME.matcher(entityType).matches()
+        ? ""
+        : String.format(" AND %s.toEntity = '%s'", alias, entityType);
+  }
+
+  private String getDomainSelfCondition(String tableName) {
+    String domainIds = getQueryParam("restrictToDomainIds");
+    String result = "";
+    if (domainIds != null) {
+      String idColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+      String idInClause = buildIndexedBindParams("restrictDomainId", domainIds.replace("'", ""));
+      List<String> clauses = new ArrayList<>();
+      clauses.add(String.format("%s IN (%s)", idColumn, idInClause));
+      clauses.addAll(buildDomainFqnPrefixClauses(tableName));
+      result = "(" + String.join(" OR ", clauses) + ")";
+    }
+    return result;
+  }
+
+  private List<String> buildDomainFqnPrefixClauses(String tableName) {
+    List<String> clauses = new ArrayList<>();
+    String fqnHashes = getQueryParam("restrictToDomainFqnHashes");
+    if (!nullOrEmpty(fqnHashes)) {
+      String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+      int index = 0;
+      for (String fqnHash : fqnHashes.split(",")) {
+        String key = "restrictDomainFqn_" + index++;
+        queryParams.put(key, fqnHash.trim() + Entity.SEPARATOR + "%");
+        clauses.add(String.format("%s LIKE :%s", fqnHashColumn, key));
+      }
+    }
+    return clauses;
   }
 
   private String getOwnerCondition(String tableName) {
-    String ownerId = getQueryParam("ownerId");
-    if (ownerId == null) {
+    // Generic owner filter for any entity: matches the indexed entity_relationship.fromId.
+    // Accepts one or more owner (user/team) ids as a comma-separated value. Callers may pass an
+    // optional "ownerToEntity" to constrain the subquery to a single owned entity type.
+    String ownerIds = getQueryParam("ownerId");
+    if (nullOrEmpty(ownerIds)) {
       return "";
     }
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
-    queryParams.put("ownerIdParam", ownerId);
+    String inCondition = buildIndexedBindParams("ownerId", ownerIds);
+    String toEntityCondition = "";
+    String ownerToEntity = getQueryParam("ownerToEntity");
+    if (!nullOrEmpty(ownerToEntity)) {
+      queryParams.put("ownerToEntityParam", ownerToEntity);
+      toEntityCondition = " AND entity_relationship.toEntity = :ownerToEntityParam";
+    }
     return String.format(
-        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('user', 'team') AND entity_relationship.fromId = :ownerIdParam AND relation=8))",
-        entityIdColumn);
+        "(%s IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity IN ('%s', '%s') AND entity_relationship.fromId IN (%s)%s AND relation=%d))",
+        entityIdColumn,
+        Entity.USER,
+        Entity.TEAM,
+        inCondition,
+        toEntityCondition,
+        Relationship.OWNS.ordinal());
   }
 
   /**
@@ -572,6 +1276,54 @@ public class ListFilter extends Filter<ListFilter> {
         fqnHashColumn);
   }
 
+  private String getDomainTypeCondition(String tableName) {
+    String domainType = getQueryParam("domainType");
+    if (nullOrEmpty(domainType)) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams("domainType", domainType);
+    String jsonColumn = nullOrEmpty(tableName) ? "json" : (tableName + ".json");
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(%s, '$.domainType')) IN (%s)", jsonColumn, inCondition);
+    }
+    return String.format("%s->>'domainType' IN (%s)", jsonColumn, inCondition);
+  }
+
+  private String getClassificationTagsCondition(String tableName) {
+    return getTagUsageCondition(
+        tableName, "tags", TagLabel.TagSource.CLASSIFICATION, "classificationTag");
+  }
+
+  private String getGlossaryTermsCondition(String tableName) {
+    return getTagUsageCondition(
+        tableName, "glossaryTerms", TagLabel.TagSource.GLOSSARY, "glossaryTerm");
+  }
+
+  private String getTagUsageCondition(
+      String tableName, String param, TagLabel.TagSource source, String bindPrefix) {
+    String value = getQueryParam(param);
+    if (nullOrEmpty(value)) {
+      return "";
+    }
+    // Match on the ascii_bin tagFQNHash column (hashing inputs the same way tag_usage is written)
+    // so the comparison is exact and identical on MySQL and Postgres, not collation-dependent.
+    String hashCsv =
+        Arrays.stream(value.split(","))
+            .map(String::trim)
+            .filter(fqn -> !fqn.isEmpty())
+            .map(FullyQualifiedName::buildHash)
+            .collect(Collectors.joining(","));
+    if (hashCsv.isEmpty()) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams(bindPrefix, hashCsv);
+    String fqnHashColumn = nullOrEmpty(tableName) ? "fqnHash" : (tableName + ".fqnHash");
+    return String.format(
+        "(EXISTS (SELECT 1 FROM tag_usage tu WHERE tu.targetFQNHash = %s AND tu.source = %d AND tu.tagFQNHash IN (%s)))",
+        fqnHashColumn, source.ordinal(), inCondition);
+  }
+
   public String getApiCollectionCondition(String apiEndpoint) {
     String apiCollection = queryParams.get("apiCollection");
     return apiCollection == null
@@ -579,11 +1331,9 @@ public class ListFilter extends Filter<ListFilter> {
         : getFqnPrefixCondition(apiEndpoint, apiCollection, "apiCollection");
   }
 
-  private String getServerIdCondition(String tableName) {
+  private String getServerIdCondition() {
     String serverId = queryParams.get("serverId");
-    return serverId == null || !MCP_EXECUTION_TABLE_NAME.equals(tableName)
-        ? ""
-        : "serverId = :serverId";
+    return serverId == null ? "" : "serverId = :serverId";
   }
 
   private String getEntityFQNHashCondition() {
@@ -637,10 +1387,9 @@ public class ListFilter extends Filter<ListFilter> {
       }
     } else {
       if (disabled) {
-        disabledCondition = "((c.json#>'{disabled}')::boolean)  = TRUE)";
+        disabledCondition = "(json->>'disabled')::boolean = TRUE";
       } else {
-        disabledCondition =
-            "(c.json#>'{disabled}' IS NULL OR ((c.json#>'{disabled}'):boolean) = FALSE";
+        disabledCondition = "(json->>'disabled' IS NULL OR (json->>'disabled')::boolean = FALSE)";
       }
     }
     return disabledCondition;
@@ -817,15 +1566,15 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   private String getFqnPrefixCondition(String tableName, String fqnPrefix, String paramName) {
-    String prefix = FullyQualifiedName.buildHash(fqnPrefix) + Entity.SEPARATOR;
+    String hash = FullyQualifiedName.buildHash(fqnPrefix);
+    String prefix = hash + Entity.SEPARATOR;
     queryParams.put(paramName + "Hash", prefix + "%");
-    // Companion bind for "exclude descendants below the immediate level" — used by listings
-    // that need direct children only (e.g. ContainerDAO root listings, ContainerRepository
-    // listChildren). fqnHash uses fixed-width MD5 segments joined by '.', so a fqnHash that
-    // matches `<prefix>.%.%` has at least two segments below the prefix and is therefore not
-    // a direct child. Always bound — most queries don't reference it; the cost is one map
-    // entry. Avoids threading an extra param through every listing site.
-    queryParams.put(paramName + "HashChild", prefix + "%.%");
+    // Companion bind for "direct children of this prefix only" — used by listings that need
+    // the immediate level (e.g. ContainerDAO root listings). Matched against the generated
+    // `parentFqnHash` column, so the depth test is an indexed equality rather than a
+    // negated LIKE the planner can't use. Always bound — most queries don't reference it;
+    // the cost is one map entry. Avoids threading an extra param through every listing site.
+    queryParams.put(paramName + "HashExact", hash);
     return tableName == null
         ? String.format("fqnHash LIKE :%s", paramName + "Hash")
         : String.format("%s.fqnHash LIKE :%s", tableName, paramName + "Hash");
@@ -963,34 +1712,237 @@ public class ListFilter extends Filter<ListFilter> {
     return name.replace("'", "''");
   }
 
+  /**
+   * Defence-in-depth: when a value is embedded inside a single-quoted SQL string literal,
+   * escape backslashes before apostrophes (MySQL treats {@code \} as a string-literal escape
+   * by default, and Postgres does too when {@code standard_conforming_strings = off}). Run
+   * this BEFORE {@link #escapeApostrophe} so the {@code \\} we just inserted isn't itself
+   * re-doubled.
+   */
+  public static String escapeBackslashAndApostrophe(String name) {
+    return escapeApostrophe(name.replace("\\", "\\\\"));
+  }
+
+  /**
+   * Escape a string for use as the <em>replacement</em> argument to MySQL's
+   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
+   * <ol>
+   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
+   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
+   *       Each literal backslash in the input needs to become {@code \\} for the regex
+   *       engine to emit a single {@code \}.</li>
+   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
+   *       single-quoted SQL string, so each remaining {@code \} doubles again
+   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
+   * </ol>
+   * Net effect: one input backslash → four backslashes in the SQL statement text, which
+   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
+   * folds to one literal backslash in the replacement output. Apostrophes just double
+   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   *
+   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
+   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
+   * re-escape the apostrophes we already doubled.
+   */
+  public static String escapeForMySqlRegexReplacement(String name) {
+    // Step 1: double backslashes for the regex replacement layer.
+    String regexEscaped = name.replace("\\", "\\\\");
+    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
+    return escapeBackslashAndApostrophe(regexEscaped);
+  }
+
+  /**
+   * Escape a value that travels as a LIKE <em>bind</em> parameter: only the LIKE metacharacters
+   * and the escape character itself need escaping. Apostrophes stay as typed — {@link #escape}
+   * doubles them for literal interpolation, which would make a bound search for "it's" match
+   * nothing.
+   */
+  public static String escapeLikeBindValue(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
   public static String escape(String name) {
     // Escape string to be using in LIKE clause
     // "'" is used for indicated start and end of the string. Use "''" to escape it.
-    name = escapeApostrophe(name);
+    name = escapeBackslashAndApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
   }
 
   private String getTaskStatusCondition(String tableName) {
     String statusGroup = queryParams.get("taskStatusGroup");
+    String column = tableName == null ? "status" : tableName + ".status";
+    String typeCol = tableName == null ? "type" : tableName + ".type";
+    String condition = null;
     if (statusGroup != null) {
-      String column = tableName == null ? "status" : tableName + ".status";
-      if ("open".equalsIgnoreCase(statusGroup)) {
-        return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
-      } else if ("closed".equalsIgnoreCase(statusGroup)) {
-        return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed')", column);
-      }
+      condition = buildTaskStatusGroupCondition(statusGroup, column, typeCol);
+    }
+    if (condition == null) {
+      condition = buildExplicitTaskStatusCondition(column);
+    }
+    return condition;
+  }
+
+  /**
+   * Row-aware bucket predicates driven by {@link TaskBucketSql}. See that class for the bucket
+   * definitions and drift-guard test. Every {@code (type, status)} combination lands in exactly
+   * one of {@code open}/{@code closed} so {@code All = Open + Closed} reconciles for the mixed
+   * inbox. Keep in sync with {@link CollectionDAO.TaskDAO#getTaskCountSummary}.
+   */
+  private String buildTaskStatusGroupCondition(String statusGroup, String column, String typeCol) {
+    return switch (statusGroup.toLowerCase(Locale.ROOT)) {
+      case TASK_STATUS_GROUP_OPEN -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s = '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_OPEN_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      case TASK_STATUS_GROUP_ACTIVE -> String.format(
+          "%s IN (%s)", column, TaskBucketSql.ACTIVE_STATUSES);
+      case TASK_STATUS_GROUP_CLOSED -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s <> '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_TERMINAL_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      default -> null;
+    };
+  }
+
+  private String buildExplicitTaskStatusCondition(String column) {
+    String taskStatus = queryParams.get("taskStatus");
+    String result = "";
+    if (!nullOrEmpty(taskStatus)) {
+      String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
+  }
+
+  // Restricts tasks to a [startTs, endTs] window on createdAt. Inlines the
+  // validated Long values so the bigint comparison works on MySQL and PostgreSQL.
+  private String getTaskCreatedAtRangeCondition(String tableName) {
+    String column = tableName == null ? "createdAt" : tableName + ".createdAt";
+    String start = queryParams.get("taskStartTs");
+    String end = queryParams.get("taskEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+    }
+    return String.join(" AND ", clauses);
+  }
+
+  private String getTaskApproverCondition() {
+    String approvedById = queryParams.get("approverId");
+    if (!nullOrEmpty(approvedById)) {
+      String inCondition = buildIndexedBindParams("approverId", approvedById);
+      return String.format("approvedById IN (%s)", inCondition);
     }
 
-    String taskStatus = queryParams.get("taskStatus");
-    if (taskStatus == null) {
+    String approverFqn = queryParams.get("approver");
+    if (nullOrEmpty(approverFqn)) {
       return "";
     }
-    String safeStatus = escapeApostrophe(taskStatus);
-    return tableName == null
-        ? String.format("status = '%s'", safeStatus)
-        : String.format("%s.status = '%s'", tableName, safeStatus);
+    String hashCsv =
+        Arrays.stream(approverFqn.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(ListFilter::hashUserName)
+            .collect(Collectors.joining(","));
+    String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
+    return String.format(
+        "(approvedById IN (SELECT u.id FROM user_entity u WHERE u.nameHash IN (%s)))", inCondition);
+  }
+
+  private String getTaskAboutServiceCondition() {
+    String serviceFqn = queryParams.get("aboutService");
+    if (nullOrEmpty(serviceFqn)) {
+      return "";
+    }
+    return buildFqnPrefixOrCondition("aboutService", serviceFqn);
+  }
+
+  private String getTaskAccessTypeCondition() {
+    String accessType = queryParams.get("accessType");
+    if (nullOrEmpty(accessType)) {
+      return "";
+    }
+    String inCondition = buildIndexedBindParams("accessType", accessType);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.accessType')) IN (%s)", inCondition);
+    }
+    return String.format("json->'payload'->>'accessType' IN (%s)", inCondition);
+  }
+
+  /**
+   * Free-text search across task fields. Used by the {@code q} query param on the task list
+   * endpoints ({@code /v1/tasks}, {@code /v1/tasks/dataAccessRequests} and the user-scoped
+   * {@code /assigned}, {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
+   * indexed into Elasticsearch. Matches against task name, displayName, the request reason in the
+   * payload, and the about-entity FQN / displayName.
+   */
+  private String getTaskSearchCondition() {
+    String search = queryParams.get("taskSearch");
+    if (nullOrEmpty(search)) {
+      return "";
+    }
+    // The anchor wildcards added here are the only ones allowed: `%` and `_` in the input are
+    // escaped so callers can't probe rows via `q=%` or smuggle wildcards into the middle.
+    String escaped = "%" + escapeLikeBindValue(search.trim()) + "%";
+    queryParams.put("taskSearchParam", escaped);
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return "(LOWER(name) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.payload.reason')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.displayName')), '')) LIKE LOWER(:taskSearchParam) "
+          + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.about.fullyQualifiedName')), '')) LIKE LOWER(:taskSearchParam))";
+    }
+    return "(LOWER(name) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'payload'->>'reason', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'displayName', '')) LIKE LOWER(:taskSearchParam) "
+        + "OR LOWER(COALESCE(json->'about'->>'fullyQualifiedName', '')) LIKE LOWER(:taskSearchParam))";
+  }
+
+  /**
+   * Shared helper for the task_entity multi-value FQN filters (aboutEntity, aboutService).
+   * Both filters target the same generated column, {@code task_entity.aboutFqnHash}: an
+   * "aboutEntity" filter matches the dataset's FQN-hash exactly or as a prefix, and an
+   * "aboutService" filter matches the parent service's FQN-hash as a prefix of any
+   * dataset's FQN-hash beneath it. Splits the comma-separated input, hashes each FQN, and
+   * produces an OR-joined fragment of {@code (aboutFqnHash = :hash OR aboutFqnHash LIKE
+   * :hash_prefix)} groups.
+   *
+   * <p>This helper deliberately hard-codes {@code aboutFqnHash}; the {@code prefix} arg
+   * only namespaces the bound parameter keys. Don't reuse it for other columns — copy and
+   * adjust instead so the column choice stays explicit at the callsite.
+   */
+  private String buildFqnPrefixOrCondition(String prefix, String commaSeparatedFqns) {
+    List<String> tokens =
+        Arrays.stream(commaSeparatedFqns.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .toList();
+    if (tokens.isEmpty()) {
+      return "";
+    }
+    List<String> clauses = new ArrayList<>();
+    for (int i = 0; i < tokens.size(); i++) {
+      String hash = FullyQualifiedName.buildHash(tokens.get(i));
+      String hashKey = prefix + "FqnHash_" + i;
+      String prefixKey = prefix + "FqnHashPrefix_" + i;
+      queryParams.put(hashKey, hash);
+      queryParams.put(prefixKey, hash + ".%");
+      clauses.add(
+          String.format("(aboutFqnHash = :%s OR aboutFqnHash LIKE :%s)", hashKey, prefixKey));
+    }
+    return clauses.size() == 1 ? clauses.get(0) : "(" + String.join(" OR ", clauses) + ")";
   }
 
   private String getTaskTypeCondition(String tableName) {
@@ -998,10 +1950,7 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskType);
-    return tableName == null
-        ? String.format("type = '%s'", safeType)
-        : String.format("%s.type = '%s'", tableName, safeType);
+    return tableName == null ? "type = :taskType" : String.format("%s.type = :taskType", tableName);
   }
 
   private String getTaskFormTypeCondition(String tableName) {
@@ -1009,10 +1958,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormType == null) {
       return "";
     }
-    String safeType = escapeApostrophe(taskFormType);
     return tableName == null
-        ? String.format("taskType = '%s'", safeType)
-        : String.format("%s.taskType = '%s'", tableName, safeType);
+        ? "taskType = :taskFormType"
+        : String.format("%s.taskType = :taskFormType", tableName);
   }
 
   private String getTaskFormCategoryCondition(String tableName) {
@@ -1020,10 +1968,9 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskFormCategory == null) {
       return "";
     }
-    String safeCategory = escapeApostrophe(taskFormCategory);
     return tableName == null
-        ? String.format("taskCategory = '%s'", safeCategory)
-        : String.format("%s.taskCategory = '%s'", tableName, safeCategory);
+        ? "taskCategory = :taskFormCategory"
+        : String.format("%s.taskCategory = :taskFormCategory", tableName);
   }
 
   private String getTaskPriorityCondition(String tableName) {
@@ -1031,9 +1978,8 @@ public class ListFilter extends Filter<ListFilter> {
     if (taskPriority == null) {
       return "";
     }
-    String safePriority = escapeApostrophe(taskPriority);
     return tableName == null
-        ? String.format("priority = '%s'", safePriority)
-        : String.format("%s.priority = '%s'", tableName, safePriority);
+        ? "priority = :taskPriority"
+        : String.format("%s.priority = :taskPriority", tableName);
   }
 }

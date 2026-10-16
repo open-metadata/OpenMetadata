@@ -25,6 +25,7 @@ import {
   getGlossaryVersion,
   getGlossaryVersionsList,
 } from '../../../rest/glossaryAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getGlossaryPath,
   getGlossaryTermsVersionsPath,
@@ -107,7 +108,13 @@ const GlossaryVersion = ({ isGlossary = false }: GlossaryVersionProps) => {
 
   return (
     <PageLayoutV1
-      pageTitle={t('label.entity-version', { entity: t('label.glossary') })}>
+      pageTitle={t('label.entity-version', {
+        // This component serves both the glossary and glossary-term version
+        // routes, so the entity must follow `isGlossary`, not be hardcoded.
+        entity:
+          getEntityName(selectedData) ||
+          t(isGlossary ? 'label.glossary' : 'label.glossary-term'),
+      })}>
       <div className="version-data">
         {/* TODO: Need to implement version component for Glossary */}
         {isVersionLoading ? (

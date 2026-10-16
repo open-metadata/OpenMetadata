@@ -111,6 +111,14 @@ public final class Pipelines {
     getClient().pipelines().delete(id, params);
   }
 
+  public static void deleteByName(String fqn) {
+    getClient().pipelines().deleteByName(fqn);
+  }
+
+  public static void deleteByName(String fqn, java.util.Map<String, String> params) {
+    getClient().pipelines().deleteByName(fqn, params);
+  }
+
   public static void restore(String id) {
     getClient().pipelines().restore(id);
   }
@@ -231,7 +239,7 @@ public final class Pipelines {
     }
 
     public PipelineFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
@@ -251,7 +259,28 @@ public final class Pipelines {
     }
 
     public PipelineDeleter delete() {
-      return new PipelineDeleter(client, identifier);
+      return new PipelineDeleter(client, identifier, isFqn);
+    }
+
+    /**
+     * Restore a soft-deleted pipeline. The server restore endpoint ({@code PUT /restore}) takes
+     * a {@link org.openmetadata.schema.api.data.RestoreEntity} keyed by {@link UUID}; there is no
+     * by-FQN restore path, so a finder obtained via {@link #findByName(String)} cannot restore
+     * directly. Fail fast with an actionable message instead of forwarding the FQN to the
+     * UUID-only restore call (which throws an opaque {@code Invalid UUID string} error).
+     *
+     * <p>To restore a pipeline, look it up by UUID first: {@code
+     * Pipelines.find(pipelineId).restore().execute()}.
+     */
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Pipeline> restore() {
+      if (isFqn) {
+        throw new UnsupportedOperationException(
+            "findByName(fqn).restore() is not supported: the server restore endpoint requires a"
+                + " UUID and there is no by-FQN restore path. Use find(uuid).restore() instead,"
+                + " e.g. Pipelines.find(pipelineId).restore().execute().");
+      }
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.pipelines(), identifier);
     }
   }
 
@@ -260,12 +289,18 @@ public final class Pipelines {
   public static class PipelineDeleter {
     private final OpenMetadataClient client;
     private final String id;
+    private final boolean isFqn;
     private boolean recursive = false;
     private boolean hardDelete = false;
 
     PipelineDeleter(OpenMetadataClient client, String id) {
+      this(client, id, false);
+    }
+
+    PipelineDeleter(OpenMetadataClient client, String id, boolean isFqn) {
       this.client = client;
       this.id = id;
+      this.isFqn = isFqn;
     }
 
     public PipelineDeleter recursively() {
@@ -282,7 +317,11 @@ public final class Pipelines {
       Map<String, String> params = new HashMap<>();
       if (recursive) params.put("recursive", "true");
       if (hardDelete) params.put("hardDelete", "true");
-      client.pipelines().delete(id, params);
+      if (isFqn) {
+        client.pipelines().deleteByName(id, params);
+      } else {
+        client.pipelines().delete(id, params);
+      }
     }
   }
 
@@ -381,5 +420,15 @@ public final class Pipelines {
     public PipelineDeleter delete() {
       return new PipelineDeleter(client, pipeline.getId().toString());
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().pipelines().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().pipelines().getContextByName(fqn);
   }
 }

@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EditorView } from '@tiptap/pm/view';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import React from 'react';
@@ -247,6 +254,33 @@ describe('HashList', () => {
       const result = ref.current?.onKeyDown(keyDownProps);
 
       expect(result).toBe(false);
+    });
+
+    it('should open the breadcrumb tooltip with the full breadcrumb text on hover', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      // The ellipsis tooltip only opens when the breadcrumb is actually truncated.
+      const scrollWidth = jest
+        .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+        .mockReturnValue(200);
+      const clientWidth = jest
+        .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+        .mockReturnValue(100);
+      render(<HashList {...mockProps} />);
+
+      // The trigger is out of the tab order (the item button owns focus), so
+      // the tooltip is reached by hover.
+      fireEvent.mouseMove(document);
+      await user.hover(screen.getAllByText('Database/Schema')[0]);
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      const tooltip = await waitFor(() => screen.getByRole('tooltip'));
+
+      expect(tooltip).toHaveTextContent('Database/Schema');
+
+      scrollWidth.mockRestore();
+      clientWidth.mockRestore();
     });
   });
 });

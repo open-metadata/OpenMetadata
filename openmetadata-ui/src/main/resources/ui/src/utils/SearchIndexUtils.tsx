@@ -13,31 +13,74 @@
 
 import { get, uniqueId } from 'lodash';
 import { lazy, Suspense } from 'react';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../components/common/Loader/Loader';
-import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
+import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import SampleDataWithMessages from '../components/Database/SampleDataWithMessages/SampleDataWithMessages';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import {
-  SearchIndex as SearchIndexEntity,
-  SearchIndexField,
-} from '../generated/entity/data/searchIndex';
+import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import SearchIndexFieldsTab from '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
 import { t } from './i18next/LocalUtil';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+const QueryViewer = withSuspenseFallback(
+  lazy(() => import('../components/common/QueryViewer/QueryViewer.component')),
+  TAB_CONTENT_FALLBACK
+);
+const SampleDataWithMessages = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Database/SampleDataWithMessages/SampleDataWithMessages'
+      )
+  )
+);
+const SearchIndexFieldsTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab'
+      )
+  ),
+  <EntityDetailWidgetSkeleton lineCount={5} />
+);
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
     (module) => ({ default: module.EntityLineageTab })
@@ -143,7 +186,7 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={TAB_CONTENT_FALLBACK}>
           <EntityLineageTab
             deleted={Boolean(deleted)}
             entity={searchIndexDetails as SourceType}
@@ -214,17 +257,5 @@ export const getSearchIndexWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.SEARCH_INDEX}
       widgetConfig={widgetConfig}
     />
-  );
-};
-
-export const extractSearchIndexFields = <
-  T extends Omit<EntityReference, 'type'>
->(
-  data: T
-): SearchIndexField[] => {
-  const searchIndex = data as Partial<SearchIndexEntity>;
-
-  return (searchIndex.fields ?? []).map(
-    (field) => ({ ...field, tags: field.tags ?? [] } as SearchIndexField)
   );
 };

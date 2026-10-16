@@ -13,31 +13,36 @@
 
 import {
   Alert,
-  Badge,
   Button,
+  ButtonUtility,
+  Dot,
   Dropdown,
-  InputRef,
+  Popover,
+  PopoverTrigger,
+  Tooltip as CoreTooltip,
   Tooltip,
-  Typography,
-} from 'antd';
-import { Header } from 'antd/lib/layout/layout';
+} from '@openmetadata/ui-core-components';
+import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
-import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as RefreshIcon } from '../../assets/svg/ic-refresh.svg';
 import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
 import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
-  DEFAULT_DOMAIN_VALUE,
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
   ONE_HOUR_MS,
@@ -46,7 +51,6 @@ import {
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { useAsyncDeleteProvider } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
-import { AsyncDeleteWebsocketResponse } from '../../context/AsyncDeleteProvider/AsyncDeleteProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocketProvider';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -56,6 +60,8 @@ import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurre
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useDomainStore } from '../../hooks/useDomainStore';
+import { useSwitchActiveDomain } from '../../hooks/useSwitchActiveDomain';
+import { AsyncDeleteWebsocketResponse } from '../../interface/entity/asyncDelete.interface';
 import { getVersion } from '../../rest/miscAPI';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import brandClassBase from '../../utils/BrandData/BrandClassBase';
@@ -64,13 +70,13 @@ import {
   shouldRequestPermission,
 } from '../../utils/BrowserNotificationUtils';
 import { getCustomPropertyEntityPathname } from '../../utils/CustomProperty.utils';
+import { getDomainDisplayName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getDomainDisplayName } from '../../utils/EntityUtils';
 import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../utils/FeedUtils';
+} from '../../utils/FeedUtilsPure';
 import { languageSelectOptions } from '../../utils/i18next/i18nextUtil';
 import i18n from '../../utils/i18next/LocalUtil';
 import localUtilClassBase from '../../utils/i18next/LocalUtilClassBase';
@@ -79,7 +85,7 @@ import { getHelpDropdownItems } from '../../utils/NavbarUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { ActivityFeedTabs } from '../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import DomainSelectableList from '../common/DomainSelectableList/DomainSelectableList.component';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportWebsocketResponse } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSearchBar } from '../GlobalSearchBar/GlobalSearchBar';
@@ -87,6 +93,9 @@ import NotificationBox from '../NotificationBox/NotificationBox.component';
 import { UserProfileIcon } from '../Settings/Users/UserProfileIcon/UserProfileIcon.component';
 import './nav-bar.less';
 import popupAlertsCardsClassBase from './PopupAlertClassBase';
+const DomainSelect = withSuspenseFallback(
+  lazy(() => import('../common/DomainSelect/DomainSelect'))
+);
 
 const cookieStorage = new CookieStorage();
 
@@ -94,15 +103,27 @@ const NavBar = () => {
   const { isTourOpen: isTourRoute } = useTourProvider();
   const { onUpdateCSVExportJob } = useEntityExportModalProvider();
   const { handleDeleteEntityWebsocketResponse } = useAsyncDeleteProvider();
-  const Logo = useMemo(() => brandClassBase.getMonogram().src, []);
+  // handleDeleteEntityWebsocketResponse is recreated every render (it closes
+  // over asyncDeleteJob) but the socket listener is registered once. Read it
+  // through a ref so the handler always uses the latest state instead of a
+  // stale closure — without re-registering the socket listener each render.
+  const handleDeleteEntityResponseRef = useRef(
+    handleDeleteEntityWebsocketResponse
+  );
+  handleDeleteEntityResponseRef.current = handleDeleteEntityWebsocketResponse;
+  const Logo = brandClassBase.getMonogram().src;
   const [showVersionMissMatchAlert, setShowVersionMissMatchAlert] =
     useState(false);
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { activeDomain, activeDomainEntityRef, updateActiveDomain } =
-    useDomainStore();
+  const {
+    activeDomain,
+    activeDomainEntityRef,
+    userDomains,
+    isDomainRestricted,
+  } = useDomainStore();
+  const switchActiveDomain = useSwitchActiveDomain();
   const { t } = useTranslation();
-  const searchRef = useRef<InputRef>(null);
   const [hasTaskNotification, setHasTaskNotification] =
     useState<boolean>(false);
   const [hasMentionNotification, setHasMentionNotification] =
@@ -114,13 +135,6 @@ const NavBar = () => {
     preferences: { isSidebarCollapsed },
     setPreference,
   } = useCurrentUserPreferences();
-
-  // Check if current route is home page
-  const isHomePage = useMemo(() => {
-    const pathname = location.pathname;
-
-    return pathname === ROUTES.MY_DATA;
-  }, [location.pathname]);
 
   const isTourPage = useMemo(() => {
     const pathname = location.pathname;
@@ -255,7 +269,7 @@ const NavBar = () => {
                 isAxiosError: true,
                 message: 'Invalid job arguments: entityType is required',
               } as AxiosError,
-              t('message.unexpected-error')
+              t('server.unexpected-error')
             );
 
             break;
@@ -275,10 +289,13 @@ const NavBar = () => {
         break;
       }
     }
-    const notification = new Notification('Notification From OpenMetadata', {
-      body: body,
-      icon: Logo,
-    });
+    const notification = new Notification(
+      t('label.notification-from-brand-name'),
+      {
+        body: body,
+        icon: Logo,
+      }
+    );
     notification.onclick = () => {
       const isChrome = globalThis.navigator.userAgent.indexOf('Chrome');
       // Applying logic to open a new window onclick of browser notification from chrome
@@ -293,7 +310,7 @@ const NavBar = () => {
 
   const handleKeyPress = useCallback((event: KeyboardEvent) => {
     if (isCommandKeyPress(event) && event.key === Keys.K) {
-      searchRef.current?.focus();
+      document.getElementById('searchBox')?.focus();
       event.preventDefault();
     }
   }, []);
@@ -324,17 +341,22 @@ const NavBar = () => {
         }
       }
 
-      const newVersion = await getVersion();
-      const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
+      try {
+        const newVersion = await getVersion();
+        const cleanedVersion = newVersion.version?.replace('-SNAPSHOT', '');
 
-      // Update the cache timestamp
-      cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
-        expires: new Date(Date.now() + ONE_HOUR_MS),
-      });
+        // Update the cache timestamp
+        cookieStorage.setItem(LAST_VERSION_FETCH_TIME_KEY, String(now), {
+          expires: new Date(Date.now() + ONE_HOUR_MS),
+        });
 
-      // Compare version only if version is set previously to have fair comparison
-      if (version && version !== cleanedVersion) {
-        setShowVersionMissMatchAlert(true);
+        // Compare version only if version is set previously to have fair comparison
+        if (version && version !== cleanedVersion) {
+          setShowVersionMissMatchAlert(true);
+        }
+      } catch {
+        // Best-effort background check: focus right after sleep often fires before the
+        // network is back. Timestamp stays unset, so the next focus retries.
       }
     };
 
@@ -346,69 +368,91 @@ const NavBar = () => {
   }, [isTourRoute, version]);
 
   useEffect(() => {
+    const handleTaskNotification = (newActivity: string) => {
+      if (newActivity) {
+        const activity = JSON.parse(newActivity);
+        setHasTaskNotification(true);
+        showBrowserNotification(
+          activity.about,
+          activity.createdBy,
+          activity.type
+        );
+      }
+    };
+
+    const handleMentionNotification = (newActivity: string) => {
+      if (newActivity) {
+        const activity = JSON.parse(newActivity);
+        setHasMentionNotification(true);
+        showBrowserNotification(
+          activity.about,
+          activity.createdBy,
+          activity.type
+        );
+      }
+    };
+
+    const handleCSVExportNotification = (exportResponse: string) => {
+      if (exportResponse) {
+        const exportResponseData = JSON.parse(
+          exportResponse
+        ) as CSVExportWebsocketResponse;
+
+        onUpdateCSVExportJob(exportResponseData);
+      }
+    };
+
+    const handleBackgroundJobNotification = (jobResponse: string) => {
+      if (jobResponse) {
+        const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
+        showBrowserNotification(
+          '',
+          jobResponseData.createdBy,
+          'BackgroundJob',
+          jobResponseData
+        );
+      }
+    };
+
+    const handleDeleteEntityNotification = (deleteResponse: string) => {
+      if (deleteResponse) {
+        const deleteResponseData = JSON.parse(
+          deleteResponse
+        ) as AsyncDeleteWebsocketResponse;
+        handleDeleteEntityResponseRef.current(deleteResponseData);
+      }
+    };
+
     if (socket) {
-      socket.on(SOCKET_EVENTS.TASK_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          const activity = JSON.parse(newActivity);
-          setHasTaskNotification(true);
-          showBrowserNotification(
-            activity.about,
-            activity.createdBy,
-            activity.type
-          );
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, (newActivity) => {
-        if (newActivity) {
-          const activity = JSON.parse(newActivity);
-          setHasMentionNotification(true);
-          showBrowserNotification(
-            activity.about,
-            activity.createdBy,
-            activity.type
-          );
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, (exportResponse) => {
-        if (exportResponse) {
-          const exportResponseData = JSON.parse(
-            exportResponse
-          ) as CSVExportWebsocketResponse;
-
-          onUpdateCSVExportJob(exportResponseData);
-        }
-      });
-      socket.on(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL, (jobResponse) => {
-        if (jobResponse) {
-          const jobResponseData: BackgroundJob = JSON.parse(jobResponse);
-          showBrowserNotification(
-            '',
-            jobResponseData.createdBy,
-            'BackgroundJob',
-            jobResponseData
-          );
-        }
-      });
-
-      socket.on(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL, (deleteResponse) => {
-        if (deleteResponse) {
-          const deleteResponseData = JSON.parse(
-            deleteResponse
-          ) as AsyncDeleteWebsocketResponse;
-          handleDeleteEntityWebsocketResponse(deleteResponseData);
-        }
-      });
+      socket.on(SOCKET_EVENTS.TASK_CHANNEL, handleTaskNotification);
+      socket.on(SOCKET_EVENTS.MENTION_CHANNEL, handleMentionNotification);
+      socket.on(SOCKET_EVENTS.CSV_EXPORT_CHANNEL, handleCSVExportNotification);
+      socket.on(
+        SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL,
+        handleBackgroundJobNotification
+      );
+      socket.on(
+        SOCKET_EVENTS.DELETE_ENTITY_CHANNEL,
+        handleDeleteEntityNotification
+      );
     }
 
     return () => {
       if (socket) {
-        socket.off(SOCKET_EVENTS.TASK_CHANNEL);
-        socket.off(SOCKET_EVENTS.MENTION_CHANNEL);
-        socket.off(SOCKET_EVENTS.CSV_EXPORT_CHANNEL);
-        socket.off(SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL);
-        socket.off(SOCKET_EVENTS.DELETE_ENTITY_CHANNEL);
+        socket.off(SOCKET_EVENTS.TASK_CHANNEL, handleTaskNotification);
+        socket.off(SOCKET_EVENTS.MENTION_CHANNEL, handleMentionNotification);
+        socket.off(
+          SOCKET_EVENTS.CSV_EXPORT_CHANNEL,
+          handleCSVExportNotification
+        );
+        socket.off(
+          SOCKET_EVENTS.BACKGROUND_JOB_CHANNEL,
+          handleBackgroundJobNotification
+        );
+        socket.off(
+          SOCKET_EVENTS.DELETE_ENTITY_CHANNEL,
+          handleDeleteEntityNotification
+        );
       }
     };
   }, [socket, onUpdateCSVExportJob]);
@@ -425,12 +469,11 @@ const NavBar = () => {
   }, [handleKeyPress]);
 
   const handleDomainChange = useCallback(
-    async (domain: EntityReference | EntityReference[]) => {
-      updateActiveDomain(domain as EntityReference);
+    async (domain: EntityReference | EntityReference[] | undefined) => {
       setIsDomainDropdownOpen(false);
-      navigate(0);
+      await switchActiveDomain(domain as EntityReference | undefined);
     },
-    []
+    [switchActiveDomain]
   );
 
   const domainDisplayName = useMemo(
@@ -438,117 +481,181 @@ const NavBar = () => {
     [activeDomainEntityRef, activeDomain, t]
   );
 
-  const handleLanguageChange = useCallback(async ({ key }: MenuInfo) => {
-    await localUtilClassBase.loadLocales(key);
-    await i18n.changeLanguage(key);
-    navigate(0);
-  }, []);
+  const isSingleDomainUser = useMemo(
+    () => isDomainRestricted && userDomains.length === 1,
+    [isDomainRestricted, userDomains]
+  );
+  const restrictedDomains = useMemo(
+    () => (isDomainRestricted ? userDomains : undefined),
+    [isDomainRestricted, userDomains]
+  );
+
+  // Domain scope switcher: the native ui-core TreeSelect button trigger shows
+  // the active domain (label) + globe, and turns brand when a domain is
+  // selected. Single-domain users get a disabled, tooltip-wrapped trigger.
+  const domainScopeSelector = isSingleDomainUser ? (
+    <CoreTooltip title={t('message.domain-access-restricted')}>
+      <DomainSelect
+        bordered
+        disabled
+        className="tw:self-center"
+        data-testid="domain-dropdown"
+        label={domainDisplayName}
+        restrictedDomains={restrictedDomains}
+        selectedDomain={activeDomainEntityRef}
+        triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
+        triggerVariant="button"
+        onUpdate={handleDomainChange}
+      />
+    </CoreTooltip>
+  ) : (
+    <DomainSelect
+      bordered
+      className="tw:self-center"
+      data-testid="domain-dropdown"
+      isClearable={!isDomainRestricted}
+      isOpen={isDomainDropdownOpen}
+      label={domainDisplayName}
+      restrictedDomains={restrictedDomains}
+      selectedDomain={activeDomainEntityRef}
+      showAllDomains={!isDomainRestricted}
+      triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
+      triggerVariant="button"
+      onOpenChange={setIsDomainDropdownOpen}
+      onUpdate={handleDomainChange}
+    />
+  );
+
+  const handleLanguageChange = useCallback(
+    async (key: Key) => {
+      await localUtilClassBase.loadLocales(String(key));
+      await i18n.changeLanguage(String(key));
+      navigate(0);
+    },
+    [navigate]
+  );
 
   const currentLanguage = i18n.language
     ? upperCase(i18n.language.split('-')[0])
     : '';
 
+  const headerStyle = useMemo(
+    () =>
+      isDataMarketplacePage
+        ? {
+            background: 'transparent',
+            marginBottom: 'calc(-1 * var(--ant-navbar-height))',
+            position: 'relative' as const,
+            zIndex: 10,
+          }
+        : undefined,
+    [isDataMarketplacePage]
+  );
+
+  const sidebarTooltipTitle = useMemo(
+    () => (isSidebarCollapsed ? t('label.expand') : t('label.collapse')),
+    [isSidebarCollapsed, t]
+  );
+
+  const versionMismatchAlert = useMemo(
+    () =>
+      showVersionMissMatchAlert ? (
+        <Alert
+          showIcon
+          className="refresh-alert slide-in-top"
+          icon={RefreshCw01}
+          rightContent={
+            <Button
+              color="link-color"
+              size="xs"
+              onClick={() => {
+                navigate(0);
+              }}>
+              {t('label.refresh')}
+            </Button>
+          }
+          title={t('message.new-version-available')}
+          variant="brand">
+          {t('message.refresh-page-recommended')}
+        </Alert>
+      ) : null,
+    [showVersionMissMatchAlert, navigate, t]
+  );
+
   return (
     <>
-      <Header
-        style={
-          isDataMarketplacePage
-            ? {
-                background: 'transparent',
-                marginBottom: 'calc(-1 * var(--ant-navbar-height))',
-                position: 'relative' as const,
-                zIndex: 10,
-              }
-            : undefined
-        }>
+      <header className="app-navbar-header" style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip
-              placement="right"
-              title={
-                isSidebarCollapsed ? t('label.expand') : t('label.collapse')
-              }>
-              <Button
-                className="w-6 h-6 p-0 flex-center"
+            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="sidebar-toggle"
                 icon={
-                  isSidebarCollapsed ? (
-                    <SidebarCollapsedIcon height={20} width={20} />
-                  ) : (
-                    <SidebarExpandedIcon height={20} width={20} />
-                  )
+                  isSidebarCollapsed
+                    ? SidebarCollapsedIcon
+                    : SidebarExpandedIcon
                 }
-                size="middle"
-                type="text"
+                size="sm"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }
               />
             </Tooltip>
-            {!isHomePage && !isTourPage && !isDataMarketplacePage && (
+            {/* The home page used to own a search bar and a domain scope
+              control of its own, so the navbar suppressed its own pair there.
+              HomeLandingPage renders neither, so suppressing them now leaves
+              the home page with no way to search or to scope a domain at all.
+              The tour page keeps the suppression: it still mocks the old
+              landing page, and that whole page is being revamped. */}
+            {!isTourPage && !isDataMarketplacePage && (
               <>
                 <GlobalSearchBar />
-                <DomainSelectableList
-                  hasPermission
-                  showAllDomains
-                  popoverProps={{
-                    open: isDomainDropdownOpen,
-                    onOpenChange: (open) => {
-                      setIsDomainDropdownOpen(open);
-                    },
-                  }}
-                  selectedDomain={activeDomainEntityRef}
-                  wrapInButton={false}
-                  onCancel={() => setIsDomainDropdownOpen(false)}
-                  onUpdate={handleDomainChange}>
-                  <Button
-                    className={classNames(
-                      'domain-nav-btn flex-center gap-2 p-x-sm p-y-xs font-medium',
-                      {
-                        'domain-active': activeDomain !== DEFAULT_DOMAIN_VALUE,
-                      }
-                    )}
-                    data-testid="domain-dropdown"
-                    onClick={() =>
-                      setIsDomainDropdownOpen(!isDomainDropdownOpen)
-                    }>
-                    <DomainIcon
-                      className="d-flex"
-                      height={20}
-                      name="domain"
-                      width={20}
-                    />
-                    <Typography.Text ellipsis className="domain-text">
-                      {domainDisplayName}
-                    </Typography.Text>
-                    <DropDownIcon width={12} />
-                  </Button>
-                </DomainSelectableList>
+                {domainScopeSelector}
               </>
             )}
           </div>
 
           <div className="flex-center gap-5 nav-bar-side-items">
-            <Dropdown
-              className="cursor-pointer"
-              menu={{
-                items: languageSelectOptions,
-                onClick: handleLanguageChange,
-              }}
-              placement="bottomRight"
-              trigger={['click']}>
+            <Dropdown.Root>
               <Button
-                className="flex-center gap-2 p-x-xs font-medium"
+                color="tertiary"
                 data-testid="language-selector-button"
-                type="text">
+                iconTrailing={<DropDownIcon width={12} />}
+                size="sm">
                 {currentLanguage}
-                <DropDownIcon width={12} />
               </Button>
-            </Dropdown>
-            <Dropdown
-              destroyPopupOnHide
-              className="cursor-pointer"
-              dropdownRender={() => (
+              <Dropdown.Popover className="tw:w-auto" placement="bottom end">
+                <Dropdown.Menu
+                  aria-label={t('label.language')}
+                  className="tw:max-h-80 tw:overflow-y-auto"
+                  items={languageSelectOptions}
+                  selectionMode="none"
+                  onAction={handleLanguageChange}>
+                  {(item) => <Dropdown.Item id={item.key} label={item.label} />}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
+            <PopoverTrigger onOpenChange={handleBellClick}>
+              <Button
+                aria-label={t('label.notification-plural')}
+                color="tertiary"
+                iconLeading={
+                  <span className="tw:relative tw:inline-flex tw:items-center">
+                    <IconBell data-testid="task-notifications" width={20} />
+                    {(hasTaskNotification || hasMentionNotification) && (
+                      <Dot
+                        aria-label={t('label.notification-plural')}
+                        className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+                        role="img"
+                        size="sm"
+                      />
+                    )}
+                  </span>
+                }
+                size="sm"
+              />
+              <Popover className="tw:w-106" placement="bottom end">
                 <NotificationBox
                   activeTab={activeTab}
                   hasMentionNotification={hasMentionNotification}
@@ -559,66 +666,34 @@ const NavBar = () => {
                   onMarkTaskNotificationRead={handleTaskNotificationRead}
                   onTabChange={handleActiveTab}
                 />
-              )}
-              overlayStyle={{
-                width: '425px',
-                minHeight: '375px',
-              }}
-              placement="bottomRight"
-              trigger={['click']}
-              onOpenChange={handleBellClick}>
+              </Popover>
+            </PopoverTrigger>
+            <Dropdown.Root>
               <Button
-                className="flex-center"
-                icon={
-                  <Badge
-                    dot={hasTaskNotification || hasMentionNotification}
-                    offset={[-3, 3]}>
-                    <IconBell data-testid="task-notifications" width={20} />
-                  </Badge>
-                }
-                title={t('label.notification-plural')}
-                type="text"
-              />
-            </Dropdown>
-            <Dropdown
-              menu={{
-                items: getHelpDropdownItems(version),
-              }}
-              overlayStyle={{ width: 175 }}
-              placement="bottomRight"
-              trigger={['click']}>
-              <Button
-                className="flex-center"
+                aria-label={t('label.need-help')}
+                color="tertiary"
                 data-testid="help-icon"
-                icon={<Help width={20} />}
-                title={t('label.need-help')}
-                type="text"
+                iconLeading={<Help width={20} />}
+                size="sm"
               />
-            </Dropdown>
+              <Dropdown.Popover className="tw:w-44" placement="bottom end">
+                <Dropdown.Menu
+                  aria-label={t('label.need-help')}
+                  items={getHelpDropdownItems(version)}
+                  selectionMode="none">
+                  {(item) => (
+                    <Dropdown.Item id={item.key} textValue={item.key}>
+                      {item.label}
+                    </Dropdown.Item>
+                  )}
+                </Dropdown.Menu>
+              </Dropdown.Popover>
+            </Dropdown.Root>
             <UserProfileIcon />
           </div>
         </div>
-      </Header>
-      {showVersionMissMatchAlert && (
-        <Alert
-          showIcon
-          action={
-            <Button
-              size="small"
-              type="link"
-              onClick={() => {
-                navigate(0);
-              }}>
-              {t('label.refresh')}
-            </Button>
-          }
-          className="refresh-alert slide-in-top"
-          description="For a seamless experience recommend you to refresh the page"
-          icon={<RefreshIcon />}
-          message="A new version is available"
-          type="info"
-        />
-      )}
+      </header>
+      {versionMismatchAlert}
       {renderAlertCards}
     </>
   );

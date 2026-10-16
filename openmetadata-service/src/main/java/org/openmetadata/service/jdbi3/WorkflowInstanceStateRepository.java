@@ -199,6 +199,55 @@ public class WorkflowInstanceStateRepository
     }
   }
 
+  /**
+   * Marks the stages still RUNNING as FAILURE with the given reason. Stages that already finished
+   * keep their recorded outcome.
+   */
+  public void markRunningStatesAsFailed(UUID workflowInstanceId, String reason) {
+    listAllStatesForInstance(workflowInstanceId).stream()
+        .filter(state -> state.getStatus() == WorkflowInstance.WorkflowStatus.RUNNING)
+        .forEach(
+            state ->
+                getTimeSeriesDao()
+                    .update(
+                        JsonUtils.pojoToJson(
+                            state
+                                .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
+                                .withException(reason)),
+                        state.getId()));
+  }
+
+  /**
+   * Marks all states of a workflow instance as SUPERSEDED when a newer run replaces it. The
+   * exception field is left untouched — supersede is not a failure, so the reason lives on the
+   * WorkflowInstance's variables map, not in an exception field.
+   */
+  public void markInstanceStatesAsSuperseded(UUID workflowInstanceId, String reason) {
+    markInstanceStatesAs(workflowInstanceId, WorkflowInstance.WorkflowStatus.SUPERSEDED, reason);
+  }
+
+  /** Marks all states of a workflow instance with the status its run was ended with. */
+  public void markInstanceStatesAs(
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
+    try {
+      List<WorkflowInstanceState> instanceStates = listAllStatesForInstance(workflowInstanceId);
+
+      for (WorkflowInstanceState state : instanceStates) {
+        WorkflowInstanceState updatedState = state.withStatus(status);
+
+        getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
+      }
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark states as {} for instance {} (reason={}): {}",
+          status,
+          workflowInstanceId,
+          reason,
+          e.getMessage());
+    }
+  }
+
   public List<WorkflowInstanceState> listAllStatesForInstance(UUID workflowInstanceId) {
     List<WorkflowInstanceState> states = new ArrayList<>();
     List<String> jsons =

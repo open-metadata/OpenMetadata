@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import type { SelectItemType } from '@/components/base/select/select';
 import type { FC, FocusEventHandler, ReactNode } from 'react';
 import type { Key } from 'react-aria-components';
 import type { RegisterOptions } from 'react-hook-form';
-import type { SelectItemType } from '@/components/base/select/select';
 import type {
   CoverImageUploadLabels,
   CoverImageUploadRenderPreviewContext,
@@ -82,15 +82,23 @@ export interface IconPickerFieldLabels {
 export interface FieldPropsMap {
   acceptDirectory?: boolean;
   acceptedFileTypes?: string[];
+  allowsCreation?: boolean;
   allowsMultiple?: boolean;
+  hideDropdown?: boolean;
   allowUrl?: boolean;
   backgroundColor?: string;
+  'aria-label'?: string;
   children?: ReactNode;
   colors?: string[];
   'data-testid'?: string;
+  /** TEXT / PASSWORD / NUMBER only: test id on the inner `<input>`, not the wrapper. */
+  inputDataTestId?: string;
   defaultCamera?: 'environment' | 'user';
   defaultIcon?: { component: FC };
   disabled?: boolean;
+  // react-aria field components (Select, Autocomplete, TextField, ...) use
+  // `isDisabled`; it is forwarded to them via `...rest` in render-field-element.
+  isDisabled?: boolean;
   filterOption?: (option: FormSelectItem, searchText: string) => boolean;
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   emptyStateLabel?: string;
@@ -109,11 +117,14 @@ export interface FieldPropsMap {
   options?: FormSelectItem[];
   coverImageLabels?: CoverImageUploadLabels;
   maxDimensions?: { width: number; height: number };
+  /** Autocomplete: selected tags drawn before collapsing the rest into a +N badge. */
+  maxVisibleItems?: number;
   maxSizeMB?: number;
   onValidationError?: (message: string) => void;
   previewClassName?: string;
   previewHeight?: number;
   renderItem?: (item: FormSelectItem) => ReactNode;
+  renderTag?: (item: FormSelectItem, onRemove: () => void) => ReactNode;
   renderPreview?: (ctx: CoverImageUploadRenderPreviewContext) => ReactNode;
   repositionable?: boolean;
   selectedItems?: FormSelectItem[];
@@ -133,6 +144,8 @@ export interface FieldProp {
   helperText?: ReactNode;
   helperTextType?: HelperTextType;
   showHelperText?: boolean;
+  /** Markdown documentation for this field, shown in the field doc popover. */
+  doc?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
 }

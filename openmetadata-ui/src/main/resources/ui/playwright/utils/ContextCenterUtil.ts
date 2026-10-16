@@ -1,0 +1,1559 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  APIRequestContext,
+  Browser,
+  expect,
+  Locator,
+  Page,
+  Response,
+} from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
+import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
+import { PolicyRulesType } from '../support/access-control/PoliciesClass';
+import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
+import { UserClass } from '../support/user/UserClass';
+import { deleteFixtureEntity, okJson } from './apiResponse';
+import { createNewPage, uuid } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
+import { executeSlashCommand } from './KnowledgeCenter';
+
+// ─── Document types ───────────────────────────────────────────────────────────
+
+export interface ContextCenterDocument {
+  id: string;
+  name: string;
+  displayName?: string;
+}
+
+export interface ContextCenterFolder {
+  id: string;
+  name: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+}
+
+export interface BulkOperationResult {
+  numberOfRowsPassed?: number;
+  numberOfRowsFailed?: number;
+}
+
+export interface BulkIdsRequest {
+  ids?: string[];
+}
+
+interface UploadMultipart {
+  file: {
+    name: string;
+    mimeType: string;
+    buffer: Buffer;
+  };
+  folder?: string;
+}
+
+interface CapturedDownload {
+  download: string;
+  href: string;
+}
+
+interface DownloadCaptureWindow extends Window {
+  __contextCenterCapturedDownloads?: CapturedDownload[];
+  __contextCenterOriginalAnchorClick?: HTMLAnchorElement['click'];
+}
+
+// ─── Document helpers ─────────────────────────────────────────────────────────
+
+export const parseResponseJson = <T>(body: string): T => JSON.parse(body) as T;
+
+export const uploadDocument = async (
+  apiContext: APIRequestContext,
+  name: string,
+  buffer: Buffer,
+  folderFqn?: string
+): Promise<ContextCenterDocument> => {
+  const multipart: UploadMultipart = {
+    file: {
+      name,
+      mimeType: 'text/plain',
+      buffer,
+    },
+  };
+
+  if (folderFqn) {
+    multipart.folder = folderFqn;
+  }
+
+  const response = await apiContext.post(
+    '/api/v1/contextCenter/drive/files/upload',
+    { multipart }
+  );
+  const body = await response.text();
+  expect(response.status(), body).toBe(201);
+
+  return parseResponseJson<ContextCenterDocument>(body);
+};
+
+export const getDocumentRowByName = (page: Page, fileName: string): Locator =>
+  page
+    .getByTestId('documents-view')
+    .locator('[data-testid^="document-row-"]')
+    .filter({ hasText: fileName });
+
+export const selectDocumentByName = async (page: Page, fileName: string) => {
+  const row = await searchAndGetDocumentRow(page, fileName);
+  await expect(row).toBeVisible();
+  await row.scrollIntoViewIfNeeded();
+  await row.getByTestId('document-checkbox').click();
+};
+
+export const expectSelectedCount = async (page: Page, count: number) => {
+  await expect(
+    page.getByText(`${count} selected`, { exact: true })
+  ).toBeVisible();
+};
+
+export const expectBulkIdsRequest = (
+  postData: string | null,
+  expectedIds: string[]
+) => {
+  expect(postData).toBeTruthy();
+
+  const request = parseResponseJson<BulkIdsRequest>(postData ?? '{}');
+
+  expect(new Set(request.ids)).toEqual(new Set(expectedIds));
+};
+
+export const responseMatchesRequestPath = (
+  response: Response,
+  expectedPath: string
+): boolean => {
+  let request = response.request();
+
+  while (request) {
+    if (request.url().includes(expectedPath)) {
+      return true;
+    }
+
+    request = request.redirectedFrom();
+  }
+
+  return false;
+};
+
+export const installDownloadCapture = async (page: Page) => {
+  await page.evaluate(() => {
+    const captureWindow = window as DownloadCaptureWindow;
+    captureWindow.__contextCenterCapturedDownloads = [];
+
+    if (captureWindow.__contextCenterOriginalAnchorClick) {
+      return;
+    }
+
+    captureWindow.__contextCenterOriginalAnchorClick =
+      HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+      captureWindow.__contextCenterCapturedDownloads?.push({
+        download: this.download,
+        href: this.href,
+      });
+      captureWindow.__contextCenterOriginalAnchorClick?.call(this);
+    };
+  });
+};
+
+export const expectCapturedDownload = async (page: Page, fileName: string) => {
+  const capturedDownload = await page.waitForFunction((expectedFileName) => {
+    const captureWindow = window as DownloadCaptureWindow;
+
+    return captureWindow.__contextCenterCapturedDownloads?.find(
+      (download) => download.download === expectedFileName
+    );
+  }, fileName);
+  const download = (await capturedDownload.jsonValue()) as CapturedDownload;
+
+  expect(download.href.startsWith('blob:')).toBe(true);
+};
+
+export const DASHBOARD_URL = '/context-center/overview';
+export const ARTICLES_URL = '/context-center/articles';
+export const DOCUMENTS_URL = '/context-center/documents';
+export const MEMORIES_URL = '/context-center/memories';
+export const MEMORIES_API = '/api/v1/contextCenter/memories';
+
+/**
+ * The per-page `data-testid` wait that follows every navigation is the real
+ * readiness signal; waiting for `load` on a slow CI runner just burns the goto
+ * timeout on in-flight XHRs that the test does not depend on.
+ */
+const PAGE_GOTO_OPTIONS = {
+  timeout: 90_000,
+  waitUntil: 'domcontentloaded',
+} as const;
+
+export const navigateToDashboard = async (page: Page) => {
+  await page.goto(DASHBOARD_URL, PAGE_GOTO_OPTIONS);
+  await page
+    .getByTestId('context-center-dashboard-page')
+    .waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+  // Wait for article section to finish loading (either cards or empty state)
+  const section = page.getByTestId('dashboard-detail-card');
+  await section.waitFor({ state: 'visible' });
+};
+
+/**
+ * Recently-viewed is client-only state: the article detail page pushes it into
+ * the zustand `user-preferences-store` slice in localStorage, and that write
+ * lands after the render that triggered it. Navigating away before it flushes
+ * means the Recently Viewed panel renders from a store that never saw the
+ * article, so the panel assertion has nothing to auto-wait for and only passes
+ * once a retry warms the cache. Waiting on the persisted entry is the real
+ * signal, so no fixed delay is needed.
+ *
+ * The Knowledge Center panel reads `recentlyViewedQuickLinks`, which is a
+ * different slice from the landing page's generic `recentlyViewed` — see
+ * `addToKnowledgeCenterRecentViewed` in `src/utils/KnowledgePageUtils.tsx`.
+ * The match mirrors `getLink` in that file, which builds the panel's test id
+ * from `displayName || fullyQualifiedName`.
+ */
+export const readRecentlyViewed = async (
+  page: Page
+): Promise<{ displayName?: string; fullyQualifiedName?: string }[]> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'user-preferences-store'
+  );
+
+  if (!raw) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: {
+        preferences?: Record<
+          string,
+          {
+            recentlyViewedQuickLinks?: {
+              displayName?: string;
+              fullyQualifiedName?: string;
+            }[];
+          }
+        >;
+      };
+    };
+
+    return Object.values(parsed?.state?.preferences ?? {}).flatMap(
+      (slice) => slice?.recentlyViewedQuickLinks ?? []
+    );
+  } catch {
+    return [];
+  }
+};
+
+export const waitForRecentlyViewed = async (
+  page: Page,
+  displayName: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const entries = await readRecentlyViewed(page);
+
+        return entries.some(
+          (entry) =>
+            (entry?.displayName || entry?.fullyQualifiedName) === displayName
+        );
+      },
+      {
+        message: `Wait for "${displayName}" to be persisted into recentlyViewed`,
+        timeout: 15_000,
+        intervals: [50, 100, 200, 500],
+      }
+    )
+    .toBe(true);
+};
+
+// `data-testid="loader"` is the shared Loader component, so a page-wide count
+// of it waits on every unrelated widget on the page (sidebar, right panel,
+// recently-viewed) rather than on the content under test. Those widgets load
+// independently and one of them being mid-fetch is not a reason to keep
+// waiting, so each helper scopes the wait to its own page container.
+export const navigateToArticles = async (page: Page) => {
+  const hierarchyLoaded = page
+    .waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/pages') &&
+        !res.url().includes('/name/') &&
+        res.request().method() === 'GET',
+      { timeout: 30_000 }
+    )
+    .catch(() => null);
+  await page.goto(ARTICLES_URL, PAGE_GOTO_OPTIONS);
+  const articlesPage = page.getByTestId('context-center-articles-page');
+  await articlesPage.waitFor({ state: 'visible' });
+  await hierarchyLoaded;
+  await waitForAllLoadersToDisappear(articlesPage);
+  await waitForAllLoadersToDisappear(page, 'knowledge-page-skeleton');
+};
+
+export const navigateToDocuments = async (page: Page) => {
+  await page.goto(DOCUMENTS_URL, PAGE_GOTO_OPTIONS);
+  const documentsPage = page.getByTestId('context-center-documents-page');
+  await documentsPage.waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(documentsPage);
+};
+
+export const navigateToMemories = async (page: Page) => {
+  await page.goto(MEMORIES_URL, PAGE_GOTO_OPTIONS);
+  const memoriesPage = page.getByTestId('context-center-memories-page');
+  await memoriesPage.waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(memoriesPage);
+};
+
+export const navigateToArchive = async (page: Page) => {
+  await page.goto('/context-center/archive', PAGE_GOTO_OPTIONS);
+  await page
+    .getByTestId('context-center-archive-page')
+    .waitFor({ state: 'visible' });
+  await waitForAllLoadersToDisappear(page);
+};
+
+// ─── Archive page test helpers ─────────────────────────────────────────────────
+
+export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
+  page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    name: folderName,
+  });
+
+export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
+  getFolderTreeItem(page, folderName).locator('button[slot="chevron"]');
+
+/**
+ * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder
+ * created earlier in a test/suite run may not be on the currently loaded
+ * page. Callers that need to interact with a folder row (expand it, hover
+ * it, etc.) should go through this instead of `getFolderTreeItem` directly,
+ * which only returns a locator without ensuring the row has been paginated
+ * into view. Tests asserting a folder is NOT yet present (e.g. before a
+ * scroll) should keep using `getFolderTreeItem` + `toHaveCount(0)` directly.
+ */
+export const revealFolderRow = async (
+  page: Page,
+  folderName: string
+): Promise<Locator> => {
+  const target = getFolderTreeItem(page, folderName);
+  if (!(await target.isVisible())) {
+    const tree = page.getByRole('treegrid', { name: 'Folders' });
+    await scrollUntilResponse(
+      page,
+      tree,
+      target,
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/folders') &&
+        res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
+  }
+
+  return target;
+};
+
+export const getDocumentSearchInput = (page: Page): Locator =>
+  page.getByTestId('search-input').getByLabel('Search Documents');
+
+/**
+ * Searches for a document by name and returns its row locator.
+ * The document list is paginated, so a document created earlier in the
+ * suite may not be on the currently loaded page — searching re-queries
+ * page 1 and guarantees the row is present if it matches.
+ */
+export const searchAndGetDocumentRow = async (
+  page: Page,
+  fileName: string,
+  documentId?: string
+): Promise<Locator> => {
+  const searchResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes('/api/v1/search/query') &&
+      res.url().includes('index=contextFile') &&
+      res.request().method() === 'GET'
+  );
+  await getDocumentSearchInput(page).fill(fileName);
+  await searchResPromise;
+  await waitForAllLoadersToDisappear(page);
+
+  // Same file name can exist in multiple folders, so prefer the id when known.
+  return documentId
+    ? page
+        .getByTestId('documents-view')
+        .getByTestId(`document-row-${documentId}`)
+    : page
+        .getByTestId('documents-view')
+        .locator('[data-testid^="document-row-"]')
+        .filter({ hasText: fileName });
+};
+
+export const selectFolderInSidebar = async (
+  page: Page,
+  folderName: string
+): Promise<void> => {
+  const target = await revealFolderRow(page, folderName);
+  await target.click();
+  await waitForAllLoadersToDisappear(page);
+};
+
+export const openUploadModal = async (page: Page): Promise<void> => {
+  await page
+    .getByTestId('page-header')
+    .getByRole('button', { name: /upload file/i })
+    .click();
+  await expect(
+    page.getByRole('dialog', { name: /upload documents/i })
+  ).toBeVisible();
+};
+
+export const uploadFileViaModal = async (
+  page: Page,
+  fileName: string,
+  content: string
+): Promise<string> => {
+  const modal = page.getByRole('dialog', { name: /upload documents/i });
+  const fileInput = page.getByTestId('file-upload-input');
+  await fileInput.waitFor({ state: 'attached' });
+  await fileInput.setInputFiles({
+    buffer: Buffer.from(content),
+    mimeType: 'text/plain',
+    name: fileName,
+  });
+
+  await expect(
+    modal.getByText(fileName).filter({ visible: true })
+  ).not.toHaveCount(0);
+
+  const uploadResPromise = page.waitForResponse(
+    '/api/v1/contextCenter/drive/files/upload'
+  );
+  await modal.getByRole('button', { name: /attach/i }).click();
+  const uploadRes = await uploadResPromise;
+  expect(uploadRes.status()).toBe(201);
+
+  await expect(modal).not.toBeVisible();
+
+  const uploadData = (await uploadRes.json()) as { id: string };
+
+  return uploadData.id;
+};
+
+export const softDeleteDocument = async (
+  page: Page,
+  docRowId: string
+): Promise<void> => {
+  const docRow = page.getByTestId(docRowId);
+  await expect(docRow).toBeVisible();
+  await docRow.getByTestId('manage-button').click();
+  await page.getByTestId('delete-btn').click();
+
+  const deleteResPromise = page.waitForResponse(
+    /\/api\/v1\/contextCenter\/drive\/files\/[^?]+\?hardDelete=false/
+  );
+  await page.getByTestId('confirm-button').click();
+  const deleteRes = await deleteResPromise;
+  expect(deleteRes.status()).toBe(200);
+};
+
+export const buildPermissionRule = (
+  namePrefix: string,
+  resources: string[],
+  operations: string[]
+): PolicyRulesType[] => [
+  {
+    name: `${namePrefix}-${uuid()}`,
+    resources,
+    operations,
+    effect: 'allow',
+  },
+];
+
+export const loginAsUser = async (
+  browser: Browser,
+  user: UserClass
+): Promise<Page> => {
+  const page = await browser.newPage();
+  await user.signIn(page);
+
+  return page;
+};
+
+export const uploadDisposableDocument = async (
+  apiContext: APIRequestContext,
+  namePrefix = 'cc-disposable-doc'
+): Promise<{ id: string; name: string }> => {
+  const name = `${namePrefix}-${uuid()}.txt`;
+  const response = await apiContext.post(
+    '/api/v1/contextCenter/drive/files/upload',
+    {
+      multipart: {
+        file: {
+          name,
+          mimeType: 'text/plain',
+          buffer: Buffer.from('Playwright disposable document'),
+        },
+      },
+    }
+  );
+  const data = await response.json();
+
+  return { id: data.id, name };
+};
+
+export async function waitForDocumentInFileList(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: { orderBy: 'DESC', limit: 100 },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the file list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the file list after ${timeout}ms`
+  );
+}
+
+const NON_TERMINAL_PROCESSING_STATUSES = new Set([
+  'Uploaded',
+  'Analyzing',
+  'ExtractingContext',
+]);
+
+export async function waitForDocumentProcessingComplete(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 90_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(
+      `/api/v1/contextCenter/drive/files/${documentId}`
+    );
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling processing status for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const data = await response.json();
+    if (!NON_TERMINAL_PROCESSING_STATUSES.has(data.processingStatus)) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+}
+
+export const createDisposableArchivedDocument = async (
+  apiContext: APIRequestContext,
+  namePrefix = 'cc-disposable-archived-doc'
+): Promise<{ id: string; name: string }> => {
+  const { id, name } = await uploadDisposableDocument(apiContext, namePrefix);
+  await waitForDocumentInFileList(apiContext, id);
+  await waitForDocumentProcessingComplete(apiContext, id);
+  await apiContext.delete(
+    `/api/v1/contextCenter/drive/files/${id}?hardDelete=false`
+  );
+
+  return { id, name };
+};
+
+export async function waitForDocumentPermanentlyDeleted(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
+    );
+
+    if (response.status() === 404) {
+      return;
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for permanent deletion of document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} was still present in the archive API after ${timeout}ms`
+  );
+}
+
+export async function waitForDocumentAbsentFromSearch(
+  apiContext: APIRequestContext,
+  documentName: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/search/query', {
+      params: {
+        q: documentName,
+        index: 'contextFile',
+        deleted: false,
+        size: 100,
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling search for absence of ${documentName}: ${response.status()} ${body}`
+      );
+    }
+
+    const body = await response.json();
+    const hits: Array<{ _source?: { name?: string; displayName?: string } }> =
+      body.hits?.hits ?? [];
+    // Check by exact name match rather than hits.length === 0 to avoid false
+    // exits caused by full-text tokenisation misses (document still indexed but
+    // not ranked by the relevance query).
+    const stillPresent = hits.some(
+      (h) =>
+        h._source?.name === documentName ||
+        h._source?.displayName === documentName
+    );
+    if (!stillPresent) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentName} was still present in search results after ${timeout}ms`
+  );
+}
+
+interface WaitForDocumentInArchiveOptions {
+  updatedBy?: string;
+  timeout?: number;
+  interval?: number;
+  limit?: number;
+}
+
+export async function waitForDocumentInArchive(
+  apiContext: APIRequestContext,
+  documentId: string,
+  {
+    updatedBy,
+    timeout = 60_000,
+    interval = 2_000,
+    limit = 100,
+  }: WaitForDocumentInArchiveOptions = {}
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: {
+        include: 'deleted',
+        orderBy: 'DESC',
+        limit,
+        ...(updatedBy ? { updatedBy } : {}),
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the archive list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the archive list (limit=${limit}) after ${timeout}ms`
+  );
+}
+
+export const ARTICLE_DESCRIPTION =
+  'Playwright article description for card detail check';
+export const QUICK_LINK_URL = 'https://example.com';
+export const QUICK_LINK_DESCRIPTION =
+  'Playwright quick link description for card detail check';
+
+export const deleteArticleByFqn = async (
+  apiContext: APIRequestContext,
+  fqn: string
+) => {
+  const res = await apiContext.get(
+    `/api/v1/contextCenter/pages/name/${encodeURIComponent(fqn)}?fields=id`
+  );
+
+  if (res.status() === 404) {
+    return;
+  }
+
+  const data = await okJson<{ id: string }>(
+    res,
+    `Find article ${fqn} for cleanup`
+  );
+  if (!data.id) {
+    throw new Error(`Article ${fqn} cleanup response has no ID`);
+  }
+  await deleteFixtureEntity(
+    apiContext,
+    `/api/v1/contextCenter/pages/${data.id}?hardDelete=true&recursive=true`
+  );
+};
+
+export const createArticleViaApi = async (
+  apiContext: APIRequestContext,
+  data?: Partial<{
+    name: string;
+    displayName: string;
+    description: string;
+    owners: Array<{ id: string; type: string }>;
+  }>
+): Promise<KnowledgeCenterResponseDataType> => {
+  const response = await apiContext.post('/api/v1/contextCenter/pages', {
+    data: {
+      name: data?.name ?? `cc_article_${uuid()}`,
+      displayName: data?.displayName ?? `CC Article ${uuid()}`,
+      description: data?.description ?? ARTICLE_DESCRIPTION,
+      pageType: 'Article',
+      page: { publicationDate: Date.now(), relatedArticles: [] },
+      ...(data?.owners && { owners: data.owners }),
+    },
+  });
+  const body = await response.json();
+
+  expect(response.status(), JSON.stringify(body)).toBe(201);
+
+  return body;
+};
+
+export const createQuickLinkViaApi = async (
+  apiContext: APIRequestContext,
+  displayName: string,
+  url = QUICK_LINK_URL
+): Promise<KnowledgeCenterResponseDataType> => {
+  const response = await apiContext.post('/api/v1/contextCenter/pages', {
+    data: {
+      name: `cc_quicklink_${uuid()}`,
+      displayName,
+      description: QUICK_LINK_DESCRIPTION,
+      pageType: 'QuickLink',
+      page: { url, publicationDate: Date.now(), relatedArticles: [] },
+    },
+  });
+  const body = await response.json();
+
+  expect(response.status(), JSON.stringify(body)).toBe(201);
+
+  return body;
+};
+
+/**
+ * Both the knowledge-pages hierarchy and the article listing sit inside two
+ * nested scrollable ancestors (.center-panel with overflow-y: scroll, and an
+ * inner Box with overflow-auto that actually grows with content). A synthetic
+ * `page.mouse.wheel` on the listing/hierarchy locator is ambiguous about which
+ * ancestor consumes the delta, and once the outer one's small scroll range is
+ * exhausted the inner container stops receiving scroll input — so infinite
+ * scroll silently stalls partway through the list. Scrolling the real
+ * scrollable ancestor's scrollTop directly removes that ambiguity.
+ */
+const scrollNearestScrollableAncestor = async (locator: Locator) => {
+  await locator.evaluate((element) => {
+    let current: HTMLElement | null = element as HTMLElement;
+    while (current && current.scrollHeight <= current.clientHeight) {
+      current = current.parentElement;
+    }
+    current?.scrollBy({ top: 3000 });
+  });
+};
+
+/**
+ * Scrolls the nearest scrollable ancestor of `containerLocator` until
+ * `targetLocator` becomes visible, waiting on `responseMatcher` after each
+ * scroll to give the pagination fetch a render+network tick to land. Mirrors
+ * `scrollHierarchyToNode`'s stale-tolerant retry loop so callers don't have
+ * to hand-roll scroll-then-waitForResponse races for every dropdown/list.
+ */
+export const scrollUntilResponse = async (
+  page: Page,
+  containerLocator: Locator,
+  targetLocator: Locator,
+  responseMatcher: (response: Response) => boolean,
+  maxAttempts = 10
+) => {
+  for (
+    let attempt = 0;
+    attempt < maxAttempts && !(await targetLocator.isVisible());
+    attempt++
+  ) {
+    const responsePromise = page
+      .waitForResponse(responseMatcher, { timeout: 5000 })
+      .catch(() => null);
+    await scrollNearestScrollableAncestor(containerLocator);
+    await responsePromise;
+  }
+
+  await expect(targetLocator).toBeVisible();
+};
+
+export const scrollHierarchyToNode = async (
+  page: Page,
+  displayName: string
+) => {
+  const hierarchy = page.getByTestId('knowledge-pages-hierarchy');
+  const node = hierarchy.getByTestId(`page-node-${displayName}`);
+  // The hierarchy scroll container fires a native `scroll` event handled by
+  // KnowledgePagesHierarchy's handleScroll — it is NOT IntersectionObserver-based.
+  // We must dispatch a real scroll event after setting scrollTop, otherwise
+  // React's handler never runs and no pagination request is issued.
+  const container = page.getByTestId('article-list-container');
+
+  await hierarchy.waitFor({ state: 'visible' });
+
+  const nodes = hierarchy.locator('[data-testid^="page-node-"]');
+  let total = Infinity;
+  let fetched = 0;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await node.isVisible()) {
+      break;
+    }
+
+    if (fetched >= total) {
+      break;
+    }
+
+    const countBefore = await nodes.count();
+
+    // Hoist listener before the scroll so no response is missed
+    const responsePromise = page.waitForResponse(
+      (res) => res.url().includes('/hierarchy'),
+      { timeout: 15000 }
+    );
+
+    // Set scrollTop to the absolute bottom and dispatch a synthetic scroll
+    // event in the same evaluate call. handleScroll checks
+    // scrollTop + clientHeight >= scrollHeight - 1 to decide whether to
+    // fetch the next page — setting scrollTop alone (without the event) is
+    // silent to React because it listens via onScroll, not a MutationObserver.
+    await container.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      el.dispatchEvent(new Event('scroll'));
+    });
+
+    const response = await responsePromise.catch(() => null);
+    if (response) {
+      const json = await response.json().catch(() => null);
+      if (json?.paging?.total !== undefined) {
+        total = json.paging.total;
+      }
+    }
+    fetched = await nodes.count();
+
+    await expect
+      .poll(() => nodes.count(), { timeout: 5000 })
+      .toBeGreaterThan(countBefore)
+      .catch(() => null);
+
+    if ((await nodes.count()) === countBefore) {
+      break;
+    }
+  }
+
+  await expect(node).toBeVisible();
+
+  return node;
+};
+
+export const createArticleFromButton = async (page: Page) => {
+  await page.getByTestId('create-knowledge-page-btn').click();
+  await page.getByTestId('create-article-btn').click();
+};
+
+export const getArticleFqnFromUrl = (page: Page) =>
+  decodeURIComponent(
+    page.url().split('/context-center/articles/').pop()?.split('/')[0] ?? ''
+  );
+
+export const cleanupCurrentArticle = async (page: Page) => {
+  const browser = page.context().browser();
+  const fqn = getArticleFqnFromUrl(page);
+
+  if (!browser || !fqn) {
+    return;
+  }
+
+  const { apiContext, afterAction } = await createNewPage(browser);
+  await deleteArticleByFqn(apiContext, fqn);
+  await afterAction();
+};
+
+// Waits for the search/query response for the given article display name.
+// `displayName` must be the card's exact display name — partial terms will
+// produce a predicate mismatch and a 30 s timeout.
+export const waitForArticleSearchResponse = (page: Page, displayName: string) =>
+  page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname.includes('/api/v1/search/query') &&
+      url.searchParams.get('index') === 'page' &&
+      url.searchParams.get('q') ===
+        displayName.replaceAll(/["']/g, String.raw`\$&`)
+    );
+  });
+
+/**
+ * The listing keeps its "Last updated" sort while searching, and the search is
+ * fuzzy, so a multi-word title also matches every newer article whose name
+ * shares a word — on a shared server that pushes the target off the first
+ * page. Pass the article's unique suffix as `searchTerm` to keep it there.
+ */
+export const verifyArticleSearch = async (
+  page: Page,
+  displayName: string,
+  searchTerm = displayName
+) => {
+  const header = page.getByTestId('context-center-header');
+  const searchInput = header
+    .getByTestId('search-input')
+    .getByLabel('Search Articles');
+  const card = page
+    .getByTestId('knowledge-page-listing')
+    .getByTestId(`knowledge-card-${displayName}`);
+
+  await expect(async () => {
+    const currentValue = await searchInput.inputValue();
+    if (currentValue) {
+      const clearResPromise = page.waitForResponse((res) => {
+        const url = new URL(res.url());
+
+        return (
+          url.pathname.includes('/api/v1/contextCenter/pages') &&
+          !url.pathname.includes('/name/') &&
+          res.request().method() === 'GET'
+        );
+      });
+      await searchInput.clear();
+      await clearResPromise;
+    }
+
+    const searchResPromise = waitForArticleSearchResponse(page, searchTerm);
+    await searchInput.fill(searchTerm);
+    const searchRes = await searchResPromise;
+    expect(searchRes.status()).toBe(200);
+    await expect(card).toBeVisible({ timeout: 3000 });
+  }).toPass({ timeout: 30000 });
+
+  return searchInput;
+};
+
+/**
+ * The memory view/edit modal (one component serves both).
+ *
+ * Addressed by its own testid rather than `getByRole('dialog')`: the asset
+ * picker renders a second `role="dialog"`, so the bare role resolves to two
+ * elements the moment a picker is open and every assertion fails with a
+ * strict-mode violation — including `not.toBeVisible()` after a save, where
+ * the modal really has closed.
+ */
+export const getMemoryDialog = (page: Page) => page.getByTestId('memory-modal');
+
+export const assertArticleEditorSaved = async (page: Page) => {
+  await expect(page.getByTestId('content-change-state')).toHaveText('Saved');
+};
+
+/**
+ * Waits for a locally-stored draft to be applied to the editor after a reload
+ * or a navigation back to the article.
+ *
+ * The editor mounts with the *server's* description and the stored draft is
+ * applied a tick later, so asserting straight after
+ * `waitForAllLoadersToDisappear` reads the pre-sync content and fails with the
+ * original description. The sync also flips `content-change-state` back to
+ * `Saved`, so both are asserted — each via a retrying `expect`, since they
+ * settle independently.
+ */
+export const waitForDraftSyncedIntoEditor = async (
+  page: Page,
+  expectedText: string
+) => {
+  // `.om-block-editor` is the article's own BlockEditor root (the class the
+  // draft tests already type into), so this resolves to the single editable
+  // ProseMirror node without a positional `.first()`.
+  const editor = page.locator(
+    '.om-block-editor.ProseMirror[contenteditable="true"]'
+  );
+
+  await expect(editor).toBeVisible();
+  // Both conditions, and both retried: the draft text and the `Saved` badge
+  // settle independently, so waiting for one then checking the other can
+  // sample the moment before the second lands.
+  await expect(editor).toContainText(expectedText);
+  await expect(page.getByTestId('content-change-state')).toHaveText('Saved');
+
+  return editor;
+};
+
+export const scrollListingToCard = async (page: Page, displayName: string) => {
+  const listing = page.getByTestId('knowledge-page-listing');
+  const card = listing.getByTestId(`knowledge-card-${displayName}`);
+  const observer = page.getByTestId('observer-element');
+  const loader = page.getByTestId('knowledge-page-loader');
+
+  await listing.waitFor({ state: 'visible' });
+
+  const cards = listing.locator('[data-testid^="knowledge-card-"]');
+  let total = Infinity;
+  let fetched = 0;
+
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (await card.isVisible()) {
+      break;
+    }
+
+    if (fetched >= total) {
+      break;
+    }
+
+    // sentinel removed from DOM = last page already rendered
+    if ((await observer.count()) === 0) {
+      break;
+    }
+
+    const countBefore = await cards.count();
+
+    // Hoist listener before any scroll so no response is missed
+    const responsePromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/pages') &&
+        res.url().includes('offset='),
+      { timeout: 15000 }
+    );
+
+    // The observer element (2 px sentinel) lives inside an anonymous Box with
+    // tw:overflow-auto (no testid). We walk up from the observer element itself
+    // to find that scrollable ancestor, then:
+    //   Step 1: scroll it back to top so the observer leaves the viewport.
+    //   Step 2: scroll to absolute bottom so the observer re-enters viewport.
+    // This hidden→visible transition is the only reliable IntersectionObserver
+    // trigger. scrollBy on an already-bottomed container is a no-op, and
+    // scrollIntoViewIfNeeded() is a no-op when the element is already visible —
+    // so both prior approaches silently failed after the first page.
+    await observer.evaluate((el) => {
+      let current: HTMLElement | null = el.parentElement;
+      while (current && current.scrollHeight <= current.clientHeight) {
+        current = current.parentElement;
+      }
+      if (current) {
+        current.scrollTop = 0;
+      }
+    });
+    await observer.evaluate((el) => {
+      let current: HTMLElement | null = el.parentElement;
+      while (current && current.scrollHeight <= current.clientHeight) {
+        current = current.parentElement;
+      }
+      if (current) {
+        current.scrollTop = current.scrollHeight;
+      }
+    });
+
+    const response = await responsePromise.catch(() => null);
+    if (response) {
+      const json = await response.json().catch(() => null);
+      if (json?.paging?.total !== undefined) {
+        total = json.paging.total;
+      }
+    }
+    fetched = await cards.count();
+
+    // Wait for the loader to appear then disappear (loader may flash quickly)
+    await expect(loader)
+      .toBeVisible({ timeout: 3000 })
+      .catch(() => null);
+    await loader.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => null);
+
+    await expect
+      .poll(() => cards.count(), { timeout: 5000 })
+      .toBeGreaterThan(countBefore)
+      .catch(() => null);
+
+    if ((await cards.count()) === countBefore) {
+      break;
+    }
+  }
+
+  // Lazy-loading can stall (sentinel never re-intersects, a page of results is
+  // dropped on a slow runner). Search is deterministic, so fall back to it
+  // rather than failing on a card that exists but was never paged in.
+  if (!(await card.isVisible())) {
+    await verifyArticleSearch(page, displayName);
+  }
+
+  await expect(card).toBeVisible();
+
+  return card;
+};
+
+const ARTICLE_DETAIL_ROUTE = `${ARTICLES_URL}/:fqn`;
+
+/**
+ * The right-panel BookMarkWidget fetches GET /users/{id}?fields=follows once
+ * on mount and renders whatever that single response contains — it never
+ * refetches while the /articles page is open. So if the follow relationship
+ * hasn't propagated to that endpoint yet, waiting on the DOM afterwards can't
+ * help: the widget has already rendered its (stale) final state. Poll the API
+ * directly until the article shows up in `follows`, then navigate — by the
+ * time the widget mounts and fetches, the relationship is guaranteed present.
+ */
+export const waitForArticleInFollows = async (
+  apiContext: APIRequestContext,
+  userId: string,
+  articleId: string,
+  timeout = ACTION_TIMEOUT,
+  interval = 1_000
+) => {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get(`/api/v1/users/${userId}`, {
+      params: { fields: 'follows' },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling follows for user ${userId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { follows } = await response.json();
+    if (
+      (follows as Array<{ id: string }> | undefined)?.some(
+        (reference) => reference.id === articleId
+      )
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Article ${articleId} did not appear in user ${userId}'s follows after ${timeout}ms`
+  );
+};
+
+export const navigateToArticle = async (page: Page, articleFqn: string) => {
+  const getArticleResponse = page.waitForResponse(
+    (response) =>
+      response
+        .url()
+        .includes(`/api/v1/contextCenter/pages/name/${articleFqn}`) &&
+      response.status() === 200
+  );
+
+  const articlePath = ARTICLE_DETAIL_ROUTE.replace(':fqn', articleFqn);
+  await page.goto(articlePath, PAGE_GOTO_OPTIONS);
+  await getArticleResponse;
+  await waitForAllLoadersToDisappear(page);
+};
+
+/** Returns the first table asset from ES, or undefined if none exist. */
+export const fetchFirstTable = async (page: Page) => {
+  const res = await page.request.get(
+    '/api/v1/search/query?q=*&index=table_search_index&from=0&size=1'
+  );
+  if (!res.ok()) {
+    return undefined;
+  }
+  const data = await res.json();
+
+  return data.hits?.hits?.[0]?._source;
+};
+
+export const patchMemory = async (
+  apiContext: APIRequestContext,
+  id: string,
+  patch: Record<string, unknown>[]
+) => {
+  const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
+    data: patch,
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+/**
+ * Sets a memory's outcome counters through the admin-only outcome write, the only write that
+ * changes them: a PATCH keeps the stored counts.
+ */
+export const recordMemoryOutcomes = async (
+  apiContext: APIRequestContext,
+  id: string,
+  outcomes: { appliedCount: number; lastAppliedAt?: number }
+) => {
+  const res = await apiContext.put(`${MEMORIES_API}/${id}/outcomes`, {
+    data: { ...outcomes, countedAt: Date.now() },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+export interface LoggedInUser {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
+/** Identifies the currently authenticated user via their own session. */
+export const getLoggedInUser = async (
+  apiContext: APIRequestContext
+): Promise<LoggedInUser> => {
+  const res = await apiContext.get('/api/v1/users/loggedInUser');
+  expect(res.ok()).toBeTruthy();
+  const data = await res.json();
+
+  return {
+    id: data.id,
+    name: data.name,
+    displayName: data.displayName ?? data.name,
+  };
+};
+
+export const createMemoryViaApi = async (
+  apiContext: APIRequestContext,
+  overrides: Record<string, unknown>
+) => {
+  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  expect(res.status()).toBe(201);
+
+  return res.json();
+};
+
+/**
+ * Searches for a memory by a unique query string and returns its row locator.
+ * The list is paginated, so a memory created earlier in the suite may not be
+ * on the currently loaded page — searching re-queries page 1 and guarantees
+ * the row is present if it matches.
+ */
+export const searchAndGetMemoryRow = async (
+  page: Page,
+  query: string,
+  memoryId: string
+) => {
+  const searchResPromise = page.waitForResponse((res) => {
+    const url = new URL(res.url());
+
+    return (
+      url.pathname === MEMORIES_API &&
+      url.searchParams.get('q') === query &&
+      res.request().method() === 'GET'
+    );
+  });
+  await page.getByTestId('search-input').locator('input').fill(query);
+  await searchResPromise;
+  await waitForAllLoadersToDisappear(page);
+
+  return page.getByTestId(`memory-row-${memoryId}`);
+};
+export const readDraftStore = async (
+  page: Page
+): Promise<Record<string, unknown>> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'om-article-drafts'
+  );
+
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: { drafts?: Record<string, unknown> };
+    };
+
+    return (parsed?.state?.drafts as Record<string, unknown>) ?? {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * The draft-content debounce (300ms in KnowledgePageDetailComponent) means the
+ * "Unsaved" badge appearing gives no guarantee the debounced write to
+ * localStorage has actually landed yet. Polling the real draft store removes
+ * that race instead of guessing a fixed timeout that can lose the race under
+ * CI load.
+ *
+ * The timeout is deliberately kept well under the real-save debounce
+ * (SHORT_DELAY, 3000ms): once that autosave completes it clears the draft
+ * from localStorage (see endTrackedSave -> removeDraft), so a long poll here
+ * risks racing the autosave itself and observing the draft after it has
+ * already been removed rather than confirming it landed in time.
+ */
+export const waitForDraftPersisted = async (
+  page: Page,
+  articleId: string,
+  expectedDescription: string
+) => {
+  await expect
+    .poll(
+      async () => {
+        const drafts = await readDraftStore(page);
+        const draft = drafts[articleId] as { description?: string } | undefined;
+
+        // The draft stores the editor's HTML output (e.g. wrapped in <p>...</p>),
+        // not the plain text that was typed, so match on substring containment.
+        return draft?.description?.includes(expectedDescription) ?? false;
+      },
+      { timeout: 2000, intervals: [50, 100, 200] }
+    )
+    .toBe(true);
+};
+
+/**
+ * Blocks the debounced autosave PATCH for a single article so a test can hold an
+ * article in a genuinely unsaved state.
+ *
+ * Typing schedules two independent writes: the draft stash (300ms debounce, into
+ * localStorage) and the real autosave PATCH (SHORT_DELAY, 3000ms). A test that
+ * stashes a draft and then reloads is racing that 3s debounce -- and a reload does
+ * not cancel an already in-flight XHR. If the PATCH lands, the server version goes
+ * N -> N+1 while the stashed draft still carries version N, so on the next load
+ * getDraftMergeCandidate() sees serverChangedSinceDraft, discards the draft and
+ * calls removeDraft(). The editor then renders the server's old description and the
+ * assertion fails against the pre-edit text.
+ *
+ * Aborting the PATCH removes the race instead of hoping to win it: the draft keeps
+ * the version it was stamped with, so the post-reload merge is deterministic.
+ *
+ * Returns a function that stops blocking, for tests that later need the real save.
+ */
+export const blockArticleAutoSave = async (
+  page: Page,
+  articleId: string
+): Promise<() => Promise<void>> => {
+  const pattern = `**/api/v1/contextCenter/pages/${articleId}`;
+
+  await page.route(pattern, async (route) => {
+    if (route.request().method() === 'PATCH') {
+      await route.abort();
+
+      return;
+    }
+
+    await route.fallback();
+  });
+
+  return async () => {
+    await page.unroute(pattern);
+  };
+};
+
+/**
+ * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
+ * since this repo has no binary image fixtures under playwright/test-data/.
+ */
+const ONE_PIXEL_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+export const insertImageViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'image/png',
+    buffer: Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertImageViaUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
+};
+
+/** A minimal valid MP4 container (ftyp + mdat boxes only), enough for the browser to accept it as a video source. */
+const MINIMAL_MP4_BASE64 = 'AAAAGGZ0eXBpc29tAAACAGlzb21pc28y';
+
+/** A minimal valid MP3 frame header, enough for the browser to accept it as an audio source. */
+const MINIMAL_MP3_BASE64 = '//uQxAAAAAAAAAAAAAAAAAAAAAAA';
+
+export const insertFileViaUpload = async (
+  page: Page,
+  fileName: string,
+  mimeType = 'application/pdf',
+  buffer: Buffer = Buffer.from('playwright file attachment upload test')
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType,
+    buffer,
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertVideoViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.video);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'video/mp4',
+    buffer: Buffer.from(MINIMAL_MP4_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertAudioViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.audio);
+  await page.getByTestId('add-image-container').last().click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'audio/mpeg',
+    buffer: Buffer.from(MINIMAL_MP3_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertFileWithUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.file);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
+};

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { Classification } from '../../../generated/entity/classification/classification';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -34,6 +35,7 @@ import { StoredProcedure } from '../../../generated/entity/data/storedProcedure'
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
 import { Worksheet } from '../../../generated/entity/data/worksheet';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { APIService } from '../../../generated/entity/services/apiService';
 import { DashboardService } from '../../../generated/entity/services/dashboardService';
@@ -49,7 +51,6 @@ import { Team } from '../../../generated/entity/teams/team';
 import { User } from '../../../generated/entity/teams/user';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 
 export interface AssetSelectionModalProps {
   entityFqn: string;
@@ -120,6 +121,7 @@ export type MapPatchAPIResponse = {
   [EntityType.METRIC]: Metric;
   [EntityType.TAG]: Tag;
   [EntityType.DOMAIN]: Domain;
+  [EntityType.DATA_PRODUCT]: DataProduct;
   [EntityType.CLASSIFICATION]: Classification;
   [EntityType.CHART]: Chart;
   [EntityType.SECURITY_SERVICE]: SecurityService;

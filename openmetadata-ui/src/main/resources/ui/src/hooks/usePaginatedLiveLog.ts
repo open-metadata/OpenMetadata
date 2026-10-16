@@ -1,0 +1,268 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { AxiosError } from 'axios';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { showErrorToast } from '../utils/ToastUtils';
+import { usePollingEffect } from './usePollingEffect';
+
+export interface LogPage {
+  content: string;
+  // Cursor to fetch the NEXT page. Backends omit it for the last (growing) page.
+  after?: string;
+  total?: string;
+}
+
+export interface UsePaginatedLiveLogParams {
+  // Fetches one page (chunk) of the log at the given cursor.
+  fetchPage: (cursor?: string) => Promise<LogPage>;
+  // Identity of the log being viewed; changing it resets + refetches.
+  resetKey: string;
+  // Whether to fetch at all (e.g. modal open AND id resolved).
+  enabled: boolean;
+  // Whether the underlying run is still active — gates tail polling.
+  isLive: boolean;
+  intervalMs?: number;
+}
+
+export interface UsePaginatedLiveLogResult {
+  logs: string;
+  hasMore: boolean;
+  loading: boolean;
+  loadingMore: boolean;
+  totalLines: number;
+  loadMore: () => void;
+}
+
+// Backends disagree on how they signal the final page: K8s/S3 omit `after`,
+// while Airflow returns `after === total`. Treat either as the tail so live
+// tailing + pagination end-detection work across all deployments.
+const isTailPage = (page: LogPage): boolean =>
+  !page.after ||
+  (page.total !== undefined && Number(page.after) >= Number(page.total));
+
+/**
+ * Paginated log reader with tail polling. Models the log as an immutable
+ * `committed` prefix (complete pages, each returned an `after` cursor) plus a
+ * `tail` (the last/growing page, which omits `after`). Forward pagination
+ * (`loadMore`) preserves infinite scroll; while `isLive` it polls ONLY the tail
+ * page and replaces it — so a growing log never duplicates already-shown lines.
+ */
+export const usePaginatedLiveLog = ({
+  fetchPage,
+  resetKey,
+  enabled,
+  isLive,
+  intervalMs,
+}: UsePaginatedLiveLogParams): UsePaginatedLiveLogResult => {
+  const [committed, setCommitted] = useState('');
+  const [tail, setTail] = useState('');
+  const [nextCursor, setNextCursor] = useState<string | undefined>();
+  const [reachedTail, setReachedTail] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Keep the latest fetchPage without making effects depend on its identity.
+  const fetchPageRef = useRef(fetchPage);
+  useEffect(() => {
+    fetchPageRef.current = fetchPage;
+  });
+
+  // Bumped on reset to invalidate in-flight responses; shared busy lock so
+  // loadMore and the tail poll never interleave.
+  const requestIdRef = useRef(0);
+  const busyRef = useRef(false);
+
+  // A final tail read is "owed" once the run goes terminal, until it actually
+  // runs. It's fulfilled the moment we are at the tail and idle — whether that
+  // happens at the edge, when a page reaches the tail, or when an in-flight
+  // request frees the lock — so trailing lines are never lost regardless of
+  // ordering. `reachedTailRef`/`pollTailRef` mirror state so `attemptFinalRead`
+  // can gate on the latest values from any of those trigger points.
+  const finalReadOwedRef = useRef(false);
+  const pollTailRef = useRef<() => Promise<void>>();
+
+  // `reachedTail`/`tailCursor` are also held as refs, advanced SYNCHRONOUSLY at
+  // every mutation site. `pollTail` reads only these refs, so it's a stable
+  // callback and `pollTailRef.current` is never a lagging closure — a flush that
+  // runs before React commits still sees the current tail cursor (no replay/skip).
+  const reachedTailRef = useRef(false);
+  const tailCursorRef = useRef<string | undefined>(undefined);
+
+  // Mirrors `nextCursor` but updated synchronously, so a bottom-scroll firing in
+  // the gap after `busyRef` releases and before React commits the new cursor
+  // can't re-request the page just fetched. `loadMore` reads from here.
+  const nextCursorRef = useRef<string | undefined>(undefined);
+
+  const attemptFinalRead = useCallback(() => {
+    if (
+      finalReadOwedRef.current &&
+      reachedTailRef.current &&
+      !busyRef.current
+    ) {
+      finalReadOwedRef.current = false;
+      pollTailRef.current?.();
+    }
+  }, []);
+
+  const fetchForward = useCallback(
+    async (cursor: string | undefined, isInitial: boolean) => {
+      if (busyRef.current) {
+        return;
+      }
+      const requestId = requestIdRef.current;
+      busyRef.current = true;
+      if (isInitial) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+      try {
+        const page = await fetchPageRef.current(cursor);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        if (isTailPage(page)) {
+          setTail(page.content);
+          tailCursorRef.current = cursor;
+          reachedTailRef.current = true;
+          nextCursorRef.current = undefined;
+          setNextCursor(undefined);
+          setReachedTail(true);
+        } else {
+          setCommitted((prev) => prev + page.content);
+          reachedTailRef.current = false;
+          nextCursorRef.current = page.after;
+          setNextCursor(page.after);
+          setReachedTail(false);
+        }
+      } catch (error) {
+        if (requestId === requestIdRef.current) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (requestId === requestIdRef.current) {
+          busyRef.current = false;
+          if (isInitial) {
+            setLoading(false);
+          } else {
+            setLoadingMore(false);
+          }
+          attemptFinalRead();
+        }
+      }
+    },
+    [attemptFinalRead]
+  );
+
+  useEffect(() => {
+    requestIdRef.current += 1;
+    busyRef.current = false;
+    finalReadOwedRef.current = false;
+    nextCursorRef.current = undefined;
+    tailCursorRef.current = undefined;
+    reachedTailRef.current = false;
+    setCommitted('');
+    setTail('');
+    setNextCursor(undefined);
+    setReachedTail(false);
+    if (enabled && resetKey) {
+      fetchForward(undefined, true);
+    }
+  }, [resetKey, enabled]);
+
+  const hasMore = nextCursor !== undefined;
+
+  const loadMore = useCallback(() => {
+    const cursor = nextCursorRef.current;
+    if (cursor !== undefined && !busyRef.current) {
+      fetchForward(cursor, false);
+    }
+  }, [fetchForward]);
+
+  const pollTail = useCallback(async () => {
+    if (!reachedTailRef.current || busyRef.current) {
+      return;
+    }
+    const requestId = requestIdRef.current;
+    busyRef.current = true;
+    try {
+      let cursor = tailCursorRef.current;
+      let carried = '';
+      // Re-read the tail; if it rolled over into new complete chunks, commit
+      // them and walk forward to the new tail.
+      let done = false;
+      while (!done) {
+        const page = await fetchPageRef.current(cursor);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+        if (isTailPage(page)) {
+          if (carried) {
+            setCommitted((prev) => prev + carried);
+          }
+          setTail(page.content);
+          tailCursorRef.current = cursor;
+          done = true;
+        } else {
+          carried += page.content;
+          cursor = page.after;
+        }
+      }
+    } catch (error) {
+      if (requestId === requestIdRef.current) {
+        showErrorToast(error as AxiosError);
+      }
+    } finally {
+      if (requestId === requestIdRef.current) {
+        busyRef.current = false;
+        attemptFinalRead();
+      }
+    }
+  }, [attemptFinalRead]);
+
+  // `pollTail` is stable, so this just keeps `pollTailRef` populated; the trailing
+  // `attemptFinalRead()` covers an owed read whose gating state (`reachedTail`)
+  // only settled true on this render (last forward page reached tail at terminal).
+  useEffect(() => {
+    pollTailRef.current = pollTail;
+    attemptFinalRead();
+  });
+
+  usePollingEffect(pollTail, {
+    enabled: enabled && isLive && reachedTail,
+    intervalMs,
+  });
+
+  // Tail polling stops the moment `isLive` flips false, so lines written between
+  // the last poll and the run's terminal transition would be lost. Mark a final
+  // read owed on that true→false edge; `attemptFinalRead` fulfils it as soon as
+  // we're at the tail and idle (here, or from a later trigger point).
+  const prevIsLiveRef = useRef(isLive);
+  useEffect(() => {
+    const wasLive = prevIsLiveRef.current;
+    prevIsLiveRef.current = isLive;
+    if (wasLive && !isLive && enabled) {
+      finalReadOwedRef.current = true;
+      attemptFinalRead();
+    }
+  }, [isLive, enabled, attemptFinalRead]);
+
+  const logs = committed + tail;
+  const totalLines = useMemo(
+    () => (logs ? logs.split('\n').length : 0),
+    [logs]
+  );
+
+  return { logs, hasMore, loading, loadingMore, totalLines, loadMore };
+};

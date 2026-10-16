@@ -28,8 +28,8 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
     ));
 });
 
-jest.mock('../../../utils/BlockEditorUtils', () => ({
-  formatContent: jest.fn((content) => content),
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+  formatClientContent: jest.fn((content) => content),
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
 }));
 
@@ -68,12 +68,12 @@ describe('RichTextEditorPreviewNew', () => {
       mockResizeObserver as unknown as typeof ResizeObserver;
   });
 
-  it('should render the component with markdown content', () => {
+  it('should render the component with markdown content', async () => {
     render(<RichTextEditorPreviewNew {...mockProp} />);
 
     expect(screen.getByTestId('viewer-container')).toBeInTheDocument();
     expect(screen.getByTestId('markdown-parser')).toBeInTheDocument();
-    expect(screen.getByTestId('block-editor')).toBeInTheDocument();
+    expect(await screen.findByTestId('block-editor')).toBeInTheDocument();
   });
 
   it('should render no-description placeholder when markdown is empty', () => {
@@ -120,10 +120,9 @@ describe('RichTextEditorPreviewNew', () => {
     const parser = screen.getByTestId('markdown-parser');
     const style = parser.style;
 
-    expect(style.display).toBe('-webkit-box');
-    expect(style.WebkitBoxOrient).toBe('vertical');
-    expect(style.WebkitLineClamp).toBe('3');
+    expect(style.maxHeight).toBe('6em');
     expect(style.overflow).toBe('hidden');
+    expect(style.display).toBe('');
   });
 
   it('should not apply line clamp styles when expanded', () => {
@@ -139,7 +138,7 @@ describe('RichTextEditorPreviewNew', () => {
     const style = parser.style;
 
     expect(style.display).toBe('');
-    expect(style.WebkitBoxOrient).not.toBeDefined();
+    expect(style.maxHeight).toBe('');
     expect(style.overflow).toBe('');
   });
 
@@ -309,13 +308,13 @@ describe('RichTextEditorPreviewNew', () => {
 
     let parser = screen.getByTestId('markdown-parser');
 
-    expect(parser.style.WebkitLineClamp).toBe('2');
+    expect(parser.style.maxHeight).toBe('4em');
 
     rerender(<RichTextEditorPreviewNew {...mockProp} maxLineLength="5" />);
 
     parser = screen.getByTestId('markdown-parser');
 
-    expect(parser.style.WebkitLineClamp).toBe('5');
+    expect(parser.style.maxHeight).toBe('10em');
   });
 
   it('should observe resize events', () => {

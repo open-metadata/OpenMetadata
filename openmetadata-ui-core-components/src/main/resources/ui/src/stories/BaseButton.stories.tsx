@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Edit01, Plus, Trash01 } from '@untitledui/icons';
+import { ChevronDown, Edit01, Plus, Trash01, UploadCloud02 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
 
@@ -30,11 +30,12 @@ export const Default: Story = {
   args: {
     children: 'Click me',
     color: 'primary',
-    size: 'sm',
+    size: 'md',
   },
 };
 
 export const Colors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
       <Button color="primary">Primary</Button>
@@ -49,26 +50,43 @@ export const Colors: StoryObj = {
 
 export const Sizes: StoryObj = {
   render: () => (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button color="primary" size="sm">
-        Small
-      </Button>
-      <Button color="primary" size="md">
-        Medium
-      </Button>
-      <Button color="primary" size="lg">
-        Large
-      </Button>
-      <Button color="primary" size="xl">
-        XLarge
-      </Button>
+    <div style={{ display: 'grid', gap: 12 }}>
+      {(['xl', 'lg', 'md', 'sm', 'xs'] as const).map((size) => (
+        <div
+          key={size}
+          style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button color="secondary" iconLeading={UploadCloud02} size={size}>
+            Upload File
+          </Button>
+          <Button
+            color="primary"
+            iconLeading={Plus}
+            iconTrailing={ChevronDown}
+            size={size}>
+            Create
+          </Button>
+          <Button color="tertiary" iconLeading={Edit01} size={size}>
+            Edit
+          </Button>
+          <Button
+            color="secondary-destructive"
+            iconLeading={Trash01}
+            size={size}>
+            Delete
+          </Button>
+        </div>
+      ))}
     </div>
   ),
 };
 
 export const WithLeadingIcon: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Button color="primary" iconLeading={Plus} size="xs">
+        Add Item
+      </Button>
       <Button color="primary" iconLeading={Plus}>
         Add Item
       </Button>
@@ -85,6 +103,9 @@ export const WithLeadingIcon: StoryObj = {
 export const WithTrailingIcon: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <Button color="primary" iconTrailing={Plus} size="xs">
+        Add Item
+      </Button>
       <Button color="primary" iconTrailing={Plus}>
         Add Item
       </Button>
@@ -96,8 +117,10 @@ export const WithTrailingIcon: StoryObj = {
 };
 
 export const IconOnly: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+      <Button color="primary" iconLeading={Plus} size="xs" />
       <Button color="primary" iconLeading={Plus} size="sm" />
       <Button color="secondary" iconLeading={Edit01} size="md" />
       <Button color="tertiary" iconLeading={Trash01} size="lg" />
@@ -138,11 +161,130 @@ export const Disabled: StoryObj = {
 };
 
 export const LinkColors: StoryObj = {
+  parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>
       <Button color="link-color">Link Color</Button>
       <Button color="link-destructive">Link Destructive</Button>
+    </div>
+  ),
+};
+
+export const LinkColorWithTrailingIcon: StoryObj = {
+  render: () => (
+    <Button color="link-color" iconTrailing={Plus}>
+      Learn more
+    </Button>
+  ),
+};
+
+export const BoxedLink: StoryObj = {
+  render: () => (
+    <div className="tw:flex tw:items-center tw:gap-3">
+      <Button color="link-color" size="md">
+        Back
+      </Button>
+      <Button boxed color="link-color" size="md">
+        Back
+      </Button>
+      <Button color="primary" size="md">
+        Create
+      </Button>
+    </div>
+  ),
+};
+
+export const AsLink: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Button
+          color="primary"
+          href="https://open-metadata.org"
+          target="_blank">
+          Primary Link
+        </Button>
+        <Button
+          color="secondary"
+          href="https://open-metadata.org"
+          target="_blank">
+          Secondary Link
+        </Button>
+        <Button
+          color="tertiary"
+          href="https://open-metadata.org"
+          target="_blank">
+          Tertiary Link
+        </Button>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Button
+          color="primary"
+          href="https://open-metadata.org"
+          iconLeading={Plus}
+          target="_blank">
+          With Icon
+        </Button>
+        <Button
+          color="primary"
+          href="https://open-metadata.org"
+          iconLeading={Plus}
+          target="_blank"
+        />
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <Button isDisabled color="primary" href="https://open-metadata.org">
+          Disabled Link
+        </Button>
+      </div>
+    </div>
+  ),
+};
+
+export const AllVariants: Story = {
+  parameters: { theme: 'both' },
+  render: () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div>
+        <h3 style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          Colors
+        </h3>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <Button color="primary">Primary</Button>
+          <Button color="secondary">Secondary</Button>
+          <Button color="tertiary">Tertiary</Button>
+        </div>
+      </div>
+      <div>
+        <h3 style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          Sizes
+        </h3>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button color="primary" size="sm">
+            Small
+          </Button>
+          <Button color="primary" size="md">
+            Medium
+          </Button>
+          <Button color="primary" size="lg">
+            Large
+          </Button>
+        </div>
+      </div>
+      <div>
+        <h3 style={{ marginBottom: 8, fontSize: 14, fontWeight: 600 }}>
+          States
+        </h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Button isLoading color="primary">
+            Loading
+          </Button>
+          <Button isDisabled color="primary">
+            Disabled
+          </Button>
+        </div>
+      </div>
     </div>
   ),
 };

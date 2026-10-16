@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
@@ -13,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -34,7 +37,95 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 @Slf4j
 public class LineageUtil {
 
+  /**
+   * When a deferral scope is open on the calling thread, the lineage-ES leaves ({@link
+   * #addLineageToSearch} / {@link #deleteLineageFromSearch}) capture their {@code updateLineage} /
+   * {@code updateChildren} round trip here instead of issuing it inline. The create/update flush
+   * opens a scope before its DB transaction so no Elasticsearch call runs while a pooled connection
+   * is held — only the DB lineage-edge writes stay in the transaction — then drains the captured
+   * closures after commit. {@code null} means "no scope active" and the leaf executes inline.
+   */
+  private static final ThreadLocal<List<DeferredLineageEsWrite>> DEFERRED_LINEAGE_ES =
+      new ThreadLocal<>();
+
+  private static final String ROOT_ID_FIELD = "id";
+
+  /** Source fields a lineage root lookup reads: the root's identity and the FQN keying the hits. */
+  public static final List<String> ROOT_SOURCE_FIELDS =
+      List.of(ROOT_ID_FIELD, Entity.FIELD_ENTITY_TYPE, Entity.FIELD_FULLY_QUALIFIED_NAME);
+
+  /**
+   * A captured lineage-ES write plus the entity whose search document carries the edge. The {@code
+   * toEntity} is retained so a post-commit drain that fails the {@code updateLineage}/{@code
+   * updateChildren} round trip can enqueue that entity to the durable search-index retry outbox
+   * (the same entity-keyed recovery the direct entity-index path uses) instead of silently losing
+   * the edge — the DB lineage rows were already committed inside the transaction.
+   */
+  public record DeferredLineageEsWrite(Runnable esWrite, EntityReference toEntity) {
+    public void run() {
+      esWrite.run();
+    }
+  }
+
   private LineageUtil() {}
+
+  /**
+   * Open a lineage-ES deferral scope on the current thread. While open, the lineage-ES leaves
+   * enqueue their work instead of running it inline. Returns {@code true} if this call opened the
+   * scope (caller owns draining/closing it), {@code false} if a scope was already open (nested call
+   * — the outer owner stays responsible). Pair a {@code true} result with a {@code finally} that
+   * calls {@link #drainLineageDeferred()} after commit and {@link #clearLineageDeferred()} on
+   * failure.
+   */
+  public static boolean beginLineageDeferral() {
+    boolean opened = DEFERRED_LINEAGE_ES.get() == null;
+    if (opened) {
+      DEFERRED_LINEAGE_ES.set(new ArrayList<>());
+    }
+    return opened;
+  }
+
+  /**
+   * Number of closures captured in the currently-open scope, or {@code 0} when no scope is open. A
+   * nested (non-owning) caller records this before contributing so it can {@link
+   * #rollbackToCheckpoint(int)} its own contributions on a deadlock replay without disturbing
+   * closures the outer owner captured.
+   */
+  public static int checkpoint() {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    return deferred == null ? 0 : deferred.size();
+  }
+
+  /** Drop every closure captured after {@code checkpoint} so a retried nested flush re-captures cleanly. */
+  public static void rollbackToCheckpoint(int checkpoint) {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    if (deferred != null) {
+      while (deferred.size() > checkpoint) {
+        deferred.removeLast();
+      }
+    }
+  }
+
+  /** Return the closures captured since {@link #beginLineageDeferral} and close the scope. */
+  public static List<DeferredLineageEsWrite> drainLineageDeferred() {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    DEFERRED_LINEAGE_ES.remove();
+    return deferred == null ? List.of() : deferred;
+  }
+
+  /** Discard captured closures and close the scope without running them (failed transaction). */
+  public static void clearLineageDeferred() {
+    DEFERRED_LINEAGE_ES.remove();
+  }
+
+  private static void deferOrRun(Runnable esWrite, EntityReference toEntity) {
+    List<DeferredLineageEsWrite> deferred = DEFERRED_LINEAGE_ES.get();
+    if (deferred != null) {
+      deferred.add(new DeferredLineageEsWrite(esWrite, toEntity));
+    } else {
+      esWrite.run();
+    }
+  }
 
   public static void addDomainLineage(
       UUID entityId, String entityType, EntityReference updatedDomain) {
@@ -99,7 +190,8 @@ public class LineageUtil {
     if (relation == null) return;
 
     LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
-    if (lineageDetails.getAssetEdges() - 1 < 1) {
+    final int assetEdges = nullOrDefault(lineageDetails.getAssetEdges(), 0);
+    if (assetEdges - 1 < 1) {
       Entity.getCollectionDAO()
           .relationshipDAO()
           .delete(
@@ -110,7 +202,7 @@ public class LineageUtil {
               Relationship.UPSTREAM.ordinal());
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
-      lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
+      lineageDetails.withAssetEdges(assetEdges - 1);
       Entity.getCollectionDAO()
           .relationshipDAO()
           .insert(
@@ -126,12 +218,17 @@ public class LineageUtil {
 
   private static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    deferOrRun(() -> doDeleteLineageFromSearch(fromEntity, toEntity), toEntity);
+  }
+
+  private static void doDeleteLineageFromSearch(
+      EntityReference fromEntity, EntityReference toEntity) {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     Entity.getSearchRepository()
         .getSearchClient()
         .updateChildren(
             GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("upstreamLineage.docUniqueId.keyword", uniqueValue),
+            new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
             new ImmutablePair<>(
                 REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
   }
@@ -178,10 +275,17 @@ public class LineageUtil {
 
   private static void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
+    deferOrRun(() -> doAddLineageToSearch(fromEntity, toEntity, lineageDetails), toEntity);
+  }
+
+  private static void doAddLineageToSearch(
+      EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
+    // Route to the staged rebuild index when a reindex is in flight so lineage edges written
+    // mid-reindex survive the final alias swap instead of being dropped with the old index.
     String destinationIndexName =
-        destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+        Entity.getSearchRepository().getWriteIndexName(destinationIndexMapping);
     // For lineage from -> to (not stored) since the doc itself is the toEntity
     EsLineageData lineageData =
         buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);
@@ -249,6 +353,26 @@ public class LineageUtil {
             ref);
       }
     }
+  }
+
+  /**
+   * The entity behind the single document a lineage root lookup returns, or empty when nothing is
+   * indexed under the FQN. The hits are keyed by FQN, which is why {@link #ROOT_SOURCE_FIELDS}
+   * carries it.
+   */
+  @SuppressWarnings("unchecked")
+  public static Optional<EntityReference> lineageRoot(Map<String, Object> hitsByFqn) {
+    return hitsByFqn.values().stream()
+        .findFirst()
+        .map(doc -> rootReference((Map<String, Object>) doc));
+  }
+
+  private static EntityReference rootReference(Map<String, Object> doc) {
+    Object id = doc.get(ROOT_ID_FIELD);
+    return new EntityReference()
+        .withId(id == null ? null : UUID.fromString(id.toString()))
+        .withType(Objects.toString(doc.get(Entity.FIELD_ENTITY_TYPE), null))
+        .withFullyQualifiedName(Objects.toString(doc.get(Entity.FIELD_FULLY_QUALIFIED_NAME), null));
   }
 
   public static NodeInformation getNodeInformation(

@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import {
-  clickOutside,
-  descriptionBox,
   redirectToHomePage,
   uuid,
+  waitForMetricsListingResponse,
 } from '../../utils/common';
 import {
   removeUnitOfMeasurement,
@@ -27,6 +27,17 @@ import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
+
+const selectMetricFormOption = async (
+  page: Page,
+  fieldTestId: string,
+  title: string
+) => {
+  const field = page.getByTestId(fieldTestId);
+  await field.getByRole('button').click();
+  await page.getByRole('option', { exact: true, name: title }).click();
+  await expect(field).toContainText(title);
+};
 
 test.describe(
   'Metric Custom Unit of Measurement Flow',
@@ -39,9 +50,7 @@ test.describe(
 
       await test.step('Navigate to Metrics and create a metric', async () => {
         // Navigate to Metrics
-        const listAPIPromise = page.waitForResponse(
-          '/api/v1/metrics?fields=owners%2Ctags&limit=15&include=all'
-        );
+        const listAPIPromise = waitForMetricsListingResponse(page);
         await sidebarClick(page, SidebarItem.METRICS);
         await listAPIPromise;
 
@@ -54,43 +63,34 @@ test.describe(
         // Click create to trigger validation
         await page.getByTestId('create-button').click();
 
-        await expect(page.locator('#name_help')).toHaveText('Name is required');
+        await expect(page.getByText('Name is required')).toBeVisible();
 
         // Fill required fields only
-        await page.locator('#root\\/name').fill(metricName);
-        await page.locator('#root\\/displayName').fill(metricName);
+        await page.getByTestId('name').fill(metricName);
+        await page.getByTestId('display-name').fill(metricName);
 
         // Fill description
         await page
-          .locator(descriptionBox)
+          .getByRole('textbox', { exact: true, name: 'Description' })
           .fill(`Test metric for unit testing ${metricName}`);
 
         // Select granularity
-        await page.getByTestId('granularity').locator('input').fill('Quarter');
-        await page.getByTitle('Quarter', { exact: true }).click();
+        await selectMetricFormOption(page, 'granularity-select', 'Quarter');
 
         // Select metric type
-        await page.getByTestId('metricType').locator('input').fill('Sum');
-        await page.getByTitle('Sum', { exact: true }).click();
-
-        await clickOutside(page);
+        await selectMetricFormOption(page, 'metric-type-select', 'Sum');
 
         // Select unit of measurement (use Bytes as initial unit)
+        await selectMetricFormOption(
+          page,
+          'unit-of-measurement-select',
+          'Events'
+        );
+
         await page
-          .getByTestId('unitOfMeasurement')
-          .locator('input')
-          .fill('Events');
-        await page.getByTitle('Events', { exact: true }).click();
-        await clickOutside(page);
-
-        // Select language and add expression
-        await page.getByTestId('language').locator('input').fill('SQL');
-        await page.getByTitle('SQL', { exact: true }).click();
-
-        await clickOutside(page);
-
-        await page.locator("pre[role='presentation']").last().click();
-        await page.keyboard.type('SELECT SUM(amount) FROM sales');
+          .getByTestId('metric-code')
+          .getByRole('textbox')
+          .fill('SELECT SUM(amount) FROM sales');
 
         // Save the metric
         const postPromise = page.waitForResponse(
@@ -114,9 +114,9 @@ test.describe(
       });
 
       await test.step('Verify initial unit of measurement is displayed', async () => {
-        await expect(
-          page.getByTestId('data-asset-header-metadata').getByText('EVENTS')
-        ).toBeVisible();
+        await expect(page.getByTestId('metric-definition-unit')).toContainText(
+          'Events'
+        );
       });
 
       await test.step('Update unit of measurement to Dollars', async () => {
@@ -134,11 +134,11 @@ test.describe(
       await test.step('Clean up - delete the metric', async () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
-        await page.locator('[role="dialog"].ant-modal').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+        await page.click('[data-testid="hard-delete"]');
 
         const deletePromise = page.waitForResponse(
           (response) =>

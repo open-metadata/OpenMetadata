@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import {
+  EmptyPlaceholder,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Assets } from '@openmetadata/ui-core-components/icons';
 import { toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,12 +26,13 @@ import {
   Directory,
   EntityReference,
 } from '../../../../generated/entity/data/directory';
-import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 
 function DirectoryChildrenTable() {
   const { t } = useTranslation();
@@ -63,16 +68,13 @@ function DirectoryChildrenTable() {
         sorter: getColumnSorter<EntityReference, 'type'>('type'),
         render: (type, record) => (
           <Tooltip
-            destroyTooltipOnHide
-            overlayInnerStyle={{
-              maxWidth: '420px',
-              overflowWrap: 'break-word',
-              textAlign: 'center',
-            }}
-            title={toLower(type)}>
-            <Typography.Text ellipsis className="cursor-pointer">
+            arrow
+            excludeTriggerFromTabOrder
+            title={toLower(type)}
+            triggerClassName="tw:block tw:min-w-0">
+            <Typography ellipsis className="cursor-pointer tw:text-primary">
               {type ?? record.type}
-            </Typography.Text>
+            </Typography>
           </Tooltip>
         ),
       },
@@ -87,7 +89,17 @@ function DirectoryChildrenTable() {
       data-testid="container-list-table"
       dataSource={containerData.children}
       locale={{
-        emptyText: <ErrorPlaceHolder className="p-y-md" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            <EmptyPlaceholder
+              icon={<Assets className="tw:text-utility-gray-600" />}
+              title={t('message.no-entity-data-available', {
+                entity: t('label.file-plural'),
+              })}
+              variant="blank"
+            />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

@@ -14,10 +14,8 @@
 export { ModeAwareFormField } from '../ModeAwareFormField';
 export { CheckChangeDescriptionForm } from './CheckChangeDescriptionForm';
 export { CheckConditionForm } from './CheckConditionForm';
-export {
-  ConditionBuilder,
-  parseConditionBuilderPayload,
-} from './ConditionBuilder';
+export { ConditionBuilder } from './ConditionBuilder/ConditionBuilder';
+export { parseConditionBuilderPayload } from './ConditionBuilder/conditionBuilderTransformer';
 export { CronExpressionBuilder } from './CronExpressionBuilder';
 export { DataAssetFiltersSection } from './DataAssetFiltersSection';
 export { DataAssetFormSection } from './DataAssetFormSection';
@@ -28,6 +26,7 @@ export { FormActionButtons } from './FormActionButtons';
 export { MetadataFormSection } from './MetadataFormSection';
 export { QueryBuilderSection } from './QueryBuilderSection';
 export { RevertBackForm } from './RevertBackForm';
+export { SchemaBasedNodeForm } from './SchemaBasedNodeForm';
 export { SetActionForm } from './SetActionForm';
 export { SinkTaskForm } from './SinkTaskForm';
 export { TaskNodeFormRenderer } from './TaskNodeFormRenderer';

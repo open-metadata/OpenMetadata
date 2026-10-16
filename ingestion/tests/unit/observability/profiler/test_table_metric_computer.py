@@ -17,6 +17,7 @@ and verifies all new dialect-to-class factory registrations.
 
 from unittest.mock import MagicMock, Mock, patch
 
+import pytest
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import DeclarativeBase
 
@@ -58,6 +59,16 @@ def _build_mock_session(db_name="test_db"):
     mock_bind.url.database = db_name
     session.get_bind.return_value = mock_bind
     return session
+
+
+# Schema and table names are enumerated from the source system, so anyone with
+# CREATE rights there controls them. All three engines below quote with backticks.
+HOSTILE_SCHEMA = "sch`ema"
+HOSTILE_TABLE = "ta`ble"
+
+
+def _emitted(session) -> str:
+    return str(session.execute.call_args[0][0])
 
 
 def _build_computer(session, computer_class, table_type=TableType.Regular):
@@ -287,6 +298,45 @@ class TestExasolTableMetricComputer:
     def test_exasol_registration(self):
         assert table_metric_computer_factory._constructs.get(Dialects.Exasol) is ExasolTableMetricComputer
 
+    def test_compute_uses_view_metrics_for_views(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(ExasolTableMetricComputer, "_compute_view_metrics", return_value="view-metrics") as mock_view:
+            result = computer.compute()
+
+        assert result == "view-metrics"
+        mock_view.assert_called_once_with()
+
+    def test_compute_uses_view_metrics_for_materialized_views(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.MaterializedView)
+
+        with patch.object(ExasolTableMetricComputer, "_compute_view_metrics", return_value="view-metrics") as mock_view:
+            result = computer.compute()
+
+        assert result == "view-metrics"
+        mock_view.assert_called_once_with()
+
+    def test_compute_view_metrics_falls_back_to_base_compute(self):
+        session = _build_mock_session()
+        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_view_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
+
+    def test_compute_table_metrics_returns_none_when_no_result(self):
+        session = _build_mock_session()
+        session.execute.return_value.first.return_value = None
+        computer = _build_computer(session, ExasolTableMetricComputer)
+
+        result = computer._compute_table_metrics()
+
+        assert result is None
+
     def test_compute_returns_result(self):
         session = _build_mock_session()
         mock_result = MagicMock()
@@ -323,6 +373,19 @@ class TestExasolTableMetricComputer:
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
             result = computer.compute()
             assert result == "fallback"
+
+    def test_compute_table_metrics_falls_back_on_none_row_count(self):
+        session = _build_mock_session()
+        mock_result = MagicMock()
+        mock_result.rowCount = None
+        session.execute.return_value.first.return_value = mock_result
+        computer = _build_computer(session, ExasolTableMetricComputer)
+
+        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as mock_base:
+            result = computer._compute_table_metrics()
+
+        assert result == "fallback"
+        mock_base.assert_called_once_with()
 
 
 class TestTeradataTableMetricComputer:
@@ -490,7 +553,6 @@ class TestTrinoTableMetricComputer:
     def test_trino_presto_athena_registrations(self):
         assert table_metric_computer_factory._constructs[Dialects.Trino] is TrinoTableMetricComputer
         assert table_metric_computer_factory._constructs[Dialects.Presto] is TrinoTableMetricComputer
-        assert table_metric_computer_factory._constructs[Dialects.Athena] is TrinoTableMetricComputer
 
 
 class TestHiveTableMetricComputer:
@@ -520,6 +582,19 @@ class TestHiveTableMetricComputer:
         ):
             result = computer.compute()
         assert result.rowCount == 200
+
+    def test_describe_formatted_escapes_backticks(self):
+        """Hive doubles a backtick inside a quoted identifier and unescapes it
+        again -- `HiveLexer.g`: ('`' ( '``' | ~('`') )+ '`')."""
+        session = _build_mock_session()
+        session.execute.return_value.fetchall.return_value = [("", "numRows", "1")]
+
+        computer = _build_computer(session, HiveTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "DESCRIBE FORMATTED `sch``ema`.`ta``ble`"
 
     def test_hive_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Hive] is HiveTableMetricComputer
@@ -568,6 +643,21 @@ class TestImpalaTableMetricComputer:
             result = computer.compute()
         assert result.rowCount == 50
 
+    def test_show_table_stats_rejects_unquotable_name(self):
+        """Impala's lexer (`sql-scanner.flex`: QuotedIdentifier =
+        `(\\.|[^\\`])*`) treats a backslash as an escape and cannot represent a
+        literal backtick, so a hostile name is rejected rather than quoted into
+        SQL that could break out of the backticks."""
+        session = _build_mock_session()
+
+        computer = _build_computer(session, ImpalaTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        with pytest.raises(ValueError):
+            computer.compute()
+
+        session.execute.assert_not_called()
+
     def test_impala_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
 
@@ -591,6 +681,40 @@ class TestDatabricksTableMetricComputer:
         with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=5000)):
             result = computer.compute()
         assert result.rowCount == 5000
+
+    def test_views_fall_back_without_describe_detail(self):
+        for table_type in (TableType.View, TableType.MaterializedView):
+            session = _build_mock_session()
+            session.execute.side_effect = AssertionError("DESCRIBE DETAIL must not run for views")
+            computer = _build_computer(
+                session,
+                DatabricksTableMetricComputer,
+                table_type=table_type,
+            )
+
+            with patch.object(
+                BaseTableMetricComputer,
+                "compute",
+                return_value=MagicMock(rowCount=5000),
+            ):
+                result = computer.compute()
+
+            assert result is not None
+            assert result.rowCount == 5000
+
+    def test_describe_detail_escapes_backticks(self):
+        """Databricks SQL: "Use ` to escape ` itself"."""
+        session = _build_mock_session()
+        result = MagicMock()
+        result._asdict.return_value = {"numRecords": 1}
+        session.execute.return_value.first.return_value = result
+
+        computer = _build_computer(session, DatabricksTableMetricComputer)
+        computer._schema_name = HOSTILE_SCHEMA
+        computer._table_name = HOSTILE_TABLE
+        computer.compute()
+
+        assert _emitted(session) == "DESCRIBE DETAIL `sch``ema`.`ta``ble`"
 
     def test_databricks_registration(self):
         assert table_metric_computer_factory._constructs[Dialects.Databricks] is DatabricksTableMetricComputer

@@ -13,8 +13,8 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
@@ -29,7 +29,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.Column;
@@ -37,16 +37,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -54,7 +50,12 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class DashboardDataModelRepository extends EntityRepository<DashboardDataModel> {
+  private final TableMetadataLoader columnExtensions;
   private static final Set<String> CHANGE_SUMMARY_FIELDS = Set.of("columns.description");
+  // A column's reference values live outside the row JSON, so a PATCH or PUT baseline needs the
+  // columns loaded to carry them, as it does for a table.
+  public static final String PATCH_FIELDS = "columns";
+  public static final String UPDATE_FIELDS = "columns";
 
   public DashboardDataModelRepository() {
     super(
@@ -62,13 +63,24 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         Entity.DASHBOARD_DATA_MODEL,
         DashboardDataModel.class,
         Entity.getCollectionDAO().dashboardDataModelDAO(),
-        "",
-        "",
+        PATCH_FIELDS,
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix. See EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
+    // The loader's column-extension read is keyed by column FQN hash, not by entity type, so it
+    // serves data model columns exactly as it does table columns.
+    columnExtensions =
+        new TableMetadataLoader(
+            () -> daoCollection.entityExtensionDAO(),
+            this::customPropertyReferences,
+            Entity.DASHBOARD_DATA_MODEL);
   }
 
   @Override
@@ -80,66 +92,6 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         FullyQualifiedName.add(serviceFqn + ".model", dashboardDataModel.getName()));
     ColumnUtil.setColumnFQN(
         dashboardDataModel.getFullyQualifiedName(), dashboardDataModel.getColumns());
-  }
-
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    EntityLink entityLink = threadContext.getAbout();
-    if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-      TaskType taskType = threadContext.getThread().getTask().getType();
-      if (EntityUtil.isDescriptionTask(taskType)) {
-        return new ColumnDescriptionTaskWorkflow(threadContext);
-      } else if (EntityUtil.isTagTask(taskType)) {
-        return new ColumnTagTaskWorkflow(threadContext);
-      } else {
-        throw new IllegalArgumentException(String.format("Invalid task type %s", taskType));
-      }
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  static class ColumnDescriptionTaskWorkflow extends DescriptionTaskWorkflow {
-    private final Column column;
-
-    ColumnDescriptionTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(
-              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns", ALL);
-      threadContext.setAboutEntity(dataModel);
-      column =
-          EntityUtil.findColumn(
-              dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      column.setDescription(resolveTask.getNewValue());
-      return threadContext.getAboutEntity();
-    }
-  }
-
-  static class ColumnTagTaskWorkflow extends TagTaskWorkflow {
-    private final Column column;
-
-    ColumnTagTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-      DashboardDataModel dataModel =
-          Entity.getEntity(
-              DASHBOARD_DATA_MODEL, threadContext.getAboutEntity().getId(), "columns,tags", ALL);
-      threadContext.setAboutEntity(dataModel);
-      column =
-          EntityUtil.findColumn(
-              dataModel.getColumns(), threadContext.getAbout().getArrayFieldName());
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      List<TagLabel> tags = JsonUtils.readObjects(resolveTask.getNewValue(), TagLabel.class);
-      column.setTags(tags);
-      return threadContext.getAboutEntity();
-    }
   }
 
   @Override
@@ -163,6 +115,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   @Override
   public void storeEntities(List<DashboardDataModel> entities) {
     storeMany(entities);
+  }
+
+  @Override
+  protected List<Column> getColumnsForExtensionPersistence(DashboardDataModel entity) {
+    return entity.getColumns();
   }
 
   @Override
@@ -207,32 +164,16 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
         dashboardDataModel.getFullyQualifiedName(),
         fields.contains(FIELD_TAGS));
     if (fields.contains("columns") && fields.contains("extension")) {
-      if (dashboardDataModel.getColumns() != null) {
-        for (Column column : dashboardDataModel.getColumns()) {
-          column.setExtension(
-              getColumnExtension(dashboardDataModel.getId(), column.getFullyQualifiedName()));
-        }
-      }
+      columnExtensions.loadColumnExtensions(
+          dashboardDataModel.getId(), dashboardDataModel.getColumns());
+    } else if (fields.contains("columns")) {
+      applyColumnReferences(List.of(dashboardDataModel), DashboardDataModel::getColumns, false);
     }
   }
 
   private void setDefaultFields(DashboardDataModel dashboardDataModel) {
     EntityReference service = getContainer(dashboardDataModel.getId());
     dashboardDataModel.withService(service);
-  }
-
-  private Object getColumnExtension(UUID dataModelId, String columnFQN) {
-    try {
-      String extensionKey = FullyQualifiedName.buildHash(columnFQN);
-      String extensionJson =
-          daoCollection.entityExtensionDAO().getExtension(dataModelId, extensionKey);
-      if (extensionJson != null) {
-        return JsonUtils.readValue(extensionJson, Object.class);
-      }
-    } catch (Exception e) {
-      LOG.warn("Failed to get extension for column {}: {}", columnFQN, e.getMessage());
-    }
-    return null;
   }
 
   // Individual field fetchers registered in constructor
@@ -255,6 +196,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("columns")) {
       // Use bulk tag fetching to avoid N+1 queries
       bulkPopulateEntityFieldTags(dataModels, DashboardDataModel::getColumns);
+      inheritEntityTermsOnFields(dataModels, DashboardDataModel::getColumns, tagsMap);
     }
   }
 
@@ -274,6 +216,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
     fetchAndSetFields(dataModels, fields);
     setInheritedFields(dataModels, fields);
+    if (fields.contains("columns")) {
+      applyColumnReferences(
+          dataModels, DashboardDataModel::getColumns, fields.contains("extension"));
+    }
 
     // Bulk fetch tags for columns if needed
     fetchAndSetColumnTags(dataModels, fields);
@@ -299,7 +245,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   @Override
-  public EntityInterface getParentEntity(DashboardDataModel entity, String fields) {
+  public EntityInterface<?> getParentEntity(DashboardDataModel entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -312,7 +258,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       DashboardDataModel updated,
       Operation operation,
       ChangeSource changeSource) {
-    return new DataModelUpdater(original, updated, operation);
+    return new DataModelUpdater(original, updated, operation, changeSource);
   }
 
   @Override
@@ -321,11 +267,30 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     validateColumnTags(entity.getColumns());
   }
 
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    DashboardDataModel dashboardDataModel = (DashboardDataModel) entity;
+    EntityUtil.mergeTags(allTags, dashboardDataModel.getTags());
+    for (Column column : listOrEmpty(dashboardDataModel.getColumns())) {
+      EntityUtil.mergeTags(allTags, column.getTags());
+    }
+    return allTags;
+  }
+
   public class DataModelUpdater extends ColumnEntityUpdater {
 
     public DataModelUpdater(
-        DashboardDataModel original, DashboardDataModel updated, Operation operation) {
-      super(original, updated, operation);
+        DashboardDataModel original,
+        DashboardDataModel updated,
+        Operation operation,
+        ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
+    }
+
+    @Override
+    protected boolean supportsColumnExtension() {
+      return true;
     }
 
     @Transaction
@@ -374,35 +339,54 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     DashboardDataModel fullDataModel =
         get(null, dataModel.getId(), getFields(Set.of("columns")), include, false);
 
-    List<Column> allColumns = fullDataModel.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
-      return new ResultList<>(new ArrayList<>(), "0", String.valueOf(offset + limit), 0);
-    }
+    // A null sortBy keeps the stored column order, which is this endpoint's contract and differs
+    // from the table endpoint's name-ascending default.
+    ResultList<FieldInterface> page =
+        new ChildFieldPageReader(this, ChildFieldResolver.specFor(Entity.DASHBOARD_DATA_MODEL))
+            .read(
+                fullDataModel,
+                limit,
+                offset,
+                fieldsParam,
+                null,
+                null,
+                (parent, columns, requestedFields) ->
+                    addColumnExtensions(dataModel, columns, requestedFields));
 
-    // Apply pagination
-    int total = allColumns.size();
-    int fromIndex = Math.min(offset, total);
-    int toIndex = Math.min(offset + limit, total);
+    ResultList<Column> result = new ResultList<>();
+    result.setData(page.getData().stream().map(Column.class::cast).toList());
+    result.setPaging(page.getPaging());
+    return result;
+  }
 
-    List<Column> paginatedColumns = allColumns.subList(fromIndex, toIndex);
-
-    // Apply field processing if needed
-    if (fieldsParam != null && fieldsParam.contains("tags")) {
-      populateEntityFieldTags(
-          entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
-    }
-
+  private List<FieldInterface> addColumnExtensions(
+      DashboardDataModel dataModel, List<FieldInterface> page, String fieldsParam) {
     if (fieldsParam != null && fieldsParam.contains("extension")) {
-      for (Column column : paginatedColumns) {
-        column.setExtension(getColumnExtension(dataModel.getId(), column.getFullyQualifiedName()));
-      }
+      // The page holds Columns typed as FieldInterface, and the loader sets the extension on
+      // the elements, so the mapped list reaches the same objects.
+      columnExtensions.loadColumnExtensions(
+          dataModel.getId(), page.stream().map(Column.class::cast).toList());
+    } else {
+      columnExtensions.stripColumnReferences(page.stream().map(Column.class::cast).toList());
     }
+    return page;
+  }
 
-    // Calculate pagination metadata
-    String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
-    String after = toIndex < total ? String.valueOf(toIndex) : null;
-
-    return new ResultList<>(paginatedColumns, before, after, total);
+  public Column enrichSingleColumnFields(
+      DashboardDataModel dataModel, Column column, String fieldsParam) {
+    if (fieldsParam == null) {
+      return column;
+    }
+    List<Column> singleton = new ArrayList<>(List.of(column));
+    if (fieldsParam.contains("tags")) {
+      populateEntityFieldTags(entityType, singleton, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fieldsParam.contains("extension")) {
+      columnExtensions.loadColumnExtensions(dataModel.getId(), singleton);
+    } else {
+      columnExtensions.stripColumnReferences(singleton);
+    }
+    return column;
   }
 
   public ResultList<Column> searchDataModelColumnsById(
@@ -461,6 +445,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(
           entityType, paginatedResults, dataModel.getFullyQualifiedName(), true);
+    }
+    if (fields.contains("extension")) {
+      columnExtensions.loadColumnExtensions(dataModel.getId(), paginatedResults);
+    } else {
+      columnExtensions.stripColumnReferences(paginatedResults);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;

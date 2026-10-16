@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { Form } from 'antd';
-import React from 'react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { useAdvanceSearch } from '../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { CuratedAssetsConfig } from '../CuratedAssetsModal/CuratedAssetsModal.interface';
 import { AdvancedAssetsFilterField } from './AdvancedAssetsFilterField.component';
 
 jest.mock('react-i18next', () => ({
@@ -37,22 +39,35 @@ jest.mock(
   })
 );
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
-  Builder: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="query-builder">Query Builder</div>
-    )),
-  Query: jest.fn().mockImplementation(({ children, onChange }) => (
-    <div data-testid="query-component">
-      {children}
-      <button onClick={() => onChange && onChange({}, {})}>Change Query</button>
-    </div>
-  )),
+// Spread the real module: the config layer reads `BasicConfig` at import time,
+// so a mock that only names Query/Builder/Utils breaks module evaluation.
+jest.mock('@react-awesome-query-builder/ui', () => ({
+  ...jest.requireActual('@react-awesome-query-builder/ui'),
   Utils: {
+    ...jest.requireActual('@react-awesome-query-builder/ui').Utils,
     checkTree: jest.fn(),
     loadTree: jest.fn(),
+    getTree: jest.fn().mockReturnValue({ id: 'root', type: 'group' }),
   },
+}));
+
+// This field now renders the canonical builder, which has its own suite. Here
+// the contract is the form value it writes back.
+jest.mock('../../../../common/QueryBuilder/QueryBuilder', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onChange }) => (
+    <div data-testid="query-component">
+      <button onClick={() => onChange?.('{"query":"changed"}', undefined)}>
+        Change Query
+      </button>
+    </div>
+  )),
+}));
+
+jest.mock('../../../../../utils/CuratedAssetsPureUtils', () => ({
+  getExpandedResourceList: jest.fn().mockReturnValue(['table']),
+  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
+  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
@@ -61,15 +76,13 @@ jest.mock('../../../../../utils/CuratedAssetsUtils', () => ({
     .mockImplementation(() => (
       <div data-testid="alert-message">Alert Message</div>
     )),
-  getExploreURLForAdvancedFilter: jest.fn().mockReturnValue('test-url'),
-  getModifiedQueryFilterWithSelectedAssets: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../../../../utils/QueryBuilderElasticsearchFormatUtils', () => ({
   elasticSearchFormat: jest.fn().mockReturnValue({}),
 }));
 
-jest.mock('../../../../../utils/QueryBuilderUtils', () => ({
+jest.mock('../../../../../utils/QueryBuilderPureUtils', () => ({
   getJsonTreeFromQueryFilter: jest.fn().mockReturnValue({}),
 }));
 
@@ -84,19 +97,34 @@ const defaultProps = {
   selectedAssetsInfo: mockSelectedAssetsInfo,
 };
 
-const TestWrapper = ({ children }: { children: React.ReactNode }) => {
-  const [form] = Form.useForm();
+const QueryFilterValue = () => {
+  const queryFilter = useWatch<CuratedAssetsConfig, 'queryFilter'>({
+    name: 'queryFilter',
+  });
+
+  return <span data-testid="query-filter-value">{queryFilter}</span>;
+};
+
+const TestWrapper = ({
+  children,
+  queryFilter = '{"query":{"bool":{"must":[]}}}',
+}: {
+  children: ReactNode;
+  queryFilter?: string;
+}) => {
+  const form = useForm<CuratedAssetsConfig>({
+    defaultValues: {
+      queryFilter,
+      resources: ['table'],
+      title: 'Test Widget',
+    },
+  });
 
   return (
-    <Form
-      form={form}
-      initialValues={{
-        queryFilter: '{"query":{"bool":{"must":[]}}}',
-        resources: ['table'],
-        title: 'Test Widget',
-      }}>
+    <FormProvider {...form}>
       {children}
-    </Form>
+      <QueryFilterValue />
+    </FormProvider>
   );
 };
 
@@ -156,10 +184,11 @@ describe('AdvancedAssetsFilterField', () => {
       </TestWrapper>
     );
 
-    const changeButton = screen.getByText('Change Query');
-    fireEvent.click(changeButton);
+    fireEvent.click(screen.getByText('Change Query'));
 
-    expect(screen.getByTestId('query-component')).toBeInTheDocument();
+    expect(screen.getByTestId('query-filter-value')).toHaveTextContent(
+      '{"query":"changed"}'
+    );
   });
 
   it('renders skeleton when loading', () => {
@@ -200,33 +229,33 @@ describe('AdvancedAssetsFilterField', () => {
     expect(screen.queryByTestId('alert-message')).not.toBeInTheDocument();
   });
 
-  it('handles empty query filter correctly', () => {
-    const TestWrapperWithEmptyFilter = ({
-      children,
-    }: {
-      children: React.ReactNode;
-    }) => {
-      const [form] = Form.useForm();
-
-      return (
-        <Form
-          form={form}
-          initialValues={{
-            queryFilter: '',
-            resources: ['table'],
-            title: 'Test Widget',
-          }}>
-          {children}
-        </Form>
-      );
-    };
-
+  it('resets the shared query-builder tree when there is no query filter', () => {
     render(
-      <TestWrapperWithEmptyFilter>
+      <TestWrapper queryFilter="">
         <AdvancedAssetsFilterField {...defaultProps} />
-      </TestWrapperWithEmptyFilter>
+      </TestWrapper>
     );
 
-    expect(screen.getByTestId('advanced-filter-container')).toBeInTheDocument();
+    expect(useAdvanceSearch().onReset).toHaveBeenCalled();
+  });
+
+  it('counts the filtered assets for the selected resources', async () => {
+    jest.useFakeTimers();
+    render(
+      <TestWrapper>
+        <AdvancedAssetsFilterField {...defaultProps} />
+      </TestWrapper>
+    );
+
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    jest.useRealTimers();
+
+    expect(mockFetchEntityCount).toHaveBeenCalledWith({
+      countKey: 'filteredResourceCount',
+      selectedResource: ['table'],
+      queryFilter: '{}',
+    });
   });
 });

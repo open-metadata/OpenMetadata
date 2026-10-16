@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FC } from 'react';
-import KnowledgePages from '../components/KnowledgeCenter/KnowledgePages/KnowledgePages';
+import { lazy, type FC } from 'react';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+
+const KnowledgePages = withSuspenseFallback(
+  lazy(
+    () => import('../components/KnowledgeCenter/KnowledgePages/KnowledgePages')
+  )
+);
 
 class EntityRightPanelClassBase {
   public getKnowLedgeArticlesWidget(): FC<{

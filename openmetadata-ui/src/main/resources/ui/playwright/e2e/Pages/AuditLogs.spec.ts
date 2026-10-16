@@ -10,30 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
+import {
+  navigateToAuditLogsPage,
+  verifyAuditEntryHasValidUUIDs,
+  waitForAuditLogEntry,
+} from '../../utils/auditLogs';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { customFormatDateTime } from '../../utils/dateTime';
 import { settingClick } from '../../utils/sidebar';
-
-const navigateToAuditLogsPage = async (page: Page) => {
-  const logRequest = page.waitForResponse('/api/v1/audit/logs?*');
-  await settingClick(page, GlobalSettingOptions.AUDIT_LOGS);
-  await logRequest;
-  await page.locator('.ant-skeleton').first().waitFor({ state: 'detached' });
-  await page.getByTestId('audit-log-list').waitFor({ state: 'visible' });
-};
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test.beforeEach(async ({ page }) => {
-    const customPropertiesResponsePromise = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/metadata/types/customProperties')
-    );
     await redirectToHomePage(page);
-    const customPropertiesResponse = await customPropertiesResponsePromise;
-    expect(customPropertiesResponse.status()).toBe(200);
     await navigateToAuditLogsPage(page);
   });
 
@@ -60,9 +54,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      // Wait for dropdown to ensure options are visible
-      // Antd dropdowns often render in portal, so we look for text 'Yesterday' globaly or in dropdown
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       await expect(yesterdayOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -113,14 +108,15 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       await yesterdayOption.click();
 
       // Verify Time filter is active
       const timeFilterTag = page.getByTestId('filter-chip-time');
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
       await expect(timeFilterTag).toBeVisible();
     });
 
@@ -129,7 +125,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await entityTypeFilter.click();
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
 
@@ -176,7 +172,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.fill('Table');
 
       const tableOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
     });
@@ -189,7 +185,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       // Wait for API response
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
@@ -227,7 +226,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const yesterdayOption = page.getByText('Yesterday').first();
+      const yesterdayOption = page.getByRole('menuitem', {
+        name: 'Yesterday',
+        exact: true,
+      });
       const auditLogResponse = page.waitForResponse((response) =>
         response.url().includes('/api/v1/audit')
       );
@@ -246,7 +248,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const timeFilter = page.getByTestId('date-picker-menu');
       await timeFilter.click();
 
-      const last7DaysOption = page.getByText('Last 7 Days').first();
+      const last7DaysOption = page.getByRole('menuitem', {
+        name: 'Last 7 days',
+        exact: true,
+      });
       await expect(last7DaysOption).toBeVisible();
 
       const auditLogResponse = page.waitForResponse((response) =>
@@ -284,13 +289,14 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const userSearchResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=user')
+          response.url().includes('index=user') &&
+          response.url().includes('q=admin')
       );
       await searchInput.fill('admin');
       await userSearchResponse;
 
       const adminOption = page
-        .locator('.ant-dropdown-menu')
+        .getByTestId('drop-down-menu')
         .getByText('admin', { exact: true });
       await expect(adminOption).toBeVisible();
 
@@ -322,7 +328,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           response.request().method() === 'GET'
       );
 
-      await page.locator('.ant-dropdown-menu-item:visible').first().click();
+      await page
+        .getByTestId('drop-down-menu')
+        .getByText('Table', { exact: true })
+        .click();
       await page.getByTestId('update-btn').click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
@@ -362,10 +371,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await removeUserButton.click();
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page
-        .locator('.ant-skeleton')
-        .first()
-        .waitFor({ state: 'detached' });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
       await expect(userFilterTag).not.toBeVisible();
 
@@ -388,9 +394,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
     });
 
     await test.step('Verify Clear button appears after search', async () => {
@@ -405,9 +409,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const clearButton = page.getByTestId('clear-filters');
       await clearButton.click();
       await auditLogResponse;
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
       const searchInput = page.getByPlaceholder('Search audit logs');
       await expect(searchInput).toHaveValue('');
@@ -428,9 +430,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response = await auditLogResponse;
       expect(response.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
       // Clear search
       const clearButton = page.getByTestId('clear-filters');
@@ -443,9 +443,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       }
 
       // Search with uppercase term - should return similar results
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
       await searchInput.fill('ADMIN');
 
       const auditLogResponse2 = page.waitForResponse(
@@ -457,9 +455,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await searchInput.press('Enter');
       const response2 = await auditLogResponse2;
       expect(response2.status()).toBe(200);
-      await page.locator('.ant-skeleton').first().waitFor({
-        state: 'detached',
-      });
+      await expect(page.locator('.ant-skeleton')).toHaveCount(0);
     });
   });
 
@@ -494,15 +490,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
       await pageSizeDropdown.click();
 
-      // Select 50
-
-      // Let's rely on text globally in the portal
-      const option50Global = page
-        .locator(
-          '.ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu-item'
-        )
-        .filter({ hasText: '50' })
-        .first();
+      const option50Global = page.getByRole('menuitem', { name: /^50 \// });
 
       if (await option50Global.isVisible()) {
         const auditLogResponse = page.waitForResponse(
@@ -557,34 +545,27 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         return;
       }
 
-      const firstItem = listItems.first();
-
-      const avatar = firstItem.getByTestId('item-avatar');
-      await expect(avatar).toBeVisible();
-
-      const profilePic = avatar.locator(
-        '.profile-image-container, .ant-avatar'
-      );
-      await expect(profilePic).toBeVisible();
+      // Assert every rendered row carries the element rather than sampling one:
+      // stronger than the old first-row check, and independent of log order.
+      const avatars = listItems.getByTestId('item-avatar');
+      await expect(avatars).toHaveCount(itemCount);
+      await expect(avatars.locator('[data-avatar]')).toHaveCount(itemCount);
     });
 
     await test.step('Verify list item has user info and event type', async () => {
       const listItems = page.getByTestId('audit-log-list-item');
-      const firstItem = listItems.first();
+      const itemCount = await listItems.count();
 
-      const itemHeader = firstItem.getByTestId('item-header');
-      await expect(itemHeader).toBeVisible();
-
-      const eventType = firstItem.getByTestId('event-type');
-      await expect(eventType).toBeVisible();
+      await expect(listItems.getByTestId('item-header')).toHaveCount(itemCount);
+      await expect(listItems.getByTestId('event-type')).toHaveCount(itemCount);
     });
 
     await test.step('Verify list item has metadata section', async () => {
       const listItems = page.getByTestId('audit-log-list-item');
-      const firstItem = listItems.first();
 
-      const itemMeta = firstItem.getByTestId('item-meta');
-      await expect(itemMeta).toBeVisible();
+      await expect(listItems.getByTestId('item-meta')).toHaveCount(
+        await listItems.count()
+      );
     });
   });
 
@@ -593,7 +574,7 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       const filtersDropdown = page.getByTestId('search-dropdown-Entity Type');
       await filtersDropdown.click();
 
-      const popover = page.locator('.ant-dropdown-menu');
+      const popover = page.getByTestId('drop-down-menu');
       await expect(popover).toBeVisible();
       const tableOption = popover.getByText('Table', { exact: true });
       await expect(tableOption).toBeVisible();
@@ -616,10 +597,13 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         return;
       }
 
-      const firstItem = listItems.first();
-      const entityTypeBadge = firstItem.getByTestId('entity-type-badge');
-      await expect(entityTypeBadge).toBeVisible();
-      await expect(entityTypeBadge).toContainText('Table');
+      // The step above filtered the log to Table, so every row must say Table.
+      const entityTypeBadges = listItems.getByTestId('entity-type-badge');
+      await expect(entityTypeBadges).toHaveCount(itemCount);
+
+      for (const badge of await entityTypeBadges.all()) {
+        await expect(badge).toContainText('Table');
+      }
     });
   });
 
@@ -639,11 +623,10 @@ test.describe('Audit Logs Page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         return;
       }
 
-      const firstItem = listItems.first();
-      const timestamp = firstItem.getByTestId('timestamp');
-      await expect(timestamp).toBeVisible();
+      const timestamps = listItems.getByTestId('timestamp');
+      await expect(timestamps).toHaveCount(itemCount);
 
-      const timestampText = await timestamp.textContent();
+      const timestampText = (await timestamps.allTextContents())[0];
       const hasRelativeTime =
         timestampText?.includes('ago') ||
         timestampText?.includes('second') ||
@@ -683,9 +666,7 @@ test.describe(
         await searchInput.press('Enter');
         const response = await auditLogResponse;
         expect(response.status()).toBe(200);
-        await page.locator('.ant-skeleton').first().waitFor({
-          state: 'detached',
-        });
+        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
         const responseData = await response.json();
 
         // Verify response has expected structure
@@ -725,7 +706,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
       });
@@ -744,17 +725,24 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page
-          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-          .first();
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
+        const todayCell = page.locator(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
+            Date.now(),
+            'yyyy-MM-dd'
+          )}"]`
+        );
         await todayCell.click();
         await todayCell.click();
       });
 
       await test.step('Verify Export button is enabled after date selection', async () => {
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await expect(exportOkButton).toBeEnabled();
       });
 
@@ -763,9 +751,9 @@ test.describe(
           response.url().includes('/api/v1/audit/logs/export')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         const response = await exportApiCall;
@@ -773,6 +761,28 @@ test.describe(
 
         expect(responseData).toHaveProperty('jobId');
         expect(responseData).toHaveProperty('message');
+
+        // The job id has to name a background_jobs row. A UUID here would mean the
+        // export ran on a local executor, whose result only that server can serve.
+        expect(responseData.jobId).toMatch(/^\d+$/);
+      });
+
+      // The completion event only reaches sockets held by the server that ran the
+      // job, so the download must not depend on it arriving.
+      await test.step('Export completes and downloads the result', async () => {
+        const download = await page.waitForEvent('download', {
+          timeout: LONG_ACTION_TIMEOUT,
+        });
+
+        expect(download.suggestedFilename()).toContain('audit_logs_');
+
+        const stream = await download.createReadStream();
+        const chunks: Uint8Array[] = [];
+        for await (const chunk of stream) {
+          chunks.push(chunk as Uint8Array);
+        }
+
+        expect(Buffer.concat(chunks).toString('utf-8').trim()).toMatch(/^\[/);
       });
     });
 
@@ -795,16 +805,14 @@ test.describe(
         );
         await searchInput.press('Enter');
         await auditResponse;
-        await page.locator('.ant-skeleton').first().waitFor({
-          state: 'detached',
-        });
+        await expect(page.locator('.ant-skeleton')).toHaveCount(0);
       });
 
       await test.step('Open Export modal', async () => {
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
       });
@@ -817,9 +825,16 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page
-          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-          .first();
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
+        const todayCell = page.locator(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
+            Date.now(),
+            'yyyy-MM-dd'
+          )}"]`
+        );
         await todayCell.click();
         await todayCell.click();
 
@@ -829,9 +844,9 @@ test.describe(
             request.url().includes('q=admin')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         await exportApiCall;
@@ -850,7 +865,7 @@ test.describe(
         const exportButton = page.getByTestId('export-audit-logs-button');
         await exportButton.click();
 
-        await page.locator('.ant-modal-content').waitFor({
+        await page.getByTestId('export-audit-logs-modal').waitFor({
           state: 'visible',
         });
 
@@ -861,9 +876,16 @@ test.describe(
           state: 'visible',
         });
 
-        const todayCell = page
-          .locator('.ant-picker-dropdown:visible .ant-picker-cell-today')
-          .first();
+        // RangePicker draws two month panels and each grid also renders the
+        // neighbouring month's days, all carrying a title. Near month end the
+        // next-month panel repeats today, so match only the cell that is
+        // in view for its own panel.
+        const todayCell = page.locator(
+          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
+            Date.now(),
+            'yyyy-MM-dd'
+          )}"]`
+        );
         await todayCell.click();
         await todayCell.click();
       });
@@ -873,9 +895,9 @@ test.describe(
           response.url().includes('/api/v1/audit/logs/export')
         );
 
-        const exportOkButton = page.locator(
-          '.ant-modal-footer button.ant-btn-primary'
-        );
+        const exportOkButton = page
+          .getByTestId('export-audit-logs-modal')
+          .getByRole('button', { name: 'Export' });
         await exportOkButton.click();
 
         const response = await exportApiCall;
@@ -963,62 +985,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.use({ storageState: 'playwright/.auth/admin.json' });
-
-    const POLL_TIMEOUT = 120000;
-
-    // Helper function to wait for an audit log entry to appear
-    const waitForAuditLogEntry = async (
-      apiContext: APIRequestContext,
-      _page: Page,
-      entityFqn: string,
-      entityType: string,
-      eventType: string
-    ): Promise<Record<string, unknown> | null> => {
-      let auditEntry: Record<string, unknown> | null = null;
-
-      await expect
-        .poll(
-          async () => {
-            const response = await apiContext.get(
-              `/api/v1/audit/logs?entityFQN=${encodeURIComponent(
-                entityFqn
-              )}&entityType=${entityType}&eventType=${eventType}&limit=10`
-            );
-
-            if (!response.ok()) {
-              return false;
-            }
-
-            const data = await response.json();
-            auditEntry = data.data?.[0] ?? null;
-
-            return Boolean(auditEntry);
-          },
-          {
-            timeout: POLL_TIMEOUT,
-            intervals: [1000, 2000],
-            message: `Timed out waiting for ${eventType} audit entry for ${entityType}:${entityFqn}`,
-          }
-        )
-        .toBe(true);
-
-      return auditEntry;
-    };
-
-    // Helper to verify audit entry has valid UUIDs
-    const verifyAuditEntryHasValidUUIDs = (
-      entry: Record<string, unknown>,
-      expectedEntityId: string
-    ) => {
-      // Verify changeEventId is a valid UUID (not empty)
-      expect(entry.changeEventId).toBeTruthy();
-      expect(typeof entry.changeEventId).toBe('string');
-      expect((entry.changeEventId as string).length).toBeGreaterThan(0);
-
-      // Verify entityId matches expected
-      expect(entry.entityId).toBeTruthy();
-      expect(entry.entityId).toBe(expectedEntityId);
-    };
 
     test('should create audit log entry when glossary is created', async ({
       page,
@@ -1560,7 +1526,7 @@ test.describe(
           );
           await filtersDropdown.click();
 
-          const popover = page.locator('.ant-dropdown-menu');
+          const popover = page.getByTestId('drop-down-menu');
           await expect(popover).toBeVisible();
 
           const glossaryTermsOption = popover.getByTestId('glossary');
@@ -1588,9 +1554,7 @@ test.describe(
           await searchInput.press('Enter');
           const response = await searchResponse;
           expect(response.status()).toBe(200);
-          await page.locator('.ant-skeleton').first().waitFor({
-            state: 'detached',
-          });
+          await expect(page.locator('.ant-skeleton')).toHaveCount(0);
           const responseData = await response.json();
 
           // Should find at least one entry
@@ -1610,23 +1574,24 @@ test.describe(
             .getByTestId('audit-log-list-item')
             .filter({ hasText: glossaryName });
 
-          await expect(glossaryEntry.first()).toBeVisible();
+          // The glossary was created once in this test, so the search above must
+          // surface exactly one row for it — asserting that up front is what
+          // makes every field check below unambiguous.
+          await expect(glossaryEntry).toHaveCount(1);
+
+          await expect(glossaryEntry.getByTestId('event-type')).toContainText(
+            'Entity Created'
+          );
 
           await expect(
-            glossaryEntry.first().getByTestId('event-type')
-          ).toContainText('Entity Created');
-
-          await expect(
-            glossaryEntry.first().getByTestId('entity-type-badge')
+            glossaryEntry.getByTestId('entity-type-badge')
           ).toContainText('Glossary');
 
           await expect(
-            glossaryEntry.first().locator('.description-content')
+            glossaryEntry.getByTestId('description-content')
           ).toContainText(glossaryName);
 
-          await expect(
-            glossaryEntry.first().getByTestId('timestamp')
-          ).toBeVisible();
+          await expect(glossaryEntry.getByTestId('timestamp')).toBeVisible();
         });
       } finally {
         if (glossaryId) {

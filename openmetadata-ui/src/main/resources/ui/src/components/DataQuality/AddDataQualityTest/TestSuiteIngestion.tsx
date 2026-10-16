@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { camelCase, isEmpty, isUndefined } from 'lodash';
@@ -26,8 +28,8 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { FormSubmitType } from '../../../enums/form.enum';
 import { IngestionActionMessage } from '../../../enums/ingestion.enum';
 import {
+  ConfigType,
   CreateIngestionPipeline,
-  FluffyType as ConfigType,
   PipelineType,
 } from '../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import {
@@ -40,15 +42,15 @@ import {
   deployIngestionPipelineById,
   updateIngestionPipeline,
 } from '../../../rest/ingestionPipelineAPI';
-import {
-  getNameFromFQN,
-  replaceAllSpacialCharWith_,
-} from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import { getScheduleOptionsFromSchedules } from '../../../utils/SchedularUtils';
-import { getIngestionName } from '../../../utils/ServiceUtils';
-import { generateUUID } from '../../../utils/StringsUtils';
+import { getIngestionName } from '../../../utils/ServicePureUtils';
+import {
+  generateUUID,
+  replaceAllSpacialCharWith_,
+} from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import SuccessScreen from '../../common/SuccessScreen/SuccessScreen';
 import DeployIngestionLoaderModal from '../../Modals/DeployIngestionLoaderModal/DeployIngestionLoaderModal';
@@ -268,16 +270,18 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
   };
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <Typography.Text className="font-medium" data-testid="header">
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Typography className="font-medium" data-testid="header">
           {t('label.schedule-for-entity', {
             entity: t('label.test-case-plural'),
           })}
-        </Typography.Text>
-      </Col>
+        </Typography>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         {isIngestionCreated ? (
           <SuccessScreen
             handleDeployClick={handleDeployClick}
@@ -303,7 +307,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
             onSubmit={handleIngestionSubmit}
           />
         )}
-      </Col>
+      </Grid.Item>
       <DeployIngestionLoaderModal
         action={ingestionAction}
         ingestionName={getEntityName(ingestionData)}
@@ -312,7 +316,7 @@ const TestSuiteIngestion: React.FC<TestSuiteIngestionProps> = ({
         progress={ingestionProgress}
         visible={showDeployModal}
       />
-    </Row>
+    </Grid>
   );
 };
 

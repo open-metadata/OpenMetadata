@@ -13,24 +13,17 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Dict, Optional, Union  # noqa: UP035
+import json
+from typing import Any
 
-from sqlalchemy import Table, func, text
+from sqlalchemy import Column, Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import SampleConfig
+from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 
 
 class SnowflakeSampler(SQASampler):
@@ -39,35 +32,16 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
-        ometa_client: OpenMetadata,
-        entity: Table,
-        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
-        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
-        sample_query: Optional[str] = None,  # noqa: UP045
-        storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
-        **kwargs,
-    ):
-        super().__init__(
-            service_connection_config=service_connection_config,
-            ometa_client=ometa_client,
-            entity=entity,
-            sample_config=sample_config,
-            partition_details=partition_details,
-            sample_query=sample_query,
-            storage_config=storage_config,
-            sample_data_count=sample_data_count,
-            **kwargs,
-        )
+    def __init__(self, *args, **kwargs):
+        # Imported here because other samplers import this module without the Snowflake extra installed.
+        from snowflake.sqlalchemy import VARIANT
+
+        super().__init__(*args, **kwargs)
+        self._json_text_types = (VARIANT, CustomArray)
         self.sampling_method_type = func.bernoulli
-        if sample_config:
-            static = self._resolve_sample_config
-            if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
-                self.sampling_method_type = func.system
+        static = self._resolve_sample_config
+        if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
+            self.sampling_method_type = func.system
 
     def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake
@@ -82,6 +56,23 @@ class SnowflakeSampler(SQASampler):
             return selectable.tablesample(self.sampling_method_type(static.profileSample or 100))
 
         return selectable.tablesample(func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS")))
+
+    def _process_sample_value(self, column: Column, value: Any) -> Any:
+        """The driver returns VARIANT, OBJECT (both profiled as VARIANT) and ARRAY values as JSON text.
+
+        A value longer than the sample cell limit stays text, so truncation still bounds it, and so does a value
+        nested deeper than the decoder allows. Decimal numbers decode as floats, as sample data stores NUMBER values.
+        """
+        if (
+            isinstance(value, str)
+            and len(value) <= SAMPLE_DATA_MAX_CELL_LENGTH
+            and isinstance(column.type, self._json_text_types)
+        ):
+            try:
+                return json.loads(value)
+            except (ValueError, RecursionError):
+                return value
+        return value
 
     def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""

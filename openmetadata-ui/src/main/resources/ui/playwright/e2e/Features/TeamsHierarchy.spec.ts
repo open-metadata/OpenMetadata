@@ -10,16 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
-import { DELETE_TERM } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { redirectToHomePage, uuid } from '../../utils/common';
+import { expect, test } from '../../support/fixtures/base';
+import { TeamClass } from '../../support/team/TeamClass';
+import {
+  getApiContext,
+  redirectToHomePage,
+  uuid,
+  visitOwnProfilePage,
+} from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import {
   addTeamHierarchy,
   getNewTeamDetails,
   searchTeam,
+  visitTeamsPage,
 } from '../../utils/team';
 
 // use the admin user to login
@@ -42,21 +48,9 @@ test.describe(
   'Add Nested Teams and Test TeamsSelectable',
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
-    test.slow(true);
-
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
-
-      const getOrganizationResponse = page.waitForResponse(
-        '/api/v1/teams/name/*'
-      );
-      const permissionResponse = page.waitForResponse(
-        '/api/v1/permissions/team/name/*'
-      );
-
-      await settingClick(page, GlobalSettingOptions.TEAMS);
-      await permissionResponse;
-      await getOrganizationResponse;
+      await visitTeamsPage(page);
     });
 
     test('Add teams in hierarchy', async ({ page }) => {
@@ -92,7 +86,7 @@ test.describe(
       await page.keyboard.type(businessTeamName);
 
       for (const teamName of teamNames) {
-        const dropdown = page.locator('.ant-tree-select-dropdown');
+        const dropdown = page.getByTestId('team-select-popover');
 
         await expect(dropdown).toContainText(teamName);
         await expect(dropdown.getByText(teamName)).toHaveCount(1);
@@ -104,42 +98,181 @@ test.describe(
         await page.click('[data-testid="team-select"]');
         await page.keyboard.type(teamName);
 
-        await expect(page.locator('.ant-tree-select-dropdown')).toContainText(
+        await expect(page.getByTestId('team-select-popover')).toContainText(
           teamName
         );
       }
     });
 
-    test('Delete Parent Team', async ({ page }) => {
-      await settingClick(page, GlobalSettingOptions.TEAMS);
+    test('Only Group teams are selectable in Add User team dropdown', async ({
+      page,
+    }) => {
+      const childlessDepartmentName = `pw-childless-department-${uuid()}`;
+      const childlessDepartment = new TeamClass({
+        name: childlessDepartmentName,
+        displayName: childlessDepartmentName,
+        description: 'playwright childless department team',
+        teamType: 'Department',
+      });
+      const { apiContext, afterAction } = await getApiContext(page);
+      await childlessDepartment.create(apiContext);
 
+      try {
+        await settingClick(page, GlobalSettingOptions.USERS);
+
+        const teamHierarchyResponse = page.waitForResponse(
+          '/api/v1/teams/hierarchy?isJoinable=false'
+        );
+        await page.locator('[data-testid="add-user"]').click();
+        await teamHierarchyResponse;
+
+        const teamSelect = page.getByTestId('team-select');
+        const teamSelectInput = teamSelect.getByRole('combobox');
+        const dropdown = page.getByTestId('team-select-popover');
+
+        await test.step('Non-Group team with children is visible but not selectable', async () => {
+          await teamSelect.click();
+          await teamSelectInput.fill(departmentTeamName);
+
+          const departmentOption = dropdown.getByText(departmentTeamName);
+
+          await expect(departmentOption).toBeVisible();
+
+          await departmentOption.click();
+
+          await expect(
+            teamSelect.getByRole('button', {
+              name: `Remove ${departmentTeamName}`,
+            })
+          ).toHaveCount(0);
+        });
+
+        await test.step('Non-Group team without children is hidden', async () => {
+          await teamSelectInput.fill(childlessDepartmentName);
+
+          // With every option pruned the tree unmounts ("No data"), so a
+          // count assertion is used — not.toContainText fails on a missing
+          // element instead of passing.
+          await expect(dropdown.getByText(childlessDepartmentName)).toHaveCount(
+            0
+          );
+        });
+
+        await test.step('Group team is selectable', async () => {
+          await teamSelectInput.fill(groupTeamName);
+
+          const groupOption = dropdown.getByText(groupTeamName);
+
+          await expect(groupOption).toBeVisible();
+
+          await groupOption.click();
+
+          await expect(
+            teamSelect.getByRole('button', { name: `Remove ${groupTeamName}` })
+          ).toHaveCount(1);
+        });
+      } finally {
+        await childlessDepartment.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Only Group teams are selectable in user profile teams edit', async ({
+      page,
+    }) => {
+      const childlessDivisionName = `pw-childless-division-${uuid()}`;
+      const childlessDivision = new TeamClass({
+        name: childlessDivisionName,
+        displayName: childlessDivisionName,
+        description: 'playwright childless division team',
+        teamType: 'Division',
+      });
+      const { apiContext, afterAction } = await getApiContext(page);
+      await childlessDivision.create(apiContext);
+
+      try {
+        await visitOwnProfilePage(page);
+
+        const teamHierarchyResponse = page.waitForResponse(
+          '/api/v1/teams/hierarchy?isJoinable=false'
+        );
+        await page.getByTestId('edit-teams-button').click();
+        await teamHierarchyResponse;
+
+        const popover = page.getByTestId('profile-teams-edit-popover');
+
+        await expect(popover).toBeVisible();
+
+        const teamSelect = popover.getByTestId('team-select');
+        const teamSelectInput = teamSelect.getByRole('combobox');
+        // The core TreeSelect renders its tree in a `team-select-popover` overlay.
+        const dropdown = page.getByTestId('team-select-popover');
+        // Chips truncate long labels, so selection is asserted on the tree
+        // node's `data-selected` state, where the full team name is rendered.
+        const selectedTreeNodes = dropdown.locator(
+          '[data-testid^="tree-node-"][data-selected="true"]'
+        );
+
+        await test.step('Non-Group team with children is visible but not selectable', async () => {
+          await teamSelectInput.fill(departmentTeamName);
+
+          const departmentOption = dropdown.getByText(departmentTeamName);
+
+          await expect(departmentOption).toBeVisible();
+
+          await departmentOption.click();
+
+          await expect(
+            selectedTreeNodes.filter({ hasText: departmentTeamName })
+          ).toHaveCount(0);
+        });
+
+        await test.step('Non-Group team without children is hidden', async () => {
+          await teamSelectInput.fill(childlessDivisionName);
+
+          // Count assertion: not.toContainText fails when antd unmounts the
+          // emptied dropdown content instead of passing.
+          await expect(dropdown.getByText(childlessDivisionName)).toHaveCount(
+            0
+          );
+        });
+
+        await test.step('Group team is selectable', async () => {
+          await teamSelectInput.fill(groupTeamName);
+
+          const groupOption = dropdown.getByText(groupTeamName);
+
+          await expect(groupOption).toBeVisible();
+
+          await groupOption.click();
+
+          await expect(
+            selectedTreeNodes.filter({ hasText: groupTeamName })
+          ).toHaveCount(1);
+        });
+
+        // Close without saving so the admin's team memberships stay untouched
+        await page.getByTestId('teams-edit-close-btn').click();
+
+        await expect(popover).not.toBeVisible();
+      } finally {
+        await childlessDivision.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Delete Parent Team', async ({ page }) => {
       await page.getByRole('link', { name: businessTeamName }).click();
 
       await page.click('[data-testid="manage-button"]');
 
       await page.click('[data-testid="delete-button-title"]');
 
-      await expect(page.locator('.ant-modal-header')).toContainText(
-        businessTeamName
-      );
-
-      await page.click(`[data-testid="hard-delete-option"]`);
-
-      await expect(
-        page.locator('[data-testid="confirm-button"]')
-      ).toBeDisabled();
-
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill(DELETE_TERM);
+      await page.click(`[data-testid="hard-delete"]`);
 
       const deleteResponse = page.waitForResponse(
         `/api/v1/teams/*?hardDelete=true&recursive=true`
       );
-
-      await expect(
-        page.locator('[data-testid="confirm-button"]')
-      ).not.toBeDisabled();
 
       await page.click('[data-testid="confirm-button"]');
       await deleteResponse;

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import classNames from 'classnames';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
@@ -35,7 +34,8 @@ interface TaskListV1Props {
 }
 
 const TaskListV1 = ({
-  taskList,
+  // The ActivityFeedProvider context defaults to `{}`, so this can be undefined
+  taskList = [],
   isLoading,
   onTaskClick,
   activeFeedId,
@@ -53,12 +53,17 @@ const TaskListV1 = ({
   }, [taskList, selectedTask, onTaskClick]);
 
   useEffect(() => {
+    // While a fetch is in flight the list is intentionally empty; collapsing the
+    // right panel here would flash the layout on every sub-tab/filter switch.
+    if (isLoading) {
+      return;
+    }
     if (isEmpty(taskList) && handlePanelResize) {
       handlePanelResize?.(true);
     } else {
       handlePanelResize?.(false);
     }
-  }, [taskList]);
+  }, [taskList, isLoading, handlePanelResize]);
 
   const tasks = useMemo(
     () =>
@@ -87,18 +92,18 @@ const TaskListV1 = ({
         <ErrorPlaceHolderNew
           icon={<FeedEmptyIcon height={140} width={140} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph
-            className="placeholder-text"
-            style={{ marginBottom: '0' }}>
+          <Typography as="div" className="placeholder-text tw:break-words">
             {emptyPlaceholderText}
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolderNew>
       </div>
     );
   }
 
   return (
-    <div className={classNames('activity-feed-tab-padding')} id="taskData">
+    // Padding lives here, not in .activity-feed-tab-padding: that rule's stylesheet
+    // is not loaded on every page that renders this list (e.g. the incident tab).
+    <div className="tw:p-5" id="taskData">
       {tasks}
     </div>
   );

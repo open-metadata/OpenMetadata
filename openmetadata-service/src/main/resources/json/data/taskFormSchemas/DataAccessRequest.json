@@ -7,7 +7,8 @@
   "workflowDefinitionRef": "DataAccessRequestTaskWorkflow",
   "formSchema": {
     "type": "object",
-    "required": ["accessType", "reason"],
+    "required": ["accessType", "reason", "expirationDate"],
+    "additionalProperties": false,
     "properties": {
       "accessType": {
         "type": "string",
@@ -17,10 +18,12 @@
       },
       "columns": {
         "type": "array",
-        "title": "Select Columns",
+        "title": "Selected Columns",
         "items": {
-          "type": "string"
+          "type": "string",
+          "minLength": 1
         },
+        "uniqueItems": true,
         "default": []
       },
       "requestedAccess": {
@@ -29,17 +32,28 @@
         "enum": ["Read", "Write", "Admin"],
         "default": "Read"
       },
-      "duration": {
-        "type": "string",
-        "title": "Duration"
+      "expirationDate": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 7258118400000,
+        "title": "Expiration Date"
       },
       "reason": {
         "type": "string",
+        "minLength": 10,
+        "maxLength": 2000,
+        "pattern": "\\S",
         "title": "Access Reason"
       },
       "ticketId": {
         "type": "string",
+        "maxLength": 128,
         "title": "External Ticket ID"
+      },
+      "manualGrantReason": {
+        "type": "string",
+        "maxLength": 2000,
+        "title": "Manual Grant Reason"
       }
     }
   },
@@ -52,7 +66,7 @@
       "accessType",
       "columns",
       "requestedAccess",
-      "duration",
+      "expirationDate",
       "reason",
       "ticketId"
     ],
@@ -65,8 +79,8 @@
     "requestedAccess": {
       "ui:widget": "select"
     },
-    "duration": {
-      "ui:widget": "durationSelector"
+    "expirationDate": {
+      "ui:widget": "dateTimePicker"
     },
     "reason": {
       "ui:widget": "textarea"

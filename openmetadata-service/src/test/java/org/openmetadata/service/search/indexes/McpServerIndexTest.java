@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -82,16 +84,21 @@ class McpServerIndexTest {
   }
 
   @Test
-  void testBuildSearchIndexDocInternal_returnsEmptyDoc() {
+  void testBuildSearchIndexDocInternal_projectsAiGovernanceFields() {
     McpServer server =
-        new McpServer().withId(UUID.randomUUID()).withName("s").withFullyQualifiedName("s");
+        new McpServer()
+            .withId(UUID.randomUUID())
+            .withName("s")
+            .withFullyQualifiedName("s")
+            .withServerType(McpServerType.Database);
 
     McpServerIndex index = new McpServerIndex(server);
-    Map<String, Object> doc = new java.util.HashMap<>();
+    Map<String, Object> doc = new HashMap<>();
     Map<String, Object> result = index.buildSearchIndexDocInternal(doc);
 
-    // buildSearchIndexDocInternal now has no entity-specific fields for McpServer
-    assertTrue(result.isEmpty());
+    Object projection = result.get("aiGovernance");
+    assertInstanceOf(Map.class, projection);
+    assertEquals("Database", ((Map<?, ?>) projection).get("assetSubtype"));
   }
 
   @Test

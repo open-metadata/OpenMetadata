@@ -14,6 +14,7 @@ import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 
 class AwsCredentialsUtilTest {
@@ -183,6 +184,15 @@ class AwsCredentialsUtilTest {
 
     assertEquals(URI.create("http://localhost:4566"), config.getEndpointUrl());
     assertTrue(AwsCredentialsUtil.isAwsConfigured(config));
+  }
+
+  @Test
+  void testThrottleResilientOverrideRetriesBeyondSdkDefault() {
+    ClientOverrideConfiguration override =
+        AwsCredentialsUtil.throttleResilientOverrideConfiguration();
+
+    assertTrue(override.retryStrategy().isPresent());
+    assertEquals(10, override.retryStrategy().get().maxAttempts());
   }
 
   @Test

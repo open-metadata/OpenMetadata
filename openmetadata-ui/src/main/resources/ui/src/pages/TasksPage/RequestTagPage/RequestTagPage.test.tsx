@@ -41,8 +41,8 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
     </>
   ))
 );
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
+jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
@@ -60,8 +60,13 @@ jest.mock('../../../utils/TasksUtils', () => ({
         ],
       });
     }),
-  fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
+}));
+jest.mock('../../../utils/TaskAssigneeUtils', () => ({
+  fetchOptions: jest.fn(),
+}));
+jest.mock('../../../utils/TaskFieldUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskAssignee: jest.fn().mockReturnValue(MOCK_TASK_ASSIGNEE),
   getTaskEntityFQN: jest
@@ -82,10 +87,8 @@ jest.mock('../../../rest/taskFormSchemasAPI', () => ({
   resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
 }));
 jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
   createTask: jest.fn().mockResolvedValue({}),
-  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
-  TaskEntityType: { TagUpdate: 'TagUpdate' },
-  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock(
   '../../../components/ExploreV1/ExploreSearchCard/ExploreSearchCard',

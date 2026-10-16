@@ -14,46 +14,20 @@
 @import (reference) '../../../../../styles/variables.less';
 
 .user-permissions-container {
-  padding: 16px;
+  padding: var(--om-space-16);
   max-width: 1200px;
 
-  .user-permissions-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 400px;
-  }
-
-  .ant-card {
-    margin-bottom: 24px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-  }
-
-  .policy-collapse {
-    .ant-collapse-header {
-      padding-left: 0 !important;
-    }
-
-    .ant-collapse-content-box {
-      padding-left: 24px;
-    }
-  }
-
   .rule-item {
-    padding: 12px;
+    padding: var(--om-space-12);
     background-color: @grey-1;
-    border-radius: 4px;
-    margin-bottom: 8px;
-
-    .ant-tag {
-      margin-bottom: 4px;
-    }
+    border-radius: var(--om-radius-sm);
+    margin-bottom: var(--om-space-8);
   }
 
   .team-permission {
-    padding-bottom: 16px;
+    padding-bottom: var(--om-space-16);
     &:last-child {
-      .ant-divider {
+      .team-permission-divider {
         display: none;
       }
     }
@@ -69,34 +43,34 @@
   }
 
   .m-t-sm {
-    margin-top: 8px;
+    margin-top: var(--om-space-8);
   }
 
   .m-t-md {
-    margin-top: 16px;
+    margin-top: var(--om-space-16);
   }
 
   .m-t-xs {
-    margin-top: 4px;
+    margin-top: var(--om-space-4);
   }
 
   .m-b-xs {
-    margin-bottom: 4px;
+    margin-bottom: var(--om-space-4);
   }
 
   .m-b-sm {
-    margin-bottom: 8px;
+    margin-bottom: var(--om-space-8);
   }
 
   .m-b-md {
-    margin-bottom: 16px;
+    margin-bottom: var(--om-space-16);
   }
 
   .m-b-lg {
-    margin-bottom: 24px;
+    margin-bottom: var(--om-space-24);
   }
 
   .m-r-xs {
-    margin-right: 4px;
+    margin-right: var(--om-space-4);
   }
 }

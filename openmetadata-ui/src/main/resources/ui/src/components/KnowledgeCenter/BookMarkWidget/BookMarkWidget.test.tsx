@@ -15,10 +15,10 @@ import {
   screen,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
-import { User } from 'generated/entity/teams/user';
-import { useApplicationStore } from 'hooks/useApplicationStore';
 import { MemoryRouter } from 'react-router-dom';
-import { getUserById } from 'rest/userAPI';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getUserById } from '../../../rest/userAPI';
 import BookMarkWidget from './BookMarkWidget';
 
 const mockUserData: User = {
@@ -87,7 +87,7 @@ describe('BookMarkWidget', () => {
     expect(bookmarkedPage).toHaveTextContent('test-page-name');
     expect(bookmarkedPage).toHaveAttribute(
       'href',
-      '/knowledge-center/test-page-fqn'
+      '/context-center/articles/test-page-fqn'
     );
 
     expect(screen.getByText('label.bookmark-plural')).toBeInTheDocument();
@@ -127,10 +127,6 @@ describe('BookMarkWidget', () => {
     expect(screen.queryByText('test-page-name')).not.toBeInTheDocument();
     expect(screen.queryByText('test-page-fqn')).not.toBeInTheDocument();
     expect(screen.queryByText('Mocked showErrorToast')).not.toBeInTheDocument();
-
-    expect(
-      screen.getByText('message.not-bookmark-anything')
-    ).toBeInTheDocument();
   });
 
   it("should render the title as 'Untitled' if the displayName is not present", async () => {
@@ -157,7 +153,7 @@ describe('BookMarkWidget', () => {
     expect(bookmarkedPage).toHaveTextContent('label.untitled');
     expect(bookmarkedPage).toHaveAttribute(
       'href',
-      '/knowledge-center/test-page-fqn'
+      '/context-center/articles/test-page-fqn'
     );
   });
 });

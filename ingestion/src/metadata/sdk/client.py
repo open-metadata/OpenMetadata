@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, Optional, cast
+from typing import ClassVar, cast
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     AuthProvider,
@@ -15,23 +15,31 @@ from metadata.sdk.config import OpenMetadataConfig  # noqa: TC001
 from metadata.sdk.types import OMetaClient
 
 
+def verify_ssl_mode(config: OpenMetadataConfig) -> VerifySSL:
+    """Map the SDK's boolean ``verify_ssl`` onto the ingestion client's mode.
+
+    ``no_ssl`` hands requests no ``verify`` override, so it checks the certificate
+    against the system CAs; ``ignore`` is the only mode that skips the check, and
+    so is reserved for an explicit ``verify_ssl=False``.
+    """
+    if not config.verify_ssl:
+        return VerifySSL.ignore
+    if config.ca_bundle:
+        return VerifySSL.validate
+    return VerifySSL.no_ssl
+
+
 class OpenMetadata:
     """Main SDK client for OpenMetadata."""
 
-    _instance: ClassVar[Optional["OpenMetadata"]] = None  # noqa: UP037, UP045
-    _default_client: ClassVar[Optional[OMetaClient]] = None  # noqa: UP045
+    _instance: ClassVar["OpenMetadata" | None] = None  # noqa: UP037
+    _default_client: ClassVar[OMetaClient | None] = None
 
     def __init__(self, config: OpenMetadataConfig):
         """Initialize OpenMetadata client."""
         self.config: OpenMetadataConfig = config
 
-        # Convert boolean verify_ssl to enum
-        if not config.verify_ssl:
-            verify_ssl = VerifySSL.no_ssl
-        elif config.ca_bundle:
-            verify_ssl = VerifySSL.validate
-        else:
-            verify_ssl = VerifySSL.ignore
+        verify_ssl = verify_ssl_mode(config)
 
         # Create OpenMetadataConnection from config
         ssl_config = config.to_ssl_config()

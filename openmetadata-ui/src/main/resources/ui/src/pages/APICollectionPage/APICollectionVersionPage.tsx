@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isUndefined, toString } from 'lodash';
@@ -19,7 +20,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { CustomPropertyTable } from '../../components/common/CustomPropertyTable/CustomPropertyTable';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
+import Description from '../../components/common/EntityDescription/Description';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -31,25 +32,21 @@ import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { APICollection } from '../../generated/entity/data/apiCollection';
 import { APIEndpoint } from '../../generated/entity/data/apiEndpoint';
-import { Operation } from '../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../generated/entity/type';
 import { EntityHistory } from '../../generated/type/entityHistory';
 import { Include } from '../../generated/type/include';
 import { TagSource } from '../../generated/type/tagLabel';
 import { usePaging } from '../../hooks/paging/usePaging';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import {
   getApiCollectionByFQN,
@@ -60,25 +57,20 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
-} from '../../utils/EntityVersionUtils';
-import {
-  DEFAULT_ENTITY_PERMISSION,
-  getPrioritizedViewPermission,
-} from '../../utils/PermissionsUtils';
+} from '../../utils/EntityVersionUtilsPure';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import APIEndpointsTab from './APIEndpointsTab';
-
 const APICollectionVersionPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { getEntityPermissionByFqn } = usePermissionProvider();
   const { version, tab } = useRequiredParams<{
     version: string;
     tab: string;
@@ -96,9 +88,24 @@ const APICollectionVersionPage = () => {
     currentPage,
   } = pagingInfo;
 
-  const [collectionPermissions, setCollectionPermissions] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const {
+    permissions: collectionPermissions,
+    isLoading: isPermissionsLoading,
+    error: permissionsError,
+    hasViewAccess: viewVersionPermission,
+    canViewCustomFields: viewCustomPropertiesPermission,
+  } = useEntityPermissions(ResourceEntity.API_COLLECTION, decodedEntityFQN, {
+    enabled: Boolean(decodedEntityFQN),
+  });
+
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
+
+  const [isCollectionLoading, setIsCollectionLoading] = useState<boolean>(true);
+  const isLoading = isPermissionsLoading || isCollectionLoading;
   const [isVersionDataLoading, setIsVersionDataLoading] =
     useState<boolean>(true);
 
@@ -124,61 +131,51 @@ const APICollectionVersionPage = () => {
       [currentVersionData]
     );
 
-  const viewVersionPermission = useMemo(
-    () => collectionPermissions.ViewAll || collectionPermissions.ViewBasic,
-    [collectionPermissions]
-  );
-
-  const viewCustomPropertiesPermission = useMemo(
+  const {
+    ownerDisplayName,
+    ownerRef,
+    tierDisplayName,
+    domainDisplayName,
+    domainRef,
+  } = useMemo(
     () =>
-      getPrioritizedViewPermission(
-        collectionPermissions,
-        Operation.ViewCustomFields
+      getCommonExtraInfoForVersionDetails(
+        currentVersionData?.changeDescription as ChangeDescription,
+        owners,
+        tier,
+        domains
       ),
-    [collectionPermissions]
+    [currentVersionData?.changeDescription, owners, tier, domains]
   );
-  const { ownerDisplayName, ownerRef, tierDisplayName, domainDisplayName } =
-    useMemo(
-      () =>
-        getCommonExtraInfoForVersionDetails(
-          currentVersionData?.changeDescription as ChangeDescription,
-          owners,
-          tier,
-          domains
-        ),
-      [currentVersionData?.changeDescription, owners, tier, domains]
-    );
 
+  // Permission fetching now lives in useEntityPermissions (above). This keeps the same
+  // "only fetch the collection once view access is known" gate the old imperative `init()`
+  // had (its `if (permission.ViewAll || permission.ViewBasic)` branch) — just reactive to
+  // the hook's resolved viewVersionPermission instead of a same-tick local variable.
   const init = useCallback(async () => {
+    if (!viewVersionPermission) {
+      setIsCollectionLoading(false);
+
+      return;
+    }
     try {
-      setIsLoading(true);
-      const permission = await getEntityPermissionByFqn(
-        ResourceEntity.API_COLLECTION,
-        decodedEntityFQN
+      setIsCollectionLoading(true);
+      const collectionResponse = await getApiCollectionByFQN(decodedEntityFQN, {
+        include: Include.All,
+      });
+      setCollection(collectionResponse);
+
+      const versions = await getApiCollectionVersions(
+        collectionResponse.id ?? ''
       );
-      setCollectionPermissions(permission);
 
-      if (permission.ViewAll || permission.ViewBasic) {
-        const collectionResponse = await getApiCollectionByFQN(
-          decodedEntityFQN,
-          {
-            include: Include.All,
-          }
-        );
-        setCollection(collectionResponse);
-
-        const versions = await getApiCollectionVersions(
-          collectionResponse.id ?? ''
-        );
-
-        setVersionList(versions);
-      }
+      setVersionList(versions);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsLoading(false);
+      setIsCollectionLoading(false);
     }
-  }, [decodedEntityFQN, getEntityPermissionByFqn]);
+  }, [decodedEntityFQN, viewVersionPermission]);
 
   const getAPICollectionEndpoints = useCallback(
     async (params?: Pick<GetApiEndPointsType, 'paging'>) => {
@@ -292,23 +289,28 @@ const APICollectionVersionPage = () => {
         ),
         key: EntityTabs.API_ENDPOINT,
         children: (
-          <Row className="h-full" gutter={[0, 16]} wrap={false}>
-            <Col className="p-t-sm m-x-lg" span={24}>
-              <DescriptionV1
+          <Box className="h-full">
+            <div className="p-t-sm m-x-lg">
+              <Description
                 description={description}
                 entityType={EntityType.API_COLLECTION}
                 isDescriptionExpanded={isEmpty(apiEndpoints)}
                 showActions={false}
               />
-            </Col>
-            <Col className="p-t-sm m-x-lg" flex="auto">
+            </div>
+            <div className="p-t-sm m-x-lg tw:min-w-0 tw:flex-auto">
               <APIEndpointsTab isVersionView />
-            </Col>
-            <Col
-              className="entity-tag-right-panel-container"
-              data-testid="entity-right-panel"
-              flex="220px">
-              <Space className="w-full" direction="vertical" size="large">
+            </div>
+            <div
+              className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
+              data-testid="entity-right-panel">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -327,9 +329,9 @@ const APICollectionVersionPage = () => {
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
-            </Col>
-          </Row>
+              </Box>
+            </div>
+          </Box>
         ),
       },
 
@@ -388,14 +390,15 @@ const APICollectionVersionPage = () => {
           <Loader />
         ) : (
           <div className={classNames('version-data')}>
-            <Row gutter={[0, 12]}>
-              <Col span={24}>
+            <Box direction="col" gap={3}>
+              <div>
                 <DataAssetsVersionHeader
                   breadcrumbLinks={breadcrumbLinks}
                   currentVersionData={currentVersionData}
                   deleted={deleted}
                   displayName={displayName}
                   domainDisplayName={domainDisplayName}
+                  domains={domainRef}
                   entityType={EntityType.API_COLLECTION}
                   ownerDisplayName={ownerDisplayName}
                   ownerRef={ownerRef}
@@ -403,7 +406,7 @@ const APICollectionVersionPage = () => {
                   version={version}
                   onVersionClick={backHandler}
                 />
-              </Col>
+              </div>
               <GenericProvider
                 isVersionView
                 currentVersionData={currentVersionData}
@@ -411,17 +414,28 @@ const APICollectionVersionPage = () => {
                 permissions={collectionPermissions}
                 type={EntityType.API_COLLECTION}
                 onUpdate={() => Promise.resolve()}>
-                <Col className="entity-version-page-tabs" span={24}>
+                <div className="entity-version-page-tabs">
                   <Tabs
-                    className="tabs-new"
+                    className="tw:gap-3"
                     data-testid="tabs"
-                    defaultActiveKey={tab}
-                    items={tabs}
-                    onChange={handleTabChange}
-                  />
-                </Col>
+                    defaultSelectedKey={getRenderedActiveTab(tabs, tab)}
+                    onSelectionChange={(key) => handleTabChange(String(key))}>
+                    <Tabs.List size="sm" type="underline" variant="card">
+                      {tabs.map(({ key, label }) => (
+                        <Tabs.Item id={key} key={key}>
+                          {label}
+                        </Tabs.Item>
+                      ))}
+                    </Tabs.List>
+                    {tabs.map(({ key, children }) => (
+                      <Tabs.Panel id={key} key={key}>
+                        {children}
+                      </Tabs.Panel>
+                    ))}
+                  </Tabs>
+                </div>
               </GenericProvider>
-            </Row>
+            </Box>
           </div>
         )}
 
@@ -454,10 +468,10 @@ const APICollectionVersionPage = () => {
   ]);
 
   useEffect(() => {
-    if (!isEmpty(decodedEntityFQN)) {
+    if (!isEmpty(decodedEntityFQN) && !isPermissionsLoading) {
       init();
     }
-  }, [decodedEntityFQN]);
+  }, [decodedEntityFQN, isPermissionsLoading, init]);
 
   useEffect(() => {
     if (!isUndefined(collection)) {

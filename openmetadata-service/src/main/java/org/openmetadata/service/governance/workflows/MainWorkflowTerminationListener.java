@@ -13,12 +13,19 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 public class MainWorkflowTerminationListener implements JavaDelegate {
   @Override
   public void execute(DelegateExecution execution) {
+    // businessKey identifies the OM WorkflowInstance; a null key means the process was not
+    // started through the OM trigger path so there is no WorkflowInstance row to update.
+    String businessKey = execution.getProcessInstanceBusinessKey();
+    if (businessKey == null || businessKey.isBlank()) {
+      return;
+    }
+
     try {
       WorkflowInstanceRepository workflowInstanceRepository =
           (WorkflowInstanceRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
 
-      UUID workflowInstanceId = UUID.fromString(execution.getProcessInstanceBusinessKey());
+      UUID workflowInstanceId = UUID.fromString(businessKey);
       workflowInstanceRepository.updateWorkflowInstance(
           workflowInstanceId, System.currentTimeMillis(), execution.getVariables());
     } catch (Exception exc) {

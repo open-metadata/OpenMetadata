@@ -21,11 +21,19 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
+import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class SearchIndexHandler implements EntityLifecycleEventHandler {
+
+  private static final String OP_CREATE_INDEX = "createEntityIndex";
+  private static final String OP_UPDATE_INDEX = "updateEntityIndex";
+  private static final String OP_DELETE_INDEX = "deleteEntityIndex";
+  private static final String OP_SOFT_DELETE_INDEX = "softDeleteEntityIndex";
+  private static final String OP_RESTORE_INDEX = "restoreEntityIndex";
 
   private final SearchRepository searchRepository;
 
@@ -34,7 +42,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
   }
 
   @Override
-  public void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityCreated(EntityInterface<?> entity, SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityCreated");
       return;
@@ -47,12 +55,15 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, OP_CREATE_INDEX, e);
     }
   }
 
   @Override
   public void onEntityUpdated(
-      EntityInterface entity, ChangeDescription changeDescription, SubjectContext subjectContext) {
+      EntityInterface<?> entity,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityUpdated");
       return;
@@ -65,6 +76,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, OP_UPDATE_INDEX, e);
     }
   }
 
@@ -82,11 +94,16 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entityRef.getType(),
           entityRef.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(
+          entityRef.getId() != null ? entityRef.getId().toString() : null,
+          entityRef.getFullyQualifiedName(),
+          entityRef.getType() == null ? "" : entityRef.getType(),
+          SearchIndexRetryQueue.failureReason(OP_UPDATE_INDEX, e));
     }
   }
 
   @Override
-  public void onEntityDeleted(EntityInterface entity, SubjectContext subjectContext) {
+  public void onEntityDeleted(EntityInterface<?> entity, SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntityDeleted");
       return;
@@ -99,12 +116,13 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, OP_DELETE_INDEX, e);
     }
   }
 
   @Override
   public void onEntitySoftDeletedOrRestored(
-      EntityInterface entity, boolean isDeleted, SubjectContext subjectContext) {
+      EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
     if (entity == null) {
       LOG.warn("Received null entity in onEntitySoftDeletedOrRestored");
       return;
@@ -118,6 +136,7 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
           entity.getEntityReference().getType(),
           entity.getId(),
           e);
+      SearchIndexRetryQueue.enqueue(entity, isDeleted ? OP_SOFT_DELETE_INDEX : OP_RESTORE_INDEX, e);
     }
   }
 
@@ -133,27 +152,29 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
 
   @Override
   public boolean isAsync() {
-    // Search indexing must be visible to follow-up operations in the same request flow
-    // (e.g., postCreate hooks that immediately update the indexed document).
+    // Search indexing must be visible to follow-up operations in the same request flow (e.g., a
+    // postCreate hook that immediately updates the indexed document, or a create-then-search). It
+    // therefore runs synchronously post-commit on the request thread — never deferred to a
+    // background lane, which would make the entity eventually consistent and break read-your-write.
     return false;
   }
 
-  public void onEntitiesCreated(List<EntityInterface> entities, SubjectContext subjectContext) {
+  public void onEntitiesCreated(List<EntityInterface<?>> entities, SubjectContext subjectContext) {
     if (entities == null || entities.isEmpty()) {
       LOG.warn("Received null entities in onEntitiesCreated");
       return;
     }
 
     try {
-      Map<String, List<EntityInterface>> entitiesByType =
+      Map<String, List<EntityInterface<?>>> entitiesByType =
           entities.stream().collect(Collectors.groupingBy(e -> e.getEntityReference().getType()));
 
-      for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+      for (Map.Entry<String, List<EntityInterface<?>>> entry : entitiesByType.entrySet()) {
         searchRepository.createEntitiesIndex(entry.getValue());
       }
     } catch (Exception e) {
       LOG.error("Failed to create search indexes for {} entities", entities.size(), e);
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         onEntityCreated(entity, subjectContext);
       }
     }
@@ -165,28 +186,44 @@ public class SearchIndexHandler implements EntityLifecycleEventHandler {
    */
   @Override
   public void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
+      List<? extends EntityInterface<?>> entities,
       ChangeDescription changeDescription,
       SubjectContext subjectContext) {
+    onEntitiesUpdated(entities, changeDescription, subjectContext, EntityUpdateContext.empty());
+  }
+
+  @Override
+  public void onEntitiesUpdated(
+      List<? extends EntityInterface<?>> entities,
+      ChangeDescription changeDescription,
+      SubjectContext subjectContext,
+      EntityUpdateContext updateContext) {
     if (entities == null || entities.isEmpty()) {
       LOG.warn("Received null entities in onEntitiesUpdated");
       return;
     }
 
     LOG.debug("Search index handler: Updating search indexes for {} entities", entities.size());
+    EntityUpdateContext effectiveContext =
+        updateContext == null ? EntityUpdateContext.empty() : updateContext;
 
     try {
-      searchRepository.updateEntitiesIndex(entities);
+      searchRepository.updateEntitiesIndex(entities, effectiveContext.relationshipRevisions());
       LOG.debug("Successfully updated search indexes for {} entities", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk update search indexes for {} entities", entities.size(), e);
-      for (EntityInterface entity : entities) {
-        onEntityUpdated(
-            entity,
-            entity.getChangeDescription() != null
-                ? entity.getChangeDescription()
-                : changeDescription,
-            subjectContext);
+      for (EntityInterface<?> entity : entities) {
+        Long relationshipRevision = effectiveContext.relationshipRevisions().get(entity.getId());
+        if (relationshipRevision == null) {
+          onEntityUpdated(
+              entity,
+              entity.getChangeDescription() != null
+                  ? entity.getChangeDescription()
+                  : changeDescription,
+              subjectContext);
+        } else {
+          searchRepository.updateEntityIndex(entity, relationshipRevision);
+        }
       }
     }
   }

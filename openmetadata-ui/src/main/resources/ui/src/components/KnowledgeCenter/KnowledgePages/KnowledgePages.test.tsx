@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { MOCK_KNOWLEDGE_PAGES } from 'pages/KnowledgePage/KnowledgePage.mock';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { getListKnowledgePages } from 'rest/knowledgeCenterAPI';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
+import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
+import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
 
 const mockProps = {
   entityId: '6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2',
@@ -29,6 +32,9 @@ jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+}));
+
+jest.mock('components/Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { id: mockProps.entityId },
     type: mockProps.entityType,
@@ -36,7 +42,7 @@ jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   })),
 }));
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation(
@@ -59,7 +65,7 @@ describe('KnowledgePages', () => {
     });
 
     expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
-    expect(screen.getByText('label.knowledge-center')).toBeInTheDocument();
+    expect(screen.getByText('label.context-center')).toBeInTheDocument();
 
     // article page
     expect(screen.getByText('Data Collaboration')).toBeInTheDocument();
@@ -95,6 +101,32 @@ describe('KnowledgePages', () => {
       'https://blog.open-metadata.org/openmetadata-release-1-2-531f0e3c6d9a'
     );
     expect(pageLink).toHaveAttribute('target', '_blank');
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    (getListKnowledgePages as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [
+          {
+            ...MOCK_KNOWLEDGE_PAGES[1],
+            page: { url: 'javascript:alert(document.domain)' },
+          },
+        ],
+        paging: {
+          total: 10,
+        },
+      })
+    );
+    await act(async () => {
+      render(<KnowledgePages />, { wrapper: MemoryRouter });
+    });
+
+    const pageLink = screen.getByTestId('page-link');
+
+    // getSafeHttpUrl drops the javascript: scheme, so the '#' fallback is used —
+    // React Router renders that as href="/", never the script url.
+    expect(pageLink.getAttribute('href')).not.toContain('javascript:');
+    expect(pageLink).toHaveAttribute('href', '/');
   });
 
   it('should not render when data is empty', async () => {
@@ -166,7 +198,7 @@ describe('KnowledgePages', () => {
 
     expect(viewAllLink).toHaveAttribute(
       'href',
-      `/knowledge-center-filter?entityId=${mockProps.entityId}&entityType=${mockProps.entityType}`
+      `/context-center/filter?entityId=${mockProps.entityId}&entityType=${mockProps.entityType}`
     );
   });
 
@@ -199,6 +231,30 @@ describe('KnowledgePages', () => {
 
     expect(getListKnowledgePages).not.toHaveBeenCalled();
 
+    expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
+  });
+
+  it('should not fetch knowledge pages for the tour mock entity', async () => {
+    // The previous test empties the shared entity; a real one is what makes this meaningful.
+    mockProps.entityId = '9d664bbd-8c9e-4068-9112-9ab0457d4c52';
+    mockProps.entityType = 'table';
+    (getListKnowledgePages as jest.Mock).mockClear();
+
+    await act(async () => {
+      render(
+        <TourContext.Provider
+          value={
+            {
+              isTourPage: true,
+            } as Partial<TourProviderContextProps> as TourProviderContextProps
+          }>
+          <KnowledgePages />
+        </TourContext.Provider>,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(getListKnowledgePages).not.toHaveBeenCalled();
     expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
   });
 });

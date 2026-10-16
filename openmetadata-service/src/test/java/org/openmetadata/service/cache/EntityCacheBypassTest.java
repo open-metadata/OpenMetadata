@@ -24,8 +24,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Behaviour tests for the reindex cache-bypass thread-local. Pins the contract used by
- * {@code PartitionWorker.processPartition}, {@code EntityReader.readKeysetBatches}, and
- * {@code SearchIndexExecutor} to opt their reader threads out of the entity cache.
+ * {@code PartitionWorker.processPartition} to opt reader threads out of the entity cache.
  */
 class EntityCacheBypassTest {
 

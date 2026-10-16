@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, Tooltip } from 'antd';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
-  DE_ACTIVE_COLOR,
   PAGE_SIZE_MEDIUM,
   TEXT_GREY_MUTED,
 } from '../../../constants/constants';
@@ -24,19 +24,17 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
-
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
+import AnchoredPopover from '../AnchoredPopover/AnchoredPopover';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserTag } from '../UserTag/UserTag.component';
-import './user-select-dropdown.less';
+// import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
 
 type UserReferenceWithBotFlag = EntityReference & { isBot?: boolean };
@@ -47,6 +45,7 @@ export const UserSelectableList = ({
   onUpdate,
   children,
   popoverProps,
+  onClose,
   multiSelect = true,
   filterCurrentUser = false,
   includeBot = false,
@@ -81,6 +80,68 @@ export const UserSelectableList = ({
     []
   );
 
+  const removeCurrentUserFromList = (list: EntityReference[]) => {
+    if (!filterCurrentUser) {
+      return list;
+    }
+    const user = list.find((item) => item.id === currentUser?.id);
+    if (user) {
+      list.splice(list.indexOf(user), 1);
+    }
+
+    return list;
+  };
+
+  const fetchUsersBySearch = async (searchText: string) => {
+    try {
+      const res = await searchQuery({
+        query: searchText,
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: includeBot ? undefined : getTermQuery({ isBot: 'false' }),
+        searchIndex: SearchIndex.USER,
+      });
+
+      const users = formatUsersResponse(res.hits.hits);
+
+      if (includeBot) {
+        trackBots(users);
+      }
+
+      const data = getEntityReferenceListFromEntities(users, EntityType.USER);
+
+      return {
+        data: removeCurrentUserFromList(data),
+        paging: { total: res.hits.total.value },
+      };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
+    }
+  };
+
+  const fetchUsersList = async (after?: string) => {
+    try {
+      const { data, paging } = await getUsers({
+        limit: PAGE_SIZE_MEDIUM,
+        after: after ?? undefined,
+        ...(includeBot ? {} : { isBot: false }),
+      });
+
+      if (includeBot) {
+        trackBots(data);
+      }
+
+      const filterData = getEntityReferenceListFromEntities(
+        data,
+        EntityType.USER
+      );
+
+      return { data: removeCurrentUserFromList(filterData), paging };
+    } catch (error) {
+      return { data: [], paging: { total: 0 } };
+    }
+  };
+
   const fetchOptions = async (searchText: string, after?: string) => {
     if (!after) {
       botUserIds.current.clear();
@@ -89,64 +150,10 @@ export const UserSelectableList = ({
       }
     }
     if (searchText) {
-      try {
-        const res = await searchQuery({
-          query: searchText,
-          pageNumber: 1,
-          pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: includeBot
-            ? undefined
-            : getTermQuery({ isBot: 'false' }),
-          searchIndex: SearchIndex.USER,
-        });
-
-        const users = formatUsersResponse(res.hits.hits);
-
-        if (includeBot) {
-          trackBots(users);
-        }
-
-        const data = getEntityReferenceListFromEntities(users, EntityType.USER);
-
-        if (filterCurrentUser) {
-          const user = data.find((user) => user.id === currentUser?.id);
-          if (user) {
-            data.splice(data.indexOf(user), 1);
-          }
-        }
-
-        return { data, paging: { total: res.hits.total.value } };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
-    } else {
-      try {
-        const { data, paging } = await getUsers({
-          limit: PAGE_SIZE_MEDIUM,
-          after: after ?? undefined,
-          ...(includeBot ? {} : { isBot: false }),
-        });
-
-        if (includeBot) {
-          trackBots(data);
-        }
-
-        const filterData = getEntityReferenceListFromEntities(
-          data,
-          EntityType.USER
-        );
-        if (filterCurrentUser) {
-          const user = filterData.find((user) => user.id === currentUser?.id);
-          if (user) {
-            filterData.splice(filterData.indexOf(user), 1);
-          }
-        }
-
-        return { data: filterData, paging };
-      } catch (error) {
-        return { data: [], paging: { total: 0 } };
-      }
+      return fetchUsersBySearch(searchText);
     }
+
+    return fetchUsersList(after);
   };
 
   const handleUpdate = useCallback(
@@ -165,7 +172,11 @@ export const UserSelectableList = ({
     (item: EntityReference) => (
       <div className="d-flex items-center gap-2">
         {botUserIds.current.has(item.id) && (
-          <Tooltip title={t('label.bot')}>
+          <Tooltip
+            arrow
+            excludeTriggerFromTabOrder
+            title={t('label.bot')}
+            triggerClassName="tw:inline-flex">
             <BotIcon
               aria-label={t('label.bot')}
               color={TEXT_GREY_MUTED}
@@ -185,9 +196,16 @@ export const UserSelectableList = ({
     [t]
   );
 
+  const isOpen = popoverProps?.open ?? popupVisible;
+
+  const handleOpenChange = (open: boolean) => {
+    setPopupVisible(open);
+    popoverProps?.onOpenChange?.(open);
+  };
+
   return (
-    <Popover
-      destroyTooltipOnHide
+    <AnchoredPopover
+      className="user-select-popover"
       content={
         <SelectableList
           customTagRenderer={includeBot ? botTagRenderer : undefined}
@@ -197,31 +215,31 @@ export const UserSelectableList = ({
             type: t('label.user'),
           })}
           selectedItems={selectedUsers}
-          onCancel={() => setPopupVisible(false)}
+          onCancel={() => {
+            handleOpenChange(false);
+            onClose?.();
+          }}
           onUpdate={handleUpdate}
         />
       }
-      open={popupVisible}
-      overlayClassName="user-select-popover p-0"
-      placement="bottomRight"
-      showArrow={false}
-      trigger="click"
-      onOpenChange={setPopupVisible}
-      {...popoverProps}>
+      isOpen={isOpen}
+      placement={popoverProps?.placement ?? 'bottom end'}
+      onOpenChange={handleOpenChange}>
       {children ?? (
         <Tooltip
-          placement="topRight"
-          title={hasPermission ? '' : t(NO_PERMISSION_FOR_ACTION)}>
-          <Button
-            className="p-0 flex-center"
+          arrow
+          isDisabled={hasPermission}
+          placement="top right"
+          title={t(NO_PERMISSION_FOR_ACTION)}>
+          <ButtonUtility
+            color="tertiary"
             data-testid="add-user"
-            disabled={!hasPermission}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="14px" />}
-            size="small"
-            type="text"
+            icon={EditIcon}
+            isDisabled={!hasPermission}
+            size="xs"
           />
         </Tooltip>
       )}
-    </Popover>
+    </AnchoredPopover>
   );
 };

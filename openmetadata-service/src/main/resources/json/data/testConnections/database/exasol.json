@@ -30,8 +30,8 @@
     },
     {
       "name": "GetQueries",
-      "description": "Check if we can access the EXA_DBA_AUDIT_SQL table to get query logs, These queries are analyzed in the usage & lineage workflow.",
-      "errorMessage": "Failed to fetch queries, please validate if Exasol instance has EXA_DBA_AUDIT_SQL extension installed and the user has at least select privileges for EXA_DBA_AUDIT_SQL table.",
+      "description": "Check if we can access the EXA_DBA_AUDIT_SQL and EXA_DBA_AUDIT_SESSIONS tables to get query logs. These tables are used for the lineage workflow.",
+      "errorMessage": "Failed to fetch queries, please validate that the Exasol user has the `SELECT ANY DICTIONARY` system privilege and that the Exasol instance has auditing enabled.",
       "mandatory": false
     }
   ]

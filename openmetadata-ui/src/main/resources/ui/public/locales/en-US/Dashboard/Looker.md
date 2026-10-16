@@ -18,7 +18,7 @@ The GitHub credentials are completely optional. Just note that without them, we 
 
 $$
 
-You can find further information on the Kafka connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/looker" target="_blank">docs</a>.
+You can find further information on the Looker connector in the <a href="https://docs.open-metadata.org/connectors/dashboard/looker" target="_blank">docs</a>.
 
 ## Connection Details
 

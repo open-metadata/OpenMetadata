@@ -31,4 +31,5 @@ export enum SupportedLocales {
   मराठी = 'mr-IN',
   Türkçe = 'tr-TR',
   العربية = 'ar-SA',
+  Svenska = 'sv-SE',
 }

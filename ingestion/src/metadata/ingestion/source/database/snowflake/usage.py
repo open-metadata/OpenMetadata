@@ -13,8 +13,8 @@ Snowflake usage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import timedelta
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -70,7 +70,7 @@ class SnowflakeUsageSource(SnowflakeQueryParserSource, UsageSource):
             query = None
             offset = 0
             total_fetched = 0
-            max_results = self.source_config.resultLimit
+            max_results = self.source_config.resultLimit  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 for engine in self.get_engine():
                     while total_fetched < max_results:

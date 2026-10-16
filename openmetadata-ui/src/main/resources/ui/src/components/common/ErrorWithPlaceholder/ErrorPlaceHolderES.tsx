@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +35,6 @@ import {
 } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from './ErrorPlaceHolder';
@@ -73,18 +74,21 @@ const stepsData = [
 ];
 
 const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
-  const { showDeleted, search, queryFilter, quickFilter } = query ?? {};
+  const { showDeleted, search, queryFilter, quickFilter, browsePath } =
+    query ?? {};
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { activeDomain } = useDomainStore();
   const { theme } = useApplicationStore();
 
-  const isQuery = useMemo(
-    () =>
-      Boolean(search || queryFilter || quickFilter || showDeleted === 'true'),
-    [search, queryFilter, quickFilter, showDeleted]
-  );
+  const isQuery = useMemo(() => {
+    const hasActiveSearchInput = search || queryFilter || quickFilter;
+
+    return Boolean(
+      hasActiveSearchInput || browsePath || showDeleted === 'true'
+    );
+  }, [search, queryFilter, quickFilter, browsePath, showDeleted]);
 
   const noRecordForES = useMemo(() => {
     if (isQuery) {
@@ -125,7 +129,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
           className="border-none"
           size={size}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-data-available-entity"
               renderElement={<b />}
@@ -133,8 +137,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 entity: activeDomain,
               }}
             />
-          </Typography.Paragraph>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          </Typography>
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.add-data-asset-domain"
               renderElement={<b />}
@@ -142,12 +146,13 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 domain: activeDomain,
               }}
             />
-          </Typography.Paragraph>
-          <Typography.Paragraph>
+          </Typography>
+          <Typography as="p">
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={DATA_DISCOVERY_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}
@@ -158,7 +163,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 doc: t('label.doc-plural-lowercase'),
               }}
             />
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolder>
       </div>
     );
@@ -172,11 +177,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
       <div data-testid="es-error">
         <div className="m-b-lg text-center">
           <p>
-            <span>
-              {t('message.welcome-to-open-metadata', {
-                brandName: brandClassBase.getPageTitle(),
-              })}{' '}
-            </span>
+            <span>{t('message.welcome-to-open-metadata')} </span>
             <span data-testid="error-text">
               {t('message.unable-to-error-elasticsearch', { error: errorText })}
             </span>
@@ -184,12 +185,16 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
 
           <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <Row gutter={16}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(16)}>
           {stepsData.map((data) => (
-            <Col key={data.step} span={6}>
-              <Space
-                className="justify-between h-full border rounded-4 p-sm"
-                direction="vertical">
+            <Grid.Item className="layout-column" key={data.step} span={6}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space justify-between h-full border rounded-4 p-sm"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
                 <div>
                   <div className="d-flex m-b-xs">
                     <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
@@ -213,10 +218,10 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                     {`${t('label.click-here')} >>`}
                   </a>
                 </p>
-              </Space>
-            </Col>
+              </Box>
+            </Grid.Item>
           ))}
-        </Row>
+        </Grid>
       </div>
     );
   }, [errorMessage]);

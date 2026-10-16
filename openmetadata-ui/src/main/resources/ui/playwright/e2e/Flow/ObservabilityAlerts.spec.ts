@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-import { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-  INGESTION_PIPELINE_NAME,
   TEST_CASE_NAME,
   TEST_SUITE_NAME,
+  WEBHOOK_DELIVERY_COLUMN_NAME,
 } from '../../constant/alert';
+import {
+  AlertDetails,
+  ObservabilityCreationDetails,
+} from '../../constant/alert.interface';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { test as base } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -33,7 +40,12 @@ import {
   verifyAlertDetails,
   visitAlertDetailsPage,
 } from '../../utils/alert';
-import { getApiContext } from '../../utils/common';
+import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
+import {
+  getApiContext,
+  getWorkerAdminAPIContext,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   addExternalDestination,
@@ -44,14 +56,22 @@ import {
   getObservabilityCreationDetails,
   visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
-import { test as base } from '../fixtures/pages';
+import { waitForSearchIndexed } from '../../utils/polling';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
+import {
+  clearCapturedWebhookRequests,
+  findWebhookDelivery,
+  getAddedColumnNames,
+  startWebhookReceiver,
+  stopWebhookReceiver,
+} from '../../utils/webhook';
 
-const table1 = new TableClass();
-const table2 = new TableClass();
-const pipeline = new PipelineClass();
 const user1 = new UserClass();
 const user2 = new UserClass();
-const domain = new Domain();
+let table1: TableClass;
+let table2: TableClass;
+let pipeline: PipelineClass;
+let domain: Domain;
 
 const SOURCE_NAME_1 = 'container';
 const SOURCE_DISPLAY_NAME_1 = 'Container';
@@ -64,19 +84,38 @@ const test = base.extend<{
   userWithPermissionsPage: Page;
   userWithoutPermissionsPage: Page;
 }>({
+  page: async ({ browser, isolatedUser }, use) => {
+    // Cover the migrated classic alert layouts without changing shared admin
+    // preferences or relying on a previously cached AI page.
+    const apiContext = await getWorkerAdminAPIContext();
+    const preference = await apiContext.put(
+      `/api/v1/users/${isolatedUser.responseData.id}/preferences/appMode`,
+      { data: { type: 'appMode', config: { value: 'classic' } } }
+    );
+    expect(preference.ok()).toBeTruthy();
+    const page = await browser.newPage();
+    try {
+      await isolatedUser.signIn(page);
+      await use(page);
+    } finally {
+      await page.close();
+    }
+  },
   userWithPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user1.login(page);
+    await user1.signIn(page);
     await use(page);
     await page.close();
   },
   userWithoutPermissionsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user2.login(page);
+    await user2.signIn(page);
     await use(page);
     await page.close();
   },
 });
+
+test.use({ isolatedUserOptions: { isAdmin: true } });
 
 const data = {
   alertDetails: {
@@ -91,7 +130,14 @@ const data = {
 };
 
 test.beforeAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
+  table1 = new TableClass();
+  table2 = new TableClass();
+  pipeline = new PipelineClass();
+  domain = new Domain();
+  const { afterAction, apiContext } = await performAdminLogin(browser, {
+    navigate: true,
+  });
   await commonPrerequisites({
     apiContext,
     table: table2,
@@ -106,24 +152,83 @@ test.beforeAll(async ({ browser }) => {
   });
   await table1.createTestCase(apiContext, { name: TEST_CASE_NAME });
   await pipeline.create(apiContext);
-  await pipeline.createIngestionPipeline(apiContext, INGESTION_PIPELINE_NAME);
+  // Named per run, not per module: under fullyParallel this hook can run
+  // again in the same worker, and the shared pipelineService keeps the name.
+  await pipeline.createIngestionPipeline(
+    apiContext,
+    `0-playwright-ingestion-pipeline-${uuid()}`
+  );
+
+  // Wait for the entities used as alert-filter dropdown picks to be searchable.
+  // In mode="multiple" the user can only pick options returned by the search API,
+  // so the test must wait for ES indexing before the UI flow runs.
+  await waitForSearchIndexed(
+    apiContext,
+    table1.entityResponseData.fullyQualifiedName ?? '',
+    'table'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    table2.entityResponseData.fullyQualifiedName ?? '',
+    'table'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    table1.testSuiteResponseData.fullyQualifiedName ?? '',
+    'testSuite'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    table1.testCasesResponseData[0]?.fullyQualifiedName ?? '',
+    'testCase'
+  );
+  await waitForSearchIndexed(
+    apiContext,
+    pipeline.ingestionPipelineResponseData.fullyQualifiedName ?? '',
+    'ingestionPipeline'
+  );
+
+  // Build the observability creation details using the entity FQNs returned
+  // from the API. The alert filter dropdowns run in mode="multiple", whose
+  // option `title` attribute equals the entity FQN, so the test's expected
+  // `inputValue` must match the FQN exactly.
+  observabilityDetailsBySource.clear();
+  const details = getObservabilityCreationDetails({
+    tableName1: table1.entityResponseData.fullyQualifiedName ?? '',
+    tableName2: table2.entityResponseData.fullyQualifiedName ?? '',
+    testSuiteFQN: table1.testSuiteResponseData.fullyQualifiedName ?? '',
+    testSuiteName: table1.testSuiteResponseData.name ?? '',
+    testCaseName: table1.testCasesResponseData[0]?.fullyQualifiedName ?? '',
+    ingestionPipelineName:
+      pipeline.ingestionPipelineResponseData.fullyQualifiedName ?? '',
+    domainName: domain.data.name,
+    domainDisplayName: domain.data.displayName,
+    userName: `${user1.data.firstName}${user1.data.lastName}`,
+  });
+  for (const detail of details) {
+    observabilityDetailsBySource.set(detail.source, detail);
+  }
 
   await afterAction();
 });
 
 test.afterAll(async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await commonCleanup({
-    apiContext,
-    table: table2,
-    user1,
-    user2,
-    domain,
+  const { afterAction, apiContext } = await performAdminLogin(browser, {
+    navigate: true,
   });
-  await table1.delete(apiContext);
-  await pipeline.delete(apiContext);
-
-  await afterAction();
+  try {
+    await commonCleanup({
+      apiContext,
+      table: table2,
+      user1,
+      user2,
+      domain,
+    });
+    await table1.delete(apiContext);
+    await pipeline.delete(apiContext);
+  } finally {
+    await afterAction();
+  }
 });
 
 test.beforeEach(async ({ page }) => {
@@ -158,6 +263,29 @@ test('Pipeline Alert', async ({ page }) => {
     await diagnosticTab.click();
     await diagnosticInfoResponse;
     await waitForAllLoadersToDisappear(page);
+
+    const diagnosticHelp = page.getByRole('button', { name: /latest offset/i });
+    await diagnosticTab.focus();
+    await page.keyboard.press('Tab');
+    await expect(diagnosticHelp).toBeFocused();
+    await expect
+      .poll(() =>
+        diagnosticHelp.evaluate((element) => {
+          const style = getComputedStyle(element);
+
+          return (
+            element.matches(':focus-visible') &&
+            Number.parseFloat(style.outlineWidth) >= 2 &&
+            style.outlineStyle !== 'none' &&
+            !/rgba\([^)]*,\s*0\)|transparent/.test(style.outlineColor)
+          );
+        })
+      )
+      .toBe(true);
+    await expect(
+      page.getByRole('tooltip', { name: /latest offset/i })
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
   });
 
   await test.step('Check created alert details', async () => {
@@ -180,11 +308,12 @@ test('Pipeline Alert', async ({ page }) => {
     });
 
     // Click save
-    const updateAlert = page.waitForResponse(
+    const updateAlert = waitForResponseWithStatus(
+      page,
       (response) =>
         response.url().includes('/api/v1/events/subscriptions') &&
-        response.request().method() === 'PATCH' &&
-        response.status() === 200
+        response.request().method() === 'PATCH',
+      200
     );
     await page.click('[data-testid="save-button"]');
     await updateAlert.then(async (response) => {
@@ -202,21 +331,35 @@ test('Pipeline Alert', async ({ page }) => {
   });
 });
 
-const OBSERVABILITY_CREATION_DETAILS = getObservabilityCreationDetails({
-  tableName1: table1.entity.name,
-  tableName2: table2.entity.name,
-  testSuiteFQN: TEST_SUITE_NAME,
-  testCaseName: TEST_CASE_NAME,
-  ingestionPipelineName: INGESTION_PIPELINE_NAME,
-  domainName: domain.data.name,
-  domainDisplayName: domain.data.displayName,
-  userName: `${user1.data.firstName}${user1.data.lastName}`,
-});
+// Test names must be known at module load, but filter/action values must use
+// FQNs that only exist after entity creation. Declare the source list statically
+// and look up the full details (built in beforeAll) inside each test.
+const OBSERVABILITY_SOURCES: Array<{
+  source: string;
+  sourceDisplayName: string;
+}> = [
+  { source: 'table', sourceDisplayName: 'Table' },
+  { source: 'ingestionPipeline', sourceDisplayName: 'Ingestion Pipeline' },
+  { source: 'testCase', sourceDisplayName: 'Test case' },
+  { source: 'testSuite', sourceDisplayName: 'Test Suite' },
+];
 
-for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
-  const { source, sourceDisplayName, filters, actions } = alertDetails;
+const observabilityDetailsBySource = new Map<
+  string,
+  ObservabilityCreationDetails
+>();
 
+for (const { source, sourceDisplayName } of OBSERVABILITY_SOURCES) {
   test(`${sourceDisplayName} alert`, async ({ page }) => {
+    test.slow();
+    const alertDetails = observabilityDetailsBySource.get(source);
+    if (!alertDetails) {
+      throw new Error(
+        `Observability creation details missing for source "${source}". ` +
+          `Was beforeAll set up correctly?`
+      );
+    }
+    const { filters, actions } = alertDetails;
     const ALERT_NAME = generateAlertName();
 
     await test.step('Create alert', async () => {
@@ -247,110 +390,51 @@ for (const alertDetails of OBSERVABILITY_CREATION_DETAILS) {
     });
   });
 }
-test('Alert operations for a user with and without permissions', async ({
+
+test('delivers table schema changes to an external webhook', async ({
   page,
-  userWithPermissionsPage,
-  userWithoutPermissionsPage,
 }) => {
-  // Todo: Re-enable after fixing the https://github.com/open-metadata/openmetadata-collate/issues/3280 @sonika-shah
-  test.fixme(
-    process.env.PLAYWRIGHT_IS_OSS !== 'true',
-    'Skipping in AUT environment'
-  );
   test.slow();
+  const { afterAction, apiContext } = await getApiContext(page);
+  let webhookAlertDetails: AlertDetails | undefined;
+  const webhookTableFqn = table1.entityResponseData.fullyQualifiedName ?? '';
 
-  const ALERT_NAME = generateAlertName();
-  const { apiContext } = await getApiContext(page);
-  await visitObservabilityAlertPage(userWithPermissionsPage);
-
-  await test.step('Create and trigger alert', async () => {
-    await inputBasicAlertInformation({
-      page: userWithPermissionsPage,
-      name: ALERT_NAME,
-      sourceName: SOURCE_NAME_3,
-      sourceDisplayName: SOURCE_DISPLAY_NAME_3,
-      createButtonId: 'create-observability',
+  try {
+    // Keep network-dependent receiver setup local so AUT routing failures cannot block unrelated
+    // observability coverage through this file's shared beforeAll hook.
+    const webhookEndpoint = await startWebhookReceiver();
+    clearCapturedWebhookRequests();
+    const webhookAlertCreationDetails: ObservabilityCreationDetails = {
+      source: 'table',
+      sourceDisplayName: 'Table',
+      filters: [
+        {
+          name: 'Table Name',
+          inputSelector: 'fqn-list-select',
+          inputValue: webhookTableFqn,
+        },
+      ],
+      actions: [{ name: 'Get Schema Changes' }],
+      destinations: [
+        {
+          mode: 'external',
+          category: 'Webhook',
+          inputValue: webhookEndpoint,
+        },
+      ],
+    };
+    await visitObservabilityAlertPage(page);
+    await createCommonObservabilityAlert({
+      page,
+      alertName: generateAlertName(),
+      sourceName: webhookAlertCreationDetails.source,
+      sourceDisplayName: webhookAlertCreationDetails.sourceDisplayName,
+      alertDetails: webhookAlertCreationDetails,
+      filters: webhookAlertCreationDetails.filters,
+      actions: webhookAlertCreationDetails.actions,
     });
-    await userWithPermissionsPage.click('[data-testid="add-filters"]');
+    webhookAlertDetails = await saveAlertAndVerifyResponse(page);
 
-    // Select filter
-    await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
-    await userWithPermissionsPage.click(
-      '.ant-select-dropdown:visible [data-testid="Table Name-filter-option"]'
-    );
-    await userWithPermissionsPage
-      .locator('.ant-select-dropdown:visible')
-      .waitFor({ state: 'hidden' });
-
-    // Search and select filter input value
-    const searchOptions = userWithPermissionsPage.waitForResponse(
-      '/api/v1/search/query?q=*'
-    );
-    await userWithPermissionsPage.fill(
-      `[data-testid="fqn-list-select"] [role="combobox"]`,
-      table1.entity.name,
-      {
-        force: true, // eslint-disable-line playwright/no-force-option -- Ant Select overlay covers combobox input
-      }
-    );
-
-    await searchOptions;
-
-    await userWithPermissionsPage.click(
-      `.ant-select-dropdown:visible [title="${table1.entity.name}"]`
-    );
-
-    // Check if option is selected
-    await test
-      .expect(
-        userWithPermissionsPage.locator(
-          `[data-testid="fqn-list-select"] [title="${table1.entity.name}"]`
-        )
-      )
-      .toBeAttached();
-
-    // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
-    await userWithPermissionsPage.click('[data-testid="add-trigger"]');
-
-    // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
-    await userWithPermissionsPage
-      .locator('.ant-select-dropdown:visible')
-      .waitFor({ state: 'hidden' });
-
-    // Select action
-    await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
-
-    // Adding the dropdown visibility check to avoid flakiness here
-    await userWithPermissionsPage
-      .locator(`.ant-select-dropdown:visible`)
-      .waitFor({
-        state: 'visible',
-      });
-    await userWithPermissionsPage.click(
-      '.ant-select-dropdown:visible [data-testid="Get Schema Changes-filter-option"]:visible'
-    );
-    await userWithPermissionsPage
-      .locator(`.ant-select-dropdown:visible`)
-      .waitFor({
-        state: 'hidden',
-      });
-
-    await userWithPermissionsPage.click(
-      '[data-testid="add-destination-button"]'
-    );
-    await addExternalDestination({
-      page: userWithPermissionsPage,
-      destinationNumber: 0,
-      category: 'Slack',
-      input: 'https://slack.com',
-    });
-
-    // Click save
-    data.alertDetails = await saveAlertAndVerifyResponse(
-      userWithPermissionsPage
-    );
-
-    // Trigger alert
     await table1.patch({
       apiContext,
       patchData: [
@@ -358,7 +442,7 @@ test('Alert operations for a user with and without permissions', async ({
           op: 'add',
           path: '/columns/4',
           value: {
-            name: 'new_field',
+            name: WEBHOOK_DELIVERY_COLUMN_NAME,
             dataType: 'VARCHAR',
             dataLength: 100,
             dataTypeDisplay: 'varchar(100)',
@@ -366,28 +450,294 @@ test('Alert operations for a user with and without permissions', async ({
         },
       ],
     });
-  });
 
-  await test.step('Checks for user without permission', async () => {
-    await checkAlertFlowForWithoutPermissionUser({
-      page: userWithoutPermissionsPage,
-      alertDetails: data.alertDetails,
-      sourceName: SOURCE_NAME_3,
-      table: table1,
+    const matchedDelivery: {
+      current: ReturnType<typeof findWebhookDelivery>;
+    } = { current: undefined };
+
+    await test.expect
+      .poll(
+        () => {
+          matchedDelivery.current = findWebhookDelivery(
+            table1.entityResponseData.id,
+            WEBHOOK_DELIVERY_COLUMN_NAME
+          );
+
+          return matchedDelivery.current !== undefined;
+        },
+        {
+          message: 'Expected the webhook to receive the table change event',
+          timeout: 60_000,
+        }
+      )
+      .toBe(true);
+
+    const delivery = matchedDelivery.current;
+    if (!delivery) {
+      throw new Error('Matching webhook delivery was not captured');
+    }
+
+    test.expect(delivery.request.method).toBe('POST');
+    test.expect(delivery.payload).toEqual(
+      test.expect.objectContaining({
+        entityFullyQualifiedName: webhookTableFqn,
+        entityId: table1.entityResponseData.id,
+        entityType: 'table',
+        eventType: 'entityUpdated',
+      })
+    );
+    test
+      .expect(getAddedColumnNames(delivery.payload))
+      .toContain(WEBHOOK_DELIVERY_COLUMN_NAME);
+  } finally {
+    try {
+      if (webhookAlertDetails) {
+        await deleteAlert(page, webhookAlertDetails, false);
+      }
+    } finally {
+      await settleAll([afterAction(), stopWebhookReceiver()]);
+    }
+  }
+});
+
+test('Data Contract Name filter lists matching data contracts', async ({
+  page,
+}) => {
+  test.slow();
+  const { afterAction, apiContext } = await getApiContext(page);
+  let dataContract: DataContract | undefined;
+
+  try {
+    const dataContractName = `0-playwright-data-contract-${uuid()}`;
+    const createResponse = await apiContext.post('/api/v1/dataContracts', {
+      data: {
+        name: dataContractName,
+        description: 'Data contract for the observability alert filter test',
+        entity: {
+          id: table1.entityResponseData.id,
+          type: 'table',
+        },
+      },
     });
-  });
 
-  await test.step('Check alert details page and Recent Events tab', async () => {
-    await checkAlertDetailsForWithPermissionUser({
-      page: userWithPermissionsPage,
-      alertDetails: data.alertDetails,
-      sourceName: SOURCE_NAME_3,
-      table: table1,
-      user: user2,
+    test.expect(createResponse.ok()).toBeTruthy();
+    const createdDataContract: DataContract = await createResponse.json();
+    dataContract = createdDataContract;
+
+    if (!createdDataContract.fullyQualifiedName) {
+      throw new Error(
+        'Created data contract is missing its fully qualified name'
+      );
+    }
+    const dataContractFqn = createdDataContract.fullyQualifiedName;
+
+    await inputBasicAlertInformation({
+      page,
+      name: generateAlertName(),
+      sourceName: 'dataContract',
+      sourceDisplayName: 'Data Contract',
+      createButtonId: 'create-observability',
     });
-  });
 
-  await test.step('Delete alert', async () => {
-    await deleteAlert(userWithPermissionsPage, data.alertDetails, false);
-  });
+    await page.getByTestId('add-filters').click();
+    await page.getByTestId('filter-select-0').click();
+    await page
+      .getByRole('listbox')
+      .getByTestId('Data Contract Name-filter-option')
+      .click();
+
+    const fqnInput = page.getByTestId('fqn-list-select').getByRole('combobox');
+    await fqnInput.click();
+    await fqnInput.fill(dataContractName);
+
+    const dataContractOption = page
+      .getByRole('listbox')
+      .getByRole('option', { name: dataContractFqn, exact: true });
+    const searchFailureAlert = page
+      .getByTestId('alert-bar')
+      .filter({ hasText: 'Search failed' })
+      .first();
+
+    await test.expect
+      .poll(async () => {
+        if (await dataContractOption.isVisible()) {
+          return 'data-contract-option';
+        }
+
+        if (await searchFailureAlert.isVisible()) {
+          return (await searchFailureAlert.textContent())?.trim();
+        }
+
+        return 'waiting-for-data-contract-option';
+      })
+      .toBe('data-contract-option');
+  } finally {
+    if (dataContract) {
+      await apiContext.delete(
+        `/api/v1/dataContracts/${dataContract.id}?hardDelete=true&recursive=true`
+      );
+    }
+    await afterAction();
+  }
+});
+
+test('Alert operations for a user with and without permissions', async ({
+  page,
+  userWithPermissionsPage,
+  userWithoutPermissionsPage,
+}) => {
+  test.slow();
+
+  const ALERT_NAME = generateAlertName();
+  const { apiContext, afterAction } = await getApiContext(page);
+  let createdAlert: AlertDetails | undefined;
+
+  try {
+    const destinationEndpoint = await startWebhookReceiver();
+    clearCapturedWebhookRequests();
+    await visitObservabilityAlertPage(userWithPermissionsPage);
+
+    const permissionAlertDetails =
+      await test.step('Create and trigger alert', async () => {
+        await inputBasicAlertInformation({
+          page: userWithPermissionsPage,
+          name: ALERT_NAME,
+          sourceName: SOURCE_NAME_3,
+          sourceDisplayName: SOURCE_DISPLAY_NAME_3,
+          createButtonId: 'create-observability',
+        });
+        await userWithPermissionsPage.click('[data-testid="add-filters"]');
+
+        // Select filter
+        await userWithPermissionsPage.click('[data-testid="filter-select-0"]');
+        await userWithPermissionsPage
+          .getByRole('option', { name: 'Table Name', exact: true })
+          .click();
+        await userWithPermissionsPage
+          .getByRole('listbox')
+          .waitFor({ state: 'hidden' });
+
+        const table1Fqn = table1.entityResponseData.fullyQualifiedName ?? '';
+
+        await userWithPermissionsPage.click(
+          `[data-testid="fqn-list-select"] [role="combobox"]`
+        );
+
+        // Search and select filter input value
+        const searchOptions = userWithPermissionsPage.waitForResponse(
+          '/api/v1/search/query?q=*'
+        );
+        await userWithPermissionsPage.fill(
+          `[data-testid="fqn-list-select"] [role="combobox"]`,
+          table1Fqn
+        );
+
+        await searchOptions;
+
+        await userWithPermissionsPage
+          .getByRole('option', { name: table1Fqn, exact: true })
+          .click();
+
+        // Check if option is selected
+        await test
+          .expect(
+            userWithPermissionsPage.locator(
+              `[data-testid="fqn-list-select"] [title="${table1Fqn}"]`
+            )
+          )
+          .toBeAttached();
+
+        // Clicking add-trigger closes the fqn-list-select dropdown (multi-select stays open until click outside)
+        await userWithPermissionsPage.click('[data-testid="add-trigger"]');
+
+        // Wait for the fqn-list-select dropdown to fully close before opening the trigger dropdown
+        await userWithPermissionsPage
+          .getByRole('listbox')
+          .waitFor({ state: 'hidden' });
+
+        // Select action
+        await userWithPermissionsPage.click('[data-testid="trigger-select-0"]');
+
+        // Adding the dropdown visibility check to avoid flakiness here
+        await userWithPermissionsPage.getByRole('listbox').waitFor({
+          state: 'visible',
+        });
+        await userWithPermissionsPage
+          .getByRole('option', { name: 'Get Schema Changes', exact: true })
+          .click();
+        await userWithPermissionsPage.getByRole('listbox').waitFor({
+          state: 'hidden',
+        });
+
+        await userWithPermissionsPage.click(
+          '[data-testid="add-destination-button"]'
+        );
+        await addExternalDestination({
+          page: userWithPermissionsPage,
+          destinationNumber: 0,
+          category: 'Slack',
+          input: destinationEndpoint,
+        });
+
+        // Click save
+        createdAlert = await saveAlertAndVerifyResponse(
+          userWithPermissionsPage
+        );
+
+        // Trigger alert
+        await table1.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/columns/4',
+              value: {
+                name: 'new_field',
+                dataType: 'VARCHAR',
+                dataLength: 100,
+                dataTypeDisplay: 'varchar(100)',
+              },
+            },
+          ],
+        });
+        return createdAlert;
+      });
+
+    await test.step('Checks for user without permission', async () => {
+      await checkAlertFlowForWithoutPermissionUser({
+        page: userWithoutPermissionsPage,
+        alertDetails: permissionAlertDetails,
+        destinationEndpoint,
+        sourceName: SOURCE_NAME_3,
+        table: table1,
+      });
+    });
+
+    await test.step('Check alert details page and Recent Events tab', async () => {
+      await checkAlertDetailsForWithPermissionUser({
+        page: userWithPermissionsPage,
+        alertDetails: permissionAlertDetails,
+        destinationEndpoint,
+        sourceName: SOURCE_NAME_3,
+        table: table1,
+        user: user2,
+      });
+    });
+
+    await test.step('Delete alert', async () => {
+      await deleteAlert(userWithPermissionsPage, permissionAlertDetails, false);
+      createdAlert = undefined;
+    });
+  } finally {
+    try {
+      if (createdAlert) {
+        await deleteFixtureEntity(
+          apiContext,
+          `/api/v1/events/subscriptions/${createdAlert.id}?hardDelete=true`
+        );
+      }
+    } finally {
+      await settleAll([afterAction(), stopWebhookReceiver()]);
+    }
+  }
 });

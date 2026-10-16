@@ -10,26 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space, Tag, Typography } from 'antd';
-import classNames from 'classnames';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { isEmpty } from 'lodash';
-import { useCallback, useMemo, useState } from 'react';
+import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
-import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
-import { TAG_CONSTANT, TAG_START_WITH } from '../../../constants/Tag.constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_LARGE,
+} from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDataProductDetailsPath } from '../../../utils/RouterUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
-import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import DataProductsSelectList from '../DataProductsSelectList/DataProductsSelectList';
 interface DataProductsContainerProps {
   showHeader?: boolean;
@@ -39,6 +45,7 @@ interface DataProductsContainerProps {
   onSave?: (dataProducts: DataProduct[]) => Promise<void>;
   newLook?: boolean;
   multiple?: boolean;
+  requireDomainForDataProduct?: boolean;
 }
 
 const DataProductsContainer = ({
@@ -49,10 +56,16 @@ const DataProductsContainer = ({
   onSave,
   newLook = false,
   multiple = true,
+  requireDomainForDataProduct = true,
 }: DataProductsContainerProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isEditMode, setIsEditMode] = useState(false);
+
+  // When the "Data Product Domain Validation" rule is disabled a Data Product
+  // can be assigned regardless of the asset's domains, so the domain gate is
+  // lifted and the dropdown lists Data Products across all domains.
+  const domainMissing = requireDomainForDataProduct && isEmpty(activeDomains);
 
   const handleAddClick = () => {
     setIsEditMode(true);
@@ -61,12 +74,18 @@ const DataProductsContainer = ({
   const fetchAPI = useCallback(
     (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQNs =
-        activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? [];
+      const domainFQNs = requireDomainForDataProduct
+        ? activeDomains?.map((domain) => domain.fullyQualifiedName ?? '') ?? []
+        : [];
 
-      return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
+      return fetchDataProductsElasticSearch(
+        searchText,
+        domainFQNs,
+        page,
+        PAGE_SIZE_LARGE
+      );
     },
-    [activeDomains]
+    [activeDomains, requireDomainForDataProduct]
   );
 
   const redirectLink = useCallback(
@@ -96,29 +115,22 @@ const DataProductsContainer = ({
     setIsEditMode(false);
   };
 
-  const handleCancel = () => {
-    setIsEditMode(false);
-  };
-
-  const autoCompleteFormSelectContainer = useMemo(() => {
-    return (
-      <DataProductsSelectList
-        open
-        defaultValue={(dataProducts ?? []).map(
-          (item) => item.fullyQualifiedName ?? ''
-        )}
-        fetchOptions={fetchAPI}
-        mode={multiple ? 'multiple' : undefined}
-        placeholder={t('label.data-product-plural')}
-        onCancel={handleCancel}
-        onSubmit={handleSave}
-      />
-    );
-  }, [handleCancel, handleSave, dataProducts, fetchAPI]);
+  // Opens from the add/edit button, like the glossary and tag pickers.
+  const withPicker = (trigger: ReactNode) => (
+    <DataProductsSelectList
+      fetchOptions={fetchAPI}
+      isOpen={isEditMode}
+      multiple={multiple}
+      selectedDataProducts={dataProducts ?? []}
+      onOpenChange={setIsEditMode}
+      onSubmit={handleSave}>
+      {trigger}
+    </DataProductsSelectList>
+  );
 
   const showAddTagButton = useMemo(
-    () => hasPermission && !isEmpty(activeDomains) && isEmpty(dataProducts),
-    [hasPermission, dataProducts, activeDomains]
+    () => hasPermission && !domainMissing && isEmpty(dataProducts),
+    [hasPermission, dataProducts, domainMissing]
   );
 
   const renderDataProducts = useMemo(() => {
@@ -126,19 +138,22 @@ const DataProductsContainer = ({
       return NO_DATA_PLACEHOLDER;
     }
 
-    if (isEmpty(dataProducts) && hasPermission && isEmpty(activeDomains)) {
+    if (isEmpty(dataProducts) && hasPermission && domainMissing) {
       return (
-        <Typography.Text className="text-sm text-grey-muted">
+        <Typography className="tw:text-quaternary" size="text-xs">
           {t('message.select-domain-to-add-data-product')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
     return dataProducts.map((product) => {
       return (
-        <Tag
-          className="tag-chip tag-chip-content"
+        <Badge
+          className="tag-chip tag-chip-content tw:mr-2 tw:inline-flex"
+          color="gray"
           key={`dp-tags-${product.fullyQualifiedName}`}
+          size="sm"
+          type="color"
           onClick={() => redirectLink(product.fullyQualifiedName ?? '')}>
           <div className="d-flex w-full">
             <div className="d-flex items-center p-x-xs w-full gap-1">
@@ -147,115 +162,142 @@ const DataProductsContainer = ({
                 height={12}
                 width={12}
               />
-              <Typography.Paragraph
-                className="m-0 tags-label"
-                data-testid={`data-product-${product.fullyQualifiedName}`}>
+              <Typography
+                as="p"
+                className="tw:m-0 tags-label"
+                data-testid={`data-product-${product.fullyQualifiedName}`}
+                size="text-xs"
+                weight="medium">
                 {getEntityName(product)}
-              </Typography.Paragraph>
+              </Typography>
             </div>
           </div>
-        </Tag>
+        </Badge>
       );
     });
-  }, [dataProducts, activeDomains]);
+  }, [
+    dataProducts,
+    activeDomains,
+    domainMissing,
+    hasPermission,
+    redirectLink,
+    t,
+  ]);
 
-  const header = useMemo(() => {
-    return (
-      showHeader && (
-        <Space align="center" className={classNames('w-full')} size="middle">
-          <Typography.Text className={classNames('text-sm font-medium')}>
-            {t('label.data-product-plural')}
-          </Typography.Text>
-          {showAddTagButton && (
-            <PlusIconButton
-              data-testid="add-data-product"
-              size="small"
-              title={t('label.add-entity', {
-                entity: t('label.data-product-plural'),
-              })}
-              onClick={handleAddClick}
-            />
-          )}
-          {hasPermission && !isEmpty(activeDomains) && (
-            <Row gutter={12}>
-              {!isEmpty(dataProducts) && (
-                <Col>
-                  <EditIconButton
-                    newLook
-                    data-testid="edit-button"
-                    size="small"
-                    title={t('label.edit-entity', {
-                      entity: t('label.data-product-plural'),
-                    })}
-                    onClick={handleAddClick}
-                  />
-                </Col>
-              )}
-            </Row>
-          )}
-        </Space>
-      )
+  const headerExtra = useMemo(() => {
+    if (!showHeader) {
+      return null;
+    }
+
+    // The picker owns the toggle; a button onClick would reopen it after a close.
+    const actionButton = isEmpty(dataProducts) ? (
+      <WidgetPlusButton
+        data-testid="add-data-product"
+        title={t('label.add-entity', {
+          entity: t('label.data-product-plural'),
+        })}
+      />
+    ) : (
+      <WidgetEditButton
+        data-testid="edit-button"
+        title={t('label.edit-entity', {
+          entity: t('label.data-product-plural'),
+        })}
+      />
     );
-  }, [showHeader, dataProducts, hasPermission, showAddTagButton]);
+
+    return (
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={4}
+        itemClassName="layout-space-item">
+        {hasPermission &&
+          (domainMissing
+            ? isEmpty(dataProducts) && (
+                <WidgetPlusButton
+                  disabled
+                  data-testid="add-data-product"
+                  title={t('message.select-domain-to-add-data-product')}
+                />
+              )
+            : withPicker(actionButton))}
+      </Box>
+    );
+  }, [
+    showHeader,
+    dataProducts,
+    hasPermission,
+    domainMissing,
+    isEditMode,
+    fetchAPI,
+    multiple,
+    onSave,
+    t,
+  ]);
 
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <Col
-          className="m-t-xss"
-          data-testid="add-data-product"
-          onClick={handleAddClick}>
-          <TagsV1 startWith={TAG_START_WITH.PLUS} tag={TAG_CONSTANT} />
-        </Col>
+        <Box className="layout-column tw:block m-t-xss">
+          <Button
+            color="link-color"
+            data-testid="add-data-product"
+            size="sm"
+            onClick={handleAddClick}>
+            {t('label.add-entity', { entity: t('label.data-product') })}
+          </Button>
+        </Box>
       ) : null,
-    [showAddTagButton]
+    [showAddTagButton, t]
   );
 
   const renderer = useMemo(() => {
-    if (isEditMode) {
-      return autoCompleteFormSelectContainer;
-    }
-
     if (newLook && isEmpty(renderDataProducts)) {
       return null;
     }
 
     return (
-      <Row data-testid="data-products-list">
-        <Col className="flex flex-wrap gap-2">
+      <Box className="layout-row" data-testid="data-products-list" wrap="wrap">
+        <Box className="layout-column flex flex-wrap gap-2">
           {!newLook && addTagButton}
           {renderDataProducts}
-        </Col>
-      </Row>
+        </Box>
+      </Box>
     );
-  }, [
-    newLook,
-    isEditMode,
-    addTagButton,
-    renderDataProducts,
-    autoCompleteFormSelectContainer,
-  ]);
-
-  const cardProps = useMemo(() => {
-    return {
-      title: header,
-    };
-  }, [header, showAddTagButton, isEditMode]);
+  }, [newLook, addTagButton, renderDataProducts]);
 
   if (newLook) {
     return (
-      <ExpandableCard
-        cardProps={cardProps}
+      <WidgetCard
         dataTestId="data-products-container"
-        isExpandDisabled={isEmpty(dataProducts)}>
+        forceExpand={isEditMode}
+        headerExtra={headerExtra}
+        isExpandDisabled={
+          isEmpty(dataProducts) && !isEditMode && !domainMissing
+        }
+        title={t('label.data-product-plural')}>
         {renderer}
-      </ExpandableCard>
+      </WidgetCard>
     );
   }
 
   return (
     <div className="w-full" data-testid="data-products-container">
-      {header}
+      {showHeader && (
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={4}
+          itemClassName="layout-space-item">
+          <Typography size="text-sm" weight="medium">
+            {t('label.data-product-plural')}
+          </Typography>
+          {headerExtra}
+        </Box>
+      )}
       {renderer}
     </div>
   );

@@ -10,22 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-article.svg';
-import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/ic-knowledge-center-widget.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-quick-link.svg';
+import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
+import { ReactComponent as ContextCenterWidgetIcon } from '../../../assets/svg/widget/context-center.svg';
 import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../../../components/MyData/Widgets/Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../../../components/MyData/Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../../../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM, ROUTES } from '../../../constants/constants';
 import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -36,13 +37,12 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { t } from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
 
-import { ROUTES } from '../../../constants/constants';
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,
@@ -50,20 +50,17 @@ const KnowledgeCenterWidget = ({
   currentLayout,
   handleLayoutUpdate,
 }: WidgetCommonProps) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [data, setData] = useState<KnowledgePage[]>([]);
 
-  const widgetData = useMemo(() => {
-    return currentLayout?.find((item) => item.i === widgetKey);
-  }, [currentLayout, widgetKey]);
-
   const isFullSizeWidget = useMemo(() => {
     return currentLayout?.find((layout) => layout.i === widgetKey)?.w === 2;
   }, [currentLayout, widgetKey]);
 
-  const fetchUserKnowledgeArticles = async () => {
+  const fetchUserKnowledgeArticles = useCallback(async () => {
     if (!currentUser?.id) {
       return;
     }
@@ -81,13 +78,15 @@ const KnowledgeCenterWidget = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentUser?.id]);
 
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
-        actionButtonLink={ROUTES.KNOWLEDGE_CENTER}
-        actionButtonText={t('label.create-articles')}
+        actionButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
+        actionButtonText={t('label.create-entity', {
+          entity: t('label.article'),
+        })}
         description={t('message.no-article-data')}
         icon={
           <KnowledgeCenterNoDataPlaceholder
@@ -95,67 +94,65 @@ const KnowledgeCenterWidget = ({
             width={SIZE.MEDIUM}
           />
         }
-        title={t('label.no-knowledge-articles-available')}
+        title={t('label.no-articles-available')}
       />
     );
   }, [t]);
-
-  const getGridTemplateColumns = () => {
-    if (isFullSizeWidget) {
-      return 'repeat(3, 1fr)';
-    }
-
-    return 'repeat(1, 1fr)';
-  };
 
   const articlesContent = useMemo(() => {
     return (
       <div className="entity-list-body">
         <div
           className={classNames('cards-scroll-container')}
-          style={{ gridTemplateColumns: getGridTemplateColumns() }}>
+          style={{
+            gridTemplateColumns: isFullSizeWidget
+              ? 'repeat(3, 1fr)'
+              : 'repeat(1, 1fr)',
+          }}>
           {map(data, (knowledgePage) => {
             const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
             const quickLink = knowledgePage.page as QuickLink;
+            const KnowledgeIcon = isQuickLink ? LinkIcon : IconArticle;
 
             return (
-              <Row
-                className="article-entry"
+              <Box
+                align="center"
+                className="article-entry tw:hover:bg-primary_hover"
                 data-testid="article-entry"
+                gap={2}
                 key={knowledgePage.id}>
-                <Col className="d-flex items-center gap-2" span={24}>
-                  <span>
-                    <Icon
-                      className="knowledge-icon d-flex align-items-center justify-center"
-                      component={isQuickLink ? LinkIcon : IconArticle}
-                      data-testid={`${
-                        isQuickLink ? 'link-icon' : 'article-icon'
-                      }`}
-                    />
-                  </span>
-                  <Link
-                    className="no-underline w-full"
-                    data-testid={`${
-                      isQuickLink ? 'quick-link' : 'knowledge-page'
-                    }-link`}
-                    target={isQuickLink ? '_blank' : '_self'}
-                    to={
-                      isQuickLink
-                        ? quickLink.url
-                        : {
-                            pathname: getKnowledgePagePath(
-                              knowledgePage.fullyQualifiedName
-                            ),
-                          }
-                    }>
-                    <Typography.Text
-                      className="article-header text-sm font-regular text-left cursor-pointer ellipsis-text"
-                      ellipsis={{ tooltip: true }}>
-                      {getEntityName(knowledgePage)}
-                    </Typography.Text>
-                  </Link>
-                </Col>
-              </Row>
+                <Box
+                  align="center"
+                  className="knowledge-icon tw:shrink-0 tw:bg-utility-blue-light-100 tw:text-brand-tertiary"
+                  data-testid={isQuickLink ? 'link-icon' : 'article-icon'}
+                  justify="center">
+                  <KnowledgeIcon height="1em" width="1em" />
+                </Box>
+                <Link
+                  className="no-underline w-full"
+                  data-testid={`${
+                    isQuickLink ? 'quick-link' : 'knowledge-page'
+                  }-link`}
+                  target={isQuickLink ? '_blank' : '_self'}
+                  to={
+                    isQuickLink
+                      ? getSafeHttpUrl(quickLink.url) ?? '#'
+                      : {
+                          pathname: getKnowledgePagePath(
+                            knowledgePage.fullyQualifiedName
+                          ),
+                        }
+                  }>
+                  <Typography
+                    className="article-header tw:text-primary text-sm font-regular text-left cursor-pointer ellipsis-text"
+                    ellipsis={{
+                      tooltip: true,
+                      excludeTriggerFromTabOrder: true,
+                    }}>
+                    {getEntityName(knowledgePage)}
+                  </Typography>
+                </Link>
+              </Box>
             );
           })}
         </div>
@@ -171,12 +168,12 @@ const KnowledgeCenterWidget = ({
   const footer = useMemo(() => {
     return (
       <WidgetFooter
-        moreButtonLink={ROUTES.KNOWLEDGE_CENTER}
+        moreButtonLink={ROUTES.CONTEXT_CENTER_ARTICLES}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
     );
-  }, [isLoading]);
+  }, [showWidgetFooterMoreButton, t]);
 
   const widgetHeader = useMemo(() => {
     return (
@@ -185,11 +182,11 @@ const KnowledgeCenterWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<KnowledgeCenterWidgetIcon height={22} width={22} />}
+        icon={<ContextCenterWidgetIcon height={24} width={24} />}
         isEditView={isEditView}
-        title={t('label.knowledge-center')}
+        title={t('label.context-center')}
         widgetKey={widgetKey}
-        onTitleClick={() => navigate(ROUTES.KNOWLEDGE_CENTER)}
+        onTitleClick={() => navigate(ROUTES.CONTEXT_CENTER_ARTICLES)}
       />
     );
   }, [
@@ -197,13 +194,14 @@ const KnowledgeCenterWidget = ({
     handleLayoutUpdate,
     handleRemoveWidget,
     isEditView,
+    navigate,
+    t,
     widgetKey,
-    widgetData?.w,
   ]);
 
   useEffect(() => {
-    fetchUserKnowledgeArticles();
-  }, [currentUser]);
+    void fetchUserKnowledgeArticles();
+  }, [currentUser, fetchUserKnowledgeArticles]);
 
   return (
     <WidgetWrapper

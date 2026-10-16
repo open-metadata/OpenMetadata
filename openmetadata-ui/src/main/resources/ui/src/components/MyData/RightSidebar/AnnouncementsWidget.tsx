@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Col, Row, Typography } from 'antd';
+import { Alert, Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AnnouncementIcon } from '../../../assets/svg/announcements-v1.svg';
 import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/announcment-no-data-placeholder.svg';
@@ -20,11 +20,15 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFQN } from '../../../utils/FeedUtils';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './announcements-widget.less';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(() => import('../../common/RichTextEditor/RichTextEditorPreviewerV1'))
+);
 
 export interface AnnouncementsWidgetProps extends WidgetCommonProps {
   isAnnouncementLoading?: boolean;
@@ -53,57 +57,52 @@ function AnnouncementsWidget({
               />
             }
             type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography.Paragraph>
+            <Typography as="p">
               {t('message.no-entity-data-available', {
                 entity: t('label.announcement-lowercase'),
               })}
-            </Typography.Paragraph>
+            </Typography>
           </ErrorPlaceHolder>
         </div>
       );
     }
 
     return (
-      <div className="announcement-container-list">
-        <Row gutter={[8, 8]}>
-          {announcements.map((item) => {
-            const fqn = getEntityFQN(item.entityLink ?? '');
+      <Box className="announcement-container-list" direction="col" gap={2}>
+        {announcements.map((item) => {
+          const fqn = getEntityFQN(item.entityLink ?? '');
 
-            return (
-              <Col data-testid={`announcement-${fqn}`} key={item.id} span={24}>
-                <Alert
-                  className="right-panel-announcement"
-                  description={
-                    <>
-                      <Typography.Text className="d-block text-sm font-medium">
-                        {item.displayName ?? item.name}
-                      </Typography.Text>
-                      <Typography.Text className="d-block text-grey-muted text-xs m-t-xs">
-                        {formatDateTime(item.updatedAt ?? item.createdAt)}
-                      </Typography.Text>
-                      <RichTextEditorPreviewerV1
-                        className="p-t-xs"
-                        markdown={item.description}
-                        reducePreviewLineClass="max-three-lines"
-                        showReadMoreBtn={false}
-                      />
-                    </>
-                  }
-                  message={
-                    <div className="d-flex announcement-alert-heading">
-                      <AnnouncementIcon width={20} />
-                      <span className="text-sm p-l-xss">
-                        {t('label.announcement')}
-                      </span>
-                    </div>
-                  }
-                  type="info"
-                />
-              </Col>
-            );
-          })}
-        </Row>
-      </div>
+          return (
+            <Alert
+              className="right-panel-announcement"
+              data-testid={`announcement-${fqn}`}
+              key={item.id}
+              showIcon={false}
+              title={
+                <Box align="center" className="announcement-alert-heading">
+                  <AnnouncementIcon width={20} />
+                  <span className="text-sm p-l-xss">
+                    {t('label.announcement')}
+                  </span>
+                </Box>
+              }
+              variant="brand">
+              <Typography className="d-block text-sm font-medium tw:text-primary">
+                {item.displayName ?? item.name}
+              </Typography>
+              <Typography className="d-block text-xs m-t-xs" color="secondary">
+                {formatDateTime(item.updatedAt ?? item.createdAt)}
+              </Typography>
+              <RichTextEditorPreviewerV1
+                className="p-t-xs"
+                markdown={item.description}
+                reducePreviewLineClass="max-three-lines"
+                showReadMoreBtn={false}
+              />
+            </Alert>
+          );
+        })}
+      </Box>
     );
   }, [isAnnouncementLoading, announcements]);
 
@@ -111,13 +110,9 @@ function AnnouncementsWidget({
     <div
       className="announcement-container card-widget h-full"
       data-testid="announcement-container">
-      <Row justify="space-between">
-        <Col>
-          <Typography.Paragraph className="font-medium m-b-sm">
-            {t('label.recent-announcement-plural')}
-          </Typography.Paragraph>
-        </Col>
-      </Row>
+      <Typography as="p" className="font-medium m-b-sm">
+        {t('label.recent-announcement-plural')}
+      </Typography>
       {announcement}
     </div>
   );

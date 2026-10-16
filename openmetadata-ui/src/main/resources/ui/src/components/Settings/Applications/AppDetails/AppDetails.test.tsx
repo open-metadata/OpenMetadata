@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -23,7 +24,20 @@ import AppDetails from './AppDetails.component';
 
 jest.mock('../../../../constants/constants', () => ({
   DE_ACTIVE_COLOR: '#fefefe',
+  MCP_APPLICATION_NAME: 'McpApplication',
 }));
+
+const mockIsAdminUser = jest.fn().mockReturnValue(true);
+
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockImplementation(() => ({
+    isAdminUser: mockIsAdminUser(),
+  })),
+}));
+
+jest.mock('../McpApplicationConfiguration/McpApplicationConfiguration', () =>
+  jest.fn().mockReturnValue(<div>MockMcpApplicationConfiguration</div>)
+);
 
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div>Loader</div>)
@@ -90,7 +104,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getRelativeTime: jest.fn().mockReturnValue('getRelativeTime'),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -107,7 +121,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn().mockImplementation(() => mockShowSuccessToast()),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ onSubmit }) => (
@@ -190,6 +204,7 @@ describe('AppDetails component', () => {
   beforeEach(() => {
     mockImportSchema.mockReset();
     mockImportSchema.mockReturnValue({ default: ['table'] });
+    mockIsAdminUser.mockReturnValue(true);
   });
 
   it('actions check in AppDetails component', async () => {
@@ -199,7 +214,7 @@ describe('AppDetails component', () => {
 
     // back button
     fireEvent.click(
-      screen.getByRole('button', { name: 'left label.browse-app-plural' })
+      screen.getByRole('button', { name: 'label.browse-app-plural' })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -217,7 +232,8 @@ describe('AppDetails component', () => {
       GlobalSettingOptions.APPLICATIONS
     );
 
-    // disable app
+    // disable app; the menu closes after each action, so reopen it
+    fireEvent.click(screen.getByTestId('manage-button'));
     ConfirmAction('label.disable');
 
     expect(mockUninstallApp).toHaveBeenCalledWith(expect.anything(), false);
@@ -236,10 +252,26 @@ describe('AppDetails component', () => {
 
     fireEvent.click(screen.getByTestId('manage-button'));
 
-    // enable app
-    ConfirmAction('label.restore');
+    expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
 
-    expect(mockRestoreApp).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.restore' }));
+
+    expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
+
+    // Drive the confirm click inside `act` so the awaited `handleRestore`
+    // chain (restore -> toast -> navigate) and the subsequent `setLoadingState`
+    // in `onConfirmAction`'s finally all flush before we assert.
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Confirm Confirmation Modal' })
+      );
+    });
+
+    expect(mockRestoreApp).toHaveBeenCalledTimes(1);
+    expect(mockShowSuccessToast).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
   });
 
   it('Schedule and Recent Runs tab should not be visible for NoScheduleApps', async () => {
@@ -290,5 +322,48 @@ describe('AppDetails component', () => {
     await renderAppDetails();
 
     expect(mockShowErrorToast).toHaveBeenCalled();
+  });
+
+  it('should render the MCP configuration tab for an admin even without appConfiguration', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'McpApplication',
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+
+    await renderAppDetails();
+
+    expect(
+      within(screen.getByTestId('tabs')).getByRole('tab', {
+        name: 'label.configuration',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('MockMcpApplicationConfiguration')
+    ).toBeInTheDocument();
+  });
+
+  it('should hide the MCP configuration tab from non admins', async () => {
+    mockIsAdminUser.mockReturnValue(false);
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'McpApplication',
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+
+    await renderAppDetails();
+
+    expect(
+      within(screen.getByTestId('tabs')).queryByRole('tab', {
+        name: 'label.configuration',
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('MockMcpApplicationConfiguration')
+    ).not.toBeInTheDocument();
   });
 });

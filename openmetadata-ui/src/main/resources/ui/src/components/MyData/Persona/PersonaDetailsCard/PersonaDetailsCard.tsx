@@ -10,14 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Space, Tag, Typography } from 'antd';
-import { useCallback } from 'react';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+
+import { lazy, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Persona } from '../../../../generated/entity/teams/persona';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
-import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+
+const RichTextEditorPreviewerV1 = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewerV1'))
+);
 
 interface PersonaDetailsCardProps {
   persona: Persona;
@@ -38,40 +43,51 @@ export const PersonaDetailsCard = ({ persona }: PersonaDetailsCardProps) => {
 
   return (
     <Card
-      bodyStyle={{ height: '100%' }}
       className="h-full w-full cursor-pointer overflow-hidden"
       data-testid={`persona-details-card-${persona.name}`}
       onClick={handleCardClick}>
-      <Space className="justify-between w-full" direction="vertical">
-        <Card.Meta
-          description={
-            persona.description ? (
-              <RichTextEditorPreviewerV1
-                className="text-grey-muted max-two-lines"
-                markdown={persona.description ?? ''}
-              />
-            ) : (
-              <Typography.Text className="text-grey-muted">
-                {t('label.no-description')}
-              </Typography.Text>
-            )
-          }
-          title={
-            <div className="d-flex justify-between w-full">
-              <div>
-                <Typography.Text ellipsis={{ tooltip: true }}>
-                  {getEntityName(persona)}
-                </Typography.Text>
-              </div>
-              {persona.default && (
-                <Tag color="blue" data-testid="default-persona-tag">
-                  {t('label.default')}
-                </Tag>
-              )}
+      <Card.Content style={{ height: '100%' }}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space justify-between w-full"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
+          <div className="d-flex justify-between w-full">
+            <div>
+              <Typography
+                ellipsis={{
+                  tooltip: true,
+                  excludeTriggerFromTabOrder: true,
+                }}
+                weight="semibold">
+                {getEntityName(persona)}
+              </Typography>
             </div>
-          }
-        />
-      </Space>
+            {persona.default && (
+              <Badge
+                className="tw:mr-2"
+                color="blue"
+                data-testid="default-persona-tag"
+                size="sm"
+                type="color">
+                {t('label.default')}
+              </Badge>
+            )}
+          </div>
+          {persona.description ? (
+            <RichTextEditorPreviewerV1
+              className="text-grey-muted max-two-lines"
+              markdown={persona.description ?? ''}
+            />
+          ) : (
+            <Typography color="secondary">
+              {t('label.no-description')}
+            </Typography>
+          )}
+        </Box>
+      </Card.Content>
     </Card>
   );
 };

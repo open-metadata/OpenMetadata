@@ -33,9 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,10 +48,14 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
+import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -73,8 +80,10 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -84,8 +93,13 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
+  public static final String SUMMARY_FIELD = "summary";
+  public static final String TESTS_REVISION_EXTENSION = "internal.testSuite.testsRevision";
+  public static final String TESTS_REVISION_FIELD = "testsRevision";
+  private static final String TESTS_REVISION_SCHEMA = "testsRevision";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
+  private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
@@ -135,10 +149,57 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    TestSuiteBodyTextContributor.INSTANCE.register();
     EntityLifecycleEventDispatcher.getInstance()
         .registerHandler(new TestSuitePipelineStatusHandler());
-    fieldFetchers.put("summary", this::fetchAndSetTestCaseResultSummary);
+    fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
     fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
+  }
+
+  public static Map<UUID, Long> getTestsRelationshipRevisions(List<UUID> testSuiteIds) {
+    return getTestsRelationshipRevisions(Entity.getCollectionDAO(), testSuiteIds);
+  }
+
+  /**
+   * Reads the revisions through the caller's own DAO, so a caller that has just written them reads
+   * them back over the same connection and therefore inside the same transaction. See {@link
+   * TestCaseRepository#getTestSuiteRelationshipRevisions(CollectionDAO, List)} for why resolving the
+   * mutable global instead lets a write and its read-back land on two different connections.
+   */
+  public static Map<UUID, Long> getTestsRelationshipRevisions(
+      CollectionDAO collectionDAO, List<UUID> testSuiteIds) {
+    if (nullOrEmpty(testSuiteIds)) {
+      return Map.of();
+    }
+    if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
+      return Map.of();
+    }
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record :
+        collectionDAO
+            .entityExtensionDAO()
+            .getExtensionBatch(
+                testSuiteIds.stream().map(UUID::toString).toList(), TESTS_REVISION_EXTENSION)) {
+      TestsRelationshipRevision revision =
+          JsonUtils.readValue(record.extensionJson(), TestsRelationshipRevision.class);
+      revisions.put(record.id(), revision.revision());
+    }
+    return revisions;
+  }
+
+  static String getTestsRevisionSchema() {
+    return TESTS_REVISION_SCHEMA;
+  }
+
+  private record TestsRelationshipRevision(long revision) {}
+
+  /**
+   * {@code TestSuiteDAO} list/count queries inner-join test cases unless {@code
+   * includeEmptyTestSuites} is set, which left suites without test cases out of every reindex.
+   */
+  @Override
+  public ListFilter getReindexFilter() {
+    return super.getReindexFilter().addQueryParam("includeEmptyTestSuites", true);
   }
 
   @Override
@@ -179,13 +240,15 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         fields.contains("pipelines") ? getIngestionPipelines(entity) : entity.getPipelines());
     entity.setTests(fields.contains("tests") ? getTestCases(entity) : entity.getTests());
     entity.setTestCaseResultSummary(
-        fields.contains("summary")
+        fields.contains(SUMMARY_FIELD)
             ? getResultSummary(entity.getId())
             : entity.getTestCaseResultSummary());
-    entity.setSummary(
-        fields.contains("summary")
-            ? getTestSummary(entity.getTestCaseResultSummary())
-            : entity.getSummary());
+    if (fields.contains(SUMMARY_FIELD)) {
+      TestSummary summary = getTestSummary(entity.getTestCaseResultSummary());
+      summary.setTotal(
+          batchGetTestCaseCounts(List.of(entity.getId())).getOrDefault(entity.getId(), 0));
+      entity.setSummary(summary);
+    }
 
     // Ensure tests is never null, default to empty list
     if (entity.getTests() == null) {
@@ -197,10 +260,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
-          Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
-      inheritOwners(testSuite, fields, table);
-      inheritDomains(testSuite, fields, table);
+          Entity.getEntityOrNull(testSuite.getBasicEntityReference(), "owners,domains", ALL);
+      if (table != null) {
+        inheritOwners(testSuite, fields, table);
+        inheritDomains(testSuite, fields, table);
+      }
     }
   }
 
@@ -242,8 +306,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     return records.stream()
         .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .filter(rel -> idToRefMap.get(rel.getToId()) != null)
         .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
-        .filter(entry -> entry.getValue() != null)
         .collect(
             Collectors.groupingBy(
                 Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
@@ -252,9 +316,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   @Override
   public void clearFields(TestSuite entity, EntityUtil.Fields fields) {
     entity.setPipelines(fields.contains("pipelines") ? entity.getPipelines() : null);
-    entity.setSummary(fields.contains("summary") ? entity.getSummary() : null);
+    entity.setSummary(fields.contains(SUMMARY_FIELD) ? entity.getSummary() : null);
     entity.setTestCaseResultSummary(
-        fields.contains("summary") ? entity.getTestCaseResultSummary() : null);
+        fields.contains(SUMMARY_FIELD) ? entity.getTestCaseResultSummary() : null);
     entity.withTests(fields.contains(UPDATE_FIELDS) ? entity.getTests() : null);
   }
 
@@ -275,7 +339,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public EntityInterface getParentEntity(TestSuite entity, String fields) {
+  public EntityInterface<?> getParentEntity(TestSuite entity, String fields) {
     if (entity.getBasic() && entity.getBasicEntityReference() != null) {
       var filteredFields = EntityUtil.getFilteredFields(TABLE, fields);
       return Entity.getEntity(entity.getBasicEntityReference(), filteredFields, ALL);
@@ -368,6 +432,44 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         queryWithDomain, index, searchAggregation, subjectContext);
   }
 
+  public DataQualityReportBatchResponse getDataQualityReportBatch(
+      DataQualityReportBatchRequest request, SubjectContext subjectContext) {
+    List<DataQualityReportResult> results =
+        runReportsConcurrently(request.getRequests(), subjectContext);
+    return new DataQualityReportBatchResponse().withResults(results);
+  }
+
+  private List<DataQualityReportResult> runReportsConcurrently(
+      List<DataQualityReportRequest> requests, SubjectContext subjectContext) {
+    Queue<DataQualityReportResult> results = new ConcurrentLinkedQueue<>();
+    int concurrency = Math.min(requests.size(), MAX_CONCURRENT_REPORT_QUERIES);
+    try (ExecutorService executor = Executors.newFixedThreadPool(concurrency)) {
+      for (DataQualityReportRequest item : requests) {
+        executor.submit(() -> results.add(runSingleReport(item, subjectContext)));
+      }
+    }
+    return new ArrayList<>(results);
+  }
+
+  private DataQualityReportResult runSingleReport(
+      DataQualityReportRequest item, SubjectContext subjectContext) {
+    DataQualityReportResult result = new DataQualityReportResult().withKey(item.getKey());
+    try {
+      DataQualityReport report =
+          getDataQualityReport(
+              item.getQ(),
+              item.getAggregationQuery(),
+              item.getIndex(),
+              item.getDomain(),
+              subjectContext);
+      result.withReport(report);
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Failed to compute data quality report for key '{}'", item.getKey(), e);
+      result.withError(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+    }
+    return result;
+  }
+
   private String addDomainFilter(String query, String domain, String index) {
     if (nullOrEmpty(domain)) {
       return query;
@@ -434,19 +536,40 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return query;
   }
 
-  public TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
-    Map<String, String> entityLinkMap = new HashMap<>();
-    for (ResultSummary result : testCaseResults) {
-      TestCase testCase = Entity.getEntityByName(TEST_CASE, result.getTestCaseName(), "", ALL);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(testCase.getEntityLink());
-      String linkString = entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
-      entityLinkMap.put(result.getTestCaseName(), linkString);
-    }
-    return getTestSummary(testCaseResults, entityLinkMap);
+  public static TestSummary getTestSummary(List<ResultSummary> testCaseResults) {
+    Map<String, String> summaryLinkByTestCase = getSummaryLinksOfExistingTestCases(testCaseResults);
+    List<ResultSummary> resultsOfExistingTestCases =
+        testCaseResults.stream()
+            .filter(result -> summaryLinkByTestCase.containsKey(result.getTestCaseName()))
+            .toList();
+    return getTestSummary(resultsOfExistingTestCases, summaryLinkByTestCase);
   }
 
-  private TestSummary createTestSummary(Map<String, Integer> summaryMap) {
+  /**
+   * Reads the listed test cases in one batch. A test case deleted after its results were listed is
+   * missing from the batch, so its results drop out of the summary instead of failing the whole
+   * read with a 404.
+   */
+  private static Map<String, String> getSummaryLinksOfExistingTestCases(
+      List<ResultSummary> testCaseResults) {
+    List<String> testCaseFqns =
+        testCaseResults.stream().map(ResultSummary::getTestCaseName).distinct().toList();
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
+    return testCaseRepository.findByNames(testCaseFqns, ALL).stream()
+        .collect(
+            Collectors.toMap(
+                TestCase::getFullyQualifiedName,
+                TestSuiteRepository::getSummaryLink,
+                (first, duplicate) -> first));
+  }
+
+  private static String getSummaryLink(TestCase testCase) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    return entityLink.getFieldName() == null ? "table" : entityLink.getLinkString();
+  }
+
+  private static TestSummary createTestSummary(Map<String, Integer> summaryMap) {
     TestSummary summary = new TestSummary();
     summary.setSuccess(summaryMap.getOrDefault("Success", 0));
     summary.setFailed(summaryMap.getOrDefault("Failed", 0));
@@ -455,7 +578,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return summary;
   }
 
-  private ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
+  private static ColumnTestSummaryDefinition createColumnSummary(Map<String, Integer> summaryMap) {
     ColumnTestSummaryDefinition summary = new ColumnTestSummaryDefinition();
     summary.setSuccess(summaryMap.getOrDefault("Success", 0));
     summary.setFailed(summaryMap.getOrDefault("Failed", 0));
@@ -499,7 +622,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     super.postCreate(entity);
     if (Boolean.TRUE.equals(entity.getBasic()) && entity.getBasicEntityReference() != null) {
       // Update table index with test suite field
-      EntityInterface entityInterface =
+      EntityInterface<?> entityInterface =
           getEntity(entity.getBasicEntityReference(), "testSuite", ALL);
       IndexMapping indexMapping =
           searchRepository.getIndexMapping(entity.getBasicEntityReference().getType());
@@ -531,29 +654,35 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   private void fetchAndSetTestCaseResultSummary(
       List<TestSuite> testSuites, EntityUtil.Fields fields) {
-    if (!fields.contains("summary") || testSuites == null || testSuites.isEmpty()) {
+    if (!fields.contains(SUMMARY_FIELD) || testSuites == null || testSuites.isEmpty()) {
       return;
     }
 
     List<UUID> suiteIds = testSuites.stream().map(TestSuite::getId).toList();
     Map<UUID, List<ResultSummary>> testCaseResultSummaryMap = batchGetResultSummary(suiteIds);
+    Map<UUID, Integer> testCaseCountMap = batchGetTestCaseCounts(suiteIds);
 
     Map<UUID, TestSummary> testSummaryMap = new HashMap<>();
-    testCaseResultSummaryMap.forEach(
-        (id, results) -> testSummaryMap.put(id, computeSimpleSummary(results)));
+    suiteIds.forEach(
+        id ->
+            testSummaryMap.put(
+                id,
+                computeSimpleSummary(
+                    testCaseResultSummaryMap.getOrDefault(id, List.of()),
+                    testCaseCountMap.getOrDefault(id, 0))));
 
     setFieldFromMap(
         true, testSuites, testCaseResultSummaryMap, TestSuite::setTestCaseResultSummary);
     setFieldFromMap(true, testSuites, testSummaryMap, TestSuite::setSummary);
   }
 
-  private TestSummary computeSimpleSummary(List<ResultSummary> results) {
+  static TestSummary computeSimpleSummary(List<ResultSummary> results, int totalTests) {
     Map<String, Integer> statusCounts = new HashMap<>();
     for (ResultSummary r : results) {
       statusCounts.merge(r.getStatus().toString(), 1, Integer::sum);
     }
     TestSummary summary = createTestSummary(statusCounts);
-    summary.setTotal(results.size());
+    summary.setTotal(totalTests);
     return summary;
   }
 
@@ -564,7 +693,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     Map<UUID, List<EntityReference>> ingestionPipelineMap =
         entities.stream()
-            .collect(Collectors.toMap(EntityInterface::getId, this::getIngestionPipelines));
+            .collect(Collectors.toMap(EntityInterface<?>::getId, this::getIngestionPipelines));
     setFieldFromMap(true, entities, ingestionPipelineMap, TestSuite::setPipelines);
   }
 
@@ -587,7 +716,26 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     return repository.listResultSummariesForTestSuites(testSuiteIds);
   }
 
-  private TestSummary getTestSummary(
+  private Map<UUID, Integer> batchGetTestCaseCounts(List<UUID> testSuiteIds) {
+    if (testSuiteIds == null || testSuiteIds.isEmpty()) {
+      return Map.of();
+    }
+    List<CollectionDAO.EntityRelationshipCount> counts =
+        EntityDAO.queryInChunks(
+            testSuiteIds.stream().map(UUID::toString).toList(),
+            chunk ->
+                daoCollection
+                    .relationshipDAO()
+                    .countNonDeletedTestCasesBatch(
+                        chunk, TEST_SUITE, Relationship.CONTAINS.ordinal(), TEST_CASE));
+    return counts.stream()
+        .collect(
+            Collectors.toMap(
+                CollectionDAO.EntityRelationshipCount::getId,
+                CollectionDAO.EntityRelationshipCount::getCount));
+  }
+
+  private static TestSummary getTestSummary(
       List<ResultSummary> testCaseResults, Map<String, String> entityLinkMap) {
     record ProcessedTestCaseResults(String entityLink, String status) {}
 
@@ -699,7 +847,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
-      cleanup(updated);
+      cleanup(updatedBy, updated);
       changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -728,22 +876,24 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       SecurityContext securityContext, TestSuite testSuite, boolean hardDelete) {
     String jobId = UUID.randomUUID().toString();
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
-        () -> {
-          try {
-            RestUtil.DeleteResponse<TestSuite> deleteResponse =
-                deleteLogicalTestSuite(
-                    securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
-            deleteFromSearch(deleteResponse.entity(), hardDelete);
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.ENTITY_DELETE_RESTORE,
+            jobId,
+            () -> {
+              try {
+                RestUtil.DeleteResponse<TestSuite> deleteResponse =
+                    deleteLogicalTestSuite(
+                        securityContext.getUserPrincipal().getName(), testSuite, hardDelete);
+                deleteFromSearch(deleteResponse.entity(), hardDelete);
 
-            WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                jobId, securityContext, deleteResponse.entity());
-          } catch (Exception e) {
-            WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, testSuite, e.getMessage());
-          }
-        });
+                WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                    jobId, securityContext, deleteResponse.entity());
+              } catch (Exception e) {
+                WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                    jobId, securityContext, testSuite, e.getMessage());
+              }
+            });
     return Response.accepted()
         .entity(
             new DeleteEntityResponse(
@@ -802,28 +952,33 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   public void onTestSuiteExecutionComplete(IngestionPipeline pipeline) {
     try {
-      TestSuite testSuite =
-          Entity.getEntity(
-              pipeline.getService().getType(),
-              pipeline.getService().getId(),
-              "*",
-              Include.NON_DELETED);
+      var latestStatus = IngestionPipelineRepository.latestPipelineStatus(pipeline);
+      if (latestStatus == null) {
+        LOG.warn(
+            "Pipeline {} completed but has no pipeline statuses; skipping test suite update",
+            pipeline.getFullyQualifiedName());
+      } else {
+        TestSuite testSuite =
+            Entity.getEntity(
+                pipeline.getService().getType(),
+                pipeline.getService().getId(),
+                "*",
+                Include.NON_DELETED);
+        PipelineStatusType state = latestStatus.getPipelineState();
 
-      PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
+        Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
+        createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
 
-      Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
-      createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
+        LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
 
-      LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
+        if (testSuite.getDataContract() != null) {
+          DataContractRepository dataContractRepository =
+              (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+          dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+        }
 
-      if (testSuite.getDataContract() != null) {
-        DataContractRepository dataContractRepository =
-            (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
-        dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+        updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
       }
-
-      updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
-
     } catch (Exception e) {
       LOG.error(
           "Failed to process test suite completion for pipeline {}: {}",
@@ -922,7 +1077,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private class TestSuitePipelineStatusHandler implements EntityLifecycleEventHandler {
     @Override
     public void onEntityUpdated(
-        EntityInterface entity,
+        EntityInterface<?> entity,
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
       if (!(entity instanceof IngestionPipeline pipeline)) {
@@ -931,10 +1086,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
       Optional.of(pipeline)
           .filter(p -> p.getPipelineType() == PipelineType.TEST_SUITE)
-          .filter(p -> p.getPipelineStatuses() != null)
+          .filter(p -> !nullOrEmpty(p.getPipelineStatuses()))
           .filter(
               p -> {
-                PipelineStatusType state = p.getPipelineStatuses().getPipelineState();
+                PipelineStatusType state =
+                    IngestionPipelineRepository.latestPipelineStatus(p).getPipelineState();
                 return state == PipelineStatusType.SUCCESS
                     || state == PipelineStatusType.FAILED
                     || state == PipelineStatusType.PARTIAL_SUCCESS;

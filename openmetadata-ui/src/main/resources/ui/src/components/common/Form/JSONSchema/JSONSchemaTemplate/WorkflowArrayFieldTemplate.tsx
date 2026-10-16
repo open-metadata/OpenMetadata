@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 
+import {
+  Autocomplete,
+  ButtonUtility,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { Button, Col, Row, Select, Tooltip, Typography } from 'antd';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
-import React, { useCallback } from 'react';
+import React, { Key, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
-import { splitCSV } from '../../../../../utils/CSV/CSV.utils';
-import './workflow-array-field-template.less';
-
+import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
   const isFilterPatternField = (id: string) => {
@@ -44,8 +48,8 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
       isArray(props.schema.items.enum)
     ) {
       return (props.schema.items.enum as string[]).map((option) => ({
+        id: option,
         label: option,
-        value: option,
       }));
     }
 
@@ -53,7 +57,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   };
 
   const id = props.idSchema.$id;
-  const value = props.formData ?? [];
+  const value: string[] = props.formData ?? [];
   const placeholder = isFilterPatternField(id)
     ? t('message.filter-pattern-placeholder')
     : '';
@@ -111,62 +115,65 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
   );
 
   return (
-    <Row>
-      <Col span={24}>
+    <Grid className="layout-row layout-grid">
+      <Grid.Item className="layout-column" span={24}>
         {/* Display field title only if uniqueItems is not true to remove duplicate title set
          automatically due to an unknown behavior */}
         {props.schema.uniqueItems !== true && (
-          <Typography>{startCase(props.name)}</Typography>
+          <Typography as="article">{startCase(props.name)}</Typography>
         )}
-      </Col>
-      <Col className="select-container" span={24}>
-        <Select
-          className="m-t-xss w-full"
-          data-testid={`workflow-array-field-${id}`}
-          disabled={props.disabled}
-          id={id}
-          mode={options ? 'multiple' : 'tags'}
-          open={options ? undefined : false}
-          options={options}
-          placeholder={placeholder}
-          value={value}
-          onBlur={() => props.onBlur(id, value)}
-          onChange={(value) => props.onChange(value)}
-          onFocus={handleFocus}
-          onKeyDown={(e) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
-              e.preventDefault();
-              handlePaste();
+      </Grid.Item>
+      <Grid.Item
+        className="layout-column tw:mt-1 tw:flex tw:items-center tw:gap-1"
+        span={24}>
+        <div className="tw:min-w-0 tw:flex-1">
+          <Autocomplete
+            multiple
+            allowsCreation={!options}
+            aria-label={startCase(props.name)}
+            data-testid={`workflow-array-field-${id}`}
+            hideDropdown={!options}
+            id={id}
+            isDisabled={props.disabled}
+            items={options ?? []}
+            placeholder={placeholder}
+            selectedItems={value.map((item) => ({ id: item, label: item }))}
+            onBlur={() => props.onBlur(id, value)}
+            onFocus={handleFocus}
+            onItemCleared={(key: Key) =>
+              props.onChange(value.filter((item) => item !== key))
             }
-            if (!options && e.key === 'Enter') {
-              // If there are no options(mode is tags), we need to split the input value by comma
-              e.preventDefault();
-              const inputValue = (e.target as HTMLInputElement).value;
-              if (inputValue) {
-                handleInputSplit(inputValue);
+            onItemInserted={(key: Key) =>
+              options
+                ? props.onChange([...value, String(key)])
+                : handleInputSplit(String(key))
+            }
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
+                e.preventDefault();
+                handlePaste();
               }
-            }
-          }}
-        />
-
-        <div className="workflow-array-field-divider" />
+            }}>
+            {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
+          </Autocomplete>
+        </div>
         <Tooltip
-          overlayClassName="custom-tooltip"
+          arrow
           placement="top"
           title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
-          <Button
-            className="workflow-array-field-copy-button remove-button-default-styling"
-            icon={<CopyLeft height={20} />}
-            size="small"
-            type="text"
+          <ButtonUtility
+            aria-label={t('label.copy')}
+            color="tertiary"
+            icon={CopyLeft}
+            size="xs"
             onClick={(e) => {
               e.stopPropagation();
               handleCopy(e);
             }}
           />
         </Tooltip>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

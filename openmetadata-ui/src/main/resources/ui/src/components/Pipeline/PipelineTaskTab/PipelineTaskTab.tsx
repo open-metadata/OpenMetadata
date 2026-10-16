@@ -10,20 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Card, Segmented, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as ExternalLinkIcon } from '../../../assets/svg/external-links.svg';
-import {
-  DATA_ASSET_ICON_DIMENSION,
-  NO_DATA_PLACEHOLDER,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { PIPELINE_TASK_TABS } from '../../../constants/pipeline.constants';
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   COMMON_STATIC_TABLE_VISIBLE_COLUMNS,
   DEFAULT_PIPELINE_VISIBLE_COLUMNS,
@@ -39,25 +51,43 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
-import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import {
   columnFilterIcon,
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
-import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
-import { createTagObject } from '../../../utils/TagsUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { createTagObject } from '../../../utils/TagsPureUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import TasksDAGView from '../TasksDAGView/TasksDAGView';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+// TasksDAGView pulls in @xyflow/react via the EntityLineage helpers it shares
+// with the Lineage tab. Eagerly importing it leaks ~90 KB brotli of reactflow
+// into the entry chunk because PipelineTaskTab is reachable from
+// PipelineDetailsUtils + GenericWidgetUtils (both eager). Lazy-loading here
+// breaks that chain — Vite drops reactflow + the lineage helpers out of the
+// entry preload list; the DAG view chunk loads when the user actually opens
+// the Tasks tab. Suspense fallback is `null` because the surrounding Card
+// already has its own title/skeleton; a spinner here would flash once.
+const TasksDAGView = lazy(() => import('../TasksDAGView/TasksDAGView'));
 
 export const PipelineTaskTab = () => {
   const {
@@ -109,22 +139,21 @@ export const PipelineTaskTab = () => {
     setDisplayedColumns(pipelineDetails.tasks ?? []);
   }, [pipelineDetails.tasks, setDisplayedColumns]);
 
+  // Named-flag derivation (Task 8 Batch 9): `permissions` is the raw OperationPermission
+  // read off useGenericContext(), owned by whichever page renders this tab (rule 2 —
+  // DocumentationTab.component.tsx precedent). Ungated: `deleted` is threaded to
+  // TableDescription/TableTags separately as `isReadOnly`, never folded into the edit
+  // flags here (SearchIndexFieldsTab/TopicSchema precedent). All 3 raw `EditAll || EditX`
+  // reads were explicit-deny-wins bugs — a field-specific deny (e.g. EditDescription:
+  // false) was silently overridden by a granted EditAll. The 4th flagged read
+  // (`ViewAll || ViewCustomFields`) computed a `viewCustomPropertiesPermission` that was
+  // never destructured out of this memo's return value — dead code, dropped rather than
+  // converted.
   const {
-    editDescriptionPermission,
-    editTagsPermission,
-    editGlossaryTermsPermission,
-  } = useMemo(
-    () => ({
-      editDescriptionPermission:
-        permissions?.EditAll || permissions?.EditDescription,
-      editTagsPermission: permissions?.EditAll || permissions?.EditTags,
-      editGlossaryTermsPermission:
-        permissions?.EditAll || permissions?.EditGlossaryTerms,
-      viewCustomPropertiesPermission:
-        permissions?.ViewAll || permissions?.ViewCustomFields,
-    }),
-    [permissions]
-  );
+    canEditDescription: editDescriptionPermission,
+    canEditTags: editTagsPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+  } = useMemo(() => getDerivedPermissionFlags(permissions), [permissions]);
 
   const allTasksInternal = useMemo(
     () =>
@@ -134,19 +163,22 @@ export const PipelineTaskTab = () => {
     [pipelineDetails.tasks]
   );
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(allTasksInternal);
+
   useEffect(() => {
-    handlePagingChange({ total: allTasksInternal.length });
-    const maxPage = Math.max(1, Math.ceil(allTasksInternal.length / pageSize));
+    handlePagingChange({ total: filteredData.length });
+    const maxPage = Math.max(1, Math.ceil(filteredData.length / pageSize));
     if (currentPage > maxPage) {
       handlePageChange(maxPage, { cursorType: null, cursorValue: undefined });
     }
-  }, [allTasksInternal.length, pageSize]);
+  }, [filteredData.length, pageSize]);
 
   const tasksInternal = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
 
-    return allTasksInternal.slice(start, start + pageSize);
-  }, [allTasksInternal, currentPage, pageSize]);
+    return filteredData.slice(start, start + pageSize);
+  }, [filteredData, currentPage, pageSize]);
 
   const handleTasksPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
@@ -167,16 +199,31 @@ export const PipelineTaskTab = () => {
   const tasksDAGView = useMemo(
     () =>
       !isEmpty(pipelineDetails.tasks) && !isUndefined(pipelineDetails.tasks) ? (
-        <Card className="task-dag-view-card" title={t('label.dag-view')}>
+        // Light values reproduce the antd Card this replaced.
+        <Card className="tw:overflow-visible tw:border-utility-gray-blue-100 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle">
+          <div
+            className={classNames(
+              'tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:rounded-t-xl',
+              'tw:border-b tw:border-black/6 tw:bg-[var(--om-legacy-color-f8f8f8)]',
+              'tw:px-6 tw:py-4 tw:text-base tw:leading-[1.5715] tw:font-medium',
+              'tw:text-black/85 tw:dark:border-secondary tw:dark:bg-secondary',
+              'tw:dark:text-primary'
+            )}>
+            {t('label.dag-view')}
+          </div>
           <div className="h-100">
-            <TasksDAGView
-              selectedExec={selectedExecution}
-              tasks={pipelineDetails.tasks}
-            />
+            <Suspense fallback={null}>
+              <TasksDAGView
+                selectedExec={selectedExecution}
+                tasks={pipelineDetails.tasks}
+              />
+            </Suspense>
           </div>
         </Card>
       ) : (
-        <Card className="text-center" data-testid="no-tasks-data">
+        <Card
+          className="text-center tw:overflow-visible tw:border-utility-gray-blue-100 tw:p-5 tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums tw:dark:border-subtle"
+          data-testid="no-tasks-data">
           <span>{t('server.no-task-available')}</span>
         </Card>
       ),
@@ -255,28 +302,28 @@ export const PipelineTaskTab = () => {
         sorter: getColumnSorter<Task, 'name'>('name'),
         onCell: (record: Task) => ({
           onClick: (event) =>
-            isEmpty(record.sourceUrl) && handleTaskClick(record, event),
+            !getSafeHttpUrl(record.sourceUrl) && handleTaskClick(record, event),
           'data-testid': 'column-name-cell',
         }),
-        render: (_, record) =>
-          isEmpty(record.sourceUrl) ? (
-            <span className="text-link-color">{getEntityName(record)}</span>
-          ) : (
+        render: (_, record) => {
+          const sourceUrl = getSafeHttpUrl(record.sourceUrl);
+
+          return sourceUrl ? (
             <Link
               className="flex items-center gap-2"
+              rel="noopener noreferrer"
               target="_blank"
-              to={record.sourceUrl ?? ''}>
+              to={sourceUrl}>
               <div className="d-flex items-center">
                 <span className="break-all">{getEntityName(record)}</span>
 
-                <Icon
-                  className="m-l-xs flex-none"
-                  component={ExternalLinkIcon}
-                  style={DATA_ASSET_ICON_DIMENSION}
-                />
+                <ExternalLinkIcon className="tw:ml-2 tw:shrink-0 tw:size-3.5" />
               </div>
             </Link>
-          ),
+          ) : (
+            <span className="text-link-color">{getEntityName(record)}</span>
+          );
+        },
       },
       {
         key: TABLE_COLUMNS_KEYS.TASK_TYPE,
@@ -284,7 +331,9 @@ export const PipelineTaskTab = () => {
         width: 180,
         title: t('label.type'),
         render: (text) => (
-          <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {text || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {
@@ -334,7 +383,7 @@ export const PipelineTaskTab = () => {
         ),
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
       },
       {
         title: t('label.glossary-term-plural'),
@@ -344,7 +393,7 @@ export const PipelineTaskTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags, record, index) => (
           <TableTags<Task>
             entityFqn={pipelineFQN}
@@ -369,18 +418,33 @@ export const PipelineTaskTab = () => {
       editDescriptionPermission,
       currentPage,
       pageSize,
+      tagFilterState,
     ]
   );
 
   return (
     <div>
-      <Segmented
-        className="segment-toggle m-b-md"
+      <ButtonGroup
+        disallowEmptySelection
+        className={`${SEGMENT_TOGGLE_GROUP_CLASS} m-b-md`}
         data-testid="pipeline-task-switch"
-        options={Object.values(PIPELINE_TASK_TABS)}
-        value={activeTab}
-        onChange={(value) => setActiveTab(value as PIPELINE_TASK_TABS)}
-      />
+        selectedKeys={[activeTab]}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const selected = [...keys][0];
+          if (selected) {
+            setActiveTab(selected as PIPELINE_TASK_TABS);
+          }
+        }}>
+        {Object.values(PIPELINE_TASK_TABS).map((tab) => (
+          <ButtonGroupItem
+            className={SEGMENT_TOGGLE_ITEM_CLASS}
+            id={tab}
+            key={tab}>
+            {tab}
+          </ButtonGroupItem>
+        ))}
+      </ButtonGroup>
 
       {activeTab === PIPELINE_TASK_TABS.LIST_VIEW ? (
         <Table
@@ -403,6 +467,7 @@ export const PipelineTaskTab = () => {
           scroll={{ x: 1200 }}
           size="small"
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+          onChange={handleTableChange}
         />
       ) : (
         tasksDAGView

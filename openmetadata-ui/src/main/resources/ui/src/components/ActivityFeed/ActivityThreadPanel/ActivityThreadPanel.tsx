@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import { Drawer, Tabs } from 'antd';
+import { SlideoutMenu, Tabs } from '@openmetadata/ui-core-components';
+import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
+
 import classNames from 'classnames';
-import { isEqual } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PanelTab } from '../../../constants/Feeds.constants';
-import { ThreadType } from '../../../generated/entity/feed/thread';
+import { useVisitedTabs } from '../../../hooks/useVisitedTabs';
 import { ActivityThreadPanelProp } from './ActivityThreadPanel.interface';
 import ActivityThreadPanelBody from './ActivityThreadPanelBody';
 
@@ -26,69 +27,85 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
   className,
   onCancel,
   open,
-  postFeedHandler,
-  createThread,
-  deletePostHandler,
-  updateThreadHandler,
-  threadType,
+  initialView = 'conversations',
 }) => {
   const { t } = useTranslation();
-  const { TabPane } = Tabs;
-  const [activeTab, setActiveTab] = useState<PanelTab>(PanelTab.TASKS);
+  const [activeTab, setActiveTab] = useState<PanelTab>(
+    initialView === 'conversations' ? PanelTab.CONVERSATIONS : PanelTab.TASKS
+  );
+
+  // Keeps an unsent conversation or task draft when switching tabs.
+  const visitedTabs = useVisitedTabs(activeTab);
 
   const onTabChange = (key: string) => {
     setActiveTab(key as PanelTab);
   };
 
   useEffect(() => {
-    if (isEqual(threadType, ThreadType.Conversation)) {
-      setActiveTab(PanelTab.CONVERSATIONS);
-    }
-  }, [threadType]);
+    setActiveTab(
+      initialView === 'conversations' ? PanelTab.CONVERSATIONS : PanelTab.TASKS
+    );
+  }, [initialView]);
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-  }, []);
-
+  // Popup portals belong to the drawer even though they render outside its DOM tree.
   return (
-    <Drawer
-      className={classNames('feed-drawer', className)}
-      closable={false}
-      open={open}
+    <SlideoutMenu
+      isDismissable
+      aria-label={t('label.activity-feed')}
+      dialogClassName={classNames('feed-drawer', className)}
+      isOpen={open}
+      shouldCloseOnInteractOutside={(element) =>
+        !element.closest('[data-react-aria-top-layer]')
+      }
       width={576}
-      onClose={onCancel}>
-      <div id="thread-panel">
-        <Tabs
-          activeKey={activeTab}
-          className="ant-tabs-custom-line ant-tabs-custom-threadpanel"
-          onChange={onTabChange}>
-          <TabPane key={PanelTab.TASKS} tab={t('label.task-plural')}>
-            <ActivityThreadPanelBody
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              postFeedHandler={postFeedHandler}
-              threadLink={threadLink}
-              updateThreadHandler={updateThreadHandler}
-              view="tasks"
-              onCancel={onCancel}
-            />
-          </TabPane>
-          <TabPane
-            key={PanelTab.CONVERSATIONS}
-            tab={t('label.conversation-plural')}>
-            <ActivityThreadPanelBody
-              createThread={createThread}
-              deletePostHandler={deletePostHandler}
-              postFeedHandler={postFeedHandler}
-              threadLink={threadLink}
-              updateThreadHandler={updateThreadHandler}
-              view="conversations"
-              onCancel={onCancel}
-            />
-          </TabPane>
-        </Tabs>
-      </div>
-    </Drawer>
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onCancel?.();
+        }
+      }}>
+      <SlideoutMenu.Content role="region">
+        <DrawerPopupContainerProvider>
+          <div id="thread-panel">
+            <Tabs
+              className="tw:gap-4"
+              selectedKey={activeTab}
+              onSelectionChange={(key) => onTabChange(String(key))}>
+              <Tabs.List
+                className="tw:gap-8 tw:px-4"
+                size="sm"
+                type="underline">
+                <Tabs.Item id={PanelTab.TASKS}>
+                  {t('label.task-plural')}
+                </Tabs.Item>
+                <Tabs.Item id={PanelTab.CONVERSATIONS}>
+                  {t('label.conversation-plural')}
+                </Tabs.Item>
+              </Tabs.List>
+              <Tabs.Panel
+                className="tw:data-inert:hidden"
+                id={PanelTab.TASKS}
+                shouldForceMount={visitedTabs.has(PanelTab.TASKS)}>
+                <ActivityThreadPanelBody
+                  threadLink={threadLink}
+                  view="tasks"
+                  onCancel={onCancel}
+                />
+              </Tabs.Panel>
+              <Tabs.Panel
+                className="tw:data-inert:hidden"
+                id={PanelTab.CONVERSATIONS}
+                shouldForceMount={visitedTabs.has(PanelTab.CONVERSATIONS)}>
+                <ActivityThreadPanelBody
+                  threadLink={threadLink}
+                  view="conversations"
+                  onCancel={onCancel}
+                />
+              </Tabs.Panel>
+            </Tabs>
+          </div>
+        </DrawerPopupContainerProvider>
+      </SlideoutMenu.Content>
+    </SlideoutMenu>
   );
 };
 

@@ -10,18 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconArticle } from '../../../assets/svg/ic-articles.svg';
-import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-link.svg';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
+import { ReactComponent as IconArticle } from '../../../assets/svg/common/file.svg';
+import { ReactComponent as LinkIcon } from '../../../assets/svg/quick-link.svg';
 import Loader from '../../../components/common/Loader/Loader';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { PAGE_SIZE, ROUTES } from '../../../constants/constants';
+import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { Paging } from '../../../generated/type/paging';
 import {
@@ -30,8 +34,9 @@ import {
   QuickLink,
 } from '../../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 
 const KnowledgePages: FC = () => {
   const { t } = useTranslation();
@@ -43,6 +48,7 @@ const KnowledgePages: FC = () => {
     type: entityType,
     filterWidgets,
   } = useGenericContext();
+  const { isTourPage } = useTourProvider();
 
   const fetchKnowledgePages = async () => {
     setIsLoading(true);
@@ -61,29 +67,20 @@ const KnowledgePages: FC = () => {
   };
 
   useEffect(() => {
-    if (entityId && entityType) {
+    if (entityId && entityType && !isTourPage) {
       fetchKnowledgePages();
     } else {
       setIsLoading(false);
     }
-  }, [entityId, entityType]);
+  }, [entityId, entityType, isTourPage]);
 
-  const header = (
-    <div className="d-flex justify-between">
-      <Typography.Text
-        className="text-sm font-medium"
-        data-testid="header-label">
-        {t('label.knowledge-center')}
-      </Typography.Text>
-      {/* only show view all if length is greater than PAGE_SIZE i.e 10 */}
-      {paging?.total > PAGE_SIZE && (
-        <Link
-          data-testid="view-all-data-asset-related-articles"
-          to={`${ROUTES.KNOWLEDGE_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
-          {t('label.view-all')}
-        </Link>
-      )}
-    </div>
+  // only show view all if length is greater than PAGE_SIZE i.e 10
+  const headerExtra = paging?.total > PAGE_SIZE && (
+    <Link
+      data-testid="view-all-data-asset-related-articles"
+      to={`${ROUTES.CONTEXT_CENTER_FILTER}?entityId=${entityId}&entityType=${entityType}`}>
+      {t('label.view-all')}
+    </Link>
   );
 
   const content = (
@@ -95,28 +92,30 @@ const KnowledgePages: FC = () => {
         const quickLink = knowledgePage.page as QuickLink;
 
         return (
-          <Row
-            className={classNames({
+          <Grid
+            className={`layout-row layout-grid ${classNames({
               'm-b-sm': knowledgePages.length - 1 !== index,
-            })}
+            })}`}
             data-testid="article-entry"
-            gutter={[0, 4]}
-            key={knowledgePage.id}>
-            <Col className="d-flex items-center gap-2" span={24}>
+            key={knowledgePage.id}
+            style={{ ...getLayoutGutter(0, 4) }}>
+            <Grid.Item
+              className="layout-column d-flex items-center gap-2"
+              span={24}>
               <span>
                 {isQuickLink ? (
                   <LinkIcon
                     data-testid="link-icon"
-                    height={12}
+                    height={16}
                     style={{ verticalAlign: 'middle' }}
-                    width={12}
+                    width={16}
                   />
                 ) : (
                   <IconArticle
                     data-testid="article-icon"
-                    height={12}
+                    height={16}
                     style={{ verticalAlign: 'middle' }}
-                    width={12}
+                    width={16}
                   />
                 )}
               </span>
@@ -126,21 +125,24 @@ const KnowledgePages: FC = () => {
                 target={isQuickLink ? '_blank' : '_self'}
                 to={
                   isQuickLink
-                    ? quickLink.url
+                    ? getSafeHttpUrl(quickLink.url) ?? '#'
                     : {
-                        pathname: getKnowledgePagePath(
+                        pathname: contextCenterClassBase.getArticlePath(
                           knowledgePage.fullyQualifiedName
                         ),
                       }
                 }>
-                <Typography.Text
+                <Typography
                   className="article-header"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getEntityName(knowledgePage)}
-                </Typography.Text>
+                </Typography>
               </Link>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         );
       })}
     </div>
@@ -161,13 +163,12 @@ const KnowledgePages: FC = () => {
   }
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
-      dataTestId="knowledge-center">
+    <WidgetCard
+      dataTestId="knowledge-center"
+      headerExtra={headerExtra}
+      title={t('label.context-center')}>
       {content}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };
 

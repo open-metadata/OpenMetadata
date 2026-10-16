@@ -35,6 +35,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -62,20 +63,29 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
-@Tag(name = "Knowledge", description = "APIs related knowledge pages of data assets.")
-@Path("/v1/knowledgeCenter")
+@Tag(
+    name = "Context Center Pages",
+    description = "APIs related to Context Center pages (articles and quick links).")
+@Path("/v1/contextCenter/pages")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
-@Collection(name = "KnowledgeCenter")
+@Collection(name = "contextCenterPages")
 public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRepository> {
   public static final String INVALID_ENTITY_MSG =
       "Given Entity Type : %s does not support Knowledge Pages.";
   public static final Set<String> EXCLUDED_ENTITIES = Set.of(USER, BOT, TEST_SUITE, TEST_CASE);
-  public static final String COLLECTION_PATH = "v1/knowledgeCenter";
+  public static final String COLLECTION_PATH = "v1/contextCenter/pages";
   public static final String FIELDS =
       "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts";
   private final KnowledgePageMapper mapper = new KnowledgePageMapper();
@@ -170,7 +180,48 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Field to sort by. Supported: name, displayName, createdAt, updatedAt.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "displayName", "createdAt", "updatedAt"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description =
+                  "Sort order. Supported: asc, desc. Defaults to desc when sortBy is set.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrder,
+      @Parameter(description = "Offset for offset-based pagination when sortBy is used.")
+          @QueryParam("offset")
+          @DefaultValue("0")
+          int offset)
+      throws IOException {
+    if (sortBy != null && !sortBy.isEmpty()) {
+      if (before != null || after != null) {
+        throw new IllegalArgumentException(
+            "'sortBy' cannot be combined with cursor pagination ('before'/'after'). Use 'offset' and 'limit' instead.");
+      }
+      return listKnowledgePagesFromSearch(
+          uriInfo,
+          securityContext,
+          fieldsParam,
+          entityType,
+          knowledgePageType,
+          entityId,
+          tagFQN,
+          include,
+          sortBy,
+          sortOrder,
+          limitParam,
+          offset);
+    }
     ListFilter filter = new ListFilter(include);
     if ((!CommonUtil.nullOrEmpty(entityId) && CommonUtil.nullOrEmpty(entityType))
         || (CommonUtil.nullOrEmpty(entityId) && !CommonUtil.nullOrEmpty(entityType))) {
@@ -206,6 +257,85 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
+  private ResultList<Page> listKnowledgePagesFromSearch(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      String entityType,
+      PageType knowledgePageType,
+      UUID entityId,
+      String tagFQN,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      int limit,
+      int offset)
+      throws IOException {
+    if ((!CommonUtil.nullOrEmpty(entityId) && CommonUtil.nullOrEmpty(entityType))
+        || (CommonUtil.nullOrEmpty(entityId) && !CommonUtil.nullOrEmpty(entityType))) {
+      throw new IllegalArgumentException(
+          "Query Param Entity Id and Entity Type both needs to be provided.");
+    }
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+    if (!CommonUtil.nullOrEmpty(entityType)) {
+      searchListFilter.addQueryParam("entityType", entityType);
+    }
+    if (entityId != null) {
+      searchListFilter.addQueryParam("entityId", entityId.toString());
+    }
+    if (knowledgePageType != null) {
+      searchListFilter.addQueryParam("pageType", knowledgePageType.value());
+    }
+    if (!CommonUtil.nullOrEmpty(tagFQN)) {
+      searchListFilter.addQueryParam("tagFQN", tagFQN);
+    }
+
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
+    EntityUtil.Fields fields = getFields(fieldsParam);
+    List<AuthRequest> authRequests = getAuthRequestsForListOps();
+    return listInternalFromSearch(
+        uriInfo,
+        securityContext,
+        fields,
+        searchListFilter,
+        limit,
+        offset,
+        searchSortFilter,
+        null,
+        null,
+        authRequests);
+  }
+
+  private static String resolveSortField(String sortBy) {
+    return switch (sortBy) {
+      case "name" -> "name.keyword";
+      case "displayName" -> "displayName.keyword";
+      case "createdAt", "updatedAt" -> "updatedAt";
+      default -> throw new IllegalArgumentException(
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: name, displayName, createdAt, updatedAt.");
+    };
+  }
+
+  private static String resolveSortOrder(String sortOrder) {
+    if (sortOrder == null || sortOrder.isEmpty()) {
+      return "desc";
+    }
+    if (!"asc".equals(sortOrder) && !"desc".equals(sortOrder)) {
+      throw new IllegalArgumentException(
+          "Unsupported sortOrder value '" + sortOrder + "'. Allowed: asc, desc.");
+    }
+    return sortOrder;
+  }
+
+  private List<AuthRequest> getAuthRequestsForListOps() {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    return List.of(new AuthRequest(operationContext, getResourceContext()));
+  }
+
   @GET
   @Path("/hierarchy")
   @Valid
@@ -234,10 +364,13 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
     DaoListFilter filter = new DaoListFilter(Include.NON_DELETED);
     if (knowledgePageType != null) {
       filter.addQueryParam("pageType", knowledgePageType.value());
     }
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     return new ResultList<>(repository.listHierarchy(filter, limitParam));
   }
 
@@ -274,13 +407,40 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description =
                   "FQN of the active page to show the active page correctly in  the hierarchy , while showing other root nodes at level 1.")
           @QueryParam("activeFqn")
-          String activeFqn) {
+          String activeFqn,
+      @Parameter(
+              description = "Field to sort by. Supported: name, updatedAt.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "updatedAt"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported: asc, desc. Defaults to desc.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrder) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
+    SearchSortFilter sortFilter = buildHierarchySortFilter(sortBy, sortOrder);
+    SubjectContext caller = DefaultAuthorizer.getSubjectContext(securityContext);
     if (!CommonUtil.nullOrEmpty(activeFqn)) {
       return repository.getHierarchyWithSearchForActivePage(
-          activeFqn, knowledgePageType, offset, limit);
+          activeFqn, knowledgePageType, sortFilter, offset, limit, caller);
     } else {
-      return repository.getHierarchyWithSearch(parent, knowledgePageType, offset, limit);
+      return repository.getHierarchyWithSearch(
+          parent, knowledgePageType, sortFilter, offset, limit, caller);
     }
+  }
+
+  private static SearchSortFilter buildHierarchySortFilter(String sortBy, String sortOrder) {
+    String effectiveSortBy = CommonUtil.nullOrEmpty(sortBy) ? "updatedAt" : sortBy;
+    return new SearchSortFilter(
+        resolveSortField(effectiveSortBy), resolveSortOrder(sortOrder), null, null);
   }
 
   @GET
@@ -536,9 +696,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "UUID"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -563,9 +721,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -594,9 +750,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT

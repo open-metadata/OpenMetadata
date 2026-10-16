@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
-import { Badge, Button, Typography } from 'antd';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MegaphoneIcon } from '../../../../assets/svg/announcements-v1.svg';
@@ -22,7 +26,7 @@ import {
   getEntityFQN,
   getEntityType,
   prepareFeedLink,
-} from '../../../../utils/FeedUtils';
+} from '../../../../utils/FeedUtilsPure';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import AnnouncementCardV1 from './AnnouncementCardV1/AnnouncementCardV1.component';
 import './announcements-widget-v1.less';
@@ -70,33 +74,43 @@ const AnnouncementsWidgetV1 = ({
       dataLength={announcements.length !== 0 ? announcements.length : 5}
       loading={loading}>
       <div className="announcements-widget-v1-container">
-        <div className="announcements-widget-v1-header">
-          <div className="header-left">
-            <div className="header-icon">
+        <Box
+          align="center"
+          className="announcements-widget-v1-header"
+          justify="between">
+          <Box align="center" className="header-left" gap={2}>
+            <Box align="center" className="header-icon" justify="center">
               <MegaphoneIcon />
-            </div>
-            <Typography.Title
+            </Box>
+            <Typography
+              as="h5"
               className="header-title"
               data-testid="announcements-widget-v1-title"
-              level={5}>
+              size="text-md"
+              weight="semibold">
               {t('label.recent-announcement-plural')}
-            </Typography.Title>
-            <Badge
-              className="announcement-count-badge"
-              count={announcements.length}
-              data-testid="announcement-count-badge"
-              style={{ color: bgColor }}
-            />
-          </div>
-          <Button
+            </Typography>
+            {announcements.length > 0 && (
+              <Box
+                inline
+                align="center"
+                className="announcement-count-badge tw:border tw:border-bg-surface tw:bg-surface tw:px-1.5"
+                data-testid="announcement-count-badge"
+                justify="center"
+                style={{ color: bgColor }}>
+                {announcements.length}
+              </Box>
+            )}
+          </Box>
+          <ButtonUtility
             className="close-button"
+            color="tertiary"
             data-testid="announcements-widget-v1-close"
-            disabled={disabled}
-            icon={<CloseOutlined />}
-            type="text"
+            icon={XClose}
+            isDisabled={disabled}
             onClick={handleClose}
           />
-        </div>
+        </Box>
 
         <div className="announcements-widget-v1-content">
           <div className="announcement-cards-container">

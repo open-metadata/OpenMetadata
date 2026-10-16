@@ -32,9 +32,12 @@ import {
   PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
+  chooseSelectOption,
   closeFirstPopupAlert,
   descriptionBox,
+  fillDescriptionBox,
   getApiContext,
+  getDescriptionBox,
   redirectToHomePage,
   toastNotification,
 } from '../../utils/common';
@@ -52,8 +55,7 @@ const addRule = async (
   ruleDescription: string,
   descriptionIndex: number
 ) => {
-  // Validate form name field input
-  await page.fill('[data-testid="rule-name"]', rulename);
+  await page.getByTestId('rule-name').getByRole('textbox').fill(rulename);
 
   // Enter rule description
   await page
@@ -61,26 +63,31 @@ const addRule = async (
     .nth(descriptionIndex)
     .fill(ruleDescription);
 
-  // Select resource dropdown
-  await page.locator('[data-testid="resources"]').click();
+  // Select "All" resources, then all operations for them. The form's mount-time
+  // resource/function fetches rebuild these options, so a plain click can hold a
+  // detached option; chooseSelectOption reopens and retries.
+  const resources = page.getByTestId('resources');
+  await chooseSelectOption(
+    resources,
+    page.getByRole('option', { name: 'All', exact: true })
+  );
+  await resources.getByRole('combobox').press('Escape');
 
-  // Select All
-  await page.locator('.ant-select-tree-checkbox-inner').first().click();
+  const operations = page.getByTestId('operations');
+  await chooseSelectOption(
+    operations,
+    page.getByRole('option', { name: 'All', exact: true })
+  );
+  await operations.getByRole('combobox').press('Escape');
 
-  // Click on operations dropdown
-  await page.locator('[data-testid="operations"]').click();
-
-  // Select operation
-  await page.locator('.ant-select-tree-checkbox-inner').nth(1).click();
-
-  // Click on condition combobox
-  await page.locator('[data-testid="condition"]').click();
-
-  // Select condition
+  // Typing the condition validates it, so the listener goes up first.
   const conditionResponse = page.waitForResponse(
     '/api/v1/policies/validation/condition/*'
   );
-  await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
+  await page
+    .getByTestId('condition')
+    .getByRole('combobox')
+    .fill(RULE_DETAILS.condition);
   await conditionResponse;
 
   // Verify condition success
@@ -97,8 +104,6 @@ test.describe(
   PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
   () => {
     test.beforeEach('Visit entity details page', async ({ page }) => {
-      test.slow(true);
-
       await redirectToHomePage(page);
       await settingClick(page, GlobalSettingOptions.POLICIES);
       await waitForAllLoadersToDisappear(page);
@@ -127,7 +132,7 @@ test.describe(
         ).toBeVisible();
 
         // Enter policy name
-        await page.locator('[data-testid="policy-name"]').fill(POLICY_NAME);
+        await page.getByTestId('policy-name').fill(POLICY_NAME);
         await validateFormNameFieldInput({
           page,
           value: POLICY_NAME,
@@ -137,7 +142,7 @@ test.describe(
         });
 
         // Enter description
-        await page.locator(descriptionBox).nth(0).fill(DESCRIPTION);
+        await getDescriptionBox(page).nth(0).fill(DESCRIPTION);
 
         // Enter rule name
         await addRule(page, RULE_NAME, RULE_DESCRIPTION, 1);
@@ -147,7 +152,7 @@ test.describe(
           POLICY_NAME
         );
 
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify policy description
         await expect(
@@ -161,10 +166,10 @@ test.describe(
         // Verify rule description
         await expect(
           page
-            .locator(
-              '[data-testid="viewer-container"] > [data-testid="markdown-parser"]'
-            )
-            .nth(1)
+            .getByTestId('rule-card')
+            .filter({ has: page.getByText(RULE_NAME, { exact: true }) })
+            .getByTestId('description')
+            .getByTestId('markdown-parser')
         ).toContainText(RULE_DESCRIPTION);
 
         // Verify other details
@@ -191,9 +196,7 @@ test.describe(
         // Click on edit description
         await page.locator('[data-testid="edit-description"]').click();
 
-        await page
-          .locator(descriptionBox)
-          .fill(`${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
+        await fillDescriptionBox(page, `${UPDATED_DESCRIPTION}-${POLICY_NAME}`);
 
         // Click on save
         await page.locator('[data-testid="save"]').click();
@@ -228,7 +231,7 @@ test.describe(
         await addRule(page, NEW_RULE_NAME, NEW_RULE_DESCRIPTION, 0);
 
         // Validate added rule
-        await page.getByText(RULE_NAME, { exact: true }).isVisible();
+        await expect(page.getByText(RULE_NAME, { exact: true })).toBeVisible();
 
         // Verify other details
         await page.getByText(RULE_NAME, { exact: true }).click();
@@ -260,7 +263,10 @@ test.describe(
         await page.locator('[data-testid="edit-rule"]').click();
 
         // Enter new name
-        await page.locator('[data-testid="rule-name"]').fill(UPDATED_RULE_NAME);
+        await page
+          .getByTestId('rule-name')
+          .getByRole('textbox')
+          .fill(UPDATED_RULE_NAME);
 
         // Click on submit button
         await page.locator('[data-testid="submit-btn"]').click();
@@ -269,7 +275,9 @@ test.describe(
         await expect(page).toHaveURL(new RegExp(POLICY_NAME));
 
         // Verify the rule name is updated
-        await page.getByText(UPDATED_RULE_NAME, { exact: true }).isVisible();
+        await expect(
+          page.getByText(UPDATED_RULE_NAME, { exact: true })
+        ).toBeVisible();
       });
 
       await test.step('Delete new rule', async () => {
@@ -320,14 +328,8 @@ test.describe(
         await deleteButton.waitFor({ state: 'visible' });
         await deleteButton.click();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        // Type 'DELETE' in the confirmation text input
-        await page
-          .locator('[data-testid="confirmation-text-input"]')
-          .fill('DELETE');
-
-        // Click on confirm button
         await page.locator('[data-testid="confirm-button"]').click();
 
         // Validate deleted policy
@@ -385,6 +387,12 @@ test.describe(
     test('Delete policy action from manage button options', async ({
       page,
     }) => {
+      // API-create + full page reload + paginated list scan + manage/delete
+      // confirmation is 6+ heavy ops in one test. Under merge-queue load a
+      // single reload can eat 20 s alone, pushing total past the 60 s default.
+      // test.slow() triples the budget so a slow shard finishes cleanly.
+      test.slow();
+
       const { apiContext, afterAction } = await getApiContext(page);
 
       const policy = new PolicyClass();
@@ -404,7 +412,7 @@ test.describe(
 
       await policy.create(apiContext, policyRules);
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await waitForAllLoadersToDisappear(page);
 
@@ -412,9 +420,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button').click();
-      await page
-        .locator('[data-testid="confirmation-text-input"]')
-        .fill('DELETE');
       await page.locator('[data-testid="confirm-button"]').click();
 
       await expect(policyLocator).not.toBeVisible();

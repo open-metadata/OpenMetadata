@@ -27,5 +27,8 @@ echo " ||| ||||| |||   |_|  |_| \___| \__|\__,_| \__,_| \__,_| \__|\__,_| "
 echo "  ||||||||||| "
 echo "    ||||||| "
 echo "Starting OpenMetadata Server"
-./bin/openmetadata-server-start.sh conf/openmetadata.yaml
+# exec, so the JVM inherits PID 1. Without it this shell stays PID 1, does not
+# forward signals, and `docker stop` / pod termination never reaches Dropwizard's
+# shutdown hooks -- the container just gets SIGKILLed when the grace period ends.
+exec ./bin/openmetadata-server-start.sh conf/openmetadata.yaml
 

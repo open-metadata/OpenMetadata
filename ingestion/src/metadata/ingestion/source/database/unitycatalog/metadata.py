@@ -14,9 +14,12 @@ Databricks Unity Catalog Source source methods.
 
 import json
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from collections.abc import Callable, Iterable
+from functools import partial
+from threading import RLock
+from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.service.catalog import ColumnInfo
+from databricks.sdk.service.catalog import ColumnInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -56,22 +59,37 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.databricks.ownership import (
+    DatabricksOwnerResolver,
+)
+from metadata.ingestion.source.database.databricks.tags import TagMappingConfig, map_databricks_tag
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
+from metadata.ingestion.source.database.incremental_metadata_extraction import (
+    IncrementalConfig,
+)
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.database.unitycatalog.client import UnityCatalogClient
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    get_connection,
-    get_sqlalchemy_connection,
+from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
+    UnityCatalogIncrementalTableProcessor,
 )
+from metadata.ingestion.source.database.unitycatalog.metric_view_mixin import (
+    UnitycatalogMetricViewMixin,
+)
+from metadata.ingestion.source.database.unitycatalog.metric_views import is_metric_view
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
@@ -79,26 +97,43 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     Type,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_DESCRIBE_TABLE_JSON,
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
+    UNITY_CATALOG_GET_ALL_SCHEMAS,
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
     UNITY_CATALOG_GET_ALL_TABLE_TAGS,
     UNITY_CATALOG_GET_CATALOGS_TAGS,
     UNITY_CATALOG_GET_TABLE_DDL,
+    UNITY_CATALOG_TABLE_CONSTRAINTS,
+    escape_identifier,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.unitycatalog.connection import (
+        UnityCatalogConnection as UnityCatalogConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
 UNITY_CATALOG_TAG = "UNITY CATALOG TAG"
 UNITY_CATALOG_TAG_CLASSIFICATION = "UNITY CATALOG TAG CLASSIFICATION"
+UNITY_CATALOG_VALUELESS_CLASSIFICATION = "UNITY_CATALOG_TAGS"
+UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION = "Unity Catalog tags ingested as key-only (no associated value)."
+UNITY_CATALOG_TAG_MAPPING = TagMappingConfig(
+    classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
+    tag_description=UNITY_CATALOG_TAG,
+    valueless_classification=UNITY_CATALOG_VALUELESS_CLASSIFICATION,
+    valueless_description=UNITY_CATALOG_VALUELESS_CLASSIFICATION_DESCRIPTION,
+)
 
 
 # pylint: disable=protected-access
-class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -106,26 +141,49 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
     """
 
     @retry_with_docker_host()
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
+    def __init__(
+        self,
+        config: WorkflowSource,
+        metadata: OpenMetadata,
+        incremental_configuration: IncrementalConfig,
+    ):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.context.set_threads(self.source_config.threads)
         self.metadata = metadata
         self.service_connection: UnityCatalogConnection = self.config.serviceConnection.root.config
+        self._state_lock = RLock()
         self.external_location_map = {}
-        self.client = get_connection(self.service_connection)
-        self.api_client = UnityCatalogClient(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        connection = cast("UnityCatalogConnectionHandler", self._connection)
+        self.client = connection.client
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
-        self._schema_cache: dict[str, Any] = {}
-        self._owner_cache: dict[str, Optional[EntityReferenceList]] = {}  # noqa: UP045
-        self.test_connection()
+        self._schema_cache: dict[tuple[str, str], Any] = {}
+        self.owner_resolver = DatabricksOwnerResolver(
+            api_client=connection.api.client,
+            metadata=self.metadata,
+            include_owners=self.source_config.includeOwners,
+        )
+
+        self.incremental = incremental_configuration
+        self.incremental_table_processor: UnityCatalogIncrementalTableProcessor | None = None
+        self.context.get_global().deleted_tables = []  # pyright: ignore[reportAttributeAccessIssue]
+        if self.incremental.enabled:
+            logger.info(
+                "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
+                self.incremental.start_datetime_utc,
+            )
 
         self._sql_connection_map = {}
-        self.engine = get_sqlalchemy_connection(self.service_connection)
+        self.engine = connection.sql.client
+
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @property
     def sql_connection(self) -> Connection:
@@ -134,27 +192,107 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         """
         thread_id = self.context.get_current_thread_id()
 
-        if not self._sql_connection_map.get(thread_id):
-            self._sql_connection_map[thread_id] = self.engine.connect()
+        with self._state_lock:
+            if not self._sql_connection_map.get(thread_id):
+                self._sql_connection_map[thread_id] = self.engine.connect()
 
-        return self._sql_connection_map[thread_id]
+            return self._sql_connection_map[thread_id]
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         return self.service_connection.catalog
 
+    def _iterate_listing(self, list_call: Callable[[], Iterable[Any]], listing_name: str) -> Iterable[Any]:
+        """
+        Iterate a Databricks SDK listing, recording a failure and stopping gracefully
+        instead of aborting the whole ingestion when the API call or its pagination
+        raises mid-iteration.
+        """
+        try:
+            yield from list_call()
+        except Exception as exc:
+            self.status.failed(
+                StackTraceError(
+                    name=listing_name,
+                    error=f"Error while listing {listing_name}, results may be partial: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self.client.catalogs.list():
+        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
+            catalog_name = catalog.name
+            if not catalog_name:
+                continue
             # Cache the catalog object to avoid re-fetching in yield_database
-            self._catalog_cache[catalog.name] = catalog
-            yield catalog.name
+            with self._state_lock:
+                self._catalog_cache[catalog_name] = catalog
+            yield catalog_name
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
             raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
-        return cls(config, metadata)
+        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue, reportOptionalMemberAccess]
+        return cls(config, metadata, incremental_config)
+
+    def _filtered_database_names_for_totals(self) -> list[str]:
+        """Filtered database names for the progress denominator. Single configured
+        catalog when one is set on the connection, else the filtered result of the
+        catalog enumeration. Emits no status side effects."""
+        configured_db = self.get_configured_database()
+        if configured_db:
+            result = [configured_db]
+        else:
+            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
+        return result
+
+    def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
+        """``{database: [schema_names]}`` for every visible catalog from a single
+        cross-catalog ``system.information_schema.schemata`` query — one round-trip,
+        no per-catalog reconnect. Returns ``None`` when the view is unavailable
+        (missing permissions or the system schema not enabled) so the caller falls
+        back to reconcile-only."""
+        try:
+            rows = self.sql_connection.execute(text(UNITY_CATALOG_GET_ALL_SCHEMAS)).fetchall()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "system.information_schema.schemata unavailable (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        by_database: dict[str, list[str]] = {}
+        for row in rows:
+            database_name = row[0]
+            schema_name = row[1]
+            if database_name is not None and schema_name is not None:
+                by_database.setdefault(str(database_name), []).append(str(schema_name))
+        return by_database
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` and ``DatabaseSchema`` counters upfront.
+        ``Database`` is the filtered DB count; ``DatabaseSchema`` is the post-filter
+        schema count per database from the cross-catalog
+        ``system.information_schema.schemata``. When that view is unavailable the
+        schema counter is marked reconcilable so the walk fills its total instead."""
+        database_names = self._filtered_database_names_for_totals()
+        totals.set_total(Database.__name__, len(database_names))
+        schemas_by_database = self._schema_names_by_database()
+        if schemas_by_database is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            # Catalog identifiers are case-insensitive: the walk's scope key keeps the
+            # configured/SDK-listed casing while the view returns catalog_name in its
+            # own casing, so match case-insensitively to avoid seeding a spurious 0.
+            schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
+            for database_name in database_names:
+                kept = [
+                    schema_name
+                    for schema_name in schemas_by_lower.get(database_name.lower(), [])
+                    if not self._is_schema_filtered(database_name, schema_name)
+                ]
+                totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
 
     def get_database_names(self) -> Iterable[str]:
         """
@@ -172,10 +310,12 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             try:
                 logger.debug(f"Fetching configured catalog [{configured_catalog}] details to cache for later use")
                 catalog = self.client.catalogs.get(configured_catalog)
-                self._catalog_cache[catalog.name] = catalog
+                with self._state_lock:
+                    self._catalog_cache[configured_catalog] = catalog
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to fetch configured catalog [{configured_catalog}]: {exc}")
+            self._set_incremental_table_processor(configured_catalog)
             yield configured_catalog
         else:
             for catalog_name in self.get_database_names_raw():
@@ -187,15 +327,17 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         database_name=catalog_name,
                     )
                     if filter_by_database(
-                        self.config.sourceConfig.config.databaseFilterPattern,
-                        (database_fqn if self.config.sourceConfig.config.useFqnForFiltering else catalog_name),
+                        self.config.sourceConfig.config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        (database_fqn if self.config.sourceConfig.config.useFqnForFiltering else catalog_name),  # pyright: ignore[reportAttributeAccessIssue]
                     ):
-                        self._catalog_cache.pop(catalog_name, None)
+                        with self._state_lock:
+                            self._catalog_cache.pop(catalog_name, None)
                         self.status.filter(
                             database_fqn,
                             "Database (Catalog ID) Filtered Out",
                         )
                         continue
+                    self._set_incremental_table_processor(catalog_name)
                     yield catalog_name
                 except Exception as exc:
                     self.status.failed(
@@ -206,17 +348,29 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         )
                     )
 
+    def _set_incremental_table_processor(self, catalog: str) -> None:
+        """Prepare the changed/deleted table maps for incremental extraction of a catalog."""
+        if self.incremental.enabled:
+            incremental_table_processor = UnityCatalogIncrementalTableProcessor.create(self.sql_connection)
+            incremental_table_processor.set_table_map(
+                catalog=catalog,
+                start_timestamp=self.incremental.start_timestamp,  # pyright: ignore[reportArgumentType]
+            )
+            with self._state_lock:
+                self.incremental_table_processor = incremental_table_processor
+
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
         """
-        catalog = self._catalog_cache.pop(database_name, None)
+        with self._state_lock:
+            catalog = self._catalog_cache.pop(database_name, None)
         database_request = CreateDatabaseRequest(
             name=database_name,
             service=self.context.get().database_service,
-            owners=self.get_owner_ref(catalog.owner),
-            description=catalog.comment,
+            owners=self.get_owner_ref(getattr(catalog, "owner", None)),
+            description=getattr(catalog, "comment", None),
             tags=self.get_database_tag_labels(database_name),
         )
         yield Either(right=database_request)
@@ -227,26 +381,29 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         return schema names
         """
         catalog_name = self.context.get().database
-        self._schema_cache.clear()
-        for schema in self.client.schemas.list(catalog_name=catalog_name):
+        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
+        for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
-                # Cache the schema object to avoid re-fetching in yield_database_schema
-                schema_full_name = f"{catalog_name}.{schema.name}"
-                self._schema_cache[schema_full_name] = schema
+                schema_name = schema.name
+                if not schema_name:
+                    continue
                 schema_fqn = fqn.build(
                     self.metadata,
                     entity_type=DatabaseSchema,
                     service_name=self.context.get().database_service,
                     database_name=self.context.get().database,
-                    schema_name=schema.name,
+                    schema_name=schema_name,
                 )
                 if filter_by_schema(
-                    self.config.sourceConfig.config.schemaFilterPattern,
-                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema.name),
+                    self.config.sourceConfig.config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                    (schema_fqn if self.config.sourceConfig.config.useFqnForFiltering else schema_name),  # pyright: ignore[reportAttributeAccessIssue]
                 ):
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                     continue
-                yield schema.name
+                schema_cache_key = (catalog_name, schema_name)
+                with self._state_lock:
+                    self._schema_cache[schema_cache_key] = schema
+                yield schema_name
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
@@ -261,8 +418,10 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         From topology.
         Prepare a database schema request and pass it to the sink
         """
-        schema_full_name = f"{self.context.get().database}.{schema_name}"
-        schema = self._schema_cache.pop(schema_full_name, None)
+        database_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema_cache_key = (database_name, schema_name)
+        with self._state_lock:
+            schema = self._schema_cache.pop(schema_cache_key, None)
         schema_request = CreateDatabaseSchemaRequest(
             name=EntityName(schema_name),
             database=FullyQualifiedEntityName(
@@ -273,67 +432,293 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     database_name=self.context.get().database,
                 )
             ),
-            description=schema.comment,
-            owners=self.get_owner_ref(schema.owner),
+            description=getattr(schema, "comment", None),
+            owners=self.get_owner_ref(getattr(schema, "owner", None)),
             tags=self.get_schema_tag_labels(schema_name),
         )
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Iterable[Tuple[str, str]]:  # noqa: UP006
+    def _get_tables_with_constraints(self) -> set[tuple[str, str, str]]:
+        """
+        Build and execute SQL query to fetch table constraints.
+        Handles cases where catalog_name and/or schema_name may be None.
+        """
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        tables_with_constraints = set()
+        if catalog_name is None or schema_name is None:
+            return tables_with_constraints
+
+        sql = UNITY_CATALOG_TABLE_CONSTRAINTS
+        params = {}
+
+        if catalog_name is not None:
+            sql += " AND table_catalog = :catalog_name"
+            params["catalog_name"] = catalog_name
+        if schema_name is not None:
+            sql += " AND table_schema = :schema_name"
+            params["schema_name"] = schema_name
+
+        try:
+            cursor = self.sql_connection.execute(text(sql), params)
+            for row in cursor:
+                table_identifier = (row.table_catalog, row.table_schema, row.table_name)
+                tables_with_constraints.add(table_identifier)
+                logger.debug(f"Table with constraints: {table_identifier}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error fetching table constraints for catalog [{catalog_name}], schema [{schema_name}]: {exc}"
+            )
+        return tables_with_constraints
+
+    def _list_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[TableInfo, str]]:
+        """The schema's tables, each paired with its raw ``securable_kind``.
+
+        This is ``client.tables.list`` done by hand against the same endpoint, because
+        ``TableInfo.from_dict`` enumerates its fields and ``securable_kind`` is not one
+        of them -- and it is the only field that separates a managed Iceberg table from
+        a Delta one, since the payload reports ``data_source_format`` DELTA for both.
+        One listing per schema, exactly as before: the typed and the raw view of a table
+        come out of the same response rather than out of two.
+        """
+        query: dict[str, Any] = {
+            "catalog_name": catalog_name,
+            "schema_name": schema_name,
+            # max_results=0 makes the server paginate with its configured page size;
+            # leaving it unset returns every table of the schema in one response,
+            # which OOMs the pod on schemas with many wide tables.
+            "max_results": 0,
+        }
+        seen_tokens: set[str] = set()
+        while True:
+            response = self.client.api_client.do("GET", "/api/2.1/unity-catalog/tables", query=query)
+            if not isinstance(response, dict):
+                # do() is typed dict | BinaryIO. A non-dict body carries no
+                # next_page_token we can trust, and reading one off it would
+                # spin this loop forever.
+                raise TypeError(f"expected a JSON object, got {type(response).__name__}")
+            for row in response.get("tables") or []:
+                yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
+            page_token = response.get("next_page_token")
+            if not page_token:
+                return
+            if page_token in seen_tokens:
+                raise RuntimeError(f"Unity Catalog reissued page token [{page_token}] while listing tables.")
+            seen_tokens.add(page_token)
+            query["page_token"] = page_token
+
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
         Handle table and views.
 
         Fetches them up using the context information and
         the inspector set when preparing the db.
 
+        In incremental mode, only the tables changed since the watermark are
+        fetched and processed; in full mode every table is listed.
+
         :return: tables or views, depending on config
         """
         schema_name = self.context.get().database_schema
         catalog_name = self.context.get().database
-        for table in self.client.tables.list(
-            catalog_name=catalog_name,
-            schema_name=schema_name,
-        ):
+        if self.incremental.enabled and self.incremental_table_processor:
+            yield from self._get_incremental_tables(catalog_name, schema_name)
+        else:
+            table_with_constraints = self._get_tables_with_constraints()
+            table_listing = partial(self._list_tables, catalog_name, schema_name)
+            for table, securable_kind in self._iterate_listing(
+                table_listing, f"tables in schema [{catalog_name}.{schema_name}]"
+            ):
+                detailed_table = table
+                if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
+                    # Only tables with constraints require full fetch; list() doesn't include constraint details
+                    try:
+                        detailed_table = self.client.tables.get(table.full_name)
+                    except Exception as exc:
+                        msg = (
+                            f"Unexpected exception in fetching constraints "
+                            f"Constraints will be ignored. table [{table.full_name}]: {exc}."
+                        )
+                        logger.warning(msg)
+                        self.status.warning(table.name, msg)
+                yield from self._process_table(detailed_table, catalog_name, schema_name, securable_kind)
+
+    def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
+        """Record deleted tables and yield only the tables changed since the watermark."""
+        processor = self.incremental_table_processor
+        if processor is None:
+            return
+        changed = processor.get_changed(schema_name)
+        # A name in both sets was dropped and recreated within the window.
+        # information_schema only lists existing tables, so a changed table
+        # exists now and must not be marked deleted.
+        deleted_table_fqns = [
+            fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=catalog_name,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+            for table_name in processor.get_deleted(schema_name) - changed
+        ]
+        with self._state_lock:
+            self.context.get_global().deleted_tables.extend(  # pyright: ignore[reportAttributeAccessIssue]
+                deleted_table_fqns
+            )
+        for table_name in changed:
             try:
-                table_name = table.name
-                table_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
-                    schema_name=self.context.get().database_schema,
-                    table_name=table_name,
+                # client.tables.get() by hand: TableInfo.from_dict drops securable_kind,
+                # and that is the only field that tells managed Iceberg from Delta.
+                row = self.client.api_client.do(
+                    "GET", f"/api/2.1/unity-catalog/tables/{catalog_name}.{schema_name}.{table_name}"
                 )
-                if filter_by_table(
-                    self.config.sourceConfig.config.tableFilterPattern,
-                    (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),
-                ):
-                    self.status.filter(
-                        table_fqn,
-                        "Table Filtered Out",
-                    )
-                    continue
-                table_type: TableType = TableType.Regular
-                if table.table_type:
-                    if table.table_type.value.lower() == TableType.View.value.lower():
-                        table_type: TableType = TableType.View
-                    if table.table_type.value.lower() == "materialized_view":
-                        table_type: TableType = TableType.MaterializedView
-                    elif table.table_type.value.lower() == TableType.External.value.lower():
-                        table_type: TableType = TableType.External
-                self.context.get().table_data = table
-                yield table_name, table_type
+                if not isinstance(row, dict):
+                    # do() is typed dict | BinaryIO; a non-dict body carries no table.
+                    raise TypeError(f"expected a JSON object, got {type(row).__name__}")  # noqa: TRY301
+                table = TableInfo.from_dict(row)
+                securable_kind = str(row.get("securable_kind") or "").upper()
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
-                        name=table.name,
-                        error=f"Unexpected exception to get table [{table.name}]: {exc}",
+                        name=table_name,
+                        error=f"Unexpected exception to get changed table [{table_name}]: {exc}",
                         stackTrace=traceback.format_exc(),
                     )
                 )
+                continue
+            yield from self._process_table(table, catalog_name, schema_name, securable_kind)
 
-    def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> Optional[str]:  # noqa: UP045
+    def _process_table(
+        self,
+        table: Any,
+        catalog_name: str,
+        schema_name: str,
+        securable_kind: str,
+    ) -> Iterable[tuple[str, TableType]]:
+        """Apply filtering and table-type detection, then yield the table to the topology."""
+        try:
+            table_name = table.name
+            table_fqn = fqn.build(
+                self.metadata,
+                entity_type=Table,
+                service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                database_name=catalog_name,
+                schema_name=schema_name,
+                table_name=table_name,
+            )
+            if filter_by_table(
+                self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue, reportArgumentType, reportOptionalMemberAccess]
+            ):
+                self.status.filter(
+                    table_fqn,  # pyright: ignore[reportArgumentType]
+                    "Table Filtered Out",
+                )
+                return
+            table_type: TableType = TableType.Regular
+            if table.table_type:
+                if table.table_type.value.lower() == TableType.View.value.lower():
+                    table_type = TableType.View
+                if table.table_type.value.lower() == "materialized_view":
+                    table_type = TableType.MaterializedView
+                elif table.table_type.value.lower() == TableType.External.value.lower():
+                    table_type = TableType.External
+            # Storage format refines a table's own type, so a View or a
+            # MaterializedView is left alone -- a view has no storage format to
+            # speak of. An External table is refined, matching Databricks and the
+            # tracking issue's "previously typed as External or Regular is
+            # recognized as Delta Lake".
+            # Iceberg is checked first because a managed Iceberg table also reports
+            # data_source_format DELTA, so the Delta branch would otherwise swallow
+            # it. UniForm generates Iceberg metadata beside a table that stays Delta
+            # Lake, so TABLE_DELTA_UNIFORM_ICEBERG_* is not Iceberg;
+            # TABLE_DELTA_ICEBERG_MANAGED and TABLE_ICEBERG_* are. Match DELTA
+            # exactly rather than any DELTA-prefixed value, so DELTASHARING -- a
+            # Delta Sharing table, not Delta Lake -- is not misclassified.
+            dsf = getattr(table, "data_source_format", None)
+            normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
+            if table_type not in (TableType.View, TableType.MaterializedView):
+                if "ICEBERG" in securable_kind and "UNIFORM_ICEBERG" not in securable_kind:
+                    table_type = TableType.Iceberg
+                elif normalized_dsf == "DELTA":
+                    table_type = TableType.DeltaLake
+            self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
+            yield table_name, table_type
+        except Exception as exc:
+            table_identifier = getattr(table, "name", "<unknown>")
+            self.status.failed(
+                StackTraceError(
+                    name=table_identifier,
+                    error=f"Unexpected exception to get table [{table_identifier}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+
+    def _current_table_info(self, table_name: str) -> Any | None:
+        """The ``TableInfo`` the topology producer stashed for the table being
+        processed. ``getattr`` because ``table_data`` is a context extra: it is absent
+        until the first table of the run is produced."""
+        table = getattr(self.context.get(), "table_data", None)
+        return table if table is not None and getattr(table, "name", None) == table_name else None
+
+    def get_metric_view_text(self, table_name: str) -> str | None:
+        """A metric view's YAML body, as written.
+
+        The ``TableInfo`` the topology producer already fetched carries a *reduced*
+        copy of the body: Unity Catalog strips the ``comment``, ``synonyms``,
+        ``display_name`` and ``format`` entries it declares, and normalises ``fields``
+        to ``dimensions``. Metrics built from that copy come out with no description
+        and no unit of measurement. ``DESCRIBE TABLE EXTENDED ... AS JSON`` is the only
+        path that returns the text intact.
+
+        The reduced copy still declares ``measures``, which makes it a free and
+        reliable discriminator: the extra round-trip is paid once a table is known to
+        be a metric view, and never for the ordinary tables and SQL views that make up
+        the rest of the run. If it fails, the reduced copy is still returned -- a
+        metric with no description beats no metric at all.
+        """
+        table = self._current_table_info(table_name)
+        definition = getattr(table, "view_definition", None) if table is not None else None
+        if not is_metric_view(definition):
+            return definition
+        return self._describe_metric_view_text(table_name) or definition
+
+    def _describe_metric_view_text(self, table_name: str) -> str | None:
+        """One metric view's YAML body, read over the SQL warehouse."""
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        query = UNITY_CATALOG_DESCRIBE_TABLE_JSON.format(
+            database_name=escape_identifier(database),
+            schema_name=escape_identifier(schema),
+            table_name=escape_identifier(table_name),
+        )
+        try:
+            row = self.sql_connection.execute(text(query)).fetchone()
+            payload = json.loads(row[0]) if row else {}
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Metric view [%s.%s.%s]: could not read the full definition (%s); "
+                "falling back to the reduced copy, whose descriptions and units are absent",
+                database,
+                schema,
+                table_name,
+                exc,
+            )
+            return None
+        return payload.get("view_text") or payload.get("view_original_text")
+
+    def get_metric_view_column_types(self, table_name: str) -> dict[str, str]:
+        table = self._current_table_info(table_name)
+        if table is None:
+            return {}
+        return {column.name: column.type_text for column in table.columns or [] if column.name and column.type_text}
+
+    def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> str | None:
         """
         Get the DDL statement or View Definition for a table
         """
@@ -361,7 +746,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             logger.warning(f"Unable to get schema definition for table [{table_name}]: {exc}")
         return None
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -371,7 +756,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         schema_name = self.context.get().database_schema
         db_name = self.context.get().database
         if table.storage_location and not table.storage_location.startswith("dbfs"):
-            self.external_location_map[(db_name, schema_name, table_name)] = table.storage_location
+            with self._state_lock:
+                self.external_location_map[(db_name, schema_name, table_name)] = table.storage_location
         try:
             columns = list(self.get_columns(table_name, table.columns))
             (
@@ -418,8 +804,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
     def get_table_constraints(
         self,
-        constraints: List[DBTableConstraint],  # noqa: UP006
-    ) -> Tuple[List[TableConstraint], List[ForeignConstrains]]:  # noqa: UP006
+        constraints: list[DBTableConstraint],
+    ) -> tuple[list[TableConstraint], list[ForeignConstrains]]:
         """
         Function to handle table constraint for the current table and add it to context
         """
@@ -444,7 +830,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 )
         return primary_constraints, foreign_constraints
 
-    def _get_foreign_constraints(self, foreign_columns) -> List[TableConstraint]:  # noqa: UP006
+    def _get_foreign_constraints(self, foreign_columns) -> list[TableConstraint]:
         """
         Search the referred table for foreign constraints
         and get referred column fqn
@@ -486,7 +872,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         return table_constraints
 
     # pylint: disable=arguments-differ
-    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> List[TableConstraint]:  # noqa: UP006
+    def update_table_constraints(self, table_constraints, foreign_columns, columns) -> list[TableConstraint]:
         """
         From topology.
         process the table constraints of all tables
@@ -501,6 +887,27 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
 
     def prepare(self):
         """Nothing to prepare"""
+
+    def mark_tables_as_deleted(self):
+        """
+        Mark tables as deleted.
+
+        In incremental mode only the tables detected as deleted (from the audit
+        log) are marked; in full mode the standard stale-entity scan is used.
+        """
+        if self.incremental.enabled:
+            if not self.context.get().__dict__.get("database"):
+                raise ValueError("No Database found in the context. We cannot run the table deletion.")
+            if self.source_config.markDeletedTables:
+                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # pyright: ignore[reportAttributeAccessIssue]
+                yield from delete_entity_by_name(
+                    self.metadata,
+                    entity_type=Table,
+                    entity_names=self.context.get_global().deleted_tables,  # pyright: ignore[reportAttributeAccessIssue]
+                    recursive=self.source_config.markDeletedTables,
+                )
+        else:
+            yield from super().mark_tables_as_deleted()
 
     def add_complex_datatype_descriptions(self, column: Column, column_json: ColumnJson):
         """
@@ -530,33 +937,59 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to add description to complex datatypes for column [{column.name}]: {exc}")
 
-    def get_columns(self, table_name: str, column_data: List[ColumnInfo]) -> Iterable[Column]:  # noqa: UP006
+    def get_columns(self, table_name: str, column_data: list[ColumnInfo]) -> Iterable[Column]:
         """
         process table regular columns info
         """
         for column in column_data:
-            parsed_string = {}
-            if column.type_text:
-                if column.type_text.lower().startswith("union"):
-                    column.type_text = column.type_text.replace(" ", "")
-                if column.type_text.lower() == "struct" or column.type_text.lower() == "array":
-                    column.type_text = column.type_text.lower() + "<>"
+            try:
+                parsed_string = {}
+                if column.type_text:
+                    if column.type_text.lower().startswith("union"):
+                        column.type_text = column.type_text.replace(" ", "")
+                    if column.type_text.lower() == "struct" or column.type_text.lower() == "array":
+                        column.type_text = column.type_text.lower() + "<>"
 
-                parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-                    column.type_text.lower()
+                    parsed_string = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                        column.type_text.lower()
+                    )
+                parsed_string["name"] = column.name[:256]
+                parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
+                if column.comment:
+                    parsed_string["description"] = Markdown(column.comment)
+                parsed_string["tags"] = self.get_column_tag_labels(table_name=table_name, column={"name": column.name})
+                parsed_string["ordinalPosition"] = column.position
+                parsed_column = Column(**parsed_string)
+                self.add_complex_datatype_descriptions(
+                    column=parsed_column,
+                    column_json=ColumnJson.model_validate(json.loads(column.type_json)),
                 )
-            parsed_string["name"] = column.name[:256]
-            parsed_string["dataLength"] = parsed_string.get("dataLength", 1)
-            if column.comment:
-                parsed_string["description"] = Markdown(column.comment)
-            parsed_string["tags"] = self.get_column_tag_labels(table_name=table_name, column={"name": column.name})
-            parsed_string["ordinalPosition"] = column.position
-            parsed_column = Column(**parsed_string)
-            self.add_complex_datatype_descriptions(
-                column=parsed_column,
-                column_json=ColumnJson.model_validate(json.loads(column.type_json)),
-            )
-            yield parsed_column
+                yield parsed_column
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    f"Error processing column [{getattr(column, 'name', None)}] "
+                    f"of table [{table_name}], skipping it: {exc}"
+                )
+
+    def _yield_tags_for_queries(
+        self,
+        query_tag_fqn_builder_mapping: tuple[tuple[str, Callable[[Any], list[Any]]], ...],
+        error_context: str,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Run each tag query independently so one failing query does not abort the rest."""
+        for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
+            try:
+                for tag in self.sql_connection.execute(text(query)):
+                    if not tag.tag_name:
+                        continue
+                    yield from self.register_tag(
+                        entity_fqn=fqn._build(*tag_fqn_builder(tag)),
+                        definition=map_databricks_tag(tag.tag_name, tag.tag_value, UNITY_CATALOG_TAG_MAPPING),
+                    )
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Error getting tags for %s: %s", error_context, exc)
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog database/catalog tags using SQL query"""
@@ -574,22 +1007,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 ],
             ),
         )
-        try:
-            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(text(query)):
-                    if tag.tag_value:
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                            tags=[tag.tag_value],
-                            classification_name=tag.tag_name,
-                            tag_description=UNITY_CATALOG_TAG,
-                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                            metadata=self.metadata,
-                            system_tags=True,
-                        )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for catalog/schema {database_name}: {exc}")
+        yield from self._yield_tags_for_queries(query_tag_fqn_builder_mapping, f"catalog/schema {database_name}")
 
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Get Unity Catalog schema tags using SQL query"""
@@ -615,22 +1033,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 ],
             ),
         )
-        try:
-            for query, tag_fqn_builder in query_tag_fqn_builder_mapping:
-                for tag in self.sql_connection.execute(text(query)):
-                    if tag.tag_value:
-                        yield from get_ometa_tag_and_classification(
-                            tag_fqn=FullyQualifiedEntityName(fqn._build(*tag_fqn_builder(tag))),
-                            tags=[tag.tag_value],
-                            classification_name=tag.tag_name,
-                            tag_description=UNITY_CATALOG_TAG,
-                            classification_description=UNITY_CATALOG_TAG_CLASSIFICATION,
-                            metadata=self.metadata,
-                            system_tags=True,
-                        )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error getting tags for schema {schema_name}: {exc}")
+        yield from self._yield_tags_for_queries(query_tag_fqn_builder_mapping, f"schema {schema_name}")
 
     def get_stored_procedures(self) -> Iterable[Any]:
         """Not implemented"""
@@ -642,33 +1045,20 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         """Not Implemented"""
 
     def close(self):
-        for sql_connection in self._sql_connection_map.values():
+        with self._state_lock:
+            sql_connections = list(self._sql_connection_map.values())
+        for sql_connection in sql_connections:
             sql_connection.close()
-        if self.engine:
-            self.engine.dispose()
+        if self._connection is not None:
+            self._connection.close()
 
     # pylint: disable=arguments-renamed
-    def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, owner: str | None) -> EntityReferenceList | None:
         """
         Method to process the table owners.
-        Results are cached to avoid repeated API lookups for the same owner.
         """
-        if self.source_config.includeOwners is False:
-            return None
         try:
-            if not owner or not isinstance(owner, str):
-                return None
-            # Check cache first to avoid redundant API calls
-            if owner in self._owner_cache:
-                return self._owner_cache[owner]
-            owner_ref = self.metadata.get_reference_by_email(email=owner)
-            if owner_ref:
-                self._owner_cache[owner] = owner_ref
-                return owner_ref
-            owner_name = owner.split("@")[0]
-            owner_ref = self.metadata.get_reference_by_name(name=owner_name)
-            self._owner_cache[owner] = owner_ref
-            return owner_ref  # noqa: TRY300
+            return self.owner_resolver.get_owner_ref(owner)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner {owner}: {exc}")

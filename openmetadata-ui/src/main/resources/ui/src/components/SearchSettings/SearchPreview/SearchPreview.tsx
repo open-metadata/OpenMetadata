@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Col, Input, Row, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Input,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -53,6 +58,8 @@ const SearchPreview = ({
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
+  const [showRankingDetails, setShowRankingDetails] = useState(false);
+  const latestRequestId = useRef(0);
   const {
     currentPage,
     pageSize,
@@ -75,6 +82,8 @@ const SearchPreview = ({
       searchTerm = searchValue,
     }: { page?: number; searchTerm?: string } = {}) => {
       if (searchConfig && Object.keys(searchConfig).length > 0) {
+        const requestId = latestRequestId.current + 1;
+        latestRequestId.current = requestId;
         try {
           setIsLoading(true);
           const res = await searchPreview({
@@ -83,8 +92,15 @@ const SearchPreview = ({
             index: entityType as SearchIndex,
             query: searchTerm,
             queryFilter: '',
+            explain: showRankingDetails,
             searchSettings: searchConfig,
           });
+
+          // Ignore responses from superseded requests so a slow, stale response
+          // can never overwrite the latest preview.
+          if (requestId !== latestRequestId.current) {
+            return;
+          }
 
           const hits = res.hits.hits as unknown as SearchedDataProps['data'];
           const totalCount = res?.hits?.total.value ?? 0;
@@ -92,13 +108,24 @@ const SearchPreview = ({
           handlePagingChange({ total: totalCount });
           setData(hits);
         } catch (error) {
-          showErrorToast(error as AxiosError);
+          if (requestId === latestRequestId.current) {
+            showErrorToast(error as AxiosError);
+          }
         } finally {
-          setIsLoading(false);
+          if (requestId === latestRequestId.current) {
+            setIsLoading(false);
+          }
         }
       }
     },
-    [currentPage, pageSize, searchConfig, entityType, handlePagingChange]
+    [
+      currentPage,
+      pageSize,
+      searchConfig,
+      entityType,
+      handlePagingChange,
+      showRankingDetails,
+    ]
   );
 
   const renderSearchResults = () => {
@@ -112,20 +139,31 @@ const SearchPreview = ({
 
     return (
       <>
-        {data.map(({ _score, _source, _id = '' }) => (
-          <ExploreSearchCard
-            showEntityIcon
-            className="search-card"
-            classNameForBreadcrumb="breadcrumb-width"
-            data-testid="searched-data-card"
-            id={_id}
-            key={_source.fullyQualifiedName}
-            score={_score}
-            searchValue={searchValue}
-            showTags={false}
-            source={_source}
-          />
-        ))}
+        {data.map(
+          ({
+            _score,
+            _source,
+            _id = '',
+            highlight,
+            _explanation,
+            matched_queries,
+          }) => (
+            <ExploreSearchCard
+              showEntityIcon
+              className="search-card"
+              classNameForBreadcrumb="breadcrumb-width"
+              data-testid="searched-data-card"
+              highlight={highlight}
+              id={_id}
+              key={_source.fullyQualifiedName}
+              matchedQueries={showRankingDetails ? matched_queries : undefined}
+              score={showRankingDetails ? _score : undefined}
+              scoreExplanation={showRankingDetails ? _explanation : undefined}
+              showTags={false}
+              source={_source}
+            />
+          )
+        )}
         {showPagination && (
           <NextPrevious
             isNumberBased
@@ -169,47 +207,52 @@ const SearchPreview = ({
     if (searchConfig && Object.keys(searchConfig).length > 0) {
       fetchAssets({ searchTerm: searchValue, page: currentPage });
     }
-  }, [searchConfig, currentPage]);
+  }, [searchConfig, currentPage, showRankingDetails]);
 
   return (
     <div className="search-preview">
-      <Row className="d-flex justify-between items-center m-b-sm">
-        <Col>
-          <Typography.Text
-            className="header-title"
-            data-testid="search-preview">
+      <Box
+        className="layout-row d-flex justify-between items-center m-b-sm search-preview-header"
+        wrap="wrap">
+        <Box className="layout-column tw:block">
+          <Typography className="header-title" data-testid="search-preview">
             {t('label.preview')}
-          </Typography.Text>
-        </Col>
-        <Col>
+          </Typography>
+        </Box>
+        <Box className="layout-column tw:block search-preview-actions">
+          <span className="ranking-details-control">
+            <Typography>{t('label.ranking-detail-plural')}</Typography>
+            <Toggle
+              aria-label={t('label.ranking-detail-plural')}
+              data-testid="ranking-details-switch"
+              isSelected={showRankingDetails}
+              onChange={setShowRankingDetails}
+            />
+          </span>
           <Button
-            className="restore-defaults-btn font-semibold"
+            color="secondary"
             data-testid="restore-defaults-btn"
             onClick={handleRestoreDefaults}>
             {t('label.restore-default-plural')}
           </Button>
           <Button
-            className="save-btn font-semibold m-l-md"
+            color="secondary"
             data-testid="save-btn"
-            disabled={disabledSave}
-            loading={isSaving}
+            isDisabled={disabledSave}
+            isLoading={isSaving}
             onClick={handleSaveChanges}>
             {t('label.save')}
           </Button>
-        </Col>
-      </Row>
+        </Box>
+      </Box>
 
       <Input
-        allowClear
-        className="search-box"
-        data-testid="searchbar"
+        aria-label={t('message.search-for-data-assets-placeholder')}
+        icon={Search}
+        inputDataTestId="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
-        suffix={
-          <Icon className="text-md font-bold m-r-xs" component={IconSearchV1} />
-        }
-        type="text"
         value={searchValue}
-        onChange={(e) => handleSearch(e.target.value)}
+        onChange={handleSearch}
       />
       <div className="search-results-container">{searchResults}</div>
     </div>

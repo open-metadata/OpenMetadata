@@ -86,8 +86,43 @@ const mockTableSearchResponse = {
 describe('searchAPI tests', () => {
   beforeEach(() => jest.resetModules());
 
+  describe.each(['searchQuery', 'nlqSearch'] as const)(
+    '%s pagination',
+    (method) => {
+      it.each([
+        { pageNumber: 0, pageSize: 25, from: 0 },
+        { pageNumber: -1, pageSize: 25, from: 0 },
+        { pageNumber: 1, pageSize: 25, from: 0 },
+        { pageNumber: 2, pageSize: 25, from: 25 },
+        { pageNumber: undefined, pageSize: 25, from: 0 },
+        { pageNumber: 0, pageSize: 0, from: 0 },
+      ])(
+        'uses offset $from for page $pageNumber with size $pageSize',
+        async ({ pageNumber, pageSize, from }) => {
+          const mockGet = jest
+            .fn()
+            .mockResolvedValue({ data: mockTableSearchResponse });
+
+          jest.doMock('./axiosClient', () => ({ get: mockGet }));
+
+          const searchAPI: typeof import('./searchAPI') = require('./searchAPI');
+
+          await searchAPI[method]({
+            searchIndex: SearchIndex.TABLE,
+            pageNumber,
+            pageSize,
+          });
+
+          const [, config] = mockGet.mock.calls[0];
+
+          expect(config.params).toMatchObject({ from, size: pageSize });
+        }
+      );
+    }
+  );
+
   it('searchQuery should not return nulls', async () => {
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -107,7 +142,7 @@ describe('searchAPI tests', () => {
   });
 
   it('searchQuery should have type field', async () => {
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: jest
         .fn()
         .mockImplementation(() =>
@@ -121,6 +156,35 @@ describe('searchAPI tests', () => {
     expect(res.hits.hits[0]._source.type).toBe('table');
   });
 
+  it('searchQuery should serialize AI governance asset indexes', async () => {
+    const mockGet = jest
+      .fn()
+      .mockImplementation(() =>
+        Promise.resolve({ data: mockTableSearchResponse })
+      );
+
+    jest.mock('./axiosClient', () => ({
+      get: mockGet,
+    }));
+
+    const { searchQuery } = require('./searchAPI');
+
+    await searchQuery({
+      searchIndex: [
+        SearchIndex.AI_APPLICATION,
+        SearchIndex.LLM_MODEL,
+        SearchIndex.MCP_SERVER,
+      ],
+      query: '**',
+      fetchSource: true,
+    });
+
+    const [, config] = mockGet.mock.calls[0];
+
+    expect(config.params.index).toBe('aiApplication,llmModel,mcpServer');
+    expect(config.params.fetch_source).toBe(true);
+  });
+
   it('nlqSearch should forward query_filter', async () => {
     const mockGet = jest
       .fn()
@@ -128,7 +192,7 @@ describe('searchAPI tests', () => {
         Promise.resolve({ data: mockTableSearchResponse })
       );
 
-    jest.mock('./index', () => ({
+    jest.mock('./axiosClient', () => ({
       get: mockGet,
     }));
 
@@ -171,5 +235,23 @@ describe('searchAPI tests', () => {
         },
       })
     );
+  });
+
+  it('rawSearchQuery marks a picker search to skip the navbar domain filter', async () => {
+    const get = jest.fn().mockResolvedValue({ data: mockTableSearchResponse });
+    jest.mock('./axiosClient', () => ({ get }));
+    const { SKIP_DOMAIN_FILTER_HEADER } = require('../constants/constants');
+    const { rawSearchQuery } = require('./searchAPI');
+
+    await rawSearchQuery({
+      searchIndex: SearchIndex.TABLE,
+      skipDomainFilter: true,
+    });
+    await rawSearchQuery({ searchIndex: SearchIndex.TABLE });
+
+    expect(get.mock.calls[0][1].headers).toEqual({
+      [SKIP_DOMAIN_FILTER_HEADER]: 'true',
+    });
+    expect(get.mock.calls[1][1].headers).toBeUndefined();
   });
 });

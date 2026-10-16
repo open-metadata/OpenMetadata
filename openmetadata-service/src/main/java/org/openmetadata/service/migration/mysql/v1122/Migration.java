@@ -17,7 +17,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    // Workflow definition migration - wrap in try-catch to prevent blocking other migrations
+    initializeWorkflowHandler();
     try {
       MigrationUtil.migrateWorkflowDefinitions();
     } catch (Exception e) {

@@ -37,6 +37,12 @@ export interface TestCase {
      */
     dataProducts?: EntityReference[];
     /**
+     * Data quality dimension this test case belongs to. When not set at creation time, it
+     * defaults to the dimension of the test definition. Any dimension registered in Settings >
+     * Preferences > Data Quality can be used, system and custom alike.
+     */
+    dataQualityDimension?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -93,6 +99,11 @@ export interface TestCase {
      * Reference to an ongoing Incident ID (stateId) for this test case.
      */
     incidentId?: string;
+    /**
+     * Latest incident resolution status for this test case. Inlined so clients can render the
+     * current incident status without an additional lookup per test case.
+     */
+    incidentStatus?: TestCaseResolutionStatus;
     /**
      * Change that lead to this version of the entity.
      */
@@ -242,6 +253,18 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Data quality dimension this test case belongs to. When not set at creation time, it
+ * defaults to the dimension of the test definition. Any dimension registered in Settings >
+ * Preferences > Data Quality can be used, system and custom alike.
+ *
+ * Test case reference
+ *
+ * User working on failure resolution.
+ *
+ * User who resolved the test case failure.
+ *
+ * User who updated the test case failure status.
+ *
  * Reference to the test case for efficient querying of dimensional time series
  *
  * Test case that this result is for.
@@ -307,8 +330,10 @@ export interface EntityReference {
 /**
  * Current status of the test case.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -334,6 +359,137 @@ export interface TableData {
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Latest incident resolution status for this test case. Inlined so clients can render the
+ * current incident status without an additional lookup per test case.
+ *
+ * Schema to capture test case resolution status.
+ */
+export interface TestCaseResolutionStatus {
+    /**
+     * Human-readable summary of the test failure that opened the incident, denormalized from
+     * the failed test case result so incident listings do not need a per-incident result lookup.
+     */
+    failureSummary?: string;
+    /**
+     * Unique identifier of this failure instance
+     */
+    id?: string;
+    /**
+     * List of metrics associated with the test case resolution.
+     */
+    metrics?: Array<any[] | boolean | number | number | null | MetricObject | string>;
+    /**
+     * Severity failure for the test associated with the resolution.
+     */
+    severity?: Severities;
+    /**
+     * Sequence ID for a failure status. Statuses belonging to the same sequence will have the
+     * same ID. Unique across a failure cycle, i.e. new -> ack -> ... -> resolved.
+     */
+    stateId?: string;
+    /**
+     * Test case reference
+     */
+    testCaseReference?: EntityReference;
+    /**
+     * Details of the test case failure status.
+     */
+    testCaseResolutionStatusDetails?: Assigned;
+    /**
+     * Status of Test Case Acknowledgement.
+     */
+    testCaseResolutionStatusType: TestCaseResolutionStatusTypes;
+    /**
+     * Timestamp on which the failure was created.
+     */
+    timestamp?: number;
+    /**
+     * Time when test case resolution was updated.
+     */
+    updatedAt?: number;
+    /**
+     * User who updated the test case failure status.
+     */
+    updatedBy?: EntityReference;
+}
+
+export interface MetricObject {
+    /**
+     * Name of the metric.
+     */
+    name?: string;
+    /**
+     * Value of the metric.
+     */
+    value?: number;
+    [property: string]: any;
+}
+
+/**
+ * Severity failure for the test associated with the resolution.
+ *
+ * Test case resolution status type.
+ */
+export enum Severities {
+    Severity1 = "Severity1",
+    Severity2 = "Severity2",
+    Severity3 = "Severity3",
+    Severity4 = "Severity4",
+    Severity5 = "Severity5",
+}
+
+/**
+ * Details of the test case failure status.
+ *
+ * test case failure details for assigned failures
+ *
+ * test case failure details for resolved failures
+ */
+export interface Assigned {
+    /**
+     * User working on failure resolution.
+     */
+    assignee?: EntityReference;
+    /**
+     * User who resolved the test case failure.
+     */
+    resolvedBy?: EntityReference;
+    /**
+     * Test case failure resolution comment.
+     */
+    testCaseFailureComment?: string;
+    /**
+     * Reason of Test Case resolution.
+     */
+    testCaseFailureReason?: TestCaseFailureReasonType;
+}
+
+/**
+ * Reason of Test Case resolution.
+ *
+ * Reason of Test Case initial failure.
+ */
+export enum TestCaseFailureReasonType {
+    Duplicates = "Duplicates",
+    FalsePositive = "FalsePositive",
+    MissingData = "MissingData",
+    Other = "Other",
+    OutOfBounds = "OutOfBounds",
+}
+
+/**
+ * Status of Test Case Acknowledgement.
+ *
+ * Test case resolution status type.
+ */
+export enum TestCaseResolutionStatusTypes {
+    ACK = "Ack",
+    Assigned = "Assigned",
+    New = "New",
+    Resolved = "Resolved",
 }
 
 /**
@@ -564,6 +720,18 @@ export interface TestCaseResult {
      */
     dimensionResults?: TestCaseDimensionResult[];
     /**
+     * Wall-clock time the test case run took, in milliseconds.
+     */
+    duration?: number;
+    /**
+     * Structured error details when the run was aborted by an error.
+     */
+    errorDetails?: TestCaseErrorDetails;
+    /**
+     * Which rows the run was measured on. Absent for a run that recorded no scope.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
      * Number of rows that failed.
      */
     failedRows?: number;
@@ -643,6 +811,16 @@ export interface TestCaseDimensionResult {
      */
     dimensionValues: DimensionValue[];
     /**
+     * Which rows the parent run was measured on. Every dimension of a run shares it.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
+    /**
      * Number of rows that failed for this dimension combination
      */
     failedRows?: number;
@@ -660,6 +838,16 @@ export interface TestCaseDimensionResult {
      * considering both failure rate and data volume.
      */
     impactScore?: number;
+    /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
     /**
      * Number of rows that passed for this dimension combination
      */
@@ -709,6 +897,51 @@ export interface DimensionValue {
 }
 
 /**
+ * Which rows the parent run was measured on. Every dimension of a run shares it.
+ *
+ * Which rows a test case run was measured on. The verdict is the subset's: nothing
+ * extrapolates it back to the table.
+ *
+ * Which rows the run was measured on. Absent for a run that recorded no scope.
+ */
+export interface TestCaseEvaluationScope {
+    /**
+     * Column the partition filter was applied on.
+     */
+    partitionColumnName?: string;
+    /**
+     * Whether the rows read were restricted to a partition. False when the test runs its own
+     * SQL, which ignores the configured partition.
+     */
+    partitioned?: boolean;
+    /**
+     * Size of the sample read, in the unit `profileSampleType` names.
+     */
+    profileSample?: number;
+    /**
+     * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+     * `sampled` is true.
+     */
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether the run read a sample of the table. False when the test runs its own SQL, which
+     * ignores the configured sample.
+     */
+    sampled?: boolean;
+}
+
+/**
+ * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+ * `sampled` is true.
+ *
+ * Type of Profile Sample (percentage or rows)
+ */
+export enum ProfileSampleType {
+    Percentage = "PERCENTAGE",
+    Rows = "ROWS",
+}
+
+/**
  * Status of the test for this dimension combination
  *
  * Status of Test Case run.
@@ -739,6 +972,26 @@ export interface TestResultValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Structured error details when the run was aborted by an error.
+ *
+ * Structured details of the error that aborted a test case run.
+ */
+export interface TestCaseErrorDetails {
+    /**
+     * Type of the error, e.g. the exception class name.
+     */
+    errorType?: string;
+    /**
+     * Human-readable error message.
+     */
+    message?: string;
+    /**
+     * Formatted stack trace of the error.
+     */
+    stackTrace?: string;
 }
 
 /**
@@ -997,9 +1250,21 @@ export enum StatusType {
  */
 export interface TestConnectionStepResult {
     /**
+     * Classified, actionable explanation of a failure, separate from the raw errorLog.
+     */
+    diagnosis?: Diagnosis;
+    /**
+     * Wall-clock time the step took, in milliseconds.
+     */
+    durationMs?: number;
+    /**
      * In case of failed step, this field would contain the actual error faced during the step.
      */
     errorLog?: string;
+    /**
+     * The command or statement the step actually ran, when applicable.
+     */
+    executedCommand?: string;
     /**
      * Is this step mandatory to be passed?
      */
@@ -1017,4 +1282,54 @@ export interface TestConnectionStepResult {
      * Did the step pass successfully?
      */
     passed: boolean;
+    /**
+     * Human-readable summary of what the step found on success.
+     */
+    resultSummary?: string;
+    /**
+     * Why a step did not run, when status is Skipped.
+     */
+    skipReason?: SkipReason;
+    /**
+     * Lifecycle state of this step.
+     */
+    status?: Status;
+}
+
+/**
+ * Classified, actionable explanation of a failure, separate from the raw errorLog.
+ */
+export interface Diagnosis {
+    /**
+     * Link to relevant documentation.
+     */
+    docUrl?: string;
+    /**
+     * What the user can do to fix it.
+     */
+    remediation?: string;
+    /**
+     * Short statement of what went wrong.
+     */
+    title?: string;
+}
+
+/**
+ * Why a step did not run, when status is Skipped.
+ */
+export enum SkipReason {
+    ConnectionNotEstablished = "ConnectionNotEstablished",
+    NotImplemented = "NotImplemented",
+}
+
+/**
+ * Lifecycle state of this step.
+ */
+export enum Status {
+    Failed = "Failed",
+    Passed = "Passed",
+    Queued = "Queued",
+    Running = "Running",
+    Skipped = "Skipped",
+    Warning = "Warning",
 }

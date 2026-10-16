@@ -11,13 +11,12 @@
  *  limitations under the License.
  */
 
-import { DrawerProps } from 'antd';
+import { ReactNode } from 'react';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { AddTestCaseListChangePayload } from '../AddTestCaseList/AddTestCaseList.interface';
 
 export interface BundleSuiteFormProps {
-  drawerProps?: DrawerProps;
   className?: string;
   onCancel?: () => void;
   onSuccess?: (testSuite: TestSuite) => void;
@@ -26,6 +25,16 @@ export interface BundleSuiteFormProps {
     description?: string;
     testCases?: TestCase[];
   };
+}
+
+export interface BundleSuiteFormDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  onSuccess?: (testSuite: TestSuite) => void;
+  initialValues?: BundleSuiteFormProps['initialValues'];
+  title?: ReactNode;
+  headerActions?: ReactNode;
+  width?: number | string;
 }
 
 export type BundleSuiteFormData = {

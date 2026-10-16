@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   cloneDeep,
   groupBy,
@@ -21,7 +20,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
@@ -42,31 +41,37 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from '../../../utils/ContainerDetailUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/ContainerDetailPureUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../utils/TableTags/TableTags.utils';
-import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   pruneEmptyChildren,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../common/Table/Table';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import { ContainerDataModelProps } from './ContainerDataModel.interface';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
 
 const ContainerDataModel: FC<ContainerDataModelProps> = ({
   dataModel,
@@ -171,6 +176,9 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
     >;
   }, [schema]);
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(schema);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -189,10 +197,14 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
           <div
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
-            <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
-              <Typography.Text className="text-link-color">
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              title={getEntityName(record)}
+              triggerClassName="tw:inline-flex">
+              <Typography className="text-link-color">
                 {getEntityName(record)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
             {record.fullyQualifiedName && (
               <CopyLinkButton
@@ -216,16 +228,13 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         ) => {
           return (
             <Tooltip
-              destroyTooltipOnHide
-              overlayInnerStyle={{
-                maxWidth: '420px',
-                overflowWrap: 'break-word',
-                textAlign: 'center',
-              }}
-              title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(dataTypeDisplay)}
+              triggerClassName="tw:block tw:min-w-0">
+              <Typography ellipsis className="cursor-pointer tw:text-primary">
                 {dataTypeDisplay ?? record.dataType}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           );
         },
@@ -258,7 +267,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -281,7 +290,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn}
@@ -307,6 +316,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
       getEntityName,
       handleFieldTagsChange,
       handleColumnClick,
+      tagFilterState,
     ]
   );
 
@@ -320,7 +330,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         className="align-table-filter-left"
         columns={columns}
         data-testid="container-data-model-table"
-        dataSource={schema}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_CONTAINER_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -334,6 +344,7 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editContainerColumnDescription && (
         <EntityAttachmentProvider

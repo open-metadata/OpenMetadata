@@ -10,30 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
-import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import { getOptionalDataInsightTabFlag } from '../../../utils/DataInsightPureUtils';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import dataInsightClassBase from '../DataInsightClassBase';
 import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
-
 const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   const {
     teamFilter: team,
@@ -71,25 +76,34 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   };
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
-        <Space className="w-full justify-between items-start">
+    <Grid className="layout-row layout-grid" style={getLayoutGutter(16, 16)}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="start"
+          className="layout-space layout-space-horizontal w-full justify-between"
+          gap={2}
+          itemClassName="layout-space-item">
           <div data-testid="data-insight-header">
             <div className="flex gap-2 items-center">
-              <Typography.Title level={5}>
+              <Typography
+                as="h5"
+                className="tw:mb-2!"
+                size="text-md"
+                weight="semibold">
                 {t('label.data-insight-plural')}
-              </Typography.Title>
+              </Typography>
             </div>
-            <Typography.Text className="data-insight-label-text">
+            <Typography className="data-insight-label-text">
               {t('message.data-insight-subtitle')}
-            </Typography.Text>
+            </Typography>
           </div>
 
           <div className="d-flex gap-2">
             {createKPIPermission && (
               <Button
+                color="primary"
                 data-testid="add-kpi-btn"
-                type="primary"
                 onClick={handleAddKPI}>
                 {t('label.add-entity', {
                   entity: t('label.kpi-uppercase'),
@@ -105,27 +119,44 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
               />
             ) : null}
           </div>
-        </Space>
-      </Col>
-      <Col span={24}>
-        <Space className="w-full justify-between align-center">
-          <Space className="w-full" size={16}>
-            <SearchDropdown
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal w-full justify-between"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal w-full"
+            gap={4}
+            itemClassName="layout-space-item">
+            <FilterSelectDropdown
               hideCounts
               label={t('label.team')}
               searchKey="teams"
               {...team}
             />
 
-            <SearchDropdown
+            <FilterSelectDropdown
               hideCounts
               label={t('label.tier')}
               searchKey="tier"
               {...tier}
             />
-          </Space>
-          <Space>
-            <Typography className="data-insight-label-text text-xs">
+          </Box>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
+            <Typography
+              as="article"
+              className="data-insight-label-text text-xs">
               {`${formatDate(chartFilter.startTs)} - ${formatDate(
                 chartFilter.endTs
               )}`}
@@ -134,23 +165,23 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
               handleDateRangeChange={onChartFilterChange}
               showSelectedCustomRange={false}
             />
-          </Space>
-        </Space>
-      </Col>
+          </Box>
+        </Box>
+      </Grid.Item>
 
       {/* Do not show summary for KPIs */}
       {showDataInsightSummary && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <DataInsightSummary
             chartFilter={chartFilter}
             onScrollToChart={onScrollToChart}
           />
-        </Col>
+        </Grid.Item>
       )}
 
       {/* Do not show KPIChart for app analytics */}
       {showKpiChart && (
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <KPIChart
             chartFilter={chartFilter}
             createKPIPermission={createKPIPermission}
@@ -158,9 +189,9 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
             kpiList={kpi.data}
             viewKPIPermission={viewKPIPermission}
           />
-        </Col>
+        </Grid.Item>
       )}
-    </Row>
+    </Grid>
   );
 };
 

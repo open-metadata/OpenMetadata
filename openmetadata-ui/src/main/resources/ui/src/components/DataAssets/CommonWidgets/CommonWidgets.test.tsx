@@ -10,54 +10,150 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
 } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import commonWidgetClassBase from '../../../utils/CommonWidget/CommonWidgetClassBase';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { CommonWidgets } from './CommonWidgets';
 
 // Mock the required dependencies
-jest.mock('../../Customization/GenericProvider/GenericProvider');
-jest.mock('../../common/EntityDescription/DescriptionV1', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext');
+jest.mock('../../common/EntityDescription/Description', () => ({
   __esModule: true,
-  default: () => <div data-testid="description-widget">Description Widget</div>,
+  default: ({
+    removeBlur,
+    isDescriptionExpanded,
+  }: {
+    removeBlur?: boolean;
+    isDescriptionExpanded?: boolean;
+  }) => (
+    <div
+      data-expanded={String(Boolean(isDescriptionExpanded))}
+      data-remove-blur={String(Boolean(removeBlur))}
+      data-testid="description-widget">
+      Description Widget
+    </div>
+  ),
 }));
 jest.mock(
   '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
   () => ({
     __esModule: true,
-    default: () => (
-      <div data-testid="data-products-widget">Data Products Widget</div>
-    ),
+    default: jest
+      .fn()
+      .mockImplementation(() => (
+        <div data-testid="data-products-widget">Data Products Widget</div>
+      )),
   })
 );
+// Captures the `permission` prop directly instead of an opaque div — needed to verify the
+// explicit-deny-wins wiring (Task 8 Batch 2 review, Finding 2): the right named flag
+// (`canEditTags`) must actually reach the right prop, not just compute correctly in isolation
+// (PermissionDerivation.test.ts already covers the math).
 jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
   __esModule: true,
-  default: () => <div data-testid="tags-widget">Tags Widget</div>,
+  default: ({ permission }: { permission?: boolean }) => (
+    <div
+      data-permission={String(Boolean(permission))}
+      data-testid="tags-widget">
+      Tags Widget
+    </div>
+  ),
 }));
 jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   CustomPropertyTable: () => (
     <div data-testid="custom-properties-widget">Custom Properties Widget</div>
   ),
 }));
-jest.mock('../OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: () => (
-    <div data-testid="owner-label-widget">Owner Label Widget</div>
-  ),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Owner: () => <div data-testid="owner-label-widget">Owner Label Widget</div>,
+  toOwnerRef: (ref: {
+    id: string;
+    type?: string;
+    name?: string;
+    displayName?: string;
+    href?: string;
+  }) => ({
+    id: ref.id,
+    name: ref.name,
+    displayName: ref.displayName,
+    type: ref.type ?? 'user',
+    href: ref.href,
+  }),
+  toOwnerRefs: (
+    refs?: Array<{
+      id: string;
+      type?: string;
+      name?: string;
+      displayName?: string;
+      href?: string;
+    }>
+  ) =>
+    (refs ?? []).map(
+      (ref: {
+        id: string;
+        type?: string;
+        name?: string;
+        displayName?: string;
+        href?: string;
+      }) => ({
+        id: ref.id,
+        name: ref.name,
+        displayName: ref.displayName,
+        type: ref.type ?? 'user',
+        href: ref.href,
+      })
+    ),
 }));
 jest.mock('../ReviewerLabelV2/ReviewerLabelV2', () => ({
   ReviewerLabelV2: () => (
     <div data-testid="reviewer-label-widget">Reviewer Label Widget</div>
   ),
 }));
+jest.mock('../../Domain/DomainExpertsWidget/DomainExpertWidget', () => ({
+  DomainExpertWidget: () => (
+    <div data-testid="domain-expert-name">Domain Expert Widget</div>
+  ),
+}));
+
+jest.mock('../../common/TierWidget/TierWidget', () => ({
+  __esModule: true,
+  default: () => <div data-testid="tier-widget" />,
+}));
+jest.mock('../../common/CertificationWidget/CertificationWidget', () => ({
+  __esModule: true,
+  default: () => <div data-testid="certification-widget" />,
+}));
+jest.mock('../../common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: ({ multiple }: { multiple?: boolean }) => (
+    <div
+      data-multiple={String(Boolean(multiple))}
+      data-testid="domain-widget"
+    />
+  ),
+}));
 
 jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
   getCommonWidgetsFromConfig: jest.fn(),
 }));
+
+jest.mock('../../common/WidgetCard/WidgetCard', () =>
+  jest
+    .fn()
+    .mockImplementation(
+      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
+        <div data-testid="widget-card">
+          {title && <div>{title}</div>}
+          {children}
+        </div>
+      )
+    )
+);
 
 const mockGenericContext = {
   data: {
@@ -86,7 +182,7 @@ describe('CommonWidgets', () => {
     (useGenericContext as jest.Mock).mockReturnValue(mockGenericContext);
   });
 
-  it('should render description widget', () => {
+  it('should render description widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.DESCRIPTION,
       x: 0,
@@ -102,10 +198,74 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('description-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('description-widget')).toBeInTheDocument();
   });
 
-  it('should render data products widget', () => {
+  it('renders the full description for a large description widget', async () => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.CONTAINER}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 3,
+          h: 1,
+          config: { size: 'large' },
+        }}
+      />
+    );
+
+    expect(await screen.findByTestId('description-widget')).toHaveAttribute(
+      'data-remove-blur',
+      'true'
+    );
+  });
+
+  it('clamps the description behind read more for a small description widget', async () => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.CONTAINER}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          config: { size: 'small' },
+        }}
+      />
+    );
+
+    expect(await screen.findByTestId('description-widget')).toHaveAttribute(
+      'data-remove-blur',
+      'false'
+    );
+  });
+
+  it('keeps the read-more toggle when a small widget opens expanded by default', async () => {
+    // A dashboard without charts auto-expands its description.
+    render(
+      <CommonWidgets
+        entityType={EntityType.DASHBOARD}
+        widgetConfig={{
+          i: DetailPageWidgetKeys.DESCRIPTION,
+          x: 0,
+          y: 0,
+          w: 1,
+          h: 1,
+          config: { size: 'small' },
+        }}
+      />
+    );
+
+    const description = await screen.findByTestId('description-widget');
+
+    expect(description).toHaveAttribute('data-expanded', 'true');
+    expect(description).toHaveAttribute('data-remove-blur', 'false');
+  });
+
+  it('should render data products widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.DATA_PRODUCTS,
       x: 0,
@@ -121,10 +281,12 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('data-products-widget')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('data-products-widget')
+    ).toBeInTheDocument();
   });
 
-  it('should render tags widget', () => {
+  it('should render tags widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.TAGS,
       x: 0,
@@ -140,10 +302,75 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('tags-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('tags-widget')).toBeInTheDocument();
   });
 
-  it('should render glossary terms widget', () => {
+  // Task 8 Batch 2 review, Finding 2: explicit-deny-wins wiring coverage — verifies
+  // `canEditTags` (not the old raw `EditTags || EditAll`) is actually the value reaching
+  // TagsContainerV2's `permission` prop.
+  it('denies the tags edit affordance when EditTags is explicitly false, even though EditAll is true (explicit-deny-wins, prioritized over the old raw OR)', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      ...mockGenericContext,
+      permissions: {
+        ...mockGenericContext.permissions,
+        EditAll: true,
+        EditTags: false,
+      },
+    });
+
+    const widgetConfig = {
+      i: DetailPageWidgetKeys.TAGS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+
+    expect(await screen.findByTestId('tags-widget')).toHaveAttribute(
+      'data-permission',
+      'false'
+    );
+  });
+
+  it('grants the tags edit affordance when EditTags is true', async () => {
+    (useGenericContext as jest.Mock).mockReturnValue({
+      ...mockGenericContext,
+      permissions: {
+        ...mockGenericContext.permissions,
+        EditAll: false,
+        EditTags: true,
+      },
+    });
+
+    const widgetConfig = {
+      i: DetailPageWidgetKeys.TAGS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={widgetConfig}
+      />
+    );
+
+    expect(await screen.findByTestId('tags-widget')).toHaveAttribute(
+      'data-permission',
+      'true'
+    );
+  });
+
+  it('should render glossary terms widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.GLOSSARY_TERMS,
       x: 0,
@@ -159,10 +386,10 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('tags-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('tags-widget')).toBeInTheDocument();
   });
 
-  it('should render custom properties widget', () => {
+  it('should render custom properties widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
       x: 0,
@@ -178,10 +405,12 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('custom-properties-widget')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('custom-properties-widget')
+    ).toBeInTheDocument();
   });
 
-  it('should render owners widget', () => {
+  it('should render owners widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.OWNERS,
       x: 0,
@@ -197,10 +426,10 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('owner-label-widget')).toBeInTheDocument();
+    expect(await screen.findByTestId('owner-label-widget')).toBeInTheDocument();
   });
 
-  it('should render reviewer widget', () => {
+  it('should render reviewer widget', async () => {
     const widgetConfig = {
       i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
       x: 0,
@@ -216,10 +445,12 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('reviewer-label-widget')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('reviewer-label-widget')
+    ).toBeInTheDocument();
   });
 
-  it('should render experts widget', () => {
+  it('should render experts widget', async () => {
     const widgetConfig = {
       i: DetailPageWidgetKeys.EXPERTS,
       x: 0,
@@ -235,7 +466,37 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('domain-expert-name')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-expert-name')).toBeInTheDocument();
+  });
+
+  it.each([
+    [DetailPageWidgetKeys.TIER, 'tier-widget'],
+    [DetailPageWidgetKeys.CERTIFICATION, 'certification-widget'],
+    [DetailPageWidgetKeys.DOMAIN, 'domain-widget'],
+  ])('renders the %s widget', async (key, testId) => {
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={{ i: key, x: 0, y: 0, w: 1, h: 1 }}
+      />
+    );
+
+    expect(await screen.findByTestId(testId)).toBeInTheDocument();
+  });
+
+  it('renders a widget contributed through the extension registry', () => {
+    (
+      commonWidgetClassBase.getCommonWidgetsFromConfig as jest.Mock
+    ).mockReturnValueOnce(() => <div data-testid="extension-widget" />);
+
+    render(
+      <CommonWidgets
+        entityType={EntityType.TABLE}
+        widgetConfig={{ i: 'KnowledgePanel.Custom', x: 0, y: 0, w: 1, h: 1 }}
+      />
+    );
+
+    expect(screen.getByTestId('extension-widget')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {
@@ -264,7 +525,7 @@ describe('CommonWidgets', () => {
       jest.clearAllMocks();
     });
 
-    it('should render custom properties widget when ViewCustomFields is true', () => {
+    it('should render custom properties widget when ViewCustomFields is true', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -290,11 +551,11 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
 
-    it('should render custom properties widget when ViewCustomFields is false', () => {
+    it('should render custom properties widget when ViewCustomFields is false', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -320,11 +581,11 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
 
-    it('should render custom properties widget when ViewCustomFields is undefined', () => {
+    it('should render custom properties widget when ViewCustomFields is undefined', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -349,11 +610,11 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
     });
 
-    it('should render custom properties widget for different entity types', () => {
+    it('should render custom properties widget for different entity types', async () => {
       (useGenericContext as jest.Mock).mockReturnValue({
         ...mockGenericContext,
         permissions: {
@@ -379,8 +640,96 @@ describe('CommonWidgets', () => {
       );
 
       expect(
-        screen.getByTestId('custom-properties-widget')
+        await screen.findByTestId('custom-properties-widget')
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('Data Products multi-select rule gating', () => {
+    const getDataProductsContainerMock = () =>
+      jest.requireMock(
+        '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
+      ).default as jest.Mock;
+
+    const dataProductsWidgetConfig = {
+      i: DetailPageWidgetKeys.DATA_PRODUCTS,
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+    };
+
+    beforeEach(() => {
+      getDataProductsContainerMock().mockClear();
+    });
+
+    it('holds single-select (multiple=false) while entity rules are loading', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: false,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
+    });
+
+    it('enables multiple select when rules are loaded and multi-product rule is not enabled', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: true,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: true });
+    });
+
+    it('keeps single select when rules are loaded and multi-product rule is enabled', () => {
+      (useGenericContext as jest.Mock).mockReturnValue({
+        ...mockGenericContext,
+        entityRules: {
+          ...mockGenericContext.entityRules,
+          canAddMultipleDataProducts: false,
+          requireDomainForDataProduct: false,
+        },
+        isRulesLoaded: true,
+      });
+
+      render(
+        <CommonWidgets
+          entityType={EntityType.TABLE}
+          widgetConfig={dataProductsWidgetConfig}
+        />
+      );
+
+      expect(
+        getDataProductsContainerMock().mock.calls.at(-1)?.[0]
+      ).toMatchObject({ multiple: false });
     });
   });
 });

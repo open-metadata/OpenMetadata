@@ -10,115 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Divider, Drawer, Row, Tooltip, Typography } from 'antd';
-import classNames from 'classnames';
-import { isEmpty, toString } from 'lodash';
-import { forwardRef, useEffect, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  Divider,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { EntityHistory } from '../../../generated/type/entityHistory';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
-import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import {
-  getSummary,
-  renderVersionButton,
-} from '../../../utils/EntityVersionUtils';
-import { getUserPath } from '../../../utils/RouterUtils';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
+import { renderVersionButton } from '../../../utils/EntityVersionUtils';
 import CloseIcon from '../../Modals/CloseIcon.component';
 import './entity-version-timeline.less';
-import {
-  EntityVersionButtonProps,
-  EntityVersionTimelineProps,
-} from './EntityVersionTimeline.interface';
-
-export const VersionButton = forwardRef<
-  HTMLDivElement,
-  EntityVersionButtonProps
->(({ version, onVersionSelect, selected, isMajorVersion, className }, ref) => {
-  const { t } = useTranslation();
-
-  const {
-    updatedBy,
-    version: versionNumber,
-    changeDescription,
-    updatedAt,
-    glossary,
-  } = version;
-  const [, , user] = useUserProfile({
-    permission: true,
-    name: updatedBy,
-  });
-
-  const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
-
-  return (
-    <div
-      className={classNames(
-        'timeline-content p-b-md cursor-pointer',
-        className
-      )}
-      data-testid={`version-entry-${versionText}`}
-      ref={ref}
-      onClick={() => onVersionSelect(toString(versionNumber))}>
-      <div className="timeline-wrapper">
-        <span
-          className={classNames(
-            'timeline-rounder',
-            {
-              selected,
-            },
-            {
-              major: isMajorVersion,
-            }
-          )}
-          data-testid={`version-selector-${versionText}`}
-        />
-        <span className={classNames('timeline-line')} />
-      </div>
-      <div>
-        <Typography.Text
-          className={classNames('d-flex font-medium', {
-            'text-primary': selected,
-          })}>
-          <span>{versionText}</span>
-          {isMajorVersion ? (
-            <span
-              className="m-l-xs text-xs font-medium text-grey-body tw-bg-tag p-x-xs p-y-xss bg-grey rounded-4"
-              style={{ backgroundColor: '#EEEAF8' }}>
-              {t('label.major')}
-            </span>
-          ) : null}
-        </Typography.Text>
-        <div
-          className={classNames('text-xs font-normal break-all', {
-            'diff-description': selected,
-          })}
-          data-testid="version-change-description">
-          {getSummary({
-            changeDescription: changeDescription,
-            isGlossaryTerm: !isEmpty(glossary),
-          })}
-        </div>
-        <div className="text-xs d-flex gap-1 items-center flex-wrap">
-          <UserPopOverCard
-            className="font-italic"
-            profileWidth={16}
-            userName={updatedBy}>
-            <Link className="thread-author m-r-xss" to={getUserPath(updatedBy)}>
-              {getEntityName(user)}
-            </Link>
-          </UserPopOverCard>
-          <span className="font-medium font-italic version-timestamp">
-            {formatDateTime(updatedAt)}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-});
+import { EntityVersionTimelineProps } from './EntityVersionTimeline.interface';
 
 const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   versionList = {} as EntityHistory,
@@ -164,7 +70,10 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
         })}
         {hiddenVersions?.length > 0 ? (
           <>
-            <Tooltip title={`+${hiddenVersions.length} more versions`}>
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={`+${hiddenVersions.length} more versions`}
+              triggerClassName="tw:block">
               <div className="version-hidden">
                 {hiddenVersions.map((v) =>
                   renderVersionButton(v, currentVersion, versionHandler)
@@ -172,19 +81,18 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
               </div>
             </Tooltip>
             <div className="version-pricing-reached">
-              <Typography.Title className="font-medium" level={4}>
-                Unlock all of your version history
-              </Typography.Title>
-              <Typography.Text className="text-grey-muted font-normal">
-                Upgrade to paid plan for access to all of your version history.
-              </Typography.Text>
+              <Typography as="h4" className="font-medium">
+                {t('message.unlock-all-version-history')}
+              </Typography>
+              <Typography className="font-normal" color="secondary">
+                {t('message.upgrade-to-paid-plan-for-version-history')}
+              </Typography>
 
               <Button
-                block
-                className="m-t-lg"
-                href="/settings/billing/plans"
-                type="primary">
-                See Upgrade Options
+                className="m-t-lg tw:w-full"
+                color="primary"
+                href="/settings/billing/plans">
+                {t('label.see-upgrade-option-plural')}
               </Button>
             </div>
           </>
@@ -194,32 +102,22 @@ const EntityVersionTimeLine: React.FC<EntityVersionTimelineProps> = ({
   }, [versionList, currentVersion, versionHandler]);
 
   return (
-    <Drawer
-      destroyOnClose
-      open
+    <aside
+      aria-label={t('label.version-plural-history')}
       className="versions-list-container"
-      closable={false}
-      getContainer={false}
-      mask={false}
-      maskClosable={false}
-      title={
-        <>
-          <Row className="p-b-xss" justify="space-between">
-            <Col>
-              <Typography.Text className="font-medium">
-                {t('label.version-plural-history')}
-              </Typography.Text>
-            </Col>
-            <Col>
-              <CloseIcon handleCancel={onBack} />
-            </Col>
-          </Row>
-          <Divider className="m-0" />
-        </>
-      }
-      width={330}>
-      {versions}
-    </Drawer>
+      data-testid="versions-list-container"
+      role="dialog">
+      <div className="versions-list-header">
+        <Box align="center" className="p-b-xss" justify="between">
+          <Typography className="font-medium tw:text-primary">
+            {t('label.version-plural-history')}
+          </Typography>
+          <CloseIcon handleCancel={onBack} />
+        </Box>
+        <Divider className="m-0" />
+      </div>
+      <div className="versions-list-body">{versions}</div>
+    </aside>
   );
 };
 

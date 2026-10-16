@@ -19,6 +19,12 @@ jest.mock('../../pages/EntityVersionPage/EntityVersionPage.component', () => {
   return jest.fn(() => <div>EntityVersionPage</div>);
 });
 
+jest.mock('../Suggestions/SuggestionsProvider/SuggestionsProvider', () =>
+  jest.fn(({ children }) => (
+    <div data-testid="suggestions-provider">{children}</div>
+  ))
+);
+
 jest.mock('../../utils/ApplicationRoutesClassBase', () => {
   return {
     getRouteElements: jest.fn(() => null),
@@ -26,13 +32,16 @@ jest.mock('../../utils/ApplicationRoutesClassBase', () => {
 });
 
 jest.mock('../../utils/EntityUtilClassBase', () => ({
-  getEntityDetailComponent: jest.fn().mockImplementation((entityType) => {
-    if (entityType === 'table') {
-      return () => <>EntityDetails</>;
-    }
+  __esModule: true,
+  default: {
+    getEntityDetailComponent: jest.fn().mockImplementation((entityType) => {
+      if (entityType === 'table') {
+        return () => <>EntityDetails</>;
+      }
 
-    return null;
-  }),
+      return null;
+    }),
+  },
 }));
 
 jest.mock('../../utils/useRequiredParams', () => ({
@@ -75,6 +84,9 @@ describe('EntityRouter', () => {
     );
 
     expect(await screen.findByText('EntityDetails')).toBeInTheDocument();
+    expect(screen.getByTestId('suggestions-provider')).toContainElement(
+      screen.getByText('EntityDetails')
+    );
   });
 
   it('should render EntityDetails component for entity details route with tab', async () => {

@@ -32,19 +32,18 @@ import {
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
-} from './Alerts/AlertsUtil';
+} from './Alerts/AlertsUtilPure';
 import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
-
 interface MockHeaderParam {
   key: string;
   value: string;
 }
 
 // Mock dependencies
-jest.mock('./Alerts/AlertsUtil', () => ({
+jest.mock('./Alerts/AlertsUtilPure', () => ({
   getRandomizedAlertName: jest.fn(() => 'openMetadata_alert_abc123456'),
   getConfigHeaderObjectFromArray: jest.fn(
     (headers?: MockHeaderParam[]) =>
@@ -79,7 +78,7 @@ jest.mock('./Alerts/AlertsUtil', () => ({
   ),
 }));
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
@@ -195,6 +194,12 @@ describe('AlertsClassBase', () => {
   beforeEach(() => {
     alertsClass = new AlertsClassBase();
     jest.clearAllMocks();
+  });
+
+  describe('getAlertAiTemplateSection', () => {
+    it('returns no section, since templates are a Collate feature', () => {
+      expect(alertsClass.getAlertAiTemplateSection()).toBeNull();
+    });
   });
 
   describe('getAddAlertFormExtraWidgets', () => {

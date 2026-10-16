@@ -11,44 +11,44 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tabs } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { isUndefined, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { usePageHeader } from '../../components/common/atoms/navigation/usePageHeader';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import SchemaEditor from '../../components/Database/SchemaEditor/SchemaEditor';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import AddCustomProperty from '../../components/Settings/CustomProperty/AddCustomProperty/AddCustomProperty';
 import { CustomPropertyTable } from '../../components/Settings/CustomProperty/CustomPropertyTable';
 import { ENTITY_PATH } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Type } from '../../generated/entity/type';
 import { CustomProperty } from '../../generated/type/customProperty';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   addPropertyToEntity,
+  CustomPropertyChanges,
+  deleteCustomPropertyByName,
   getTypeByFQN,
-  updateType,
+  updateCustomPropertyByName,
 } from '../../rest/metadataTypeAPI';
 import { getCustomPropertyPageHeaderFromEntity } from '../../utils/CustomProperty.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
-import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './custom-properties-pageV1.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../components/Database/SchemaEditor/SchemaEditor'))
+);
 
 const CustomEntityDetailV1 = () => {
   const { t } = useTranslation();
@@ -66,11 +66,6 @@ const CustomEntityDetailV1 = () => {
 
   const tabAttributePath = useMemo(() => ENTITY_PATH[tab], [tab]);
 
-  const { getEntityPermission } = usePermissionProvider();
-
-  const [propertyPermission, setPropertyPermission] =
-    useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
       getSettingPageEntityBreadCrumb(
@@ -80,22 +75,21 @@ const CustomEntityDetailV1 = () => {
     [tab]
   );
 
-  const fetchPermission = async () => {
-    try {
-      const response = await getEntityPermission(
-        ResourceEntity.TYPE,
-        selectedEntityTypeDetail.id as string
-      );
-      setPropertyPermission(response);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+  // Fetch-owner, by id — old code fetched only once selectedEntityTypeDetail.id was known
+  // (an effect gated on `selectedEntityTypeDetail?.id`); `enabled` mirrors that gate.
+  // Ungated: the old raw `EditAll` read never referenced `deleted`.
+  const { canEditAll: editPermission, error: permissionsError } =
+    useEntityPermissions(
+      ResourceEntity.TYPE,
+      { id: selectedEntityTypeDetail.id ?? '' },
+      { enabled: Boolean(selectedEntityTypeDetail?.id) }
+    );
 
-  const editPermission = useMemo(
-    () => propertyPermission.EditAll,
-    [propertyPermission, tab]
-  );
+  useEffect(() => {
+    if (permissionsError) {
+      showErrorToast(permissionsError as AxiosError);
+    }
+  }, [permissionsError]);
 
   const fetchTypeDetail = useCallback(async (typeFQN: string) => {
     setIsLoading(true);
@@ -113,18 +107,13 @@ const CustomEntityDetailV1 = () => {
     setActiveTab(activeKey as EntityTabs);
   }, []);
 
-  const [form] = useForm();
-
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleAddProperty = useCallback(() => {
     setIsDrawerOpen(true);
   }, []);
 
-  const handleDrawerClose = useCallback(() => {
-    setIsDrawerOpen(false);
-    form.resetFields();
-  }, [form]);
+  const handleDrawerClose = useCallback(() => setIsDrawerOpen(false), []);
 
   const handleDrawerSubmit = useCallback(
     async (data: CustomProperty) => {
@@ -153,27 +142,56 @@ const CustomEntityDetailV1 = () => {
     ]
   );
 
-  const updateEntityType = useCallback(
-    async (properties: Type['customProperties']) => {
+  // Delete and update are both guarded by-name patches that resolve to
+  // `undefined` when the property no longer exists; resync from the server then.
+  const runCustomPropertyChange = useCallback(
+    async (
+      change: () => Promise<Type | undefined>,
+      onPropertyMissing?: () => void
+    ) => {
       setIsButtonLoading(true);
-      const patch = compare(selectedEntityTypeDetail, {
-        ...selectedEntityTypeDetail,
-        customProperties: properties,
-      });
-
       try {
-        const data = await updateType(selectedEntityTypeDetail.id ?? '', patch);
-        setSelectedEntityTypeDetail((prev) => ({
-          ...prev,
-          customProperties: data.customProperties,
-        }));
+        const data = await change();
+
+        if (data) {
+          setSelectedEntityTypeDetail((prev) => ({
+            ...prev,
+            customProperties: data.customProperties,
+          }));
+        } else {
+          onPropertyMissing?.();
+          await fetchTypeDetail(tabAttributePath);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setIsButtonLoading(false);
       }
     },
-    [selectedEntityTypeDetail]
+    [fetchTypeDetail, tabAttributePath]
+  );
+
+  const handlePropertyDelete = useCallback(
+    (propertyName: string) =>
+      runCustomPropertyChange(() =>
+        deleteCustomPropertyByName(tabAttributePath, propertyName)
+      ),
+    [runCustomPropertyChange, tabAttributePath]
+  );
+
+  const handlePropertyUpdate = useCallback(
+    (propertyName: string, changes: CustomPropertyChanges) =>
+      runCustomPropertyChange(
+        () =>
+          updateCustomPropertyByName(tabAttributePath, propertyName, changes),
+        () =>
+          showErrorToast(
+            t('server.update-entity-error', {
+              entity: t('label.custom-property'),
+            })
+          )
+      ),
+    [runCustomPropertyChange, tabAttributePath, t]
   );
 
   const customPageHeader = useMemo(() => {
@@ -206,12 +224,6 @@ const CustomEntityDetailV1 = () => {
     }
   }, [tabAttributePath]);
 
-  useEffect(() => {
-    if (selectedEntityTypeDetail?.id) {
-      fetchPermission();
-    }
-  }, [selectedEntityTypeDetail]);
-
   const tabs = useMemo(() => {
     const { customProperties, schema } = selectedEntityTypeDetail;
 
@@ -227,15 +239,16 @@ const CustomEntityDetailV1 = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <Card data-testid="entity-custom-fields">
+          <div data-testid="entity-custom-fields">
             <CustomPropertyTable
               customProperties={customProperties ?? []}
               hasAccess={editPermission}
               isButtonLoading={isButtonLoading}
               isLoading={isLoading}
-              updateEntityType={updateEntityType}
+              onDeleteProperty={handlePropertyDelete}
+              onUpdateProperty={handlePropertyUpdate}
             />
-          </Card>
+          </div>
         ),
       },
       {
@@ -258,7 +271,8 @@ const CustomEntityDetailV1 = () => {
     isLoading,
     activeTab,
     handleAddProperty,
-    updateEntityType,
+    handlePropertyDelete,
+    handlePropertyUpdate,
   ]);
 
   if (isError) {
@@ -267,23 +281,31 @@ const CustomEntityDetailV1 = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.custom-property')}>
-      <Row data-testid="custom-entity-container" gutter={[0, 16]}>
-        <Col span={24}>
+      <Box data-testid="custom-entity-container" direction="col" gap={4}>
+        <div>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>{pageHeader}</Col>
-        <Col className="global-settings-tabs" span={24}>
-          <Tabs
-            className="tabs-new"
-            items={tabs}
-            key={tab}
-            onChange={onTabChange}
-          />
-        </Col>
-      </Row>
+        </div>
+        <div>{pageHeader}</div>
+        <Tabs
+          className="tw:gap-3"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => onTabChange(String(key))}>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {tabs.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabs.map(({ key, children }) => (
+            <Tabs.Panel id={key} key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
       <AddCustomProperty
         entityType={selectedEntityTypeDetail.name as EntityType}
-        formRef={form}
         loading={isButtonLoading}
         open={isDrawerOpen}
         onClose={handleDrawerClose}

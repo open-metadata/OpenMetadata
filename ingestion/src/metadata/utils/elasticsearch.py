@@ -12,7 +12,7 @@
 Helper methods for ES
 """
 
-from typing import List, Optional, TypeVar  # noqa: UP035
+from typing import TypeVar
 
 from pydantic import BaseModel
 
@@ -29,6 +29,9 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
+from metadata.generated.schema.entity.data.directory import Directory
+from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
@@ -36,9 +39,11 @@ from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.spreadsheet import Spreadsheet
 from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.data.worksheet import Worksheet
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
@@ -71,7 +76,12 @@ ES_INDEX_MAP = {
     Tag.__name__: "tag_search_index",
     Classification.__name__: "classification_search_index",
     Container.__name__: "container_search_index",
+    Directory.__name__: "directory_search_index",
+    File.__name__: "file_search_index",
+    Spreadsheet.__name__: "spreadsheet_search_index",
+    Worksheet.__name__: "worksheet_search_index",
     Query.__name__: "query_search_index",
+    DataContract.__name__: "data_contract_search_index",
     ReportData.__name__: "entity_report_data_index",
     Metric.__name__: "metric_search_index",
     "web_analytic_user_activity_report": "web_analytic_user_activity_report_data_index",
@@ -79,7 +89,7 @@ ES_INDEX_MAP = {
 }
 
 
-def get_entity_from_es_result(entity_list: Optional[List[T]], fetch_multiple_entities: bool = False) -> Optional[T]:  # noqa: UP006, UP045
+def get_entity_from_es_result(entity_list: list[T] | None, fetch_multiple_entities: bool = False) -> T | None:
     """
     Return a single element from an entity list obtained
     from an ES query

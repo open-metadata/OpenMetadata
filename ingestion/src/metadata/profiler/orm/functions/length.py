@@ -32,6 +32,7 @@ def _(element, compiler, **kw):
     return "LEN(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031
 
 
+@compiles(LenFn, Dialects.Databend)
 @compiles(LenFn, Dialects.SQLite)
 @compiles(LenFn, Dialects.Vertica)
 @compiles(LenFn, Dialects.Hive)
@@ -65,7 +66,7 @@ def _(element, compiler, **kw):
 
 @compiles(LenFn, Dialects.ClickHouse)
 def _(element, compiler, **kw):
-    """Handles lenght function for ClickHouse"""
+    """Handles length function for ClickHouse"""
     if isinstance(element.clauses.clauses[0].type, sqltypes.Enum):
         return "length(cast(%s, 'String'))" % compiler.process(element.clauses, **kw)  # noqa: UP031
     return "length(%s)" % compiler.process(element.clauses, **kw)  # noqa: UP031

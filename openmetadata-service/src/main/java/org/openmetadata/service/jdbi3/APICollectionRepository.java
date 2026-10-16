@@ -47,6 +47,11 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
         "",
         "");
     supportsSearch = true;
+    // Covered by the parent API service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by the root
+    // cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -123,7 +128,7 @@ public class APICollectionRepository extends EntityRepository<APICollection> {
   }
 
   @Override
-  public EntityInterface getParentEntity(APICollection entity, String fields) {
+  public EntityInterface<?> getParentEntity(APICollection entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { act, render, screen } from '@testing-library/react';
 import { mockWidget } from '../mocks/AddWidgetTabContent.mock';
 import { mockCurrentAddWidget } from '../mocks/CustomizablePage.mock';
 import {
@@ -21,26 +22,117 @@ import {
   getRemoveWidgetHandler,
   getUniqueFilteredLayout,
   getWidgetWidthLabelFromKey,
-} from './CustomizableLandingPageUtils';
+} from './CustomizableLandingPagePureUtils';
+import { getWidgetFromKey } from './CustomizableLandingPageUtils';
+
+jest.mock(
+  '../components/MyData/Widgets/Common/WidgetWrapper/WidgetWrapper',
+  () => ({
+    __esModule: true,
+    default: jest.fn().mockImplementation(({ children, loading }) => (
+      <div data-loading={String(Boolean(loading))} data-testid="widget-wrapper">
+        {children}
+      </div>
+    )),
+  })
+);
+
+jest.mock('./CustomizeMyDataPageClassBase', () => {
+  const React = require('react');
+  const PendingWidget = React.lazy(() => new Promise(() => undefined));
+
+  return {
+    __esModule: true,
+    default: {
+      getWidgetsFromKey: jest.fn(() => PendingWidget),
+    },
+  };
+});
 
 describe('CustomizableLandingPageUtils', () => {
+  describe('getWidgetFromKey', () => {
+    it('should render normal widget chunks without a per-widget loader', () => {
+      const { container } = render(
+        getWidgetFromKey({
+          widgetConfig: {
+            h: 3,
+            i: 'KnowledgePanel.ActivityFeed',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.queryByTestId('widget-wrapper')).not.toBeInTheDocument();
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('should preserve widget slots while edit-mode chunks load', () => {
+      render(
+        getWidgetFromKey({
+          isEditView: true,
+          widgetConfig: {
+            h: 3,
+            i: 'KnowledgePanel.ActivityFeed',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+    });
+
+    it('should preserve empty placeholder slots while placeholder chunks load', async () => {
+      render(
+        getWidgetFromKey({
+          handleOpenAddWidgetModal: jest.fn(),
+          handlePlaceholderWidgetKey: jest.fn(),
+          widgetConfig: {
+            h: 3,
+            i: 'ExtraWidget.EmptyWidgetPlaceholder',
+            static: false,
+            w: 1,
+            x: 0,
+            y: 0,
+          },
+        })
+      );
+
+      expect(screen.getByTestId('widget-wrapper')).toHaveAttribute(
+        'data-loading',
+        'true'
+      );
+
+      await act(async () => {
+        await Promise.resolve();
+      });
+    });
+  });
+
   describe('getNewWidgetPlacement', () => {
     it('should place widget in same row if space available', () => {
       const currentLayout = [
         { w: 1, h: 3, x: 0, y: 0, i: 'widget1', static: false },
-        { w: 1, h: 3, x: 1, y: 0, i: 'widget2', static: false },
       ];
 
       const result = getNewWidgetPlacement(currentLayout, 1);
 
-      expect(result).toEqual({ x: 2, y: 0 });
+      expect(result).toEqual({ x: 1, y: 0 });
     });
 
     it('should place widget in next row if no space in current row', () => {
+      // One widget per column: the landing grid is two columns wide.
       const currentLayout = [
         { w: 1, h: 3, x: 0, y: 0, i: 'widget1', static: false },
         { w: 1, h: 3, x: 1, y: 0, i: 'widget2', static: false },
-        { w: 1, h: 3, x: 2, y: 0, i: 'widget3', static: false },
       ];
 
       const result = getNewWidgetPlacement(currentLayout, 1);
@@ -71,7 +163,7 @@ describe('CustomizableLandingPageUtils', () => {
 
     it('should handle null widget data', () => {
       const result = getAddWidgetHandler(
-        null as any,
+        null as unknown as Document,
         'ExtraWidget.EmptyWidgetPlaceholder',
         1,
         3

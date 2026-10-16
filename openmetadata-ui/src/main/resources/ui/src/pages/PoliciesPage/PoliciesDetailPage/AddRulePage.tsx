@@ -11,31 +11,38 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Form, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { trim } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { INITIAL_RULE } from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.constants';
+import AccessControlRuleForm from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { Effect, Rule } from '../../../generated/api/policies/createPolicy';
+import { Rule } from '../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../generated/entity/policies/policy';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPolicyByName, patchPolicy } from '../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getPath,
   getPolicyWithFqnPath,
   getSettingPath,
 } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import RuleForm from '../RuleForm/RuleForm';
 
 const policiesPath = getPath(GlobalSettingOptions.POLICIES);
 
@@ -45,14 +52,7 @@ const AddRulePage = () => {
   const { fqn } = useFqn();
   const [isLoading, setLoading] = useState<boolean>(false);
   const [policy, setPolicy] = useState<Policy>({} as Policy);
-  const [ruleData, setRuleData] = useState<Rule>({
-    name: '',
-    description: '',
-    resources: [],
-    operations: [],
-    condition: '',
-    effect: Effect.Allow,
-  });
+  const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
 
   const breadcrumb = useMemo(
     () => [
@@ -98,7 +98,7 @@ const AddRulePage = () => {
     navigate(getPolicyWithFqnPath(fqn));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = ruleForm.handleSubmit(async (ruleData: Rule) => {
     const { condition, ...rest } = { ...ruleData, name: trim(ruleData.name) };
     const patch = compare(policy, {
       ...policy,
@@ -129,7 +129,7 @@ const AddRulePage = () => {
         );
       }
     }
-  };
+  });
 
   useEffect(() => {
     fetchPolicy();
@@ -145,35 +145,38 @@ const AddRulePage = () => {
         entity: t('label.rule'),
       })}>
       <Card className="m-x-auto w-800">
-        <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
+        <Card.Content>
+          <TitleBreadcrumb className="m-b-md" titleLinks={breadcrumb} />
 
-        <Typography.Paragraph
-          className="text-base"
-          data-testid="add-rule-title">
-          {t('label.add-new-entity', { entity: t('label.rule') })}
-        </Typography.Paragraph>
-        <Form
-          data-testid="rule-form"
-          id="rule-form"
-          initialValues={{
-            ruleEffect: ruleData.effect,
-          }}
-          layout="vertical"
-          onFinish={handleSubmit}>
-          <RuleForm ruleData={ruleData} setRuleData={setRuleData} />
-          <Space align="center" className="w-full justify-end">
-            <Button data-testid="cancel-btn" type="link" onClick={handleBack}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              data-testid="submit-btn"
-              form="rule-form"
-              htmlType="submit"
-              type="primary">
-              {t('label.create')}
-            </Button>
-          </Space>
-        </Form>
+          <Typography
+            as="p"
+            className="text-base tw:mb-4!"
+            data-testid="add-rule-title">
+            {t('label.add-new-entity', { entity: t('label.rule') })}
+          </Typography>
+          <Box data-testid="rule-form" direction="col" gap={4}>
+            <AccessControlRuleForm form={ruleForm} />
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full justify-end"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Button
+                color="link-color"
+                data-testid="cancel-btn"
+                onClick={handleBack}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="submit-btn"
+                onClick={() => handleSubmit()}>
+                {t('label.create')}
+              </Button>
+            </Box>
+          </Box>
+        </Card.Content>
       </Card>
     </PageLayoutV1>
   );

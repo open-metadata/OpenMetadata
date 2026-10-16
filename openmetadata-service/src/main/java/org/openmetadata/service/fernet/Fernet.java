@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.fernet;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FERNET_KEY_NULL;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_ALREADY_TOKENIZED;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.FIELD_NOT_TOKENIZED;
@@ -23,27 +22,22 @@ import com.macasaet.fernet.Key;
 import com.macasaet.fernet.StringValidator;
 import com.macasaet.fernet.Token;
 import com.macasaet.fernet.Validator;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.TemporalAmount;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.NonNull;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
-import org.openmetadata.schema.entity.events.SubscriptionDestination;
-import org.openmetadata.schema.entity.events.authentication.WebhookBearerAuth;
-import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
-import org.openmetadata.schema.type.Webhook;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
 public class Fernet {
   private static final Fernet instance = new Fernet();
+  private static final String KEY_SEPARATOR = ",";
   private String fernetKey;
+  private volatile List<Key> cachedKeys;
+  private final SecureRandom secureRandom = new SecureRandom();
   public static final String FERNET_PREFIX = "fernet:";
   public static final String FERNET_NO_ENCRYPTION = "no_encryption_at_rest";
   private final Validator<String> validator =
@@ -75,9 +69,20 @@ public class Fernet {
     if (fernetKey != null) {
       // convert base64 to base64url
       this.fernetKey = fernetKey.replace("/", "_").replace("+", "-").replace("=", "");
+      this.cachedKeys = buildKeys(this.fernetKey);
     } else {
       this.fernetKey = null;
+      this.cachedKeys = null;
     }
+  }
+
+  private static List<Key> buildKeys(String fernetKey) {
+    return Arrays.stream(fernetKey.split(KEY_SEPARATOR)).map(Key::new).toList();
+  }
+
+  @VisibleForTesting
+  public List<Key> getCachedKeys() {
+    return cachedKeys;
   }
 
   public boolean isKeyDefined() {
@@ -89,8 +94,8 @@ public class Fernet {
       throw new IllegalArgumentException(FIELD_ALREADY_TOKENIZED);
     }
     if (isKeyDefined()) {
-      Key key = new Key(fernetKey.split(",")[0]);
-      return FERNET_PREFIX + Token.generate(key, secret).serialise();
+      Key key = cachedKeys.getFirst();
+      return FERNET_PREFIX + Token.generate(secureRandom, key, secret).serialise();
     }
     throw new IllegalArgumentException(FERNET_KEY_NULL);
   }
@@ -106,11 +111,24 @@ public class Fernet {
     if (tokenized != null && tokenized.startsWith(FERNET_PREFIX)) {
       String str = tokenized.split(FERNET_PREFIX, 2)[1];
       Token token = Token.fromString(str);
-      List<Key> keys =
-          Arrays.stream(fernetKey.split(",")).map(Key::new).collect(Collectors.toList());
-      return token.validateAndDecrypt(keys, validator);
+      return token.validateAndDecrypt(cachedKeys, validator);
     }
     throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
+  }
+
+  /**
+   * Decrypts a value with the primary key only, the one {@link #encrypt} uses. A value encrypted
+   * with an older key of a rotation list does not decrypt here.
+   */
+  public String decryptWithPrimaryKey(String tokenized) {
+    if (!isKeyDefined()) {
+      throw new IllegalArgumentException(FERNET_KEY_NULL);
+    }
+    if (!isTokenized(tokenized)) {
+      throw new IllegalArgumentException(FIELD_NOT_TOKENIZED);
+    }
+    Token token = Token.fromString(tokenized.split(FERNET_PREFIX, 2)[1]);
+    return token.validateAndDecrypt(cachedKeys.getFirst(), validator);
   }
 
   /** Decrypts value without throwing an Exception in case it is not a Fernet encrypted value */
@@ -121,59 +139,5 @@ public class Fernet {
   /** Encrypt value without throwing an Exception in case it is not encrypted */
   public String encryptIfApplies(@NonNull String secret) {
     return isTokenized(secret) ? secret : encrypt(secret);
-  }
-
-  public static List<SubscriptionDestination> encryptWebhookSecretKey(
-      List<SubscriptionDestination> subscriptions) {
-    List<SubscriptionDestination> result = new ArrayList<>();
-
-    subscriptions.forEach(
-        subscription -> {
-          if (SubscriptionDestination.SubscriptionType.WEBHOOK.equals(subscription.getType())) {
-            Webhook webhook = JsonUtils.convertValue(subscription.getConfig(), Webhook.class);
-
-            if (webhook != null && webhook.getAuthType() instanceof Map<?, ?> authMap) {
-              String authType = (String) authMap.get("type");
-              Map<String, Object> config = (Map<String, Object>) subscription.getConfig();
-
-              if (WebhookBearerAuth.Type.BEARER.value().equals(authType)) {
-                WebhookBearerAuth bearerAuth =
-                    JsonUtils.convertValue(webhook.getAuthType(), WebhookBearerAuth.class);
-                if (bearerAuth != null && !nullOrEmpty(bearerAuth.getSecretKey())) {
-                  bearerAuth.withSecretKey(
-                      Fernet.getInstance().encryptIfApplies(bearerAuth.getSecretKey()));
-                  if (config != null) {
-                    config.put("authType", JsonUtils.convertValue(bearerAuth, Map.class));
-                    subscription.withConfig(config);
-                  }
-                }
-              } else if (WebhookOAuth2Config.Type.OAUTH_2.value().equals(authType)) {
-                WebhookOAuth2Config oauth2Config =
-                    JsonUtils.convertValue(webhook.getAuthType(), WebhookOAuth2Config.class);
-                if (oauth2Config != null) {
-                  if (!nullOrEmpty(oauth2Config.getClientId())) {
-                    oauth2Config.withClientId(
-                        Fernet.getInstance().encryptIfApplies(oauth2Config.getClientId()));
-                  }
-                  if (!nullOrEmpty(oauth2Config.getClientSecret())) {
-                    oauth2Config.withClientSecret(
-                        Fernet.getInstance().encryptIfApplies(oauth2Config.getClientSecret()));
-                  }
-                  if (config != null) {
-                    config.put("authType", JsonUtils.convertValue(oauth2Config, Map.class));
-                    subscription.withConfig(config);
-                  }
-                }
-              }
-            }
-          }
-
-          if (nullOrEmpty(subscription.getId())) {
-            subscription.withId(UUID.randomUUID());
-          }
-
-          result.add(subscription);
-        });
-    return result;
   }
 }

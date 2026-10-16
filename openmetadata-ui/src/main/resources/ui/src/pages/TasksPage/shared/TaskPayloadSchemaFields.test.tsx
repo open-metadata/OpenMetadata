@@ -25,9 +25,31 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { act, ReactNode } from 'react';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Button: ({
+    children,
+    onPress,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+  }) => <button onClick={onPress}>{children}</button>,
+  Typography: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
+  ),
+}));
 
 jest.mock('./DescriptionTabs', () => ({
   DescriptionTabs: jest
@@ -48,15 +70,15 @@ jest.mock('./TagsTabs', () => ({
       onClick={() =>
         onChange([
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'Classification.PersonalData.Personal',
           },
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'PII.Sensitive',
           },
         ])
@@ -73,9 +95,9 @@ jest.mock('./TagSuggestion', () =>
       onClick={() =>
         onChange([
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'Tier.Tier1',
           },
         ])
@@ -86,20 +108,40 @@ jest.mock('./TagSuggestion', () =>
 );
 
 const PERSONAL_TAG: TagLabel = {
-  labelType: 'Manual',
+  labelType: LabelType.Manual,
   source: TagSource.Classification,
-  state: 'Confirmed',
+  state: State.Confirmed,
   tagFQN: 'Classification.PersonalData.Personal',
 };
 
 const CONFIDENTIAL_TAG: TagLabel = {
-  labelType: 'Manual',
+  labelType: LabelType.Manual,
   source: TagSource.Classification,
-  state: 'Confirmed',
+  state: State.Confirmed,
   tagFQN: 'Classification.PersonalData.Confidential',
 };
 
 describe('TaskPayloadSchemaFields', () => {
+  it('associates required schema fields with their accessible labels', () => {
+    render(
+      <TaskPayloadSchemaFields
+        payload={{ reviewNotes: '' }}
+        schema={{
+          type: 'object',
+          required: ['reviewNotes'],
+          properties: {
+            reviewNotes: { title: 'Review Notes', type: 'string' },
+          },
+        }}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: /Review Notes/ })
+    ).toBeRequired();
+  });
+
   it('updates description payload fields through the schema widget', () => {
     const onChange = jest.fn();
     const schema: JsonSchemaObject = {
@@ -177,9 +219,9 @@ describe('TaskPayloadSchemaFields', () => {
       currentTags: [PERSONAL_TAG, CONFIDENTIAL_TAG],
       tagsToAdd: [
         {
-          labelType: 'Manual',
+          labelType: LabelType.Manual,
           source: TagSource.Classification,
-          state: 'Confirmed',
+          state: State.Confirmed,
           tagFQN: 'PII.Sensitive',
         },
       ],
@@ -297,6 +339,183 @@ describe('TaskPayloadSchemaFields', () => {
     expect(screen.getByText('Reviewed and approved')).toBeInTheDocument();
     expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  describe('ClampedText in read mode', () => {
+    const STRING_SCHEMA: JsonSchemaObject = {
+      type: 'object',
+      properties: { reason: { title: 'Reason', type: 'string' } },
+    };
+
+    const ARRAY_SCHEMA: JsonSchemaObject = {
+      type: 'object',
+      properties: { columns: { title: 'Columns', type: 'array' } },
+    };
+
+    beforeEach(() => {
+      globalThis.ResizeObserver = jest.fn().mockImplementation(() => ({
+        disconnect: jest.fn(),
+        observe: jest.fn(),
+        unobserve: jest.fn(),
+      }));
+    });
+
+    it('shows -- for an empty string array', () => {
+      render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ columns: [] }}
+          schema={ARRAY_SCHEMA}
+          uiSchema={{}}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByText('--')).toBeInTheDocument();
+    });
+
+    it('joins string array items with a comma in read mode', () => {
+      render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ columns: ['col1', 'col2', 'col3'] }}
+          schema={ARRAY_SCHEMA}
+          uiSchema={{}}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByText('col1, col2, col3')).toBeInTheDocument();
+    });
+
+    it('does not show Show More when text fits within two lines', async () => {
+      jest.useFakeTimers();
+      render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ reason: 'short' }}
+          schema={STRING_SCHEMA}
+          uiSchema={{}}
+          onChange={jest.fn()}
+        />
+      );
+
+      await act(async () => {
+        jest.runAllTimers();
+      });
+
+      expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+
+      jest.useRealTimers();
+    });
+
+    it('shows Show More button when text overflows two lines', async () => {
+      jest.useFakeTimers();
+      const { container } = render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ reason: 'a very long text that should be clamped' }}
+          schema={STRING_SCHEMA}
+          uiSchema={{}}
+          onChange={jest.fn()}
+        />
+      );
+
+      const para = container.querySelector('p') as HTMLParagraphElement;
+      Object.defineProperty(para, 'clientHeight', {
+        configurable: true,
+        value: 40,
+      });
+      Object.defineProperty(para, 'scrollHeight', {
+        configurable: true,
+        value: 100,
+      });
+      jest
+        .spyOn(para, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
+
+      await act(async () => {
+        jest.runAllTimers();
+      });
+
+      expect(screen.getByText('label.show-more')).toBeInTheDocument();
+
+      jest.useRealTimers();
+    });
+
+    it('expands text on Show More click and reveals Show Less', async () => {
+      jest.useFakeTimers();
+      const { container } = render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ reason: 'a very long text that should be clamped' }}
+          schema={STRING_SCHEMA}
+          uiSchema={{}}
+          onChange={jest.fn()}
+        />
+      );
+
+      const para = container.querySelector('p') as HTMLParagraphElement;
+      Object.defineProperty(para, 'clientHeight', {
+        configurable: true,
+        value: 40,
+      });
+      Object.defineProperty(para, 'scrollHeight', {
+        configurable: true,
+        value: 100,
+      });
+      jest
+        .spyOn(para, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
+
+      await act(async () => {
+        jest.runAllTimers();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.show-more' }));
+
+      expect(screen.getByText('label.show-less')).toBeInTheDocument();
+      expect(screen.queryByText('label.show-more')).not.toBeInTheDocument();
+
+      jest.useRealTimers();
+    });
+
+    it('collapses text on Show Less click and restores Show More', async () => {
+      jest.useFakeTimers();
+      const { container } = render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ reason: 'a very long text that should be clamped' }}
+          schema={STRING_SCHEMA}
+          uiSchema={{}}
+          onChange={jest.fn()}
+        />
+      );
+
+      const para = container.querySelector('p') as HTMLParagraphElement;
+      Object.defineProperty(para, 'clientHeight', {
+        configurable: true,
+        value: 40,
+      });
+      Object.defineProperty(para, 'scrollHeight', {
+        configurable: true,
+        value: 100,
+      });
+      jest
+        .spyOn(para, 'getClientRects')
+        .mockReturnValue([{}] as unknown as DOMRectList);
+
+      await act(async () => {
+        jest.runAllTimers();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'label.show-more' }));
+      fireEvent.click(screen.getByRole('button', { name: 'label.show-less' }));
+
+      expect(screen.queryByText('label.show-less')).not.toBeInTheDocument();
+
+      jest.useRealTimers();
+    });
   });
 
   it('supports editing object payload fields through JSON text areas', () => {

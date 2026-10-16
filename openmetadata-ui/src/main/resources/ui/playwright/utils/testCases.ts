@@ -10,13 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import {
+  RUN_TEST_CASE_BUTTON_TEST_ID,
+  TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
+  type TestCaseLastRunBannerStatus,
+} from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
-import { toastNotification } from './common';
+import {
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  redirectToHomePage,
+  toastNotification,
+  uuid,
+} from './common';
 import { waitForAllLoadersToDisappear } from './entity';
-import { fillTagDetails, pressKeyXTimes } from './importUtils';
+import { expectBreadcrumbToContainAncestor } from './headerBreadcrumbUtils';
+import {
+  fillTagDetails,
+  pressKeyXTimes,
+  startCsvPreviewAndWaitForGrid,
+  suppressCsvJobsTray,
+} from './importUtils';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -37,6 +55,39 @@ export const getFailedRowsData = (table: TableClass) => {
     }),
   };
 };
+
+export const verifyTestCaseLastRunBanner = async (
+  page: Page,
+  status: TestCaseLastRunBannerStatus
+) => {
+  const banner = page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS[status]);
+
+  await expect(banner).toBeVisible();
+
+  return banner;
+};
+
+type CsvExportResponse = {
+  jobId: string;
+};
+
+type CsvExportDownload = {
+  suggestedFilename: () => string;
+  saveAs: (filePath: string) => Promise<void>;
+  text: () => Promise<string>;
+};
+
+const createCsvExportDownload = (
+  suggestedFilename: string,
+  csvContent: string
+): CsvExportDownload => ({
+  suggestedFilename: () => suggestedFilename,
+  saveAs: async (filePath: string) => {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, csvContent);
+  },
+  text: async () => csvContent,
+});
 
 export const setupTestCaseWithFailedRows = async (
   apiContext: APIRequestContext,
@@ -60,9 +111,7 @@ export const setupTestCaseWithFailedRows = async (
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`delete-${testCaseName}`).click();
-  await page.fill('#deleteTextInput', 'DELETE');
-
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
+  await page.getByTestId('confirm-button').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=true'
@@ -95,46 +144,54 @@ export const submitTestCaseForm = async (page: Page) => {
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
-  page.waitForResponse((res) => {
-    const url = res.url();
-    return (
-      url.includes('/api/v1/permissions') &&
-      !url.includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
-    );
-  });
+  waitForResponseWithStatus(
+    page,
+    (res) => {
+      const url = res.url();
+      return (
+        url.includes('/api/v1/permissions') &&
+        !url.includes('/api/v1/permissions/table/name/') &&
+        res.request().method() === 'GET'
+      );
+    },
+    200
+  );
 
 export const waitForTableEntityPermissionsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestCaseListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testCases/search/list'),
+    200
   );
 
 export const waitForTestCaseDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestSuiteListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       (res.url().includes('/api/v1/dataQuality/testSuites') ||
         res.url().includes('/api/v1/dataQuality/testSuites/search/list')) &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 /**
@@ -155,7 +212,6 @@ export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
   });
 
 export const confirmIngestionPipelineHardDelete = async (page: Page) => {
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
   const deleteResponse = page.waitForResponse(
     '/api/v1/services/ingestionPipelines/*?hardDelete=true'
   );
@@ -165,15 +221,19 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
-  await page.goto('/data-quality/test-suites');
+  await page.goto('/data-quality/test-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await listPromise;
 };
 
 export const waitForTestSuiteDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/'),
+    200
   );
 
 export const visitTestSuiteDetailsPage = async (
@@ -181,16 +241,19 @@ export const visitTestSuiteDetailsPage = async (
   suiteFqn: string
 ) => {
   const detailsPromise = waitForTestSuiteDetailsResponse(page);
-  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await detailsPromise;
 };
 
 export const waitForFailedRowsSampleResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/failedRowsSample') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
@@ -216,8 +279,12 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     .click();
   await responsePromise;
 
-  const { service, database, databaseSchema, displayName } =
-    table.entityResponseData;
+  const {
+    service,
+    database,
+    databaseSchema,
+    name: tableName,
+  } = table.entityResponseData;
 
   if (!service || !database || !databaseSchema) {
     throw new Error(
@@ -225,27 +292,37 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     );
   }
 
-  await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
-    `${service.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
-    `${database.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
-    `${databaseSchema.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
-    `${displayName}/`
-  );
+  // The detail page starts with Observability, so service/database/schema
+  // ancestors may be collapsed while the table remains an inline link.
+  const breadcrumb = page.getByTestId('breadcrumb');
 
-  const tableResponsePromise = page.waitForResponse(
+  await expectBreadcrumbToContainAncestor(page, service.name);
+  await expect(breadcrumb.getByRole('link', { name: tableName })).toBeVisible();
+
+  await breadcrumb
+    .getByRole('button', { name: 'Show hidden breadcrumbs' })
+    .click();
+
+  await expect(
+    page.getByRole('menuitemradio', { name: database.name })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('menuitemradio', { name: databaseSchema.name })
+  ).toBeVisible();
+
+  await page.keyboard.press('Escape');
+
+  const tableResponsePromise = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/tables/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.url().includes('/api/v1/tables/') && res.request().method() === 'GET',
+    200
   );
-  await page.getByTestId('breadcrumb-link').nth(3).click();
-  await tableResponsePromise;
+  const testCaseResponsePromise = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/search/list?*fields=*'
+  );
+  await breadcrumb.getByRole('link', { name: tableName }).click();
+  await Promise.all([tableResponsePromise, testCaseResponsePromise]);
 };
 
 export const findSystemTestDefinition = async (page: Page) => {
@@ -255,7 +332,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto('/test-library');
+  await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
   let response = await responsePromise;
   let data = await response.json();
 
@@ -319,7 +396,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   const testCaseListResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.goto(`/test-suites/${testSuiteFqn}`);
+  await page.goto(`/test-suites/${testSuiteFqn}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await testCaseListResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').waitFor({
@@ -332,29 +411,43 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  * @param page - Playwright page object
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await page.getByTestId('manage-button').waitFor();
 };
 
 /**
  * Perform complete export workflow for test cases
  * @param page - Playwright page object
- * @returns Download object from Playwright
+ * @returns Download-compatible object backed by the async CSV job result
  */
-export const performTestCaseExport = async (page: Page) => {
-  await expect(page.getByTestId('export-button')).toBeVisible();
-  await page.getByTestId('export-button').click();
-  await page.locator('#export-form').waitFor({
-    state: 'visible',
-  });
-  await expect(page.locator('#export-form')).toBeVisible();
-  await expect(page.locator('#submit-button')).not.toBeDisabled();
+export const performTestCaseExport = async (
+  page: Page,
+  fileName = `test-cases-${uuid()}`
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/name/') &&
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
 
-  const downloadPromise = page.waitForEvent('download');
-  await page.locator('#submit-button').click();
-  const download = await downloadPromise;
+  try {
+    await expect(page.getByTestId('export-button')).toBeVisible();
+    await page.getByTestId('export-button').click();
 
-  return download;
+    const exportResponse = await exportResponsePromise;
+    expect(exportResponse.ok()).toBeTruthy();
+
+    const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+    const csvContent = await fetchCompletedCsvAsyncJobResult(apiContext, jobId);
+
+    return createCsvExportDownload(`${fileName}.csv`, csvContent);
+  } finally {
+    await afterAction();
+  }
 };
 
 /**
@@ -379,9 +472,7 @@ export const navigateToImportPage = async (
 export const uploadCSVFile = async (page: Page, filePath: string) => {
   await page.locator('[type="file"]').waitFor({ state: 'attached' });
   await page.setInputFiles('[type="file"]', filePath);
-  await page.getByTestId('upload-file-widget').waitFor({
-    state: 'hidden',
-  });
+  await startCsvPreviewAndWaitForGrid(page);
 };
 
 /**
@@ -426,7 +517,7 @@ export const verifyPageAccess = async (
   const permissionResponse = page.waitForResponse((response) =>
     response.url().includes('api/v1/permissions')
   );
-  await page.goto(url);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await permissionResponse;
   await waitForAllLoadersToDisappear(page);
 
@@ -638,6 +729,25 @@ export const addTestCaseValidationRows = async (
   );
 };
 
+const IMPORT_LOAD_MASK_SELECTOR =
+  '.inovua-react-toolkit-load-mask__background-layer';
+
+/**
+ * Click the import preview's Update button once nothing is covering it.
+ *
+ * This used to pass { force: true } for an "element obscured by overlay" that
+ * was never pinned down. There are two real obstructions: the grid's load mask,
+ * which this waits out, and the background-jobs tray, which suppressCsvJobsTray
+ * makes click-through at the start of the flow. With both handled the click can
+ * go through Playwright's actionability checks, so a future overlay regression
+ * surfaces here instead of being forced past.
+ */
+const clickImportUpdateButton = async (page: Page) => {
+  await page.locator(IMPORT_LOAD_MASK_SELECTOR).waitFor({ state: 'detached' });
+
+  await page.click('[type="button"] >> text="Update"');
+};
+
 /**
  * Perform complete E2E export-import-validate flow
  * @param page - Playwright page object
@@ -652,11 +762,17 @@ export const performE2EExportImportFlow = async (
   const { validateImportStatus } = await import('./importUtils');
   const { test } = await import('@playwright/test');
 
+  // Step 1's export finishes mid-flow and auto-expands the background-jobs tray
+  // over the profiler's Manage button, so every later clickManageButton retries
+  // until the test times out. Neutralise the tray before the first export rather
+  // than inside the import helpers, which run after the first blocked click.
+  await suppressCsvJobsTray(page);
+
   // Step 1: Export test case details
   await test.step('Export test case details to downloads folder', async () => {
     await visitDataQualityTab(page, table);
     await clickManageButton(page, 'table');
-    const download = await performTestCaseExport(page);
+    const download = await performTestCaseExport(page, table.entity.name);
 
     const filename = download.suggestedFilename();
     expect(filename).toContain('.csv');
@@ -674,6 +790,8 @@ export const performE2EExportImportFlow = async (
     await page
       .locator('[type="file"]')
       .setInputFiles(['downloads/' + exportedFile]);
+
+    await startCsvPreviewAndWaitForGrid(page);
 
     await expect(page.locator('.rdg-header-row')).toBeVisible();
     await expect(page.getByTestId('add-row-btn')).toBeVisible();
@@ -717,11 +835,10 @@ export const performE2EExportImportFlow = async (
         response.url().includes('recursive=true')
     );
 
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await page.click('[type="button"] >> text="Update"', { force: true });
+    await clickImportUpdateButton(page);
     await updateButtonResponse;
     await page
-      .locator('.inovua-react-toolkit-load-mask__background-layer')
+      .locator(IMPORT_LOAD_MASK_SELECTOR)
       .waitFor({ state: 'detached' });
     await toastNotification(page, /updated successfully/);
   });
@@ -745,11 +862,12 @@ export const performE2EExportImportFlow = async (
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell1.dblclick();
     await page.keyboard.type(' - Updated via Bulk Edit');
     await page.keyboard.press('Enter');
@@ -759,18 +877,19 @@ export const performE2EExportImportFlow = async (
     const displayNameCell2 = page
       .locator('.rdg-row')
       .nth(1)
-      .locator('[aria-colindex="2"]');
+      .locator('[aria-colindex="3"]');
     await displayNameCell2.dblclick();
     await page.keyboard.type(' - Bulk Edited');
     await page.keyboard.press('Enter');
 
     // First test case - add tag
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     await page
       .locator('.rdg-row')
       .nth(0)
-      .locator('[aria-colindex="1"]')
-      .click(); // Click Name column to ensure focus
+      .locator('[aria-colindex="2"]')
+      .click(); // Click Name column (colindex=2) to ensure focus
     await pressKeyXTimes(page, 9, 'ArrowRight'); // Navigate from Name (2) to Tags (11) = 9 presses
     await fillTagDetails(page, 'PII.Sensitive');
 
@@ -794,11 +913,10 @@ export const performE2EExportImportFlow = async (
         response.url().includes('dryRun=false')
     );
 
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await page.click('[type="button"] >> text="Update"', { force: true });
+    await clickImportUpdateButton(page);
     await bulkEditUpdateResponse;
     await page
-      .locator('.inovua-react-toolkit-load-mask__background-layer')
+      .locator(IMPORT_LOAD_MASK_SELECTOR)
       .waitFor({ state: 'detached' });
     await toastNotification(page, /updated successfully/);
 
@@ -812,4 +930,111 @@ export const performE2EExportImportFlow = async (
     await expect(page.getByText(/ - Updated via Bulk Edit/)).toBeVisible();
     await expect(page.getByText(/ - Bulk Edited/)).toBeVisible();
   });
+};
+
+/**
+ * Open a test case's details page and wait for it to settle.
+ *
+ * App mode is the caller's choice — seed it (see `enableAiAppMode`) before
+ * calling this, so the helper stays usable from either mode's specs and
+ * `playwright/utils` keeps its one-way dependency on `playwright/e2e`.
+ */
+export const openTestCaseDetailsPage = async (
+  page: Page,
+  testCaseFqn: string
+): Promise<void> => {
+  await redirectToHomePage(page);
+  await page.goto(
+    `/observability/test-case/${encodeURIComponent(
+      testCaseFqn
+    )}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
+  );
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+};
+
+export const createTableWithTestCase = async (
+  apiContext: APIRequestContext
+) => {
+  const table = new TableClass();
+  await table.create(apiContext);
+  await table.createTestCase(apiContext);
+
+  return table;
+};
+
+/**
+ * Unscheduled on purpose: a scheduled DAG can start a run of its own as soon as
+ * it is deployed, which would disable Run now before the test clicks it.
+ */
+export const createUnscheduledTestSuitePipeline = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const createResponse = await apiContext.post(
+    '/api/v1/services/ingestionPipelines',
+    {
+      data: {
+        name: `pw-run-test-case-pipeline-${uuid()}`,
+        pipelineType: 'TestSuite',
+        airflowConfig: {},
+        service: { id: table.testSuiteResponseData.id, type: 'testSuite' },
+        sourceConfig: {
+          config: {
+            type: 'TestSuite',
+            entityFullyQualifiedName:
+              table.entityResponseData.fullyQualifiedName,
+          },
+        },
+      },
+    }
+  );
+  expect(createResponse.status()).toBe(201);
+  const { id, name } = await createResponse.json();
+
+  return { id: id as string, name: name as string };
+};
+
+export const patchIngestionPipeline = async (
+  apiContext: APIRequestContext,
+  pipelineId: string,
+  path: string,
+  value: unknown
+) => {
+  const patchResponse = await apiContext.patch(
+    `/api/v1/services/ingestionPipelines/${pipelineId}`,
+    {
+      data: [{ op: 'add', path, value }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+  expect(patchResponse.status()).toBe(200);
+};
+
+export const isPipelinePermissionResponse =
+  (pipelineName: string) => (response: Response) =>
+    response.url().includes('/api/v1/permissions/ingestionPipeline/name/') &&
+    response.url().includes(pipelineName);
+
+export const isRunTestCaseResponse = (response: Response) =>
+  response.url().endsWith('/api/v1/services/ingestionPipelines/run') &&
+  response.request().method() === 'POST';
+
+export const expectRunTestCaseDisabledWithReason = async (
+  page: Page,
+  reason: string
+) => {
+  const reasonTrigger = page.getByRole('group', { name: reason });
+
+  await expect(page.getByTestId(RUN_TEST_CASE_BUTTON_TEST_ID)).toBeDisabled();
+  await expect(reasonTrigger).toBeVisible();
+
+  // React Aria opens a tooltip on hover only once a pointer press has happened on
+  // the page, which a freshly loaded page has not seen; keyboard focus opens it
+  // regardless, and reaching the reason by keyboard is what the wrapper is for.
+  await reasonTrigger.focus();
+
+  await expect(page.getByRole('tooltip')).toHaveText(reason);
 };

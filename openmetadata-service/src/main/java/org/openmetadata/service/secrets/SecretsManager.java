@@ -18,12 +18,16 @@ import static java.util.Objects.isNull;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +43,7 @@ import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
@@ -224,6 +229,57 @@ public abstract class SecretsManager {
   }
 
   /**
+   * Encrypts a Context Plugin connection's password fields under the path
+   * /{cluster}/contextPlugin/{name}/{field}, mirroring {@link #encryptQueryRunnerConfig}.
+   *
+   * @param connectionConfig An object whose {@code @PasswordField} string fields should be encrypted
+   * @param pluginName The context plugin name
+   * @return The config with password fields replaced by secret references
+   */
+  public Object encryptContextPluginConnection(Object connectionConfig, String pluginName) {
+    if (connectionConfig == null) {
+      return null;
+    }
+    try {
+      return encryptPasswordFields(
+          connectionConfig, buildSecretId(true, "contextPlugin", pluginName), true);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST,
+          String.format("Failed to encrypt context plugin connection for plugin [%s]", pluginName));
+    }
+  }
+
+  public Object decryptContextPluginConnection(Object connectionConfig) {
+    if (connectionConfig == null) {
+      return null;
+    }
+    try {
+      return decryptPasswordFields(connectionConfig);
+    } catch (Exception e) {
+      throw new SecretsManagerException(
+          Response.Status.BAD_REQUEST, "Failed to decrypt context plugin connection");
+    }
+  }
+
+  /**
+   * Deletes Context Plugin connection secrets. Same path as {@link
+   * #encryptContextPluginConnection(Object, String)}: /{cluster}/contextPlugin/{pluginName}/{field}.
+   */
+  public void deleteContextPluginConnectionSecrets(Object connectionConfig, String pluginName) {
+    if (connectionConfig != null) {
+      try {
+        deleteSecrets(connectionConfig, buildSecretId(true, "contextPlugin", pluginName));
+      } catch (Exception e) {
+        throw new SecretsManagerException(
+            Response.Status.BAD_REQUEST,
+            String.format(
+                "Failed to delete secrets for context plugin connection [%s]", pluginName));
+      }
+    }
+  }
+
+  /**
    * This is used to handle the JWT Token internally, in the JWTFilter, when
    * calling for the auth-mechanism in the UI, etc.
    * If using SM, we need to decrypt and GET the secret to ensure we are comparing
@@ -386,6 +442,28 @@ public abstract class SecretsManager {
     return null;
   }
 
+  /**
+   * Applies {@code action} to each OpenMetadata object held in {@code obj} when it is a collection,
+   * passing the element index. Collections were previously not traversed, so a secret declared
+   * inside a JSON-schema array was never encrypted and was persisted in cleartext.
+   *
+   * <p>Every walker here routes through this so that encrypt and delete derive the same secret id
+   * for the same element - otherwise deleting a service would strand its secrets in the store.
+   */
+  private static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
+    if (!(obj instanceof Collection<?> collection)) {
+      return;
+    }
+    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
+    int index = 0;
+    for (Object element : collection) {
+      if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
+        action.accept(element, elementKeys.get(index));
+      }
+      index++;
+    }
+  }
+
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
@@ -411,24 +489,41 @@ public abstract class SecretsManager {
                             fieldName, fernet.decryptIfApplies((String) obj), secretId, store);
                     // get setMethod
                     Method toSet = ReflectionUtil.getToSetMethod(toEncryptObject, obj, fieldName);
-                    // set new value
+                    // set new value. A null means the field was cleared, so there is nothing left
+                    // to encrypt and the entity must not keep a reference to a removed secret.
                     ReflectionUtil.setValueInMethod(
                         toEncryptObject,
-                        Fernet.isTokenized(newFieldValue)
+                        newFieldValue == null || Fernet.isTokenized(newFieldValue)
                             ? newFieldValue
                             : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
+                  } else {
+                    forEachTraversableElement(
+                        obj,
+                        (element, elementKey) ->
+                            encryptPasswordFields(
+                                element,
+                                buildSecretId(
+                                    false,
+                                    secretId,
+                                    fieldName.toLowerCase(Locale.ROOT),
+                                    elementKey),
+                                store));
                   }
                 });
       }
       return toEncryptObject;
+    } catch (WebServiceException e) {
+      // Already classified with its own status and user-facing message — the reserved-value
+      // rejection in storeValue, for one. Re-wrapping would relabel a deliberate 400 as a 500.
+      throw e;
     } catch (Exception e) {
       String msg =
           String.format(
               "Error trying to encrypt object with secret ID [%s] due to [%s]",
-              secretId, e.getMessage());
+              secretId, exceptionMessage(e));
       LOG.error(msg);
-      throw new SecretsManagerException(msg);
+      throw new SecretsManagerException(msg, e);
     }
   }
 
@@ -456,6 +551,9 @@ public abstract class SecretsManager {
                       toDecryptObject,
                       Fernet.isTokenized(fieldValue) ? fernet.decrypt(fieldValue) : fieldValue,
                       toSet);
+                } else {
+                  forEachTraversableElement(
+                      obj, (element, elementKey) -> decryptPasswordFields(element));
                 }
               });
       return toDecryptObject;
@@ -496,6 +594,8 @@ public abstract class SecretsManager {
                           ? getSecretValue(fieldValue)
                           : fieldValue,
                       toSet);
+                } else {
+                  forEachTraversableElement(obj, (element, elementKey) -> getSecretFields(element));
                 }
               });
       return toDecryptObject;
@@ -509,6 +609,12 @@ public abstract class SecretsManager {
 
   protected abstract String storeValue(
       String fieldName, String value, String secretId, boolean store);
+
+  protected static String exceptionMessage(Throwable throwable) {
+    return throwable.getMessage() != null
+        ? throwable.getMessage()
+        : throwable.getClass().getSimpleName();
+  }
 
   protected String buildSecretId(boolean addClusterPrefix, String... secretIdValues) {
     StringBuilder format = new StringBuilder();
@@ -596,6 +702,15 @@ public abstract class SecretsManager {
   }
 
   private void deleteSecrets(Object toDeleteSecretsFrom, String secretId) {
+    deleteSecrets(toDeleteSecretsFrom, List.of(secretId));
+  }
+
+  /**
+   * @param secretIds the secret id of {@code toDeleteSecretsFrom} last, preceded by the ids of the
+   *     objects that enclose it
+   */
+  private void deleteSecrets(Object toDeleteSecretsFrom, List<String> secretIds) {
+    String secretId = secretIds.getLast();
     if (!DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
       Arrays.stream(toDeleteSecretsFrom.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
@@ -608,13 +723,61 @@ public abstract class SecretsManager {
                 // encrypt at encryptPasswordFields
                 if (CommonUtil.isOpenMetadataObject(obj)) {
                   deleteSecrets(
-                      obj, buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                      obj,
+                      withNestedSecretId(
+                          secretIds,
+                          buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT))));
                 } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  deleteSecretInternal(
-                      buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)));
+                  deleteStoredSecret(
+                      storedSecretName(
+                          (String) obj, secretIds, fieldName.toLowerCase(Locale.ROOT)));
+                } else {
+                  forEachTraversableElement(
+                      obj,
+                      (element, elementKey) ->
+                          deleteSecrets(
+                              element,
+                              withNestedSecretId(
+                                  secretIds,
+                                  buildSecretId(
+                                      false,
+                                      secretId,
+                                      fieldName.toLowerCase(Locale.ROOT),
+                                      elementKey))));
                 }
               });
     }
+  }
+
+  private static List<String> withNestedSecretId(List<String> secretIds, String nestedSecretId) {
+    List<String> nestedSecretIds = new ArrayList<>(secretIds);
+    nestedSecretIds.add(nestedSecretId);
+    return nestedSecretIds;
+  }
+
+  /**
+   * Names the secret that holds a password field. A migration that moves a field into a nested
+   * object leaves its {@code secret:} reference where the field used to be, so a reference to the
+   * same field under an enclosing object is the secret to delete. Any other reference was supplied
+   * by the user, points at a secret this entity does not own, and is never deleted.
+   */
+  private String storedSecretName(String fieldValue, List<String> secretIds, String fieldName) {
+    List<String> fieldSecretNames =
+        secretIds.stream().map(secretId -> buildSecretId(false, secretId, fieldName)).toList();
+    return referencedSecretName(fieldValue)
+        .filter(fieldSecretNames::contains)
+        .orElse(fieldSecretNames.getLast());
+  }
+
+  private Optional<String> referencedSecretName(String fieldValue) {
+    return Boolean.TRUE.equals(isSecret(fieldValue))
+        ? Optional.of(fieldValue.substring(SECRET_FIELD_PREFIX.length()))
+        : Optional.empty();
+  }
+
+  /** Removes one secret of an entity that is being hard deleted. */
+  protected void deleteStoredSecret(String secretName) {
+    deleteSecretInternal(secretName);
   }
 
   public static Map<String, String> getTags(SecretsConfig secretsConfig) {

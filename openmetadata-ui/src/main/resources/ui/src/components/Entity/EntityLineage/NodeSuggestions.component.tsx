@@ -11,16 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Col, Row, Select } from 'antd';
+import {
+  Box,
+  Select,
+  Typography,
+  type SelectItemType,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { capitalize, debounce, get } from 'lodash';
 import {
   FC,
   HTMLAttributes,
+  Key,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,15 +34,15 @@ import { PAGE_SIZE } from '../../../constants/constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getPartialNameFromTableFQN } from '../../../utils/CommonUtils';
-import { getEntityNodeIcon } from '../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { ExploreSearchIndex } from '../../Explore/ExplorePage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
-import './node-suggestion.less';
 
 interface EntitySuggestionProps extends HTMLAttributes<HTMLDivElement> {
   onSelectHandler: (value: EntityReference) => void;
@@ -51,11 +56,8 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
   onSelectHandler,
 }) => {
   const { t } = useTranslation();
-  const selectRef = useRef<any>(null);
-
   const [data, setData] = useState<Array<SourceType>>([]);
   const [searchValue, setSearchValue] = useState<string>('');
-  const [isOpen, setIsOpen] = useState(true);
 
   const getSuggestionLabelHeading = useCallback((fqn: string, type: string) => {
     if (type === EntityType.TABLE) {
@@ -83,7 +85,6 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
         });
         const sources = data.hits.hits.map((hit) => hit._source);
         setData(sources);
-        selectRef.current?.focus();
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -100,49 +101,71 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     getSearchResults,
   ]);
 
-  const nodeSelectOptions = useMemo(() => {
-    return data.map((entity) => ({
-      value: entity.fullyQualifiedName,
-      label: (
-        <Button
-          block
-          className="d-flex items-center node-suggestion-option-btn"
-          data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
-          key={entity.fullyQualifiedName}
-          type="text"
-          onClick={(e) => {
-            e.stopPropagation(); // Prevent select from closing
-            onSelectHandler?.(entity as EntityReference);
-          }}>
-          <div className="d-flex items-center w-full overflow-hidden">
-            <img
-              alt={get(entity, 'serviceType', '') || entity.name}
-              className="m-r-xs"
-              height="16px"
-              src={serviceUtilClassBase.getServiceTypeLogo(entity)}
-              width="16px"
-            />
-            <div className="d-flex align-start flex-column flex-1">
-              {entity.entityType === EntityType.TABLE && (
-                <p className="d-block text-xs text-grey-muted p-b-xss break-all whitespace-normal text-left">
-                  {getSuggestionLabelHeading(
-                    entity.fullyQualifiedName ?? '',
-                    entity.entityType as string
-                  )}
-                </p>
-              )}
-              <p className="text-xs text-grey-muted w-max-400 truncate line-height-normal">
-                {entity.name}
-              </p>
-              <p className="w-max-400 text-sm font-medium truncate">
-                {getEntityName(entity)}
-              </p>
-            </div>
-          </div>
-        </Button>
-      ),
-    }));
-  }, [data, getSuggestionLabelHeading]);
+  const entityByFqn = useMemo(
+    () => new Map(data.map((entity) => [entity.fullyQualifiedName, entity])),
+    [data]
+  );
+
+  const nodeSelectOptions = useMemo(
+    () =>
+      data.map((entity) => ({
+        id: entity.fullyQualifiedName ?? '',
+        label: getEntityName(entity),
+      })),
+    [data]
+  );
+
+  const handleSelect = useCallback(
+    (key: Key | null) => {
+      const entity = entityByFqn.get(key as string);
+      if (entity) {
+        onSelectHandler(entity as EntityReference);
+      }
+    },
+    [entityByFqn, onSelectHandler]
+  );
+
+  const renderOption = useCallback(
+    (item: SelectItemType) => {
+      const entity = entityByFqn.get(item.id);
+
+      return (
+        <Select.Item
+          data-testid={`node-suggestion-${item.id}`}
+          id={item.id}
+          key={item.id}
+          textValue={item.label}>
+          {entity && (
+            <Box align="center" className="tw:overflow-hidden" gap={2}>
+              <img
+                alt={get(entity, 'serviceType', '') || entity.name}
+                height="16px"
+                src={serviceUtilClassBase.getServiceTypeLogo(entity)}
+                width="16px"
+              />
+              <Box className="tw:min-w-0 tw:flex-1" direction="col">
+                {entity.entityType === EntityType.TABLE && (
+                  <Typography
+                    className="tw:break-all tw:whitespace-normal"
+                    color="secondary"
+                    size="text-xs">
+                    {getSuggestionLabelHeading(item.id, entity.entityType)}
+                  </Typography>
+                )}
+                <Typography ellipsis color="secondary" size="text-xs">
+                  {entity.name}
+                </Typography>
+                <Typography ellipsis size="text-sm" weight="medium">
+                  {item.label}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+        </Select.Item>
+      );
+    },
+    [entityByFqn, getSuggestionLabelHeading]
+  );
 
   const handleChange = useCallback(
     (value: string): void => {
@@ -156,38 +179,42 @@ const NodeSuggestions: FC<EntitySuggestionProps> = ({
     getSearchResults(searchValue);
   }, []);
 
-  const Icon = getEntityNodeIcon(entityType);
+  const entityIcon = useMemo(
+    () => getEntityIcon(entityType, 'tw:h-4 tw:w-4'),
+    [entityType]
+  );
 
   return (
-    <Row
-      className="p-md items-center"
+    <Box
+      className="layout-row p-md items-center"
       data-testid="suggestion-node"
-      gutter={8}
-      wrap={false}>
-      <Col>
-        <Icon height={16} name="entity-icon" width={16} />
-      </Col>
-      <Col flex="1">
-        <Select
+      style={{ ...getLayoutGutter(8) }}
+      wrap="nowrap">
+      <Box className="layout-column tw:block">{entityIcon}</Box>
+      <Box className="layout-column tw:block" style={{ flex: '1 1 auto' }}>
+        <Select.ComboBox
+          allowsCustomValue
+          allowsEmptyCollection
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus required for inline node search
           autoFocus
-          showSearch
-          className="lineage-node-searchbox"
+          aria-label={t('label.search-for-type', {
+            type: capitalize(entityType),
+          })}
+          className="tw:w-full"
           data-testid="node-search-box"
-          filterOption={false}
-          open={isOpen}
-          options={nodeSelectOptions}
+          inputValue={searchValue}
+          items={nodeSelectOptions}
           placeholder={`${t('label.search-for-type', {
             type: capitalize(entityType),
           })}s...`}
-          popupClassName="lineage-suggestion-select-menu"
-          ref={selectRef}
-          onBlur={() => setIsOpen(false)}
-          onClick={(e) => e.stopPropagation()}
-          onFocus={() => setIsOpen(true)}
-          onSearch={handleChange}
-        />
-      </Col>
-    </Row>
+          selectedKey={null}
+          shortcut={false}
+          onInputChange={handleChange}
+          onSelectionChange={handleSelect}>
+          {renderOption}
+        </Select.ComboBox>
+      </Box>
+    </Box>
   );
 };
 

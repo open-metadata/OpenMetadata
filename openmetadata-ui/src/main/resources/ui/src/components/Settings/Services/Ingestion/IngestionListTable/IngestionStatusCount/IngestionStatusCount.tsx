@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useMemo } from 'react';
-import { getIngestionStatusCountData } from '../../../../../../utils/IngestionUtils';
+import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
 import './ingestion-status-count.less';
 import { IngestionStatusCountProps } from './IngestionStatusCount.interface';
 
@@ -27,25 +28,24 @@ function IngestionStatusCount({
   );
 
   return (
-    <Row
-      align="middle"
+    <Box
+      align="center"
       className="ingestion-status-count"
-      gutter={[4, 4]}
-      justify="space-evenly"
-      wrap={false}>
+      gap={1}
+      justify="evenly"
+      wrap="nowrap">
       {records.map((record) => (
-        <Col key={`${record.label}-${runId}`}>
-          <div className={classNames('status-count', record.type)}>
-            <Typography.Text className="record-count">
-              {record.value}
-            </Typography.Text>
-            <Typography.Text className="record-label">
-              {record.label}
-            </Typography.Text>
-          </div>
-        </Col>
+        <Box
+          align="center"
+          className={classNames('status-count', record.type)}
+          direction="col"
+          justify="center"
+          key={`${record.label}-${runId}`}>
+          <Typography className="record-count">{record.value}</Typography>
+          <Typography className="record-label">{record.label}</Typography>
+        </Box>
       ))}
-    </Row>
+    </Box>
   );
 }
 

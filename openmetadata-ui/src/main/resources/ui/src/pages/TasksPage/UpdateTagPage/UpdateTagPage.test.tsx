@@ -87,15 +87,20 @@ const mockTableData = {
     },
   ],
 };
-jest.mock('../../../utils/TasksUtils', () => ({
-  ...jest.requireActual('../../../utils/TasksUtils'),
+jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
     .fn()
     .mockImplementation((_entityType, _decodedEntityFQN, setEntityData) => {
       setEntityData(mockTableData);
     }),
-  fetchOptions: jest.fn(),
   getBreadCrumbList: jest.fn().mockReturnValue([]),
+}));
+jest.mock('../../../utils/TaskAssigneeUtils', () => ({
+  fetchOptions: jest.fn(),
+}));
+jest.mock('../../../utils/TaskFieldUtils', () => ({
+  ...jest.requireActual('../../../utils/TaskFieldUtils'),
   getTaskMessage: jest.fn().mockReturnValue('Task message'),
   getTaskFieldColumns: jest
     .fn()
@@ -133,10 +138,8 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb.component</div>)
 );
 jest.mock('../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../rest/tasksAPI'),
   createTask: jest.fn().mockResolvedValue({}),
-  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
-  TaskEntityType: { TagUpdate: 'TagUpdate' },
-  TaskPriority: { Medium: 'Medium' },
 }));
 jest.mock('../../../rest/taskFormSchemasAPI', () => ({
   resolveTaskFormSchema: jest.fn().mockResolvedValue(undefined),
@@ -163,7 +166,7 @@ describe('UpdateTagPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TasksUtils'
+      '../../../utils/TaskFieldUtils'
     );
     getColumnObjectByPath.mockImplementation(() => ({
       tags: mockTableData.columns[0].tags,
@@ -260,7 +263,7 @@ describe('UpdateTagPage', () => {
   it('should allow adding suggested tags when the current field has no tags', async () => {
     const mockCreateTask = createTask as jest.Mock;
     const { getColumnObjectByPath } = jest.requireMock(
-      '../../../utils/TasksUtils'
+      '../../../utils/TaskFieldUtils'
     );
     getColumnObjectByPath.mockImplementation(() => ({ tags: [] }));
 

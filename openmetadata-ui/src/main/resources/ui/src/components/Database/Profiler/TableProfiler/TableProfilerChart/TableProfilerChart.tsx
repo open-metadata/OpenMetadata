@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { pick } from 'lodash';
@@ -111,17 +112,23 @@ const TableProfilerChart = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Transi18next
-        i18nKey="message.no-profiler-card-message-with-link"
-        renderElement={
-          <a
-            href={profilerDocsLink}
-            rel="noreferrer"
-            target="_blank"
-            title="Profiler Documentation"
+      // tw:w-auto overrides the trigger's w-max so the sentence wraps in
+      // narrow containers such as the custom metric drawer preview.
+      <Tooltip title={t('label.documentation')} triggerClassName="tw:w-auto">
+        <span>
+          <Transi18next
+            i18nKey="message.no-profiler-card-message-with-link"
+            renderElement={
+              <a
+                aria-label={t('label.documentation')}
+                href={profilerDocsLink}
+                rel="noreferrer"
+                target="_blank"
+              />
+            }
           />
-        }
-      />
+        </span>
+      </Tooltip>
     );
   }, [isProfilingEnabled]);
 
@@ -241,6 +248,7 @@ const TableProfilerChart = ({
             }}
             title={t('label.volume-change')}>
             <CustomBarChart
+              ariaLabel={t('label.volume-change')}
               chartCollection={operationMetrics}
               name="operationMetrics"
               noDataPlaceholderText={noProfilerMessage}

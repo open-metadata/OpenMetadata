@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen, within } from '@testing-library/react';
 import QueryString from 'qs';
 import React, { act } from 'react';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Table } from '../../generated/entity/data/table';
 import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
-import '../../test/unit/mocks/mui.mock';
+import {
+  renderWithQueryClient as render,
+  runQueryNotificationsSynchronously,
+} from '../../test/unit/test-utils';
+import { getPastDaysRange } from '../../utils/date-time/calendarDate.utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
@@ -80,74 +85,7 @@ jest.mock('../DataQuality/IncidentManager/Severity/Severity.component', () => {
     </button>
   ));
 });
-jest.mock('../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
-  return jest.fn().mockImplementation(({ handleDateRangeChange }) => (
-    <div>
-      <p>DatePickerMenu.component</p>
-      <button
-        data-testid="time-filter"
-        onClick={() =>
-          handleDateRangeChange({
-            startTs: 1709556624254,
-            endTs: 1710161424255,
-            key: 'last7days',
-            title: 'Last 7 days',
-          })
-        }>
-        time filter
-      </button>
-    </div>
-  ));
-});
 jest.mock('@openmetadata/ui-core-components', () => {
-  const DropdownRoot = ({
-    children,
-    isOpen,
-    onOpenChange,
-  }: {
-    children: { [key: number]: React.ReactNode };
-    isOpen: boolean;
-    onOpenChange: (v: boolean) => void;
-  }) => (
-    <div data-testid="date-field-dropdown-root">
-      {/* Trigger element */}
-      <button
-        data-testid="date-field-dropdown-trigger"
-        type="button"
-        onClick={() => onOpenChange(!isOpen)}>
-        {children[0]}
-      </button>
-      {/* Popover (only rendered when open) */}
-      {isOpen && children[1]}
-    </div>
-  );
-
-  const DropdownMenu = ({
-    items,
-    onAction,
-  }: {
-    items?: { name: string; value: string }[];
-    onAction?: (key: string) => void;
-  }) => {
-    if (!items) {
-      return <div data-testid="date-field-dropdown-menu" />;
-    }
-
-    return (
-      <div data-testid="date-field-dropdown-menu">
-        {items.map((item) => (
-          <button
-            data-testid={`date-field-option-${item.value}`}
-            key={item.value}
-            type="button"
-            onClick={() => onAction?.(item.value)}>
-            {item.name}
-          </button>
-        ))}
-      </div>
-    );
-  };
-
   const TableMock = Object.assign(
     ({
       children,
@@ -190,9 +128,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         dependencies?: unknown[];
       }) => (
         <tbody>
-          {!items || items.length === 0
-            ? renderEmptyState?.()
-            : items.map((item) => children(item))}
+          {!items || items.length === 0 ? (
+            <tr>
+              <td>{renderEmptyState?.()}</td>
+            </tr>
+          ) : (
+            items.map((item) => children(item))
+          )}
         </tbody>
       ),
       Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
@@ -205,35 +147,31 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
-    Dropdown: {
-      Root: DropdownRoot,
-      Popover: jest
-        .fn()
-        .mockImplementation(({ children }) => (
-          <div data-testid="date-field-dropdown-popover">{children}</div>
-        )),
-      Menu: DropdownMenu,
-      Item: jest
-        .fn()
-        .mockImplementation(({ label, id }) => (
-          <div data-testid={`date-field-item-${id}`}>{label}</div>
-        )),
-    },
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    EmptyPlaceholder: ({
+      title,
+      description,
+    }: {
+      title?: React.ReactNode;
+      description?: React.ReactNode;
+    }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    ),
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
-    Button: jest
-      .fn()
-      .mockImplementation(({ children, className }) => (
-        <button className={className}>{children}</button>
-      )),
     Table: TableMock,
+    Owner: jest.fn().mockImplementation(() => <div>Owner</div>),
+    toOwnerRefs: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRefs,
+    toOwnerRef: jest.requireActual('@openmetadata/ui-core-components')
+      .toOwnerRef,
   };
 });
 
-jest.mock('../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => <div>OwnerLabel</div>),
-}));
 jest.mock(
   '../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component',
   () => {
@@ -242,29 +180,13 @@ jest.mock(
       .mockImplementation(() => <div>TestCaseIncidentManagerStatus</div>);
   }
 );
-jest.mock('../../pages/TasksPage/shared/Assignees', () => {
-  return jest.fn().mockImplementation(({ onChange }) => (
-    <div>
-      <p>Assignees.component</p>
-      <button
-        data-testid="assignee-change-btn"
-        onClick={() => onChange([{ name: 'user1' }])}>
-        Change Assignee
-      </button>
-    </div>
-  ));
-});
-jest.mock('../common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: jest
-    .fn()
-    .mockImplementation(({ 'data-testid': testId }) => (
-      <div data-testid={testId}>AsyncSelect.component</div>
-    )),
-}));
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  Link: jest.fn().mockImplementation(({ children, to, ...rest }) => (
-    <a data-to={typeof to === 'string' ? to : JSON.stringify(to)} {...rest}>
+  Link: jest.fn().mockImplementation(({ children, state, to, ...rest }) => (
+    <a
+      data-state={JSON.stringify(state)}
+      data-to={typeof to === 'string' ? to : JSON.stringify(to)}
+      {...rest}>
       {children}
     </a>
   )),
@@ -364,11 +286,18 @@ jest.mock('../../rest/miscAPI', () => ({
 }));
 jest.mock('../../rest/userAPI', () => ({
   getUsers: jest.fn().mockImplementation(() => Promise.resolve({ data: [] })),
+  getUserByName: jest.fn().mockResolvedValue({ id: 'user-1', name: 'user1' }),
 }));
+jest.mock('../../rest/teamsAPI', () => ({
+  getTeamByName: jest.fn().mockResolvedValue({ id: 'team-1', name: 'team1' }),
+}));
+
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest
     .fn()
-    .mockImplementation(() => Promise.resolve({ hits: { hits: [] } })),
+    .mockImplementation(() =>
+      Promise.resolve({ hits: { hits: [], total: { value: 0 } } })
+    ),
 }));
 jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
@@ -382,6 +311,12 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
       .mockImplementation(() => 1709556624254),
     formatDateTime: jest.fn().mockImplementation(() => 'formatted date'),
     getCurrentMillis: jest.fn().mockImplementation(() => 1710161424255),
+    getCurrentDayEndGMTinMillis: jest
+      .fn()
+      .mockImplementation(() => 1710161424255),
+    getDayAgoStartGMTinMillis: jest
+      .fn()
+      .mockImplementation(() => 1709556624254),
     getStartOfDayInMillis: jest
       .fn()
       .mockImplementation((timestamp) => timestamp),
@@ -389,11 +324,7 @@ jest.mock('../../utils/date-time/DateTimeUtils', () => {
   };
 });
 
-jest.mock('../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn().mockReturnValue('EntityName'),
-}));
-
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('NameFromFQN'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('PartialName'),
 }));
@@ -411,7 +342,36 @@ jest.mock('../common/DateTimeDisplay/DateTimeDisplay', () => {
   return jest.fn().mockImplementation(() => <div>DateTimeDisplay</div>);
 });
 
+runQueryNotificationsSynchronously();
+
 describe('IncidentManagerPage', () => {
+  beforeEach(() => {
+    require('../../hooks/useCustomLocation/useCustomLocation').mockReturnValue({
+      search: '',
+    });
+    require('../../rest/searchAPI').searchQuery.mockResolvedValue({
+      hits: { hits: [], total: { value: 0 } },
+    });
+  });
+
+  it('names each AI-style filter even when its trigger shows a selected value', async () => {
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    for (const label of [
+      'test-case',
+      'assignee',
+      'status',
+      'date-filter',
+      'date-range',
+    ]) {
+      expect(
+        screen.getByRole('group', { name: `label.${label}` })
+      ).toBeInTheDocument();
+    }
+  });
+
   it('should render component', async () => {
     await act(async () => {
       render(<IncidentManager />);
@@ -421,16 +381,32 @@ describe('IncidentManagerPage', () => {
     expect(
       await screen.findByTestId('test-case-incident-manager-table')
     ).toBeInTheDocument();
-    expect(await screen.findByText('Assignees.component')).toBeInTheDocument();
     expect(
-      await screen.findByText('AsyncSelect.component')
-    ).toBeInTheDocument();
+      screen.getByRole('group', { name: 'label.assignee' })
+    ).toContainElement(screen.getByTestId('select-assignee'));
     expect(
-      await screen.findByText('DatePickerMenu.component')
+      screen.getByRole('group', { name: 'label.test-case' })
+    ).toContainElement(screen.getByTestId('test-case-select'));
+    expect(
+      screen.getByRole('group', { name: 'label.date-range' })
     ).toBeInTheDocument();
     expect(
       await screen.findByText('NextPrevious.component')
     ).toBeInTheDocument();
+  });
+
+  it('hides both date controls when the table caller disables the date range picker', async () => {
+    await act(async () => {
+      render(<IncidentManager isDateRangePickerVisible={false} />);
+    });
+
+    expect(
+      screen.queryByRole('group', { name: 'label.date-filter' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'label.date-range' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('status-select')).toBeInTheDocument();
   });
 
   it('should call list incident API on page load', async () => {
@@ -470,7 +446,22 @@ describe('IncidentManagerPage', () => {
 
     const select = await screen.findByTestId('test-case-select');
 
-    expect(select).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(select);
+    });
+    const option = await screen.findByTestId('test_case_1');
+
+    expect(option).toHaveTextContent('test_case_1');
+
+    await act(async () => {
+      fireEvent.click(option);
+    });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(require('react-router-dom').useNavigate()).toHaveBeenCalledWith(
+      { search: 'testCaseFQN=test_case_1&currentPage=1' },
+      { replace: true }
+    );
   });
 
   it('should handle status change', async () => {
@@ -483,15 +474,11 @@ describe('IncidentManagerPage', () => {
     });
 
     const select = await screen.findByTestId('status-select');
-    const selectBox = select.querySelector('.ant-select-selector');
-
-    expect(selectBox).toBeInTheDocument();
-
     await act(async () => {
-      fireEvent.mouseDown(selectBox!);
+      fireEvent.click(select);
     });
 
-    const resolvedOption = await screen.findByText('label.resolved');
+    const resolvedOption = await screen.findByTestId('Resolved');
 
     await act(async () => {
       fireEvent.click(resolvedOption);
@@ -507,27 +494,100 @@ describe('IncidentManagerPage', () => {
     );
   });
 
-  it('should handle assignee change', async () => {
-    const mockUseNavigate = require('react-router-dom').useNavigate;
+  it('picks a user through the same user/team picker as AI mode', async () => {
     const navigate = jest.fn();
-    mockUseNavigate.mockReturnValue(navigate);
+    require('react-router-dom').useNavigate.mockReturnValue(navigate);
+    require('../../rest/searchAPI').searchQuery.mockResolvedValue({
+      hits: {
+        total: { value: 1 },
+        hits: [
+          {
+            _source: {
+              id: 'user-1',
+              name: 'user1',
+              displayName: 'User One',
+              entityType: 'user',
+            },
+          },
+        ],
+      },
+    });
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-assignee'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /label.user-plural/ }));
+    });
+    const panel = screen.getByTestId('owner-select-users-panel');
+    await act(async () => {
+      fireEvent.click(within(panel).getByTestId('owner-option'));
+    });
 
+    expect(navigate).toHaveBeenCalledWith(
+      { search: 'assignee=user1&currentPage=1' },
+      { replace: true }
+    );
+    expect(screen.queryByTestId('select-owner-tabs')).not.toBeInTheDocument();
+  });
+
+  it('clears a URL-selected assignee after reopening the picker without needing a combobox', async () => {
+    const navigate = jest.fn();
+    require('react-router-dom').useNavigate.mockReturnValue(navigate);
+    require('../../hooks/useCustomLocation/useCustomLocation').mockReturnValue({
+      search: 'assignee=user1&testCaseResolutionStatusType=Assigned',
+    });
     await act(async () => {
       render(<IncidentManager />);
     });
 
-    const assigneeBtn = await screen.findByTestId('assignee-change-btn');
+    expect(screen.getByTestId('select-assignee')).toHaveTextContent('user1');
 
     await act(async () => {
-      fireEvent.click(assigneeBtn);
+      fireEvent.click(screen.getByTestId('select-assignee'));
+    });
+    await act(async () => {
+      fireEvent.click(
+        within(screen.getByTestId('owner-select-users-panel')).getByTestId(
+          'remove-owner'
+        )
+      );
     });
 
     expect(navigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining('assignee=user1'),
-      }),
-      expect.anything()
+      { search: 'testCaseResolutionStatusType=Assigned&currentPage=1' },
+      { replace: true }
     );
+    expect(screen.queryByTestId('select-owner-tabs')).not.toBeInTheDocument();
+  });
+
+  it('restores a team assignee from the URL when the name is not a user', async () => {
+    require('../../rest/userAPI').getUserByName.mockRejectedValueOnce(
+      new Error('not a user')
+    );
+    require('../../hooks/useCustomLocation/useCustomLocation').mockReturnValue({
+      search: 'assignee=team1',
+    });
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+
+    expect(screen.getByTestId('select-assignee')).toHaveTextContent('team1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('select-assignee'));
+    });
+
+    expect(
+      screen.getByRole('tab', { name: /label.team-plural/ })
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(
+      within(screen.getByTestId('owner-select-teams-panel')).getByTestId(
+        'owner-option'
+      )
+    ).toHaveTextContent('team1');
   });
 
   it('should handle severity update', async () => {
@@ -637,102 +697,123 @@ describe('IncidentManagerPage', () => {
     expect(screen.getByText('label.table')).toBeInTheDocument();
   });
 
-  it('should render date field dropdown with Created At selected by default', async () => {
-    await act(async () => {
-      render(<IncidentManager />);
-    });
-
-    const dropdownRoot = await screen.findByTestId('date-field-dropdown-root');
-
-    expect(dropdownRoot).toBeInTheDocument();
-
-    // Dropdown menu should NOT be visible by default (closed)
-    expect(
-      screen.queryByTestId('date-field-dropdown-menu')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should open date field dropdown on trigger click', async () => {
-    const mockUseNavigate = require('react-router-dom').useNavigate;
+  it('shows Created At by default and closes after picking Updated At', async () => {
     const navigate = jest.fn();
-    mockUseNavigate.mockReturnValue(navigate);
-
+    require('react-router-dom').useNavigate.mockReturnValue(navigate);
     await act(async () => {
       render(<IncidentManager />);
     });
+    const trigger = screen.getByTestId('sort-field-dropdown-trigger');
 
-    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
+    expect(trigger).toHaveTextContent('label.created-at');
+
     await act(async () => {
-      fireEvent.click(triggerDiv);
+      fireEvent.click(trigger);
     });
-
-    // Now the dropdown menu should be visible since isOpen = true
-    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
-
-    expect(dropdownMenu).toBeInTheDocument();
-  });
-
-  it('should update URL with dateField=updatedAt when Updated At option is selected', async () => {
-    const mockUseNavigate = require('react-router-dom').useNavigate;
-    const navigate = jest.fn();
-    mockUseNavigate.mockReturnValue(navigate);
-
     await act(async () => {
-      render(<IncidentManager />);
-    });
-
-    // Open the dropdown
-    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
-    await act(async () => {
-      fireEvent.click(triggerDiv);
-    });
-
-    const updatedAtBtn = await screen.findByTestId(
-      'date-field-option-updatedAt'
-    );
-    await act(async () => {
-      fireEvent.click(updatedAtBtn);
+      fireEvent.click(screen.getByTestId('updatedAt'));
     });
 
     expect(navigate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        search: expect.stringContaining('dateField=updatedAt'),
-      }),
-      expect.anything()
+      { search: 'dateField=updatedAt&currentPage=1' },
+      { replace: true }
     );
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('should close dropdown after selecting an option', async () => {
-    const mockUseNavigate = require('react-router-dom').useNavigate;
+  it('commits a date preset only when Apply is pressed', async () => {
     const navigate = jest.fn();
-    mockUseNavigate.mockReturnValue(navigate);
+    require('react-router-dom').useNavigate.mockReturnValue(navigate);
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+    const field = screen.getByRole('group', { name: 'label.date-range' });
+    await act(async () => {
+      fireEvent.click(within(field).getByRole('button'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    });
 
+    expect(navigate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+    });
+    const params = QueryString.parse(navigate.mock.calls[0][0].search);
+
+    const expectedRange = getPastDaysRange(0);
+
+    expect({
+      startTs: Number(params.startTs),
+      endTs: Number(params.endTs),
+    }).toEqual(expectedRange);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('discards a staged date range when Cancel is pressed', async () => {
+    const navigate = jest.fn();
+    require('react-router-dom').useNavigate.mockReturnValue(navigate);
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+    const field = screen.getByRole('group', { name: 'label.date-range' });
+    await act(async () => {
+      fireEvent.click(within(field).getByRole('button'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    });
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect(within(field).getByRole('button')).toHaveTextContent('Select dates');
+  });
+
+  it('restores a date range from URL timestamps without needing legacy preset metadata', async () => {
+    require('../../hooks/useCustomLocation/useCustomLocation').mockReturnValue({
+      search: 'startTs=1709510400000&endTs=1710115199999',
+    });
     await act(async () => {
       render(<IncidentManager />);
     });
 
-    // Open the dropdown
-    const triggerDiv = await screen.findByTestId('date-field-dropdown-trigger');
-    await act(async () => {
-      fireEvent.click(triggerDiv);
-    });
-
-    const dropdownMenu = await screen.findByTestId('date-field-dropdown-menu');
-
-    expect(dropdownMenu).toBeInTheDocument();
-
-    // Select an option — mock calls onOpenChange(false)
-    const updatedAtBtn = await screen.findByTestId(
-      'date-field-option-updatedAt'
-    );
-    await act(async () => {
-      fireEvent.click(updatedAtBtn);
-    });
-
-    // Menu should be gone after selection
     expect(
-      screen.queryByTestId('date-field-dropdown-menu')
-    ).not.toBeInTheDocument();
+      within(screen.getByRole('group', { name: 'label.date-range' })).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('2024');
+  });
+
+  it('clears all incident filters while preserving unrelated URL parameters', async () => {
+    const navigate = jest.fn();
+    require('react-router-dom').useNavigate.mockReturnValue(navigate);
+    require('../../hooks/useCustomLocation/useCustomLocation').mockReturnValue({
+      search: QueryString.stringify({
+        testCaseFQN: 'test_case_1',
+        assignee: 'user1',
+        testCaseResolutionStatusType: 'Assigned',
+        startTs: 1709510400000,
+        endTs: 1710115199999,
+        dateField: 'updatedAt',
+        key: 'last7days',
+        title: 'Last 7 days',
+        domain: 'Finance',
+      }),
+    });
+    await act(async () => {
+      render(<IncidentManager />);
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-clear-filters'));
+    });
+
+    expect(navigate).toHaveBeenCalledWith(
+      { search: 'domain=Finance' },
+      { replace: true }
+    );
   });
 
   it('should fetch incidents with dateField from URL params', async () => {
@@ -931,6 +1012,59 @@ describe('IncidentManagerPage', () => {
         fqn,
         TestCasePageTabs.TEST_CASE_RESULTS
       );
+      expect(JSON.parse(link.getAttribute('data-state') ?? '{}')).toEqual({
+        breadcrumbData: [
+          {
+            name: 'label.incident-manager',
+            url: '/incident-manager',
+          },
+        ],
+      });
+    });
+  });
+
+  describe('permission gating (useIncidentManagerListPage.commonTestCasePermission)', () => {
+    // usePermissionProvider is called more than once per render (this component plus
+    // useIncidentManagerListPage internally), so `mockReturnValueOnce` only overrides the
+    // FIRST call and silently falls back to the granted default for the rest — use a
+    // persistent override for the duration of this test, restored afterward so later tests
+    // (and other describe blocks, if this file's order ever changes) keep the granted default.
+    const grantedReturnValue = (
+      usePermissionProvider as jest.Mock
+    ).getMockImplementation?.();
+
+    afterEach(() => {
+      if (grantedReturnValue) {
+        (usePermissionProvider as jest.Mock).mockImplementation(
+          grantedReturnValue
+        );
+      }
+    });
+
+    it('shows the permission placeholder instead of the table when neither ViewAll nor ViewBasic is granted', async () => {
+      (usePermissionProvider as jest.Mock).mockReturnValue({
+        permissions: {
+          testCase: {
+            ViewAll: false,
+            ViewBasic: false,
+          },
+        },
+        getEntityPermissionByFqn: jest.fn().mockResolvedValue({}),
+      });
+
+      await act(async () => {
+        render(<IncidentManager />);
+      });
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('test-case-incident-manager-table')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('incident-filter-bar')
+      ).not.toBeInTheDocument();
     });
   });
 });

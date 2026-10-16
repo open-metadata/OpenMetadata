@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   DataContractSecuritySlaData,
   DATA_CONTRACT_DETAILS,
@@ -19,8 +20,88 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
+import { selectDropdownOption } from './destination';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
+
+// Terminal states as the backend defines them. `Queued` is intentionally NOT
+// included — a queued run has not started, so a caller waiting for terminal
+// must not exit on it. This is the one pre-existing bug carried over from the
+// old `/(Aborted|Success|Failed|PartialSuccess|Queued)/` pattern.
+const TERMINAL_CONTRACT_STATUSES = new Set([
+  'Success',
+  'Aborted',
+  'Failed',
+  'PartialSuccess',
+]);
+
+/**
+ * Wait for a data-contract validation to reach any terminal state.
+ *
+ * Permissive by design: this helper is shared between positive-path callers
+ * (`saveAndTriggerDataContractValidation`, which expects `Success`) and
+ * negative-path callers (`triggerContractValidation`, which is used by
+ * `DataContractsSemanticRules` tests that deliberately set up rules that
+ * SHOULD fail — the test then asserts on the UI's `Failed` badge). Baking
+ * "must be Success" into the poll would break the negative-path tests.
+ *
+ * Callers that expect success should assert on the UI status after this
+ * returns; the poll just guarantees the backend has settled so the UI
+ * assertion isn't racing an in-flight validation.
+ */
+const pollContractStatus = async (
+  page: Page,
+  contractId: string,
+  timeoutMs = 300_000
+): Promise<void> => {
+  const { apiContext } = await getApiContext(page);
+
+  await expect
+    .poll(
+      async () => {
+        const contract = await apiContext
+          .get(`/api/v1/dataContracts/${contractId}`)
+          .then((r) => (r.ok() ? r.json() : null))
+          .catch(() => null);
+
+        const status = contract?.latestResult?.status;
+
+        return status && TERMINAL_CONTRACT_STATUSES.has(status);
+      },
+      {
+        message: `Wait for contract ${contractId} validation to reach a terminal state`,
+        timeout: timeoutMs,
+        intervals: [3_000, 5_000, 5_000, 10_000, 15_000, 20_000],
+      }
+    )
+    .toBe(true);
+};
+
+/**
+ * Reload the current entity page and wait until it is ready to assert against.
+ *
+ * `waitUntil: 'domcontentloaded'` is deliberate. Playwright's default, `load`,
+ * is gated on every subresource the document pulls in — the route chunks
+ * `React.lazy` requests, service icons, chart assets — and the same server
+ * that serves those assets also runs the contract validations these specs
+ * trigger. On a loaded CI shard one asset can stall past the 60s navigation
+ * timeout while the SPA has long since rendered, so the reload fails on a page
+ * that was ready to assert on. `load` was never the signal these callers
+ * wanted anyway.
+ *
+ * The header wait is not redundant: `domcontentloaded` resolves before React
+ * mounts, so a bare loader count would pass against an empty `#root` and push
+ * the whole page load into the next assertion's 15s expect budget.
+ */
+export const reloadContractPage = async (page: Page): Promise<void> => {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expect(page.getByTestId('data-assets-header')).toBeVisible({
+    timeout: ACTION_TIMEOUT,
+  });
+
+  await waitForAllLoadersToDisappear(page);
+};
 
 export const saveAndTriggerDataContractValidation = async (
   page: Page,
@@ -29,6 +110,10 @@ export const saveAndTriggerDataContractValidation = async (
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
   await page.getByTestId('save-contract-btn').click();
   const response = await saveContractResponse;
+  expect(
+    response.ok(),
+    `Data contract save failed with status ${response.status()}`
+  ).toBe(true);
   const responseData = await response.json();
 
   if (isContractStatusNotVisible) {
@@ -51,15 +136,25 @@ export const saveAndTriggerDataContractValidation = async (
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
 
-  await page.reload();
+  // Poll the API until the validation result reaches a terminal state before
+  // reloading the page. Without this, the UI status check immediately after
+  // the reload is racy: the backend may still be processing the result.
+  if (responseData?.id) {
+    await waitForContractExecutionWithFallback(
+      page,
+      responseData.id,
+      responseData.name
+    );
+  }
 
-  await waitForAllLoadersToDisappear(page);
+  await reloadContractPage(page);
 
   return responseData;
 };
 
 export const validateDataContractInsideBundleTestSuites = async (
-  page: Page
+  page: Page,
+  contractName?: string
 ) => {
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
 
@@ -81,8 +176,32 @@ export const validateDataContractInsideBundleTestSuites = async (
   await bundleSuitesResponse;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
+
+  // Search by the contract name so the suite row is guaranteed on the first
+  // page regardless of how many bundle suites exist (avoids pagination misses).
+  if (contractName) {
+    const suiteSearchResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testSuites/search/list?*'
+    );
+    await page
+      .getByTestId('searchbar-component')
+      .locator('input')
+      .fill(contractName);
+    await suiteSearchResponse;
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(
+      page
+        .getByTestId('test-suite-table')
+        .getByRole('rowheader', { name: `Data Contract - ${contractName}` })
+    ).toBeVisible();
+  }
 };
 
+// Permissive terminal wait — see `pollContractStatus` for the rationale.
+// Same use-site profile: callers that expect success must assert on the UI
+// after this returns; callers that expect failure use this to wait then
+// verify the `Failed` badge themselves.
 export const waitForDataContractExecution = async (
   page: Page,
   contractId: string,
@@ -90,8 +209,6 @@ export const waitForDataContractExecution = async (
 ) => {
   const { apiContext } = await getApiContext(page);
   let consecutiveErrors = 0;
-  const terminalStatusPattern =
-    /(Aborted|Success|Failed|PartialSuccess|Queued)/;
 
   await expect
     .poll(
@@ -108,7 +225,7 @@ export const waitForDataContractExecution = async (
 
           const status = contractResponse?.latestResult?.status;
 
-          return status ?? 'Running';
+          return status && TERMINAL_CONTRACT_STATUSES.has(status);
         } catch (error) {
           consecutiveErrors++;
           if (consecutiveErrors >= maxConsecutiveErrors) {
@@ -121,12 +238,12 @@ export const waitForDataContractExecution = async (
         }
       },
       {
-        message: 'Wait for data contract execution to complete',
+        message: `Wait for data contract ${contractId} execution to reach a terminal state`,
         timeout: 600_000,
         intervals: [30_000, 20_000, 10_000],
       }
     )
-    .toEqual(expect.stringMatching(terminalStatusPattern));
+    .toBe(true);
 };
 
 /**
@@ -149,12 +266,13 @@ export const waitForContractExecutionWithFallback = async (
   } catch {
     // The test suite has results but the contract's latestResult was not updated in time.
     // Verify execution status directly from the DataQuality Bundle Suites page.
-    await validateDataContractInsideBundleTestSuites(page);
+    await validateDataContractInsideBundleTestSuites(page, contractName);
 
     const suiteNameCell = page
       .getByTestId('test-suite-table')
-      .locator('[role="gridcell"]')
-      .filter({ hasText: `Data Contract - ${contractName}` });
+      .getByRole('rowheader', {
+        name: `Data Contract - ${contractName}`,
+      });
 
     await expect(suiteNameCell).toBeVisible();
 
@@ -190,10 +308,14 @@ export const waitForContractExecutionWithFallback = async (
       suiteStatus = 'Success';
     }
 
-    const terminalStatusPattern =
-      /(Aborted|Success|Failed|PartialSuccess|Queued)/;
-
-    expect(suiteStatus).toEqual(expect.stringMatching(terminalStatusPattern));
+    // Permissive terminal-state match here too: the fallback is shared
+    // between positive- and negative-path tests, so callers are responsible
+    // for asserting on `Success` themselves after this returns.
+    // Anchored to the exact values the compute above can produce — the prior
+    // regex also listed `Queued` (not terminal, see the top-level comment)
+    // and `PartialSuccess` (this branch never sets it), which contradicted
+    // the terminal-state definition without changing behaviour.
+    expect(suiteStatus).toMatch(/^(Aborted|Success|Failed)$/);
 
     return false;
   }
@@ -210,12 +332,14 @@ export const saveSecurityAndSLADetails = async (
 
   await page
     .getByTestId('data-classification-input')
+    .locator('input')
     .fill(data.dataClassificationName);
 
   await expect(page.getByTestId('add-policy-button')).toBeDisabled();
 
   await page
     .getByTestId('access-policy-input-0')
+    .locator('input')
     .fill(data.consumers.accessPolicyName);
 
   for (const identity of data.consumers.identities) {
@@ -225,10 +349,11 @@ export const saveSecurityAndSLADetails = async (
 
   // Add Column Information
   for (const filter of data.consumers.row_filters) {
-    await page
-      .locator(`#columnName-input-0-${filter.index}`)
-      .fill(tableData.columnsName[filter.index]);
-    await page.locator(`#columnName-input-0-${filter.index}`).press('Enter');
+    await pickContractAutocompleteOption(
+      page,
+      `columnName-input-0-${filter.index}`,
+      tableData.columnsName[filter.index]
+    );
 
     for (const value of filter.values) {
       await page.locator(`#values-0-${filter.index}`).fill(value);
@@ -252,6 +377,7 @@ export const saveSecurityAndSLADetails = async (
 
     await page
       .getByTestId('access-policy-input-1')
+      .locator('input')
       .fill(DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.accessPolicyName);
 
     for (const identity of DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.identities) {
@@ -261,10 +387,11 @@ export const saveSecurityAndSLADetails = async (
 
     // Add Column Information
     for (const filter of DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.row_filters) {
-      await page
-        .locator(`#columnName-input-1-${filter.index}`)
-        .fill(tableData.columnsName[1]);
-      await page.locator(`#columnName-input-1-${filter.index}`).press('Enter');
+      await pickContractAutocompleteOption(
+        page,
+        `columnName-input-1-${filter.index}`,
+        tableData.columnsName[1]
+      );
 
       for (const value of filter.values) {
         await page.locator(`#values-1-${filter.index}`).fill(value);
@@ -304,48 +431,41 @@ export const saveSecurityAndSLADetails = async (
 
   await page
     .getByTestId('refresh-frequency-interval-input')
+    .locator('input')
     .fill(data.refreshFrequencyIntervalInput);
   await page
     .getByTestId('max-latency-value-input')
+    .locator('input')
     .fill(data.maxLatencyValueInput);
   await page
     .getByTestId('retention-period-input')
+    .locator('input')
     .fill(data.retentionPeriodInput);
 
-  await page.locator('.availability-time-picker').click();
+  await fillContractAvailabilityTime(page, data.availability);
+  await pickContractAutocompleteOption(page, 'timezone-select', data.timezone);
 
-  await page.locator('.ant-picker-dropdown').waitFor({
-    state: 'attached',
+  await selectDropdownOption({
+    page,
+    testId: 'refresh-frequency-unit-select',
+    optionName: data.refreshFrequencyUnitSelect,
+  });
+  await selectDropdownOption({
+    page,
+    testId: 'max-latency-unit-select',
+    optionName: data.maxLatencyUnitSelect,
+  });
+  await selectDropdownOption({
+    page,
+    testId: 'retention-unit-select',
+    optionName: data.retentionUnitSelect,
   });
 
-  await page.getByTestId('availability').fill(data.availability);
-
-  await page.locator('.ant-picker-ok .ant-btn').click();
-
-  await page.locator('#timezone').fill(data.timezone);
-  await page.locator('#timezone').press('Enter');
-
-  await page.getByTestId('refresh-frequency-unit-select').click();
-  await page
-    .locator(
-      `.refresh-frequency-unit-select [title=${data.refreshFrequencyUnitSelect}]`
-    )
-    .click();
-
-  await page.getByTestId('max-latency-unit-select').click();
-  await page
-    .locator(`.max-latency-unit-select [title=${data.maxLatencyUnitSelect}]`)
-    .click();
-
-  await page.getByTestId('retention-unit-select').click();
-  await page
-    .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
-    .click();
-
-  await page
-    .locator('#columnName-select')
-    .fill(tableData.columnsName[isUpdate ? 1 : 0]);
-  await page.locator('#columnName-select').press('Enter');
+  await pickContractAutocompleteOption(
+    page,
+    'columnName-select',
+    tableData.columnsName[isUpdate ? 1 : 0]
+  );
 
   await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
 
@@ -365,13 +485,13 @@ export const validateSecurityAndSLADetails = async (
   await page.getByRole('tab', { name: 'Security' }).click();
 
   await expect(page.getByTestId('add-policy-button')).toBeDisabled();
-  await expect(page.getByTestId('data-classification-input')).toHaveValue(
-    data.dataClassificationName
-  );
+  await expect(
+    page.getByTestId('data-classification-input').locator('input')
+  ).toHaveValue(data.dataClassificationName);
 
-  await expect(page.getByTestId('access-policy-input-0')).toHaveValue(
-    data.consumers.accessPolicyName
-  );
+  await expect(
+    page.getByTestId('access-policy-input-0').locator('input')
+  ).toHaveValue(data.consumers.accessPolicyName);
 
   // identities value check
   await expect(
@@ -383,7 +503,7 @@ export const validateSecurityAndSLADetails = async (
     await expect(
       page
         .getByTestId(`columnName-input-0-${filter.index}`)
-        .getByText(table.columnsName[filter.index])
+        .getByText(table.columnsName[filter.index], { exact: true })
     ).toBeVisible();
 
     await expect(page.getByText(filter.values.join(''))).toBeVisible();
@@ -392,25 +512,29 @@ export const validateSecurityAndSLADetails = async (
   await page.getByRole('tab', { name: 'SLA' }).click();
 
   await expect(
-    page.getByTestId('refresh-frequency-interval-input')
+    page.getByTestId('refresh-frequency-interval-input').locator('input')
   ).toHaveValue(data.refreshFrequencyIntervalInput);
 
-  await expect(page.getByTestId('max-latency-value-input')).toHaveValue(
-    data.maxLatencyValueInput
-  );
+  await expect(
+    page.getByTestId('max-latency-value-input').locator('input')
+  ).toHaveValue(data.maxLatencyValueInput);
 
-  await expect(page.getByTestId('retention-period-input')).toHaveValue(
-    data.retentionPeriodInput
-  );
+  await expect(
+    page.getByTestId('retention-period-input').locator('input')
+  ).toHaveValue(data.retentionPeriodInput);
 
-  await expect(page.getByTestId('availability')).toHaveValue(data.availability);
+  await expectContractAvailabilityTime(page, data.availability);
 
-  await expect(page.getByText(data.timezone)).toBeVisible();
+  await expect(
+    page
+      .getByTestId('timezone-select')
+      .getByText(data.timezone, { exact: true })
+  ).toBeVisible();
 
   await expect(
     page
       .getByTestId('columnName-select')
-      .getByText(table.columnsName[isUpdate ? 1 : 0])
+      .getByText(table.columnsName[isUpdate ? 1 : 0], { exact: true })
   ).toBeVisible();
 
   await expect(page.getByTestId('refresh-frequency-unit-select')).toContainText(
@@ -424,6 +548,91 @@ export const validateSecurityAndSLADetails = async (
   await expect(page.getByTestId('retention-unit-select')).toContainText(
     data.retentionUnitSelect
   );
+};
+
+/** The contract title field keeps its test id on the wrapper around the input. */
+export const fillContractName = async (page: Page, name: string) => {
+  await page.getByTestId('contract-name').locator('input').fill(name);
+};
+
+export const selectContractStatus = async (page: Page, status: string) => {
+  await selectDropdownOption({
+    page,
+    testId: 'contract-status',
+    optionName: status,
+  });
+};
+
+/** Picks owners, retyping until the option shows to absorb search lag. */
+export const selectContractOwners = async (page: Page, names: string[]) => {
+  const input = page.getByTestId('contract-owners').getByRole('combobox');
+
+  for (const name of names) {
+    const option = page.getByRole('option', { name, exact: true });
+
+    await expect(async () => {
+      await input.click();
+      await input.fill('');
+      await input.fill(name);
+      await expect(option).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
+
+    await option.click();
+    await expect(
+      page.getByTestId('contract-owners').getByText(name)
+    ).toBeVisible();
+  }
+
+  await input.press('Escape');
+};
+
+/**
+ * A core Autocomplete filters as you type but does not select on Enter; the
+ * picked value shows as a chip that replaces the input, so a previous pick is
+ * removed before typing a new one.
+ */
+export const pickContractAutocompleteOption = async (
+  page: Page,
+  testId: string,
+  value: string
+) => {
+  const field = page.getByTestId(testId);
+  const input = field.getByRole('combobox');
+  const option = page.getByRole('option', { name: value, exact: true });
+  const removeSelection = field.getByRole('button');
+
+  if (await removeSelection.isVisible()) {
+    await removeSelection.click();
+  }
+
+  await expect(async () => {
+    await input.fill('');
+    await input.fill(value);
+    await expect(option).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+
+  await option.click();
+  await expect(field.getByText(value, { exact: true })).toBeVisible();
+};
+
+/** The availability time is a segmented field: focus the hour, then type HHmm. */
+export const fillContractAvailabilityTime = async (
+  page: Page,
+  time: string
+) => {
+  await page.getByTestId('availability').locator('[data-type="hour"]').click();
+  await page.keyboard.type(time.replace(':', ''));
+};
+
+export const expectContractAvailabilityTime = async (
+  page: Page,
+  time: string
+) => {
+  const [hour, minute] = time.split(':');
+  const field = page.getByTestId('availability');
+
+  await expect(field.locator('[data-type="hour"]')).toHaveText(hour);
+  await expect(field.locator('[data-type="minute"]')).toHaveText(minute);
 };
 
 export const performInitialStepForRules = async (page: Page) => {
@@ -440,7 +649,7 @@ export const performInitialStepForRules = async (page: Page) => {
 
   await expect(page.getByTestId('add-contract-card')).toBeVisible();
 
-  await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+  await fillContractName(page, DATA_CONTRACT_DETAILS.name);
 };
 
 export const navigateToContractTab = async (page: Page) => {
@@ -450,7 +659,7 @@ export const navigateToContractTab = async (page: Page) => {
 
 export const openContractActionsDropdown = async (page: Page) => {
   await page.getByTestId('manage-contract-actions').click();
-  await page.locator('.contract-action-dropdown').waitFor({
+  await page.getByTestId('contract-action-dropdown').waitFor({
     state: 'visible',
   });
 };
@@ -482,17 +691,12 @@ export const deleteContract = async (
 
   if (contractName) {
     await expect(
-      page
-        .locator('.ant-modal-title')
-        .getByText(`Delete dataContract "${contractName}"`)
+      page.getByTestId('modal-header').getByText(contractName)
     ).toBeVisible();
   } else {
-    await expect(page.locator('.ant-modal-title')).toBeVisible();
+    await expect(page.getByTestId('modal-header')).toBeVisible();
   }
 
-  await page.getByTestId('confirmation-text-input').click();
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
   await page.getByTestId('confirm-button').click();
   await deleteContractResponse;
 };
@@ -505,7 +709,10 @@ export const saveContractAndWait = async (page: Page): Promise<void> => {
   await waitForAllLoadersToDisappear(page);
 };
 
-export const triggerContractValidation = async (page: Page): Promise<void> => {
+export const triggerContractValidation = async (
+  page: Page,
+  contractId?: string
+): Promise<void> => {
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'
   );
@@ -513,6 +720,12 @@ export const triggerContractValidation = async (page: Page): Promise<void> => {
   await openContractActionsDropdown(page);
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
+
+  // If a contractId is supplied, poll until the validation reaches a terminal
+  // state so callers can safely assert on the UI status after a reload.
+  if (contractId) {
+    await pollContractStatus(page, contractId);
+  }
 };
 
 export const exportContractYaml = async (

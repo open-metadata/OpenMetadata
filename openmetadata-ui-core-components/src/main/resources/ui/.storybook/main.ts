@@ -12,5 +12,14 @@ const config: StorybookConfig = {
     options: {},
   },
   docs: {},
+  viteFinal: async (viteConfig) => {
+    // vite.config.ts externalizes deps for the library build so consumers don't
+    // bundle them twice.  Storybook's static output must be fully self-contained,
+    // so we clear those externals here.
+    if (viteConfig.build?.rollupOptions) {
+      viteConfig.build.rollupOptions.external = [];
+    }
+    return viteConfig;
+  },
 };
 export default config;

@@ -11,19 +11,12 @@
  *  limitations under the License.
  */
 
-import { GlobalStyles, ThemeProvider } from '@mui/material';
-import {
-  createMuiTheme,
-  SnackbarContent,
-} from '@openmetadata/ui-core-components';
-import { SnackbarProvider } from 'notistack';
-import { FC, ReactNode, useMemo } from 'react';
+import { FC, ReactNode } from 'react';
 import { RouterProvider } from 'react-aria-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import { useNavigate } from 'react-router-dom';
+import { useHref, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { DEFAULT_THEME } from '../../constants/Appearance.constants';
 import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AsyncDeleteProvider from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from '../../context/PermissionProvider/PermissionProvider';
@@ -31,15 +24,30 @@ import RuleEnforcementProvider from '../../context/RuleEnforcementProvider/RuleE
 import TourProvider from '../../context/TourProvider/TourProvider';
 import WebSocketProvider from '../../context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { CsvJobsTrayContainer } from '../common/EntityImport/CsvJobsTray/CsvJobsTrayContainer.component';
 import { EntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { PersonaLandingRedirect } from '../platform/persona/PersonaLandingRedirect/PersonaLandingRedirect';
 import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from './../../context/UntitledUIThemeProvider/theme-provider';
 
+// react-aria resolves every link href through this hook, including external
+// URLs. Only app paths get the router basename; absolute URLs, mailto: and
+// anchors pass through untouched (useHref would treat them as relative paths).
+const useRouterHref = (href: string) => {
+  const resolvedHref = useHref(href);
+
+  return href.startsWith('/') && !href.startsWith('//') ? resolvedHref : href;
+};
+
 const ReactAriaRouterBridge = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
-  return <RouterProvider navigate={navigate}>{children}</RouterProvider>;
+  return (
+    <RouterProvider navigate={navigate} useHref={useRouterHref}>
+      {children}
+    </RouterProvider>
+  );
 };
 
 interface AuthenticatedAppProps {
@@ -53,55 +61,34 @@ const AuthenticatedApp: FC<AuthenticatedAppProps> = ({ children }) => {
     }))
   );
 
-  const muiTheme = useMemo(
-    () => createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME),
-    [applicationConfig?.customTheme]
-  );
-
   return (
     <UntitledUIThemeProvider brandColors={applicationConfig?.customTheme}>
-      <ThemeProvider theme={muiTheme}>
-        <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
-
-        <SnackbarProvider
-          Components={{
-            default: SnackbarContent,
-            error: SnackbarContent,
-            success: SnackbarContent,
-            warning: SnackbarContent,
-            info: SnackbarContent,
-          }}
-          anchorOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
-          }}
-          autoHideDuration={6000}
-          maxSnack={3}>
-          <ReactAriaRouterBridge>
-            <TourProvider>
-              <WebAnalyticsProvider>
-                <PermissionProvider>
-                  <WebSocketProvider>
-                    <ApplicationsProvider>
-                      <AsyncDeleteProvider>
-                        <EntityExportModalProvider>
-                          <AirflowStatusProvider>
-                            <RuleEnforcementProvider>
-                              <DndProvider backend={HTML5Backend}>
-                                {children}
-                              </DndProvider>
-                            </RuleEnforcementProvider>
-                          </AirflowStatusProvider>
-                        </EntityExportModalProvider>
-                      </AsyncDeleteProvider>
-                    </ApplicationsProvider>
-                  </WebSocketProvider>
-                </PermissionProvider>
-              </WebAnalyticsProvider>
-            </TourProvider>
-          </ReactAriaRouterBridge>
-        </SnackbarProvider>
-      </ThemeProvider>
+      <ReactAriaRouterBridge>
+        <TourProvider>
+          <WebAnalyticsProvider>
+            <PermissionProvider>
+              <WebSocketProvider>
+                <ApplicationsProvider>
+                  <AsyncDeleteProvider>
+                    <EntityExportModalProvider>
+                      <AirflowStatusProvider>
+                        <RuleEnforcementProvider>
+                          <DndProvider backend={HTML5Backend}>
+                            <PersonaLandingRedirect>
+                              {children}
+                            </PersonaLandingRedirect>
+                          </DndProvider>
+                        </RuleEnforcementProvider>
+                      </AirflowStatusProvider>
+                      <CsvJobsTrayContainer />
+                    </EntityExportModalProvider>
+                  </AsyncDeleteProvider>
+                </ApplicationsProvider>
+              </WebSocketProvider>
+            </PermissionProvider>
+          </WebAnalyticsProvider>
+        </TourProvider>
+      </ReactAriaRouterBridge>
     </UntitledUIThemeProvider>
   );
 };

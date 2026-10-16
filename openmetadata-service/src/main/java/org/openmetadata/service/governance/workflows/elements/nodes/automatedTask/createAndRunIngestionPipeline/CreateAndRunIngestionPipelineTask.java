@@ -163,12 +163,6 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
             .expression("${IngestionPipelineMapper}")
             .build();
 
-    FieldExtension pipelineServiceClientExpr =
-        new FieldExtensionBuilder()
-            .fieldName("pipelineServiceClientExpr")
-            .expression("${PipelineServiceClient}")
-            .build();
-
     FieldExtension inputNamespaceMapExpr =
         new FieldExtensionBuilder()
             .fieldName("inputNamespaceMapExpr")
@@ -181,7 +175,6 @@ public class CreateAndRunIngestionPipelineTask implements NodeInterface {
         .addFieldExtension(pipelineTypeExpr)
         .addFieldExtension(deployExpr)
         .addFieldExtension(ingestionPipelineMapperExpr)
-        .addFieldExtension(pipelineServiceClientExpr)
         .addFieldExtension(inputNamespaceMapExpr)
         .setAsync(true)
         .exclusive(true)

@@ -10,20 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { fetchDataProductsElasticSearch } from '../../../rest/dataProductAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { DataProductsSelectListV1 } from '../../DataProducts/DataProductsSelectList/DataProductsSelectListV1';
+import DataProductsSelectList from '../../DataProducts/DataProductsSelectList/DataProductsSelectList';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { DataProductsSectionProps } from './DataProductsSection.interface';
@@ -40,22 +39,24 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   maxVisibleDataProducts = 3,
 }) => {
   const { t } = useTranslation();
-  const [editingDataProducts, setEditingDataProducts] = useState<DataProduct[]>(
-    []
-  );
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
   const [displayActiveDomains, setDisplayActiveDomains] =
     useState<EntityReference[]>(activeDomains);
-  const { entityRules } = useEntityRules(entityType);
+  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
+
+  // Hold the strict domain-scoped behavior until the rules have actually loaded
+  // (an empty rule set from the backend is indistinguishable from "not fetched
+  // yet"), otherwise a cross-domain product could be selected before an enabled
+  // rule resolves and then rejected by the backend on save.
+  const requireDomainForDataProduct =
+    !isRulesLoaded || entityRules.requireDomainForDataProduct;
 
   const {
-    isEditing,
     isLoading,
     popoverOpen,
     displayData: displayDataProducts,
     setDisplayData: setDisplayDataProducts,
     setIsLoading,
-    setPopoverOpen,
     startEditing,
     cancelEditing,
     completeEditing,
@@ -80,29 +81,25 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     });
   }, [activeDomains]);
 
-  const handleEditClick = () => {
-    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
-      id: dp.id,
-      name: dp.name || '',
-      displayName: dp.displayName || dp.name,
-      fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description || '',
-    }));
-    setEditingDataProducts(dpList);
-    startEditing();
-  };
-
   const fetchAPI = useCallback(
     async (searchValue: string, page = 1) => {
       const searchText = searchValue ?? '';
-      const domainFQNs =
-        displayActiveDomains?.map(
-          (domain) => domain.fullyQualifiedName ?? ''
-        ) ?? [];
+      // When the "Data Product Domain Validation" rule is disabled, list Data
+      // Products across all domains instead of scoping to the asset's domains.
+      const domainFQNs = requireDomainForDataProduct
+        ? displayActiveDomains?.map(
+            (domain) => domain.fullyQualifiedName ?? ''
+          ) ?? []
+        : [];
 
-      return fetchDataProductsElasticSearch(searchText, domainFQNs, page);
+      return fetchDataProductsElasticSearch(
+        searchText,
+        domainFQNs,
+        page,
+        PAGE_SIZE_LARGE
+      );
     },
-    [displayActiveDomains]
+    [displayActiveDomains, requireDomainForDataProduct]
   );
 
   const handleSaveWithDataProducts = useCallback(
@@ -153,62 +150,22 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     ]
   );
 
-  const handlePopoverOpenChange = (open: boolean) => {
-    setPopoverOpen(open);
-
-    const dpList: DataProduct[] = displayDataProducts.map((dp) => ({
-      id: dp.id,
-      name: dp.name || '',
-      displayName: dp.displayName || dp.name,
-      fullyQualifiedName: dp.fullyQualifiedName || '',
-      description: dp.description || '',
-    })) as DataProduct[];
-
-    setEditingDataProducts(dpList);
-  };
-
-  const editingState = useMemo(
-    () => (
-      <DataProductsSelectListV1
-        fetchOptions={fetchAPI}
-        multiSelect={entityRules.canAddMultipleDataProducts}
-        popoverProps={{
-          open: popoverOpen,
-          onOpenChange: handlePopoverOpenChange,
-        }}
-        selectedDataProducts={editingDataProducts}
-        onCancel={() => {
-          setPopoverOpen(false);
-          cancelEditing();
-        }}
-        onUpdate={handleSaveWithDataProducts}>
-        <div className="data-product-selector-trigger" />
-      </DataProductsSelectListV1>
-    ),
-    [
-      fetchAPI,
-      popoverOpen,
-      handlePopoverOpenChange,
-      editingDataProducts,
-      handleSaveWithDataProducts,
-      entityRules.canAddMultipleDataProducts,
-      cancelEditing,
-    ]
-  );
+  // The picker owns the toggle; a button onClick would reopen it after a close.
+  const handlePopoverOpenChange = (open: boolean) =>
+    open ? startEditing() : cancelEditing();
 
   const emptyContent = useMemo(() => {
     if (isLoading) {
       return <Loader size="small" />;
     }
-    if (isEditing) {
-      return editingState;
-    }
-
-    if (!displayActiveDomains || displayActiveDomains.length === 0) {
+    if (
+      requireDomainForDataProduct &&
+      (!displayActiveDomains || displayActiveDomains.length === 0)
+    ) {
       return (
-        <Typography.Text className="no-data-placeholder">
+        <Typography className="no-data-placeholder">
           {t('message.select-domain-to-add-data-product')}
-        </Typography.Text>
+        </Typography>
       );
     }
 
@@ -219,7 +176,7 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
         })}
       </span>
     );
-  }, [isLoading, isEditing, editingState, displayActiveDomains, t]);
+  }, [isLoading, displayActiveDomains, requireDomainForDataProduct, t]);
 
   const dataProductsDisplay = useMemo(
     () => (
@@ -265,39 +222,45 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     if (isLoading) {
       return <Loader size="small" />;
     }
-    if (isEditing) {
-      return <div className="data-product-edit-wrapper">{editingState}</div>;
-    }
 
     return dataProductsDisplay;
-  }, [isLoading, isEditing, editingState, dataProductsDisplay]);
+  }, [isLoading, dataProductsDisplay]);
+
+  const canAssignDataProduct =
+    displayActiveDomains?.length > 0 || !requireDomainForDataProduct;
 
   const canShowEditButton =
-    showEditButton &&
-    hasPermission &&
-    !isLoading &&
-    displayActiveDomains?.length > 0;
+    showEditButton && hasPermission && !isLoading && canAssignDataProduct;
+
+  // The picker opens from the edit button, like the glossary and tag pickers.
+  const editButton = canShowEditButton && (
+    <DataProductsSelectList
+      fetchOptions={fetchAPI}
+      isOpen={popoverOpen}
+      multiple={isRulesLoaded && entityRules.canAddMultipleDataProducts}
+      selectedDataProducts={displayDataProducts}
+      onOpenChange={handlePopoverOpenChange}
+      onSubmit={handleSaveWithDataProducts}>
+      <EditIconButton
+        newLook
+        data-testid="edit-data-products"
+        disabled={false}
+        size="small"
+        title={t('label.edit-entity', {
+          entity: t('label.data-product-plural'),
+        })}
+      />
+    </DataProductsSelectList>
+  );
 
   if (!displayDataProducts?.length) {
     return (
       <div className="data-products-section">
         <div className="data-products-header">
-          <Typography.Text className="data-products-title">
+          <Typography size="text-xs" weight="semibold">
             {t('label.data-product-plural')}
-          </Typography.Text>
-          {canShowEditButton && (
-            <EditIconButton
-              newLook
-              data-testid="edit-data-products"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.data-product-plural'),
-              })}
-              onClick={handleEditClick}
-            />
-          )}
+          </Typography>
+          {editButton}
         </div>
         <div className="data-products-content">{emptyContent}</div>
       </div>
@@ -307,22 +270,10 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   return (
     <div className="data-products-section">
       <div className="data-products-header">
-        <Typography.Text className="data-products-title">
+        <Typography size="text-xs" weight="semibold">
           {t('label.data-product-plural')}
-        </Typography.Text>
-        {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-data-products"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.data-product-plural'),
-            })}
-            onClick={handleEditClick}
-          />
-        )}
+        </Typography>
+        {editButton}
       </div>
       <div className="data-products-content">{dataProductsContent}</div>
     </div>

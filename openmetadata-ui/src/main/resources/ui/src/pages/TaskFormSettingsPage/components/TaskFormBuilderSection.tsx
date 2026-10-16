@@ -24,19 +24,21 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import {
+  Autocomplete,
+  Box,
   Button,
   Card,
   Checkbox,
-  Empty,
-  Form,
+  EmptyPlaceholder,
   Input,
   Select,
-  Space,
+  TextArea,
   Typography,
-} from 'antd';
-import { useMemo } from 'react';
+} from '@openmetadata/ui-core-components';
+import { List, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Key, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
@@ -45,6 +47,26 @@ import {
   TaskFormDesignerField,
 } from '../../../utils/TaskFormDesignerUtils';
 import TaskPayloadSchemaFields from '../../TasksPage/shared/TaskPayloadSchemaFields';
+
+/** Switching field type keeps options only for selects and defaults JSON to an object. */
+const withFieldType = (
+  field: TaskFormDesignerField,
+  type: TaskFormDesignerField['type']
+): TaskFormDesignerField => ({
+  ...field,
+  type,
+  schemaType: type === 'json' ? field.schemaType ?? 'object' : field.schemaType,
+  options:
+    type === 'singleSelect' || type === 'multiSelect' ? field.options : [],
+});
+
+const withoutOption = (
+  field: TaskFormDesignerField,
+  key: Key
+): TaskFormDesignerField => ({
+  ...field,
+  options: field.options.filter((option) => option !== key),
+});
 
 interface TaskFormBuilderSectionProps {
   title: string;
@@ -57,18 +79,18 @@ interface TaskFormBuilderSectionProps {
 }
 
 const FIELD_TYPE_OPTIONS = [
-  { label: 'Short text', value: 'shortText' },
-  { label: 'Long text', value: 'longText' },
-  { label: 'Number', value: 'number' },
-  { label: 'Boolean', value: 'boolean' },
-  { label: 'Select', value: 'singleSelect' },
-  { label: 'Multi-select', value: 'multiSelect' },
-  { label: 'JSON', value: 'json' },
+  { label: 'Short text', id: 'shortText' },
+  { label: 'Long text', id: 'longText' },
+  { label: 'Number', id: 'number' },
+  { label: 'Boolean', id: 'boolean' },
+  { label: 'Select', id: 'singleSelect' },
+  { label: 'Multi-select', id: 'multiSelect' },
+  { label: 'JSON', id: 'json' },
 ];
 
 const JSON_SCHEMA_TYPE_OPTIONS = [
-  { label: 'Object', value: 'object' },
-  { label: 'Array', value: 'array' },
+  { label: 'Object', id: 'object' },
+  { label: 'Array', id: 'array' },
 ];
 
 const FIELD_TYPE_LABEL_MAP: Record<TaskFormDesignerField['type'], string> = {
@@ -90,6 +112,7 @@ const TaskFormBuilderSection = ({
   baseFormSchema,
   baseUiSchema,
 }: TaskFormBuilderSectionProps) => {
+  const { t } = useTranslation();
   const previewConfig = useMemo(
     () => buildDesignerSchema(fields, baseFormSchema, baseUiSchema),
     [baseFormSchema, baseUiSchema, fields]
@@ -114,20 +137,25 @@ const TaskFormBuilderSection = ({
     <div className="task-form-builder-section">
       <div className="task-form-builder-section__header">
         <div>
-          <Typography.Title className="m-b-xs" level={5}>
+          <Typography
+            as="h5"
+            className="m-b-xs"
+            size="text-md"
+            weight="semibold">
             {title}
-          </Typography.Title>
+          </Typography>
           {description ? (
-            <Typography.Paragraph className="m-b-0 text-grey-muted">
+            <Typography as="p" className="m-b-0" color="secondary">
               {description}
-            </Typography.Paragraph>
+            </Typography>
           ) : null}
         </div>
         <Button
+          color="secondary"
           data-testid={`${testIdPrefix}-add-field`}
-          icon={<PlusOutlined />}
+          iconLeading={Plus}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
-          Add field
+          {t('label.add-field')}
         </Button>
       </div>
 
@@ -150,193 +178,217 @@ const TaskFormBuilderSection = ({
                 <Card
                   className="task-form-builder-section__field-card"
                   data-testid={`${testIdPrefix}-field-card-${index}`}
-                  extra={
-                    <Button
-                      danger
-                      data-testid={`${testIdPrefix}-field-remove-${index}`}
-                      icon={<DeleteOutlined />}
-                      size="small"
-                      type="text"
-                      onClick={() =>
-                        onChange(
-                          fields.filter(
-                            (_, currentIndex) => currentIndex !== index
-                          )
-                        )
-                      }>
-                      Remove
-                    </Button>
-                  }
                   key={field.key}
-                  size="small"
-                  title={
-                    <div className="task-form-builder-section__field-heading">
-                      <Typography.Text className="task-form-builder-section__field-title">
-                        {field.label || field.name || `Field ${index + 1}`}
-                      </Typography.Text>
-                      <Typography.Text className="task-form-builder-section__field-meta">
-                        {summary}
-                      </Typography.Text>
-                    </div>
-                  }>
-                  <div className="d-grid gap-3">
-                    <div className="task-form-builder-section__field-grid">
-                      <Form.Item className="m-b-0" label="Field name">
+                  size="sm">
+                  <Card.Header
+                    extra={
+                      <Button
+                        color="tertiary-destructive"
+                        data-testid={`${testIdPrefix}-field-remove-${index}`}
+                        iconLeading={Trash01}
+                        size="xs"
+                        onClick={() =>
+                          onChange(
+                            fields.filter(
+                              (_, currentIndex) => currentIndex !== index
+                            )
+                          )
+                        }>
+                        {t('label.remove')}
+                      </Button>
+                    }
+                    title={
+                      <div className="task-form-builder-section__field-heading">
+                        <Typography className="task-form-builder-section__field-title">
+                          {field.label || field.name || `Field ${index + 1}`}
+                        </Typography>
+                        <Typography className="task-form-builder-section__field-meta">
+                          {summary}
+                        </Typography>
+                      </div>
+                    }
+                  />
+                  <Card.Content>
+                    <div className="d-grid gap-3">
+                      <div className="task-form-builder-section__field-grid">
                         <Input
-                          data-testid={`${testIdPrefix}-field-name-${index}`}
+                          inputDataTestId={`${testIdPrefix}-field-name-${index}`}
+                          label="Field name"
                           placeholder="requestReason"
                           value={field.name}
-                          onChange={(event) =>
+                          onChange={(name) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              name: event.target.value,
+                              name,
                             }))
                           }
                         />
-                      </Form.Item>
-                      <Form.Item className="m-b-0" label="Label">
                         <Input
-                          data-testid={`${testIdPrefix}-field-label-${index}`}
+                          inputDataTestId={`${testIdPrefix}-field-label-${index}`}
+                          label="Label"
                           placeholder="Request Reason"
                           value={field.label}
-                          onChange={(event) =>
+                          onChange={(label) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              label: event.target.value,
+                              label,
                             }))
                           }
                         />
-                      </Form.Item>
-                      <Form.Item className="m-b-0" label="Field type">
                         <Select
                           data-testid={`${testIdPrefix}-field-type-${index}`}
-                          options={FIELD_TYPE_OPTIONS}
-                          value={field.type}
-                          onChange={(value) =>
-                            updateField(index, (currentField) => ({
-                              ...currentField,
-                              type: value,
-                              schemaType:
-                                value === 'json'
-                                  ? currentField.schemaType ?? 'object'
-                                  : currentField.schemaType,
-                              options:
-                                value === 'singleSelect' ||
-                                value === 'multiSelect'
-                                  ? currentField.options
-                                  : [],
-                            }))
-                          }
-                        />
-                      </Form.Item>
-                    </div>
+                          items={FIELD_TYPE_OPTIONS}
+                          label="Field type"
+                          selectedKey={field.type}
+                          onSelectionChange={(key) =>
+                            key !== null &&
+                            updateField(index, (currentField) =>
+                              withFieldType(
+                                currentField,
+                                key as TaskFormDesignerField['type']
+                              )
+                            )
+                          }>
+                          {(item) => (
+                            <Select.Item id={item.id} label={item.label} />
+                          )}
+                        </Select>
+                      </div>
 
-                    {supportsJsonType ? (
-                      <Form.Item className="m-b-0" label="JSON shape">
+                      {supportsJsonType ? (
                         <Select
                           data-testid={`${testIdPrefix}-field-schema-type-${index}`}
-                          options={JSON_SCHEMA_TYPE_OPTIONS}
-                          value={field.schemaType ?? 'object'}
-                          onChange={(value) =>
+                          items={JSON_SCHEMA_TYPE_OPTIONS}
+                          label="JSON shape"
+                          selectedKey={field.schemaType ?? 'object'}
+                          onSelectionChange={(key) =>
+                            key !== null &&
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              schemaType: value,
+                              schemaType:
+                                key as TaskFormDesignerField['schemaType'],
                             }))
-                          }
-                        />
-                      </Form.Item>
-                    ) : null}
+                          }>
+                          {(item) => (
+                            <Select.Item id={item.id} label={item.label} />
+                          )}
+                        </Select>
+                      ) : null}
 
-                    {supportsOptions ? (
-                      <Form.Item className="m-b-0" label="Options">
-                        <Select
+                      {supportsOptions ? (
+                        <Autocomplete
+                          allowsCreation
+                          hideDropdown
+                          multiple
+                          aria-label="Options"
                           data-testid={`${testIdPrefix}-field-options-${index}`}
-                          mode="tags"
-                          open={false}
+                          items={[]}
+                          label="Options"
                           placeholder="Add options"
-                          tokenSeparators={[',']}
-                          value={field.options}
-                          onChange={(value) =>
+                          selectedItems={field.options.map((option) => ({
+                            id: option,
+                            label: option,
+                          }))}
+                          onItemCleared={(key) =>
+                            updateField(index, (currentField) =>
+                              withoutOption(currentField, key)
+                            )
+                          }
+                          onItemInserted={(key) =>
                             updateField(index, (currentField) => ({
                               ...currentField,
-                              options: value,
+                              options: [...currentField.options, String(key)],
                             }))
-                          }
-                        />
-                      </Form.Item>
-                    ) : null}
+                          }>
+                          {(item) => (
+                            <Autocomplete.Item
+                              id={item.id}
+                              label={item.label}
+                            />
+                          )}
+                        </Autocomplete>
+                      ) : null}
 
-                    <Form.Item className="m-b-0" label="Help text">
-                      <Input.TextArea
-                        autoSize={{ minRows: 2, maxRows: 4 }}
+                      <TextArea
                         data-testid={`${testIdPrefix}-field-description-${index}`}
+                        label="Help text"
                         placeholder="Explain what this field is used for"
+                        rows={2}
                         value={field.description}
-                        onChange={(event) =>
+                        onChange={(description) =>
                           updateField(index, (currentField) => ({
                             ...currentField,
-                            description: event.target.value,
+                            description,
                           }))
                         }
                       />
-                    </Form.Item>
 
-                    <Space size="large">
-                      <Checkbox
-                        checked={field.required}
-                        data-testid={`${testIdPrefix}-field-required-${index}`}
-                        onChange={(event) =>
-                          updateField(index, (currentField) => ({
-                            ...currentField,
-                            required: event.target.checked,
-                          }))
-                        }>
-                        Required
-                      </Checkbox>
-                      <Checkbox
-                        checked={field.hidden}
-                        data-testid={`${testIdPrefix}-field-hidden-${index}`}
-                        onChange={(event) =>
-                          updateField(index, (currentField) => ({
-                            ...currentField,
-                            hidden: event.target.checked,
-                          }))
-                        }>
-                        Hidden
-                      </Checkbox>
-                    </Space>
-                  </div>
+                      <Box
+                        inline
+                        align="center"
+                        className="layout-space layout-space-horizontal"
+                        gap={6}
+                        itemClassName="layout-space-item">
+                        <Checkbox
+                          data-testid={`${testIdPrefix}-field-required-${index}`}
+                          isSelected={field.required}
+                          label={<>{t('label.required')}</>}
+                          onChange={(event) =>
+                            updateField(index, (currentField) => ({
+                              ...currentField,
+                              required: event,
+                            }))
+                          }
+                        />
+                        <Checkbox
+                          data-testid={`${testIdPrefix}-field-hidden-${index}`}
+                          isSelected={field.hidden}
+                          label={<>{t('label.hidden')}</>}
+                          onChange={(event) =>
+                            updateField(index, (currentField) => ({
+                              ...currentField,
+                              hidden: event,
+                            }))
+                          }
+                        />
+                      </Box>
+                    </div>
+                  </Card.Content>
                 </Card>
               );
             })
           ) : (
-            <Empty
-              data-testid={`${testIdPrefix}-empty`}
-              description="No fields configured yet"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
+            <Box className="tw:relative tw:min-h-40">
+              <EmptyPlaceholder
+                data-testid={`${testIdPrefix}-empty`}
+                icon={<List className="tw:text-secondary" />}
+                title={t('message.no-fields-configured')}
+              />
+            </Box>
           )}
         </div>
 
         <Card
           className="task-form-builder-section__preview"
           data-testid={`${testIdPrefix}-preview`}
-          size="small"
-          title="Preview">
-          {fields.length ? (
-            <div>
-              <TaskPayloadSchemaFields
-                mode="read"
-                payload={previewPayload}
-                schema={previewConfig.formSchema}
-                uiSchema={previewConfig.uiSchema}
-              />
-            </div>
-          ) : (
-            <Typography.Text className="text-grey-muted">
-              Add fields to preview this form.
-            </Typography.Text>
-          )}
+          size="sm">
+          <Card.Header title="Preview" />
+          <Card.Content>
+            {fields.length ? (
+              <div>
+                <TaskPayloadSchemaFields
+                  mode="read"
+                  payload={previewPayload}
+                  schema={previewConfig.formSchema}
+                  uiSchema={previewConfig.uiSchema}
+                />
+              </div>
+            ) : (
+              <Typography color="secondary">
+                {t('message.add-fields-to-preview-form')}
+              </Typography>
+            )}
+          </Card.Content>
         </Card>
       </div>
     </div>

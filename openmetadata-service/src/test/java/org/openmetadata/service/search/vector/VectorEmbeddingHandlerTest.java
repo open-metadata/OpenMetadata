@@ -48,103 +48,129 @@ class VectorEmbeddingHandlerTest {
 
   @Test
   void testOnEntityCreatedForSupportedType() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
 
       handler.onEntityCreated(entity, subjectContext);
 
-      verify(vectorIndexService).updateEntityEmbedding(any(), anyString());
+      verify(vectorIndexService).updateEntityEmbeddings(any(), anyString());
     }
   }
 
   @Test
   void testOnEntityCreatedForUnsupportedType() {
-    EntityInterface entity = createMockEntity("unsupportedType");
+    EntityInterface<?> entity = createMockEntity("unsupportedType");
 
     handler.onEntityCreated(entity, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
   @Test
   void testOnEntityUpdatedCallsUpdate() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
     when(entity.getDeleted()).thenReturn(false);
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       SearchRepository searchRepository = mock(SearchRepository.class);
       IndexMapping indexMapping = mock(IndexMapping.class);
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       when(searchRepository.getIndexMapping("table")).thenReturn(indexMapping);
       when(searchRepository.getClusterAlias()).thenReturn("");
       when(indexMapping.getIndexName("")).thenReturn("table_search_index");
 
       handler.onEntityUpdated(entity, null, subjectContext);
 
-      verify(vectorIndexService).updateEntityEmbedding(any(), anyString());
+      verify(vectorIndexService).updateEntityEmbeddings(any(), anyString());
+    }
+  }
+
+  @Test
+  void testOnEntityUpdatedDropsChunksAndEmbeddingForNonEmbeddableEntity() {
+    EntityInterface<?> entity = createMockEntity("contextMemory");
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    IndexMapping indexMapping = mock(IndexMapping.class);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(false);
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      when(searchRepository.getIndexMapping("contextMemory")).thenReturn(indexMapping);
+      when(searchRepository.getClusterAlias()).thenReturn("");
+      when(indexMapping.getIndexName("")).thenReturn("context_memory_search_index");
+
+      handler.onEntityUpdated(entity, null, subjectContext);
+
+      verify(vectorIndexService).deleteEntityChunks(entity.getId().toString());
+      // The entity doc keeps its embedding across partial merges, so it has to be cleared
+      // explicitly or a memory flipped to Private stays matchable by kNN.
+      verify(vectorIndexService)
+          .clearEntityEmbedding("context_memory_search_index", entity.getId().toString());
+      verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
     }
   }
 
   @Test
   void testOnEntityUpdatedSkipsDeleted() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
     when(entity.getDeleted()).thenReturn(true);
 
     handler.onEntityUpdated(entity, null, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
   @Test
   void testOnEntityUpdatedHandlesNull() {
     handler.onEntityUpdated(null, null, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
   @Test
   void testOnEntityDeletedIsNoOp() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     handler.onEntityDeleted(entity, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
   @Test
   void testOnEntitySoftDeletedIsNoOp() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     handler.onEntitySoftDeletedOrRestored(entity, true, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
   @Test
   void testOnEntityRestoredIsNoOp() {
-    EntityInterface entity = createMockEntity("table");
+    EntityInterface<?> entity = createMockEntity("table");
 
     handler.onEntitySoftDeletedOrRestored(entity, false, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
   @Test
   void testOnEntitySoftDeletedOrRestoredHandlesNull() {
     handler.onEntitySoftDeletedOrRestored(null, true, subjectContext);
 
-    verify(vectorIndexService, never()).updateEntityEmbedding(any(), anyString());
+    verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
   }
 
-  private EntityInterface createMockEntity(String entityType) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private EntityInterface<?> createMockEntity(String entityType) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     UUID id = UUID.randomUUID();
     EntityReference ref = new EntityReference();
     ref.setType(entityType);

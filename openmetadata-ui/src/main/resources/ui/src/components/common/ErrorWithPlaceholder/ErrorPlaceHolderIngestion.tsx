@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Card, Space, Typography } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 import { useMemo } from 'react';
@@ -20,7 +20,6 @@ import { ReactComponent as IconCollateSupport } from '../../../assets/svg/ic-col
 import { AIRFLOW_DOCS } from '../../../constants/docs.constants';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
 import { ErrorPlaceHolderIngestionProps } from './ErrorPlaceHolderIngestion.interface';
@@ -36,25 +35,17 @@ const ErrorPlaceHolderIngestion = ({
   const airflowSetupGuide = useMemo(() => {
     return (
       <div className="mb-5" data-testid="error-steps">
-        <Card
-          className={classNames(
-            'd-flex flex-col justify-between',
-            cardClassName
-          )}>
+        <Card className={classNames('tw:p-6', cardClassName)}>
           <AirflowMessageBanner className="m-b-xs" />
           {isAirflowPlatform ? (
             <>
               <div>
                 <h6 className="text-base text-grey-body font-medium">
-                  {t('message.manage-airflow-api-failed', {
-                    brandName: brandClassBase.getPageTitle(),
-                  })}
+                  {t('message.manage-airflow-api-failed')}
                 </h6>
 
                 <p className="text-grey-body text-sm mb-5">
-                  {t('message.airflow-guide-message', {
-                    brandName: brandClassBase.getPageTitle(),
-                  })}
+                  {t('message.airflow-guide-message')}
                 </p>
               </div>
 
@@ -68,18 +59,17 @@ const ErrorPlaceHolderIngestion = ({
               </p>
             </>
           ) : (
-            <Space
+            <Box
               align="center"
-              className="justify-center w-full"
-              direction="vertical"
-              size={16}>
+              className="tw:w-full"
+              direction="col"
+              gap={4}
+              justify="center">
               <IconCollateSupport height={100} width={100} />
-              <Typography>
-                {t('message.pipeline-scheduler-message', {
-                  brandName: brandClassBase.getPageTitle(),
-                })}
+              <Typography as="article">
+                {t('message.pipeline-scheduler-message')}
               </Typography>
-            </Space>
+            </Box>
           )}
         </Card>
       </div>
@@ -87,7 +77,7 @@ const ErrorPlaceHolderIngestion = ({
   }, [isAirflowPlatform, cardClassName]);
 
   return (
-    <div className="m-t-lg text-base font-medium">
+    <div className="text-base font-medium">
       {isFetchingStatus ? <Loader /> : airflowSetupGuide}
     </div>
   );

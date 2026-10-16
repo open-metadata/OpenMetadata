@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Input, Modal } from 'antd';
+import {
+  Button,
+  Input,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -25,10 +30,9 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { searchQuery } from '../../../../rest/searchAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import Fqn from '../../../../utils/Fqn';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -107,8 +111,6 @@ const AddPipeLineModal = ({
 
       return <ErrorPlaceHolder />;
     }
-
-    return;
   }, [selectedEdge, edgeSearchValue]);
 
   const debounceOnSearch = useCallback(debounce(getSearchResults, 300), []);
@@ -123,45 +125,43 @@ const AddPipeLineModal = ({
   }, []);
 
   return (
-    <Modal
-      destroyOnClose
+    <SimpleModal
       data-testid="add-edge-modal"
       footer={[
         <Button
-          danger
+          color="primary-destructive"
           data-testid="remove-edge-button"
           key="remove-edge-btn"
-          type="primary"
           onClick={onRemoveEdgeClick}>
           {t('label.remove-entity', {
             entity: t('label.edge-lowercase'),
           })}
         </Button>,
         <Button
+          color="primary"
           data-testid="save-button"
+          isLoading={loading}
           key="save-btn"
-          loading={loading}
-          type="primary"
           onClick={() => onSave(edgeSelection)}>
           {t('label.save')}
         </Button>,
       ]}
-      maskClosable={false}
-      open={showAddEdgeModal}
+      isDismissable={false}
+      isOpen={showAddEdgeModal}
       title={t(`label.${isUndefined(selectedEdge) ? 'add' : 'edit'}-entity`, {
         entity: t('label.edge'),
       })}
       onCancel={onModalCancel}>
       <Input
-        data-testid="field-input"
+        aria-label={t('message.search-for-edge')}
+        inputDataTestId="field-input"
         placeholder={t('message.search-for-edge')}
         value={edgeSearchValue}
-        onChange={(e) => handleChange(e.target.value)}
+        onChange={handleChange}
       />
 
       <div className="edge-option-container">
         {edgeOptions.map((item) => {
-          const icon = searchClassBase.getEntityIcon(item.type);
           const breadcrumb = Fqn.split(item.fullyQualifiedName ?? '').join('/');
 
           return (
@@ -171,16 +171,28 @@ const AddPipeLineModal = ({
               })}
               data-testid={`pipeline-entry-${item.fullyQualifiedName}`}
               key={item.id}
-              onClick={() => setEdgeSelection(item)}>
-              <div className="flex-center mention-icon-image">{icon}</div>
+              role="button"
+              tabIndex={0}
+              onClick={() => setEdgeSelection(item)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  setEdgeSelection(item);
+                }
+              }}>
+              {searchClassBase.getEntityIconWithBg(
+                item.type,
+                EntityIconSize.Size14
+              )}
               <div>
                 <div className="d-flex flex-wrap">
-                  <span className="truncate breadcrumb">{breadcrumb}</span>
+                  <Typography className="truncate breadcrumb">
+                    {breadcrumb}
+                  </Typography>
                 </div>
                 <div className="d-flex flex-col">
-                  <span className="font-medium truncate">
+                  <Typography className="truncate" weight="medium">
                     {getEntityName(item)}
-                  </span>
+                  </Typography>
                 </div>
               </div>
             </div>
@@ -189,7 +201,7 @@ const AddPipeLineModal = ({
 
         {errorPlaceholderEdge}
       </div>
-    </Modal>
+    </SimpleModal>
   );
 };
 

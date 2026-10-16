@@ -14,13 +14,9 @@
 package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.Entity.QUERY_COST_RECORD;
-import static org.openmetadata.service.Entity.TEST_CASE_RESOLUTION_STATUS;
-import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -28,17 +24,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
-import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.system.EntityError;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.HeapBackpressure;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
+import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.util.RestUtil;
@@ -56,26 +53,11 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class PartitionWorker {
   private static final long MAX_CURSOR_INITIALIZATION_OFFSET = (long) Integer.MAX_VALUE + 1L;
 
-  /** Time series entity types that need special handling */
-  static final Set<String> TIME_SERIES_ENTITIES =
-      Set.of(
-          ReportData.ReportDataType.ENTITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.RAW_COST_ANALYSIS_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA.value(),
-          ReportData.ReportDataType.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA.value(),
-          ReportData.ReportDataType.AGGREGATED_COST_ANALYSIS_REPORT_DATA.value(),
-          TEST_CASE_RESOLUTION_STATUS,
-          TEST_CASE_RESULT,
-          QUERY_COST_RECORD);
-
   /** Context key for entity type */
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  /** Context key for recreate index flag */
-  private static final String RECREATE_INDEX = "recreateIndex";
-
-  /** Context key for recreate context */
-  private static final String RECREATE_CONTEXT = "recreateContext";
+  /** Context key for staged index context. */
+  private static final String STAGED_CONTEXT_KEY = "recreateContext";
 
   /** Context key for target index */
   private static final String TARGET_INDEX_KEY = "targetIndex";
@@ -92,8 +74,7 @@ public class PartitionWorker {
   private final DistributedSearchIndexCoordinator coordinator;
   private final BulkSink searchIndexSink;
   private final int batchSize;
-  private final ReindexContext recreateContext;
-  private final boolean recreateIndex;
+  private final ReindexContext stagedIndexContext;
   private final AtomicBoolean stopped = new AtomicBoolean(false);
   private final IndexingFailureRecorder failureRecorder;
   private final ReindexingConfiguration reindexConfig;
@@ -102,41 +83,30 @@ public class PartitionWorker {
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex) {
-    this(coordinator, searchIndexSink, batchSize, recreateContext, recreateIndex, null, null);
+      ReindexContext stagedIndexContext) {
+    this(coordinator, searchIndexSink, batchSize, stagedIndexContext, null, null);
   }
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       IndexingFailureRecorder failureRecorder) {
-    this(
-        coordinator,
-        searchIndexSink,
-        batchSize,
-        recreateContext,
-        recreateIndex,
-        failureRecorder,
-        null);
+    this(coordinator, searchIndexSink, batchSize, stagedIndexContext, failureRecorder, null);
   }
 
   public PartitionWorker(
       DistributedSearchIndexCoordinator coordinator,
       BulkSink searchIndexSink,
       int batchSize,
-      ReindexContext recreateContext,
-      boolean recreateIndex,
+      ReindexContext stagedIndexContext,
       IndexingFailureRecorder failureRecorder,
       ReindexingConfiguration reindexConfig) {
     this.coordinator = coordinator;
     this.searchIndexSink = searchIndexSink;
     this.batchSize = batchSize;
-    this.recreateContext = recreateContext;
-    this.recreateIndex = recreateIndex;
+    this.stagedIndexContext = stagedIndexContext;
     this.failureRecorder = failureRecorder;
     this.reindexConfig = reindexConfig;
   }
@@ -161,7 +131,7 @@ public class PartitionWorker {
   }
 
   private PartitionResult processPartitionInternal(SearchIndexPartition partition) {
-    String entityType = partition.getEntityType();
+    String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
     long rangeStart = partition.getRangeStart();
     long rangeEnd = partition.getRangeEnd();
 
@@ -214,6 +184,13 @@ public class PartitionWorker {
       while (currentOffset < rangeEnd
           && !stopped.get()
           && !Thread.currentThread().isInterrupted()) {
+        // Yield before pulling the next batch when the pod's heap is tight. AutoTune sizes batch
+        // and
+        // queue once at start from a fixed per-entity estimate; real entities (embeddings, wide
+        // tables) or co-tenant work can exceed it and OOM a small heap. Pausing the reader — not
+        // the
+        // writes — lets in-flight docs drain and GC reclaim, so reindex adapts to any pod size.
+        HeapBackpressure.awaitHeadroom();
         int currentBatchSize = (int) Math.min(batchSize, rangeEnd - currentOffset);
 
         try {
@@ -335,32 +312,51 @@ public class PartitionWorker {
       waitForSinkOperations(statsTracker);
       LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
 
-      // Adjust partition counts to include process-stage failures.
+      // Adjust partition counts to include stage-level failures and warnings.
       // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
-      // Process failures happen async in addEntity() and are tracked by StageStatsTracker.
+      // Process and sink results happen async and are tracked by StageStatsTracker.
       long processFailed =
           statsTracker != null ? statsTracker.getProcess().getCumulativeFailed().get() : 0;
-      if (processFailed > 0) {
-        long adjustment = Math.min(processFailed, successCount.get());
+      long sinkFailed =
+          statsTracker != null ? statsTracker.getSink().getCumulativeFailed().get() : 0;
+      long stageFailed = processFailed + sinkFailed;
+      if (stageFailed > 0) {
+        long adjustment = Math.min(stageFailed, successCount.get());
         if (adjustment > 0) {
           successCount.addAndGet(-adjustment);
           failedCount.addAndGet(adjustment);
         }
       }
+      long processWarnings =
+          statsTracker != null ? statsTracker.getProcess().getCumulativeWarnings().get() : 0;
+      long sinkWarnings =
+          statsTracker != null ? statsTracker.getSink().getCumulativeWarnings().get() : 0;
+      long stageWarnings = processWarnings + sinkWarnings;
+      if (stageWarnings > 0) {
+        long adjustment = Math.min(stageWarnings, successCount.get());
+        if (adjustment > 0) {
+          successCount.addAndGet(-adjustment);
+          warningsCount.addAndGet(adjustment);
+        }
+      }
 
       // Mark partition as completed (stats are now in the database)
-      coordinator.completePartition(partition.getId(), successCount.get(), failedCount.get());
+      coordinator.completePartition(
+          partition.getId(), successCount.get(), failedCount.get(), warningsCount.get());
 
       long expectedRecords = rangeEnd - rangeStart;
-      long actualProcessed = successCount.get() + failedCount.get();
+      long actualProcessed = successCount.get() + failedCount.get() + warningsCount.get();
       LOG.info(
-          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, warnings: {})",
+          "Completed partition {} for entity type {} (success: {}, failed: {}, readerFailed: {}, processFailed: {}, sinkFailed: {}, processWarnings: {}, sinkWarnings: {}, warnings: {})",
           partition.getId(),
           entityType,
           successCount.get(),
           failedCount.get(),
           readerFailedCount.get(),
           processFailed,
+          sinkFailed,
+          processWarnings,
+          sinkWarnings,
           warningsCount.get());
       if (actualProcessed < expectedRecords) {
         LOG.debug(
@@ -525,6 +521,7 @@ public class PartitionWorker {
     }
 
     recordReaderFailures(entityType, resultList, readErrorCount);
+    recordRelationshipWarnings(entityType, resultList);
 
     if (readSuccessCount == 0) {
       LOG.debug(
@@ -575,8 +572,8 @@ public class PartitionWorker {
     for (EntityError entityError : listOrEmpty(resultList.getErrors())) {
       Object rawEntity = entityError.getEntity();
       String entityId = null;
-      if (rawEntity instanceof EntityInterface) {
-        UUID id = ((EntityInterface) rawEntity).getId();
+      if (rawEntity instanceof EntityInterface<?>) {
+        UUID id = ((EntityInterface<?>) rawEntity).getId();
         if (id != null) {
           entityId = id.toString();
         }
@@ -600,6 +597,30 @@ public class PartitionWorker {
   }
 
   /**
+   * Persist stale-relationship warnings (records read but not indexable because their parent is
+   * gone) to the failures table, tagged {@code READER_RELATIONSHIP_WARNING}. These are not
+   * failures and never count against the job's failure total — they are recorded only so an
+   * operator can find and clean up the orphaned rows from the failures dashboard.
+   */
+  private void recordRelationshipWarnings(String entityType, ResultList<?> resultList) {
+    if (failureRecorder == null || resultList == null) {
+      return;
+    }
+    for (EntityError warning : listOrEmpty(resultList.getWarnings())) {
+      Object rawEntity = warning.getEntity();
+      String entityId = null;
+      String entityFqn = null;
+      if (rawEntity instanceof EntityInterface<?> entity) {
+        UUID id = entity.getId();
+        entityId = id != null ? id.toString() : null;
+        entityFqn = entity.getFullyQualifiedName();
+      }
+      failureRecorder.recordRelationshipWarning(
+          entityType, entityId, entityFqn, warning.getMessage());
+    }
+  }
+
+  /**
    * Read entities from the database.
    *
    * @param entityType The entity type
@@ -609,22 +630,21 @@ public class PartitionWorker {
    */
   private ResultList<?> readEntitiesKeyset(String entityType, String keysetCursor, int limit)
       throws SearchIndexException {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
-    // Selective fields, not "*". Asking for "*" runs every registered fieldFetcher in
-    // setFieldsInBulk — including expensive ones like fetchAndSetOwns on Team/User where every
-    // owned entity becomes an Entity.getEntityReferenceById round-trip — and the index class then
-    // strips most of those out via getExcludedFields anyway. Mirror what EntityReader does on the
-    // single-server pipeline (PR #27723) so both paths request the same minimal set.
-    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
+    // Selective fields avoid running expensive field fetchers that are stripped out before
+    // indexing.
+    List<String> fields = ReindexingUtil.getSearchIndexFields(normalizedEntityType);
 
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      PaginatedEntitiesSource source = new PaginatedEntitiesSource(entityType, limit, fields, 0);
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
+      PaginatedEntitiesSource source =
+          new PaginatedEntitiesSource(normalizedEntityType, limit, fields, 0);
       return source.readNextKeyset(keysetCursor);
     } else {
       Long filterStartTs = null;
       Long filterEndTs = null;
       if (reindexConfig != null) {
-        long startTs = reindexConfig.getTimeSeriesStartTs(entityType);
+        long startTs = reindexConfig.getTimeSeriesStartTs(normalizedEntityType);
         if (startTs > 0) {
           filterStartTs = startTs;
           filterEndTs = System.currentTimeMillis();
@@ -633,8 +653,8 @@ public class PartitionWorker {
       PaginatedEntityTimeSeriesSource source =
           (filterStartTs != null)
               ? new PaginatedEntityTimeSeriesSource(
-                  entityType, limit, fields, filterStartTs, filterEndTs)
-              : new PaginatedEntityTimeSeriesSource(entityType, limit, fields, 0);
+                  normalizedEntityType, limit, fields, filterStartTs, filterEndTs)
+              : new PaginatedEntityTimeSeriesSource(normalizedEntityType, limit, fields, 0);
       return source.readWithCursor(keysetCursor);
     }
   }
@@ -643,8 +663,8 @@ public class PartitionWorker {
     if (offset <= 0) {
       return null;
     }
-    String entityType = partition.getEntityType();
-    if (TIME_SERIES_ENTITIES.contains(entityType)) {
+    String entityType = SearchIndexEntityTypes.normalizeEntityType(partition.getEntityType());
+    if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
       return RestUtil.encodeCursor(String.valueOf(offset));
     }
     // Fast path: coordinator precomputed boundary cursors for every partition's
@@ -659,8 +679,9 @@ public class PartitionWorker {
       return precomputed;
     }
     int cursorOffset = toCursorOffset(entityType, offset);
-    ListFilter filter = new ListFilter(Include.ALL);
-    String cursor = Entity.getEntityRepository(entityType).getCursorAtOffset(filter, cursorOffset);
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    ListFilter filter = repository.getReindexFilter();
+    String cursor = repository.getCursorAtOffset(filter, cursorOffset);
     if (cursor == null) {
       LOG.debug(
           "getCursorAtOffset returned null for {} at offset {} (cursorOffset={})",
@@ -693,9 +714,11 @@ public class PartitionWorker {
   private void writeToSink(
       String entityType, ResultList<?> resultList, Map<String, Object> contextData)
       throws Exception {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
 
-    if (!TIME_SERIES_ENTITIES.contains(entityType)) {
-      List<EntityInterface> entities = (List<EntityInterface>) resultList.getData();
+    if (!SearchIndexEntityTypes.isTimeSeriesEntity(normalizedEntityType)) {
+      List<EntityInterface<?>> entities = (List<EntityInterface<?>>) resultList.getData();
+      ReindexingUtil.populateDocBuildContext(contextData, normalizedEntityType, entities);
       searchIndexSink.write(entities, contextData);
     } else {
       List<EntityTimeSeriesInterface> entities =
@@ -712,20 +735,28 @@ public class PartitionWorker {
    * @return Context data map
    */
   private Map<String, Object> createContextData(String entityType, StageStatsTracker statsTracker) {
+    String normalizedEntityType = SearchIndexEntityTypes.normalizeEntityType(entityType);
     Map<String, Object> contextData = new java.util.HashMap<>();
-    contextData.put(ENTITY_TYPE_KEY, entityType);
-    contextData.put(RECREATE_INDEX, recreateIndex);
+    contextData.put(ENTITY_TYPE_KEY, normalizedEntityType);
 
     if (statsTracker != null) {
       contextData.put(BulkSink.STATS_TRACKER_CONTEXT_KEY, statsTracker);
     }
 
-    if (recreateContext != null) {
-      contextData.put(RECREATE_CONTEXT, recreateContext);
-      recreateContext
-          .getStagedIndex(entityType)
-          .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
+    if (stagedIndexContext == null) {
+      throw new IllegalStateException(
+          "Staged index context is required for distributed reindexing");
     }
+
+    String targetIndex =
+        stagedIndexContext
+            .getStagedIndex(normalizedEntityType)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "No staged index configured for entity type: " + normalizedEntityType));
+    contextData.put(STAGED_CONTEXT_KEY, stagedIndexContext);
+    contextData.put(TARGET_INDEX_KEY, targetIndex);
 
     return contextData;
   }

@@ -15,11 +15,12 @@ import {
   Button,
   Checkbox,
   Input,
+  Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -35,20 +36,89 @@ import {
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { FormField } from '../common/FormField';
 import { ModeAwareFormField } from '../ModeAwareFormField';
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface UserApprovalFormProps {
   node: Node;
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
+  isEnforceMode?: boolean;
 }
+
+const DEFAULT_USER_APPROVAL_TRANSITIONS = [
+  {
+    id: 'approve',
+    label: 'Approve',
+    targetStageId: 'approved',
+    targetTaskStatus: 'Approved',
+    resolutionType: 'Approved',
+    requiresComment: false,
+  },
+  {
+    id: 'reject',
+    label: 'Reject',
+    targetStageId: 'rejected',
+    targetTaskStatus: 'Rejected',
+    resolutionType: 'Rejected',
+    requiresComment: false,
+  },
+];
+
+interface AssigneesConfigSlice {
+  addReviewers?: boolean;
+  addOwners?: boolean;
+  emptyAssigneeStrategy?: 'none' | 'assignAdmins';
+  candidates?: AssigneeCandidate[];
+}
+
+interface UserApprovalInitialState {
+  displayName: string;
+  description: string;
+  approvalThreshold: number;
+  rejectionThreshold: number;
+  addReviewers: boolean;
+  addOwners: boolean;
+  emptyAssigneeStrategy: 'none' | 'assignAdmins';
+  candidates: EntityReference[];
+  allowPartialDecisions: boolean;
+}
+
+const buildAssigneesState = (assignees: AssigneesConfigSlice) => ({
+  addReviewers: assignees.addReviewers ?? true,
+  addOwners: assignees.addOwners ?? false,
+  emptyAssigneeStrategy: assignees.emptyAssigneeStrategy ?? 'none',
+  candidates: Array.isArray(assignees.candidates) ? assignees.candidates : [],
+});
+
+const buildInitialState = (
+  node: Node | undefined
+): UserApprovalInitialState => {
+  const nodeConfig = (node?.data?.config ?? {}) as {
+    approvalThreshold?: number;
+    rejectionThreshold?: number;
+    assignees?: AssigneesConfigSlice;
+    allowPartialDecisions?: boolean;
+  };
+  const displayName = node?.data?.displayName ?? node?.data?.label ?? '';
+
+  return {
+    displayName,
+    description: node?.data?.description ?? '',
+    approvalThreshold: nodeConfig.approvalThreshold ?? 1,
+    rejectionThreshold: nodeConfig.rejectionThreshold ?? 1,
+    ...buildAssigneesState(nodeConfig.assignees ?? {}),
+    allowPartialDecisions: nodeConfig.allowPartialDecisions ?? false,
+  };
+};
 
 export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   node,
   onSave,
   onClose,
   onDelete,
+  isEnforceMode = false,
 }) => {
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -56,28 +126,28 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   const [rejectionThreshold, setRejectionThreshold] = useState(1);
   const [addReviewers, setAddReviewers] = useState(true);
   const [addOwners, setAddOwners] = useState(false);
+  const [emptyAssigneeStrategy, setEmptyAssigneeStrategy] = useState<
+    'none' | 'assignAdmins'
+  >('none');
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
+  const [allowPartialDecisions, setAllowPartialDecisions] = useState(false);
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
 
   useEffect(() => {
-    if (node?.data) {
-      const nodeConfig = node.data.config || {};
-      const assignees = (nodeConfig.assignees || {}) as {
-        addReviewers?: boolean;
-        addOwners?: boolean;
-        candidates?: AssigneeCandidate[];
-      };
-      setDisplayName(node.data.displayName || node.data.label || '');
-      setDescription(node.data.description || '');
-      setApprovalThreshold(nodeConfig.approvalThreshold ?? 1);
-      setRejectionThreshold(nodeConfig.rejectionThreshold ?? 1);
-      setAddReviewers(assignees.addReviewers ?? true);
-      setAddOwners(assignees.addOwners ?? false);
-      setCandidates(
-        Array.isArray(assignees.candidates) ? assignees.candidates : []
-      );
+    if (!node?.data) {
+      return;
     }
+    const initial = buildInitialState(node);
+    setDisplayName(initial.displayName);
+    setDescription(initial.description);
+    setApprovalThreshold(initial.approvalThreshold);
+    setRejectionThreshold(initial.rejectionThreshold);
+    setAddReviewers(initial.addReviewers);
+    setAddOwners(initial.addOwners);
+    setEmptyAssigneeStrategy(initial.emptyAssigneeStrategy);
+    setCandidates(initial.candidates);
+    setAllowPartialDecisions(initial.allowPartialDecisions);
   }, [node]);
 
   const handleSave = () => {
@@ -87,19 +157,39 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
       fullyQualifiedName: c.fullyQualifiedName,
       name: c.name,
     }));
+
+    // TaskResource.validateTransition rejects /resolve calls whose transitionId is not
+    // declared here, so a userApprovalTask saved without transitionMetadata is un-resolvable.
+    // Emit the default approve/reject pair whenever the node config does not already carry a
+    // non-empty list — preserves any hand-tuned metadata coming from a JSON-imported workflow.
+    const existingTransitionMetadata = (
+      node?.data?.config as { transitionMetadata?: unknown[] } | undefined
+    )?.transitionMetadata;
+    const transitionMetadata =
+      Array.isArray(existingTransitionMetadata) &&
+      existingTransitionMetadata.length > 0
+        ? existingTransitionMetadata
+        : DEFAULT_USER_APPROVAL_TRANSITIONS;
+
     const config = createNodeConfig({
       displayName,
       description,
       type: NodeType.UserTask,
       subType: NodeSubType.UserApprovalTask,
       config: {
+        // Keep the settings this form does not edit, so saving the step never drops them.
+        ...(node?.data?.config as Record<string, unknown> | undefined),
+        // Only a workflow that holds changes can decide them one by one.
+        allowPartialDecisions: isEnforceMode && allowPartialDecisions,
         approvalThreshold,
         rejectionThreshold,
         assignees: {
           addReviewers,
           addOwners,
+          emptyAssigneeStrategy,
           candidates: candidatesPayload,
         },
+        transitionMetadata,
       },
     });
     onSave(node.id, config);
@@ -183,6 +273,20 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
             }}
           />
         </div>
+
+        {isEnforceMode && (
+          <div className="tw:mb-6">
+            <Toggle
+              data-testid="user-approval-allow-partial-decisions"
+              hint={t('message.allow-partial-decisions-hint')}
+              isDisabled={isFormDisabled}
+              isSelected={allowPartialDecisions}
+              label={t('label.allow-partial-decisions')}
+              size="sm"
+              onChange={setAllowPartialDecisions}
+            />
+          </div>
+        )}
 
         <div className="tw:mb-6">
           <div className="tw:flex tw:flex-col tw:gap-4">

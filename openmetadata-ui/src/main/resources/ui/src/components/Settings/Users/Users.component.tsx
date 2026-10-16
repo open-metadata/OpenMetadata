@@ -11,20 +11,25 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs, Tooltip } from 'antd';
+import { Box, Tabs, Tooltip } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityType } from '../../../enums/entity.enum';
+import { User } from '../../../generated/entity/teams/user';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../hooks/useFqn';
 import { restoreUser } from '../../../rest/userAPI';
+import { getRenderedActiveTab } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import {
   EXTENSION_POINTS,
   TabContribution,
@@ -39,15 +44,16 @@ import {
   ActivityFeedLayoutType,
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { DomainLabelNew } from '../../common/DomainLabel/DomainLabelNew';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import AssetsTabs from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import {
-  AssetNoDataPlaceholderProps,
-  AssetsOfEntity,
-} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetNoDataPlaceholderProps } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import ProfileSectionUserDetailsCard from '../../ProfileCard/ProfileSectionUserDetailsCard.component';
 import { useApplicationsProvider } from '../Applications/ApplicationsProvider/ApplicationsProvider';
 import AccessTokenCard from './AccessTokenCard/AccessTokenCard.component';
@@ -57,6 +63,23 @@ import './users.less';
 import UserPermissions from './UsersProfile/UserPermissions/UserPermissions.component';
 import UserProfileRoles from './UsersProfile/UserProfileRoles/UserProfileRoles.component';
 import UserProfileTeams from './UsersProfile/UserProfileTeams/UserProfileTeams.component';
+
+const EntitySummaryPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../Explore/EntitySummaryPanel/EntitySummaryPanel.component')
+  )
+);
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 const Users = ({
   afterDeleteAction,
@@ -126,18 +149,30 @@ const Users = ({
     initLimits();
   }, []);
 
+  const { canViewCustomFields, canEditCustomFields } = useEntityPermissions(
+    ResourceEntity.USER,
+    decodedUsername,
+    { deleted: userData.deleted }
+  );
+
+  const onUserExtensionUpdate = useCallback(
+    async (updatedUser: User) => {
+      await updateUserDetails(
+        { extension: updatedUser.extension },
+        'extension'
+      );
+    },
+    [updateUserDetails]
+  );
+
   const tabDataRender = useCallback(
     (props: {
       queryFilter: string | Record<string, unknown>;
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (
-      <Row
-        className="user-page-layout"
-        gutter={[20, 0]}
-        key={currentTab}
-        wrap={false}>
-        <Col flex="auto">
+      <Box className="user-page-layout" gap={5} key={currentTab} wrap="nowrap">
+        <div className="tw:min-w-0 tw:flex-auto">
           <div className="user-layout-scroll">
             <AssetsTabs
               isSummaryPanelOpen={Boolean(previewAsset)}
@@ -147,17 +182,17 @@ const Users = ({
               {...props}
             />
           </div>
-        </Col>
+        </div>
 
         {previewAsset && (
-          <Col className="user-page-layout-right-panel" flex="400px">
+          <div className="user-page-layout-right-panel tw:flex-[0_0_400px]">
             <EntitySummaryPanel
               entityDetails={previewAsset}
               handleClosePanel={() => setPreviewAsset(undefined)}
             />
-          </Col>
+          </div>
         )}
-      </Row>
+      </Box>
     ),
     [previewAsset, handleAssetClick, setPreviewAsset, currentTab]
   );
@@ -268,11 +303,34 @@ const Users = ({
           />
         ),
       },
+      {
+        label: (
+          <TabsLabel
+            id={UserPageTabs.CUSTOM_PROPERTIES}
+            isActive={activeTab === UserPageTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: UserPageTabs.CUSTOM_PROPERTIES,
+        children: (
+          <CustomPropertyTable<EntityType.USER>
+            entityDetails={userData}
+            entityType={EntityType.USER}
+            hasEditAccess={canEditCustomFields}
+            hasPermission={canViewCustomFields}
+            onEntityUpdate={onUserExtensionUpdate}
+          />
+        ),
+      },
       ...(isLoggedInUser
         ? [
             {
               label: (
-                <Tooltip title="You have reached the limit">
+                <Tooltip
+                  excludeTriggerFromTabOrder
+                  isDisabled={!disableFields.includes('personalAccessToken')}
+                  title="You have reached the limit"
+                  triggerClassName="tw:inline-flex">
                   <TabsLabel
                     id={UserPageTabs.ACCESS_TOKEN}
                     isActive={activeTab === UserPageTabs.ACCESS_TOKEN}
@@ -288,15 +346,18 @@ const Users = ({
         : []),
     ],
     [
+      activeTab,
       currentTab,
-      userData.id,
-      userData.name,
+      userData,
       decodedUsername,
       setPreviewAsset,
       tabDataRender,
       disableFields,
       subTab,
       isLoggedInUser,
+      canViewCustomFields,
+      canEditCustomFields,
+      onUserExtensionUpdate,
     ]
   );
 
@@ -374,8 +435,8 @@ const Users = ({
 
   return (
     <div data-testid="user-profile">
-      <Row gutter={[20, 0]} wrap={false}>
-        <Col flex="250px">
+      <Box gap={5} wrap="nowrap">
+        <div className="tw:flex-[0_0_250px]">
           <div className="profile-section">
             <ProfileSectionUserDetailsCard
               afterDeleteAction={afterDeleteAction}
@@ -387,7 +448,7 @@ const Users = ({
               updateUserDetails={updateUserDetails}
               userData={userData}
             />
-            <DomainLabelNew
+            <DomainLabel
               multiple
               domains={userData?.domains ?? []}
               entityFqn={userData.fullyQualifiedName ?? ''}
@@ -396,6 +457,7 @@ const Users = ({
               hasPermission={Boolean(isAdminUser) && !userData.deleted}
               textClassName="text-sm text-grey-muted"
               userData={userData}
+              variant="card"
             />
             <UserProfileTeams
               isDeletedUser={userData.deleted}
@@ -410,29 +472,31 @@ const Users = ({
               userRoles={userData.roles}
             />
           </div>
-        </Col>
-        <Col flex="auto">
+        </div>
+        <div className="tw:min-w-0 tw:flex-auto">
           <Tabs
-            activeKey={currentTab}
-            className="tabs-new m-b-xs"
+            className="tw:gap-3"
             data-testid="tabs"
-            items={allTabs.map((tab) => ({
-              key: tab.key,
-              label: tab.label,
-              disabled: 'disabled' in tab ? (tab.disabled as boolean) : false,
-            }))}
-            renderTabBar={(props, DefaultTabBar) => (
-              <DefaultTabBar {...props} />
-            )}
-            onChange={activeTabHandler}
-          />
-          <Row className="users-tabs-container" gutter={[16, 16]}>
-            <Col span={24}>
-              {allTabs.find((tab) => tab.key === currentTab)?.children}
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+            selectedKey={getRenderedActiveTab(allTabs, currentTab)}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Tabs.List size="sm" type="underline" variant="card">
+              {allTabs.map((tab) => (
+                <Tabs.Item id={tab.key} isDisabled={tab.disabled} key={tab.key}>
+                  {tab.label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {allTabs.map((tab) => (
+              <Tabs.Panel
+                className="users-tabs-container"
+                id={tab.key}
+                key={tab.key}>
+                {tab.children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </div>
+      </Box>
     </div>
   );
 };

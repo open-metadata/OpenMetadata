@@ -16,15 +16,34 @@ const express = require('express');
 const crypto = require('crypto');
 
 const PORT = parseInt(process.env.PORT || '9090', 10);
-const ISSUER = process.env.ISSUER || `http://localhost:${PORT}`;
+// ISSUER_BASE (no trailing slash) is used to build endpoint URLs; ISSUER
+// (WITH trailing slash) is the identity string oidc-provider stamps into
+// the `iss` claim of every issued token and echoes back in discovery.
+// The @auth0/auth0-spa-js SDK computes its expected issuer as `${domain}/`
+// (a mandatory trailing slash — mirroring how real Auth0 tenants advertise
+// `iss` as `https://<tenant>.auth0.com/`) and refuses any token whose
+// `iss` differs by a single character, so the mock has to emit `iss`
+// with the slash. Keeping URL construction on the bare base avoids the
+// `//` double-slash paths every `${ISSUER}/auth` template would otherwise
+// generate.
+const ISSUER_BASE = (process.env.ISSUER || `http://localhost:${PORT}`).replace(
+  /\/+$/,
+  ''
+);
+const ISSUER = `${ISSUER_BASE}/`;
 
 // Mutable test state — controlled via /test/* endpoints
+const DEFAULT_LOGIN_ACCOUNT = 'admin';
+
 const testState = {
   accessTokenTTL: 3600,
   idTokenTTL: 3600,
   forceInteractionRequired: false,
   refreshTokenEnabled: true,
   tokenEndpointError: null, // { errorCode: 'invalid_grant', httpStatus: 400 }
+  // Account auto-approved on the next interactive login. Lets a test exercise a
+  // specific identity (e.g. one whose sub differs from the email local-part).
+  defaultLoginAccount: DEFAULT_LOGIN_ACCOUNT,
 };
 
 const resetTestState = () => {
@@ -33,6 +52,7 @@ const resetTestState = () => {
   testState.forceInteractionRequired = false;
   testState.refreshTokenEnabled = true;
   testState.tokenEndpointError = null;
+  testState.defaultLoginAccount = DEFAULT_LOGIN_ACCOUNT;
 };
 
 // Request metrics — reset via /test/metrics/reset
@@ -60,6 +80,19 @@ const TEST_ACCOUNTS = new Map([
       preferred_username: 'user1',
     },
   ],
+  // Identity whose sub ('claim-user') deliberately differs from the email
+  // local-part ('claim.user.mapped'). Used to verify OIDC self-signup persists
+  // the mapped email claim instead of deriving <sub>@<domain>. See issue #29189.
+  [
+    'claim-user',
+    {
+      email: 'claim.user.mapped@open-metadata.org',
+      email_verified: true,
+      name: 'Claim Mapped User',
+      sub: 'claim-user',
+      preferred_username: 'claim-user',
+    },
+  ],
 ]);
 
 const findAccount = (_ctx, id) => {
@@ -73,20 +106,29 @@ const findAccount = (_ctx, id) => {
   };
 };
 
+// Every browser-side SPA client (public OIDC, mocked Auth0 tenant, mocked
+// MSAL tenant) shares the same redirect set. Every SDK we host — oidc-client,
+// @auth0/auth0-react, @azure/msal-browser — points at the OM SPA's own
+// /callback (interactive) and /silent-callback (hidden iframe, oidc-client
+// only). Keeping the list on one constant means adding a new port later is a
+// single edit; forgetting to sync a client's list has bit us before.
+const SPA_REDIRECT_URIS = [
+  'http://localhost:8585/callback',
+  'http://localhost:3000/callback',
+  'http://localhost:8585/silent-callback',
+];
+const SPA_POST_LOGOUT_REDIRECT_URIS = [
+  'http://localhost:8585',
+  'http://localhost:3000',
+];
+
 const clients = [
   {
     client_id: 'openmetadata-test',
     client_secret: 'openmetadata-test-secret',
     grant_types: ['authorization_code', 'refresh_token'],
-    redirect_uris: [
-      'http://localhost:8585/callback',
-      'http://localhost:3000/callback',
-      'http://localhost:8585/silent-callback',
-    ],
-    post_logout_redirect_uris: [
-      'http://localhost:8585',
-      'http://localhost:3000',
-    ],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
     response_types: ['code'],
     token_endpoint_auth_method: 'client_secret_post',
     scope: 'openid email profile offline_access',
@@ -94,15 +136,40 @@ const clients = [
   {
     client_id: 'openmetadata-test-public',
     grant_types: ['authorization_code', 'refresh_token'],
-    redirect_uris: [
-      'http://localhost:8585/callback',
-      'http://localhost:3000/callback',
-      'http://localhost:8585/silent-callback',
-    ],
-    post_logout_redirect_uris: [
-      'http://localhost:8585',
-      'http://localhost:3000',
-    ],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+    scope: 'openid email profile offline_access',
+  },
+  // Auth0 SPA client. @auth0/auth0-react runs Authorization Code + PKCE with
+  // no client secret, discovering endpoints from
+  //   https://<domain>/.well-known/openid-configuration
+  // — we serve that at the /auth0 path prefix (see the tenant-shape
+  // responders below). This client_id is what the auth0-oidc fixture sets in
+  // OM's `authenticationConfiguration.clientId`, so the SDK sends it on the
+  // /authorize request and on the /oauth/token PKCE exchange.
+  {
+    client_id: 'openmetadata-auth0-client',
+    grant_types: ['authorization_code', 'refresh_token'],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
+    response_types: ['code'],
+    token_endpoint_auth_method: 'none',
+    scope: 'openid email profile offline_access',
+  },
+  // MSAL SPA client. @azure/msal-browser runs Authorization Code + PKCE
+  // against `${authority}/oauth2/v2.0/authorize` and
+  // `${authority}/oauth2/v2.0/token`; the fixture points `authority` at
+  //   http://localhost:9090/msal/<tid>/v2.0
+  // and MSAL will discover endpoints via
+  //   {authority}/.well-known/openid-configuration
+  // which the tenant responder below serves. Same PKCE-only flow as Auth0.
+  {
+    client_id: 'openmetadata-msal-client',
+    grant_types: ['authorization_code', 'refresh_token'],
+    redirect_uris: SPA_REDIRECT_URIS,
+    post_logout_redirect_uris: SPA_POST_LOGOUT_REDIRECT_URIS,
     response_types: ['code'],
     token_endpoint_auth_method: 'none',
     scope: 'openid email profile offline_access',
@@ -214,6 +281,7 @@ async function init() {
           const loginUser =
             ctx.query.login_hint ||
             interactionDetails.params.login_hint ||
+            testState.defaultLoginAccount ||
             'admin';
           const result = {
             login: { accountId: loginUser },
@@ -253,23 +321,31 @@ async function init() {
   app.use(express.json());
 
   // Server-facing base URL for endpoints that the OM server calls from
-  // inside Docker (token exchange, JWKS, userinfo). Defaults to ISSUER
-  // so that outside-Docker usage (tests hitting localhost) works unchanged.
-  const INTERNAL_BASE =
-    process.env.INTERNAL_BASE_URL || ISSUER;
+  // inside Docker (token exchange, JWKS, userinfo). Defaults to
+  // `ISSUER_BASE` (the no-trailing-slash form) — falling back to `ISSUER`
+  // would emit `//token`-style double-slash URLs once ISSUER started
+  // carrying its mandatory trailing slash for the Auth0 SDK's `iss`
+  // check. Outside-Docker usage (tests hitting localhost:9090) works
+  // unchanged because ISSUER_BASE matches the browser-facing origin.
+  const INTERNAL_BASE = (
+    process.env.INTERNAL_BASE_URL || ISSUER_BASE
+  ).replace(/\/+$/, '');
 
   // Custom discovery endpoint returning hybrid URLs:
-  //   - Browser-facing (authorization, end_session): ISSUER (localhost:9090)
+  //   - Browser-facing (authorization, end_session): ISSUER_BASE (localhost:9090)
   //   - Server-facing (token, jwks, userinfo): INTERNAL_BASE (mock-oidc-provider:9090 in Docker)
+  //   - The `issuer` identity string itself: ISSUER (WITH trailing slash;
+  //     matches what oidc-provider stamps into every `iss` claim and what
+  //     @auth0/auth0-spa-js's ID-token validator expects, byte for byte).
   // This is mounted before oidc-provider so it takes precedence.
   app.get('/.well-known/openid-configuration', (_req, res) => {
     res.json({
       issuer: ISSUER,
-      authorization_endpoint: `${ISSUER}/auth`,
+      authorization_endpoint: `${ISSUER_BASE}/auth`,
       token_endpoint: `${INTERNAL_BASE}/token`,
       jwks_uri: `${INTERNAL_BASE}/jwks`,
       userinfo_endpoint: `${INTERNAL_BASE}/me`,
-      end_session_endpoint: `${ISSUER}/session/end`,
+      end_session_endpoint: `${ISSUER_BASE}/session/end`,
       pushed_authorization_request_endpoint: `${INTERNAL_BASE}/request`,
       claims_parameter_supported: false,
       claims_supported: [
@@ -322,6 +398,7 @@ async function init() {
       refreshTokenEnabled,
       forceInteractionRequired,
       tokenEndpointError,
+      defaultLoginAccount,
     } = req.body;
     if (accessTokenTTL !== undefined)
       testState.accessTokenTTL = accessTokenTTL;
@@ -332,6 +409,8 @@ async function init() {
       testState.forceInteractionRequired = forceInteractionRequired;
     if (tokenEndpointError !== undefined)
       testState.tokenEndpointError = tokenEndpointError;
+    if (defaultLoginAccount !== undefined)
+      testState.defaultLoginAccount = defaultLoginAccount;
 
     res.json({ ok: true, state: { ...testState } });
   });
@@ -386,6 +465,157 @@ async function init() {
     next();
   });
 
+  // ── Auth0 SPA SDK path aliases ─────────────────────────────────────────
+  //
+  // @auth0/auth0-spa-js hard-codes tenant-flavored URL paths regardless of
+  // what discovery advertises: it POSTs `${domain}/oauth/token`, redirects
+  // to `${domain}/authorize`, logs out at `${domain}/v2/logout`, and pulls
+  // signing keys from `${domain}/.well-known/jwks.json`. Setting `domain`
+  // to this mock (http://localhost:9090) therefore needs those exact
+  // paths to work — which they can't hit oidc-provider directly because
+  // oidc-provider owns /auth, /token, /session/end, /jwks. The aliases
+  // below rewrite the URL in place and hand off to oidc-provider so the
+  // real SDK, running unmodified, drives the real protocol against the
+  // shared provider state (same clients, same JWKS, same accounts). See
+  // sso-providers/auth0.ts for the fixture that consumes these paths.
+  //
+  // The redirect_uri (http://localhost:8585/callback) and client_id
+  // (openmetadata-auth0-client) are already registered on the shared
+  // provider above, so no per-alias client bookkeeping is needed.
+
+  // CORS for the Auth0-flavored endpoints. The SPA runs at
+  // http://localhost:8585 and the SDK's POST /oauth/token + GET
+  // /.well-known/jwks.json (called by @auth0/auth0-spa-js during id_token
+  // validation) are cross-origin fetches. Without CORS they fail with the
+  // browser's "Failed to fetch" — no useful error surfaces on the SPA. The
+  // list of allowed origins mirrors SPA_REDIRECT_URIS' hosts so any port
+  // change happens in one place. Reflect the request Origin when it's on
+  // the allow-list rather than a wildcard because the SDK sends
+  // credentials on the token exchange.
+  const CORS_ALLOWED_ORIGINS = new Set([
+    'http://localhost:8585',
+    'http://localhost:3000',
+  ]);
+  const applyCors = (req, res) => {
+    const origin = req.headers.origin;
+    if (origin && CORS_ALLOWED_ORIGINS.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET,POST,PUT,DELETE,OPTIONS'
+    );
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      req.headers['access-control-request-headers'] ||
+        'authorization,content-type,accept'
+    );
+    res.setHeader('Access-Control-Max-Age', '600');
+  };
+  const corsMiddleware = (req, res, next) => {
+    applyCors(req, res);
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
+  };
+  app.use(
+    ['/oauth/token', '/authorize', '/userinfo', '/v2/logout', '/.well-known/jwks.json'],
+    corsMiddleware
+  );
+
+  const rewriteTo = (targetPath) => (req, _res, next) => {
+    const [, search = ''] = req.originalUrl.split('?');
+    req.url = search ? `${targetPath}?${search}` : targetPath;
+    next();
+  };
+  app.all('/authorize', rewriteTo('/auth'));
+  app.all('/userinfo', rewriteTo('/me'));
+  app.all('/v2/logout', rewriteTo('/session/end'));
+  app.get('/.well-known/jwks.json', rewriteTo('/jwks'));
+
+  // Auth0 SPA SDK posts /oauth/token as `Content-Type: application/json`
+  // (Auth0-specific — the spec-standard body is
+  // `application/x-www-form-urlencoded`, which is what oidc-provider
+  // accepts and errors on anything else). A simple URL rewrite would fail:
+  //  1. oidc-provider looks at Content-Type before parsing and rejects
+  //     JSON outright with "only application/x-www-form-urlencoded
+  //     content-type bodies are supported".
+  //  2. `express.json()` mounted above has already consumed the request
+  //     stream, so oidc-provider's own raw-body reader gets nothing.
+  // Instead, re-issue the token request internally against our own
+  // /token endpoint with the correct headers and body, and stream the
+  // upstream response straight back to the SDK. Downstream cares only
+  // about the JSON body oidc-provider returns, which is identical.
+  app.post('/oauth/token', (req, res) => {
+    let form;
+    if (req.is('application/json') && req.body && typeof req.body === 'object') {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(req.body)) {
+        if (value !== undefined && value !== null) {
+          params.append(key, String(value));
+        }
+      }
+      form = params.toString();
+    } else if (typeof req.body === 'string') {
+      form = req.body;
+    } else if (
+      req.body &&
+      typeof req.body === 'object' &&
+      Object.keys(req.body).length > 0
+    ) {
+      form = new URLSearchParams(req.body).toString();
+    } else {
+      form = '';
+    }
+
+    const upstream = require('http').request(
+      {
+        hostname: '127.0.0.1',
+        port: PORT,
+        path: '/token',
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'content-length': Buffer.byteLength(form),
+        },
+      },
+      (upRes) => {
+        res.status(upRes.statusCode);
+        for (const [name, value] of Object.entries(upRes.headers)) {
+          // Skip hop-by-hop headers Express will set itself.
+          if (
+            name === 'connection' ||
+            name === 'transfer-encoding' ||
+            name === 'content-length'
+          ) {
+            continue;
+          }
+          // oidc-provider's /token emits `Access-Control-Allow-Origin: *`
+          // which conflicts with our `Access-Control-Allow-Credentials:
+          // true` (browsers refuse to trust `*` when credentials mode is
+          // include — the Auth0 SPA SDK sends credentials on the token
+          // exchange). Drop the upstream CORS block; the `corsMiddleware`
+          // on /oauth/token has already set the correct per-origin
+          // headers on `res` before this proxy handler ran.
+          if (name.startsWith('access-control-')) {
+            continue;
+          }
+          res.setHeader(name, value);
+        }
+        upRes.pipe(res);
+      }
+    );
+    upstream.on('error', (err) => {
+      res.status(502).json({ error: 'proxy_error', error_description: err.message });
+    });
+    upstream.write(form);
+    upstream.end();
+  });
+
   // Health check
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
@@ -395,13 +625,11 @@ async function init() {
   app.use(provider.callback());
 
   app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Mock OIDC Provider listening on ${ISSUER_BASE}`);
     console.log(
-      `Mock OIDC Provider listening on ${ISSUER}`
+      `Discovery: ${ISSUER_BASE}/.well-known/openid-configuration`
     );
-    console.log(
-      `Discovery: ${ISSUER}/.well-known/openid-configuration`
-    );
-    console.log(`Test control: POST ${ISSUER}/test/configure`);
+    console.log(`Test control: POST ${ISSUER_BASE}/test/configure`);
   });
 }
 

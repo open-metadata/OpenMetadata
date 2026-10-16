@@ -1,0 +1,96 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { CookieStorage } from 'cookie-storage';
+import { useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useAuthProvider } from '../../components/Auth/AuthProviders/AuthProvider';
+import { OidcUser } from '../../components/Auth/AuthProviders/AuthProvider.interface';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import Loader from '../../components/common/Loader/Loader';
+import { REFRESH_TOKEN_KEY } from '../../constants/constants';
+import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { setOidcToken, setRefreshToken } from '../../utils/SwTokenStorageUtils';
+
+const cookieStorage = new CookieStorage();
+
+export const getSamlCallbackParams = ({
+  hash,
+  search,
+}: {
+  hash: string;
+  search: string;
+}) => {
+  const fragmentParams = new URLSearchParams(hash.replace(/^#/, ''));
+  const queryParams = new URLSearchParams(search);
+
+  return fragmentParams.has('id_token') ? fragmentParams : queryParams;
+};
+
+const SamlCallback = () => {
+  const { handleSuccessfulLogin } = useAuthProvider();
+  const location = useCustomLocation();
+  const { t } = useTranslation();
+
+  const processLogin = useCallback(async () => {
+    const params = getSamlCallbackParams(location);
+    const idToken = params.get('id_token');
+    const name = params.get('name');
+    const email = params.get('email');
+
+    if (!idToken) {
+      return;
+    }
+
+    try {
+      await setOidcToken(idToken);
+
+      const oidcUser: OidcUser = {
+        id_token: idToken,
+        scope: '',
+        profile: {
+          email: email || '',
+          name: name || '',
+          picture: '',
+          locale: '',
+          sub: '',
+        },
+      };
+
+      const refreshToken = cookieStorage.getItem(REFRESH_TOKEN_KEY);
+      if (refreshToken) {
+        await setRefreshToken(refreshToken);
+        // Remove refresh token from cookie storage, don't want to keep it in the browser
+        cookieStorage.removeItem(REFRESH_TOKEN_KEY);
+      }
+
+      await handleSuccessfulLogin(oidcUser);
+    } catch {
+      // Error handling is already done in handleSuccessfulLogin
+    }
+  }, [location, handleSuccessfulLogin]);
+
+  useEffect(() => {
+    processLogin();
+  }, [processLogin]);
+
+  return (
+    <>
+      <DocumentTitle title={t('label.sign-in')} />
+      <div data-testid="redirect-message">{t('message.redirect-message')}</div>
+      <Loader fullScreen />
+    </>
+  );
+};
+
+export default SamlCallback;

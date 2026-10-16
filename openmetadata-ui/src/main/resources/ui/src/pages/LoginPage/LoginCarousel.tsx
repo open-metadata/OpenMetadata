@@ -11,47 +11,55 @@
  *  limitations under the License.
  */
 
-import { Carousel, Typography } from 'antd';
-import { uniqueId } from 'lodash';
-import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useEffect, useRef } from 'react';
 import loginClassBase from '../../constants/LoginClassBase';
 
 const LoginCarousel = () => {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const carouselContent = loginClassBase.getLoginCarouselContent();
-  const { t } = useTranslation();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const loginVideo = loginClassBase.getLoginVideo();
+
+  // The video is a decorative loop of several MB. Starting it only after the
+  // window `load` event keeps it from competing with the app bundle for
+  // bandwidth on a cold load; until then the card's background gradient
+  // (LoginClassBase.getLoginVideoCardClassName) stands in for it.
+  useEffect(() => {
+    const video = videoRef.current;
+    const reduceMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+    if (!video || reduceMotion) {
+      return;
+    }
+
+    const play = () => {
+      video.play().catch(() => undefined);
+    };
+    if (document.readyState === 'complete') {
+      play();
+
+      return;
+    }
+    window.addEventListener('load', play, { once: true });
+
+    return () => window.removeEventListener('load', play);
+  }, [loginVideo]);
+
+  if (!loginVideo) {
+    return null;
+  }
 
   return (
-    <Carousel
-      autoplay
-      dots
-      autoplaySpeed={5000}
-      beforeChange={(_, next) => setCurrentIndex(next)}
-      className="login-carousel"
-      data-testid="carousel-container"
-      easing="ease-in-out"
-      effect="fade">
-      {carouselContent.map((data, idx) => (
-        <div
-          className="slider-container"
-          data-testid="slider-container"
-          key={uniqueId() + '-' + currentIndex + '-' + idx}>
-          <div className="text-container d-flex flex-col gap-4">
-            <Typography.Title className="carousel-header display-md" level={1}>
-              {t(`label.${data.title}`)}
-            </Typography.Title>
-            <p
-              className="carousal-description text-md p-x-lg"
-              data-testid="carousel-slide-description">
-              {t(`message.${data.descriptionKey}`)}
-            </p>
-          </div>
-
-          <img alt="slider" className="main-image" src={data.image} />
-        </div>
-      ))}
-    </Carousel>
+    <video
+      aria-hidden
+      loop
+      muted
+      playsInline
+      className="tw:absolute tw:inset-0 tw:h-full tw:w-full tw:object-cover"
+      data-testid="login-video"
+      preload="none"
+      ref={videoRef}
+      src={loginVideo}
+    />
   );
 };
 

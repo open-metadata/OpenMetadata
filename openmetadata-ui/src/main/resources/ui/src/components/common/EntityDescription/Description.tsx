@@ -1,0 +1,347 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
+import { lazy, ReactNode, useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { EntityField } from '../../../constants/Feeds.constants';
+import { Domain } from '../../../generated/entity/domains/domain';
+import { useFqn } from '../../../hooks/useFqn';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { t } from '../../../utils/i18next/LocalUtil';
+import {
+  getRequestDescriptionPath,
+  getUpdateDescriptionPath,
+  TASK_ENTITIES,
+} from '../../../utils/TaskNavigationUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
+import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
+import {
+  CommentIconButton,
+  EditIconButton,
+  RequestIconButton,
+} from '../IconButtons/EditIconButton';
+import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
+import {
+  WidgetCommentButton,
+  WidgetEditButton,
+  WidgetRequestButton,
+} from '../WidgetActionButton/WidgetActionButton';
+import { DescriptionProps } from './Description.interface';
+import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+const SuggestionsAlert = withSuspenseFallback(
+  lazy(() => import('../../Suggestions/SuggestionsAlert/SuggestionsAlert'))
+);
+
+const Description = ({
+  hasEditAccess,
+  description = '',
+  className,
+  onDescriptionUpdate,
+  isReadOnly = false,
+  removeBlur = false,
+  entityName,
+  entityType,
+  wrapInCard = false,
+  showActions = true,
+  showCommentsIcon = true,
+  reduceDescription,
+  showSuggestions = false,
+  isDescriptionExpanded,
+  entityFullyQualifiedName,
+  changeSummaryEntry,
+  headerVariant = 'default',
+}: DescriptionProps) => {
+  const isWidgetHeader = headerVariant === 'widget';
+  const navigate = useNavigate();
+  const {
+    isVersionView,
+    changeSummary,
+    onThreadLinkSelect,
+    type: contextEntityType,
+  } = useGenericContext<Domain>();
+  // The context's changeSummary belongs to the page-level entity. Only fall back to it
+  // when the entity being rendered is that same entity — otherwise a nested Description
+  // (e.g. a Query in TableQueryRightPanel) inherits the parent table's provenance.
+  const descriptionChangeSummary =
+    changeSummaryEntry ??
+    (entityType === contextEntityType
+      ? changeSummary?.['description']
+      : undefined);
+  const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
+  const [isEditDescription, setIsEditDescription] = useState(false);
+  const { fqn } = useFqn();
+
+  const entityFqn = useMemo(
+    () => entityFullyQualifiedName ?? fqn,
+    [entityFullyQualifiedName, fqn]
+  );
+
+  const handleRequestDescription = useCallback(() => {
+    navigate(getRequestDescriptionPath(entityType, entityFqn));
+  }, [entityType, entityFqn]);
+
+  const handleUpdateDescription = useCallback(() => {
+    navigate(getUpdateDescriptionPath(entityType, entityFqn));
+  }, [entityType, entityFqn]);
+
+  const handleEditDescription = useCallback(() => {
+    setIsEditDescription(true);
+  }, []);
+
+  const handleCancelEditDescription = useCallback(() => {
+    setIsEditDescription(false);
+  }, []);
+
+  const handleDescriptionChange = useCallback(
+    async (updatedDescription: string) => {
+      await onDescriptionUpdate?.(updatedDescription);
+      setIsEditDescription(false);
+    },
+    [onDescriptionUpdate]
+  );
+
+  const { entityLink, entityLinkWithoutField } = useMemo(() => {
+    return {
+      entityLink: getEntityFeedLink(
+        entityType,
+        entityFqn,
+        EntityField.DESCRIPTION
+      ),
+      entityLinkWithoutField: getEntityFeedLink(entityType, entityFqn),
+    };
+  }, [entityType, entityFqn]);
+
+  const taskActionButton = useMemo(() => {
+    const hasDescription = !isDescriptionContentEmpty(
+      description?.trim() ?? ''
+    );
+    let button: ReactNode = null;
+
+    if (TASK_ENTITIES.includes(entityType)) {
+      const requestLabel = hasDescription
+        ? t('message.request-update-description')
+        : t('message.request-description');
+      const handleRequest = hasDescription
+        ? handleUpdateDescription
+        : handleRequestDescription;
+
+      button = isWidgetHeader ? (
+        <WidgetRequestButton
+          data-testid="request-description"
+          title={requestLabel}
+          onClick={handleRequest}
+        />
+      ) : (
+        <RequestIconButton
+          newLook
+          data-testid="request-description"
+          size="small"
+          title={requestLabel}
+          onClick={handleRequest}
+        />
+      );
+    }
+
+    return button;
+  }, [
+    description,
+    entityType,
+    handleUpdateDescription,
+    handleRequestDescription,
+    isWidgetHeader,
+  ]);
+
+  const editDescriptionLabel = t('label.edit-entity', {
+    entity: t('label.description'),
+  });
+
+  const actionButtons = useMemo(() => {
+    const canEdit = !isVersionView && !isReadOnly && hasEditAccess;
+    const threadLabel = t('label.list-entity', {
+      entity: t('label.conversation'),
+    });
+    const openThread = () => onThreadLinkSelect?.(entityLink);
+    const editButton = isWidgetHeader ? (
+      <WidgetEditButton
+        data-testid="edit-description"
+        title={editDescriptionLabel}
+        onClick={handleEditDescription}
+      />
+    ) : (
+      <EditIconButton
+        newLook
+        data-testid="edit-description"
+        size="small"
+        title={editDescriptionLabel}
+        onClick={handleEditDescription}
+      />
+    );
+    const commentButton = isWidgetHeader ? (
+      <WidgetCommentButton
+        data-testid="description-thread"
+        title={threadLabel}
+        onClick={openThread}
+      />
+    ) : (
+      <CommentIconButton
+        newLook
+        data-testid="description-thread"
+        size="small"
+        title={threadLabel}
+        onClick={openThread}
+      />
+    );
+
+    return (
+      <div className="tw:flex tw:items-center tw:gap-2">
+        {canEdit && editButton}
+        {taskActionButton}
+        {showCommentsIcon && commentButton}
+      </div>
+    );
+  }, [
+    editDescriptionLabel,
+    isWidgetHeader,
+    isReadOnly,
+    isVersionView,
+    hasEditAccess,
+    handleEditDescription,
+    taskActionButton,
+    showCommentsIcon,
+    onThreadLinkSelect,
+    entityLink,
+  ]);
+
+  const suggestionData = useMemo(() => {
+    const activeSuggestion = selectedUserSuggestions?.description.find(
+      (suggestion) => suggestion.entityLink === entityLinkWithoutField
+    );
+    let alert: ReactNode = null;
+
+    if (activeSuggestion?.entityLink === entityLinkWithoutField) {
+      alert = (
+        <SuggestionsAlert
+          hasEditAccess={hasEditAccess}
+          suggestion={activeSuggestion}
+        />
+      );
+    }
+
+    return alert;
+  }, [hasEditAccess, entityLinkWithoutField, selectedUserSuggestions]);
+
+  const descriptionContent = useMemo(() => {
+    return (
+      suggestionData ?? (
+        <RichTextEditorPreviewerV1
+          className={reduceDescription ? 'max-two-lines' : ''}
+          enableSeeMoreVariant={!removeBlur}
+          isDescriptionExpanded={isDescriptionExpanded}
+          markdown={description}
+        />
+      )
+    );
+  }, [
+    description,
+    suggestionData,
+    isDescriptionExpanded,
+    reduceDescription,
+    removeBlur,
+  ]);
+
+  const shouldShowDescriptionMetadata = useMemo(
+    () => descriptionChangeSummary?.changeSource != null,
+    [descriptionChangeSummary]
+  );
+
+  const header = (
+    <Box align="center" gap={2} justify="between" wrap="wrap">
+      <Box align="center" className="tw:min-w-0" gap={2} wrap="wrap">
+        <Typography
+          as="span"
+          className={
+            isWidgetHeader
+              ? 'tw:whitespace-nowrap tw:text-quaternary'
+              : 'tw:text-secondary'
+          }
+          size="text-sm"
+          weight="semibold">
+          {t('label.description')}
+        </Typography>
+        <DescriptionSourceBadge
+          changeSummaryEntry={descriptionChangeSummary}
+          showAcceptedBy={false}
+          showTimestamp={false}
+        />
+        {showActions && actionButtons}
+      </Box>
+      {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
+    </Box>
+  );
+
+  return (
+    <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
+      <Box
+        className={classNames(
+          wrapInCard
+            ? 'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:p-[18px] tw:shadow-card'
+            : undefined,
+          className
+        )}
+        data-testid="asset-description-container"
+        direction="col"
+        gap={4}>
+        {header}
+        <div className="tw:[&_.tiptap.ProseMirror]:text-xs tw:[&_.tiptap.ProseMirror]:leading-[18px]">
+          {descriptionContent}
+        </div>
+        {!suggestionData && shouldShowDescriptionMetadata && (
+          <>
+            <Divider />
+            <DescriptionSourceBadge
+              changeSummaryEntry={descriptionChangeSummary}
+              showBadge={false}
+            />
+          </>
+        )}
+        <ModalWithMarkdownEditor
+          header={t('label.edit-description-for', { entityName })}
+          placeholder={t('label.enter-entity', {
+            entity: t('label.description'),
+          })}
+          value={description}
+          visible={Boolean(isEditDescription)}
+          onCancel={handleCancelEditDescription}
+          onSave={handleDescriptionChange}
+        />
+      </Box>
+    </EntityAttachmentProvider>
+  );
+};
+
+export default Description;

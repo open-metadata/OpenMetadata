@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isHasKey } from './ObjectUtils';
+import { isHasKey, normalizeToArray } from './ObjectUtils';
 
 const mockIsHasKeyData = {
   name: 'John',
@@ -49,5 +49,51 @@ describe('ObjectUtils', () => {
     const result = isHasKey(mockIsHasKeyData, keys);
 
     expect(result).toBe(false);
+  });
+
+  describe('normalizeToArray', () => {
+    it('should return the same array when given an array', () => {
+      const input = ['a', 'b', 'c'];
+
+      expect(normalizeToArray(input)).toBe(input);
+    });
+
+    it('should wrap a single value in an array', () => {
+      expect(normalizeToArray('hello')).toEqual(['hello']);
+    });
+
+    it('should wrap an empty string in an array', () => {
+      expect(normalizeToArray('')).toEqual(['']);
+    });
+
+    it('should wrap 0 in an array', () => {
+      expect(normalizeToArray(0)).toEqual([0]);
+    });
+
+    it('should wrap false in an array', () => {
+      expect(normalizeToArray(false)).toEqual([false]);
+    });
+
+    it('should wrap a non-empty number in an array', () => {
+      expect(normalizeToArray(42)).toEqual([42]);
+    });
+
+    it('should return an empty array for null', () => {
+      expect(normalizeToArray(null)).toEqual([]);
+    });
+
+    it('should return an empty array for undefined', () => {
+      expect(normalizeToArray(undefined)).toEqual([]);
+    });
+
+    it('should return an empty array when given an empty array', () => {
+      expect(normalizeToArray([])).toEqual([]);
+    });
+
+    it('should wrap an object in an array', () => {
+      const obj = { id: 1 };
+
+      expect(normalizeToArray(obj)).toEqual([obj]);
+    });
   });
 });

@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Tabs } from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
@@ -26,42 +28,47 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
-import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import {
-  GenericProvider,
-  useGenericContext,
-} from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
-import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryTermsV1Props } from './GlossaryTermsV1.interface';
 import { AssetsTabRef } from './tabs/AssetsTabs.component';
-import { AssetsOfEntity } from './tabs/AssetsTabs.interface';
+
+const GlossaryHeader = withSuspenseFallback(
+  lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
+);
 
 const GlossaryTermsV1 = ({
   glossaryTerm,
@@ -126,6 +133,20 @@ const GlossaryTermsV1 = ({
     );
   };
 
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = glossaryTerm.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [glossaryTerm.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = glossaryTerm.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.GLOSSARY_TERM, fqn, setFeedCount);
+    }
+  }, [glossaryTerm.fullyQualifiedName]);
+
   const fetchGlossaryTermAssets = async () => {
     if (glossaryTerm) {
       try {
@@ -170,7 +191,7 @@ const GlossaryTermsV1 = ({
   );
 
   const viewCustomPropertiesPermission = useMemo(
-    () => getPrioritizedViewPermission(permissions, Operation.ViewCustomFields),
+    () => getDerivedPermissionFlags(permissions).canViewCustomFields,
     [permissions]
   );
 
@@ -225,7 +246,7 @@ const GlossaryTermsV1 = ({
       fetchGlossaryTermAssets();
     }, 500);
     if (!isVersionView) {
-      getEntityFeedCount();
+      Promise.all([fetchTaskCounts(), fetchActivityCount()]);
     }
   }, [glossaryFqn, isVersionView]);
 
@@ -272,37 +293,53 @@ const GlossaryTermsV1 = ({
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Row data-testid="glossary-term" gutter={[0, 12]}>
-        <Col span={24}>
+      <Box data-testid="glossary-term" direction="col" gap={3}>
+        <div>
           <GlossaryHeader
             updateVote={updateVote}
             onAddGlossaryTerm={onAddGlossaryTerm}
             onAssetAdd={() => setAssetModalVisible(true)}
             onDelete={handleGlossaryTermDelete}
           />
-        </Col>
+        </div>
 
-        <Col className="glossary-term-page-tabs" span={24}>
+        <div className="glossary-term-page-tabs">
           <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new"
-            items={tabItems}
-            tabBarExtraContent={
-              isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
-                    isTabExpanded ? t('label.collapse') : t('label.expand')
-                  }
-                  onClick={toggleTabExpanded}
-                />
-              )
-            }
-            onChange={activeTabHandler}
-          />
-        </Col>
-      </Row>
+            className="tw:gap-3"
+            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            onSelectionChange={(key) => activeTabHandler(String(key))}>
+            <Tabs.List
+              actions={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
+              size="sm"
+              type="underline"
+              variant="card">
+              {tabItems.map(({ key, label }) => (
+                <Tabs.Item id={key} key={key}>
+                  {label}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+            {tabItems.map(({ key, children }) => (
+              <Tabs.Panel
+                className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col"
+                id={key}
+                key={key}>
+                {children}
+              </Tabs.Panel>
+            ))}
+          </Tabs>
+        </div>
+      </Box>
       {glossaryTerm.fullyQualifiedName && assetModalVisible && (
         <AssetSelectionModal
           entityFqn={glossaryTerm.fullyQualifiedName}

@@ -38,8 +38,8 @@ import {
 import type { EntityDataMapValue } from './ColumnUpdateUtils.interface';
 
 // Mock dependencies
-jest.mock('./TableUtils', () => {
-  const actual = jest.requireActual('./TableUtils');
+jest.mock('./TablePureUtils', () => {
+  const actual = jest.requireActual('./TablePureUtils');
 
   return {
     ...actual,

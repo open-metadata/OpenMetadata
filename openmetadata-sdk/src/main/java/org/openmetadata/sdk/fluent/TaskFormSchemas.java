@@ -89,4 +89,14 @@ public final class TaskFormSchemas {
   public static TaskFormSchema getVersion(String id, Double version) {
     return getClient().taskFormSchemas().getVersion(id, version);
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().taskFormSchemas().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().taskFormSchemas().getContextByName(fqn);
+  }
 }

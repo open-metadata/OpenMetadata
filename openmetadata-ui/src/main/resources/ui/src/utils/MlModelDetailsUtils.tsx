@@ -12,29 +12,60 @@
  */
 
 import { get } from 'lodash';
-import { lazy, Suspense } from 'react';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import { lazy } from 'react';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
-import Loader from '../components/common/Loader/Loader';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
-import MlModelFeaturesList from '../components/MlModel/MlModelDetail/MlModelFeaturesList';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import { MlFeature, Mlmodel } from '../generated/entity/data/mlmodel';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { MlModelDetailPageTabProps } from './MlModel/MlModelClassBase';
-const EntityLineageTab = lazy(() =>
-  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
-    (module) => ({ default: module.EntityLineageTab })
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
   )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
+const EntityLineageTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+      (module) => ({ default: module.EntityLineageTab })
+    )
+  )
+);
+
+const MlModelFeaturesList = withSuspenseFallback(
+  lazy(() => import('../components/MlModel/MlModelDetail/MlModelFeaturesList'))
 );
 
 // eslint-disable-next-line max-len
@@ -116,14 +147,12 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <Suspense fallback={<Loader />}>
-          <EntityLineageTab
-            deleted={Boolean(mlModelDetail.deleted)}
-            entity={mlModelDetail as SourceType}
-            entityType={EntityType.MLMODEL}
-            hasEditAccess={editLineagePermission}
-          />
-        </Suspense>
+        <EntityLineageTab
+          deleted={Boolean(mlModelDetail.deleted)}
+          entity={mlModelDetail as SourceType}
+          entityType={EntityType.MLMODEL}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
@@ -169,12 +198,4 @@ export const getMlModelWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       widgetConfig={widgetConfig}
     />
   );
-};
-
-export const extractMlModelFeatures = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): MlFeature[] => {
-  const mlModel = data as Partial<Mlmodel>;
-
-  return mlModel.mlFeatures ?? [];
 };

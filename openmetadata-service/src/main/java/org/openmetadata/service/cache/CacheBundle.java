@@ -9,6 +9,8 @@ import io.micrometer.core.instrument.Metrics;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
 public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConfig> {
@@ -21,8 +23,17 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
   private static CachedReadBundle cachedReadBundle;
   private static AncestorsCache ancestorsCache;
   private static ChildrenPageCache childrenPageCache;
+  private static CachedSearchLayer cachedSearchLayer;
+  private static CachedLineage cachedLineage;
+  private static NotFoundCache notFoundCache;
   private static CacheInvalidationPubSub cacheInvalidationPubSub;
   private static CacheConfig cacheConfig;
+  // Registry of cache layers that implement Invalidatable. Both the pub-sub handler (remote pod
+  // writes) and CacheBundle.invalidateEntity (local mutations) iterate this list and fan out a
+  // single (type, id, fqn) tuple to every registered layer. New cache layers should call
+  // registerInvalidatable() in their owner — typically here in run(), right after construction.
+  private static final java.util.List<Invalidatable> INVALIDATABLES =
+      new java.util.concurrent.CopyOnWriteArrayList<>();
 
   public CacheBundle() {
     instance = this;
@@ -40,6 +51,10 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
     cacheConfig = configuration.getCacheConfig();
 
     LOG.info("CacheBundle.run() called with cacheConfig: {}", cacheConfig);
+
+    // Authorization caches live in every JVM whatever the cache provider is, so a local policy,
+    // role or team write must drop them even when no Redis layer exists.
+    registerInvalidatable(SubjectCache.invalidator());
 
     if (cacheConfig == null || cacheConfig.provider == CacheConfig.Provider.none) {
       LOG.info("Cache is disabled. Using NoopCacheProvider.");
@@ -63,8 +78,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       }
 
       CacheKeys keys = new CacheKeys(cacheConfig.redis.keyspace);
-      cachedEntityDao =
-          new CachedEntityDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
+      cachedEntityDao = new CachedEntityDao(cacheProvider, keys, cacheConfig);
       cachedRelationshipDao =
           new CachedRelationshipDao(Entity.getCollectionDAO(), cacheProvider, keys, cacheConfig);
       cachedTagUsageDao =
@@ -72,14 +86,71 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
       cachedReadBundle = new CachedReadBundle(cacheProvider, keys, cacheConfig);
       ancestorsCache = new AncestorsCache(cacheProvider, keys, cacheConfig);
       childrenPageCache = new ChildrenPageCache(cacheProvider, keys, cacheConfig);
+      cachedSearchLayer = new CachedSearchLayer(cacheProvider, keys, cacheConfig);
+      cachedLineage = new CachedLineage(cacheProvider, keys, cacheConfig);
+      notFoundCache = new NotFoundCache(cacheProvider, keys, cacheConfig);
+      // Register all id-keyed cache layers that participate in entity-write invalidation.
+      // Layers with type/fqn-keyed semantics (CachedReadBundle, AncestorsCache, etc.) keep
+      // their existing wiring for now — see .context/cache-improvements-design.md P1.3 for
+      // the full audit and the planned migration of those layers to the registry.
+      registerInvalidatable(cachedLineage);
+      registerInvalidatable(notFoundCache);
+      // The email->username mapping decides which principal a request runs as, so it has to drop
+      // on a user write made by any replica, not just this one.
+      registerInvalidatable(org.openmetadata.service.security.JwtFilter.emailIdentityInvalidator());
+      // Per-JVM caches behind Ask Collate's persona context. Both are keyed by data a peer's write
+      // changes, so without this a persona edit, a context regenerate, or a persona assignment is
+      // visible on the writing pod only, for up to that cache's TTL.
+      registerInvalidatable(org.openmetadata.service.aicontext.PersonaContextCache.invalidator());
+      // Resolves service tags/names/types/environments into the ids that the search-side service
+      // policy conditions compile into their query. A peer tagging a service has to drop this here
+      // too, or a Deny keyed on that tag keeps letting the service's assets through on this pod.
+      registerInvalidatable(
+          org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver.invalidator());
       cacheInvalidationPubSub = new CacheInvalidationPubSub(cacheConfig);
       cacheInvalidationPubSub.setHandler(
           msg -> {
             try {
-              org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
-                  msg.type(), msg.id(), msg.fqn());
-              if (msg.id() != null && cachedReadBundle != null) {
-                cachedReadBundle.invalidate(msg.type(), msg.id());
+              // Out-of-band signal: a session was revoked on another pod, drop any WebSocket
+              // connections this pod is holding for that user. Encoded as type=session, op=revoke,
+              // id=<userId> so it rides the existing channel without needing a second subscriber.
+              if ("session".equals(msg.type()) && "revoke".equals(msg.op()) && msg.id() != null) {
+                org.openmetadata.service.socket.WebSocketManager wsManager =
+                    org.openmetadata.service.socket.WebSocketManager.getInstance();
+                if (wsManager != null) {
+                  if (msg.fqn() != null) {
+                    wsManager.disconnectForSession(msg.id(), msg.fqn());
+                  } else {
+                    wsManager.disconnectAllForUser(msg.id());
+                  }
+                }
+                return;
+              }
+              // A setting changed on another server: check the stored settings now rather than at
+              // the next poll. No entity changed, so no entity cache is touched.
+              if (CacheInvalidationPubSub.TYPE_SETTINGS.equals(msg.type())) {
+                SettingsChangeWatcher.requestImmediatePoll();
+                return;
+              }
+              // Non-entity signals ride this channel too (a persona context rebuild mutates no
+              // entity). Evicting entity caches for them would bump a write epoch and force a
+              // needless reload of an entity that did not change.
+              if (!CacheInvalidationPubSub.TYPE_PERSONA_CONTEXT.equals(msg.type())) {
+                org.openmetadata.service.jdbi3.EntityRepository.onRemoteCacheInvalidate(
+                    msg.type(), msg.id(), msg.fqn());
+                if (msg.id() != null && cachedReadBundle != null) {
+                  cachedReadBundle.invalidate(msg.type(), msg.id());
+                }
+              }
+              // Fan invalidation out to every Invalidatable registered with the bundle. This is
+              // the path new cache layers should plug into — implement Invalidatable, call
+              // registerInvalidatable, and the remote-pod invalidation Just Works.
+              for (Invalidatable layer : INVALIDATABLES) {
+                try {
+                  layer.invalidate(msg.type(), msg.id(), msg.fqn());
+                } catch (Exception ex) {
+                  LOG.debug("Invalidatable {} failed for {}", layer, msg, ex);
+                }
               }
               // Container-only derived caches: ancestors keyed by descendant FQN, children-page
               // keyed by parent FQN. Other entity types don't have these caches today, so this
@@ -149,6 +220,53 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
 
   public static ChildrenPageCache getChildrenPageCache() {
     return childrenPageCache;
+  }
+
+  public static CachedSearchLayer getCachedSearchLayer() {
+    return cachedSearchLayer;
+  }
+
+  public static CachedLineage getCachedLineage() {
+    return cachedLineage;
+  }
+
+  public static NotFoundCache getNotFoundCache() {
+    return notFoundCache;
+  }
+
+  /**
+   * Register an {@link Invalidatable} cache layer with the bundle. Both the pub-sub handler
+   * (remote pod writes) and {@link #invalidateEntity} (local mutations) iterate registered
+   * layers and call {@code invalidate(type, id, fqn)} on each. Idempotent — safe to call
+   * multiple times for the same instance.
+   */
+  public static void registerInvalidatable(Invalidatable layer) {
+    if (layer != null && !INVALIDATABLES.contains(layer)) {
+      INVALIDATABLES.add(layer);
+    }
+  }
+
+  /**
+   * Fan an entity-write invalidation out to every registered {@link Invalidatable}. Today
+   * this is invoked from {@code EntityRepository.invalidateCacheForEntity(type, id, fqn)}
+   * (the static helper called from {@code postCreate} and other mutation paths), from the
+   * pub-sub handler above when a remote pod publishes a write, and from the admin
+   * {@code POST /system/cache/invalidate} endpoint.
+   *
+   * <p>Entity creates call this directly, while update, delete, and restore paths reach it through
+   * the repository's mutation cache invalidation. New mutation paths must do the same so registered
+   * layers such as the negative cache cannot outlive a successful write.
+   *
+   * <p>No-op if no layers are registered (cache disabled or none registered yet).
+   */
+  public static void invalidateEntity(String type, java.util.UUID id, String fqn) {
+    for (Invalidatable layer : INVALIDATABLES) {
+      try {
+        layer.invalidate(type, id, fqn);
+      } catch (Exception e) {
+        LOG.debug("Invalidatable {} failed for type={} id={} fqn={}", layer, type, id, fqn, e);
+      }
+    }
   }
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {

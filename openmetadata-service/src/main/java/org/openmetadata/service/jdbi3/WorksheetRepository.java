@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -45,6 +46,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Spreadsheet;
 import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.services.DriveService;
@@ -83,6 +85,11 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
         UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -338,6 +345,17 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     applyColumnTags(worksheet.getColumns());
   }
 
+  @Override
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
+    List<TagLabel> allTags = new ArrayList<>();
+    Worksheet worksheet = (Worksheet) entity;
+    EntityUtil.mergeTags(allTags, worksheet.getTags());
+    for (Column column : listOrEmpty(worksheet.getColumns())) {
+      EntityUtil.mergeTags(allTags, column.getTags());
+    }
+    return allTags;
+  }
+
   private EntityReference getSpreadsheet(Worksheet worksheet) {
     return getFromEntityRef(worksheet.getId(), Relationship.CONTAINS, SPREADSHEET, false);
   }
@@ -450,7 +468,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                   List.of(
                       Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(12, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 13))
+          .withDomains(getDomains(printer, csvRecord, 13, newWorksheet.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 14));
 
       if (processRecord) {

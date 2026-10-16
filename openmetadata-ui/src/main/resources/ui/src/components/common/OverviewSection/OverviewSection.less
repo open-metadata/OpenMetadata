@@ -15,31 +15,14 @@
 .overview-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--om-space-12);
 }
 
 .overview-row {
-  gap: 16px;
+  gap: var(--om-space-16);
   word-break: break-word;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   min-height: 20px;
-}
-
-.overview-label {
-  font-weight: 400;
-  color: @grey-700;
-  font-size: 13px;
-  text-align: left;
-  flex-shrink: 0;
-  width: 120px; /* Fixed width for consistent alignment */
-}
-
-.overview-value {
-  color: #181d27;
-  font-weight: 500;
-  font-size: 13px;
-  text-align: left;
-  flex: 1;
 }

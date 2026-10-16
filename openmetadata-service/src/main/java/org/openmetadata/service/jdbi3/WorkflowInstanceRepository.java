@@ -1,26 +1,41 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeSeriesDAO;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
+  // Statuses set by whoever ended the run from outside it; the process-end listener keeps them.
+  private static final Set<WorkflowInstance.WorkflowStatus> ENDED_FROM_OUTSIDE =
+      Set.of(WorkflowInstance.WorkflowStatus.SUPERSEDED, WorkflowInstance.WorkflowStatus.CANCELLED);
+
+  private final WorkflowInstanceTimeSeriesDAO instanceDao;
+
   public WorkflowInstanceRepository() {
+    this(Entity.getCollectionDAO().workflowInstanceTimeSeriesDAO());
+  }
+
+  private WorkflowInstanceRepository(WorkflowInstanceTimeSeriesDAO instanceDao) {
     super(
         WorkflowInstanceResource.COLLECTION_PATH,
-        Entity.getCollectionDAO().workflowInstanceTimeSeriesDAO(),
+        instanceDao,
         WorkflowInstance.class,
         Entity.WORKFLOW_INSTANCE);
+    this.instanceDao = instanceDao;
   }
 
   public WorkflowInstance createNewRecord(WorkflowInstance recordEntity, String recordFQN) {
@@ -49,55 +64,239 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         workflowDefinitionName);
   }
 
+  /**
+   * Records how an instance stands while its process may still run: a failed job attempt that
+   * Flowable retries, or a main workflow that terminated early. Only status, endedAt and exception
+   * are written, so a stop request is never overwritten by the document read here, and a stop
+   * request recorded between that read and the write is read back and applied.
+   */
   public void updateWorkflowInstance(
       UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
-    WorkflowInstance workflowInstance =
-        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
-
-    workflowInstance.setEndedAt(endedAt);
-
-    WorkflowInstanceStateRepository workflowInstanceStateRepository =
-        (WorkflowInstanceStateRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
-
-    List<WorkflowInstanceState> states =
-        workflowInstanceStateRepository.listAllStatesForInstance(workflowInstanceId);
-
-    WorkflowInstance.WorkflowStatus workflowStatus = WorkflowInstance.WorkflowStatus.FINISHED;
-    if (states.stream()
-        .anyMatch(s -> s.getStatus().equals(WorkflowInstance.WorkflowStatus.FAILURE))) {
-      workflowStatus = WorkflowInstance.WorkflowStatus.FAILURE;
-    }
-
-    workflowInstance.setStatus(workflowStatus);
-
-    Optional<String> oException =
-        Optional.ofNullable(
-            (String)
-                variables.getOrDefault(
-                    getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE), null));
-    if (oException.isPresent()) {
-      workflowInstance.setException(oException.get());
-      workflowInstance.setStatus(WorkflowInstance.WorkflowStatus.EXCEPTION);
-    }
-
-    getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
+    recordStatus(workflowInstanceId, endedAt, variables, () -> {});
   }
 
   /**
-   * Marks a workflow instance as FAILED with the given reason.
-   * Preserves audit trail instead of deleting the instance.
+   * Records the end of an instance's process, as {@link #updateWorkflowInstance} does, and marks
+   * the process ended so no stop request lands afterwards, whatever the status, an EXCEPTION
+   * included. The mark is written before the row is read back, so that row holds every stop request
+   * the instance gets while its process runs.
    */
+  public void recordProcessEnd(
+      UUID workflowInstanceId, Long endedAt, Map<String, Object> variables) {
+    recordStatus(
+        workflowInstanceId,
+        endedAt,
+        variables,
+        () -> instanceDao.markProcessEnded(workflowInstanceId.toString()));
+  }
+
+  private void recordStatus(
+      UUID workflowInstanceId,
+      Long endedAt,
+      Map<String, Object> variables,
+      Runnable beforeReadBack) {
+    WorkflowInstance beforeEnd = readInstance(workflowInstanceId);
+    appliedStopRequestOf(beforeEnd)
+        .ifPresent(stopRequest -> markRunningStagesFailed(workflowInstanceId, stopRequest));
+    recordEnd(workflowInstanceId, endStateOf(beforeEnd, variables), endedAt);
+    beforeReadBack.run();
+    Optional<StopRequest> missedStopRequest =
+        stopRequestOf(readInstance(workflowInstanceId))
+            .filter(stopRequest -> isStopRequestMissed(beforeEnd));
+    missedStopRequest.ifPresent(
+        stopRequest -> {
+          markRunningStagesFailed(workflowInstanceId, stopRequest);
+          recordEnd(workflowInstanceId, stoppedEndState(stopRequest), endedAt);
+        });
+  }
+
+  private static boolean isStopRequestMissed(WorkflowInstance beforeEnd) {
+    return !ENDED_FROM_OUTSIDE.contains(beforeEnd.getStatus())
+        && stopRequestOf(beforeEnd).isEmpty();
+  }
+
+  private WorkflowInstance readInstance(UUID workflowInstanceId) {
+    return JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+  }
+
+  /** How an instance ended; a {@code null} exception leaves the stored one as it is. */
+  record EndState(WorkflowInstance.WorkflowStatus status, String exception) {}
+
+  /**
+   * Preserves a terminal SUPERSEDED or CANCELLED status set by the path that ended the run, and the
+   * FAILURE an administrator's stop request stands for: the process-end execution listener also
+   * lands here and would otherwise recompute the status to FINISHED.
+   */
+  private EndState endStateOf(WorkflowInstance workflowInstance, Map<String, Object> variables) {
+    EndState endState = new EndState(workflowInstance.getStatus(), null);
+    if (!ENDED_FROM_OUTSIDE.contains(workflowInstance.getStatus())) {
+      endState =
+          stopRequestOf(workflowInstance)
+              .map(WorkflowInstanceRepository::stoppedEndState)
+              .orElseGet(() -> finalEndState(workflowInstance.getId(), variables));
+    }
+    return endState;
+  }
+
+  /**
+   * The stop request the end of an instance stands for; an instance ended from outside its run
+   * keeps its status.
+   */
+  private static Optional<StopRequest> appliedStopRequestOf(WorkflowInstance workflowInstance) {
+    return stopRequestOf(workflowInstance)
+        .filter(stopRequest -> !ENDED_FROM_OUTSIDE.contains(workflowInstance.getStatus()));
+  }
+
+  private static EndState stoppedEndState(StopRequest stopRequest) {
+    return new EndState(WorkflowInstance.WorkflowStatus.FAILURE, stopRequest.reason());
+  }
+
+  private static void markRunningStagesFailed(UUID workflowInstanceId, StopRequest stopRequest) {
+    workflowInstanceStateRepository()
+        .markRunningStatesAsFailed(workflowInstanceId, stopRequest.reason());
+  }
+
+  private EndState finalEndState(UUID workflowInstanceId, Map<String, Object> variables) {
+    List<WorkflowInstanceState> states =
+        workflowInstanceStateRepository().listAllStatesForInstance(workflowInstanceId);
+
+    boolean hasFailedStage =
+        states.stream()
+            .anyMatch(s -> s.getStatus().equals(WorkflowInstance.WorkflowStatus.FAILURE));
+    // Stage rows exist only when storeStageStatus is enabled. The un-namespaced failure variable
+    // is set without them: on a trigger process by SubWorkflowFailureListener, when a sink node of
+    // the main workflow failed with no failure edge routing it, and on a main workflow by
+    // WorkflowInstanceExecutionIdSetterListener, when the run started without its related entity.
+    boolean isFailureFlagged = Boolean.TRUE.equals(variables.get(FAILURE_VARIABLE));
+    WorkflowInstance.WorkflowStatus workflowStatus =
+        hasFailedStage || isFailureFlagged
+            ? WorkflowInstance.WorkflowStatus.FAILURE
+            : WorkflowInstance.WorkflowStatus.FINISHED;
+
+    String exception =
+        (String)
+            variables.getOrDefault(
+                getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE), null);
+    return exception == null
+        ? new EndState(workflowStatus, null)
+        : new EndState(WorkflowInstance.WorkflowStatus.EXCEPTION, exception);
+  }
+
+  private void recordEnd(UUID workflowInstanceId, EndState endState, long endedAt) {
+    String id = workflowInstanceId.toString();
+    String status = endState.status().value();
+    if (endState.exception() == null) {
+      instanceDao.recordEnd(id, status, endedAt);
+    } else {
+      instanceDao.recordEndWithException(id, status, endedAt, endState.exception());
+    }
+  }
+
+  private static WorkflowInstanceStateRepository workflowInstanceStateRepository() {
+    return (WorkflowInstanceStateRepository)
+        Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE_STATE);
+  }
+
+  /**
+   * Records that an administrator asked a running workflow instance to stop. The instance keeps its
+   * status; a batch sink and the periodic-batch fetch loop read the request between batches, and
+   * the process-end update then records the instance as FAILURE with the request's reason. Only the
+   * stop request is written, and only while the instance is RUNNING or EXCEPTION and its process
+   * has not ended, so an end recorded concurrently is neither overwritten nor reverted. EXCEPTION
+   * is accepted because a failed job attempt records it while Flowable retries the job and the
+   * process goes on running; an EXCEPTION the process ended with is refused, see {@link
+   * #recordProcessEnd}.
+   *
+   * @return {@code false} when the instance is neither RUNNING nor EXCEPTION or its process has
+   *     ended, so nothing was recorded
+   */
+  public boolean requestStop(UUID workflowInstanceId, StopRequest stopRequest) {
+    return instanceDao.requestStop(
+            workflowInstanceId.toString(),
+            JsonUtils.pojoToJson(stopRequest),
+            WorkflowInstance.WorkflowStatus.RUNNING.value(),
+            WorkflowInstance.WorkflowStatus.EXCEPTION.value())
+        > 0;
+  }
+
+  /** The stop request recorded on the workflow instance, read from the database. */
+  public Optional<StopRequest> findStopRequest(UUID workflowInstanceId) {
+    return Optional.ofNullable(getById(workflowInstanceId))
+        .flatMap(WorkflowInstanceRepository::stopRequestOf);
+  }
+
+  private static Optional<StopRequest> stopRequestOf(WorkflowInstance workflowInstance) {
+    return Optional.ofNullable(workflowInstance.getVariables())
+        .map(variables -> variables.get(STOP_REQUEST_VARIABLE_KEY))
+        .map(stopRequest -> JsonUtils.convertValue(stopRequest, StopRequest.class))
+        .filter(StopRequest::requested);
+  }
+
+  /** Marks a workflow instance as FAILED with the given reason, keeping its audit trail. */
   public void markInstanceAsFailed(UUID workflowInstanceId, String reason) {
+    recordEnd(
+        workflowInstanceId,
+        new EndState(WorkflowInstance.WorkflowStatus.FAILURE, reason),
+        System.currentTimeMillis());
+  }
+
+  /** Marks a workflow instance as SUPERSEDED when a newer run replaces it. */
+  public void markInstanceAsSuperseded(UUID workflowInstanceId, String reason) {
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+    markEnded(
+        workflowInstanceId, workflowInstance, WorkflowInstance.WorkflowStatus.SUPERSEDED, reason);
+  }
+
+  /**
+   * Records {@code status} and {@code reason} on a run that is ended from outside it (superseded or
+   * cancelled). Returns false, changing nothing, when the run has already ended or does not exist.
+   */
+  public boolean endRunningInstance(
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
+    String json = timeSeriesDao.getById(workflowInstanceId);
+    WorkflowInstance workflowInstance =
+        json == null ? null : JsonUtils.readValue(json, WorkflowInstance.class);
+    boolean running =
+        workflowInstance != null
+            && workflowInstance.getStatus() == WorkflowInstance.WorkflowStatus.RUNNING;
+    if (running) {
+      markEnded(workflowInstanceId, workflowInstance, status, reason);
+    }
+    return running;
+  }
+
+  private void markEnded(
+      UUID workflowInstanceId,
+      WorkflowInstance workflowInstance,
+      WorkflowInstance.WorkflowStatus status,
+      String reason) {
+
+    Map<String, Object> variables = workflowInstance.getVariables();
+    if (variables == null) {
+      variables = new HashMap<>();
+    }
+    variables.put(TERMINATION_REASON_VARIABLE_KEY, reason);
 
     WorkflowInstance updatedInstance =
         workflowInstance
-            .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
-            .withException(reason)
+            .withStatus(status)
+            .withVariables(variables)
             .withEndedAt(System.currentTimeMillis());
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
   }
+
+  private static final String TERMINATION_REASON_VARIABLE_KEY = "terminationReason";
+
+  /** Key, in a workflow instance's variables, of the {@link StopRequest} an administrator made. */
+  public static final String STOP_REQUEST_VARIABLE_KEY = "stopRequest";
+
+  /**
+   * An administrator's request that a running workflow instance stop at its next batch boundary.
+   *
+   * @param reason the audit message recorded as the instance's exception once it stops
+   */
+  public record StopRequest(
+      boolean requested, String reason, String requestedBy, long requestedAt) {}
 }

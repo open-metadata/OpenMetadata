@@ -12,9 +12,10 @@
  */
 
 import { map, startCase, values } from 'lodash';
-import { DateFilterType, StepperStepType } from 'Models';
+import { DateFilterType } from 'Models';
 import { TestCaseSearchParams } from '../components/DataQuality/DataQuality.interface';
 import { SORT_ORDER } from '../enums/common.enum';
+import { DataQualityDimensions } from '../enums/DataQuality.enum';
 import { TestCaseType } from '../enums/TestSuite.enum';
 import { DMLOperationType } from '../generated/api/data/createTableProfile';
 import {
@@ -26,10 +27,7 @@ import {
 } from '../generated/entity/data/table';
 import { MetricType } from '../generated/settings/settings';
 import { TestCaseStatus } from '../generated/tests/testCase';
-import {
-  DataQualityDimensions,
-  TestPlatform,
-} from '../generated/tests/testDefinition';
+import { TestPlatform } from '../generated/tests/testDefinition';
 import {
   getCurrentMillis,
   getEndOfDayInMillis,
@@ -37,7 +35,8 @@ import {
   getStartOfDayInMillis,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
-import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
+
+const OPERATION_METRICS = 'operation-metrics';
 
 export const PROFILER_METRIC = [
   'valuesCount',
@@ -65,6 +64,10 @@ export const PROFILER_METRIC = [
   'customMetricsProfile',
 ];
 export const PROFILER_CHART_DATA_SIZE = 500;
+
+// Ingestion treats a 0 sample as "no sampling" and profiles the full table,
+// overriding any parent schema/database/pipeline sampling.
+export const MIN_PROFILE_SAMPLE = 1;
 
 export const PROFILER_FILTER_RANGE: DateFilterType = {
   yesterday: {
@@ -133,28 +136,24 @@ export const INITIAL_COUNT_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctCount',
-      color: '#467DDC',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.null'),
       }),
       dataKey: 'nullCount',
-      color: '#3488B5',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueCount',
-      color: '#685997',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.value-plural'),
       }),
       dataKey: 'valuesCount',
-      color: '#464A52',
     },
   ],
   data: [],
@@ -167,21 +166,18 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctProportion',
-      color: '#6B97E3',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.null'),
       }),
       dataKey: 'nullProportion',
-      color: '#867AAC',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueProportion',
-      color: '#6B6E75',
     },
   ],
   data: [],
@@ -192,17 +188,14 @@ export const INITIAL_MATH_METRIC_VALUE = {
     {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#6B97E3',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#6B6E75',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#867AAC',
     },
   ],
   data: [],
@@ -213,8 +206,6 @@ export const INITIAL_SUM_METRIC_VALUE = {
     {
       title: t('label.sum'),
       dataKey: 'sum',
-      color: BLUE_500,
-      fill: BLUE_50,
     },
   ],
   data: [],
@@ -224,22 +215,18 @@ export const INITIAL_QUARTILE_METRIC_VALUE = {
     {
       title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
-      color: '#467DDC',
     },
     {
       title: t('label.median'),
       dataKey: 'median',
-      color: '#3488B5',
     },
     {
       title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
-      color: '#685997',
     },
     {
       title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
-      color: '#464A52',
     },
   ],
   data: [],
@@ -252,8 +239,6 @@ export const INITIAL_ROW_METRIC_VALUE = {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
-      color: BLUE_500,
-      fill: BLUE_50,
     },
   ],
   data: [],
@@ -264,20 +249,18 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: BLUE_800,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: BLUE_500,
-      stackId: 'operation-metrics',
+      stackId: OPERATION_METRICS,
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: YELLOW_3,
-      stackId: 'operation-metrics',
+      status: 'warning' as const,
+      stackId: OPERATION_METRICS,
     },
   ],
   data: [],
@@ -301,15 +284,6 @@ export const INITIAL_DATA_ASSETS_COVERAGE_STATES = {
   notCovered: 0,
   total: 0,
 };
-
-export const STEPS_FOR_ADD_TEST_CASE: Array<StepperStepType> = [
-  {
-    name: 'label.configure-entity',
-    nameData: { entity: 'label.test-case-lowercase' },
-    step: 1,
-  },
-  { name: 'label.success', step: 2 },
-];
 
 export const SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME = [
   DataType.Timestamp,
@@ -398,6 +372,7 @@ export const TEST_CASE_FILTERS: Record<string, keyof TestCaseSearchParams> = {
   tags: 'tags',
   service: 'serviceName',
   dimension: 'dataQualityDimension',
+  dataProduct: 'dataProductFqn',
 };
 
 export const TEST_CASE_FILTERS_LABELS: Record<
@@ -413,6 +388,7 @@ export const TEST_CASE_FILTERS_LABELS: Record<
   tags: t('label.tag-plural'),
   service: t('label.service'),
   dimension: t('label.dimension'),
+  dataProduct: t('label.data-product-plural'),
 };
 
 export const TEST_CASE_PLATFORM_OPTION = values(TestPlatform).map((value) => ({

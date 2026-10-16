@@ -13,12 +13,11 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE,
 } from '../constants/constants';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CreateDataProduct } from '../generated/api/domains/createDataProduct';
 import {
@@ -32,13 +31,16 @@ import {
 import { EntityHistory } from '../generated/type/entityHistory';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { formatDataProductResponse } from '../utils/APIUtils';
 import { buildDomainFilter } from '../utils/elasticsearchQueryBuilder';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 import { searchQuery } from './searchAPI';
 
 const BASE_URL = '/dataProducts';
+
+const APPLICATION_YAML_CONTENT_TYPE = 'application/yaml';
 
 export const addDataProducts = async (data: CreateDataProduct) => {
   const response = await APIClient.post<
@@ -96,7 +98,8 @@ export const getDataProductVersionData = async (
 export const fetchDataProductsElasticSearch = async (
   searchText: string,
   domainFQNs: string[],
-  page: number
+  page: number,
+  pageSize = PAGE_SIZE
 ): Promise<{
   data: {
     label: string;
@@ -108,10 +111,11 @@ export const fetchDataProductsElasticSearch = async (
   const queryFilter = buildDomainFilter(domainFQNs);
 
   const res = await searchQuery({
+    skipDomainFilter: true,
     query: searchText,
     filters: '',
     pageNumber: page,
-    pageSize: PAGE_SIZE,
+    pageSize,
     queryFilter,
     searchIndex: SearchIndex.DATA_PRODUCT,
   });
@@ -323,6 +327,81 @@ export const getDataProductOutputPorts = async (
   const response = await APIClient.get<PaginatedEntities>(
     `${BASE_URL}/name/${getEncodedFqn(dataProductFqn)}/outputPorts`,
     { params }
+  );
+
+  return response.data;
+};
+
+// ---------------------------------------------------------------------------
+// ODPS (Open Data Product Standard) v4.1 Import/Export
+// ---------------------------------------------------------------------------
+
+export type ODPSImportStrategy = 'merge' | 'replace';
+
+export interface ODPSValidationResult {
+  valid?: boolean;
+  version?: string;
+  languages?: string;
+}
+
+export const exportDataProductToODPSYaml = async (
+  dataProductId: string
+): Promise<string> => {
+  const response = await APIClient.get<string>(
+    `${BASE_URL}/${dataProductId}/odps/yaml`,
+    {
+      headers: { Accept: APPLICATION_YAML_CONTENT_TYPE },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
+
+export const importDataProductFromODPSYaml = async (
+  yamlContent: string,
+  domainFqn?: string,
+  languageCode?: string
+): Promise<DataProduct> => {
+  const response = await APIClient.post<DataProduct>(
+    `${BASE_URL}/odps/yaml`,
+    yamlContent,
+    {
+      params: { domain: domainFqn, languageCode },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
+    }
+  );
+
+  return response.data;
+};
+
+export const createOrUpdateDataProductFromODPSYaml = async (
+  yamlContent: string,
+  strategy: ODPSImportStrategy = 'merge',
+  domainFqn?: string,
+  languageCode?: string
+): Promise<DataProduct> => {
+  const response = await APIClient.put<DataProduct>(
+    `${BASE_URL}/odps/yaml`,
+    yamlContent,
+    {
+      params: { strategy, domain: domainFqn, languageCode },
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
+    }
+  );
+
+  return response.data;
+};
+
+export const validateODPSYaml = async (
+  yamlContent: string
+): Promise<ODPSValidationResult> => {
+  const response = await APIClient.post<ODPSValidationResult>(
+    `${BASE_URL}/odps/validate/yaml`,
+    yamlContent,
+    {
+      headers: { 'Content-Type': APPLICATION_YAML_CONTENT_TYPE },
+    }
   );
 
   return response.data;

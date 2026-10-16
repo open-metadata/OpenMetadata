@@ -30,6 +30,9 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -45,6 +48,21 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
 
 @Slf4j
 public class OsUtils {
+
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into a query built on a raw {@code
+   * SearchRequest.Builder}. Non-memory documents are unaffected.
+   */
+  static Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((OpenSearchQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
 
   public static Map<String, Object> jsonDataToMap(JsonData jsonData) {
     try {
@@ -259,7 +277,10 @@ public class OsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -461,7 +482,10 @@ public class OsUtils {
       baseQuery = Query.of(q -> q.bool(b -> b.must(finalBaseQuery).must(deletedQuery)));
     }
 
-    searchRequestBuilder.query(baseQuery);
+    // Lineage and entity-relationship traversals query the global alias and hand the matched hit's
+    // raw _source back as the node payload, with no SubjectContext to resolve memory visibility
+    // against: only org-wide memories may surface as nodes.
+    searchRequestBuilder.query(restrictToOrgWideMemories(baseQuery));
     searchRequestBuilder.from(from);
     searchRequestBuilder.size(size);
 
@@ -490,8 +514,13 @@ public class OsUtils {
                     t ->
                         t.field("deleted").value(FieldValue.of(!nullOrEmpty(deleted) && deleted))));
 
+    // Platform lineage returns each hit's raw _source and runs without a SubjectContext, so it
+    // cannot tell whose restricted memory a document is: only org-wide memories may come back.
     SearchRequest.Builder searchRequestBuilder =
-        new SearchRequest.Builder().index(indexName).query(deletedQuery).size(10000);
+        new SearchRequest.Builder()
+            .index(indexName)
+            .query(restrictToOrgWideMemories(deletedQuery))
+            .size(10000);
 
     // Apply query filter
     buildSearchSourceFilter(queryFilter, searchRequestBuilder);
@@ -635,8 +664,15 @@ public class OsUtils {
                 JsonNode typeNode = fieldObj.get("type");
                 if (typeNode != null && "flattened".equals(typeNode.asText())) {
                   fieldObj.put("type", "flat_object");
+                  // flat_object does not support the ES flattened guard parameters
+                  fieldObj.remove("ignore_above");
+                  fieldObj.remove("depth_limit");
                   LOG.debug(
                       "Transformed field '{}' from 'flattened' to 'flat_object'", entry.getKey());
+                }
+                // OpenSearch's boolean type does not support ignore_malformed (Elasticsearch does)
+                if (typeNode != null && "boolean".equals(typeNode.asText())) {
+                  fieldObj.remove("ignore_malformed");
                 }
 
                 // Recurse into nested properties

@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Divider } from 'antd';
+import {
+  Box,
+  Card,
+  Divider,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import entries from 'lodash/entries';
 import isNumber from 'lodash/isNumber';
 import isUndefined from 'lodash/isUndefined';
@@ -20,19 +25,18 @@ import startCase from 'lodash/startCase';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { GREEN_3, RED_3 } from '../../../../constants/Color.constants';
 import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
-import { Thread } from '../../../../generated/entity/feed/thread';
+import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
-import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
+import {
+  getIncidentDetails,
+  PLACED_KEYS_FIELD,
+} from '../../../../utils/DataQuality/TestSummaryGraphUtils';
 import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
-import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import './test-summary-custom-tooltip.less';
 
 const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
@@ -40,25 +44,21 @@ const OMITTED_TOOLTIP_PAYLOAD_KEYS = [
   'status',
   'incidentId',
   'task',
-  'testCaseFqn',
   'passedRows',
   'failedRows',
   'boundArea',
 ] as const;
 
-function isThread(value: unknown): value is Thread {
-  return typeof value === 'object' && value !== null && 'task' in value;
-}
-
 interface TestSummaryCustomTooltipProps {
   active?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   payload?: Array<{ payload: Record<string, unknown> }>;
-  testCaseFqn?: string;
 }
 
 const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
   const { t } = useTranslation();
-  const { active, payload = [], testCaseFqn: testCaseFqnProp } = props;
+  const { active, onMouseEnter, onMouseLeave, payload = [] } = props;
 
   const state = useMemo(() => {
     if (payload.length === 0) {
@@ -72,22 +72,28 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
     const failedRows = payloadData.failedRows as number | undefined;
     const totalRows = (passedRows ?? 0) + (failedRows ?? 0);
     const formattedDateTime = formatDateTime(timestamp);
-    let statusColor: string | undefined;
+    let statusColor: 'danger' | 'success' | undefined;
     if (status === TestCaseStatus.Failed) {
-      statusColor = RED_3;
+      statusColor = 'danger';
     } else if (status === TestCaseStatus.Success) {
-      statusColor = GREEN_3;
+      statusColor = 'success';
     }
-    const data = entries(omit(payloadData, [...OMITTED_TOOLTIP_PAYLOAD_KEYS]));
+    // A placed value only positions a run that recorded nothing on the chart.
+    // Listing it would report a result the run never produced.
+    const placedKeys = (payloadData[PLACED_KEYS_FIELD] as string[]) ?? [];
+    const data = entries(
+      omit(payloadData, [
+        ...OMITTED_TOOLTIP_PAYLOAD_KEYS,
+        PLACED_KEYS_FIELD,
+        ...placedKeys,
+      ])
+    );
 
     return {
-      payloadData,
-      timestamp,
       status,
       passedRows,
       failedRows,
-      incidentId: payloadData.incidentId as string | undefined,
-      task: payloadData.task as Thread | undefined,
+      task: payloadData.task as Task | undefined,
       totalRows,
       formattedDateTime,
       statusColor,
@@ -96,23 +102,21 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
   }, [payload]);
 
   const tooltipRender = useCallback(
-    ([key, value]: [key: string, value: string | number | Thread]) => {
-      if (isThread(value)) {
-        return null;
-      }
-
+    ([key, value]: [key: string, value: string | number]) => {
       const tooltipValue = isNumber(value)
         ? formatNumberWithComma(value)
         : value;
 
       return (
-        <li
-          className="d-flex items-center justify-between gap-6 p-b-xss text-sm"
-          key={`item-${key}`}>
-          <Typography as="span" className="flex items-center text-grey-muted">
+        <Box align="center" gap={6} justify="between" key={`item-${key}`}>
+          <Typography as="span" color="secondary" size="text-sm">
             {startCase(key)}
           </Typography>
-          <Typography as="span" className="font-medium" data-testid={key}>
+          <Typography
+            as="span"
+            data-testid={key}
+            size="text-sm"
+            weight="medium">
             {key === TABLE_FRESHNESS_KEY && isNumber(value)
               ? convertSecondsToHumanReadableFormat(
                   value,
@@ -121,7 +125,7 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
                 )
               : tooltipValue}
           </Typography>
-        </li>
+        </Box>
       );
     },
     [t]
@@ -135,143 +139,114 @@ const TestSummaryCustomTooltip = (props: TestSummaryCustomTooltipProps) => {
     status,
     passedRows,
     failedRows,
-    incidentId,
     task,
     totalRows,
     formattedDateTime,
     statusColor,
     data,
   } = state;
+  const { incidentDisplayId, incidentPath, incidentAssignees } =
+    getIncidentDetails(task);
 
   return (
-    <Card>
-      <div className="test-summary-tooltip-container">
-        {/* Date and time at the top */}
-        <div className="tooltip-date-time">{formattedDateTime}</div>
-
-        {/* Dotted separator */}
-        <Divider className="tooltip-separator" />
-
-        {/* Other values */}
-        <ul data-testid="test-summary-tooltip-container">
-          {/* Status */}
-          <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-            <Typography as="span" className="flex items-center text-grey-muted">
-              {t('label.status')}
-            </Typography>
-            <Typography
-              as="span"
-              className="font-medium"
-              data-testid="status"
-              style={{ color: statusColor }}>
-              {status}
-            </Typography>
-          </li>
-          {/* Incident (from task) */}
-          {task?.task && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.incident')}
+    <Card
+      className="test-summary-tooltip"
+      data-testid="test-summary-tooltip"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}>
+      <Card.Content>
+        <Box className="test-summary-tooltip-container" direction="col">
+          <Typography size="text-xs" weight="medium">
+            {formattedDateTime}
+          </Typography>
+          <Divider dashed className="tw:my-2" />
+          <Box
+            data-testid="test-summary-tooltip-container"
+            direction="col"
+            gap={1}>
+            <Box align="center" gap={6} justify="between">
+              <Typography as="span" color="secondary" size="text-sm">
+                {t('label.status')}
               </Typography>
               <Typography
                 as="span"
-                className="font-medium"
-                data-testid="incident">
-                <Link
-                  className="tooltip-incident-link font-medium cursor-pointer"
-                  to={getTaskDetailPath(task)}>
-                  {`#${task.task.id}`}
-                </Link>
+                color={statusColor}
+                data-testid="status"
+                size="text-sm"
+                weight="medium">
+                {status}
               </Typography>
-            </li>
-          )}
-          {/* Incident ID (if task not present) - show as link when testCaseFqn available */}
-          {incidentId && !task?.task && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.incident')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="incident">
-                {testCaseFqnProp ? (
+            </Box>
+            {incidentDisplayId && incidentPath && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.incident')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="incident"
+                  size="text-sm"
+                  weight="medium">
                   <Link
                     className="tooltip-incident-link font-medium cursor-pointer"
-                    to={observabilityRouterClassBase.getTestCaseDetailPagePath(
-                      testCaseFqnProp,
-                      TestCasePageTabs.ISSUES
-                    )}>
-                    {`#${incidentId}`}
+                    to={incidentPath}>
+                    {`#${incidentDisplayId}`}
                   </Link>
-                ) : (
-                  `#${incidentId}`
-                )}
-              </Typography>
-            </li>
-          )}
-          {/* Rows Passed */}
-          {!isUndefined(passedRows) && totalRows > 0 && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.passed-rows')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="rows-passed">
-                {`${formatNumberWithComma(passedRows)}/${formatNumberWithComma(
-                  totalRows
-                )}`}
-              </Typography>
-            </li>
-          )}
-          {/* Rows Failed */}
-          {!isUndefined(failedRows) && totalRows > 0 && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.failed-rows')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="rows-failed">
-                {`${formatNumberWithComma(failedRows)}/${formatNumberWithComma(
-                  totalRows
-                )}`}
-              </Typography>
-            </li>
-          )}
-          {/* Other test result values */}
-          {data.map((entry) =>
-            tooltipRender(entry as [string, string | number | Thread])
-          )}
-          {/* Assignee (at the bottom) */}
-          {task?.task && (
-            <li className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
-              <Typography
-                as="span"
-                className="flex items-center text-grey-muted">
-                {t('label.assignee')}
-              </Typography>
-              <Typography
-                as="span"
-                className="font-medium"
-                data-testid="assignee">
-                <OwnerLabel owners={task.task.assignees} />
-              </Typography>
-            </li>
-          )}
-        </ul>
-      </div>
+                </Typography>
+              </Box>
+            )}
+            {!isUndefined(passedRows) && totalRows > 0 && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.passed-rows')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="rows-passed"
+                  size="text-sm"
+                  weight="medium">
+                  {`${formatNumberWithComma(
+                    passedRows
+                  )}/${formatNumberWithComma(totalRows)}`}
+                </Typography>
+              </Box>
+            )}
+            {!isUndefined(failedRows) && totalRows > 0 && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.failed-rows')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="rows-failed"
+                  size="text-sm"
+                  weight="medium">
+                  {`${formatNumberWithComma(
+                    failedRows
+                  )}/${formatNumberWithComma(totalRows)}`}
+                </Typography>
+              </Box>
+            )}
+            {data.map((entry) =>
+              tooltipRender(entry as [string, string | number])
+            )}
+            {incidentAssignees && (
+              <Box align="center" gap={6} justify="between">
+                <Typography as="span" color="secondary" size="text-sm">
+                  {t('label.assignee')}
+                </Typography>
+                <Typography
+                  as="span"
+                  data-testid="assignee"
+                  size="text-sm"
+                  weight="medium">
+                  <Owner owners={incidentAssignees} />
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </Box>
+      </Card.Content>
     </Card>
   );
 };

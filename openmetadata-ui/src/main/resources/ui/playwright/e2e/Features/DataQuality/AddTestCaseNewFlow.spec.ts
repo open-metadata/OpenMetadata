@@ -18,13 +18,11 @@ import {
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
+  expectFormHint,
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../../utils/dataQuality';
-import {
-  getEntityDisplayName,
-  waitForAllLoadersToDisappear,
-} from '../../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   visitDataQualityTab,
   waitForTestSuiteIngestionPipelinesListResponse,
@@ -53,28 +51,23 @@ test.describe(
       await page.fill('[id="root\\/table"]', table.entity.name);
       await tableResponse;
       await page
-        .locator(
-          `.ant-select-dropdown [title="${table.entityResponseData.fullyQualifiedName}"]`
-        )
+        .getByRole('option')
+        .filter({ hasText: table.entityResponseData.fullyQualifiedName })
+        .first()
         .click();
 
-      await page.locator('[data-id="selected-entity"]').waitFor({
-        state: 'visible',
-      });
-
-      await expect(page.locator('[data-id="selected-entity"]')).toBeVisible();
+      await expect(page.getByTestId('selected-table-summary')).toBeVisible();
     };
 
     const selectColumn = async (page: Page, columnName: string) => {
       await page.click('[id="root\\/column"]');
-      await page
-        .locator(`.ant-select-dropdown [title="${columnName}"]`)
-        .waitFor({
-          state: 'visible',
-        });
-      await page
-        .locator(`.ant-select-dropdown [title="${columnName}"]`)
-        .click();
+      const columnOption = page
+        .getByRole('option')
+        .filter({ hasText: columnName });
+      await columnOption.waitFor({
+        state: 'visible',
+      });
+      await columnOption.click();
     };
 
     // Helper function to create test case
@@ -93,39 +86,38 @@ test.describe(
         expectSchedulerCard = true,
       } = data;
       await page.getByTestId('test-case-name').click();
-      await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
-
-      await expect(page.locator('[data-id="name"]')).toBeVisible();
+      await expectFormHint(page, 'Name');
 
       // test case name restriction for `:: " >` character
       const invalidTestCaseNames = ['test::case', 'test"case', 'test>case'];
       for (const name of invalidTestCaseNames) {
-        await page.getByTestId('test-case-name').fill(name);
-        await page.locator('#testCaseFormV1_testName_help').waitFor({
+        await page.getByTestId('test-case-name').locator('input').fill(name);
+        const nameErrorMessage = page
+          .getByTestId('test-case-form-v1')
+          .getByText(
+            'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
+          );
+        await nameErrorMessage.waitFor({
           state: 'visible',
         });
 
-        await expect(page.locator('#testCaseFormV1_testName_help')).toHaveText(
-          'Name cannot contain double colons (::), quotes ("), or greater-than symbols (>).'
-        );
+        await expect(nameErrorMessage).toBeVisible();
 
-        await page.getByTestId('test-case-name').clear();
+        await page.getByTestId('test-case-name').locator('input').clear();
       }
 
-      await page.getByTestId('test-case-name').fill(`${testTypeId}_test_case`);
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(`${testTypeId}_test_case`);
       await page.click('[id="root\\/testType"]');
-      await page.locator('[data-id="testType"]').waitFor({ state: 'visible' });
+      await expectFormHint(page, 'Select Test Type');
 
-      await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-      await page.fill('[id="root\\/testType"]', testType);
-      await page.getByTestId(testTypeId).click();
-
-      await page.locator(`[data-id="${testTypeId}"]`).waitFor({
-        state: 'visible',
-      });
-
-      await expect(page.locator(`[data-id="${testTypeId}"]`)).toBeVisible();
+      await page
+        .getByRole('option')
+        .filter({ hasText: testType })
+        .first()
+        .click();
 
       if (paramsValue) {
         await page.fill('#testCaseFormV1_params_value', paramsValue);
@@ -180,6 +172,17 @@ test.describe(
         const response = await tableTestCaseResponse;
 
         expect(response.status()).toBe(201);
+      }
+
+      // The drawer closes only after the pipeline is created and deployed, and on Airflow 3 the
+      // deploy call blocks until the scheduler registers the DAG (up to 60s), so the default
+      // expect timeout on the next page is not enough. Waiting here also lets the no-pipeline
+      // check below see a POST that lands after the test case response.
+      await page
+        .getByTestId('test-case-form-v1')
+        .waitFor({ state: 'detached' });
+
+      if (!expectSchedulerCard) {
         expect(ingestionPipelineCalled).toBe(false);
       }
     };
@@ -211,7 +214,7 @@ test.describe(
     });
 
     const tableTestCaseDetails = {
-      testType: 'table row count to equal',
+      testType: 'Table Row Count To Equal',
       testTypeId: 'tableRowCountToEqual',
       paramsValue: '10',
     };
@@ -361,11 +364,10 @@ test.describe(
       await page.click('[data-testid="profiler-add-table-test-btn"]');
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
 
-      await expect(
-        page
-          .getByTestId('entity-summary-panel-container')
-          .getByTestId('entity-link')
-      ).toContainText(getEntityDisplayName(table.entityResponseData));
+      // Opened from the table's own page, the table comes preselected.
+      await expect(page.getByTestId('selectedTable')).toContainText(
+        table.entityResponseData.fullyQualifiedName ?? ''
+      );
 
       await createTestCase({
         page,
@@ -385,10 +387,6 @@ test.describe(
         page,
         ...columnTestCaseDetails,
         expectSchedulerCard: false,
-      });
-
-      await page.getByTestId('test-case-form-v1').waitFor({
-        state: 'detached',
       });
 
       await expect(
@@ -421,15 +419,13 @@ test.describe(
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid="loader"]').waitFor({
-        state: 'detached',
-      });
+      await waitForAllLoadersToDisappear(page);
       const selectAllSwitch = page
-        .getByRole('switch')
-        .and(page.getByTestId('select-all-test-cases'));
+        .getByTestId('select-all-test-cases')
+        .getByRole('switch');
       await selectAllSwitch.waitFor({ state: 'visible' });
 
-      await expect(selectAllSwitch).toHaveAttribute('aria-checked', 'true');
+      await expect(selectAllSwitch).toBeChecked();
     });
 
     /**
@@ -459,10 +455,12 @@ test.describe(
         await page.getByTestId('create-btn').click();
 
         await expect(
-          page.locator('#testCaseFormV1_selectedTable_help')
-        ).toContainText(
-          'You do not have the necessary permissions to create a test case on this table.'
-        );
+          page
+            .getByTestId('test-case-form-v1')
+            .getByText(
+              'You do not have the necessary permissions to create a test case on this table.'
+            )
+        ).toBeVisible();
       }
     });
   }

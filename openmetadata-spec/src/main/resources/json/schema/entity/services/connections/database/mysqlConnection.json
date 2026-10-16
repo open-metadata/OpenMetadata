@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/mysqlConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "MysqlConnection",
   "description": "Mysql Database Connection Config",
   "type": "object",
@@ -127,10 +127,6 @@
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"
     },
-    "sampleDataStorageConfig": {
-      "title": "Storage Config for Sample Data",
-      "$ref": "../connectionBasicType.json#/definitions/sampleDataStorageConfig"
-    },
     "supportsDataDiff": {
         "title": "Supports Data Diff Extraction.",
         "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
@@ -146,6 +142,11 @@
       "description": "Use slow logs to extract lineage.",
       "type": "boolean",
       "default": false
+    },
+    "queryHistoryTable": {
+      "title": "Query History Table",
+      "description": "Table name to fetch the query history. When set, this overrides the default 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table must expose columns compatible with the selected log path.",
+      "type": "string"
     }
   },
   "additionalProperties": false,

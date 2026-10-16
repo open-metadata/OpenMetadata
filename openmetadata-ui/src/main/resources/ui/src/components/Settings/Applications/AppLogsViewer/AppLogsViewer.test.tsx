@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ReactComponent as IconSuccessBadge } from '../../../../assets/svg/success-badge.svg';
 import {
@@ -43,18 +43,13 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
     .mockReturnValue('formatDateTimeWithTimezone'),
 }));
 
-jest.mock('../../../../utils/StringsUtils', () => ({
+jest.mock('../../../../utils/StringUtils', () => ({
   formatJsonString: jest.fn().mockReturnValue('logs'),
 }));
 
 jest.mock('../../../common/CopyToClipboardButton/CopyToClipboardButton', () =>
   jest.fn().mockReturnValue(<>CopyToClipboardButton</>)
 );
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Badge: jest.fn().mockReturnValue(<div>Badge</div>),
-}));
 
 jest.mock('../../../../utils/ApplicationUtils', () => ({
   // Use the real formatters so the wall-clock regression test asserts
@@ -299,13 +294,18 @@ describe('AppLogsViewer component', () => {
     expect(screen.getByText('label.status:')).toBeInTheDocument();
     expect(screen.getByText('Success')).toBeInTheDocument();
     expect(screen.getByText('label.index-states:')).toBeInTheDocument();
-    expect(screen.getAllByText('Badge')).toHaveLength(3);
+
+    const overall = screen.getByTestId(
+      'stats-component-label.overall-stat-plural'
+    );
+
+    // total, success, failed counts
+    expect(within(overall).getAllByText('274')).toHaveLength(2);
+    expect(within(overall).getByText('0')).toBeInTheDocument();
     expect(screen.getByText('label.last-updated:')).toBeInTheDocument();
     expect(screen.getByText('formatDateTimeWithTimezone')).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole('button', { name: 'label.jump-to-end' }));
-
-    expect(screen.getByText('CopyToClipboardButton')).toBeInTheDocument();
+    expect(screen.getByTestId('view-logs-button')).toBeInTheDocument();
   });
 
   it('should render necessary element based on mockProps2', () => {
@@ -380,7 +380,11 @@ describe('AppLogsViewer component', () => {
       screen.queryByTestId('app-entity-stats-history-table')
     ).not.toBeInTheDocument();
 
-    expect(await screen.findByTestId('lazy-log')).toBeInTheDocument();
+    await act(async () => {
+      userEvent.click(screen.getByTestId('view-logs-button'));
+    });
+
+    expect(await screen.findByTestId('lazy-log-mock')).toBeInTheDocument();
   });
 
   it('should render process stats when processStats is present', () => {

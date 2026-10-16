@@ -10,22 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import { AxiosError } from 'axios';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { PageType } from '../../../generated/system/ui/page';
-import { postThread } from '../../../rest/feedsAPI';
-import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageUtils';
+import { useChangeSummary } from '../../../hooks/useChangeSummary';
+import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
-import { GenericProvider, useGenericContext } from './GenericProvider';
-
-// Mock dependencies
-jest.mock('../../../rest/feedsAPI');
+import { useGenericContext } from './GenericContext';
+import { GenericProvider } from './GenericProvider';
 
 jest.mock('../../../hooks/useCustomPages', () => ({
   useCustomPages: jest.fn().mockImplementation(() => ({
@@ -33,6 +32,12 @@ jest.mock('../../../hooks/useCustomPages', () => ({
       pageType: PageType.Table,
       tabs: [],
     },
+  })),
+}));
+
+jest.mock('../../../hooks/useChangeSummary', () => ({
+  useChangeSummary: jest.fn().mockImplementation(() => ({
+    changeSummary: {},
   })),
 }));
 
@@ -54,24 +59,10 @@ jest.mock('react-router-dom', () => {
   };
 });
 
-jest.mock('../../../utils/CustomizePage/CustomizePageUtils', () => ({
+jest.mock('../../../utils/CustomizePage/CustomizePageWidgetUtils', () => ({
   getLayoutFromCustomizedPage: jest.fn().mockImplementation(() => []),
   updateWidgetHeightRecursively: jest.fn(),
 }));
-
-// Mock ActivityFeedProvider
-jest.mock(
-  '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider',
-  () => ({
-    ActivityFeedProvider: ({ children }: { children: React.ReactNode }) =>
-      children,
-    useActivityFeedProvider: () => ({
-      postFeed: jest.fn(),
-      deleteFeed: jest.fn(),
-      updateFeed: jest.fn(),
-    }),
-  })
-);
 
 jest.mock('../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () => ({
   __esModule: true,
@@ -85,10 +76,7 @@ const TestComponent = () => {
   return (
     <div>
       <div data-testid="context-data">{JSON.stringify(context.data)}</div>
-      <button
-        onClick={() =>
-          context.onThreadLinkSelect('test-link', ThreadType.Task)
-        }>
+      <button onClick={() => context.onThreadLinkSelect('test-link')}>
         Open Thread
       </button>
       <button onClick={() => context.updateWidgetHeight('widget-id', 100)}>
@@ -145,79 +133,9 @@ describe('GenericProvider', () => {
       expect.objectContaining({
         open: true,
         threadLink: 'test-link',
-        threadType: 'Task',
       }),
       {}
     );
-  });
-
-  it('should handle thread creation successfully', async () => {
-    (postThread as jest.Mock).mockResolvedValueOnce({});
-
-    render(
-      <MemoryRouter>
-        <GenericProvider {...defaultProps}>
-          <TestComponent />
-        </GenericProvider>
-      </MemoryRouter>
-    );
-
-    // Open thread panel
-    fireEvent.click(screen.getByText('Open Thread'));
-
-    // Thread panel should be visible
-    expect(ActivityThreadPanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        open: true,
-        threadLink: 'test-link',
-        threadType: 'Task',
-      }),
-      {}
-    );
-
-    // Simulate thread creation
-    await act(async () => {
-      await (postThread as jest.Mock)({ message: 'Test thread' });
-    });
-
-    expect(postThread).toHaveBeenCalled();
-  });
-
-  it('should handle thread creation error', async () => {
-    const error = new Error('Network error') as AxiosError;
-    (postThread as jest.Mock).mockRejectedValueOnce(error);
-
-    render(
-      <MemoryRouter>
-        <GenericProvider {...defaultProps}>
-          <TestComponent />
-        </GenericProvider>
-      </MemoryRouter>
-    );
-
-    // Open thread panel
-    fireEvent.click(screen.getByText('Open Thread'));
-
-    // Thread panel should be visible
-    expect(ActivityThreadPanel).toHaveBeenCalledWith(
-      expect.objectContaining({
-        open: true,
-        threadLink: 'test-link',
-        threadType: 'Task',
-      }),
-      {}
-    );
-
-    // Simulate thread creation with error
-    await act(async () => {
-      try {
-        await (postThread as jest.Mock)({ message: 'Test thread' });
-      } catch (e) {
-        // Error expected
-      }
-    });
-
-    expect(postThread).toHaveBeenCalled();
   });
 
   it('should update context values when props change', () => {
@@ -241,6 +159,41 @@ describe('GenericProvider', () => {
     expect(screen.getByTestId('context-data')).toHaveTextContent(
       JSON.stringify(updatedData)
     );
+  });
+
+  it('should request the change summary of the entity', () => {
+    render(
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
+    );
+
+    expect(useChangeSummary).toHaveBeenLastCalledWith(
+      EntityType.TABLE,
+      mockData.id,
+      { limit: 1000 }
+    );
+  });
+
+  it('should not request a change summary for the tour mock entity', () => {
+    render(
+      <MemoryRouter>
+        <TourContext.Provider
+          value={
+            {
+              isTourPage: true,
+            } as Partial<TourProviderContextProps> as TourProviderContextProps
+          }>
+          <GenericProvider {...defaultProps}>
+            <TestComponent />
+          </GenericProvider>
+        </TourContext.Provider>
+      </MemoryRouter>
+    );
+
+    expect(useChangeSummary).toHaveBeenLastCalledWith('', '', { limit: 1000 });
   });
 
   it('should handle version view mode', () => {

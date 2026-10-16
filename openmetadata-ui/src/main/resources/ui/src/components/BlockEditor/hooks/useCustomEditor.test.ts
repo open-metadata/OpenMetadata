@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render } from '@testing-library/react';
 import { renderHook } from '@testing-library/react-hooks';
 import { EditorOptions } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
+import { Component, createElement } from 'react';
 import { useCustomEditor } from './useCustomEditor';
 
 class MockEditor {
   options: Partial<EditorOptions> = {};
+  isDestroyed = false;
   constructor(options?: Partial<EditorOptions>) {
     if (options) {
       this.setOptions(options);
@@ -25,6 +28,10 @@ class MockEditor {
 
   setOptions(options?: Partial<EditorOptions>): void {
     this.options = options || {};
+  }
+
+  destroy(): void {
+    this.isDestroyed = true;
   }
   on(_name: string, callback: (props: { editor: Editor }) => void) {
     callback({ editor: new Editor() });
@@ -124,6 +131,17 @@ describe('useCustomEditor hook', () => {
     expect(mockOnUpdate).toHaveBeenCalledTimes(2);
   });
 
+  it('Should destroy the editor instance on unmount', () => {
+    const { result, unmount } = renderHook(() => useCustomEditor({}));
+    const instance = result.current as unknown as MockEditor;
+
+    expect(instance.isDestroyed).toBe(false);
+
+    unmount();
+
+    expect(instance.isDestroyed).toBe(true);
+  });
+
   it('Should not update the editor event handlers if editor is not defined', () => {
     (Editor as jest.Mock).mockImplementationOnce(() => null);
     renderHook(() => useCustomEditor({}));
@@ -136,5 +154,32 @@ describe('useCustomEditor hook', () => {
     expect(mockOnFocus).not.toHaveBeenCalled();
     expect(mockOnSelectionUpdate).not.toHaveBeenCalled();
     expect(mockOnTransaction).not.toHaveBeenCalled();
+  });
+
+  // EditorContent resets a live editor's view on unmount, which re-renders it.
+  // Destroying first makes it skip that, so unmounting many previewers stays cheap.
+  it('destroys the editor before a child unmounts', () => {
+    let destroyedWhenChildUnmounted: boolean | undefined;
+
+    class Child extends Component<{ editor: MockEditor | null }> {
+      componentWillUnmount() {
+        destroyedWhenChildUnmounted = this.props.editor?.isDestroyed;
+      }
+
+      render() {
+        return null;
+      }
+    }
+
+    const Parent = () => {
+      const editor = useCustomEditor() as unknown as MockEditor | null;
+
+      return createElement(Child, { editor });
+    };
+
+    const { unmount } = render(createElement(Parent));
+    unmount();
+
+    expect(destroyedWhenChildUnmounted).toBe(true);
   });
 });

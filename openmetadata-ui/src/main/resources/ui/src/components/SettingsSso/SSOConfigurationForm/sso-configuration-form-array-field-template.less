@@ -44,130 +44,6 @@
   }
 }
 
-.sso-select-container {
-  position: relative;
-  overflow: hidden;
-
-  .ant-select-selection-overflow {
-    padding-left: 2px !important;
-    padding-right: @size-md;
-    gap: @size-xxs;
-    padding-bottom: 0;
-  }
-
-  .ant-select-selection-item {
-    display: flex;
-    align-items: center;
-    gap: @size-xxs;
-    background: @blue-29;
-    border: 1px solid @blue-30;
-    border-radius: 6px;
-    margin: 0;
-    min-height: @size-lg;
-    height: auto;
-    color: @grey-900;
-    font-size: @size-sm;
-    font-weight: @font-medium;
-    word-break: break-all;
-    word-wrap: break-word;
-    white-space: normal;
-    padding: @size-xxs @size-xs;
-
-    .ant-select-selection-item-content {
-      flex: 1;
-      word-break: break-all;
-      word-wrap: break-word;
-      white-space: normal;
-      line-height: 1.4;
-      color: @tag-text;
-      font-weight: @font-regular;
-      font-size: @size-sm;
-    }
-
-    .ant-select-selection-item-remove {
-      margin-left: @size-xxs;
-      display: flex;
-      align-items: flex-start;
-      justify-content: center;
-      align-self: flex-start;
-      margin: auto;
-      flex-shrink: 0;
-
-      background-color: transparent;
-      border: none;
-
-      &:hover {
-        background-color: transparent;
-      }
-    }
-  }
-
-  .ant-select-selector {
-    background: @background-color;
-    border: 1px solid @grey-300;
-    border-radius: @border-rad-xs;
-
-    box-shadow: 0px 1px 2px 0px @grey-27;
-
-    &:hover {
-      border-color: @primary-6;
-    }
-
-    &:focus {
-      border-color: @primary-color;
-      box-shadow: @box-shadow-ant-select;
-      outline: none;
-    }
-
-    .ant-select-selection-search {
-      margin: 0;
-
-      .ant-select-selection-search-input {
-        padding-left: 0;
-        margin-left: 0;
-        text-indent: 0;
-        box-sizing: border-box;
-      }
-    }
-
-    .ant-select-selection-placeholder {
-      color: @grey-500;
-      font-size: @font-size-base;
-      font-weight: 400;
-      line-height: @size-mlg;
-      margin-left: 2px;
-    }
-  }
-
-  // Hover state for the select
-  .ant-select:hover .ant-select-selector {
-    border-color: @primary-6;
-  }
-
-  // Focused state for the select
-  .ant-select-focused .ant-select-selector {
-    border-color: @primary-color;
-    box-shadow: @box-shadow-ant-select;
-    outline: none;
-  }
-
-  // Override Ant Design's default input positioning for tags mode
-  .ant-select-selection-overflow {
-    padding-left: 0;
-    padding-bottom: 0;
-  }
-
-  .ant-select-selection-search-input {
-    padding-left: 0;
-    margin-left: 0;
-    text-indent: 0;
-  }
-
-  .ant-select:not(.ant-select-customize-input) .ant-select-selector {
-    border-radius: @border-rad-xs;
-    padding: @size-xs @size-sm;
-  }
-}
 .array-field-label {
   color: @grey-700;
   font-weight: 500;
@@ -175,27 +51,6 @@
 
   &.required-field::after {
     color: @red-23;
-  }
-}
-
-// Custom dropdown arrow icon for array field selects
-.sso-select-container {
-  .ant-select .ant-select-arrow {
-    .anticon {
-      display: none;
-    }
-
-    &::after {
-      content: '';
-      display: block;
-      width: @size-sm;
-      height: @size-xs;
-      margin-right: @size-xxs;
-      background-image: url('../../../assets/svg/ic-dropdown-arrow.svg');
-      background-size: @size-sm @size-xs;
-      background-repeat: no-repeat;
-      background-position: center;
-    }
   }
 }
 
@@ -221,7 +76,6 @@
 }
 
 // Apply proper blue focus styles to select container
-.sso-select-container,
 .sso-array-field {
   .ant-select {
     &:hover .ant-select-selector {
@@ -295,10 +149,6 @@
 }
 
 // Specific override for ant-select show-search input
-.sso-select-container
-  .ant-select-show-search.ant-select:not(.ant-select-customize-input)
-  .ant-select-selector
-  input,
 .sso-array-field
   .ant-select-show-search.ant-select:not(.ant-select-customize-input)
   .ant-select-selector

@@ -1,7 +1,16 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.json.JsonPatch;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -18,9 +27,19 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.governance.WorkflowDefinitionResource;
+import org.openmetadata.service.secrets.WorkflowSinkSecrets;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
+import org.openmetadata.service.secrets.masker.WorkflowDefinitionSecretGuards;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -47,17 +66,35 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   protected void postCreate(WorkflowDefinition entity) {
     WorkflowHandler.getInstance().deploy(new Workflow(entity));
+    // A new workflow may add/remove approval gating for an entity type; drop the cached rules so
+    // the
+    // gate reflects it on the next edit instead of after the cache TTL.
+    GovernanceApprovalRegistry.invalidate();
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
   protected void postUpdate(WorkflowDefinition original, WorkflowDefinition updated) {
     WorkflowHandler.getInstance().deploy(new Workflow(updated));
+    GovernanceApprovalRegistry.invalidate();
+    if (GovernanceApprovalRegistry.holdsChanges(updated)) {
+      ChangeRequestService.redeliverStuck(updated.getId());
+    } else {
+      ChangeRequestService.cancelAllForWorkflow(
+          updated.getId(),
+          "Approval workflow %s no longer reviews changes".formatted(updated.getName()));
+    }
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
   protected void postDelete(WorkflowDefinition entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
     WorkflowHandler.getInstance().deleteWorkflowDefinition(entity);
+    GovernanceApprovalRegistry.invalidate();
+    ChangeRequestService.cancelAllForWorkflow(
+        entity.getId(), "Approval workflow %s was deleted".formatted(entity.getName()));
+    EntityStatusWorkflows.invalidate();
   }
 
   @Override
@@ -75,9 +112,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void prepare(WorkflowDefinition entity, boolean update) {
-    // Validate workflow configuration - single entry point for all validations
+    // The batch and sink rules run only on create and on updates that change the graph or the
+    // trigger (getUpdater), so a stored definition that breaks them can still be edited otherwise.
     LOG.info("Validating workflow configuration for: {}", entity.getName());
-    validateWorkflow(entity);
+    validateWorkflowStructure(entity);
   }
 
   @Override
@@ -86,7 +124,46 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       WorkflowDefinition updated,
       Operation operation,
       ChangeSource changeSource) {
+    // Every update path (PUT, PATCH, optimistic-locking PATCH) builds its updater here, and this is
+    // the one point where both the stored and incoming definitions are available before the diff,
+    // the store and the redeploy.
+    // Only the suspend and resume endpoints change suspension. A PUT request carries no suspended
+    // field, so the stored flag is kept for postUpdate to deploy the workflow suspended again.
+    updated.setSuspended(original.getSuspended());
+    WorkflowDefinitionMasker.restoreMaskedSecrets(original, updated);
+    if (operation != Operation.SOFT_DELETE) {
+      WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(updated);
+      WorkflowDefinitionSecretGuards.requireStoredEncryptedSecrets(original, updated);
+    }
+    // Encrypted before the diff, so the change description, the stored JSON and the BPMN that
+    // postUpdate deploys all carry the ciphertext.
+    WorkflowSinkSecrets.encrypt(original, updated);
+    if (changesWorkflowGraph(original, updated)) {
+      validateBatchAndSinkRules(updated);
+    }
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
+  }
+
+  /** PATCH is the one write that can read a stored secret, through a copy or move operation. */
+  @Override
+  protected void validatePatch(
+      WorkflowDefinition original, WorkflowDefinition updated, JsonPatch patch) {
+    WorkflowDefinitionSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
+  }
+
+  /**
+   * Whether an update changes what the batch and sink rules read. The rules read no sink secret, so
+   * the definitions are compared with their secrets masked: a secret stored as plaintext and
+   * encrypted by this update, or one replaced, does not count as a change.
+   */
+  static boolean changesWorkflowGraph(WorkflowDefinition original, WorkflowDefinition updated) {
+    WorkflowDefinition maskedOriginal = WorkflowDefinitionMasker.mask(original);
+    WorkflowDefinition maskedUpdated = WorkflowDefinitionMasker.mask(updated);
+    return !Objects.equals(
+            listOrEmpty(maskedOriginal.getNodes()), listOrEmpty(maskedUpdated.getNodes()))
+        || !Objects.equals(
+            listOrEmpty(maskedOriginal.getEdges()), listOrEmpty(maskedUpdated.getEdges()))
+        || !Objects.equals(maskedOriginal.getTrigger(), maskedUpdated.getTrigger());
   }
 
   public class WorkflowDefinitionUpdater extends EntityUpdater {
@@ -145,7 +222,25 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @Override
   protected void storeEntity(WorkflowDefinition entity, boolean update) {
+    if (!update) {
+      // The one point every single creation passes; a PUT that creates runs prepare() as an
+      // update. An update was already checked and encrypted in getUpdater.
+      prepareForCreate(entity);
+    }
     store(entity, update);
+  }
+
+  @Override
+  protected void storeEntities(List<WorkflowDefinition> entities) {
+    entities.forEach(WorkflowDefinitionRepository::prepareForCreate);
+    super.storeEntities(entities);
+  }
+
+  private static void prepareForCreate(WorkflowDefinition entity) {
+    validateBatchAndSinkRules(entity);
+    WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(entity);
+    WorkflowDefinitionSecretGuards.requireNoEncryptedSecrets(entity);
+    WorkflowSinkSecrets.encrypt(entity);
   }
 
   @Override
@@ -175,6 +270,11 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
    * @throws BadRequestException if any validation fails
    */
   public void validateWorkflow(WorkflowDefinition workflowDefinition) {
+    validateWorkflowStructure(workflowDefinition);
+    validateBatchAndSinkRules(workflowDefinition);
+  }
+
+  private void validateWorkflowStructure(WorkflowDefinition workflowDefinition) {
     // Execute validations in order of importance
     // 1. Basic structural validations
     validateNodeIds(workflowDefinition);
@@ -186,17 +286,253 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateNodeInputOutputMapping(workflowDefinition);
     // 5. Conditional task validations
     validateConditionalTasks(workflowDefinition);
+    // 6. Workflows that hold edits decide them in exactly one approval step per path
+    validateEnforceMode(workflowDefinition);
+    // 7. Restrict the values interpolated into conditional-edge JUEL expressions
+    validateEdgeConditions(workflowDefinition);
+  }
+
+  /**
+   * A workflow in Enforce approval mode holds edits until an approval step decides them: it starts
+   * from edits, filters with JSON Logic, and has exactly one approval step on every path, since each
+   * one publishes or drops the edit it decides.
+   */
+  private void validateEnforceMode(WorkflowDefinition workflowDefinition) {
+    if (GovernanceApprovalRegistry.holdsChanges(workflowDefinition)) {
+      validateHookTrigger(workflowDefinition);
+      validateJsonLogicFilter(workflowDefinition);
+      Set<String> approvals = new HashSet<>();
+      listOrEmpty(workflowDefinition.getNodes()).stream()
+          .filter(node -> USER_APPROVAL_TASK.equals(node.getSubType()))
+          .forEach(
+              node -> {
+                requireApproveAndRejectOnly(workflowDefinition, node);
+                approvals.add(node.getName());
+              });
+      if (approvals.isEmpty()) {
+        throw BadRequestException.of(
+            "Workflow '%s' holds edits for approval but has no user approval task to decide them"
+                .formatted(workflowDefinition.getName()));
+      }
+      Map<String, List<String>> outgoing = outgoingNodes(workflowDefinition);
+      requireOneApprovalPerPath(workflowDefinition, approvals, outgoing);
+      requireApprovalOnEveryPath(workflowDefinition, approvals, outgoing);
+    }
+  }
+
+  private static final Set<String> HELD_EDIT_TRANSITIONS =
+      Set.of(Workflow.APPROVE_CONDITION, Workflow.REJECT_CONDITION);
+
+  // An approval step of a workflow that holds edits publishes the edit on approve and drops it on
+  // reject, so it offers no other transition.
+  private void requireApproveAndRejectOnly(
+      WorkflowDefinition workflowDefinition, WorkflowNodeDefinitionInterface node) {
+    getConfiguredUserApprovalTransitions(node).stream()
+        .filter(transition -> !HELD_EDIT_TRANSITIONS.contains(transition))
+        .findFirst()
+        .ifPresent(
+            transition -> {
+              throw BadRequestException.of(
+                  String.format(
+                      "Workflow '%s': User approval task '%s' has a '%s' transition; in a workflow "
+                          + "that holds edits an approval task only approves or rejects",
+                      workflowDefinition.getName(), node.getNodeDisplayName(), transition));
+            });
+  }
+
+  // An approval step publishes or drops the edit it decides, so no approval step may follow
+  // another.
+  private static void requireOneApprovalPerPath(
+      WorkflowDefinition workflowDefinition,
+      Set<String> approvals,
+      Map<String, List<String>> outgoing) {
+    for (String approval : approvals) {
+      Deque<String> pending = new ArrayDeque<>(listOrEmpty(outgoing.get(approval)));
+      Set<String> visited = new HashSet<>();
+      while (!pending.isEmpty()) {
+        String node = pending.pop();
+        if (approvals.contains(node)) {
+          throw BadRequestException.of(
+              String.format(
+                  "Workflow '%s': user approval tasks '%s' and '%s' are on the same path. In a "
+                      + "workflow that holds edits each path has one approval task, which "
+                      + "publishes or discards the edit.",
+                  workflowDefinition.getName(), approval, node));
+        }
+        if (visited.add(node)) {
+          pending.addAll(listOrEmpty(outgoing.get(node)));
+        }
+      }
+    }
+  }
+
+  // An edit is held until an approval task publishes or discards it, so a run that ends without
+  // passing one would leave the edit pending.
+  private static void requireApprovalOnEveryPath(
+      WorkflowDefinition workflowDefinition,
+      Set<String> approvals,
+      Map<String, List<String>> outgoing) {
+    Deque<String> pending = new ArrayDeque<>(nodeNamesOfSubType(workflowDefinition, "startEvent"));
+    Set<String> ends = new HashSet<>(nodeNamesOfSubType(workflowDefinition, "endEvent"));
+    Set<String> visited = new HashSet<>();
+    String unsettledEnd = null;
+    while (!pending.isEmpty() && unsettledEnd == null) {
+      String node = pending.pop();
+      if (ends.contains(node)) {
+        unsettledEnd = node;
+      } else if (!approvals.contains(node) && visited.add(node)) {
+        pending.addAll(listOrEmpty(outgoing.get(node)));
+      }
+    }
+    if (unsettledEnd != null) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' holds edits for approval, but a path reaches '%s' without a user "
+                  + "approval task. Every path needs one to publish or discard the held edit.",
+              workflowDefinition.getName(), unsettledEnd));
+    }
+  }
+
+  private static Map<String, List<String>> outgoingNodes(WorkflowDefinition workflowDefinition) {
+    Map<String, List<String>> outgoing = new HashMap<>();
+    for (EdgeDefinition edge : listOrEmpty(workflowDefinition.getEdges())) {
+      outgoing.computeIfAbsent(edge.getFrom(), key -> new ArrayList<>()).add(edge.getTo());
+    }
+    return outgoing;
+  }
+
+  private static List<String> nodeNamesOfSubType(
+      WorkflowDefinition workflowDefinition, String subType) {
+    return listOrEmpty(workflowDefinition.getNodes()).stream()
+        .filter(node -> subType.equals(node.getSubType()))
+        .map(WorkflowNodeDefinitionInterface::getName)
+        .toList();
+  }
+
+  // Change requests are submitted by edits, and hook workflows start only from them.
+  private void validateHookTrigger(WorkflowDefinition workflowDefinition) {
+    JsonNode trigger = JsonUtils.valueToTree(workflowDefinition.getTrigger());
+    boolean updated = false;
+    for (JsonNode event : trigger.path("config").path("events")) {
+      updated = updated || "Updated".equals(event.asText());
+    }
+    if (!"eventBasedEntity".equals(trigger.path("type").asText(null)) || !updated) {
+      throw BadRequestException.of(
+          "Workflow '%s' reviews change requests, so it must use an eventBasedEntity trigger on the Updated event"
+              .formatted(workflowDefinition.getName()));
+    }
+  }
+
+  // Hook workflows are evaluated by the RuleEngine at admission; an Elasticsearch query filter
+  // would
+  // be silently ignored there, so it is rejected instead.
+  private void validateJsonLogicFilter(WorkflowDefinition workflowDefinition) {
+    JsonNode filter =
+        JsonUtils.valueToTree(workflowDefinition.getTrigger()).path("config").path("filter");
+    List<String> logics = new ArrayList<>();
+    filter.fields().forEachRemaining(entry -> logics.add(entry.getValue().asText()));
+    if (filter.isTextual()) {
+      logics.add(filter.asText());
+    }
+    for (String logic : logics) {
+      if (isElasticsearchQuery(logic)) {
+        throw BadRequestException.of(
+            "Workflow '%s': approval workflow filters must be JSON Logic; Elasticsearch query filters are not supported"
+                .formatted(workflowDefinition.getName()));
+      }
+    }
+  }
+
+  private static boolean isElasticsearchQuery(String logic) {
+    boolean query = false;
+    if (logic != null && logic.trim().startsWith("{")) {
+      JsonNode parsed = JsonUtils.readTree(logic);
+      query = parsed.has("query") || parsed.has("bool");
+    }
+    return query;
+  }
+
+  /**
+   * Rules a stored definition may break and still be deployed and run, so they are checked when a
+   * definition is created and when an update changes its nodes, edges or trigger.
+   */
+  private static void validateBatchAndSinkRules(WorkflowDefinition workflowDefinition) {
+    // A workflow that runs once per batch handles every entity of the batch in each node
+    validateBatchExecution(workflowDefinition);
+    // Provider capabilities determine the entity types a sink can sync
+    validateSinkEntityTypes(workflowDefinition);
+  }
+
+  /** Checked on write only: a stored definition that fails it is still deployed and run. */
+  private static void validateSinkEntityTypes(WorkflowDefinition workflowDefinition) {
+    Set<String> unsupported = SinkEntityTypeRule.unsupportedTriggerEntityTypes(workflowDefinition);
+    if (!unsupported.isEmpty()) {
+      throw BadRequestException.of(SinkEntityTypeRule.rejectionMessage(unsupported));
+    }
+  }
+
+  /**
+   * Checked on write only: a stored definition that fails it is still deployed, with its nodes
+   * reading only the first entity of each batch, as they did before batch execution existed.
+   */
+  private static void validateBatchExecution(WorkflowDefinition workflowDefinition) {
+    BatchExecutionPlan plan = BatchExecutionPlan.of(workflowDefinition);
+    if (!plan.violations().isEmpty()) {
+      throw BadRequestException.of(plan.violationMessage());
+    }
+  }
+
+  private void validateEdgeConditions(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getEdges() == null) {
+      return;
+    }
+    String workflowName = workflowDefinition.getName();
+    for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+      checkEdgeExpressionSafety(workflowName, edge);
+    }
+  }
+
+  /**
+   * A conditional edge builds the Flowable expression {@code ${from_result == 'condition'}}, so both
+   * the condition value and the source node ('from') are interpolated into it. Restrict them to a
+   * well-formed character set. Unconditional edges (null/empty condition) are left untouched, so node
+   * names keep the broader entityName contract.
+   */
+  static void checkEdgeExpressionSafety(String workflowName, EdgeDefinition edge) {
+    String condition = edge.getCondition();
+    if (nullOrEmpty(condition)) {
+      return;
+    }
+    if (!WorkflowExpressionValidator.isSafeCondition(condition)) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' edge '%s' -> '%s' has an invalid condition '%s'; it must contain at "
+                  + "least one letter or digit and only letters, digits, space, '.', '_', '-'",
+              workflowName, edge.getFrom(), edge.getTo(), condition));
+    }
+    if (!WorkflowExpressionValidator.isSafeNodeReference(edge.getFrom())) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s' conditional edge '%s' -> '%s' has an invalid source node reference; "
+                  + "allowed characters: letters, digits, '_'",
+              workflowName, edge.getFrom(), edge.getTo()));
+    }
   }
 
   /**
    * Comprehensive workflow graph structure validation.
    * Performs all graph validations in a single traversal for efficiency:
    * 1. Exactly one start node (if nodes exist)
-   * 2. No cycles in the graph
+   * 2. No infinite (automated-only) cycles
    * 3. No orphaned nodes (all nodes are reachable from start)
    * 4. All edges reference valid nodes
    * 5. Non-end nodes must have outgoing edges
    * 6. End nodes must not have outgoing edges
+   *
+   * <p>A cycle is permitted only when it passes through a human-gated node (a userApprovalTask):
+   * workflow state machines legitimately loop back (e.g. the incident-resolution New-&gt;Ack-&gt;New
+   * transition, or an Assigned self-reassign). A cycle of only automated tasks is an infinite loop
+   * and is rejected.
    */
   private void validateWorkflowGraphStructure(WorkflowDefinition workflowDefinition) {
     // Skip validation if no nodes are present - allow empty workflows
@@ -293,17 +629,19 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       }
     }
 
-    // Validation 2 & 3: Cycle detection and orphaned nodes check using DFS
+    // Reject infinite automated cycles and orphaned nodes. A cycle is ALLOWED when it passes
+    // through
+    // a human-gated node (a userApprovalTask): such a loop cannot run unbounded without external
+    // input (e.g. the incident New<->Ack transitions, or an Assigned self-reassign). A cycle of
+    // only
+    // automated tasks would loop forever and is rejected.
     String startNode = startNodes.iterator().next();
     Set<String> visited = new java.util.HashSet<>();
-    Set<String> recursionStack = new java.util.HashSet<>();
-
-    if (hasCycleDFS(startNode, outgoingEdges, visited, recursionStack)) {
+    if (hasAutomatedOnlyCycle(startNode, outgoingEdges, nodeMap, visited, new ArrayList<>())) {
       throw BadRequestException.of(
           String.format("Workflow '%s' contains a cycle in its execution path", workflowName));
     }
 
-    // Validation 3: Check for orphaned nodes (nodes not reachable from start)
     Set<String> orphanedNodes = new java.util.HashSet<>(allNodeIds);
     orphanedNodes.removeAll(visited);
 
@@ -316,49 +654,48 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
-   * Depth-First Search to detect cycles in directed graph.
+   * Depth-first traversal that detects an infinite automated cycle while collecting every reachable
+   * node into {@code visited} (which drives the orphaned-node check). A back edge to a node on the
+   * current path forms a cycle; that cycle is allowed when it contains a human-gated node (a {@code
+   * userApprovalTask}), because such a loop cannot advance without external input (e.g. the incident
+   * New&lt;-&gt;Ack transitions). A cycle of only automated tasks would loop forever and is reported.
    *
    * @param node Current node being visited
    * @param adjacencyList Graph representation
-   * @param visited Set of completely processed nodes (black nodes)
-   * @param recursionStack Set of nodes currently in the DFS path (gray nodes)
+   * @param nodeMap Node id to definition, used to classify human-gated nodes
+   * @param visited Accumulates every node reachable from the start node
+   * @param path Nodes on the current DFS path, used to extract a detected cycle
    */
-  private boolean hasCycleDFS(
+  private boolean hasAutomatedOnlyCycle(
       String node,
       Map<String, List<String>> adjacencyList,
+      Map<String, WorkflowNodeDefinitionInterface> nodeMap,
       Set<String> visited,
-      Set<String> recursionStack) {
-
-    // If node is in current recursion path, we've found a cycle
-    if (recursionStack.contains(node)) {
-      return true;
-    }
-
-    // If node is already completely processed, skip it
-    if (visited.contains(node)) {
-      return false;
-    }
-
-    // Mark node as being processed (gray)
-    visited.add(node);
-    recursionStack.add(node);
-
-    // Recursively visit all neighbors
-    List<String> neighbors = adjacencyList.get(node);
-    if (neighbors != null) {
-      for (String neighbor : neighbors) {
-        if (neighbor.equals(node)) {
-          continue;
-        }
-        if (hasCycleDFS(neighbor, adjacencyList, visited, recursionStack)) {
-          return true;
+      List<String> path) {
+    boolean automatedOnlyCycle = false;
+    int cycleStart = path.indexOf(node);
+    if (cycleStart >= 0) {
+      automatedOnlyCycle =
+          path.subList(cycleStart, path.size()).stream()
+              .noneMatch(nodeId -> isHumanGatedNode(nodeMap.get(nodeId)));
+    } else if (visited.add(node)) {
+      path.add(node);
+      List<String> neighbors = adjacencyList.get(node);
+      if (neighbors != null) {
+        for (String neighbor : neighbors) {
+          if (hasAutomatedOnlyCycle(neighbor, adjacencyList, nodeMap, visited, path)) {
+            automatedOnlyCycle = true;
+            break;
+          }
         }
       }
+      path.removeLast();
     }
+    return automatedOnlyCycle;
+  }
 
-    // Mark node as completely processed (black) by removing from recursion stack
-    recursionStack.remove(node);
-    return false;
+  private boolean isHumanGatedNode(WorkflowNodeDefinitionInterface node) {
+    return node != null && "userApprovalTask".equals(node.getSubType());
   }
 
   public void suspendWorkflow(WorkflowDefinition workflow) {
@@ -368,9 +705,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Suspend all active process instances for this workflow
       WorkflowHandler.getInstance().suspendWorkflow(workflowName);
 
-      workflow.setSuspended(true);
+      // updatedAt moves the definition epoch, so every server drops its cached approval rules.
+      workflow.withSuspended(true).withUpdatedAt(System.currentTimeMillis());
       dao.update(workflow);
-      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      GovernanceApprovalRegistry.invalidate();
+      EntityStatusWorkflows.invalidate();
       LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
     } catch (IllegalArgumentException e) {
       // Workflow not deployed to Flowable - this can happen for workflows that haven't been
@@ -392,9 +733,13 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       // Resume all suspended process instances for this workflow
       WorkflowHandler.getInstance().resumeWorkflow(workflowName);
 
-      workflow.setSuspended(false);
+      workflow.withSuspended(false).withUpdatedAt(System.currentTimeMillis());
       dao.update(workflow);
-      invalidateCacheForEntity(entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      EntityRepository.invalidateCacheForEntity(
+          entityType, workflow.getId(), workflow.getFullyQualifiedName());
+      GovernanceApprovalRegistry.invalidate();
+      ChangeRequestService.redeliverStuck(workflow.getId());
+      EntityStatusWorkflows.invalidate();
 
       // Log the resumption
       LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
@@ -688,12 +1033,16 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         }
 
         if (USER_APPROVAL_TASK.equals(node.getSubType())) {
+          validatePartialDecisions(workflowDefinition, node, outgoingEdges);
+          List<EdgeDefinition> decisionEdges = outgoingEdges;
           List<String> configuredTransitions = getConfiguredUserApprovalTransitions(node);
           if (!configuredTransitions.isEmpty()) {
             validateUserApprovalTransitions(
-                workflowName, node.getNodeDisplayName(), configuredTransitions, outgoingEdges);
+                workflowName, node.getNodeDisplayName(), configuredTransitions, decisionEdges);
             continue;
           }
+          validateApprovalConditions(workflowName, node.getNodeDisplayName(), decisionEdges);
+          continue;
         }
 
         // Check if we have both TRUE and FALSE conditions
@@ -722,6 +1071,84 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     }
   }
 
+  private void validateApprovalConditions(
+      String workflowName, String nodeDisplayName, List<EdgeDefinition> outgoingEdges) {
+    boolean hasApprove = false;
+    boolean hasReject = false;
+    for (EdgeDefinition edge : outgoingEdges) {
+      String condition = edge.getCondition();
+      if (condition != null) {
+        String trimmed = condition.trim();
+        if (APPROVE_CONDITIONS.contains(trimmed)) {
+          hasApprove = true;
+        } else if (REJECT_CONDITIONS.contains(trimmed)) {
+          hasReject = true;
+        }
+      }
+    }
+
+    if (!hasApprove || !hasReject) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' must have both approve and reject outgoing sequence flows. "
+                  + "Add sequence flows with conditions for both outcomes to prevent workflow execution errors.",
+              workflowName, nodeDisplayName));
+    }
+  }
+
+  private static final Set<String> PARTIAL_DECISION_CONDITIONS =
+      Set.of(ReviewOutcome.PARTIAL_APPROVE.transition(), ReviewOutcome.PARTIAL_REJECT.transition());
+
+  /**
+   * Partial decisions publish or drop a change request's changes one by one inside the approval
+   * step, so only a workflow in Enforce approval mode can allow them, and the step still leaves the
+   * workflow only through its approve and reject edges.
+   */
+  private static void validatePartialDecisions(
+      WorkflowDefinition workflowDefinition,
+      WorkflowNodeDefinitionInterface node,
+      List<EdgeDefinition> outgoingEdges) {
+    if (allowsPartialDecisions(node)
+        && !GovernanceApprovalRegistry.holdsChanges(workflowDefinition)) {
+      throw BadRequestException.of(
+          String.format(
+              "Workflow '%s': User approval task '%s' allows partial decisions, which only a "
+                  + "workflow in Enforce approval mode supports",
+              workflowDefinition.getName(), node.getNodeDisplayName()));
+    }
+    outgoingEdges.stream()
+        .map(EdgeDefinition::getCondition)
+        .filter(Objects::nonNull)
+        .map(String::trim)
+        .filter(
+            condition -> PARTIAL_DECISION_CONDITIONS.stream().anyMatch(condition::equalsIgnoreCase))
+        .findFirst()
+        .ifPresent(
+            condition -> {
+              throw BadRequestException.of(
+                  String.format(
+                      "Workflow '%s': User approval task '%s' has a '%s' sequence flow; partial "
+                          + "decisions are handled inside the approval step, which leaves only "
+                          + "through its approve and reject flows",
+                      workflowDefinition.getName(), node.getNodeDisplayName(), condition));
+            });
+  }
+
+  @SuppressWarnings("unchecked")
+  private static boolean allowsPartialDecisions(WorkflowNodeDefinitionInterface node) {
+    boolean allowed = false;
+    if (node.getConfig() != null) {
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      allowed = Boolean.TRUE.equals(config.get("allowPartialDecisions"));
+    }
+    return allowed;
+  }
+
+  private static final Set<String> APPROVE_CONDITIONS =
+      Set.of(Workflow.APPROVE_CONDITION, Workflow.LEGACY_APPROVE_CONDITION);
+  private static final Set<String> REJECT_CONDITIONS =
+      Set.of(Workflow.REJECT_CONDITION, Workflow.LEGACY_REJECT_CONDITION);
+
   /**
    * Checks if a node is a conditional task that requires TRUE/FALSE outputs.
    */
@@ -734,19 +1161,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   @SuppressWarnings("unchecked")
   private List<String> getConfiguredUserApprovalTransitions(WorkflowNodeDefinitionInterface node) {
-    if (node.getConfig() == null) {
-      return List.of();
+    List<String> transitionIds = new ArrayList<>();
+    if (node.getConfig() != null) {
+      Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
+      collectTransitionMetadataIds(config.get("transitionMetadata"), transitionIds);
+      collectExpiryTimerTransitionId(config.get("expiryTimer"), transitionIds);
     }
+    return transitionIds;
+  }
 
-    Map<String, Object> config = JsonUtils.readOrConvertValue(node.getConfig(), Map.class);
-    Object transitionMetadata = config.get("transitionMetadata");
+  @SuppressWarnings("unchecked")
+  private void collectTransitionMetadataIds(Object transitionMetadata, List<String> transitionIds) {
     if (transitionMetadata == null) {
-      return List.of();
+      return;
     }
-
     List<Map<String, Object>> transitions =
         JsonUtils.readOrConvertValue(transitionMetadata, List.class);
-    List<String> transitionIds = new ArrayList<>();
     for (Map<String, Object> transition : transitions) {
       if (transition == null) {
         continue;
@@ -756,7 +1186,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         transitionIds.add(id.trim());
       }
     }
-    return transitionIds;
+  }
+
+  // expiryTimer.transitionId is a legitimate outgoing edge condition on a user approval task —
+  // it is emitted by the boundary timer's ExpireOnTimerImpl service task, not by a user click.
+  // Without this, workflows that use expiryTimer fail validation because the outgoing edge
+  // named after transitionId is not declared in transitionMetadata.
+  @SuppressWarnings("unchecked")
+  private void collectExpiryTimerTransitionId(Object expiryTimer, List<String> transitionIds) {
+    if (expiryTimer == null) {
+      return;
+    }
+    Map<String, Object> timerConfig = JsonUtils.readOrConvertValue(expiryTimer, Map.class);
+    Object transitionId = timerConfig.get("transitionId");
+    if (transitionId instanceof String id && !id.isBlank()) {
+      transitionIds.add(id.trim());
+    }
   }
 
   private void validateUserApprovalTransitions(

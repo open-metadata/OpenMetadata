@@ -12,15 +12,13 @@ import { ExportTypes } from '../../../constants/Export.constants';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type CSVExportResponse = {
-  jobId: string;
-  message: string;
-};
+
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
-  data: string;
+  status: 'CANCELLED' | 'COMPLETED' | 'FAILED' | 'IN_PROGRESS';
+  data: string | null;
   error: string | null;
   progress?: number;
   total?: number;
@@ -29,6 +27,7 @@ export type CSVExportWebsocketResponse = {
 
 export type CSVExportJob = {
   fileName: string;
+  statusUnavailable?: boolean;
 } & Partial<CSVExportWebsocketResponse> &
   CSVExportResponse;
 
@@ -58,15 +57,23 @@ export type ExportData = {
   viewport?: ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
   hideExportModal?: boolean;
+  renderEdgesOverlay?: (
+    imageWidth: number,
+    imageHeight: number,
+    padding: number,
+    pixelRatio: number
+  ) => HTMLCanvasElement | null;
   onExport: (
     name: string,
     params?: {
       recursive?: boolean;
     }
   ) => Promise<CSVExportResponse | string>;
+  onError?: () => void;
 };
 export interface EntityExportModalContextProps {
   csvExportData?: string;
+  csvExportError?: string;
   clearCSVExportData: () => void;
   showModal: (data: ExportData) => void;
   triggerExportForBulkEdit: (data: ExportData) => void;

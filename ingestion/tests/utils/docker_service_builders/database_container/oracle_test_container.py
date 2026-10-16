@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import json
-import sys
 
 import docker
 from testcontainers.oracle import OracleDbContainer
@@ -41,7 +40,6 @@ class OracleTestContainer(DataBaseTestContainer):
         self.start()
 
         self.connection_url = self.get_connection_url()
-        # Skip parent __init__ to avoid cx_Oracle dependency
 
     def start(self):
         self.oracle_container.start()
@@ -50,27 +48,9 @@ class OracleTestContainer(DataBaseTestContainer):
         self.oracle_container.stop()
 
     def get_connection_url(self) -> str:
-        """
-        Override testcontainers' get_connection_url to have correct dialect
-        for different SQLAlchemy versions.
-
-        # SQLAlchemy 1.4 with python-oracledb or cx_Oracle
-        engine = create_engine('oracle://...
-
-        # SQLAlchemy 2.0 with python-oracledb
-        engine = create_engine(
-            "oracle+oracledb://...
-
-        ref:
-        https://stackoverflow.com/questions/74093231/nosuchmoduleerror-cant-load-plugin-sqlalchemy-dialectsoracle-oracledb
-        """
-        dialect = "oracle+oracledb"
-        if sqlalchemy_vers := sys.modules.get("sqlalchemy"):  # noqa: SIM102
-            if sqlalchemy_vers.__version__.startswith("1."):
-                dialect = "oracle"
-
+        """Return the SQLAlchemy python-oracledb URL."""
         return self.oracle_container._create_connection_url(
-            dialect=dialect,
+            dialect="oracle+oracledb",
             username=self.username,
             password=self.password,
             port=self.port,

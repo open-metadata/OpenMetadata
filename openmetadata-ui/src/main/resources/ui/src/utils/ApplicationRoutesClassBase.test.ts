@@ -18,6 +18,10 @@ import applicationRoutesClassBase, {
   ApplicationRoutesClassBase,
 } from './ApplicationRoutesClassBase';
 
+jest.mock('../components/AppRouter/UnAuthenticatedAppRouter', () => ({
+  UnAuthenticatedAppRouter: jest.fn(),
+}));
+
 jest.mock('../components/AppRouter/AuthenticatedAppRouter', () => ({
   __esModule: true,
   default: function AuthenticatedAppRouter() {
@@ -72,12 +76,12 @@ describe('ApplicationRoutesClassBase', () => {
       expect(instance.isProtectedRoute('/dashboard')).toBe(true);
       expect(instance.isProtectedRoute('/settings')).toBe(true);
       expect(instance.isProtectedRoute('/explore')).toBe(true);
+      expect(instance.isProtectedRoute(APP_ROUTER_ROUTES.HOME)).toBe(true);
     });
 
     it('should identify unprotected routes correctly', () => {
       expect(instance.isProtectedRoute(APP_ROUTER_ROUTES.SIGNIN)).toBe(false);
       expect(instance.isProtectedRoute(APP_ROUTER_ROUTES.SIGNUP)).toBe(false);
-      expect(instance.isProtectedRoute(APP_ROUTER_ROUTES.HOME)).toBe(false);
       expect(instance.isProtectedRoute(APP_ROUTER_ROUTES.FORGOT_PASSWORD)).toBe(
         false
       );

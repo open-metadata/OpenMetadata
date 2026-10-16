@@ -21,11 +21,20 @@ import {
 } from 'react';
 import useAutoSizeTextArea from '../../../hooks/useAutosizeTextArea';
 import i18n from '../../../utils/i18next/LocalUtil';
-import './title-component.less';
+
+// Placeholder is deliberately faint ("Untitled" hint): #f5f5f5 in light, a
+// translucent white in dark.
+const TITLE_INPUT_CLASS = [
+  'tw:w-full tw:resize-none tw:appearance-none tw:overflow-hidden tw:border-0',
+  'tw:bg-transparent tw:text-[32px] tw:leading-snug tw:font-bold',
+  'tw:outline-2 tw:outline-offset-2 tw:outline-transparent',
+  'tw:placeholder:text-(--om-color-bg-secondary-hover)',
+].join(' ');
 
 interface Props {
   value: string;
   autoFocus?: boolean;
+  placeholder?: string;
   readOnly?: boolean;
   onChange: (value: string) => void;
   onKeyDown: (event: KeyboardEvent) => void;
@@ -33,11 +42,29 @@ interface Props {
 
 export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
   (
-    { value, onChange, onKeyDown, autoFocus = false, readOnly = false },
+    {
+      value,
+      onChange,
+      onKeyDown,
+      autoFocus = false,
+      placeholder,
+      readOnly = false,
+    },
     ref
   ) => {
     const [titleValue, setTitleValue] = useState<string>(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
+    const prevValueRef = useRef<string>(value);
+
+    // Only sync from prop when the user has not diverged from the last known
+    // saved value. If titleValue !== prevValueRef.current, the user has typed
+    // ahead of the save and we must not clobber their in-progress edit.
+    useEffect(() => {
+      if (titleValue === prevValueRef.current) {
+        setTitleValue(value);
+      }
+      prevValueRef.current = value;
+    }, [value]);
 
     useAutoSizeTextArea('title-input', textAreaRef.current, titleValue);
 
@@ -70,10 +97,11 @@ export const TitleComponent = forwardRef<HTMLTextAreaElement, Props>(
 
     return (
       <textarea
-        className="knowledge-page-title-input"
+        aria-label={i18n.t('label.title')}
+        className={TITLE_INPUT_CLASS}
         data-testid="entity-header-display-name"
         id="title-input"
-        placeholder={i18n.t('label.untitled')}
+        placeholder={placeholder || i18n.t('label.untitled')}
         readOnly={readOnly}
         ref={setRef}
         rows={1}

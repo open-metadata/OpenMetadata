@@ -31,7 +31,10 @@ import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
@@ -45,6 +48,10 @@ import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 @Slf4j
 public class OpenSearchAggregationManager implements AggregationManagementClient {
+  private static final ContextMemorySearchVisibility MEMORY_VISIBILITY =
+      new ContextMemorySearchVisibility(new OpenSearchQueryBuilderFactory());
+  private static final String MATCH_ALL_TEXT = "*";
+
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
   private final ObjectMapper mapper;
@@ -64,6 +71,85 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
     mapper = new ObjectMapper();
   }
 
+  /**
+   * Resolves ContextMemory visibility for {@code subjectContext} so the counts match what that
+   * caller sees in the listing. Leaving the request unresolved (no identifiable subject) lets
+   * {@code OpenSearchRequestBuilder#build} apply its org-wide-only default instead.
+   */
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext, OpenSearchRequestBuilder requestBuilder, String queryFilter) {
+    OMQueryBuilder visibilityBuilder =
+        MEMORY_VISIBILITY.buildVisibilityFilter(
+            subjectContext,
+            ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+            ContextMemoryAnchorPins.ofQueryFilters(queryFilter));
+    if (visibilityBuilder != null) {
+      requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
+    }
+    if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext)) {
+      requestBuilder.contextMemoryVisibilityResolved();
+    }
+  }
+
+  private Query applyRbacQuery(Query query, SubjectContext subjectContext) {
+    return OpenSearchRbacQueries.withAccessPolicies(query, subjectContext, rbacConditionEvaluator);
+  }
+
+  /**
+   * ANDs the org-wide-only ContextMemory filter into an aggregation query run without an
+   * identifiable subject. Such a query cannot tell whose restricted memory a document is and must
+   * fail closed: only memories everyone may read are aggregated. Non-memory documents are
+   * unaffected.
+   */
+  private Query restrictToOrgWideMemories(Query query) {
+    Query memoryFilter =
+        ((OpenSearchQueryBuilder) MEMORY_VISIBILITY.buildOrgWideOnlyFilter()).buildV2();
+    return query == null
+        ? memoryFilter
+        : Query.of(q -> q.bool(b -> b.must(query).filter(memoryFilter)));
+  }
+
+  /**
+   * ANDs the caller's RBAC policy and per-subject ContextMemory visibility into the aggregation
+   * query, mirroring {@code OpenSearchSearchManager#applyRbacCondition}. A {@code null} or exempt
+   * subject (admin, or access control disabled) is left unfiltered by RBAC. An identifiable subject
+   * gets its own memory visibility filter (admins are limited to searchable statuses only); a
+   * {@code null} or unidentifiable subject falls back to the org-wide-only memory filter so the
+   * aggregation never leaks private memories.
+   */
+  private Query applySubjectFilters(Query query, SubjectContext subjectContext) {
+    Query rbacFiltered = applyRbacQuery(query, subjectContext);
+    OMQueryBuilder visibilityBuilder = MEMORY_VISIBILITY.buildVisibilityFilter(subjectContext);
+    if (visibilityBuilder != null) {
+      Query memoryFilter = ((OpenSearchQueryBuilder) visibilityBuilder).buildV2();
+      return rbacFiltered == null
+          ? memoryFilter
+          : Query.of(q -> q.bool(b -> b.must(rbacFiltered).filter(memoryFilter)));
+    }
+    return restrictToOrgWideMemories(rbacFiltered);
+  }
+
+  /**
+   * A bare query_string searches every field in the mapping, which on large data-asset mappings can
+   * exceed the cluster's max_clause_count, so data-asset text goes through the configured fields
+   * instead. {@code *} and other indexes keep the bare query_string.
+   */
+  private static Query plainTextQuery(String index, String text) {
+    String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(index);
+    if (!MATCH_ALL_TEXT.equals(text.trim()) && SearchUtils.usesDataAssetSearchBuilder(indexName)) {
+      return configuredFieldsQuery(index, text);
+    }
+    return Query.of(q -> q.queryString(qs -> qs.query(text)));
+  }
+
+  private static Query configuredFieldsQuery(String index, String text) {
+    SearchSettings searchSettings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    return new OpenSearchSourceBuilderFactory(searchSettings)
+        .getSearchSourceBuilderV2(index, text, 0, 0, false, false)
+        .query();
+  }
+
   private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
     JsonNode rootNode = mapper.readTree(jsonQuery);
     String queryToProcess = jsonQuery;
@@ -79,6 +165,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
+    return aggregate(request, null);
+  }
+
+  @Override
+  public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
       throw new IOException("OpenSearch client is not available");
@@ -102,19 +194,12 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
             throw new IOException("Failed to parse JSON query: " + e.getMessage(), e);
           }
         } else {
-          query = Query.of(q -> q.queryString(qs -> qs.query(request.getQuery())));
+          query = plainTextQuery(request.getIndex(), request.getQuery());
         }
       }
 
       if (!CommonUtil.nullOrEmpty(request.getQueryText())) {
-        SearchSettings searchSettings =
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-        OpenSearchSourceBuilderFactory searchBuilderFactory =
-            new OpenSearchSourceBuilderFactory(searchSettings);
-        OpenSearchRequestBuilder textQueryBuilder =
-            searchBuilderFactory.getSearchSourceBuilderV2(
-                request.getIndex(), request.getQueryText(), 0, 0, false, false);
-        Query textQuery = textQueryBuilder.query();
+        Query textQuery = configuredFieldsQuery(request.getIndex(), request.getQueryText());
         if (textQuery != null) {
           if (query != null) {
             final Query finalQuery = query;
@@ -138,9 +223,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      if (query != null) {
-        searchRequestBuilder.query(query);
-      }
+      searchRequestBuilder.query(applySubjectFilters(query, subjectContext));
 
       String aggregationField =
           SearchSourceBuilderFactory.resolveFieldForSortOrAggregation(request.getFieldName());
@@ -150,49 +233,17 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       int bucketSize = request.getSize();
       String includeValue = request.getFieldValue().toLowerCase();
+      boolean isSearchPattern = SearchUtils.isBestMatchSearchPattern(includeValue);
 
       Map<String, Aggregation> aggregations = new HashMap<>();
 
-      Aggregation termsAgg;
-
-      if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
-        List<String> topHitFields = request.getSourceFields();
-        int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
-
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                            t ->
-                                t.field(aggregationField)
-                                    .size(bucketSize)
-                                    .order(Collections.singletonMap("_key", SortOrder.Asc))
-                                    .include(tb -> tb.regexp(includeValue)))
-                        .aggregations(
-                            "top",
-                            Aggregation.of(
-                                th ->
-                                    th.topHits(
-                                        topHit ->
-                                            topHit
-                                                .size(topHitSize)
-                                                .source(
-                                                    s ->
-                                                        s.filter(
-                                                            f -> f.includes(topHitFields)))))));
+      if (isSearchPattern) {
+        buildBestMatchAggregations(
+            aggregations, aggregationField, includeValue, bucketSize, request);
       } else {
-        termsAgg =
-            Aggregation.of(
-                a ->
-                    a.terms(
-                        t ->
-                            t.field(aggregationField)
-                                .size(bucketSize)
-                                .order(Collections.singletonMap("_key", SortOrder.Asc))
-                                .include(tb -> tb.regexp(includeValue))));
+        aggregations.put(
+            aggregationField, buildSingleAgg(aggregationField, includeValue, bucketSize, request));
       }
-
-      aggregations.put(aggregationField, termsAgg);
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -207,11 +258,64 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
           RequestLatencyContext.endSearchOperation(searchTimerSample);
         }
       }
-      return Response.status(Response.Status.OK).entity(searchResponse.toJsonString()).build();
+      String responseJson = searchResponse.toJsonString();
+      if (isSearchPattern) {
+        responseJson =
+            SearchUtils.mergeBestMatchAggregations(
+                responseJson, aggregationField, bucketSize, mapper);
+      }
+      return Response.status(Response.Status.OK).entity(responseJson).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
     }
+  }
+
+  private void buildBestMatchAggregations(
+      Map<String, Aggregation> aggregations,
+      String field,
+      String containsPattern,
+      int size,
+      AggregationRequest request) {
+    String escapedRaw = SearchUtils.extractRawSearchValue(containsPattern).replace(".", "\\.");
+    aggregations.put(SearchUtils.exactAggKey(field), buildSingleAgg(field, escapedRaw, 1, request));
+    aggregations.put(
+        SearchUtils.prefixAggKey(field), buildSingleAgg(field, escapedRaw + ".*", size, request));
+    aggregations.put(
+        SearchUtils.containsAggKey(field), buildSingleAgg(field, containsPattern, size, request));
+  }
+
+  private Aggregation buildSingleAgg(
+      String field, String includePattern, int size, AggregationRequest request) {
+    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
+      List<String> topHitFields = request.getSourceFields();
+      int topHitSize = request.getTopHits() != null ? request.getTopHits().getSize() : 10;
+      return Aggregation.of(
+          a ->
+              a.terms(
+                      t ->
+                          t.field(field)
+                              .size(size)
+                              .order(Collections.singletonMap("_key", SortOrder.Asc))
+                              .include(tb -> tb.regexp(includePattern)))
+                  .aggregations(
+                      "top",
+                      Aggregation.of(
+                          th ->
+                              th.topHits(
+                                  topHit ->
+                                      topHit
+                                          .size(topHitSize)
+                                          .source(s -> s.filter(f -> f.includes(topHitFields)))))));
+    }
+    return Aggregation.of(
+        a ->
+            a.terms(
+                t ->
+                    t.field(field)
+                        .size(size)
+                        .order(Collections.singletonMap("_key", SortOrder.Asc))
+                        .include(tb -> tb.regexp(includePattern))));
   }
 
   @Override
@@ -232,7 +336,7 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
       searchRequestBuilder.index(indexName);
 
-      Query parsedQuery;
+      Query parsedQuery = null;
       if (query != null) {
         // Check if query string contains outer "query" wrapper and extract inner query
         if (query.trim().startsWith("{")) {
@@ -241,8 +345,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         } else {
           parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
         }
-        searchRequestBuilder.query(parsedQuery);
       }
+      searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -303,31 +407,9 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
         }
       }
 
-      // Apply RBAC conditions
-      if (SearchUtils.shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
-        OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
-        if (rbacQueryBuilder != null) {
-          Query rbacQuery = ((OpenSearchQueryBuilder) rbacQueryBuilder).buildV2();
-          if (parsedQuery != null) {
-            final Query existingQuery = parsedQuery;
-            parsedQuery =
-                Query.of(
-                    qb ->
-                        qb.bool(
-                            b -> {
-                              b.must(existingQuery);
-                              b.filter(rbacQuery);
-                              return b;
-                            }));
-          } else {
-            parsedQuery = rbacQuery;
-          }
-        }
-      }
+      parsedQuery = applyRbacQuery(parsedQuery, subjectContext);
 
-      if (parsedQuery != null) {
-        searchRequestBuilder.query(parsedQuery);
-      }
+      searchRequestBuilder.query(restrictToOrgWideMemories(parsedQuery));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -359,6 +441,17 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
+      throws IOException {
+    return aggregate(query, index, searchAggregation, filter, null);
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query,
+      String index,
+      SearchAggregation searchAggregation,
+      String filter,
+      SubjectContext subjectContext)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform aggregation.");
@@ -404,14 +497,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       final Query finalParsedQuery = parsedQuery;
       final Query finalFilterQuery = filterQuery;
 
-      if (finalParsedQuery != null && finalFilterQuery != null) {
-        searchRequestBuilder.query(
-            q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)));
-      } else if (finalParsedQuery != null) {
-        searchRequestBuilder.query(finalParsedQuery);
-      } else if (finalFilterQuery != null) {
-        searchRequestBuilder.query(q -> q.bool(b -> b.filter(finalFilterQuery)));
+      Query combinedQuery = finalParsedQuery;
+      if (finalFilterQuery != null) {
+        combinedQuery =
+            finalParsedQuery != null
+                ? Query.of(q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)))
+                : Query.of(q -> q.bool(b -> b.filter(finalFilterQuery)));
       }
+      searchRequestBuilder.query(
+          restrictToOrgWideMemories(applyRbacQuery(combinedQuery, subjectContext)));
 
       searchRequestBuilder.aggregations(aggregations);
       searchRequestBuilder.size(0);
@@ -439,6 +533,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
   @Override
   public Response getEntityTypeCounts(
       org.openmetadata.schema.search.SearchRequest request, String index) throws IOException {
+    return getEntityTypeCounts(request, index, null);
+  }
+
+  @Override
+  public Response getEntityTypeCounts(
+      org.openmetadata.schema.search.SearchRequest request,
+      String index,
+      SubjectContext subjectContext)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot perform get entity type counts");
       throw new IOException("OpenSearch client is not available");
@@ -508,6 +611,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       // Resolve the index alias properly
       String resolvedIndex =
           Entity.getSearchRepository().getIndexOrAliasName(index != null ? index : "all");
+
+      applyContextMemoryVisibility(subjectContext, requestBuilder, request.getQueryFilter());
 
       // Build and execute search
       SearchRequest searchRequest = requestBuilder.build(resolvedIndex);

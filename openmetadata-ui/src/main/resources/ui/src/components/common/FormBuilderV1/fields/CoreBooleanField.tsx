@@ -13,14 +13,15 @@
 
 import { Toggle } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
-import { startCase } from 'lodash';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 const CoreBooleanField = (props: FieldProps) => {
   return (
     <Toggle
+      id={props.idSchema.$id}
       isDisabled={props.disabled || props.readonly}
       isSelected={props.formData ?? false}
-      label={props.schema.title ?? startCase(props.name)}
+      label={props.schema.title ?? getFormDisplayLabel(props.name)}
       onChange={(value) => {
         props.formContext?.handleFocus?.(props.idSchema.$id);
         props.onChange(value);

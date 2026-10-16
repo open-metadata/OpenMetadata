@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Typography } from '@openmetadata/ui-core-components';
 
-import Icon, { PlusOutlined } from '@ant-design/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ArrayFieldTemplateProps } from '@rjsf/utils';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { Fragment, FunctionComponent } from 'react';
 import { ReactComponent as DeleteIcon } from '../../../../../assets/svg/ic-delete.svg';
+import { t } from '../../../../../utils/i18next/LocalUtil';
 
 export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   props: ArrayFieldTemplateProps
@@ -27,14 +28,15 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
   return (
     <Fragment>
       <div className="d-flex justify-between items-center">
-        <label className="control-label">{title}</label>
+        <Typography className="control-label">{title}</Typography>
         {canAdd && (
           <Button
+            aria-label={t('label.add')}
+            color="primary"
             data-testid={`add-item-${title}`}
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
+            iconLeading={Plus}
             id={`${idSchema.$id}`}
-            size="small"
-            type="primary"
+            size="xs"
             onClick={onAddClick}
             onFocus={() => {
               if (!isUndefined(formContext.handleFocus)) {
@@ -49,12 +51,11 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
           className={classNames('d-flex items-center w-full', {
             'm-t-sm': index > 0,
           })}
-          key={`${element.key}-${index}`}>
+          key={element.key}>
           <div className="flex-1 array-fields">{element.children}</div>
           {element.hasRemove && (
-            <Icon
-              className="w-7 h-0 m-l-sm"
-              component={DeleteIcon}
+            <DeleteIcon
+              className="tw:ml-3 tw:size-3.5 tw:shrink-0"
               onClick={(event) => {
                 element.onDropIndexClick(element.index)(event);
               }}

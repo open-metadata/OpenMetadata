@@ -14,11 +14,10 @@
 import logging
 import time
 from datetime import datetime
-from typing import List, Tuple, Type  # noqa: UP035
 
 from pandas import DataFrame
 
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator, elapsed_ms
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.type.basic import Timestamp
@@ -35,8 +34,8 @@ logger = logging.getLogger(__name__)
 class DataFrameValidationEngine:
     """Orchestrates execution of multiple validators on a DataFrame."""
 
-    def __init__(self, test_cases: List[TestCase]):  # noqa: UP006
-        self.test_cases: List[TestCase] = test_cases  # noqa: UP006
+    def __init__(self, test_cases: list[TestCase]):
+        self.test_cases: list[TestCase] = test_cases
 
     def execute(
         self,
@@ -52,7 +51,7 @@ class DataFrameValidationEngine:
         Returns:
             ValidationResult with outcomes for all tests
         """
-        results: List[Tuple[TestCase, TestCaseResult]] = []  # noqa: UP006
+        results: list[tuple[TestCase, TestCaseResult]] = []
         start_time = time.time()
 
         for test_case in self.test_cases:
@@ -82,18 +81,24 @@ class DataFrameValidationEngine:
             execution_date=Timestamp(root=int(datetime.now().timestamp() * 1000)),
         )
 
+        # Timed around the whole call, as in TestSuiteInterface.run_test_case.
+        start = time.perf_counter()
         try:
             result = validator.run_validation()
-            return result  # noqa: RET504, TRY300
+            result.duration = elapsed_ms(start)
+            return result  # noqa: TRY300
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
-            return validator.get_test_case_result_object(
+            result = validator.get_test_case_result_object(
                 validator.execution_date,
                 TestCaseStatus.Aborted,
                 message,
                 [],
+                exc=err,
             )
+            result.duration = elapsed_ms(start)
+            return result
 
     @staticmethod
     def _build_validation_result(
@@ -123,7 +128,7 @@ class DataFrameValidationEngine:
         )
 
     @staticmethod
-    def _get_validator_class(test_case: TestCase) -> Type[BaseTestValidator]:  # noqa: UP006
+    def _get_validator_class(test_case: TestCase) -> type[BaseTestValidator]:
         """Resolve validator class from test definition name.
 
         Returns:

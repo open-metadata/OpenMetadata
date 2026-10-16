@@ -17,8 +17,8 @@ Run profiler metrics on the table
 import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
+from collections.abc import Callable
 from datetime import datetime as _datetime
-from typing import Callable, List, Optional, Tuple, Type  # noqa: UP035
 
 from sqlalchemy import (
     BigInteger,
@@ -44,6 +44,13 @@ from metadata.ingestion.source.database.timescale.queries import (
     TIMESCALE_GET_APPROXIMATE_METRICS,
     TIMESCALE_IS_HYPERTABLE,
 )
+from metadata.profiler.constants import (
+    COLUMN_COUNT,
+    COLUMN_NAMES,
+    CREATE_DATETIME,
+    ROW_COUNT,
+    SIZE_IN_BYTES,
+)
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
 from metadata.profiler.processor.runner import QueryRunner
@@ -59,19 +66,36 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-COLUMN_COUNT = "columnCount"
-COLUMN_NAMES = "columnNames"
-ROW_COUNT = "rowCount"
-SIZE_IN_BYTES = "sizeInBytes"
-CREATE_DATETIME = "createDateTime"
-
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
+
+
+def _qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Hive or Databricks.
+
+    Both delimit with backticks and unescape a doubled one; a backslash is a
+    literal, so doubling the backtick is enough. Impala is different -- see
+    ``_impala_qualified_identifier``.
+    """
+    return ".".join(f"`{name.replace('`', '``')}`" for name in names)
+
+
+def _impala_qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Impala.
+
+    Impala's lexer (``QuotedIdentifier = `(\\.|[^`])*` ``) treats a backslash as
+    an escape and cannot represent a literal backtick, so a name holding either
+    cannot be safely quoted and is rejected rather than quoted.
+    """
+    for name in names:
+        if "`" in name or "\\" in name:
+            raise ValueError(f"Unsupported Impala identifier: {name!r}")
+    return ".".join(f"`{name}`" for name in names)
 
 
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
-    def __init__(self, runner: QueryRunner, metrics: List[Metrics], conn_config, entity: OMTable):  # noqa: UP006
+    def __init__(self, runner: QueryRunner, metrics: list[Metrics], conn_config, entity: OMTable):
         """Instantiate base table computer"""
         self._runner = runner
         self._metrics = metrics
@@ -134,7 +158,7 @@ class AbstractTableMetricComputer(ABC):
             return Table(table, MetaData(), schema=schema)
         return Table(table, MetaData())
 
-    def _get_col_names_and_count(self) -> Tuple[str, int]:  # noqa: UP006
+    def _get_col_names_and_count(self) -> tuple[str, int]:
         """get column names and count from table
 
         Args:
@@ -149,9 +173,9 @@ class AbstractTableMetricComputer(ABC):
 
     def _build_query(
         self,
-        columns: List[Column],  # noqa: UP006
+        columns: list[Column],
         table: Table,
-        where_clause: Optional[List[ColumnOperators]] = None,  # noqa: UP006, UP045
+        where_clause: list[ColumnOperators] | None = None,
     ):
         query = select(*columns).select_from(table)
         if where_clause:
@@ -369,7 +393,7 @@ class MySQLTableMetricComputer(BaseTableMetricComputer):
     """MySQL Table Metric Computer"""
 
     @inject
-    def compute(self, metrics: Inject[Type[MetricRegistry]] = None):  # noqa: UP006
+    def compute(self, metrics: Inject[type[MetricRegistry]] = None):
         """compute table metrics for mysql"""
 
         if metrics is None:
@@ -830,7 +854,7 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
     convert to a namedtuple so the date can be patched before returning.
     """
 
-    def _parse_created_datetime(self, value) -> Optional[_datetime]:  # noqa: UP045
+    def _parse_created_datetime(self, value) -> _datetime | None:
         for fmt in ("%Y-%m-%d", "%Y-%m-%d %H:%M:%S", "%m/%d/%Y"):
             try:
                 return _datetime.strptime(str(value), fmt)
@@ -845,8 +869,8 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         These FunctionElement subclasses have @compiles(Dialects.Informix) overrides
         that set literal_binds=True, inlining values directly into SQL.
         """
-        from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
-        from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
+        from metadata.profiler.metrics.static.column_count import ColumnCountFn
+        from metadata.profiler.metrics.static.column_names import ColunNameFn
 
         col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
             COLUMN_NAMES
@@ -885,9 +909,11 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
 class ExasolTableMetricComputer(BaseTableMetricComputer):
     """Exasol Table Metric Computer"""
 
-    def compute(self):
-        """Compute table metrics for Exasol using SYS.EXA_ALL_TABLES and
-        SYS.EXA_ALL_OBJECT_SIZES for row count and size respectively."""
+    def _compute_table_metrics(self):
+        """Compute table metrics from Exasol catalog views."""
+        schema_name = self.schema_name.upper()
+        table_name = self.table_name.upper()
+
         row_data = cte(
             self._build_query(
                 [
@@ -897,8 +923,8 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
                 ],
                 self._build_table("EXA_ALL_TABLES", "SYS"),
                 [
-                    Column("TABLE_SCHEMA") == self.schema_name,
-                    Column("TABLE_NAME") == self.table_name,
+                    Column("TABLE_SCHEMA") == schema_name,
+                    Column("TABLE_NAME") == table_name,
                 ],
             )
         )
@@ -906,14 +932,14 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         size_data = cte(
             self._build_query(
                 [
-                    Column("SCHEMA_NAME"),
+                    Column("ROOT_NAME"),
                     Column("OBJECT_NAME"),
                     Column("RAW_OBJECT_SIZE"),
                 ],
                 self._build_table("EXA_ALL_OBJECT_SIZES", "SYS"),
                 [
-                    Column("SCHEMA_NAME") == self.schema_name,
-                    Column("OBJECT_NAME") == self.table_name,
+                    Column("ROOT_NAME") == schema_name,
+                    Column("OBJECT_NAME") == table_name,
                 ],
             )
         )
@@ -930,7 +956,7 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
             .outerjoin(
                 size_data,
                 and_(
-                    row_data.c.TABLE_SCHEMA == size_data.c.SCHEMA_NAME,
+                    row_data.c.TABLE_SCHEMA == size_data.c.ROOT_NAME,
                     row_data.c.TABLE_NAME == size_data.c.OBJECT_NAME,
                 ),
             )
@@ -939,9 +965,24 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None:
             return super().compute()
         return res
+
+    def _compute_view_metrics(self):
+        """Compute view metrics using the generic fallback path."""
+        return super().compute()
+
+    def compute(self):
+        """Compute table or view metrics for Exasol.
+
+        Exasol exposes table row counts through SYS.EXA_ALL_TABLES, but views
+        are cataloged separately and do not have a ROW_COUNT. Views therefore
+        use the generic fallback path rather than the catalog-based query.
+        """
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return self._compute_view_metrics()
+        return self._compute_table_metrics()
 
 
 class TeradataTableMetricComputer(BaseTableMetricComputer):
@@ -996,7 +1037,9 @@ class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
     def compute(self):
         """Extract row_count from SHOW STATS FOR. The summary row
         (where column_name IS NULL) contains the table-level row_count."""
-        query = sa_text(f'SHOW STATS FOR "{self.schema_name}"."{self.table_name}"')
+        # Schema and table names come from the source system, so they are untrusted.
+        quote = self.runner._session.get_bind().dialect.identifier_preparer.quote_identifier
+        query = sa_text(f"SHOW STATS FOR {quote(self.schema_name)}.{quote(self.table_name)}")
         rows = self.runner._session.execute(query)
         for row in rows:
             row_dict = row._asdict()
@@ -1014,7 +1057,7 @@ class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
         """Parse numRows from DESCRIBE FORMATTED output.
         Hive returns 3-column rows: (col_name, data_type, comment).
         After ANALYZE, a row with data_type='numRows' contains the count in comment."""
-        query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"DESCRIBE FORMATTED {_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         for row in rows:
             try:
@@ -1034,7 +1077,7 @@ class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Sum #Rows across partitions from SHOW TABLE STATS."""
-        query = sa_text(f"SHOW TABLE STATS `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"SHOW TABLE STATS {_impala_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         total_rows = 0
         for row in rows:
@@ -1052,7 +1095,9 @@ class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Extract numRecords from DESCRIBE DETAIL."""
-        query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
+        if self._entity.tableType in (TableType.View, TableType.MaterializedView):
+            return super().compute()
+        query = sa_text(f"DESCRIBE DETAIL {_qualified_identifier(self.schema_name, self.table_name)}")
         result = self.runner._session.execute(query).first()
         if result:
             row_dict = result._asdict()
@@ -1069,7 +1114,7 @@ class TableMetricComputer:
         self,
         dialect: str,
         runner: QueryRunner,
-        metrics: List[Metrics],  # noqa: UP006
+        metrics: list[Metrics],
         conn_config,
         entity: OMTable,
     ):
@@ -1160,7 +1205,6 @@ table_metric_computer_factory.register(Dialects.Exasol, ExasolTableMetricCompute
 table_metric_computer_factory.register(Dialects.Teradata, TeradataTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Trino, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer)
-table_metric_computer_factory.register(Dialects.Athena, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)

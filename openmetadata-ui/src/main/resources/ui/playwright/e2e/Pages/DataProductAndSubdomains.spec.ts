@@ -11,34 +11,137 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
+import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
+import {
+  runDrawerQuickFilterMatrix,
+  toDrawerAsset,
+} from '../../utils/assetDrawerQuickFilter';
 import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForAntdPopupToSettle,
 } from '../../utils/common';
 import {
   checkAssetsCount,
   selectDataProduct,
   selectDomain,
+  selectDomainFromNavbar,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  escapeESReservedCharacters,
+  fillDeleteConfirmationIfPresent,
+  openClassificationTagPicker,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
+import { loginAsIsolatedAdmin } from '../../utils/isolatedDomainUser';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
+import {
+  clickAndWaitFor,
+  clickUntilVisible,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Data Product Comprehensive Tests', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+  });
+
+  test('Add-Assets drawer quick filter - behaviour matrix', async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+    const dataProduct = new DataProduct([domain]);
+    const tieredTable = new TableClass();
+    const plainTable = new TableClass();
+    const filterTopic = new TopicClass();
+    const filterDashboard = new DashboardClass();
+
+    try {
+      await test.step('Create data product and varied assets', async () => {
+        await domain.create(apiContext);
+        await dataProduct.create(apiContext);
+
+        const domainPatch = {
+          op: 'add' as const,
+          path: '/domains',
+          value: [{ id: domain.responseData.id, type: 'domain' }],
+        };
+
+        await tieredTable.create(apiContext);
+        await tieredTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                tagFQN: 'Tier.Tier1',
+                source: 'Classification',
+                labelType: 'Manual',
+              },
+            },
+            domainPatch,
+          ],
+        });
+        await plainTable.create(apiContext);
+        await plainTable.patch({ apiContext, patchData: [domainPatch] });
+        await filterTopic.create(apiContext);
+        await filterTopic.patch({ apiContext, patchData: [domainPatch] });
+        await filterDashboard.create(apiContext);
+        await filterDashboard.patch({ apiContext, patchData: [domainPatch] });
+      });
+
+      await test.step('Open the data product assets tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await page.getByTestId('assets').click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await runDrawerQuickFilterMatrix(page, {
+        surface: 'data product',
+        openDrawer: async () => {
+          await page.getByTestId('data-product-details-add-button').click();
+          await page
+            .getByTestId('asset-selection-modal')
+            .waitFor({ state: 'visible' });
+          await waitForAllLoadersToDisappear(page);
+        },
+        closeDrawer: async () => {
+          await page.getByTestId('cancel-btn').click();
+          await page
+            .getByTestId('asset-selection-modal')
+            .waitFor({ state: 'hidden' });
+        },
+        table: toDrawerAsset(tieredTable),
+        untieredTable: toDrawerAsset(plainTable),
+        topic: toDrawerAsset(filterTopic),
+        dashboard: toDrawerAsset(filterDashboard),
+      });
+    } finally {
+      await tieredTable.delete(apiContext);
+      await plainTable.delete(apiContext);
+      await filterTopic.delete(apiContext);
+      await filterDashboard.delete(apiContext);
+      await dataProduct.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Create data product via UI with description', async ({ page }) => {
@@ -61,7 +164,7 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Fill the form - use locator for MUI TextField input
+      // Fill the form - use locator for the text field input
       const dpName = `PW-DataProduct-${uuid()}`;
       await page.getByTestId('name').locator('input').fill(dpName);
 
@@ -77,8 +180,6 @@ test.describe('Data Product Comprehensive Tests', () => {
       const createRes = page.waitForResponse('/api/v1/dataProducts');
       await page.getByRole('button', { name: 'Save' }).click();
       await createRes;
-
-      await toastNotification(page, /Data Product created successfully/i);
 
       // Verify data product was created - navigate to Data Products tab
       await page.getByTestId('data_products').click();
@@ -147,56 +248,62 @@ test.describe('Data Product Comprehensive Tests', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.data);
 
-      // Click add expert button
-      await page.getByTestId('domain-expert-name').getByTestId('Add').click();
+      const expertsWidget = page.getByTestId('domain-expert-name');
 
-      // Wait for the popover to appear
-      await page.getByTestId('selectable-list').waitFor({
-        state: 'visible',
-      });
+      // The Add button mounts while the right-panel widgets are still resizing
+      // to their lazily loaded content; a reflow between mousedown and mouseup
+      // swallows the click, leaving the button focused and the popover shut.
+      await clickUntilVisible(
+        expertsWidget.getByTestId('Add'),
+        page.getByTestId('selectable-list')
+      );
 
-      // Search for user with retry mechanism (ES indexing can take time)
+      // Wait for fixture indexing before issuing the UI search
       const searchBar = page.getByTestId('searchbar');
       // Use displayName for selecting from list (UI shows displayName)
-      const expertItem = page.getByRole('listitem', {
-        name: user.getUserDisplayName(),
-        exact: true,
-      });
-      const maxRetries = 5;
+      // main's #32252 turned this option into a `<button data-testid=
+      // "owner-option">`, so the listitem role this used to match is gone.
+      // Its locator, but not its five-attempt retry loop: the deterministic
+      // waitForSearchIndexed + exact response matcher below replaced that.
+      const expertItem = page
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user.getUserDisplayName() });
 
-      for (let retry = 0; retry < maxRetries; retry++) {
-        await searchBar.clear();
-        const searchResponse = page.waitForResponse(
-          (res) =>
-            res.url().includes('/api/v1/search/query') &&
-            res.url().includes('user')
-        );
-        // Search using name field
-        await searchBar.fill(user.getUserName());
-        await searchResponse;
-        await waitForAllLoadersToDisappear(page);
-
-        const isVisible = await expertItem.isVisible().catch(() => false);
-        if (isVisible) {
-          break;
-        }
-
-        if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
-        }
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        user.responseData.fullyQualifiedName,
+        'user_search_index'
+      );
+      await searchBar.clear();
+      const searchResponse = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            ['user', 'user_search_index'].includes(
+              url.searchParams.get('index') ?? ''
+            ) &&
+            (url.searchParams.get('q') ?? '').includes(user.getUserName())
+          );
+        },
+        200
+      );
+      await searchBar.fill(user.getUserName());
+      await searchResponse;
 
       await expertItem.waitFor({ state: 'visible', timeout: 5000 });
       await expertItem.click();
 
-      // Click update button
-      const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('selectable-list-update-btn').click();
-      await patchRes;
+      await clickAndWaitFor(
+        page,
+        page.getByTestId('selectable-list-update-btn'),
+        '/api/v1/dataProducts/*'
+      );
 
       // Verify expert is displayed (UI shows displayName)
-      await expect(page.getByTestId('owner-link')).toContainText(
+      await expect(expertsWidget.getByTestId('owner-link')).toContainText(
         user.getUserDisplayName()
       );
     } finally {
@@ -220,26 +327,30 @@ test.describe('Data Product Comprehensive Tests', () => {
       await selectDataProduct(page, dataProduct.data);
 
       // Click add tag button in tags container
-      await page.getByTestId('tags-container').getByTestId('add-tag').click();
-
-      // Wait for tag selector
-      await page.getByTestId('tag-selector').waitFor({
-        state: 'visible',
-      });
+      await openClassificationTagPicker(
+        page,
+        page.getByTestId('tags-container').getByTestId('add-tag')
+      );
 
       // Search for a tag
-      await page.getByTestId('tag-selector').click();
-      await page.keyboard.type('Personal');
+      const tagSearchResponse = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent(
+          escapeESReservedCharacters('Personal')
+        )}*`
+      );
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Personal');
+      await tagSearchResponse;
 
-      // Wait for search results
-      await page.waitForResponse('/api/v1/search/query*');
-
-      // Select the tag (use first() to handle duplicates)
-      await page.getByTestId('tag-PersonalData.Personal').first().click();
+      // Select the tag
+      await page.getByTestId('tree-node-PersonalData.Personal').click();
 
       // Save
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
       const patchRes = page.waitForResponse('/api/v1/dataProducts/*');
-      await page.getByTestId('saveAssociatedTag').click();
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
       await patchRes;
 
       // Verify tag is displayed
@@ -254,6 +365,7 @@ test.describe('Data Product Comprehensive Tests', () => {
   });
 
   test('Add assets to data product and verify count', async ({ page }) => {
+    test.slow();
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
     const dataProduct = new DataProduct([domain]);
@@ -270,8 +382,8 @@ test.describe('Data Product Comprehensive Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -292,30 +404,45 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Search for table
-      const searchRes = page.waitForResponse('/api/v1/search/query*');
-      await page
-        .getByTestId('asset-selection-modal')
-        .getByTestId('searchbar')
-        .fill(table.entityResponseData.name);
-      await searchRes;
-
-      // Select the table by clicking the checkbox in the card
-      const tableCheckbox = page
-        .getByTestId('asset-selection-modal')
-        .locator(`[data-testid*="${table.entityResponseData.name}"]`)
+      const assetModal = page.getByTestId('asset-selection-modal');
+      const assetName = table.entityResponseData.name;
+      // The card exposes the name either through a data-testid or as plain
+      // text, so match both rather than probing one and falling back.
+      const assetCard = assetModal
+        .locator(`[data-testid*="${assetName}"]`)
+        .or(assetModal.getByText(assetName))
         .first();
 
-      if (await tableCheckbox.isVisible()) {
-        await tableCheckbox.click();
-      } else {
-        // Try clicking the text directly
-        await page
-          .getByTestId('asset-selection-modal')
-          .getByText(table.entityResponseData.name)
-          .first()
-          .click();
-      }
+      await waitForSearchIndexed(
+        apiContext,
+        table.entityResponseData.fullyQualifiedName,
+        'table',
+        { minVersion: table.entityResponseData.version }
+      );
+      const assetSearch = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/search/query' &&
+            (url.searchParams.get('q') ?? '').includes(assetName)
+          );
+        },
+        200
+      );
+      await assetModal.getByTestId('searchbar').fill(assetName);
+      await assetSearch;
+      await expect(assetCard).toBeVisible();
+
+      // Toggle the card's checkbox — the card's own onClick sets the
+      // preview panel, not selectedItems, so Save had nothing to add
+      // and /assets/add never fired.
+      const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+      await assetModal
+        .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+        .getByTestId('asset-checkbox')
+        .click();
 
       // Save
       const addRes = page.waitForResponse('/api/v1/dataProducts/*/assets/add');
@@ -359,7 +486,8 @@ test.describe('Data Product Comprehensive Tests', () => {
 
       // Navigate to the data product
       await page.goto(
-        `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`
+        `/dataProduct/${encodeURIComponent(dpData.fullyQualifiedName)}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await waitForAllLoadersToDisappear(page);
 
@@ -383,8 +511,6 @@ test.describe('Data Product Comprehensive Tests', () => {
 });
 
 test.describe('Multiple Subdomains Tests', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -441,7 +567,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to first subdomain
       const subDomainFqn = subDomain1.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Check subdomains tab for nested subdomain
       await page.getByTestId('subdomains').click();
@@ -483,7 +611,9 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to first subdomain
       const subDomainFqn1 = subDomain1.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn1!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn1!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Verify we're on first subdomain
       await expect(
@@ -537,8 +667,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain1.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain1.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -549,8 +679,8 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain2.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain2.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -559,7 +689,8 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table1.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -570,7 +701,8 @@ test.describe('Multiple Subdomains Tests', () => {
       await page.goto(
         `/table/${encodeURIComponent(
           table2.entityResponseData.fullyQualifiedName
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
 
       await expect(page.getByTestId('domain-link')).toContainText(
@@ -652,15 +784,17 @@ test.describe('Multiple Subdomains Tests', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: subDomain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: subDomain.responseData.id, type: 'domain' }],
           },
         ],
       });
 
       // Check subdomain assets count
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
       await checkAssetsCount(page, 1);
 
       // Check parent domain - assets in subdomains should also count toward parent
@@ -697,17 +831,28 @@ test.describe('Multiple Subdomains Tests', () => {
 
       // Navigate to subdomain
       const subDomainFqn = subDomain.responseData.fullyQualifiedName;
-      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`);
+      await page.goto(`/domain/${encodeURIComponent(subDomainFqn!)}`, {
+        waitUntil: 'domcontentloaded',
+      });
 
       // Delete the subdomain (recursive delete)
       await page.getByTestId('manage-button').click();
-      await page.getByTestId('delete-button').click();
+      // The manage menu is an Ant dropdown, and pressing an item while it is
+      // still scaling puts mousedown and mouseup in different places, so no
+      // click is synthesised -- the item just takes focus. The snapshot for
+      // this failure is exactly that: the menu still open with "Delete"
+      // [active] and no dialog behind it.
+      const deleteMenuItem = page.getByTestId('delete-button');
+      await expect(deleteMenuItem).toBeVisible();
+      await waitForAntdPopupToSettle(page);
+      await deleteMenuItem.click();
 
-      await expect(page.getByRole('dialog')).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(
+        page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+      ).toBeVisible();
 
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
@@ -736,8 +881,6 @@ test.describe('Multiple Subdomains Tests', () => {
 });
 
 test.describe('Data Product Search and Filter', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -758,9 +901,12 @@ test.describe('Data Product Search and Filter', () => {
       const searchBox = page
         .getByTestId('page-layout-v1')
         .getByPlaceholder('Search');
+      const dataProductSearchResponse = page.waitForResponse(
+        '/api/v1/search/query*'
+      );
       await searchBox.fill(uniqueName);
 
-      await page.waitForResponse('/api/v1/search/query*');
+      await dataProductSearchResponse;
 
       // Verify the data product appears in results
       await expect(page.getByTestId(dataProduct.data.name)).toBeVisible();
@@ -772,8 +918,12 @@ test.describe('Data Product Search and Filter', () => {
   });
 
   test('Filter data products by domain in global selector', async ({
-    page,
+    browser,
   }) => {
+    // Picks a navbar domain, which is saved per user: use a throwaway admin so it can't leak.
+    const { page, afterAction: pickerDone } = await loginAsIsolatedAdmin(
+      browser
+    );
     const { afterAction, apiContext } = await getApiContext(page);
     const domain1 = new Domain();
     const domain2 = new Domain();
@@ -790,29 +940,8 @@ test.describe('Data Product Search and Filter', () => {
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
 
-      // Select domain1 from global dropdown
-      await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('domain-selectable-tree').waitFor({
-        state: 'visible',
-      });
-
-      const searchDomainRes = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes('index=domain')
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain1.responseData.displayName);
-      await searchDomainRes;
-
-      const tagSelector = page.getByTestId(
-        `tag-${domain1.responseData.fullyQualifiedName}`
-      );
-      await tagSelector.waitFor({ state: 'visible' });
-      await tagSelector.click();
-      await waitForAllLoadersToDisappear(page);
+      // Select domain1 from global dropdown (waits for the save and the reload)
+      await selectDomainFromNavbar(page, domain1.responseData);
 
       // Verify only dp1 is visible (from domain1)
       await expect(page.getByTestId(dp1.data.name)).toBeVisible({
@@ -822,23 +951,19 @@ test.describe('Data Product Search and Filter', () => {
       // dp2 should not be visible (it's in domain2)
       await expect(page.getByTestId(dp2.data.name)).not.toBeVisible();
 
-      // Clear domain filter
-      await page.getByTestId('domain-dropdown').click();
-      await page.getByTestId('all-domains-selector').click();
-
+      // No need to clear the pick: deleting the isolated admin drops it.
       await dp1.delete(apiContext);
       await dp2.delete(apiContext);
     } finally {
       await domain1.delete(apiContext);
       await domain2.delete(apiContext);
       await afterAction();
+      await pickerDone();
     }
   });
 });
 
 test.describe('Data Product Name in Entity Name Cell', () => {
-  test.slow(true);
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });

@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { AIRFLOW_HYBRID } from '../../../constants/constants';
+import { AIRFLOW_HYBRID, DISABLED } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AirflowMessageBanner from './AirflowMessageBanner';
+
+// The real previewer parses markdown asynchronously and renders nothing in jsdom, so the message
+// itself is only assertable through the prop.
+jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => ({
+  __esModule: true,
+  default: ({ markdown }: { markdown: string }) => (
+    <div data-testid="viewer-container">{markdown}</div>
+  ),
+}));
 
 jest.mock(
   '../../../context/AirflowStatusProvider/AirflowStatusProvider',
@@ -90,6 +99,60 @@ describe('Test Airflow Message Banner', () => {
     });
   });
 
+  describe('Disabled Pipeline Client Scenarios', () => {
+    // The status call answers 200 for a client that is switched off in the configuration, so none
+    // of the cases above catch it and the banner said nothing while deploy, run and kill all
+    // quietly did nothing.
+    const disabledStatus = {
+      reason: 'Pipeline Client Disabled',
+      isAirflowAvailable: true,
+      isFetchingStatus: false,
+      platform: DISABLED,
+    };
+
+    it('Should render the caller message when the pipeline client is disabled', () => {
+      (useAirflowStatus as jest.Mock).mockImplementationOnce(
+        () => disabledStatus
+      );
+      render(
+        <AirflowMessageBanner disabledFallbackMessage="agents cannot be run" />
+      );
+
+      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
+      expect(screen.getByText('agents cannot be run')).toBeInTheDocument();
+    });
+
+    it('Should prefer the caller message over the untranslated server reason', () => {
+      (useAirflowStatus as jest.Mock).mockImplementationOnce(
+        () => disabledStatus
+      );
+      render(
+        <AirflowMessageBanner
+          disabledFallbackMessage="agents cannot be run"
+          unreachableFallbackMessage="agents keep listing"
+        />
+      );
+
+      expect(
+        screen.queryByText('Pipeline Client Disabled')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('agents keep listing')).not.toBeInTheDocument();
+    });
+
+    it('Should render nothing when no disabled message was supplied', () => {
+      // Shared with the connection setup and success screens, which have nothing on screen that a
+      // disabled-client message would explain.
+      (useAirflowStatus as jest.Mock).mockImplementationOnce(
+        () => disabledStatus
+      );
+      render(<AirflowMessageBanner />);
+
+      expect(
+        screen.queryByTestId('no-airflow-placeholder')
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('Common Scenarios', () => {
     it('Should not render the banner if fetching status', () => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
@@ -105,33 +168,45 @@ describe('Test Airflow Message Banner', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('Should not render the banner if reason is empty', () => {
+    it.each([
+      ['empty', ''],
+      ['null', null],
+    ])('Should use the caller fallback when reason is %s', (_label, reason) => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-        reason: '',
+        reason,
         isAirflowAvailable: false,
         isFetchingStatus: false,
         platform: 'unknown',
       }));
-      render(<AirflowMessageBanner />);
+      render(
+        <AirflowMessageBanner unreachableFallbackMessage="agents keep listing" />
+      );
 
-      expect(
-        screen.queryByTestId('no-airflow-placeholder')
-      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('no-airflow-placeholder')).toBeInTheDocument();
+      expect(screen.getByText('agents keep listing')).toBeInTheDocument();
     });
 
-    it('Should not render the banner if reason is null', () => {
-      (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
-        reason: null,
-        isAirflowAvailable: false,
-        isFetchingStatus: false,
-        platform: 'unknown',
-      }));
-      render(<AirflowMessageBanner />);
+    it.each([
+      ['empty', ''],
+      ['null', null],
+    ])(
+      'Should render nothing when reason is %s and no fallback was supplied',
+      (_label, reason) => {
+        // Shared with the connection setup and success screens, which have nothing on screen that
+        // an unreachable-service message would explain.
+        (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({
+          reason,
+          isAirflowAvailable: false,
+          isFetchingStatus: false,
+          platform: 'unknown',
+        }));
+        render(<AirflowMessageBanner />);
 
-      expect(
-        screen.queryByTestId('no-airflow-placeholder')
-      ).not.toBeInTheDocument();
-    });
+        expect(
+          screen.queryByTestId('no-airflow-placeholder')
+        ).not.toBeInTheDocument();
+      }
+    );
 
     it('Should render the banner if platform is not available and reason is not empty', () => {
       (useAirflowStatus as jest.Mock).mockImplementationOnce(() => ({

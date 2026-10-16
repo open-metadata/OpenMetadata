@@ -14,20 +14,11 @@
 @import 'styles/variables.less';
 
 .knowledge-center-widget {
-  .ant-card-body {
-    height: 100%;
-  }
-
-  .article-header {
-    color: #0f141b;
-  }
-
   .knowledge-icon {
     height: 32px;
     width: 32px;
-    padding: 2px;
+    padding: var(--om-space-2);
     border-radius: 50%;
-    background-color: #dcf6ff;
 
     svg {
       fill: none;
@@ -37,14 +28,6 @@
 }
 
 .knowledge-center-widget-container {
-  .ant-card-body {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    padding: 0;
-    overflow: hidden;
-  }
-
   .widget-content {
     flex: 1;
     display: flex;
@@ -73,7 +56,6 @@
   .widget-footer {
     flex-shrink: 0;
     width: 100%;
-    background-color: @white;
     border-bottom-right-radius: @size-sm;
     border-bottom-left-radius: @size-sm;
   }
@@ -90,8 +72,5 @@
   .article-entry {
     padding: @padding-xss @padding-sm;
     border-radius: @size-xs;
-    &:hover {
-      background-color: @grey-29;
-    }
   }
 }

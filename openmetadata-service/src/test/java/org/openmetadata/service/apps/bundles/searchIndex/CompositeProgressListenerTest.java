@@ -98,11 +98,6 @@ class CompositeProgressListenerTest {
       }
 
       @Override
-      public boolean isDistributed() {
-        return false;
-      }
-
-      @Override
       public String getSource() {
         return "UNIT_TEST";
       }

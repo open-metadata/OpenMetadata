@@ -10,102 +10,86 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from 'antd';
-import { useMemo } from 'react';
+import { Typography } from '@openmetadata/ui-core-components';
 import {
-  Area,
   AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  TooltipProps,
-} from 'recharts';
-import { BLUE_2, PRIMARY_COLOR } from '../../../constants/Color.constants';
-import { WHITE_COLOR } from '../../../constants/constants';
+  type ChartOption,
+  type ChartSeries,
+  type ChartTooltipRenderProps,
+} from '@openmetadata/ui-core-components/charts';
+import { useMemo } from 'react';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { CustomAreaChartProps } from './Chart.interface';
-import './chart.less';
+import { CustomAreaChartData, CustomAreaChartProps } from './Chart.interface';
+
+type AreaRow = CustomAreaChartData & { date: string };
+
+const HIDDEN = { show: false };
+// A sparkline: the plot fills the card, as the axis-less recharts chart did.
+const SPARKLINE_OPTION: ChartOption = {
+  grid: { left: 0, right: 0, top: 5, bottom: 5 },
+};
 
 const CustomAreaChart = ({
   data,
   name,
+  ariaLabel,
   height,
-  colorScheme,
+  status = 'info',
   valueFormatter,
 }: CustomAreaChartProps) => {
-  const CustomTooltip = (props: TooltipProps<string, number | string>) => {
-    const { active, payload = [] } = props;
+  // The tooltip header is the x value, so the hidden x axis is a readable date.
+  const rows = useMemo(
+    () =>
+      data.map((point) => ({ ...point, date: formatDate(point.timestamp) })),
+    [data]
+  );
 
-    if (active && payload && payload.length) {
-      const payloadData = payload[0].payload;
+  const series = useMemo<ChartSeries[]>(
+    () => [
+      {
+        key: 'count',
+        name: ariaLabel,
+        status,
+        seriesOption: { connectNulls: true },
+      },
+    ],
+    [ariaLabel, status]
+  );
 
-      return (
-        <Card className="custom-tooltip-area-chart">
-          <div className="flex-center gap-2">
-            <Typography.Text className="font-medium text-md">
-              {valueFormatter
-                ? valueFormatter(payloadData['count'])
-                : payloadData['count']}
-            </Typography.Text>
-            <Divider type="vertical" />
-            <Typography.Text className="text-xs">
-              {formatDate(payloadData.timestamp)}
-            </Typography.Text>
+  const tooltip = useMemo<ChartTooltipRenderProps<AreaRow>>(
+    () => ({
+      render: (_items, row) =>
+        row ? (
+          <div className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-2 tw:shadow-md">
+            <Typography size="text-md" weight="medium">
+              {valueFormatter ? valueFormatter(row.count) : row.count}
+            </Typography>
+            <span
+              aria-hidden
+              className="tw:h-6 tw:border-l tw:border-secondary"
+            />
+            <Typography size="text-xs">{row.date}</Typography>
           </div>
-        </Card>
-      );
-    }
-
-    return null;
-  };
-  const gradientId = `${name}-splitColor`;
-
-  const gradientArea = useMemo(() => {
-    return (
-      <defs>
-        <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
-          <stop
-            offset="0%"
-            stopColor={colorScheme?.gradientStartColor ?? BLUE_2}
-            stopOpacity="0.7"
-          />
-          <stop
-            offset="100%"
-            stopColor={colorScheme?.gradientEndColor ?? WHITE_COLOR}
-            stopOpacity="0.2"
-          />
-        </linearGradient>
-      </defs>
-    );
-  }, [colorScheme, gradientId]);
+        ) : null,
+    }),
+    [valueFormatter]
+  );
 
   return (
-    <ResponsiveContainer
-      className="w-full"
-      height={height ?? 150}
-      id={`${name}-area-chart`}>
+    <div className="tw:w-full" id={`${name}-area-chart`}>
       <AreaChart
-        data={data}
-        margin={{
-          top: 5,
-          right: 0,
-          left: 0,
-          bottom: 5,
-        }}>
-        <Tooltip content={<CustomTooltip />} />
-
-        {gradientArea}
-        <Area
-          connectNulls
-          dataKey="count"
-          dot={false}
-          fill={`url(#${gradientId})`}
-          isAnimationActive={false}
-          stroke={colorScheme?.strokeColor ?? PRIMARY_COLOR}
-          strokeWidth={2}
-          type="monotone"
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+        ariaLabel={ariaLabel}
+        data={rows}
+        height={height ?? 150}
+        legend={HIDDEN}
+        option={SPARKLINE_OPTION}
+        series={series}
+        tooltip={tooltip}
+        xAxis={HIDDEN}
+        xKey="date"
+        yAxis={HIDDEN}
+      />
+    </div>
   );
 };
 

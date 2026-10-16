@@ -142,6 +142,63 @@ const getFieldOptions = (property: JsonSchemaObject) => {
   return [];
 };
 
+type FieldPropertyBuilder = (
+  property: JsonSchemaObject,
+  field: TaskFormDesignerField
+) => void;
+
+const applyStringProperty: FieldPropertyBuilder = (property) => {
+  property.type = 'string';
+  delete property.enum;
+  delete property.items;
+};
+
+const FIELD_PROPERTY_BUILDERS: Partial<
+  Record<TaskFormDesignerFieldType, FieldPropertyBuilder>
+> = {
+  longText: applyStringProperty,
+  shortText: applyStringProperty,
+  number: (property) => {
+    property.type = 'number';
+    delete property.enum;
+    delete property.items;
+  },
+  boolean: (property) => {
+    property.type = 'boolean';
+    delete property.enum;
+    delete property.items;
+  },
+  singleSelect: (property, field) => {
+    property.type = 'string';
+    property.enum = field.options.filter(Boolean);
+    delete property.items;
+  },
+  multiSelect: (property, field) => {
+    property.type = 'array';
+    property.items = {
+      type: 'string',
+      enum: field.options.filter(Boolean),
+    };
+    delete property.enum;
+  },
+  json: (property, field) => {
+    property.type = field.schemaType ?? property.type ?? 'object';
+    delete property.enum;
+
+    if (property.type === 'array') {
+      property.items = (property.items as JsonSchemaObject | undefined) ?? {
+        type: 'string',
+      };
+    } else if (
+      property.type === 'object' &&
+      !Object.prototype.hasOwnProperty.call(property, 'properties') &&
+      !Object.prototype.hasOwnProperty.call(property, 'additionalProperties')
+    ) {
+      property.additionalProperties = true;
+    }
+  },
+};
+
 const buildFieldProperty = (field: TaskFormDesignerField) => {
   const nextProperty = cloneDeep(field.property ?? {});
 
@@ -153,75 +210,28 @@ const buildFieldProperty = (field: TaskFormDesignerField) => {
     delete nextProperty.description;
   }
 
-  switch (field.type) {
-    case 'longText':
-    case 'shortText':
-      nextProperty.type = 'string';
-      delete nextProperty.enum;
-      delete nextProperty.items;
+  FIELD_PROPERTY_BUILDERS[field.type]?.(nextProperty, field);
 
-      return nextProperty;
-    case 'number':
-      nextProperty.type = 'number';
-      delete nextProperty.enum;
-      delete nextProperty.items;
+  return nextProperty;
+};
 
-      return nextProperty;
-    case 'boolean':
-      nextProperty.type = 'boolean';
-      delete nextProperty.enum;
-      delete nextProperty.items;
-
-      return nextProperty;
-    case 'singleSelect':
-      nextProperty.type = 'string';
-      nextProperty.enum = field.options.filter(Boolean);
-      delete nextProperty.items;
-
-      return nextProperty;
-    case 'multiSelect':
-      nextProperty.type = 'array';
-      nextProperty.items = {
-        type: 'string',
-        enum: field.options.filter(Boolean),
-      };
-      delete nextProperty.enum;
-
-      return nextProperty;
-    case 'json':
-      nextProperty.type = field.schemaType ?? nextProperty.type ?? 'object';
-      delete nextProperty.enum;
-
-      if (nextProperty.type === 'array') {
-        nextProperty.items = (nextProperty.items as
-          | JsonSchemaObject
-          | undefined) ?? {
-          type: 'string',
-        };
-      } else if (
-        nextProperty.type === 'object' &&
-        !Object.prototype.hasOwnProperty.call(nextProperty, 'properties') &&
-        !Object.prototype.hasOwnProperty.call(
-          nextProperty,
-          'additionalProperties'
-        )
-      ) {
-        nextProperty.additionalProperties = true;
-      }
-
-      return nextProperty;
-    default:
-      return nextProperty;
+const resolveUiWidget = (field: TaskFormDesignerField): string | undefined => {
+  if (field.hidden) {
+    return 'hidden';
   }
+
+  if (field.widget && field.widget !== 'hidden') {
+    return field.widget;
+  }
+
+  return field.type === 'longText' || field.type === 'json'
+    ? 'textarea'
+    : undefined;
 };
 
 const buildFieldUiSchema = (field: TaskFormDesignerField) => {
   const nextUiConfig = cloneDeep(field.uiConfig ?? {});
-  const textAreaWidget =
-    field.type === 'longText' || field.type === 'json' ? 'textarea' : undefined;
-  const mainWidget =
-    field.widget && field.widget !== 'hidden' ? field.widget : undefined;
-  const widget = field.hidden ? 'hidden' : mainWidget ?? textAreaWidget;
+  const widget = resolveUiWidget(field);
 
   if (widget) {
     nextUiConfig['ui:widget'] = widget;
@@ -462,6 +472,36 @@ export const buildStageMappings = (
     return acc;
   }, {});
 
+const PREVIEW_VALUE_BUILDERS: Record<
+  TaskFormDesignerFieldType,
+  (field: TaskFormDesignerField) => unknown
+> = {
+  boolean: () => true,
+  number: () => 42,
+  singleSelect: (field) => field.options[0] ?? '',
+  multiSelect: (field) => field.options.slice(0, 2),
+  json: (field) => (field.schemaType === 'array' ? [] : {}),
+  longText: (field) => `${field.label || field.name} details`,
+  shortText: (field) => field.label || field.name,
+};
+
+const getTagSelectorPreviewValue = (field: TaskFormDesignerField) => {
+  const tagName = (field.label || field.name || 'Sample Tag')
+    .replaceAll(/\s+/g, '')
+    .replaceAll(/[^A-Za-z0-9_.-]/g, '');
+
+  return [
+    {
+      tagFQN: `SampleClassification.${tagName}`,
+      displayName: field.label || field.name || 'Sample Tag',
+      name: tagName,
+      source: 'Classification',
+      state: 'Confirmed',
+      labelType: 'Manual',
+    },
+  ];
+};
+
 export const getDesignerPreviewPayload = (
   fields: TaskFormDesignerField[]
 ): Record<string, unknown> =>
@@ -473,53 +513,14 @@ export const getDesignerPreviewPayload = (
     }
 
     if (field.widget === 'tagSelector') {
-      const tagName = (field.label || field.name || 'Sample Tag')
-        .replaceAll(/\s+/g, '')
-        .replaceAll(/[^A-Za-z0-9_.-]/g, '');
-
-      acc[fieldName] = [
-        {
-          tagFQN: `SampleClassification.${tagName}`,
-          displayName: field.label || field.name || 'Sample Tag',
-          name: tagName,
-          source: 'Classification',
-          state: 'Confirmed',
-          labelType: 'Manual',
-        },
-      ];
+      acc[fieldName] = getTagSelectorPreviewValue(field);
 
       return acc;
     }
 
-    switch (field.type) {
-      case 'boolean':
-        acc[fieldName] = true;
+    const buildValue =
+      PREVIEW_VALUE_BUILDERS[field.type] ?? PREVIEW_VALUE_BUILDERS.shortText;
+    acc[fieldName] = buildValue(field);
 
-        return acc;
-      case 'number':
-        acc[fieldName] = 42;
-
-        return acc;
-      case 'singleSelect':
-        acc[fieldName] = field.options[0] ?? '';
-
-        return acc;
-      case 'multiSelect':
-        acc[fieldName] = field.options.slice(0, 2);
-
-        return acc;
-      case 'json':
-        acc[fieldName] = field.schemaType === 'array' ? [] : {};
-
-        return acc;
-      case 'longText':
-        acc[fieldName] = `${field.label || field.name} details`;
-
-        return acc;
-      case 'shortText':
-      default:
-        acc[fieldName] = field.label || field.name;
-
-        return acc;
-    }
+    return acc;
   }, {});

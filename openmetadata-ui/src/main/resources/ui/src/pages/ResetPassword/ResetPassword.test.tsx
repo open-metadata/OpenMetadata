@@ -30,7 +30,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockHandleResetPassword = jest.fn();
-jest.mock('../../components/Auth/AuthProviders/BasicAuthProvider', () => {
+jest.mock('../../components/Auth/AuthProviders/BasicAuthContext', () => {
   return {
     useBasicAuth: jest.fn().mockImplementation(() => ({
       handleResetPassword: mockHandleResetPassword,
@@ -42,15 +42,9 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => {
   return jest.fn().mockReturnValue(<p>DocumentTitle</p>);
 });
 
-jest.mock('../../hooks/useAlertStore', () => ({
-  useAlertStore: jest.fn().mockReturnValue({
-    alert: null,
-  }),
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: any) => {
+    t: (key: string, options?: Record<string, string>) => {
       const translations: Record<string, string> = {
         'label.reset-your-password': 'Reset Your Password',
         'label.password-not-match': 'Passwords do not match',
@@ -81,7 +75,7 @@ describe('ResetPassword', () => {
     expect(
       await screen.findByTestId('reset-password-container')
     ).toBeInTheDocument();
-    expect(await screen.findByTestId('brand-image')).toBeInTheDocument();
+    expect(await screen.findByTestId('brand-logo-image')).toBeInTheDocument();
     expect(await screen.findByTestId('password')).toBeInTheDocument();
     expect(await screen.findByTestId('confirm-password')).toBeInTheDocument();
     expect(await screen.findByTestId('submit-button')).toBeInTheDocument();
@@ -93,8 +87,12 @@ describe('ResetPassword', () => {
     render(<ResetPassword />);
 
     const submitButton = await screen.findByTestId('submit-button');
-    const password = await screen.findByTestId('password');
-    const confirmPwd = await screen.findByTestId('confirm-password');
+    const password = (await screen.findByTestId('password')).querySelector(
+      'input'
+    ) as HTMLInputElement;
+    const confirmPwd = (
+      await screen.findByTestId('confirm-password')
+    ).querySelector('input') as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(password, { target: { value: 'Password@123' } });
@@ -114,8 +112,12 @@ describe('ResetPassword', () => {
     render(<ResetPassword />);
 
     const submitButton = await screen.findByTestId('submit-button');
-    const password = await screen.findByTestId('password');
-    const confirmPwd = await screen.findByTestId('confirm-password');
+    const password = (await screen.findByTestId('password')).querySelector(
+      'input'
+    ) as HTMLInputElement;
+    const confirmPwd = (
+      await screen.findByTestId('confirm-password')
+    ).querySelector('input') as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(password, { target: { value: 'Password@123' } });

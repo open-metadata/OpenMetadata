@@ -17,11 +17,11 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 40px 20px;
+    padding: var(--om-space-40) var(--om-space-20);
 
     .no-data-text {
-      color: #8c8c8c;
-      font-size: 13px;
+      color: var(--om-legacy-color-8c8c8c);
+      font-size: var(--om-font-size-13);
     }
   }
   .schema-field-cards-container {
@@ -29,14 +29,14 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 40px 20px;
-      background: #fafafa;
-      border-radius: 8px;
-      border: 1px dashed #d9d9d9;
+      padding: var(--om-space-40) var(--om-space-20);
+      background: var(--om-color-gray-50);
+      border-radius: var(--om-radius-lg);
+      border: 1px dashed var(--om-legacy-color-d9d9d9);
 
       .no-data-text {
-        color: #8c8c8c;
-        font-size: 14px;
+        color: var(--om-legacy-color-8c8c8c);
+        font-size: var(--om-font-size-sm);
       }
     }
 
@@ -52,9 +52,9 @@
 }
 .no-data-placeholder {
   color: @grey-500 !important;
-  font-size: 12px !important;
+  font-size: var(--om-font-size-xs) !important;
 }
 .searchbar-container {
   margin-bottom: 0 !important;
-  margin-top: 8px;
+  margin-top: var(--om-space-8);
 }

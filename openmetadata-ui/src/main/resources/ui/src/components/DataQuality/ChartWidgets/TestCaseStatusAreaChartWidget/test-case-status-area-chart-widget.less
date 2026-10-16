@@ -20,7 +20,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
+  padding: var(--om-space-6);
 
   color: @grey-900;
   background-color: @grey-100;
@@ -49,8 +49,9 @@
 
 .test-case-area-chart-widget-container {
   position: relative;
-  background: @grey-26;
-  border-color: @grey-9;
+  background: var(--tw-color-bg-secondary_subtle);
+  border-color: var(--om-color-border-secondary);
+
 
   .test-case-status-widget-footer-divider {
     border-style: dashed;

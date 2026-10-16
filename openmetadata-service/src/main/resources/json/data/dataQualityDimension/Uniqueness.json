@@ -1,0 +1,8 @@
+{
+  "name": "Uniqueness",
+  "fullyQualifiedName": "Uniqueness",
+  "displayName": "Uniqueness",
+  "description": "Records are free of unintended duplicates.",
+  "style": { "color": "#099250" },
+  "provider": "system"
+}

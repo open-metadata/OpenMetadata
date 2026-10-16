@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTermQuery } from '../../../../utils/SearchUtils';
+import { getTermQuery } from '../../../../utils/SearchPureUtils';
 import SummaryPanelSkeleton from '../../../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TableDataCardV2 from '../../../common/TableDataCardV2/TableDataCardV2';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
@@ -56,18 +58,13 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
   }, [entityDetails.fullyQualifiedName, setSelectedData]);
 
   const usageItems = useMemo(() => {
-    return selectedData.map((entity, index) => {
-      return (
-        <>
-          <div className="mb-2">
-            <TableDataCardV2
-              id={`tabledatacardtest${index}`}
-              source={entity as SourceType}
-            />
-          </div>
-        </>
-      );
-    });
+    return selectedData.map((entity, index) => (
+      <TableDataCardV2
+        id={`tabledatacardtest${index}`}
+        key={entity.id}
+        source={entity as SourceType}
+      />
+    ));
   }, [selectedData]);
 
   useEffect(() => {
@@ -76,28 +73,32 @@ function TagsSummary({ entityDetails, isLoading }: TagsSummaryProps) {
 
   return (
     <SummaryPanelSkeleton loading={Boolean(isLoading)}>
-      <Row className="p-md border-radius-card" gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography
             className="summary-panel-section-title"
             data-testid="usage-header">
             {t('label.usage')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
+          </Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           {selectedData.length > 0 ? (
-            <div className="">{usageItems}</div>
+            <Box direction="col" gap={3}>
+              {usageItems}
+            </Box>
           ) : (
-            <Typography.Text
+            <Typography
               className="text-grey-body"
               data-testid="no-reference-available">
               {t('label.no-entity', {
                 entity: t('label.usage'),
               })}
-            </Typography.Text>
+            </Typography>
           )}
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </SummaryPanelSkeleton>
   );
 }

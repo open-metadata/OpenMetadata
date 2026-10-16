@@ -11,23 +11,25 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
-import { ReactComponent as StarOutlinedIcon } from '../../../../assets/svg/star-outlined.svg';
+import { ReactComponent as CuratedAssetsIcon } from '../../../../assets/svg/widget/curated-assets.svg';
+import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
+import { CURATED_ASSETS_WIDGET_DEFAULT_VALUES } from '../../../../constants/CustomizeMyDataPage.constants';
 import {
   getSortField,
   getSortOrder,
@@ -45,32 +47,38 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
-import { getTextFromHtmlString } from '../../../../utils/BlockEditorUtils';
+import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import {
   getExploreURLForAdvancedFilter,
   getModifiedQueryFilterWithSelectedAssets,
   getTotalResourceCount,
-} from '../../../../utils/CuratedAssetsUtils';
-import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+} from '../../../../utils/CuratedAssetsPureUtils';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityIcon } from '../../../../utils/LandingPageWidgetIconUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CertificationTag from '../../../common/CertificationTag/CertificationTag';
-import { useAdvanceSearch } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import {
+  AdvanceSearchProvider,
+  useAdvanceSearch,
+} from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './curated-assets-widget.less';
-import CuratedAssetsModal from './CuratedAssetsModal/CuratedAssetsModal';
 import {
   CURATED_ASSETS_SORT_BY_KEYS,
   CURATED_ASSETS_SORT_BY_OPTIONS,
 } from './CuratedAssetsWidget.constants';
 
-const CuratedAssetsWidget = ({
+const CuratedAssetsModal = withSuspenseFallback(
+  lazy(() => import('./CuratedAssetsModal/CuratedAssetsModal'))
+);
+
+const CuratedAssetsWidgetContent = ({
   isEditView,
   handleRemoveWidget,
   widgetKey,
@@ -229,7 +237,7 @@ const CuratedAssetsWidget = ({
       : [
           ...(currentLayout || []),
           {
-            ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+            ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
             i: widgetKey,
             config: value,
           },
@@ -247,9 +255,9 @@ const CuratedAssetsWidget = ({
   };
 
   const handleSortByClick = useCallback(
-    (e: MenuInfo) => {
+    (key: string) => {
       if (!isEditView) {
-        setSelectedSortBy(e.key);
+        setSelectedSortBy(key);
 
         return;
       }
@@ -262,18 +270,17 @@ const CuratedAssetsWidget = ({
         const updatedLayout = hasCurrentCuratedAssets
           ? currentLayout?.map((layout: WidgetConfig) =>
               layout.i === widgetKey
-                ? { ...layout, config: { ...layout.config, sortBy: e.key } }
+                ? { ...layout, config: { ...layout.config, sortBy: key } }
                 : layout
             )
           : [
               ...(currentLayout || []),
               {
-                ...customizeMyDataPageClassBase.curatedAssetsWidgetDefaultValues,
+                ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES,
                 i: widgetKey,
                 config: {
-                  ...customizeMyDataPageClassBase
-                    .curatedAssetsWidgetDefaultValues.config,
-                  sortBy: e.key,
+                  ...CURATED_ASSETS_WIDGET_DEFAULT_VALUES.config,
+                  sortBy: key,
                 },
               },
             ];
@@ -349,27 +356,24 @@ const CuratedAssetsWidget = ({
       return (
         <Link
           className="curated-assets-list-item-link"
-          to={entityUtilClassBase.getEntityLink(
-            item.type || '',
-            item.fullyQualifiedName as string
+          to={getEntityLinkFromType(
+            item.fullyQualifiedName as string,
+            item.type as EntityType
           )}>
           <div
-            className="curated-assets-list-item flex items-center w-full"
+            className="curated-assets-list-item flex items-center w-full gap-2"
             data-testid={`Curated Assets-${title}`}>
-            <img
-              alt={get(item, 'service.displayName', '')}
-              className="entity-icon"
-              src={serviceUtilClassBase.getServiceTypeLogo(
-                item as unknown as SearchSourceAlias
-              )}
-            />
+            {getEntityIcon(item as SearchSourceAlias, EntityIconSize.Size24)}
             <div className="flex flex-col curated-assets-list-item-content">
               <div className="flex items-center gap-1">
-                <Typography.Text
+                <Typography
                   className="entity-list-item-title"
-                  ellipsis={{ tooltip: true }}>
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {title}
-                </Typography.Text>
+                </Typography>
                 {certification && (
                   <CertificationTag
                     certification={certification as AssetCertification}
@@ -377,11 +381,15 @@ const CuratedAssetsWidget = ({
                 )}
               </div>
               {description && (
-                <Typography.Text
-                  className="max-two-lines entity-list-item-description text-grey-muted"
-                  ellipsis={{ tooltip: true }}>
+                <Typography
+                  className="max-two-lines entity-list-item-description"
+                  color="secondary"
+                  ellipsis={{
+                    tooltip: true,
+                    excludeTriggerFromTabOrder: true,
+                  }}>
                   {getTextFromHtmlString(description)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           </div>
@@ -393,13 +401,13 @@ const CuratedAssetsWidget = ({
 
   const entityListData = useMemo(() => {
     return isFullSize ? (
-      <Row className="curated-assets-grid">
+      <Grid className="layout-row layout-grid curated-assets-grid">
         {data.map((item) => (
-          <Col key={item.id} span={12}>
+          <Grid.Item className="layout-column" key={item.id} span={12}>
             {entityListLinkItem(item)}
-          </Col>
+          </Grid.Item>
         ))}
-      </Row>
+      </Grid>
     ) : (
       data.map((item) => entityListLinkItem(item))
     );
@@ -425,10 +433,10 @@ const CuratedAssetsWidget = ({
           sourceIcon && title ? (
             sourceIcon
           ) : (
-            <StarOutlinedIcon
+            <CuratedAssetsIcon
               data-testid="star-outlined-icon"
-              height={22}
-              width={22}
+              height={24}
+              width={24}
             />
           )
         }
@@ -436,17 +444,17 @@ const CuratedAssetsWidget = ({
         selectedSortBy={selectedSortBy}
         sortOptions={CURATED_ASSETS_SORT_BY_OPTIONS}
         title={
-          <Typography.Text
+          <Typography
             className={
               isFullSize ? 'widget-title-full-size' : 'widget-title-half-size'
             }
             ellipsis={{ tooltip: true }}>
             {title || t('label.curated-asset-plural')}
-          </Typography.Text>
+          </Typography>
         }
         widgetKey={widgetKey}
         onEditClick={handleModalOpen}
-        onSortChange={(key: string) => handleSortByClick({ key } as MenuInfo)}
+        onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
     ),
@@ -504,5 +512,11 @@ const CuratedAssetsWidget = ({
     </>
   );
 };
+
+const CuratedAssetsWidget = (props: WidgetCommonProps) => (
+  <AdvanceSearchProvider isExplorePage={false} updateURL={false}>
+    <CuratedAssetsWidgetContent {...props} />
+  </AdvanceSearchProvider>
+);
 
 export default CuratedAssetsWidget;

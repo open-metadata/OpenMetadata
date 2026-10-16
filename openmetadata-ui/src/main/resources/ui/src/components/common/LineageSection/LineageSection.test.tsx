@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -105,7 +109,7 @@ describe('LineageSection', () => {
   });
 
   it('shows loader while lineage paging info is being fetched', async () => {
-    let resolvePromise: (value: unknown) => void = () => {
+    let resolvePromise: (value: unknown) => void = (_value) => {
       throw new Error('resolvePromise was not initialized');
     };
     const pending = new Promise((resolve) => {
@@ -294,5 +298,26 @@ describe('LineageSection', () => {
         type: EntityType.TABLE,
       })
     );
+  });
+
+  it('does not fetch lineage for the tour mock entity', () => {
+    render(
+      <TourContext.Provider
+        value={
+          {
+            isTourPage: true,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <LineageSection
+          entityFqn="sample_data.ecommerce_db.shopify.dim_address"
+          entityType={EntityType.TABLE}
+        />
+      </TourContext.Provider>
+    );
+
+    expect(
+      screen.getByText('message.no-lineage-available')
+    ).toBeInTheDocument();
+    expect(getLineagePagingData).not.toHaveBeenCalled();
   });
 });

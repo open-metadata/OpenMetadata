@@ -18,7 +18,10 @@ from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
+from sqlalchemy import create_engine
 
+from metadata.core.connections.lifetime import Borrowed
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -29,9 +32,13 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.models.topology import TopologyContextManager
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 from metadata.utils import fqn
+
+SNOWFLAKE_METADATA = "metadata.ingestion.source.database.snowflake.metadata"
 
 SNOWFLAKE_CONFIGURATION = {
     "source": {
@@ -163,6 +170,27 @@ EXPECTED_SNOW_URL_UDF = "https://app.snowflake.com/random_org/random_account/#/d
 EXPECTED_SNOW_URL_UDF_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/user-function/TEST_UDF(NUMBER)"
 
 
+def test_tag_post_processing_releases_schema_before_database():
+    source = get_snowflake_sources()["not_incremental"]
+    source.source_config.includeTags = True
+    source.context = TopologyContextManager(source.topology)
+    source.context.get().upsert("database_service", "svc")
+    source.context.get().upsert("database", "my_db")
+    source.context.get().upsert("database_schema", "my_schema")
+    database = "svc.my_db"
+    schema = "svc.my_db.my_schema"
+    source.attach_tag(entity_fqn=database, tag=TagDefinition("Class", "parent", "", ""))
+    source.attach_tag(entity_fqn=schema, tag=TagDefinition("Class", "child", "", ""))
+
+    list(source._run_node_post_process(source.topology.table))
+    assert [label.tagFQN.root for label in source.tags_registry.labels_for(database)] == ["Class.parent"]
+    assert source.tags_registry.labels_for(schema) == []
+
+    list(source.clear_database_tag_scope())
+    assert source.tags_registry.labels_for(database) == []
+    assert source.tags_registry.stats()["live_entities"] == 0
+
+
 def get_snowflake_sources():
     """
     Get snowflake sources
@@ -197,6 +225,8 @@ def get_snowflake_sources():
                 config.workflowConfig.openMetadataServerConfig,
                 SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"],
             )
+    for source in sources.values():
+        source.metadata = MagicMock(spec=OpenMetadata)
     return sources
 
 
@@ -540,20 +570,12 @@ class SnowflakeUnitTest(TestCase):
             _, schema_fqn, table_fqn = self._setup_tag_context(source)
 
             source.tags_registry.attach(
-                scope_fqn=schema_fqn,
                 entity_fqn=schema_fqn,
-                classification_name="SCHEMA_CLASSIFICATION",
-                tag_name="SCHEMA_TAG",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("SCHEMA_CLASSIFICATION", "SCHEMA_TAG", "", ""),
             )
             source.tags_registry.attach(
-                scope_fqn=schema_fqn,
                 entity_fqn=table_fqn,
-                classification_name="TABLE_CLASSIFICATION",
-                tag_name="TABLE_TAG",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("TABLE_CLASSIFICATION", "TABLE_TAG", "", ""),
             )
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
@@ -566,6 +588,65 @@ class SnowflakeUnitTest(TestCase):
             tag_fqns = [tag.tagFQN.root for tag in table_labels]
             self.assertIn("SCHEMA_CLASSIFICATION.SCHEMA_TAG", tag_fqns)
             self.assertIn("TABLE_CLASSIFICATION.TABLE_TAG", tag_fqns)
+
+    def test_tag_maps_bind_object_names_rather_than_interpolating_them(self):
+        """A Snowflake database named `x' OR 1=1 --` must not reach the SQL text."""
+        evil = "PROD' OR 1=1 UNION SELECT CURRENT_USER(), CURRENT_ROLE(), 'x"
+        for source in self.sources.values():
+            for setter in (source.set_schema_tags_map, source.set_database_tags_map):
+                mock_conn = MagicMock()
+                mock_conn.execute.return_value = []
+                source.engine = MagicMock()
+                source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+                source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+                setter(evil)
+
+                statement, parameters = mock_conn.execute.call_args.args
+                self.assertNotIn(evil, str(statement))
+                self.assertEqual(parameters, {"database_name": evil})
+
+    @staticmethod
+    def _mock_source_connection(source):
+        """Route the cached ``connection`` property at a mock we can assert on."""
+        mock_conn = MagicMock()
+        source.engine = MagicMock()
+        source.engine.connect.return_value = mock_conn
+        source._connection_map.clear()
+        return mock_conn
+
+    def test_yield_tag_binds_database_and_schema_names(self):
+        """The table-tag query must bind both object names, on the primary path."""
+        evil_schema = "PUBLIC' OR 1=1 --"
+        for source in self.sources.values():
+            self._setup_tag_context(source)
+            mock_conn = self._mock_source_connection(source)
+            mock_conn.execute.return_value = []
+
+            list(source.yield_tag(evil_schema))
+
+            statement, parameters = mock_conn.execute.call_args.args
+            self.assertNotIn(evil_schema, str(statement))
+            self.assertEqual(
+                parameters,
+                {"database_name": "TEST_DATABASE", "schema_name": evil_schema},
+            )
+
+    def test_yield_tag_fallback_binds_unquoted_context_names(self):
+        """The retry path must bind too, not splice quoted names into the SQL."""
+        for source in self.sources.values():
+            self._setup_tag_context(source)
+            source.context.get().__dict__["database"] = '"TEST_DATABASE"'
+            mock_conn = self._mock_source_connection(source)
+            mock_conn.execute.side_effect = [Exception("boom"), []]
+
+            list(source.yield_tag("TEST_SCHEMA"))
+
+            _, parameters = mock_conn.execute.call_args.args
+            self.assertEqual(
+                parameters,
+                {"database_name": "TEST_DATABASE", "schema_name": "TEST_SCHEMA"},
+            )
 
     def test_database_tag_inheritance(self):
         """Database tags propagate to schemas and tables when classifications don't overlap."""
@@ -593,28 +674,16 @@ class SnowflakeUnitTest(TestCase):
             database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
 
             source.tags_registry.attach(
-                scope_fqn=database_fqn,
                 entity_fqn=database_fqn,
-                classification_name="DATABASE_TAG",
-                tag_name="DB_VALUE",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("DATABASE_TAG", "DB_VALUE", "", ""),
             )
             source.tags_registry.attach(
-                scope_fqn=schema_fqn,
                 entity_fqn=schema_fqn,
-                classification_name="SCHEMA_TAG",
-                tag_name="SCHEMA_VALUE",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("SCHEMA_TAG", "SCHEMA_VALUE", "", ""),
             )
             source.tags_registry.attach(
-                scope_fqn=schema_fqn,
                 entity_fqn=table_fqn,
-                classification_name="TABLE_TAG",
-                tag_name="TABLE_VALUE",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("TABLE_TAG", "TABLE_VALUE", "", ""),
             )
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
@@ -641,28 +710,16 @@ class SnowflakeUnitTest(TestCase):
             database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
 
             source.tags_registry.attach(
-                scope_fqn=database_fqn,
                 entity_fqn=database_fqn,
-                classification_name="ENV",
-                tag_name="dev",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("ENV", "dev", "", ""),
             )
             source.tags_registry.attach(
-                scope_fqn=schema_fqn,
                 entity_fqn=schema_fqn,
-                classification_name="ENV",
-                tag_name="staging",
-                classification_description="",
-                tag_description="",
+                tag=TagDefinition("ENV", "staging", "", ""),
             )
             source.tags_registry.attach(
-                scope_fqn=schema_fqn,
                 entity_fqn=table_fqn,
-                classification_name="ENV",
-                tag_name="production",
-                classification_description="env classification",
-                tag_description="production tag",
+                tag=TagDefinition("ENV", "production", "env classification", "production tag"),
             )
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
@@ -795,14 +852,96 @@ class SnowflakeUnitTest(TestCase):
             source.engine = MagicMock()
             source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+            source.status.warnings.clear()
 
-            source.set_schema_tags_map("TEST_DATABASE")
-            # Only the tag with a value should be stored
-            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            # Count logged warnings in the run status the way a running workflow step does
+            source._activate_handler()
+            try:
+                source.set_schema_tags_map("TEST_DATABASE")
+                mock_conn.execute.return_value = [
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="EMPTY_TAG", TAG_VALUE=""),
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="TEST_TAG", TAG_VALUE="123"),
+                ]
+                source.set_database_tags_map("TEST_DATABASE")
+            finally:
+                source._deactivate_handler()
+
+            # Only the tags with a value are stored, and each skipped one is one run warning
             self.assertEqual(
-                source.schema_tags_map["TEST_SCHEMA"][0],
-                {"tag_name": "TEST_TAG", "tag_value": "123"},
+                source.schema_tags_map["TEST_SCHEMA"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
             )
+            self.assertEqual(
+                source.database_tags_map["TEST_DATABASE"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
+            )
+            self.assertEqual(len(source.status.warnings), 3)
+
+    def test_describe_procedure_definition_reads_body_property(self):
+        """DESC PROCEDURE/FUNCTION returns (property, value) rows; the definition is the `body` row's value.
+
+        A real SQLAlchemy result is used so that row access behaves like the Snowflake one.
+        """
+        desc_rows = (
+            "SELECT 'signature' AS \"property\", '()' AS \"value\" "
+            "UNION ALL SELECT 'returns', 'NUMBER' "
+            "UNION ALL SELECT 'body', 'BEGIN RETURN 1; END' "
+            "-- {database_name}{schema_name}{procedure_name}{procedure_signature}"
+        )
+        for procedure_type in ("PROCEDURE", "FUNCTION"):
+            for source in self.sources.values():
+                self._setup_tag_context(source)
+                source.engine = create_engine("sqlite://")
+                stored_procedure = SnowflakeStoredProcedure(
+                    NAME="test_sp",
+                    OWNER="owner",
+                    LANGUAGE="SQL",
+                    SIGNATURE="()",
+                    COMMENT="comment",
+                    PROCEDURE_TYPE=procedure_type,
+                )
+                with (
+                    patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_STORED_PROCEDURE", desc_rows),
+                    patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_FUNCTION", desc_rows),
+                ):
+                    definition = source.describe_procedure_definition(stored_procedure)
+
+                self.assertEqual(definition, "BEGIN RETURN 1; END")
+
+    def test_describe_procedure_definition_without_body_property(self):
+        """A DESC result without a `body` row yields an empty definition rather than an error."""
+        desc_rows = (
+            "SELECT 'signature' AS \"property\", '()' AS \"value\" "
+            "-- {database_name}{schema_name}{procedure_name}{procedure_signature}"
+        )
+        for source in self.sources.values():
+            self._setup_tag_context(source)
+            source.engine = create_engine("sqlite://")
+            stored_procedure = SnowflakeStoredProcedure(
+                NAME="test_sp", OWNER="owner", LANGUAGE="SQL", SIGNATURE="()", COMMENT="comment"
+            )
+            with patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_STORED_PROCEDURE", desc_rows):
+                self.assertEqual(source.describe_procedure_definition(stored_procedure), "")
+
+
+def test_schema_tag_query_quotes_account_usage_identifier():
+    source = SnowflakeSource.__new__(SnowflakeSource)
+    source.schema_tags_map = {}
+    source.source_config = MagicMock(includeTags=True)
+    source.service_connection = MagicMock()
+    account_usage = 'GOVERNANCE."ACCOUNT_USAGE""; DROP TABLE secret; --"'
+    source.service_connection.accountUsageSchema = account_usage
+
+    connection = MagicMock()
+    connection.execute.return_value = []
+    source.engine = MagicMock()
+    source.engine.connect.return_value.__enter__.return_value = connection
+
+    source.set_schema_tags_map("TEST_DATABASE")
+
+    statement = str(connection.execute.call_args.args[0])
+    assert 'from "GOVERNANCE"."ACCOUNT_USAGE""; DROP TABLE secret; --".tag_references' in statement
+    assert account_usage not in statement
 
 
 class TestSnowflakeGetDatabaseNamesRawEagerFetch:
@@ -845,3 +984,160 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
             names = list(source.get_database_names_raw())
 
         assert names == ["DB_A", "DB_B", "DB_C"]
+
+
+class SnowflakeBadNameIsolationTest(TestCase):
+    """
+    Regression tests for the fault-isolation paths added so that a single
+    invalid table name in a schema does not poison ingestion for unrelated
+    tables. See:
+      - snowflake/utils.py::get_schema_columns  (per-row try/except)
+      - snowflake/metadata.py::_get_table_names_and_types
+        (per-table try/except around deleted-tables FQN listcomp)
+    """
+
+    @staticmethod
+    def _column_row(table_name, column_name, ordinal):
+        """Build a row tuple in the shape _get_schema_columns iterates over."""
+        return (
+            table_name,
+            column_name,
+            "NUMBER",  # coltype
+            None,  # character_maximum_length
+            38,  # numeric_precision
+            0,  # numeric_scale
+            "YES",  # is_nullable
+            None,  # column_default
+            "NO",  # is_identity
+            None,  # comment
+            None,  # identity_start
+            None,  # identity_increment
+            ordinal,  # ordinal_position
+        )
+
+    def test_get_schema_columns_skips_invalid_table_name(self):
+        """A row in information_schema.columns whose table_name cannot be
+        FQN-quoted must be skipped, and columns for valid tables in the same
+        result must still be populated."""
+        from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
+
+        from metadata.ingestion.source.database.snowflake.utils import (
+            get_schema_columns,
+        )
+
+        dialect = SnowflakeDialect()
+        # The function calls these on `self`; stub them.
+        dialect._current_database_schema = Mock(return_value=("DB", "SCHEMA"))
+        dialect._get_schema_primary_keys = Mock(return_value={})
+
+        rows = [
+            self._column_row("GOOD_TBL", "ID", 1),
+            # Unbalanced quote — quote_name raises ValueError, even with re.DOTALL.
+            self._column_row('BAD"NAME', "X", 1),
+            self._column_row("GOOD_TBL", "NAME", 2),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=iter(rows))
+
+        result = get_schema_columns(dialect, mock_connection, schema="SCHEMA", info_cache={})
+
+        # The good table's columns were populated even though a bad-named row
+        # appeared between them — fault isolation at the per-row level.
+        good_key = next(k for k in result if k.lower() == "good_tbl")
+        self.assertEqual(len(result[good_key]), 2)
+        self.assertEqual([c["name"].lower() for c in result[good_key]], ["id", "name"])
+        # The bad-named row was skipped, not added under any case-variant key.
+        self.assertFalse(any("bad" in k.lower() for k in result))
+
+    def test_get_table_names_skips_deleted_with_invalid_name(self):
+        """A deleted table whose name cannot be FQN-quoted must not abort the
+        listcomp that populates context.deleted_tables — valid deletions
+        before/after the bad row should still be recorded."""
+        from datetime import datetime
+
+        from metadata.ingestion.source.database.snowflake.models import (
+            SnowflakeTable,
+            SnowflakeTableList,
+        )
+
+        source = self.sources["not_incremental"] if hasattr(self, "sources") else None
+        if source is None:
+            source = next(iter(get_snowflake_sources().values()))
+
+        deleted_at = datetime(2026, 1, 1)
+        snowflake_tables = SnowflakeTableList(
+            tables=[
+                SnowflakeTable(name="GOOD_GONE", deleted=deleted_at, type_=TableType.Regular),
+                SnowflakeTable(name='BAD"GONE', deleted=deleted_at, type_=TableType.Regular),
+                SnowflakeTable(name="ALIVE_TBL", deleted=None, type_=TableType.Regular),
+            ]
+        )
+
+        mock_inspector = MagicMock()
+        mock_inspector.get_table_names = Mock(return_value=snowflake_tables)
+        source.context.get().__dict__["database_service"] = "svc"
+        source.context.get().__dict__["database"] = "db"
+        source.context.get_global().deleted_tables = []
+
+        def fake_fqn_build(*, metadata, entity_type, service_name, database_name, schema_name, table_name, **_kw):
+            from metadata.utils.fqn import quote_name
+
+            # quote_name still rejects names with embedded `"`; let that drive the failure.
+            quote_name(table_name)
+            return f"{service_name}.{database_name}.{schema_name}.{table_name}"
+
+        with (
+            patch.object(SnowflakeSource, "inspector", new_callable=PropertyMock) as p,
+            patch(
+                "metadata.ingestion.source.database.snowflake.metadata.fqn.build",
+                side_effect=fake_fqn_build,
+            ),
+        ):
+            p.return_value = mock_inspector
+            not_deleted = source._get_table_names_and_types("SCHEMA")
+
+        # Iteration completed and yielded the alive table.
+        names = [t.name for t in not_deleted]
+        self.assertEqual(names, ["ALIVE_TBL"])
+        # The good deleted FQN was recorded; the bad-named one was skipped.
+        recorded = source.context.get_global().deleted_tables
+        self.assertEqual(len(recorded), 1)
+        self.assertIn("GOOD_GONE", recorded[0])
+        self.assertNotIn("BAD", " ".join(recorded))
+
+    def setUp(self):
+        # Build a snowflake source we can mutate per-test.
+        if not hasattr(self, "sources"):
+            self.sources = get_snowflake_sources()
+
+
+def test_test_connection_wires_access_history_and_query_history():
+    """
+    ACCESS_HISTORY is the default lineage source, so the test connection registers a
+    GetAccessHistory check that probes ACCESS_HISTORY, while GetQueries keeps probing
+    query_history for the usage workflow / legacy lineage fallback.
+    """
+    from metadata.core.connections.test_connection.check import collect_checks
+    from metadata.core.connections.test_connection.checks.database import DatabaseStep
+    from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+        SnowflakeConnection as SnowflakeConnectionConfig,
+    )
+    from metadata.ingestion.source.database.snowflake.connection import (
+        SnowflakeChecks,
+    )
+    from metadata.ingestion.source.database.snowflake.queries import (
+        SNOWFLAKE_ACCESS_HISTORY_PROBE,
+        SNOWFLAKE_TEST_GET_QUERIES,
+    )
+
+    checks = SnowflakeChecks(
+        db=Borrowed.of(MagicMock()),
+        service_connection=SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"),
+    )
+    collected = collect_checks(checks)
+
+    assert DatabaseStep.GetAccessHistory in collected
+    assert DatabaseStep.GetQueries in collected
+    assert "ACCESS_HISTORY" in SNOWFLAKE_ACCESS_HISTORY_PROBE
+    assert "query_history" in SNOWFLAKE_TEST_GET_QUERIES.lower()

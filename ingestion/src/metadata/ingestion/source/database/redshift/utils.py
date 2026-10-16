@@ -35,7 +35,6 @@ from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_SCHEMA_COLUMN_INFO,
     REDSHIFT_TABLE_COMMENTS,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_table_comment_wrapper
 
@@ -46,6 +45,19 @@ GEOGRAPHY = create_sqlalchemy_type("GEOGRAPHY")
 ischema_names["geography"] = GEOGRAPHY
 ischema_names.update({"binary varying": sqltypes.VARBINARY})
 ischema_names.update(REDSHIFT_ISCHEMA_NAMES)
+# Redshift Spectrum external tables (backed by the Glue/Hive catalog) report
+# Hive-style column types via svv_external_columns. These have no PostgreSQL
+# equivalent in ischema_names, so they resolved to UNKNOWN and broke
+# column-level test type selection (issue #29589). Map the common scalar Hive
+# types to concrete types (dataTypeDisplay still shows the raw Hive type).
+ischema_names.update(
+    {
+        "string": sqltypes.VARCHAR,
+        "char": sqltypes.CHAR,
+        "tinyint": create_sqlalchemy_type("TINYINT"),
+        "double": sqltypes.DOUBLE_PRECISION,
+    }
+)
 
 
 logger = ingestion_logger()
@@ -57,7 +69,7 @@ def _redshift_initialize(self, connection):
     PostgreSQL-specific queries that Redshift doesn't support
     (e.g., SHOW standard_conforming_strings).
     """
-    from sqlalchemy.engine.default import DefaultDialect  # noqa: PLC0415
+    from sqlalchemy.engine.default import DefaultDialect
 
     DefaultDialect.initialize(self, connection)
     self._backslash_escapes = False
@@ -105,7 +117,6 @@ def get_multi_columns(
 
 
 # pylint: disable=protected-access
-@calculate_execution_time()
 def get_columns(self, connection, table_name, schema=None, **kw):
     """
     Return information about columns in `table_name`.
@@ -145,7 +156,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):
     return columns
 
 
-@calculate_execution_time()
 def _get_column_info(self, *args, **kwargs):
     """
     Get column info
@@ -178,7 +188,6 @@ def _get_column_info(self, *args, **kwargs):
     return column_info
 
 
-@calculate_execution_time()
 def _get_schema_column_info(self, connection, schema=None, **kw):  # pylint: disable=unused-argument
     """
     Get schema column info
@@ -192,9 +201,11 @@ def _get_schema_column_info(self, connection, schema=None, **kw):  # pylint: dis
     if cached is not None and cached[0] == schema:
         return cached[1]
 
-    schema_clause = f"AND schema = '{schema if schema else ''}'"
     all_columns = defaultdict(list)
-    result = connection.execute(sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO.format(schema_clause=schema_clause)))
+    result = connection.execute(
+        sa.text(REDSHIFT_GET_SCHEMA_COLUMN_INFO),
+        {"schema": schema or ""},
+    )
     for col in result:
         key = RelationKey(col.table_name, col.schema, connection)
         all_columns[key].append(col)
@@ -234,9 +245,11 @@ def _get_kwargs_for_time_type(kwargs, charlen, attype):
 def _get_args_and_kwargs(charlen, attype, format_type):
     kwargs = {}
     args = _init_args(format_type)
-    if attype == "numeric" and charlen:
-        prec, scale = charlen.split(",")
-        args = (int(prec), int(scale))
+    if attype == "numeric":
+        if charlen:
+            args = tuple(int(p) for p in charlen.split(","))
+        else:
+            args = tuple(int(p) for p in args)
 
     elif attype == "double precision":
         args = (53,)
@@ -248,6 +261,7 @@ def _get_args_and_kwargs(charlen, attype, format_type):
         "time without time zone",
         "time",
     }:
+        args = ()
         kwargs = _get_kwargs_for_time_type(kwargs, charlen, attype)
 
     elif attype == "bit varying":
@@ -256,6 +270,7 @@ def _get_args_and_kwargs(charlen, attype, format_type):
             args = (int(charlen),)
 
     elif attype.startswith("interval"):
+        args = ()
         field_match = re.match(r"interval (.+)", attype, re.I)
         if charlen:
             kwargs["precision"] = int(charlen)
@@ -328,7 +343,6 @@ def _get_charlen(format_type):
     return charlen
 
 
-@calculate_execution_time()
 @reflection.cache
 def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, unused-argument
     self,
@@ -412,7 +426,6 @@ def _get_pg_column_info(  # pylint: disable=too-many-locals,too-many-arguments, 
     return column_info  # noqa: RET504
 
 
-@calculate_execution_time()
 @reflection.cache
 def get_table_comment(
     self,
@@ -430,7 +443,6 @@ def get_table_comment(
     )
 
 
-@calculate_execution_time()
 def _get_all_relation_info(self, connection, **kw):  # pylint: disable=unused-argument
     """
     Get all relation info for a schema.

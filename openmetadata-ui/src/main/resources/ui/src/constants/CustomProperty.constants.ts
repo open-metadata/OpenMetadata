@@ -11,25 +11,31 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as DateTimeIcon } from '../assets/svg/customproperties/date-time.svg';
-import { ReactComponent as DateIcon } from '../assets/svg/customproperties/date.svg';
-import { ReactComponent as DurationIcon } from '../assets/svg/customproperties/duration.svg';
-import { ReactComponent as EmailIcon } from '../assets/svg/customproperties/email.svg';
-import { ReactComponent as EntityReferenceListIcon } from '../assets/svg/customproperties/entity-list.svg';
-import { ReactComponent as EntityReferenceIcon } from '../assets/svg/customproperties/entity.svg';
-import { ReactComponent as EnumIcon } from '../assets/svg/customproperties/enum.svg';
-import { ReactComponent as IntegerIcon } from '../assets/svg/customproperties/integer.svg';
-import { ReactComponent as MarkDownIcon } from '../assets/svg/customproperties/markdown.svg';
-import { ReactComponent as NumberIcon } from '../assets/svg/customproperties/number.svg';
-import { ReactComponent as SQLQueryIcon } from '../assets/svg/customproperties/sql-query.svg';
-import { ReactComponent as StringIcon } from '../assets/svg/customproperties/string.svg';
-import { ReactComponent as TableIcon } from '../assets/svg/customproperties/table.svg';
-import { ReactComponent as TimeIntervalIcon } from '../assets/svg/customproperties/time-interval.svg';
-import { ReactComponent as TimeIcon } from '../assets/svg/customproperties/time.svg';
-import { ReactComponent as TimestampIcon } from '../assets/svg/customproperties/timestamp.svg';
-import { ReactComponent as HyperlinkIcon } from '../assets/svg/link.svg';
+import {
+  Clock,
+  ClockStopwatch,
+  DateTimeType,
+  DateType,
+  EntityReferenceListType,
+  EntityReferenceType,
+  EnumType,
+  Hourglass01,
+  IntegerType,
+  Link03,
+  Mail01,
+  MarkdownType,
+  NumberType,
+  SqlQueryType,
+  StringType,
+  Table,
+  TimestampType,
+} from '@openmetadata/ui-core-components/icons';
 
 export const PROPERTY_TYPES_WITH_FORMAT = ['date-cp', 'dateTime-cp', 'time-cp'];
+
+// Enums can carry thousands of values; rendering one removable tag per value
+// in the edit forms blocks the main thread for seconds.
+export const ENUM_CONFIG_MAX_VISIBLE_VALUES = 20;
 
 export const PROPERTY_TYPES_WITH_ENTITY_REFERENCE = [
   'entityReference',
@@ -166,6 +172,7 @@ export const SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING = {
 
 export const SUPPORTED_DATE_TIME_FORMATS_LUXON_FORMAT_MAPPING = {
   yyyyDDD: 'yyyyo',
+  'yyyy-MM-dd HH:mm:ss.SSSSSS': 'yyyy-MM-dd HH:mm:ss.u',
 };
 
 export const DEFAULT_TIME_FORMAT = 'HH:mm:ss';
@@ -182,36 +189,22 @@ export const TABLE_TYPE_CUSTOM_PROPERTY = 'table-cp';
 
 export const HYPERLINK_TYPE_CUSTOM_PROPERTY = 'hyperlink-cp';
 
-export const SCROLLABLE_WRAPPER_TYPES = [TABLE_TYPE_CUSTOM_PROPERTY];
-
-export const AUTO_HEIGHT_TYPES = [
-  'entityReferenceList',
-  TABLE_TYPE_CUSTOM_PROPERTY,
-  'sqlQuery',
-];
-
-export const NO_OVERFLOW_TOGGLE_TYPES = [
-  ...PROPERTY_TYPES_WITH_ENTITY_REFERENCE,
-  TABLE_TYPE_CUSTOM_PROPERTY,
-  'sqlQuery',
-];
-
 export const CUSTOM_PROPERTIES_ICON_MAP = {
-  'date-cp': DateIcon,
-  'dateTime-cp': DateTimeIcon,
-  duration: DurationIcon,
-  email: EmailIcon,
-  entityReference: EntityReferenceIcon,
-  entityReferenceList: EntityReferenceListIcon,
-  enum: EnumIcon,
-  'hyperlink-cp': HyperlinkIcon,
-  integer: IntegerIcon,
-  markdown: MarkDownIcon,
-  number: NumberIcon,
-  sqlQuery: SQLQueryIcon,
-  string: StringIcon,
-  'table-cp': TableIcon,
-  'time-cp': TimeIcon,
-  timeInterval: TimeIntervalIcon,
-  timestamp: TimestampIcon,
+  'date-cp': DateType,
+  'dateTime-cp': DateTimeType,
+  duration: Hourglass01,
+  email: Mail01,
+  entityReference: EntityReferenceType,
+  entityReferenceList: EntityReferenceListType,
+  enum: EnumType,
+  'hyperlink-cp': Link03,
+  integer: IntegerType,
+  markdown: MarkdownType,
+  number: NumberType,
+  sqlQuery: SqlQueryType,
+  string: StringType,
+  'table-cp': Table,
+  'time-cp': Clock,
+  timeInterval: ClockStopwatch,
+  timestamp: TimestampType,
 };

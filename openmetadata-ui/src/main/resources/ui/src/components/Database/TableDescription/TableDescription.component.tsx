@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import EntityTasks from '../../../pages/TasksPage/EntityTasks/EntityTasks.component';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import DescriptionSourceBadge from '../../common/DescriptionSourceBadge/DescriptionSourceBadge';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TableDescriptionProps } from './TableDescription.interface';
@@ -96,11 +97,14 @@ const TableDescription = ({
   }, [columnData, suggestionData]);
 
   return (
-    <Space
-      className="hover-icon-group w-full d-flex"
+    <Box
+      align="stretch"
+      className="layout-space hover-icon-group w-full d-flex"
       data-testid="description"
-      direction="vertical"
-      id={`field-description-${index}`}>
+      direction="col"
+      gap={2}
+      id={`field-description-${index}`}
+      itemClassName="layout-space-item">
       {descriptionContent}
       <DescriptionSourceBadge
         changeSummaryEntry={changeSummary?.[changeSummaryKey]}
@@ -129,7 +133,7 @@ const TableDescription = ({
           />
         </div>
       ) : null}
-    </Space>
+    </Box>
   );
 };
 

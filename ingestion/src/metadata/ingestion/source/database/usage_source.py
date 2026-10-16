@@ -16,8 +16,8 @@ import csv
 import os
 import traceback
 from abc import ABC
+from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -43,7 +43,7 @@ class UsageSource(QueryParserSource, ABC):
         Method to handle the usage from query logs
         """
         try:
-            query_log_path = self.config.sourceConfig.config.queryLogFilePath
+            query_log_path = self.config.sourceConfig.config.queryLogFilePath  # pyright: ignore[reportAttributeAccessIssue]
             if os.path.isfile(query_log_path):  # noqa: PTH113
                 file_paths = [query_log_path]
             elif os.path.isdir(query_log_path):  # noqa: PTH112
@@ -87,7 +87,7 @@ class UsageSource(QueryParserSource, ABC):
         If queryLogFilePath available in config iterate through log file
         otherwise execute the sql query to fetch TableQuery data
         """
-        if self.config.sourceConfig.config.queryLogFilePath:
+        if self.config.sourceConfig.config.queryLogFilePath:  # pyright: ignore[reportAttributeAccessIssue]
             yield from self.yield_table_queries_from_logs()
         else:
             yield from self.yield_table_queries()
@@ -108,12 +108,12 @@ class UsageSource(QueryParserSource, ABC):
             )
             query = None
             try:
-                query = self.get_sql_statement(
-                    start_time=self.start + timedelta(days=days),
-                    end_time=self.start + timedelta(days=days + 1),
-                )
-                logger.debug(f"Executing usage query: {query}")
                 for engine in self.get_engine():
+                    query = self.get_sql_statement(
+                        start_time=self.start + timedelta(days=days),
+                        end_time=self.start + timedelta(days=days + 1),
+                    )
+                    logger.debug(f"Executing usage query: {query}")
                     with engine.connect() as conn:
                         rows = conn.execute(text(query))
                         queries = []
@@ -150,6 +150,7 @@ class UsageSource(QueryParserSource, ABC):
                                 logger.debug(traceback.format_exc())
                                 logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                     logger.info(f"Processed {row_count} query log entries for usage")
+                    self.warn_if_query_log_truncated(row_count, "usage")
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:
@@ -163,6 +164,15 @@ class UsageSource(QueryParserSource, ABC):
                 logger.error(f"Source usage processing error: {exc}")
 
     def _iter(self, *_, **__) -> Iterable[Either[TableQuery]]:
+        days = max(1, (self.end - self.start).days)
+        result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
+        if result_limit is not None:
+            self.progress_tracking.manual.seed_scope_total("Queries", "run", result_limit * days)
+        processed = 0
         for table_queries in self.get_table_query():
             if table_queries:
+                count = len(table_queries.queries)  # pyright: ignore[reportAttributeAccessIssue]
+                self.progress_tracking.manual.track("Queries", count)
+                processed += count
                 yield Either(right=table_queries)
+        self.progress_tracking.manual.reconcile_scope_total("Queries", "run", processed)

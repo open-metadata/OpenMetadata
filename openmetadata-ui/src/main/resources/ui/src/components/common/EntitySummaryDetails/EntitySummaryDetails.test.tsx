@@ -40,7 +40,7 @@ jest.mock('antd', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/TeamUtils', () => ({
   getTeamsUser: jest.fn().mockReturnValue({
     ownerName: 'test-owner',
     id: 'test-id',

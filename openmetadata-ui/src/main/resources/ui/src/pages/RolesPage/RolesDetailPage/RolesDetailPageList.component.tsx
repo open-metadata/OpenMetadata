@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Tooltip } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconRemove } from '../../../assets/svg/ic-remove.svg';
-import Table from '../../../components/common/Table/Table';
+import { ColumnsType } from '../../../components/common/Table/Table.interface';
+import Table from '../../../components/common/Table/TableV2';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getPolicyWithFqnPath,
   getTeamsWithFqnPath,
@@ -83,22 +83,20 @@ const RolesDetailPageList = ({
         render: (_, record) => {
           return (
             <Tooltip
+              arrow
               title={
                 hasAccess
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
               }>
-              <Button
+              <ButtonUtility
+                color="tertiary"
                 data-testid={`remove-action-${getEntityName(record)}`}
-                disabled={!hasAccess}
-                type="text"
-                onClick={() => onDelete(record)}>
-                <Icon
-                  className="align-middle"
-                  component={IconRemove}
-                  style={{ fontSize: '16px' }}
-                />
-              </Button>
+                icon={IconRemove}
+                isDisabled={!hasAccess}
+                size="sm"
+                onClick={() => onDelete(record)}
+              />
             </Tooltip>
           );
         },

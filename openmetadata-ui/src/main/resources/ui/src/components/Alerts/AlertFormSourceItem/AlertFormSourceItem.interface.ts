@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { FilterResourceDescriptor } from '../../../generated/events/filterResourceDescriptor';
-
 export interface AlertFormSourceItemProps {
-  filterResources?: FilterResourceDescriptor[];
+  filterResources?: {
+    name?: string;
+  }[];
+  isViewMode?: boolean;
+  value?: string[];
+  onChange?: (value: string[], previous: string[]) => void;
+  error?: string;
 }

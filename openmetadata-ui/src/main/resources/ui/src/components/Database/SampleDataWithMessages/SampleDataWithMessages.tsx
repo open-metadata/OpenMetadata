@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import { isUndefined } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,17 +60,18 @@ const SampleDataWithMessages: FC<{
     return <Loader />;
   }
 
-  if (isUndefined(data)) {
+  if (isUndefined(data) || !data.messages?.length) {
     return (
       <div
         className="border-default border-radius-sm p-y-lg"
         data-testid="no-data">
         <ErrorPlaceHolder>
-          <Typography.Paragraph>
+          <Typography as="p">
             <Transi18next
               i18nKey="message.view-sample-data-entity"
               renderElement={
                 <a
+                  aria-label={t('label.documentation')}
                   href={WORKFLOWS_METADATA_DOCS}
                   rel="noreferrer"
                   style={{ color: theme.primaryColor }}
@@ -79,20 +82,22 @@ const SampleDataWithMessages: FC<{
                 entity: t('label.metadata-ingestion'),
               }}
             />
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolder>
       </div>
     );
   }
 
   return (
-    <Row className="p-md" gutter={[16, 16]}>
+    <Grid
+      className="layout-row layout-grid p-md"
+      style={{ ...getLayoutGutter(16, 16) }}>
       {data.messages?.map((message) => (
-        <Col key={message} span={24}>
+        <Grid.Item className="layout-column" key={message} span={24}>
           <MessageCard message={message} />
-        </Col>
+        </Grid.Item>
       ))}
-    </Row>
+    </Grid>
   );
 };
 

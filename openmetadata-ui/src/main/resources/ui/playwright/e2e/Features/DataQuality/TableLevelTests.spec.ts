@@ -10,16 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
+import { clickCodeEditor } from '../../../utils/codeEditor';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
 } from '../../../utils/common';
 import {
   clickUpdateButton,
+  expectFormHint,
+  selectTestType,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { deleteTestCase, submitTestCaseForm } from '../../../utils/testCases';
@@ -103,28 +109,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableRowCountToBeBetween').click();
-        await page.locator('[data-id="tableRowCountToBeBetween"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableRowCountToBeBetween"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Row Count To Be Between');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
         await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
@@ -145,25 +138,21 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minValue').clear();
-        await page.fill('#tableTestForm_params_minValue', '20');
-        await page.locator('#tableTestForm_params_maxValue').clear();
-        await page.fill('#tableTestForm_params_maxValue', '2000');
+        await page.locator('#testCaseFormV1_params_minValue').clear();
+        await page.fill('#testCaseFormV1_params_minValue', '20');
+        await page.locator('#testCaseFormV1_params_maxValue').clear();
+        await page.fill('#testCaseFormV1_params_maxValue', '2000');
 
         await clickUpdateButton(page);
       });
@@ -195,28 +184,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableRowCountToEqual').click();
-        await page.locator('[data-id="tableRowCountToEqual"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableRowCountToEqual"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Row Count To Equal');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill('#testCaseFormV1_params_value', testCase.value);
 
@@ -236,23 +212,19 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_value').clear();
-        await page.locator('#tableTestForm_params_value').fill('200');
+        await page.locator('#testCaseFormV1_params_value').clear();
+        await page.locator('#testCaseFormV1_params_value').fill('200');
 
         await clickUpdateButton(page);
       });
@@ -285,28 +257,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableColumnCountToBeBetween').click();
-        await page.locator('[data-id="tableColumnCountToBeBetween"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnCountToBeBetween"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Column Count To Be Between');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_minColValue',
@@ -333,25 +292,21 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minColValue').clear();
-        await page.locator('#tableTestForm_params_minColValue').fill('5');
-        await page.locator('#tableTestForm_params_maxColValue').clear();
-        await page.locator('#tableTestForm_params_maxColValue').fill('15');
+        await page.locator('#testCaseFormV1_params_minColValue').clear();
+        await page.locator('#testCaseFormV1_params_minColValue').fill('5');
+        await page.locator('#testCaseFormV1_params_maxColValue').clear();
+        await page.locator('#testCaseFormV1_params_maxColValue').fill('15');
 
         await clickUpdateButton(page);
       });
@@ -383,28 +338,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableColumnCountToEqual').click();
-        await page.locator('[data-id="tableColumnCountToEqual"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnCountToEqual"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Column Count To Equal');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_columnCount',
@@ -427,23 +369,19 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_columnCount').clear();
-        await page.locator('#tableTestForm_params_columnCount').fill('5');
+        await page.locator('#testCaseFormV1_params_columnCount').clear();
+        await page.locator('#testCaseFormV1_params_columnCount').fill('5');
 
         await clickUpdateButton(page);
       });
@@ -475,28 +413,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableColumnNameToExist').click();
-        await page.locator('[data-id="tableColumnNameToExist"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnNameToExist"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Column Name To Exist');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_columnName',
@@ -519,24 +444,20 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_columnName').clear();
+        await page.locator('#testCaseFormV1_params_columnName').clear();
         await page
-          .locator('#tableTestForm_params_columnName')
+          .locator('#testCaseFormV1_params_columnName')
           .fill(table.entity?.columns[1].name);
 
         await clickUpdateButton(page);
@@ -568,28 +489,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableColumnToMatchSet').click();
-        await page.locator('[data-id="tableColumnToMatchSet"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableColumnToMatchSet"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Column Names To Match Set');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill(
           '#testCaseFormV1_params_columnNames',
@@ -612,27 +520,23 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.fill(
-          '#tableTestForm_params_columnNames',
+          '#testCaseFormV1_params_columnNames',
           `,${table.entity?.columns[2].name}`
         );
 
-        await page.click('#tableTestForm_params_ordered');
+        await page.getByTestId('parameter-ordered').click();
 
         await clickUpdateButton(page);
       });
@@ -652,10 +556,19 @@ test.describe(
      * 3. Submit and verify in Data Quality tab; then edit to add additional key/use columns; delete at the end.
      */
     test('Table Difference', async ({ page }) => {
+      // Multi-step flow (visit create form, select tableDiff type, wait
+      // for tables listing, edit for additional columns, delete) — 60s
+      // is tight under SharedInfra load where the tables search
+      // response can take 30-60s to return.
+      test.slow();
       await redirectToHomePage(page);
       const { apiContext } = await getApiContext(page);
-      table1 = new TableClass(undefined, undefined, service);
-      table2 = new TableClass(undefined, undefined, service);
+      table1 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
+      table2 = new TableClass({
+        service: new DatabaseServiceClass(undefined, service),
+      });
       await table1.create(apiContext);
       await table2.create(apiContext);
       const testCase = {
@@ -669,24 +582,27 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
+        await page.fill(
+          '[id="root\\/testType"]',
+          'Compare 2 tables for differences'
+        );
 
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
         const tableListSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=table*`
         );
-        await page.getByTestId('tableDiff').click();
+        await page
+          .getByRole('option')
+          .filter({ hasText: 'Compare 2 tables for differences' })
+          .first()
+          .click();
         await tableListSearchResponse;
 
         const table2KeyColumnsInput = page.locator(
@@ -696,11 +612,7 @@ test.describe(
         await expect(table2KeyColumnsInput).toBeDisabled();
 
         await page.click('#testCaseFormV1_params_table2');
-        await page.locator('[data-id="tableDiff"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
+        await expectFormHint(page, 'Select Test Type');
 
         const tableSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*${testCase.table2}*index=table*`
@@ -709,52 +621,71 @@ test.describe(
         await tableSearchResponse;
         await page.waitForLoadState('domcontentloaded');
 
-        await expect(
-          page
-            .getByTitle(
-              table2.entityResponseData?.['fullyQualifiedName'] ?? '',
-              { exact: true }
-            )
-            .locator('div')
-        ).toBeVisible();
-
-        await page
-          .getByTitle(table2.entityResponseData?.['fullyQualifiedName'] ?? '', {
-            exact: true,
+        const table2Option = page
+          .getByRole('option')
+          .filter({
+            hasText: table2.entityResponseData?.['fullyQualifiedName'] ?? '',
           })
-          .locator('div')
-          .click();
 
-        await page.fill(
-          `#testCaseFormV1_params_keyColumns_0_value`,
-          table1.entity?.columns[0].name
-        );
-        await page.getByTitle(table1.entity?.columns[0].name).click();
+          .first();
 
-        await page.fill(
-          '#testCaseFormV1_params_table2\\.keyColumns_0_value',
-          table2.entity?.columns[0].name
+        await expect(table2Option).toBeVisible();
+
+        await table2Option.click();
+
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_keyColumns_0_value'),
+          page
+            .getByRole('option')
+            .filter({ hasText: table1.entity?.columns[0].name })
         );
-        await page.getByTitle(table2.entity?.columns[0].name).click();
+
+        // Table 1's popover is still animating out over table 2's trigger;
+        // clicking through it makes Playwright retry with extra scrolls. Table
+        // 2's search popover can still be exiting too, and two matches would
+        // fail `not.toBeVisible` on strict mode instead of waiting.
+        await expect(page.locator('[role="listbox"]')).toHaveCount(0);
+        await selectOptionWithRetry(
+          table2KeyColumnsInput,
+          page
+            .getByRole('option')
+            .filter({ hasText: table2.entity?.columns[0].name })
+        );
 
         await expect(table2KeyColumnsInput).not.toBeDisabled();
 
         await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
-        await page.fill(
-          '#testCaseFormV1_params_useColumns_0_value',
-          table1.entity?.columns[0].name
+        // Let the previous pick's popover fully close before opening the next.
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
+        const useColumnsTrigger = page.locator(
+          '#testCaseFormV1_params_useColumns_0_value'
         );
-
-        await expect(
-          page.getByTitle(table1.entity?.columns[0].name).nth(2)
-        ).toHaveClass(/ant-select-item-option-disabled/);
-
-        await page.locator('#testCaseFormV1_params_useColumns_0_value').clear();
-        await page.fill(
-          '#testCaseFormV1_params_useColumns_0_value',
-          table1.entity?.columns[1].name
-        );
-        await page.getByTitle(table1.entity?.columns[1].name).click();
+        const keyColumnOption = page
+          .getByRole('option')
+          .filter({ hasText: table1.entity?.columns[0].name });
+        const useColumnOption = page
+          .getByRole('option')
+          .filter({ hasText: table1.entity?.columns[1].name });
+        // selectOptionWithRetry, inlined to assert on the open list before
+        // picking: if the popover closes first, reopen instead of letting the
+        // click wait out the test timeout.
+        await expect(async () => {
+          if (
+            (await useColumnsTrigger.getAttribute('aria-expanded')) !== 'true'
+          ) {
+            await scrollIntoViewAndSettle(useColumnsTrigger);
+            await useColumnsTrigger.click();
+          }
+          // The column already used as a key column is disabled in this list.
+          await expect(keyColumnOption).toHaveAttribute(
+            'aria-disabled',
+            'true',
+            {
+              timeout: 2000,
+            }
+          );
+          await useColumnOption.click({ timeout: 2000 });
+        }).toPass({ timeout: 15000 });
 
         await page.fill('#testCaseFormV1_params_where', 'test');
         await submitTestCaseForm(page);
@@ -773,80 +704,66 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await expect(page.getByTestId('edit-test-form')).toBeVisible();
+        await expect(page.getByTestId('test-case-form-v1')).toBeVisible();
 
         const table1KeyColumnsEditInput = page.locator(
-          '#tableTestForm_params_keyColumns_0_value'
+          '#testCaseFormV1_params_keyColumns_0_value'
         );
 
         await expect(table1KeyColumnsEditInput).toBeVisible();
         await expect(table1KeyColumnsEditInput).not.toBeDisabled();
 
         const columnName = table1.entity?.columns[0].name;
-        const table1Select = page.getByTestId('keyColumns-select');
+        const table1Select = page.getByTestId('parameter-keyColumns-0');
 
         await expect(table1Select).toBeVisible();
-        await expect(table1Select.getByText(columnName)).toBeVisible();
+        await expect(
+          table1Select.getByRole('button', { name: columnName })
+        ).toBeVisible();
 
         const table2KeyColumnsEditInput = page.locator(
-          '#tableTestForm_params_table2\\.keyColumns_0_value'
+          '#testCaseFormV1_params_table2\\.keyColumns_0_value'
         );
 
         await expect(table2KeyColumnsEditInput).toBeVisible();
         await expect(table2KeyColumnsEditInput).not.toBeDisabled();
 
         const table2ColumnName = table2.entity?.columns[0].name;
-        const table2Select = page.getByTestId('table2.keyColumns-select');
+        const table2Select = page.getByTestId('parameter-table2.keyColumns-0');
 
         await expect(table2Select).toBeVisible();
-        await expect(table2Select.getByText(table2ColumnName)).toBeVisible();
+        await expect(
+          table2Select.getByRole('button', { name: table2ColumnName })
+        ).toBeVisible();
 
-        await page
-          .locator('label')
-          .filter({ hasText: "Table 1's key columns" })
-          .getByRole('button')
-          .click();
-        await page.locator('[data-id="tableDiff"]').waitFor({
-          state: 'visible',
-        });
+        await page.getByTestId('add-keyColumns').click();
 
-        await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
-
-        await page.fill(
-          '#tableTestForm_params_keyColumns_1_value',
-          table1.entity?.columns[3].name
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_keyColumns_1_value'),
+          page
+            .getByRole('option')
+            .filter({ hasText: table1.entity?.columns[3].name })
         );
-        await page
-          .getByTitle(table1.entity?.columns[3].name, { exact: true })
-          .click();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
-        await page
-          .locator('label')
-          .filter({ hasText: 'Use Columns' })
-          .getByRole('button')
-          .click();
-        await page.fill(
-          '#tableTestForm_params_useColumns_1_value',
-          table1.entity?.columns[2].name
+        await page.getByTestId('add-useColumns').click();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_useColumns_1_value'),
+          page
+            .getByRole('option')
+            .filter({ hasText: table1.entity?.columns[2].name })
         );
-        await page
-          .getByTitle(table1.entity?.columns[2].name, { exact: true })
-          .click();
 
         await clickUpdateButton(page);
       });
@@ -879,37 +796,28 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await selectTestType(page, 'Custom SQL Query');
+        await expectFormHint(page, 'Select Test Type');
 
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableCustomSQLQuery').click();
-        await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableCustomSQLQuery"]')
-        ).toBeVisible();
-
-        await page.click('#testCaseFormV1_params_strategy');
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(testCase.sqlQuery);
-        await page.getByLabel('Strategy').click();
-        await page.getByTitle('ROWS').click();
+        // The strategy options read as sentences, not as the stored ROWS/COUNT
+        // enum, and react-aria's listbox items expose no key attribute — so
+        // they are matched on the distinctive part of their wording.
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'count the rows' })
+        );
         await page.fill('#testCaseFormV1_params_threshold', '23');
         await submitTestCaseForm(page);
 
@@ -927,20 +835,16 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
         await expect(page.locator('[id="root\\/name"]')).toHaveValue(
           testCase.name
         );
@@ -951,20 +855,15 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', testCase.displayName);
 
-        await page.locator('.CodeMirror-scroll').click();
+        await clickCodeEditor(page);
         await page
           .getByTestId('code-mirror-container')
           .getByRole('textbox')
           .fill(' update');
-        await page.getByTestId('edit-test-form').getByText('ROWS').click();
-        await page.getByTitle('COUNT').click();
-        await page.locator('[data-id="tableCustomSQLQuery"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(
-          page.locator('[data-id="tableCustomSQLQuery"]')
-        ).toBeVisible();
+        await selectOptionWithRetry(
+          page.locator('#testCaseFormV1_params_strategy'),
+          page.getByRole('option', { name: 'use the single number' })
+        );
 
         await page.getByPlaceholder('Enter a Threshold').clear();
         await page.getByPlaceholder('Enter a Threshold').fill('244');
@@ -1003,30 +902,15 @@ test.describe(
 
       await test.step('Create', async () => {
         await page.getByTestId('test-case-name').click();
-        await page.locator('[data-id="name"]').waitFor({ state: 'visible' });
+        await expectFormHint(page, 'Name');
 
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-
-        await page.getByTestId('test-case-name').fill(testCase.name);
-
-        await page.click('[id="root\\/testType"]');
-        await page.locator('[data-id="testType"]').waitFor({
-          state: 'visible',
-        });
-
-        await expect(page.locator('[data-id="testType"]')).toBeVisible();
-
-        await page.fill('[id="root\\/testType"]', testCase.type);
-        await page.getByTestId('tableRowInsertedCountToBeBetween').click();
         await page
-          .locator('[data-id="tableRowInsertedCountToBeBetween"]')
-          .waitFor({
-            state: 'visible',
-          });
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
-        await expect(
-          page.locator('[data-id="tableRowInsertedCountToBeBetween"]')
-        ).toBeVisible();
+        await selectTestType(page, 'Table Row Inserted Count To be Between');
+        await expectFormHint(page, 'Select Test Type');
 
         await page.fill('#testCaseFormV1_params_min', testCase.minValue);
         await page.fill('#testCaseFormV1_params_max', testCase.maxValue);
@@ -1037,14 +921,11 @@ test.describe(
         );
 
         await page.click('#testCaseFormV1_params_columnName');
-        await page
-          .locator(
-            `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
-          )
-          .waitFor({ state: 'visible' });
-        await page.click(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${testCase.columnName}"]`
-        );
+        const columnNameOption = page
+          .getByRole('option')
+          .filter({ hasText: testCase.columnName });
+        await columnNameOption.waitFor({ state: 'visible' });
+        await columnNameOption.click();
 
         await submitTestCaseForm(page);
 
@@ -1062,25 +943,21 @@ test.describe(
           page.getByTestId(testCase.name).getByRole('link')
         ).toBeVisible();
 
-        const testCaseDoc = page.waitForResponse(
-          '/locales/en-US/OpenMetadata/TestCaseForm.md'
-        );
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions/*'
         );
         await page.getByTestId(`action-dropdown-${testCase.name}`).click();
         await page.getByTestId(`edit-${testCase.name}`).click();
-        await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_min').clear();
-        await page.fill('#tableTestForm_params_min', '10');
-        await page.locator('#tableTestForm_params_max').clear();
-        await page.fill('#tableTestForm_params_max', '1000');
+        await page.locator('#testCaseFormV1_params_min').clear();
+        await page.fill('#testCaseFormV1_params_min', '10');
+        await page.locator('#testCaseFormV1_params_max').clear();
+        await page.fill('#testCaseFormV1_params_max', '1000');
 
         await clickUpdateButton(page);
       });

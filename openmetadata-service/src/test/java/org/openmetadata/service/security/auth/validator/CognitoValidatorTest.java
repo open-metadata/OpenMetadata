@@ -68,10 +68,14 @@ public class CognitoValidatorTest {
     FieldError result = validator.validateCognitoConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
+    // The validator probes the live discovery endpoint, so the failure can surface as a
+    // not-found message, a non-200 discovery response (e.g. throttling in CI), or a
+    // network exception wrapped as "... validation failed".
     assertTrue(
         result != null
             && (result.getError().contains("region")
-                || result.getError().contains("Cognito validation failed")));
+                || result.getError().contains("validation failed")
+                || result.getError().contains("Failed to access Cognito discovery endpoint")));
   }
 
   @Test
@@ -84,10 +88,13 @@ public class CognitoValidatorTest {
     FieldError result = validator.validateCognitoConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
+    // Same network-dependent outcomes as above: 404 mentions the user pool, throttling or
+    // other non-200s mention the discovery endpoint, exceptions wrap as "... validation failed".
     assertTrue(
         result != null
             && (result.getError().contains("user pool")
-                || result.getError().contains("Cognito validation failed")));
+                || result.getError().contains("validation failed")
+                || result.getError().contains("Failed to access Cognito discovery endpoint")));
   }
 
   @Test

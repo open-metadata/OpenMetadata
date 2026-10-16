@@ -14,10 +14,13 @@ Test Domo Dashboard using the topology
 """
 
 import json
+import re
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -40,7 +43,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -51,6 +54,8 @@ from metadata.ingestion.source.dashboard.metabase.models import (
     DatasetQuery,
     MetabaseChart,
     MetabaseDashboardDetails,
+    MetabaseDatabase,
+    MetabaseDatabaseDetails,
     MetabaseTable,
     Native,
 )
@@ -188,6 +193,52 @@ MOCK_DASHBOARD_DETAILS = MetabaseDashboardDetails(
     description="SAMPLE DESCRIPTION", name="test_db", id="1", card_ids=["1", "2", "3"]
 )
 
+MOCK_MSSQL_SERVICE = DatabaseService(
+    id="1e2b4b6c-8f4a-4d3e-9c1a-5f6d7e8a9b0c",
+    name="MyMSSQLService",
+    fullyQualifiedName=FullyQualifiedEntityName("MyMSSQLService"),
+    connection=DatabaseConnection(),
+    serviceType=DatabaseServiceType.Mssql,
+)
+
+MOCK_CONNECTION_DATABASE = "SalesDB"
+
+# `Orders` is 3-part and matches the connection database, `Customers` is 3-part and does not,
+# and `LocalOrders` is the 2-part control that has no database of its own to carry.
+CROSS_DATABASE_QUERY = (
+    "SELECT o.OrderId, c.Name, l.Total "
+    "FROM SalesDB.dbo.Orders o WITH(NOLOCK) "
+    "LEFT JOIN [CRM_DB].dbo.Customers c (NOLOCK) ON c.customer_id = o.customer_id "
+    "LEFT JOIN dbo.LocalOrders l (NOLOCK) ON l.OrderId = o.OrderId"
+)
+
+CROSS_DATABASE_TABLES = {
+    "mymssqlservice.salesdb.dbo.orders": "3f6e5d4c-1a2b-3c4d-5e6f-7a8b9c0d1e2f",
+    "mymssqlservice.crm_db.dbo.customers": "4a7f6e5d-2b3c-4d5e-6f7a-8b9c0d1e2f3a",
+    "mymssqlservice.salesdb.dbo.localorders": "5b8a7f6e-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+}
+
+
+def build_cross_database_catalog() -> dict[str, Table]:
+    return {
+        table_fqn: Table.model_construct(
+            id=Uuid(table_id),
+            fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+            columns=[],
+        )
+        for table_fqn, table_id in CROSS_DATABASE_TABLES.items()
+    }
+
+
+def search_cross_database_catalog(catalog: dict[str, Table]):
+    """Stand-in for the ES lookup: a table is only found under the FQN it really has."""
+
+    def search(*_args, fqn_search_string: str = "", **_kwargs):
+        match = catalog.get(fqn_search_string.lower())
+        return [match] if match else []
+
+    return search
+
 
 EXPECTED_DASHBOARD = [
     CreateDashboardRequest(
@@ -241,12 +292,12 @@ class MetabaseUnitTest(TestCase):
     Domo Dashboard Unit Test
     """
 
-    @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
-    @patch("metadata.ingestion.source.dashboard.metabase.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def __init__(self, methodName, create_connection, run_test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
-        get_connection.return_value = False
-        test_connection.return_value = False
+        create_connection.return_value.client = False
+        run_test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_config)
         self.metabase: MetabaseSource = MetabaseSource.create(
             mock_config["source"],
@@ -516,3 +567,280 @@ class MetabaseUnitTest(TestCase):
         )
         self.assertIsNotNone(chart_with_empty_stages.dataset_query)
         self.assertIsNone(chart_with_empty_stages.dataset_query.native)
+
+        # Test 9: MBQL query-builder format (Metabase ≥0.57) — lib/type carries kind,
+        # no `type` field present. Should be normalised to type="query" so that
+        # yield_dashboard_lineage_details can route it to _yield_lineage_from_api.
+        chart_mbql_qb = MetabaseChart(
+            name="test_chart_mbql_qb",
+            id="108",
+            table_id="111",
+            dataset_query={
+                "lib/type": "mbql/query",
+                "database": 2,
+                "stages": [
+                    {
+                        "lib/type": "mbql.stage/mbql",
+                        "source-table": 111,
+                    }
+                ],
+            },
+        )
+        self.assertIsNotNone(chart_mbql_qb.dataset_query)
+        self.assertEqual(chart_mbql_qb.dataset_query.type, "query")
+        self.assertIsNone(chart_mbql_qb.dataset_query.native)
+
+        # Test 10: MBQL format without stages — bare lib/type only.
+        chart_mbql_no_stages = MetabaseChart(
+            name="test_chart_mbql_no_stages",
+            id="109",
+            table_id="222",
+            dataset_query={
+                "lib/type": "mbql/query",
+                "database": 2,
+            },
+        )
+        self.assertIsNotNone(chart_mbql_no_stages.dataset_query)
+        self.assertEqual(chart_mbql_no_stages.dataset_query.type, "query")
+
+    @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
+    @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
+    @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
+    def test_yield_lineage_optional_clause_blocks(self, *_):
+        """
+        Lineage is correctly produced for native queries that use Metabase's
+        [[...]] optional clause syntax. The blocks must be stripped before the
+        query reaches LineageParser so that table references in FROM/JOIN
+        clauses (outside the blocks) are correctly found.
+        """
+        self.metabase.client.get_database = lambda *_: None
+
+        cases = [
+            (
+                "simple [[WHERE]] block",
+                "SELECT id, name FROM test_table [[WHERE name LIKE {{name_filter}}]]",
+            ),
+            (
+                "multiple [[AND]] blocks",
+                "SELECT * FROM test_table WHERE 1=1 [[AND col_a = {{a}}]] [[AND col_b = {{b}}]] [[AND col_c = {{c}}]]",
+            ),
+            (
+                "multiline [[...]] block",
+                "SELECT * FROM test_table\n[[ AND (\n  ({{filter}} = 'TRUE' AND col > 0) OR\n  ({{filter}} = 'FALSE' AND col <= 0)\n)]]\nLIMIT 100",
+            ),
+            (
+                "JOIN outside blocks with [[AND]] filters",
+                "SELECT d.id, c.id FROM test_table d LEFT JOIN other_table c ON d.id = c.id WHERE 1=1 [[AND d.name LIKE {{d}}]] [[AND c.name LIKE {{c}}]]",
+            ),
+            (
+                "complex query replicating customer report",
+                "SELECT * FROM test_table WHERE 1=1 [[AND {{f_a}}]] [[AND {{f_b}}]] [[AND col LIKE CONCAT('%', {{f_c}}, '%')]] [[ AND (\n  ({{f_d}} = 'TRUE' AND due_date <= NOW()) OR\n  ({{f_d}} = 'FALSE' AND due_date > NOW())\n)]] AND source != 'val'",
+            ),
+        ]
+
+        for description, query in cases:
+            chart = MetabaseChart(
+                name=description,
+                id="opt_lineage",
+                database_id=1,
+                dataset_query=DatasetQuery(type="native", native=Native(query=query)),
+                dashboard_ids=[],
+            )
+            self.metabase.charts_dict = {"opt_lineage": chart}
+            dashboard = MetabaseDashboardDetails(name="test", id="1", card_ids=["opt_lineage"])
+
+            with patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD):
+                result = list(
+                    self.metabase.yield_dashboard_lineage_details(dashboard_details=dashboard, db_service_prefix=None)
+                )
+                lineage_results = [r.right for r in result if r.right is not None]
+                self.assertTrue(
+                    len(lineage_results) > 0,
+                    f"Expected lineage for case: {description}",
+                )
+
+        self.metabase.charts_dict = {str(chart.id): chart for chart in MOCK_CHARTS}
+
+
+_STRIP = lambda q: re.sub(r"\[\[.*?\]\]", "", q, flags=re.DOTALL)  # noqa: E731
+
+
+class TestMetabaseOptionalClauseStripping:
+    """
+    Pure unit tests for the [[...]] optional clause stripping regex.
+    These verify the preprocessing step that runs before LineageParser.
+    """
+
+    def test_no_optional_blocks_query_unchanged(self):
+        q = "SELECT id, name FROM dashboard_entity ORDER BY id DESC LIMIT 50"
+        assert _STRIP(q) == q
+
+    def test_single_where_block_fully_removed(self):
+        q = "SELECT id FROM dashboard_entity [[WHERE name LIKE 'test']]"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "WHERE" not in result
+        assert "dashboard_entity" in result
+
+    def test_multiple_and_blocks_all_removed(self):
+        q = "SELECT * FROM t WHERE 1=1 [[AND a = {{x}}]] [[AND b = {{y}}]] [[AND c = {{z}}]]"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "{{" not in result
+        assert "FROM t" in result
+        assert "WHERE 1=1" in result
+
+    def test_multiline_block_stripped_via_dotall(self):
+        q = "SELECT * FROM orders\n[[ AND (\n  ({{f}} = 'TRUE' AND due_date <= NOW()) OR\n  ({{f}} = 'FALSE' AND due_date > NOW())\n)]]\nLIMIT 100"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "due_date" not in result
+        assert "FROM orders" in result
+        assert "LIMIT 100" in result
+
+    def test_template_variable_inside_block_removed(self):
+        q = "SELECT * FROM orders [[WHERE status = {{status}}]]"
+        result = _STRIP(q)
+        assert "{{status}}" not in result
+        assert "WHERE" not in result
+        assert "FROM orders" in result
+
+    def test_join_table_inside_block_not_in_result(self):
+        q = "SELECT d.id FROM dashboard_entity d [[LEFT JOIN chart_entity c ON d.id = c.id WHERE c.name LIKE {{f}}]]"
+        result = _STRIP(q)
+        assert "dashboard_entity" in result
+        assert "chart_entity" not in result
+
+    def test_both_tables_inside_block_neither_visible(self):
+        q = "SELECT 1 [[FROM dashboard_entity d JOIN chart_entity c ON d.id = c.id WHERE d.name = {{f}}]]"
+        result = _STRIP(q)
+        assert "dashboard_entity" not in result
+        assert "chart_entity" not in result
+
+    def test_entire_query_in_block_gives_empty_string(self):
+        q = "[[SELECT * FROM dashboard_entity WHERE name = {{filter}}]]"
+        assert _STRIP(q) == ""
+
+    def test_whitespace_only_after_stripping(self):
+        q = "\n  [[SELECT * FROM dashboard_entity WHERE name = {{filter}}]]\n  "
+        result = _STRIP(q)
+        assert not result.strip()
+
+    def test_empty_optional_block_removed(self):
+        q = "SELECT * FROM t [[]]"
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "FROM t" in result
+
+    def test_complex_customer_query_all_seven_blocks_stripped(self):
+        q = """SELECT *
+FROM my_schema.my_table
+WHERE 1 = 1
+  [[AND {{filter_a}}]]
+  [[AND {{filter_b}}]]
+  [[AND {{filter_c}}]]
+  [[AND {{filter_d}}]]
+  [[AND {{filter_e}}]]
+  [[AND column_name LIKE CONCAT('%', {{filter_f}}, '%')]]
+  [[ AND (
+      ({{filter_g}} = 'TRUE'  AND due_date <= CURRENT_DATE()) OR
+      ({{filter_g}} = 'FALSE' AND due_date >  CURRENT_DATE()) OR
+      ({{filter_g}} = NULL)
+  )]]
+  AND source != 'value'"""
+        result = _STRIP(q)
+        assert "[[" not in result
+        assert "]]" not in result
+        assert "my_schema.my_table" in result
+        assert "source != 'value'" in result
+        assert "filter_a" not in result
+        assert "filter_g" not in result
+        assert "due_date" not in result
+        assert "CURRENT_DATE" not in result
+
+    def test_non_greedy_strips_each_block_independently(self):
+        q = "SELECT * FROM t WHERE 1=1 [[AND a = 1]] middle [[AND b = 2]]"
+        result = _STRIP(q)
+        assert "middle" in result
+        assert "AND a" not in result
+        assert "AND b" not in result
+
+    def test_whitespace_preserved_outside_blocks(self):
+        q = "SELECT id\nFROM t\n[[WHERE x = 1]]\nORDER BY id"
+        result = _STRIP(q)
+        assert "FROM t" in result
+        assert "ORDER BY id" in result
+        assert "WHERE" not in result
+
+
+class TestMetabaseCrossDatabaseLineage:
+    """A `database.schema.table` reference has to be looked up under the database the SQL
+    names, not the data source's connection database (issue #28444)."""
+
+    @pytest.fixture
+    def metabase_source(self):
+        with (
+            patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+            patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+        ):
+            config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+            source = MetabaseSource.create(
+                mock_config["source"],
+                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+            )
+        source.client = SimpleNamespace(
+            get_database=lambda *_: MetabaseDatabase(details=MetabaseDatabaseDetails(db=MOCK_CONNECTION_DATABASE)),
+        )
+        source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        return source
+
+    @staticmethod
+    def _lineage_sources(metabase_source, db_service_prefix: str) -> set[str]:
+        catalog = build_cross_database_catalog()
+        chart = MetabaseChart(
+            id="2",
+            name="cross db chart",
+            database_id="1",
+            dataset_query=DatasetQuery(type="native", native=Native(query=CROSS_DATABASE_QUERY)),
+        )
+        metabase_source.charts_dict = {"2": chart}
+
+        def get_by_name(entity, *_args, **_kwargs):
+            if entity is DatabaseService:
+                return MOCK_MSSQL_SERVICE
+            return EXAMPLE_DASHBOARD if entity is LineageDashboard else None
+
+        metabase_source.metadata = MagicMock()
+        metabase_source.metadata.get_by_name = MagicMock(side_effect=get_by_name)
+        metabase_source.metadata.search_in_any_service = MagicMock(side_effect=search_cross_database_catalog(catalog))
+
+        results = list(
+            metabase_source.yield_dashboard_lineage_details(
+                dashboard_details=MetabaseDashboardDetails(name="test_db", id="1", card_ids=["2"]),
+                db_service_prefix=db_service_prefix,
+            )
+        )
+
+        assert [res.left for res in results if res.left] == []
+        fqn_by_id = {table_id: table_fqn for table_fqn, table_id in CROSS_DATABASE_TABLES.items()}
+        lineage_sources = {str(res.right.edge.fromEntity.id.root) for res in results if res.right}
+        return {fqn_by_id[table_id] for table_id in lineage_sources}
+
+    def test_source_tables_resolve_under_the_database_the_sql_names(self, metabase_source):
+        resolved = self._lineage_sources(metabase_source, MOCK_MSSQL_SERVICE.name.root)
+
+        assert resolved == set(CROSS_DATABASE_TABLES)
+
+    def test_database_prefix_is_matched_against_the_database_the_sql_names(self, metabase_source):
+        resolved = self._lineage_sources(
+            metabase_source,
+            f"{MOCK_MSSQL_SERVICE.name.root}.{MOCK_CONNECTION_DATABASE}",
+        )
+
+        # `Customers` is qualified to CRM_DB, so the SalesDB prefix must filter it out while the
+        # SalesDB-qualified and unqualified tables still resolve.
+        assert resolved == {
+            "mymssqlservice.salesdb.dbo.orders",
+            "mymssqlservice.salesdb.dbo.localorders",
+        }

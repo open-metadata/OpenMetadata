@@ -20,6 +20,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { ASYNC_SELECT_MOCK } from '../../../mocks/AsyncSelect.mock';
 import AsyncSelectList from './AsyncSelectList';
 
@@ -34,9 +35,28 @@ jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );
 
-jest.mock('../../Tag/TagsV1/TagsV1.component', () =>
-  jest.fn().mockImplementation(() => <div>TagsV1</div>)
-);
+jest.mock('@openmetadata/ui-core-components', () => {
+  const mockTag = ({
+    label,
+    tooltip,
+    onDelete,
+  }: {
+    label: string;
+    tooltip?: string;
+    onDelete?: () => void;
+  }) => (
+    <div data-tooltip={tooltip} title={label}>
+      {label}
+      {onDelete && <button aria-label={`remove ${label}`} onClick={onDelete} />}
+    </div>
+  );
+
+  return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
+    ClassificationTag: jest.fn().mockImplementation(mockTag),
+    GlossaryTag: jest.fn().mockImplementation(mockTag),
+  };
+});
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -44,7 +64,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../utils/TagsUtils', () => ({
   getTagDisplay: jest.fn().mockReturnValue('tags'),
-  tagRender: jest.fn().mockReturnValue(<p>Tags Render</p>),
 }));
 
 const mockOnChange = jest.fn();
@@ -74,6 +93,74 @@ describe('Test AsyncSelect List Component', () => {
     expect(screen.getByTestId('tag-selector')).toBeInTheDocument();
 
     expect(screen.getByTitle('select-1')).toBeInTheDocument();
+  });
+
+  it('Should lock derived chips and leave a lineage-propagated one removable', async () => {
+    const initialOptions = [
+      {
+        label: 'Revenue',
+        value: 'Finance.Revenue',
+        data: {
+          name: 'Revenue',
+          tagFQN: 'Finance.Revenue',
+          source: TagSource.Glossary,
+          labelType: LabelType.Derived,
+          state: State.Confirmed,
+        },
+      },
+      {
+        label: 'Sensitive',
+        value: 'PII.Sensitive',
+        data: {
+          name: 'Sensitive',
+          tagFQN: 'PII.Sensitive',
+          source: TagSource.Classification,
+          labelType: LabelType.Derived,
+          state: State.Confirmed,
+        },
+      },
+      {
+        label: 'Upstream',
+        value: 'Lineage.Upstream',
+        data: {
+          name: 'Upstream',
+          tagFQN: 'Lineage.Upstream',
+          source: TagSource.Classification,
+          labelType: LabelType.Propagated,
+          state: State.Confirmed,
+        },
+      },
+    ];
+
+    await act(async () => {
+      render(
+        <AsyncSelectList
+          {...mockProps}
+          initialOptions={initialOptions}
+          value={initialOptions.map((option) => option.value)}
+        />
+      );
+    });
+
+    // An inherited glossary term and the tag a term implies are both computed by the server.
+    expect(screen.getByTitle('Revenue')).toHaveAttribute(
+      'data-tooltip',
+      'message.inherited-tag-warning'
+    );
+    expect(screen.getByTitle('Sensitive')).toHaveAttribute(
+      'data-tooltip',
+      'message.derived-tag-warning'
+    );
+    expect(
+      screen.queryByRole('button', { name: 'remove Revenue' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'remove Sensitive' })
+    ).not.toBeInTheDocument();
+    // A label propagated along lineage is stored for the asset, so it can be removed.
+    expect(
+      screen.getByRole('button', { name: 'remove Upstream' })
+    ).toBeInTheDocument();
   });
 
   it('Should trigger fetchOptions when focus on select input', async () => {
@@ -270,6 +357,37 @@ describe('Test AsyncSelect List Component', () => {
 
     await waitFor(() => screen.getByTestId('tag-tags-0'));
 
-    expect(screen.getByTestId('tag-tags-0')).toHaveClass('option-class');
+    expect(
+      screen.getByTestId('tag-tags-0').closest('[role="option"]')
+    ).toHaveClass('option-class');
+  });
+
+  it('should load the next page when the list is scrolled to the end', async () => {
+    mockFetchOptions.mockReset();
+    mockFetchOptions
+      .mockResolvedValueOnce({ ...ASYNC_SELECT_MOCK, paging: { total: 20 } })
+      .mockResolvedValueOnce({ data: [], paging: { total: 20 } });
+
+    await act(async () => {
+      render(<AsyncSelectList {...mockProps} mode="multiple" />);
+    });
+
+    await act(async () => {
+      userEvent.click(screen.getByRole('combobox'));
+    });
+
+    const listBox = await screen.findByRole('listbox');
+    const scroller = listBox.closest('[data-trigger]') as HTMLElement;
+    Object.defineProperties(scroller, {
+      scrollHeight: { configurable: true, value: 500 },
+      offsetHeight: { configurable: true, value: 300 },
+      scrollTop: { configurable: true, value: 200 },
+    });
+
+    await act(async () => {
+      fireEvent.scroll(scroller);
+    });
+
+    expect(mockFetchOptions).toHaveBeenLastCalledWith('', 2);
   });
 });

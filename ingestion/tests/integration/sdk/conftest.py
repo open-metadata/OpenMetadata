@@ -3,13 +3,12 @@ Minimal conftest for SDK integration tests.
 Override the parent conftest to avoid testcontainers dependency.
 """
 
-import uuid  # noqa: I001
+import uuid
 
 import pytest
 from sqlalchemy import Column as SQAColumn
-from sqlalchemy import Integer, MetaData, String
+from sqlalchemy import Integer, MetaData, String, create_engine, text
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine, text
 
 from _openmetadata_testutils.ometa import int_admin_ometa
 from _openmetadata_testutils.postgres.conftest import postgres_container  # noqa: F401
@@ -33,6 +32,8 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.metadata import MetadataWorkflow
+
+from ..conftest import _safe_delete  # noqa: TID252
 
 
 @pytest.fixture(scope="module")
@@ -69,7 +70,13 @@ def db_service(metadata, create_postgres_service, postgres_container):  # noqa: 
 
     service = metadata.get_by_name(DatabaseService, service_entity.fullyQualifiedName.root)
     if service:
-        metadata.delete(DatabaseService, service.id, recursive=True, hard_delete=True)
+        _safe_delete(
+            metadata,
+            entity=DatabaseService,
+            entity_id=service.id,
+            recursive=True,
+            hard_delete=True,
+        )
 
 
 @pytest.fixture(scope="module")

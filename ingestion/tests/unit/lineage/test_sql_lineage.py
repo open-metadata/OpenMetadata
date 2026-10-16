@@ -28,6 +28,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_column_lineage,
     get_table_fqn_from_query_name,
     populate_column_lineage_map,
+    search_table_entities,
 )
 from metadata.utils.logger import Loggers
 
@@ -102,6 +103,161 @@ class SqlLineageTest(TestCase):
         )
         # Then
         assert len(col_lineage) == 1
+
+    def test_get_column_lineage_count_star_not_treated_as_select_all(self):
+        """
+        COUNT(*) AS nb produces a ("nb", "*") pair.  That must NOT trigger the
+        SELECT * expansion — only an explicit ("*", "*") wildcard pair should.
+        """
+        # Given: COUNT(*) AS nb, region, SUM(amount) AS total
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("nb", "*"),
+                    ("region", "region"),
+                    ("total", "amount"),
+                ]
+            }
+        }
+
+        def _make_table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "NUMBER",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _make_table("testdb.public.target", ["nb", "region", "total"])
+        from_entity = _make_table("testdb.public.sales", ["region", "amount"])
+
+        # When
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        # Then: only (region→region) and (amount→total) — nb→* has no column match and is skipped
+        pairs = {(c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1]) for c in col_lineage}
+        self.assertIn(("region", "region"), pairs)
+        self.assertIn(("amount", "total"), pairs)
+        # SELECT * expansion must NOT have fired — target only has 3 columns and
+        # we must not end up with sales columns mapped by name to target columns
+        self.assertNotIn(("amount", "amount"), pairs)
+
+    def test_get_column_lineage_count_star_first_does_not_drop_explicit_columns(self):
+        """
+        When COUNT(*) AS nb is the first pair (index 0), the two explicit column
+        mappings must still survive.  The bug: the old code checked [0] for any '*'
+        and replaced the whole list with a SELECT * expansion, erasing region→region
+        and amount→total.
+        """
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("nb", "*"),  # COUNT(*) — first element, triggers old bug
+                    ("region", "region"),
+                    ("total", "amount"),
+                ]
+            }
+        }
+
+        def _table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "NUMBER",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _table("testdb.public.target", ["nb", "region", "total"])
+        from_entity = _table("testdb.public.sales", ["region", "amount"])
+
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        fqns = [(c.fromColumns[0].root, c.toColumn.root) for c in col_lineage]
+        from_names = {p[0].split(".")[-1] for p in fqns}
+        to_names = {p[1].split(".")[-1] for p in fqns}
+
+        self.assertIn("region", from_names)
+        self.assertIn("amount", from_names)
+        self.assertIn("region", to_names)
+        self.assertIn("total", to_names)
+        # The COUNT(*) pair ("nb", "*") finds no from-column named "*" — it is
+        # silently dropped, which is correct.
+        self.assertEqual(len(col_lineage), 2)
+
+    def test_get_column_lineage_mixed_explicit_and_select_all(self):
+        """
+        SELECT upper(name) AS name_upper, * FROM t produces pairs like
+        [("name_upper","name"), ("*","*")].  The ("*","*") wildcard must expand
+        all source columns while the explicit ("name_upper","name") is preserved —
+        not overwritten by the expansion.
+        """
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("name_upper", "name"),  # SELECT upper(name) AS name_upper
+                    ("*", "*"),  # SELECT *
+                ]
+            }
+        }
+
+        def _table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "VARCHAR",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _table("testdb.public.target", ["name_upper", "name", "region"])
+        from_entity = _table("testdb.public.sales", ["name", "region"])
+
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        pairs = {(c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1]) for c in col_lineage}
+        # Explicit non-wildcard pair must be present
+        self.assertIn(("name", "name_upper"), pairs)
+        # Wildcard expansion must also be present
+        self.assertIn(("name", "name"), pairs)
+        self.assertIn(("region", "region"), pairs)
 
     def test_populate_column_lineage_map_select_all(self):
         """
@@ -204,6 +360,61 @@ class SqlLineageTest(TestCase):
         raw_query_name = "project.dataset.info_schema.tab"
 
         self.assertEqual(get_table_fqn_from_query_name(raw_query_name), (None, None, "tab"))
+
+    def test_table_name_from_query_with_dotted_schema(self):
+        """
+        A connector may put a `.` inside a single name component -- Dremio flattens
+        nested folder paths into `folder.subfolder` -- in which case that component
+        arrives quoted. It must survive as one component instead of being torn in half,
+        which used to surface as `ValueError: Invalid name "folder` (issue #31481).
+        """
+        assert get_table_fqn_from_query_name('"OpsDataViews.Reporting".vw_customer') == (
+            None,
+            '"OpsDataViews.Reporting"',
+            "vw_customer",
+        )
+
+        assert get_table_fqn_from_query_name('Prod."OpsDataViews.Reporting".vw_customer') == (
+            "Prod",
+            '"OpsDataViews.Reporting"',
+            "vw_customer",
+        )
+
+        # Deeply nested folders stay a single quoted schema rather than tripping the
+        # 4+ component branch and losing the schema altogether
+        assert get_table_fqn_from_query_name('"a.b.c.d".tab') == (None, '"a.b.c.d"', "tab")
+
+        # A quoted table name containing a dot is likewise preserved
+        assert get_table_fqn_from_query_name('db.schema."tab.v2"') == ("db", "schema", '"tab.v2"')
+
+    def test_table_name_from_query_is_quote_safe(self):
+        """
+        Names are harvested from parsed SQL, so malformed input must degrade rather
+        than raise -- get_table_fqn_from_query_name has no callers that catch ValueError.
+        """
+        assert get_table_fqn_from_query_name('"unbalanced') == (None, None, '"unbalanced')
+        assert get_table_fqn_from_query_name('"a.b"."c.d"') == (None, '"a.b"', '"c.d"')
+
+    def test_search_table_entities_without_table_name(self):
+        """
+        References such as `db.schema.` carry no table to look up. They should be skipped
+        instead of failing the FQN building once per searched service.
+        """
+        database, database_schema, table = get_table_fqn_from_query_name("db.schema.")
+        self.assertEqual((database, database_schema, table), ("db", "schema", ""))
+
+        with self.assertLogs(Loggers.UTILS.value, level="DEBUG") as logger:
+            self.assertIsNone(
+                search_table_entities(
+                    metadata=None,
+                    service_names=["service_1", "service_2"],
+                    database=database,
+                    database_schema=database_schema,
+                    table=table,
+                )
+            )
+
+        self.assertFalse([log for log in logger.output if log.startswith("ERROR")])
 
     def test_replace_target_table(self):
         """

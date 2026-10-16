@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export const GLOSSARY_ROUTE = '/glossary';
+
 export enum SidebarItem {
   EXPLORE = 'explore',
   OBSERVABILITY = 'observability',
@@ -31,7 +33,9 @@ export enum SidebarItem {
   LINEAGE = 'lineage',
   COLUMN_BULK_OPERATIONS = 'column-bulk-operations',
   DATA_MARKETPLACE = 'data-marketplace',
-  KNOWLEDGE_CENTER = 'knowledge-center',
+  WORKFLOWS = 'workflows',
+  CONTEXT_CENTER = 'context-center',
+  ARTICLE = 'articles',
 }
 
 export const SIDEBAR_LIST_ITEMS = {
@@ -70,6 +74,8 @@ export const SIDEBAR_LIST_ITEMS = {
     SidebarItem.GOVERNANCE,
     SidebarItem.COLUMN_BULK_OPERATIONS,
   ],
+  [SidebarItem.WORKFLOWS]: [SidebarItem.GOVERNANCE, SidebarItem.WORKFLOWS],
+  [SidebarItem.ARTICLE]: [SidebarItem.CONTEXT_CENTER, SidebarItem.ARTICLE],
 
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],

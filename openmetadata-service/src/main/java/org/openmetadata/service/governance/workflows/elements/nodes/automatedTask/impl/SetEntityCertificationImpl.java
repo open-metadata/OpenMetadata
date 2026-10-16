@@ -7,7 +7,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import jakarta.json.JsonPatch;
-import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -22,6 +21,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
@@ -30,21 +30,13 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 public class SetEntityCertificationImpl implements JavaDelegate {
   private Expression certificationExpr;
   private Expression inputNamespaceMapExpr;
+  private Expression batchExecutionExpr;
 
   @Override
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
-      Map<String, String> inputNamespaceMap =
-          JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
-      MessageParser.EntityLink entityLink =
-          MessageParser.EntityLink.parse(
-              (String)
-                  varHandler.getNamespacedVariable(
-                      inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
-      String entityType = entityLink.getEntityType();
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
-
+      InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       String certification =
           Optional.ofNullable(certificationExpr)
               .map(certificationExpr -> (String) certificationExpr.getValue(execution))
@@ -53,10 +45,24 @@ public class SetEntityCertificationImpl implements JavaDelegate {
           Optional.ofNullable(
                   (String)
                       varHandler.getNamespacedVariable(
-                          inputNamespaceMap.get(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
+                          inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE))
               .orElse("governance-bot");
-
-      setStatus(entity, entityType, user, certification);
+      BatchEntities.applyAction(
+          new BatchEntities.NodeExecution(
+              batchExecutionExpr, execution, varHandler, inputNamespaces),
+          entityLink -> certify(entityLink, user, certification),
+          () ->
+              certify(
+                  (String)
+                      varHandler.getNamespacedVariable(
+                          inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
+                          RELATED_ENTITY_VARIABLE),
+                  user,
+                  certification));
+    } catch (BpmnError batchFailure) {
+      // Raised by a batch the action failed on entirely, after it recorded the per-entity summary
+      // and the first cause in global_exception.
+      throw batchFailure;
     } catch (Exception exc) {
       LOG.error(
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
@@ -65,8 +71,14 @@ public class SetEntityCertificationImpl implements JavaDelegate {
     }
   }
 
+  private void certify(String entityLinkValue, String user, String certification) {
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkValue);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "certification", Include.ALL);
+    setStatus(entity, entityLink.getEntityType(), user, certification);
+  }
+
   private void setStatus(
-      EntityInterface entity, String entityType, String user, String certification) {
+      EntityInterface<?> entity, String entityType, String user, String certification) {
     String originalJson = JsonUtils.pojoToJson(entity);
 
     Optional<String> oCertification = Optional.ofNullable(certification);

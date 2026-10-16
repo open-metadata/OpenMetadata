@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
+import { LIGHT_CHART_PALETTE } from '@openmetadata/ui-core-components/charts';
 import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { INITIAL_ROW_METRIC_VALUE } from '../../../../constants/profiler.constant';
-import '../../../../test/unit/mocks/mui.mock';
 import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
@@ -29,7 +29,7 @@ jest.mock('../../../../constants/constants', () => ({
   JSON_TAB_SIZE: 2,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/NumberUtils', () => ({
   getStatisticsDisplayValue: jest.fn().mockImplementation(() => '10'),
 }));
 
@@ -61,6 +61,38 @@ describe('ProfilerLatestValue component test', () => {
     const value = await screen.findByText('string value');
 
     expect(value).toBeInTheDocument();
+  });
+
+  it('colours each title bar like the matching chart series', () => {
+    render(
+      <ProfilerLatestValue
+        information={[
+          {
+            title: 'Insert',
+            dataKey: 'insert',
+            latestValue: 1,
+          },
+          { title: 'Update', dataKey: 'update', latestValue: 2 },
+          {
+            title: 'Delete',
+            dataKey: 'delete',
+            latestValue: 3,
+            status: 'warning',
+          },
+        ]}
+      />
+    );
+    const titles = screen.getAllByTestId('title');
+
+    expect(titles[0]).toHaveStyle({
+      borderLeft: `4px solid ${LIGHT_CHART_PALETTE.series[0]}`,
+    });
+    expect(titles[1]).toHaveStyle({
+      borderLeft: `4px solid ${LIGHT_CHART_PALETTE.series[1]}`,
+    });
+    expect(titles[2]).toHaveStyle({
+      borderLeft: `4px solid ${LIGHT_CHART_PALETTE.status.warning}`,
+    });
   });
 
   it('If no data provide nothing should render', async () => {

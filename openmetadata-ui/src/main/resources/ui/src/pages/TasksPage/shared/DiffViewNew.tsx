@@ -10,27 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Button, Typography } from '@openmetadata/ui-core-components';
 
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { Change } from 'diff';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TaskDescriptionPreviewer from '../../../components/common/RichTextEditor/TaskDescriptionPreviewer';
-import {
-  Thread,
-  ThreadTaskStatus,
-} from '../../../generated/entity/feed/thread';
 
 export const DiffViewNew = ({
   diffArr,
   showDescTitle = false,
-  task,
 }: {
   diffArr: Change[];
   className?: string;
   showDescTitle?: boolean;
-  task?: Thread;
 }) => {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -152,27 +146,18 @@ export const DiffViewNew = ({
       style={{
         ...(showDescTitle
           ? {
-              background: 'rgba(239, 244, 250, 0.25)',
               borderRadius: '12px',
             }
           : {
               padding: '20px',
               borderRadius: '8px',
-              background: 'white',
               margin: '16px 0px',
             }),
-        ...(task?.task?.status === ThreadTaskStatus.Closed &&
-          !showDescTitle && {
-            margin: '16px 0px',
-          }),
-        ...(task?.task?.status === ThreadTaskStatus.Open && {
-          borderRadius: '8px',
-        }),
       }}>
       {showDescTitle && (
-        <span className="task-tab-description-header">
+        <Typography className="task-tab-description-header">
           {t('label.description')}
-        </span>
+        </Typography>
       )}
       <pre
         className="whitespace-pre-wrap m-b-0"
@@ -188,7 +173,7 @@ export const DiffViewNew = ({
             {shouldShowViewMore && (
               <div className="mt-2">
                 <Button
-                  className="view-more-less-button cursor-pointer remove-button-default-styling"
+                  color="secondary"
                   data-testid="view-more-button"
                   onClick={() => setExpanded(!expanded)}>
                   {expanded ? t('label.view-less') : t('label.view-more')}
@@ -197,9 +182,9 @@ export const DiffViewNew = ({
             )}
           </>
         ) : (
-          <span className="text-grey-muted" data-testid="noDiff-placeholder">
+          <Typography color="secondary" data-testid="noDiff-placeholder">
             {t('label.no-diff-available')}
-          </span>
+          </Typography>
         )}
       </pre>
     </div>

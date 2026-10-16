@@ -18,6 +18,8 @@ import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
 import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
 
+const OM_NODE_DRAGGING_CLASS = 'om-node-dragging';
+
 export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
   let dragHandleElement: HTMLElement | null = null;
   let blockHandleElement: HTMLElement | null = null;
@@ -71,7 +73,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
   const handleDragClick = (event: MouseEvent, view: EditorView) => {
     view.focus();
 
-    view.dom.classList.remove('om-node-dragging');
+    view.dom.classList.remove(OM_NODE_DRAGGING_CLASS);
 
     const node = nodeDOMAtCoords({
       x: event.clientX + 50 + options.dragHandleWidth,
@@ -135,9 +137,9 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     }
 
     if (i18n.dir() === 'rtl') {
-      dragHandleElement.style.right = `${rect.right - rect.width}px`;
+      dragHandleElement.style.right = `${rect.right - rect.width - 10}px`;
     } else {
-      dragHandleElement.style.left = `${rect.left - rect.width}px`;
+      dragHandleElement.style.left = `${rect.left - rect.width - 10}px`;
     }
     dragHandleElement.style.top = `${rect.top}px`;
     showDragHandle();
@@ -159,7 +161,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
 
   const handleMouseMoveForBlockHandle = (event: MouseEvent) => {
     const node = nodeDOMAtCoords({
-      x: event.clientX + options.dragHandleWidth * 4 + options.blockHandleWidth,
+      x: event.clientX + 50 + options.dragHandleWidth,
       y: event.clientY,
     });
 
@@ -188,13 +190,9 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
     }
 
     if (i18n.dir() === 'rtl') {
-      blockHandleElement.style.right = `${
-        rect.right - rect.width - options.blockHandleWidth
-      }px`;
+      blockHandleElement.style.right = `${rect.right - rect.width + 6}px`;
     } else {
-      blockHandleElement.style.left = `${
-        rect.left - rect.width - options.blockHandleWidth
-      }px`;
+      blockHandleElement.style.left = `${rect.left - rect.width + 6}px`;
     }
     blockHandleElement.style.top = `${rect.top}px`;
     showBlockHandle();
@@ -279,13 +277,13 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
         },
         // dragging class is used for CSS
         dragstart: (view) => {
-          view.dom.classList.add('om-node-dragging');
+          view.dom.classList.add(OM_NODE_DRAGGING_CLASS);
         },
         drop: (view) => {
-          view.dom.classList.remove('om-node-dragging');
+          view.dom.classList.remove(OM_NODE_DRAGGING_CLASS);
         },
         dragend: (view) => {
-          view.dom.classList.remove('om-node-dragging');
+          view.dom.classList.remove(OM_NODE_DRAGGING_CLASS);
         },
       },
     },

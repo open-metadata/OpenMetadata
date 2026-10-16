@@ -1,0 +1,8 @@
+# Override that disables the cache while leaving the rest of the stack intact.
+# Used in the local A/B benchmark to flip cache off without tearing down volumes.
+# Apply on TOP of base compose (NOT the redis overlay):
+#   docker compose -f docker-compose.yml -f docker-compose.cache-off.yml up -d --no-deps openmetadata-server
+services:
+  openmetadata-server:
+    environment:
+      CACHE_PROVIDER: none

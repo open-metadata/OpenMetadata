@@ -1,0 +1,119 @@
+{
+  "framework": {
+    "name": "eu_ai_act",
+    "displayName": "EU AI Act",
+    "description": "Regulation (EU) 2024/1689 — the European Union's risk-based AI regulation. Covers prohibited practices (Article 5), high-risk systems (Article 6 + Annex III), transparency obligations (Article 50), conformity assessment, and post-market monitoring.",
+    "reference": "Regulation (EU) 2024/1689",
+    "region": "European Union",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "Quarterly",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel", "mcpServer"],
+      "regions": ["EU"],
+      "riskClasses": [],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "art-5",
+      "name": "art-5",
+      "displayName": "Article 5 — Prohibited Practices",
+      "category": "Risk",
+      "description": "Asset must not implement any of the 8 prohibited AI practices under Article 5.",
+      "evidenceRequirements": [
+        "Article 5 attestation",
+        "Annual prohibited-practice screening report"
+      ]
+    },
+    {
+      "code": "art-6",
+      "name": "art-6",
+      "displayName": "Article 6 — High-risk Classification",
+      "category": "Risk",
+      "description": "Determine whether the asset falls into any Annex III high-risk category.",
+      "evidenceRequirements": [
+        "Annex III mapping",
+        "Risk classification rationale"
+      ]
+    },
+    {
+      "code": "art-9",
+      "name": "art-9",
+      "displayName": "Article 9 — Risk Management System",
+      "category": "Process",
+      "description": "Continuous risk management system identifying, evaluating, and mitigating known and foreseeable risks.",
+      "evidenceRequirements": [
+        "Risk management plan",
+        "Mitigation log"
+      ]
+    },
+    {
+      "code": "art-10",
+      "name": "art-10",
+      "displayName": "Article 10 — Data and Data Governance",
+      "category": "Data",
+      "description": "Training, validation, and testing datasets meet quality criteria including representativeness, relevance, and freedom from bias.",
+      "evidenceRequirements": [
+        "Dataset documentation",
+        "Subgroup fairness analysis"
+      ]
+    },
+    {
+      "code": "art-12",
+      "name": "art-12",
+      "displayName": "Article 12 — Record-keeping (Logs)",
+      "category": "Process",
+      "description": "Automatic logging of events; logs retained for at least 90 days.",
+      "evidenceRequirements": [
+        "Log retention policy",
+        "Log sample"
+      ]
+    },
+    {
+      "code": "art-13",
+      "name": "art-13",
+      "displayName": "Article 13 — Transparency to Deployers",
+      "category": "Transparency",
+      "description": "Deployers receive technical documentation enabling correct interpretation of outputs.",
+      "evidenceRequirements": [
+        "Technical documentation",
+        "Instructions for use"
+      ]
+    },
+    {
+      "code": "art-14",
+      "name": "art-14",
+      "displayName": "Article 14 — Human Oversight",
+      "category": "Process",
+      "description": "Human oversight measures designed to prevent or minimize risks.",
+      "evidenceRequirements": [
+        "Oversight protocol",
+        "Operator training records"
+      ]
+    },
+    {
+      "code": "art-15",
+      "name": "art-15",
+      "displayName": "Article 15 — Accuracy & Robustness",
+      "category": "Quality",
+      "description": "Appropriate level of accuracy, robustness, and cybersecurity throughout the lifecycle.",
+      "evidenceRequirements": [
+        "Accuracy benchmarks",
+        "Adversarial robustness testing"
+      ]
+    },
+    {
+      "code": "art-50",
+      "name": "art-50",
+      "displayName": "Article 50 — Transparency to Users",
+      "category": "Transparency",
+      "description": "End users are informed they are interacting with AI; AI-generated content labeled.",
+      "evidenceRequirements": [
+        "AI disclosure UI",
+        "Content labeling verification"
+      ]
+    }
+  ]
+}

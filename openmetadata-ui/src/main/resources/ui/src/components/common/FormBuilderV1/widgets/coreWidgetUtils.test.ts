@@ -70,22 +70,45 @@ describe('coreWidgetUtils', () => {
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'sampleDataStorageConfig',
+        label: 'storedProcedureFilterPattern',
       } as never)
-    ).toBe('Sample Data Storage Config');
+    ).toBe('Stored Procedure Filter Pattern');
 
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'label.sample-data-storage-config',
+        label: 'label.stored-procedure-filter-pattern',
       } as never)
-    ).toBe('label.sample-data-storage-config');
+    ).toBe('label.stored-procedure-filter-pattern');
 
     expect(
       getWidgetLabel({
         hideLabel: false,
-        label: 'Sample data storage config',
+        label: 'Stored procedure filter pattern',
       } as never)
-    ).toBe('Sample data storage config');
+    ).toBe('Stored procedure filter pattern');
+  });
+
+  it('preserves connector acronyms in raw camelCase labels', () => {
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 's3Config',
+      } as never)
+    ).toBe('S3 Config');
+
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'awsSecretAccessKey',
+      } as never)
+    ).toBe('AWS Secret Access Key');
+
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'apiUrl',
+      } as never)
+    ).toBe('API URL');
   });
 });

@@ -21,12 +21,9 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
-import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -46,17 +43,12 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
-import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.feed.Thread;
-import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.Relationship;
@@ -71,19 +63,16 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
-import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
-import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -104,6 +93,8 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -125,6 +116,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
+    return getTagAssets(tagId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getTagAssets(
+      UUID tagId, int limit, int offset, SubjectContext caller) {
     Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -133,7 +130,7 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -149,8 +146,13 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
+    return getTagAssetsByName(tagName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getTagAssetsByName(
+      String tagName, int limit, int offset, SubjectContext caller) {
     Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
-    return getTagAssets(tag.getId(), limit, offset);
+    return getTagAssets(tag.getId(), limit, offset, caller);
   }
 
   public Map<String, Integer> getAllTagsWithAssetsCount() {
@@ -222,6 +224,91 @@ public class TagRepository extends EntityRepository<Tag> {
     if (recognizer.getId() == null) {
       throw new IllegalArgumentException("Can't create recognizer without an ID");
     }
+  }
+
+  /**
+   * Heals seeded Tags: system recognizers the Tag lost - or that a later release added - are put
+   * back by name, and a provider knocked off the seeded value is restored. A recognizer that is
+   * still there is never touched, so user edits to it survive.
+   */
+  public void reconcileSeededTags(List<Tag> seedTags) {
+    for (Tag seedTag : listOrEmpty(seedTags)) {
+      try {
+        reconcileSeededTag(seedTag);
+      } catch (Exception e) {
+        LOG.warn("Failed to reconcile seeded tag {}", seedTag.getFullyQualifiedName(), e);
+      }
+    }
+  }
+
+  private void reconcileSeededTag(Tag seedTag) {
+    // A Tag missing altogether was just created from this same seed by initializeEntity()
+    Tag stored = findByNameOrNull(seedTag.getFullyQualifiedName(), ALL);
+    if (stored == null) {
+      return;
+    }
+
+    List<Recognizer> seeded = systemRecognizers(seedTag);
+    List<Recognizer> missing = missingSystemRecognizers(stored.getRecognizers(), seeded);
+    // CreateTag defaults provider to user, so any PUT that omits it downgrades a seeded Tag - and a
+    // Tag that is no longer system provided is no longer protected from deletion
+    boolean providerDrifted =
+        seedTag.getProvider() != null && !seedTag.getProvider().equals(stored.getProvider());
+    if (missing.isEmpty() && !providerDrifted) {
+      return;
+    }
+
+    if (!missing.isEmpty()) {
+      appendRecognizers(stored, seedTag, missing, seeded.size());
+    }
+    if (providerDrifted) {
+      stored.setProvider(seedTag.getProvider());
+    }
+    store(stored, true);
+    LOG.info(
+        "Reconciled seeded tag {}: provider={}, recognizers re-added={}",
+        stored.getFullyQualifiedName(),
+        stored.getProvider(),
+        missing.stream().map(Recognizer::getName).toList());
+  }
+
+  private List<Recognizer> systemRecognizers(Tag seedTag) {
+    return listOrEmpty(seedTag.getRecognizers()).stream()
+        .filter(recognizer -> Boolean.TRUE.equals(recognizer.getIsSystemDefault()))
+        .toList();
+  }
+
+  private void appendRecognizers(
+      Tag stored, Tag seedTag, List<Recognizer> missing, int seededCount) {
+    List<Recognizer> merged = new ArrayList<>(listOrEmpty(stored.getRecognizers()));
+    merged.addAll(missing);
+    stored.setRecognizers(merged);
+    restoreAutoClassification(stored, seedTag, missing.size() == seededCount);
+  }
+
+  /** Seeded recognizers absent from {@code stored}, copied so the seed list stays reusable. */
+  protected List<Recognizer> missingSystemRecognizers(
+      List<Recognizer> stored, List<Recognizer> seeded) {
+    Set<String> storedNames =
+        listOrEmpty(stored).stream().map(Recognizer::getName).collect(Collectors.toSet());
+    return seeded.stream()
+        .filter(recognizer -> !storedNames.contains(recognizer.getName()))
+        .map(recognizer -> JsonUtils.deepCopy(recognizer, Recognizer.class))
+        .map(recognizer -> recognizer.withId(UUID.randomUUID()))
+        .toList();
+  }
+
+  /**
+   * Recognizers are inert while autoClassificationEnabled is false, so a Tag that lost every seeded
+   * recognizer - the signature of a wipe - gets its flags back too. One merely short a newly shipped
+   * recognizer keeps whatever the user configured.
+   */
+  private void restoreAutoClassification(Tag stored, Tag seedTag, boolean lostEverySeeded) {
+    if (!lostEverySeeded || !Boolean.TRUE.equals(seedTag.getAutoClassificationEnabled())) {
+      return;
+    }
+    stored.setAutoClassificationEnabled(true);
+    stored.setAutoClassificationPriority(seedTag.getAutoClassificationPriority());
   }
 
   @Override
@@ -297,7 +384,63 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntity(Tag tag, boolean update) {
+    // setInheritedFields() sets disabled=true on the in-memory Tag whenever the parent
+    // Classification is disabled. That inherited value must never be persisted: once it is
+    // stored, re-enabling the Classification can no longer clear it and the Tag stays disabled
+    // forever.
+    //
+    // Leave the Tag holding its own flag afterwards rather than restoring the effective value.
+    // The entity is cached after this returns, so restoring would write the inherited true into
+    // the cache while the row holds false - the read then reports a Tag that is disabled with an
+    // enabled Classification, which is the very state this guard exists to prevent. It only
+    // shows up with a distributed cache, because an L1-only entry is invalidated on write and
+    // reloaded from the row. Restoring is also unnecessary: inheritance is re-applied on the way
+    // out, so the write response still reports the effective value.
+    tag.setDisabled(getOwnDisabled(tag, update, tag.getDisabled()));
     store(tag, update);
+  }
+
+  /**
+   * Returns the Tag's own {@code disabled} setting, with any value inherited from a disabled parent
+   * Classification removed. While the parent Classification is disabled the Tag always reads as
+   * disabled, so a user cannot express "disable this Tag individually" during that window - the
+   * stored value is therefore authoritative.
+   */
+  private Boolean getOwnDisabled(Tag tag, boolean update, Boolean effectiveDisabled) {
+    Boolean ownDisabled = effectiveDisabled;
+    if (Boolean.TRUE.equals(effectiveDisabled) && isParentClassificationDisabled(tag)) {
+      ownDisabled = update ? getStoredDisabled(tag.getId()) : Boolean.FALSE;
+    }
+    return ownDisabled;
+  }
+
+  private Boolean getStoredDisabled(UUID tagId) {
+    Boolean storedDisabled = Boolean.FALSE;
+    try {
+      storedDisabled = dao.findEntityById(tagId, ALL).getDisabled();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Tag {} not found while reading its stored disabled flag", tagId, e);
+    }
+    return storedDisabled;
+  }
+
+  private boolean isParentClassificationDisabled(Tag tag) {
+    boolean isDisabled = false;
+    EntityReference classificationRef = tag.getClassification();
+    if (classificationRef != null && classificationRef.getId() != null) {
+      try {
+        Classification classification =
+            Entity.getEntity(CLASSIFICATION, classificationRef.getId(), "", ALL, false);
+        isDisabled = Boolean.TRUE.equals(classification.getDisabled());
+      } catch (EntityNotFoundException e) {
+        LOG.debug(
+            "Classification {} not found while checking the disabled flag of tag {}",
+            classificationRef.getId(),
+            tag.getId(),
+            e);
+      }
+    }
+    return isDisabled;
   }
 
   @Override
@@ -307,7 +450,19 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public void storeEntities(List<Tag> entities) {
+    // Today every caller of this bulk path is create-only and applies setInheritedFields() after
+    // the store, so no inherited value can be present here. Strip it anyway: a future bulk update
+    // path would otherwise silently persist it and strand the Tags, which is the exact failure
+    // storeEntity() guards against. Tags are almost never created disabled, so the guard costs
+    // nothing on the common path.
+    entities.forEach(this::clearInheritedDisabled);
     storeMany(entities);
+  }
+
+  private void clearInheritedDisabled(Tag tag) {
+    if (Boolean.TRUE.equals(tag.getDisabled()) && isParentClassificationDisabled(tag)) {
+      tag.setDisabled(Boolean.FALSE);
+    }
   }
 
   @Override
@@ -353,7 +508,7 @@ public class TagRepository extends EntityRepository<Tag> {
     List<BulkResponse> failures = new ArrayList<>();
     List<BulkResponse> success = new ArrayList<>();
 
-    if (dryRun || nullOrEmpty(request.getAssets())) {
+    if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate
       return result
           .withStatus(ApiStatus.SUCCESS)
@@ -376,7 +531,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          addTagToColumn(ref, tagLabel, success, failures, result);
+          addTagToColumn(ref, tagLabel, dryRun, success, failures, result);
         } catch (Exception ex) {
           failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
           result.withFailedRequest(failures);
@@ -386,7 +541,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -405,14 +560,19 @@ public class TagRepository extends EntityRepository<Tag> {
         result.withFailedRequest(failures);
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
       }
-      // Validate and Store Tags
-      if (nullOrEmpty(result.getFailedRequest())) {
+      // Validate and Store Tags — skip the write side-effects on dryRun so the preview
+      // surfaces the same validation outcome a real call would without mutating state.
+      if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
         List<TagLabel> tempList = new ArrayList<>(asset.getTags());
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the child fan-out never fires from here.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
+        RdfUpdater.updateEntity(asset);
       }
     }
 
@@ -420,13 +580,9 @@ public class TagRepository extends EntityRepository<Tag> {
     result.withFailedRequest(failures).withSuccessRequest(success);
 
     // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
+    result.withStatus(
+        deriveBulkOperationStatus(
+            result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
   }
@@ -438,6 +594,7 @@ public class TagRepository extends EntityRepository<Tag> {
   private void addTagToColumn(
       EntityReference columnRef,
       TagLabel tagLabel,
+      boolean dryRun,
       List<BulkResponse> success,
       List<BulkResponse> failures,
       BulkOperationResult result) {
@@ -470,11 +627,11 @@ public class TagRepository extends EntityRepository<Tag> {
         new ArrayList<>(Collections.singleton(tagLabel)),
         false);
 
-    if (nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+    if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
@@ -503,11 +660,20 @@ public class TagRepository extends EntityRepository<Tag> {
   @Override
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
       UUID classificationTagId, BulkAssetsRequestInterface request) {
+    AddTagToAssetsRequest assetsRequest = (AddTagToAssetsRequest) request;
+    boolean dryRun = Boolean.TRUE.equals(assetsRequest.getDryRun());
+
     Tag tag = this.get(null, classificationTagId, getFields("id"));
 
     BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
+        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
     List<BulkResponse> success = new ArrayList<>();
+
+    if (nullOrEmpty(request.getAssets())) {
+      // Nothing to Validate
+      return result.withSuccessRequest(
+          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+    }
 
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
@@ -519,7 +685,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          removeTagFromColumn(ref, tag, success, result);
+          removeTagFromColumn(ref, tag, dryRun, success, result);
         } catch (Exception ex) {
           LOG.error("Error removing tag from column: {}", ref.getFullyQualifiedName(), ex);
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
@@ -528,28 +694,52 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(
-              tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
+      // surfaces the same lookup errors a real call would without mutating state.
+      if (!dryRun) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagsByTagAndTargetEntity(
+                tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
+      }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-      // Update ES
-      searchRepository.updateEntity(ref);
+      if (!dryRun) {
+        // Update ES
+        searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(asset, List.of(), List.of(removedLabel(tag)));
+        RdfUpdater.updateEntity(asset);
+      }
     }
 
     return result.withSuccessRequest(success);
   }
 
   /**
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
+   */
+  private static TagLabel removedLabel(Tag tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withSource(TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.DERIVED);
+  }
+
+  /**
    * Remove a tag from a column through its parent table.
    */
   private void removeTagFromColumn(
-      EntityReference columnRef, Tag tag, List<BulkResponse> success, BulkOperationResult result) {
+      EntityReference columnRef,
+      Tag tag,
+      boolean dryRun,
+      List<BulkResponse> success,
+      BulkOperationResult result) {
     String columnFqn = columnRef.getFullyQualifiedName();
     if (columnFqn == null) {
       throw new IllegalArgumentException("Column FQN is required");
@@ -558,19 +748,25 @@ public class TagRepository extends EntityRepository<Tag> {
     // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
     String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
 
-    // Get the table
+    // Get the table — also validates that the column's parent table exists
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     Table table = tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns"));
 
-    // Remove the tag from the column
-    daoCollection
-        .tagUsageDAO()
-        .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+    if (!dryRun) {
+      // Remove the tag from the column
+      daoCollection
+          .tagUsageDAO()
+          .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
+    }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
 
-    // Update the parent table's search index
-    searchRepository.updateEntity(table.getEntityReference());
+    if (!dryRun) {
+      // Update the parent table's search index
+      searchRepository.updateEntity(table.getEntityReference());
+      RdfUpdater.updateEntity(table);
+    }
   }
 
   @Override
@@ -584,9 +780,13 @@ public class TagRepository extends EntityRepository<Tag> {
     super.entityRelationshipReindex(original, updated);
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      searchRepository
-          .getSearchClient()
-          .reindexAcrossIndices("tags.tagFQN", original.getEntityReference());
+      EntityReference originalRef = original.getEntityReference();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.getSearchClient().reindexAcrossIndices("tags.tagFQN", originalRef),
+          "reindexAcrossIndices",
+          originalRef.getId() != null ? originalRef.getId().toString() : null,
+          originalRef.getFullyQualifiedName(),
+          TAG);
     }
   }
 
@@ -811,75 +1011,6 @@ public class TagRepository extends EntityRepository<Tag> {
     }
   }
 
-  @Override
-  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
-    validateTaskThread(threadContext);
-    if (isRecognizerFeedbackTask(threadContext.getThread().getId())) {
-      return new RecognizerFeedbackTaskWorkflow(threadContext);
-    }
-    return super.getTaskWorkflow(threadContext);
-  }
-
-  private boolean isRecognizerFeedbackTask(UUID taskId) {
-    try {
-      FeedRepository feedRepository = Entity.getFeedRepository();
-      Thread thread = feedRepository.get(taskId);
-      return thread.getTask() != null && thread.getTask().getFeedback() != null;
-    } catch (Exception e) {
-      LOG.debug("Failed to check if task is recognizer feedback task", e);
-    }
-    return false;
-  }
-
-  public static class RecognizerFeedbackTaskWorkflow extends TaskWorkflow {
-    RecognizerFeedbackTaskWorkflow(ThreadContext threadContext) {
-      super(threadContext);
-    }
-
-    @Override
-    public EntityInterface performTask(String user, ResolveTask resolveTask) {
-      Tag tag = (Tag) threadContext.getAboutEntity();
-      EntityRepository.checkUpdatedByTaskAssignee(threadContext.getThread(), user);
-
-      UUID taskId = threadContext.getThread().getId();
-      Map<String, Object> variables = new HashMap<>();
-      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
-      variables.put(UPDATED_BY_VARIABLE, user);
-
-      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-      boolean workflowSuccess =
-          workflowHandler.resolveLegacyThreadTask(
-              taskId, workflowHandler.transformToNodeVariables(taskId, variables));
-
-      if (!workflowSuccess) {
-        LOG.warn(
-            "[RecognizerFeedback] Workflow failed for taskId='{}', attempting direct resolution",
-            taskId);
-        try {
-          org.openmetadata.schema.type.RecognizerFeedback feedback =
-              threadContext.getThread().getTask().getFeedback();
-          if (feedback != null) {
-            RecognizerFeedbackRepository repo =
-                new RecognizerFeedbackRepository(Entity.getCollectionDAO());
-
-            boolean approved =
-                resolveTask.getNewValue() != null
-                    && resolveTask.getNewValue().equalsIgnoreCase("approved");
-            if (approved) {
-              repo.applyFeedback(feedback, user);
-            } else {
-              repo.rejectFeedback(feedback, user, null);
-            }
-          }
-        } catch (Exception e) {
-          LOG.error("[RecognizerFeedback] Failed to resolve feedback directly", e);
-        }
-      }
-
-      return tag;
-    }
-  }
-
   public class TagUpdater extends EntityUpdater {
     private boolean renameProcessed = false;
 
@@ -888,18 +1019,15 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     @Override
-    public void updateReviewers() {
-      super.updateReviewers();
-      if (original.getReviewers() != null
-          && updated.getReviewers() != null
-          && !original.getReviewers().equals(updated.getReviewers())) {
-        updateTaskWithNewReviewers(updated);
-      }
+    protected void resetForRetryAttempt() {
+      renameProcessed = false;
     }
 
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      restrictSystemProviderChange(updated::setProvider);
+      preserveRecognizerConfigOnPut();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -924,6 +1052,17 @@ public class TagRepository extends EntityRepository<Tag> {
                   original.getAutoClassificationPriority(),
                   updated.getAutoClassificationPriority()));
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "classification");
+    }
+
+    // CreateTag defaults recognizers to empty and autoClassificationEnabled to false, so a PUT
+    // that never mentions them is indistinguishable from one clearing them. Clear via PATCH.
+    private void preserveRecognizerConfigOnPut() {
+      if (operation != Operation.PUT || !nullOrEmpty(updated.getRecognizers())) {
+        return;
+      }
+      updated.setRecognizers(original.getRecognizers());
+      updated.setAutoClassificationEnabled(original.getAutoClassificationEnabled());
+      updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
     }
 
     /**
@@ -961,10 +1100,16 @@ public class TagRepository extends EntityRepository<Tag> {
 
         LOG.info("Tag FQN changed from {} to {}", oldFqn, newFqn);
         // Drop cache entries for every child tag under this renamed tag BEFORE the DB rewrite.
-        invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
+        // Capture the descendants so the post-write pass can re-evict any entry a racing reader
+        // re-populated with the pre-rename row between this call and tagDAO.updateFqn below.
+        // The pass below runs after updateFqn but inside this transaction — see
+        // EntityRepository.invalidateCacheForRenameCascade for the residual pre-commit
+        // window.
+        List<EntityDAO.EntityIdFqnPair> renamedTags =
+            EntityRepository.invalidateCacheForRenameCascade(Entity.TAG, oldFqn);
         // Drop cached entity JSON / bundle for every entity tagged with this tag (or any
         // descendant). Done BEFORE the DB rename so the search lookup still matches by old FQN.
-        invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
+        EntityRepository.invalidateCacheForTaggedEntitiesAndDescendants(Entity.TAG, oldFqn);
         daoCollection.tagDAO().updateFqn(oldFqn, newFqn);
         daoCollection.tagUsageDAO().rename(TagSource.CLASSIFICATION.ordinal(), oldFqn, newFqn);
 
@@ -978,6 +1123,8 @@ public class TagRepository extends EntityRepository<Tag> {
             condition ->
                 PolicyConditionUpdater.renamePrefixInCondition(
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
+
+        EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
       }
 
       if (classificationChanged) {
@@ -1030,16 +1177,15 @@ public class TagRepository extends EntityRepository<Tag> {
     private void updateEntityLinks(String oldFqn, String newFqn, Tag updated) {
       daoCollection.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
 
-      MessageParser.EntityLink newAbout = new MessageParser.EntityLink(TAG, newFqn);
-      Entity.getFeedRepository()
-          .updateLegacyThreadsAbout(newAbout.getLinkString(), updated.getId().toString());
+      ConversationRepository conversations = Entity.getConversationRepository();
+      conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
       List<EntityReference> childTags = findTo(updated.getId(), TAG, Relationship.CONTAINS, TAG);
 
       for (EntityReference child : childTags) {
-        newAbout = new MessageParser.EntityLink(TAG, child.getFullyQualifiedName());
-        Entity.getFeedRepository()
-            .updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
+        String childNewFqn = child.getFullyQualifiedName();
+        String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
+        conversations.updateEntityReference(child, childOldFqn);
       }
     }
 
@@ -1047,7 +1193,7 @@ public class TagRepository extends EntityRepository<Tag> {
       // The name of the tag changed. Invalidate that tag and all the children from the cache
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(tagId, TAG, Relationship.CONTAINS, TAG);
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
+      EntityRepository.CACHE_WITH_ID.invalidate(new ImmutablePair<>(TAG, tagId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
         invalidateTags(tagRecord.getId());
       }
@@ -1056,89 +1202,6 @@ public class TagRepository extends EntityRepository<Tag> {
     private void run() {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-    }
-  }
-
-  @Override
-  public void postUpdate(Tag original, Tag updated) {
-    super.postUpdate(original, updated);
-    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
-      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Approved the tag");
-      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Rejected the tag");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Tag goes back to DRAFT.
-    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
-        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
-      try {
-        closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
-  }
-
-  @Override
-  protected void preDelete(Tag entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  private void closeApprovalTask(Tag entity, String comment) {
-    if (entity.getUpdatedBy() == null) {
-      LOG.debug(
-          "Skipping task closure for tag {} - updatedBy is null", entity.getFullyQualifiedName());
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  protected void updateTaskWithNewReviewers(Tag tag) {
-    tag =
-        Entity.getEntityByName(
-            Entity.TAG,
-            tag.getFullyQualifiedName(),
-            "id,fullyQualifiedName,reviewers",
-            Include.ALL);
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.updateApprovalTaskAssignees(
-        tag.getFullyQualifiedName(), new ArrayList<>(tag.getReviewers()), tag.getUpdatedBy());
-  }
-
-  public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = tag.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
     }
   }
 

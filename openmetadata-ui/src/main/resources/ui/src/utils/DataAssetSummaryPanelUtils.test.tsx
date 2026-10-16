@@ -14,16 +14,19 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { MOCK_CHART_DATA } from '../mocks/Chart.mock';
 import { MOCK_TABLE, MOCK_TIER_DATA } from '../mocks/TableData.mock';
 import { getEntityOverview } from './DataAssetSummaryPanelUtils';
-import { getTierTags } from './TableUtils';
+import { getTierTags } from './TablePureUtils';
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TablePureUtils', () => ({
   getTierTags: jest.fn(),
   getUsagePercentile: jest.fn().mockImplementation((value) => value + 'th'),
 }));
 
-jest.mock('./CommonUtils', () => ({
+jest.mock('./FqnUtils', () => ({
   getPartialNameFromTableFQN: jest.fn().mockImplementation((value) => value),
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((value) => value),
+}));
+
+jest.mock('./NumberUtils', () => ({
   formatNumberWithComma: jest.fn().mockImplementation((value) => value),
 }));
 

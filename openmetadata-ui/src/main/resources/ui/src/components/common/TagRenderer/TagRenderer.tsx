@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 export const TagRenderer = (props: CustomTagProps) => {
@@ -20,12 +21,21 @@ export const TagRenderer = (props: CustomTagProps) => {
       ? `${label.substring(0, 12)}...`
       : label;
 
+  const labelNode =
+    typeof label === 'string' && label.length > 12 ? (
+      <Tooltip title={label}>
+        <span>{displayLabel}</span>
+      </Tooltip>
+    ) : (
+      <span>{displayLabel}</span>
+    );
+
   return (
-    <span className="ant-select-selection-item" title={(label as string) ?? ''}>
-      {displayLabel}
+    <span className="ant-select-selection-item">
+      {labelNode}
       {closable && (
         <button className="selected-chip-tag-remove" onClick={onClose}>
-          <CloseOutlined />
+          <XClose className="tw:shrink-0" size={14} />
         </button>
       )}
     </span>

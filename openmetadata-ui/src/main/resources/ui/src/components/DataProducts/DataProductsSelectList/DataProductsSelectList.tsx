@@ -10,200 +10,214 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { FilterSelect } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { debounce, isString } from 'lodash';
-import React, { useCallback, useMemo, useState } from 'react';
+import { compact, debounce } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
-import { Paging } from '../../../generated/type/paging';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { tagRender } from '../../../utils/TagsUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Loader from '../../common/Loader/Loader';
-import {
-  DataProductSelectOption,
-  DataProductsSelectListProps,
-} from './DataProductSelectList.interface';
+import { DataProductsSelectListProps } from './DataProductSelectList.interface';
 
 const DataProductsSelectList = ({
-  mode,
-  onSubmit,
-  onCancel,
+  selectedDataProducts,
   fetchOptions,
+  multiple = true,
+  isOpen,
+  onOpenChange,
+  onSubmit,
+  children,
   debounceTimeout = 800,
-  defaultValue,
-  ...props
 }: DataProductsSelectListProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasContentLoading, setHasContentLoading] = useState(false);
-  const [options, setOptions] = useState<DataProductSelectOption[]>([]);
-  const [searchValue, setSearchValue] = useState<string>('');
-  const [paging, setPaging] = useState<Paging>({} as Paging);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedValue, setSelectedValue] = useState<DataProduct[]>([]);
   const { t } = useTranslation();
-  const [isSubmitLoading, setIsSubmitLoading] = useState(false);
+  const [options, setOptions] = useState<DataProduct[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [searchText, setSearchText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Drops responses for a search or page the user has already moved past.
+  const searchGeneration = useRef(0);
+  // Scroll fires several times before a re-render, so the in-flight guard
+  // can't wait for state.
+  const isFetchingMore = useRef(false);
+  // Every data product seen while open, so a pick made under an earlier
+  // search still resolves to its entity on Apply.
+  const knownDataProducts = useRef(new Map<string, DataProduct>());
 
-  const onSave = async () => {
-    setIsSubmitLoading(true);
-    try {
-      await onSubmit?.(selectedValue);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsSubmitLoading(false);
-    }
-  };
+  const remember = (dataProducts: DataProduct[]) =>
+    dataProducts.forEach((dataProduct) =>
+      knownDataProducts.current.set(
+        dataProduct.fullyQualifiedName ?? '',
+        dataProduct
+      )
+    );
 
-  const loadOptions = useCallback(
-    async (value: string) => {
-      setOptions([]);
-      setIsLoading(true);
+  const loadFirstPage = useCallback(
+    async (search: string, generation: number) => {
       try {
-        const res = await fetchOptions(value, 1);
-        setOptions(res.data);
-        setPaging(res.paging);
-        setSearchValue(value);
-        setCurrentPage(1);
+        const res = await fetchOptions(search, 1);
+        if (generation !== searchGeneration.current) {
+          return;
+        }
+        const dataProducts = res.data.map((option) => option.value);
+        remember(dataProducts);
+        setOptions(dataProducts);
+        setTotal(res.paging.total);
+        setPage(1);
+        setSearchText(search);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (generation === searchGeneration.current) {
+          // Rows from the previous search must not read as this one's results.
+          setOptions([]);
+          setTotal(0);
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (generation === searchGeneration.current) {
+          setIsLoading(false);
+        }
       }
     },
     [fetchOptions]
   );
 
-  const debounceFetcher = useMemo(
-    () => debounce(loadOptions, debounceTimeout),
-    [loadOptions, debounceTimeout]
+  const debouncedLoad = useMemo(
+    () => debounce(loadFirstPage, debounceTimeout),
+    [loadFirstPage, debounceTimeout]
   );
 
-  const selectOptions = useMemo(() => {
-    return options.map((item) => {
-      return {
-        label: item.label,
-        displayName: (
-          <Space className="w-full" direction="vertical" size={0}>
-            <Typography.Paragraph ellipsis className="text-grey-muted m-0 p-0">
-              {item.value.domains
-                ?.map((domain) => getEntityName(domain))
-                .join(', ')}
-            </Typography.Paragraph>
-            <Typography.Text ellipsis>
-              {getEntityName(item.value)}
-            </Typography.Text>
-          </Space>
-        ),
-        value: item.value.fullyQualifiedName,
-      };
-    });
-  }, [options]);
+  const beginSearch = (search: string, immediate = false) => {
+    const generation = ++searchGeneration.current;
+    setIsLoading(true);
+    setIsLoadingMore(false);
+    isFetchingMore.current = false;
+    debouncedLoad.cancel();
+    if (immediate) {
+      void loadFirstPage(search, generation);
+    } else {
+      debouncedLoad(search, generation);
+    }
+  };
 
-  const onScroll = async (e: React.UIEvent<HTMLDivElement>) => {
-    const { currentTarget } = e;
-    if (
-      currentTarget.scrollTop + currentTarget.offsetHeight ===
-      currentTarget.scrollHeight
-    ) {
-      if (options.length < paging.total) {
-        try {
-          setHasContentLoading(true);
-          const res = await fetchOptions(searchValue, currentPage + 1);
-          setOptions((prev) => [...prev, ...res.data]);
-          setPaging(res.paging);
-          setCurrentPage((prev) => prev + 1);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        } finally {
-          setHasContentLoading(false);
-        }
+  useEffect(() => {
+    if (isOpen) {
+      knownDataProducts.current.clear();
+      beginSearch('', true);
+    }
+
+    return () => {
+      ++searchGeneration.current;
+      debouncedLoad.cancel();
+    };
+  }, [isOpen]);
+
+  const handleLoadMore = async () => {
+    if (isLoading || isFetchingMore.current || options.length >= total) {
+      return;
+    }
+    const generation = searchGeneration.current;
+    isFetchingMore.current = true;
+    setIsLoadingMore(true);
+    try {
+      const res = await fetchOptions(searchText, page + 1);
+      if (generation !== searchGeneration.current) {
+        return;
+      }
+      const dataProducts = res.data.map((option) => option.value);
+      remember(dataProducts);
+      setOptions((prev) => [...prev, ...dataProducts]);
+      setTotal(res.paging.total);
+      setPage((prev) => prev + 1);
+    } catch (error) {
+      if (generation === searchGeneration.current) {
+        showErrorToast(error as AxiosError);
+      }
+    } finally {
+      if (generation === searchGeneration.current) {
+        isFetchingMore.current = false;
+        setIsLoadingMore(false);
       }
     }
   };
 
-  const dropdownRender = (menu: React.ReactElement) => (
-    <>
-      {menu}
-      {hasContentLoading ? <Loader size="small" /> : null}
-      <Space
-        className="p-sm p-b-xss p-l-xs custom-dropdown-render"
-        data-testid="data-product-dropdown-actions"
-        size={8}>
-        <Button
-          className="update-btn"
-          data-testid="saveAssociatedTag"
-          loading={isSubmitLoading}
-          size="small"
-          onClick={onSave}>
-          {t('label.update')}
-        </Button>
-        <Button
-          data-testid="cancelAssociatedTag"
-          size="small"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-      </Space>
-    </>
+  // The name, with its domain(s) muted underneath, as the picker always showed.
+  const selectOptions = useMemo(
+    () =>
+      options.map((dataProduct) => {
+        const name = getEntityName(dataProduct);
+        const domains = dataProduct.domains
+          ?.map((domain) => getEntityName(domain))
+          .join(', ');
+
+        return {
+          value: dataProduct.fullyQualifiedName ?? '',
+          textValue: name,
+          label: (
+            <span className="tw:flex tw:min-w-0 tw:flex-col">
+              <span className="tw:truncate">{name}</span>
+              {domains && (
+                <span className="tw:truncate tw:text-xs tw:text-tertiary">
+                  {domains}
+                </span>
+              )}
+            </span>
+          ),
+        };
+      }),
+    [options]
   );
 
-  const onSelectChange = (value: string | string[]) => {
-    const entityObj = (isString(value) ? [value] : value).reduce(
-      (result: DataProduct[], item) => {
-        const option = options.find((option) => option.label === item);
-        if (option) {
-          result.push(option.value);
-        } else {
-          result.push({
-            fullyQualifiedName: item,
-            name: item,
-            type: EntityType.DATA_PRODUCT,
-          } as unknown as DataProduct);
-        }
+  const selectedValues = useMemo(
+    () =>
+      selectedDataProducts.map(
+        (dataProduct) => dataProduct.fullyQualifiedName ?? ''
+      ),
+    [selectedDataProducts]
+  );
 
-        return result;
-      },
-      []
-    );
+  const findDataProduct = (fqn: string) =>
+    knownDataProducts.current.get(fqn) ??
+    (selectedDataProducts.find(
+      (dataProduct) => dataProduct.fullyQualifiedName === fqn
+    ) as DataProduct | undefined);
 
-    setSelectedValue(entityObj as DataProduct[]);
+  const resolveLabel = (fqn: string) => {
+    const dataProduct = findDataProduct(fqn);
+
+    return dataProduct ? getEntityName(dataProduct) : fqn;
+  };
+
+  // Every value is a selected product or a row seen while open, so each resolves.
+  const handleChange = (fqns: string[]) => {
+    void onSubmit(compact(fqns.map(findDataProduct)));
   };
 
   return (
-    <Select
-      allowClear
-      autoFocus
-      showSearch
-      className="w-full"
-      data-testid="data-product-selector"
-      defaultValue={defaultValue}
-      dropdownRender={dropdownRender}
-      filterOption={false}
-      mode={mode}
-      notFoundContent={isLoading ? <Loader size="small" /> : null}
-      optionLabelProp="label"
-      tagRender={tagRender}
-      onChange={onSelectChange}
-      onFocus={() => loadOptions('')}
-      onPopupScroll={onScroll}
-      onSearch={debounceFetcher}
-      {...props}>
-      {selectOptions.map(({ label, value, displayName }) => (
-        <Select.Option data-testid={`tag-${value}`} key={label} value={value}>
-          <Tooltip
-            destroyTooltipOnHide
-            mouseEnterDelay={1.5}
-            placement="leftTop"
-            title={label}
-            trigger="hover">
-            {displayName}
-          </Tooltip>
-        </Select.Option>
-      ))}
-    </Select>
+    <FilterSelect
+      hideCounts
+      searchable
+      commitMode="staged"
+      emptyState={t('label.no-entity-available', {
+        entity: t('label.data-product-plural'),
+      })}
+      isLoading={isLoading}
+      isLoadingMore={isLoadingMore}
+      isOpen={isOpen}
+      label={t('label.data-product-plural')}
+      options={selectOptions}
+      resolveMissingLabel={resolveLabel}
+      selectedValues={selectedValues}
+      selectionMode={multiple ? 'multiple' : 'single'}
+      showRadio={!multiple}
+      showSelectAll={multiple}
+      trigger={children}
+      onChange={handleChange}
+      onLoadMore={handleLoadMore}
+      onOpenChange={onOpenChange}
+      onSearch={(search) => beginSearch(search)}
+    />
   );
 };
 

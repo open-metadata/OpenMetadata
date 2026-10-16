@@ -8,10 +8,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.openmetadata.schema.entity.data.Container;
@@ -32,6 +32,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
@@ -69,21 +70,24 @@ public class PIIMasker {
 
     List<Integer> columnsPositionToBeMasked;
 
-    // If the entity itself is marked as PII, mask all the sample data
+    // Positions index the sample's own columns, which may be a subset of the entity's columns, in
+    // any order, and (for failed-row samples, validated case-insensitively) in a different case.
+    // An entity-level PII tag masks every sampled column; otherwise a sampled column is masked when
+    // its name matches a PII column ignoring case.
+    List<String> sampledColumns = sampleData.getColumns();
     if (entityHasPiiTag) {
       columnsPositionToBeMasked =
-          IntStream.range(0, columns.size()).boxed().collect(Collectors.toList());
+          IntStream.range(0, sampledColumns.size()).boxed().collect(Collectors.toList());
     } else {
-      // Otherwise, mask only the PII columns
-      columnsPositionToBeMasked =
+      Set<String> piiColumnNames =
           columns.stream()
-              .collect(
-                  Collectors.toMap(
-                      Function.identity(), c -> sampleData.getColumns().indexOf(c.getName())))
-              .entrySet()
-              .stream()
-              .filter(entry -> hasPiiSensitiveTag(entry.getKey()))
-              .map(Map.Entry::getValue)
+              .filter(column -> hasPiiSensitiveTag(column))
+              .map(column -> column.getName().toLowerCase(Locale.ROOT))
+              .collect(Collectors.toSet());
+      columnsPositionToBeMasked =
+          IntStream.range(0, sampledColumns.size())
+              .filter(position -> isPiiColumnName(sampledColumns.get(position), piiColumnNames))
+              .boxed()
               .collect(Collectors.toList());
     }
 
@@ -93,14 +97,15 @@ public class PIIMasker {
             .map(r -> maskSampleDataRow(r, columnsPositionToBeMasked))
             .collect(Collectors.toList()));
 
-    List<String> sampleDataColumns = sampleData.getColumns();
-
     // Flag column names as masked
     columnsPositionToBeMasked.forEach(
-        position ->
-            sampleDataColumns.set(position, flagMaskedName(sampleDataColumns.get(position))));
+        position -> sampledColumns.set(position, flagMaskedName(sampledColumns.get(position))));
 
     return sampleData;
+  }
+
+  private static boolean isPiiColumnName(String sampledColumn, Set<String> piiColumnNames) {
+    return sampledColumn != null && piiColumnNames.contains(sampledColumn.toLowerCase(Locale.ROOT));
   }
 
   public static Table getSampleData(Table table) {
@@ -217,13 +222,33 @@ public class PIIMasker {
 
   private static TestCase getTestCase(Column column, TestCase testCase) {
     if (!hasPiiSensitiveTag(column)) return testCase;
+    return maskTestCase(testCase);
+  }
 
+  private static TestCase maskTestCase(TestCase testCase) {
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
     testCase.setDescription(null);
     testCase.setName(flagMaskedName(testCase.getName()));
 
     return testCase;
+  }
+
+  /**
+   * A test case outlives the table it points at: the table is hard-deleted while the test case row
+   * survives until DataRetention's {@code OrphanTestCaseCleanup} sweeps it. Resolving that dangling
+   * {@code entityLink} must not fail the request — a single stale row would otherwise turn every
+   * listing that happens to include it into a 404.
+   */
+  private static Table findTableOrNull(String tableFqn) {
+    Table table;
+    try {
+      table = Entity.getEntityByName(Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL);
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Test case references table [{}] that no longer exists", tableFqn);
+      table = null;
+    }
+    return table;
   }
 
   public static ResultList<TestCase> getTestCases(
@@ -239,13 +264,16 @@ public class PIIMasker {
                   if (entityFQNToTable.containsKey(testCaseLink.getEntityFQN())) {
                     table = entityFQNToTable.get(testCaseLink.getEntityFQN());
                   } else {
-                    table =
-                        Entity.getEntityByName(
-                            Entity.TABLE,
-                            testCaseLink.getEntityFQN(),
-                            "owners,tags,columns",
-                            Include.ALL);
+                    table = findTableOrNull(testCaseLink.getEntityFQN());
                     entityFQNToTable.put(testCaseLink.getEntityFQN(), table);
+                  }
+
+                  if (table == null) {
+                    // The column tags that decide masking died with the table, so fall back to the
+                    // caller's PII authorization rather than exposing the orphan's results.
+                    return authorizer.authorizePII(securityContext, null)
+                        ? testCase
+                        : maskTestCase(testCase);
                   }
 
                   // Ignore table tests
@@ -289,20 +317,22 @@ public class PIIMasker {
       ResultList<Query> queries, Authorizer authorizer, SecurityContext securityContext) {
     List<Query> maskedQueries =
         queries.getData().stream()
-            .map(
-                query -> {
-                  boolean authorizePII =
-                      authorizer.authorizePII(securityContext, query.getOwners());
-                  if (!authorizePII) return PIIMasker.getQuery(query);
-                  return query;
-                })
+            .map(query -> maskQuery(query, authorizer, securityContext))
             .collect(Collectors.toList());
     queries.setData(maskedQueries);
     return queries;
   }
 
+  /** Masks a PII.Sensitive query's SQL unless the caller is an admin, a bot or an owner. */
+  public static Query maskQuery(
+      Query query, Authorizer authorizer, SecurityContext securityContext) {
+    return authorizer.authorizePII(securityContext, query.getOwners()) ? query : getQuery(query);
+  }
+
   private static boolean hasPiiSensitiveTag(Query query) {
-    return query.getTags().stream().map(TagLabel::getTagFQN).anyMatch(SENSITIVE_PII_TAG::equals);
+    return listOrEmpty(query.getTags()).stream()
+        .map(TagLabel::getTagFQN)
+        .anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
   private static boolean hasPiiSensitiveTag(Column column) {

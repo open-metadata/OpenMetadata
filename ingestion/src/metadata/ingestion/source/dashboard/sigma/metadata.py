@@ -11,7 +11,7 @@
 """Sigma source module"""
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -76,7 +76,7 @@ class SigmaSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: SigmaConnection = config.serviceConnection.root.config
@@ -90,9 +90,9 @@ class SigmaSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.data_models: List[Elements] = []  # noqa: UP006
+        self.data_models: list[Elements] = []
 
-    def get_dashboards_list(self) -> Optional[List[Workbook]]:  # noqa: UP006, UP045
+    def get_dashboards_list(self) -> list[Workbook] | None:
         """
         get list of dashboard
         """
@@ -100,13 +100,13 @@ class SigmaSource(DashboardServiceSource):
             logger.debug("Skipping owner information as includeOwners is False")
         return self.client.get_dashboards()
 
-    def get_dashboard_name(self, dashboard: Workbook) -> Optional[str]:  # noqa: UP045
+    def get_dashboard_name(self, dashboard: Workbook) -> str | None:
         """
         get dashboard name
         """
         return dashboard.name
 
-    def get_dashboard_details(self, dashboard: Workbook) -> Optional[WorkbookDetails]:  # noqa: UP045
+    def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
         """
         get dashboard details
         """
@@ -136,6 +136,19 @@ class SigmaSource(DashboardServiceSource):
                     )
                     for chart in self.context.get().charts or []
                 ],
+                dataModels=[
+                    FullyQualifiedEntityName(
+                        fqn.build(  # pyright: ignore[reportArgumentType]  # always a str for DashboardDataModel
+                            self.metadata,
+                            entity_type=DashboardDataModel,
+                            service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                            data_model_name=data_model,
+                        )
+                    )
+                    for data_model in self.context.get().dataModels or []  # pyright: ignore[reportAttributeAccessIssue]
+                ]
+                if self.source_config.includeDataModels
+                else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_details.url),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
@@ -203,8 +216,8 @@ class SigmaSource(DashboardServiceSource):
     def _get_table_entity_from_node(
         self,
         node: NodeDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
-    ) -> Optional[Table]:  # noqa: UP045
+        db_service_prefix: str | None = None,
+    ) -> Table | None:
         """
         Get the table entity for lineage
         """
@@ -254,13 +267,17 @@ class SigmaSource(DashboardServiceSource):
     def _yield_lineage_from_files(
         self,
         dashboard_details: WorkbookDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield lineage using file-based API (fallback method)
         """
         for data_model in self.data_models or []:
             try:
+                # Skip non-visualization elements to avoid Sigma API 500 errors.
+                if not data_model.vizualizationType:
+                    continue
+
                 data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
@@ -295,7 +312,7 @@ class SigmaSource(DashboardServiceSource):
         self,
         dashboard_details: WorkbookDetails,
         data_model: Elements,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield lineage using file-based API for a single element (fallback per element)
@@ -334,7 +351,7 @@ class SigmaSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: WorkbookDetails,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ):
         """
         Yield dashboard lineage using SQL query parsing (primary) or file-based (fallback)
@@ -360,6 +377,12 @@ class SigmaSource(DashboardServiceSource):
 
         for data_model in self.data_models or []:
             try:
+                # Skip non-visualization elements (text boxes, dividers,
+                # buttons, controls) to avoid Sigma API 500 errors on elements
+                # that carry no upstream lineage.
+                if not data_model.vizualizationType:
+                    continue
+
                 data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
                 if not data_model_entity:
                     continue
@@ -419,7 +442,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
 
-    def get_column_info(self, element: Elements) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
         datamodel_columns = []
         for col in element.columns or []:
@@ -447,6 +470,10 @@ class SigmaSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
             for data_model in self.data_models or []:
+                # Skip non-visualization elements (text boxes, dividers, buttons, controls)
+                # to avoid creating DataModel entries for elements that have no data source.
+                if not data_model.vizualizationType:
+                    continue
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
@@ -467,7 +494,7 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
         """
         Get owner from email
         """

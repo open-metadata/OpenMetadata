@@ -12,10 +12,12 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { MemoryRouter } from 'react-router-dom';
+import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
 import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
+import { TestCaseType } from '../enums/TestSuite.enum';
+import { TestCaseStatus } from '../generated/tests/testCase';
 import { exportTestCasesInCSV } from '../rest/testAPI';
 import { ExtraTestCaseDropdownOptions } from './TestCaseUtils';
 
@@ -27,7 +29,7 @@ jest.mock('../hoc/LimitWrapper', () => ({
     <div>{children}</div>
   ),
 }));
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityPureUtils', () => ({
   getEntityImportPath: jest.fn(
     (entityType, fqn) => `/import/${entityType}/${fqn}`
   ),
@@ -58,9 +60,9 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(3);
-      expect((result[0] as ItemType)!.key).toBe('import-button');
-      expect((result[1] as ItemType)!.key).toBe('export-button');
-      expect((result[2] as ItemType)!.key).toBe('bulk-edit-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('import-button');
+      expect((result[1] as NonNullable<ItemType>).key).toBe('export-button');
+      expect((result[2] as NonNullable<ItemType>).key).toBe('bulk-edit-button');
     });
 
     it('should return only export option when ViewAll is true but EditAll is false', () => {
@@ -74,7 +76,7 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(1);
-      expect((result[0] as ItemType)!.key).toBe('export-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('export-button');
     });
 
     it('should return empty array when both permissions are false', () => {
@@ -133,14 +135,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[0] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const importButton = screen.getByTestId('import-button');
-      importButton.click();
+      (result[0] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(`/import/testCase/${fqn}`);
     });
@@ -156,14 +151,7 @@ describe('TestCaseUtils', () => {
         EntityType.TABLE
       );
 
-      render(
-        <MemoryRouter>
-          {(result[0] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const importButton = screen.getByTestId('import-button');
-      importButton.click();
+      (result[0] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/import/testCase/${fqn}?sourceEntityType=table`
@@ -200,19 +188,43 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[1] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const exportButton = screen.getByTestId('export-button');
-      exportButton.click();
+      (result[1] as { onClick?: () => void }).onClick?.();
 
       expect(mockShowModal).toHaveBeenCalledWith({
         name: fqn,
-        onExport: exportTestCasesInCSV,
+        onExport: expect.any(Function),
         exportTypes: [ExportTypes.CSV],
+      });
+
+      mockShowModal.mock.calls.at(-1)[0].onExport(fqn, { recursive: true });
+
+      expect(exportTestCasesInCSV).toHaveBeenLastCalledWith(fqn, {
+        recursive: true,
+      });
+    });
+
+    it('should export only the test cases matching the list filters', () => {
+      const permission = { ViewAll: true, EditAll: true };
+      const result = ExtraTestCaseDropdownOptions(
+        fqn,
+        permission,
+        false,
+        mockNavigate,
+        mockShowModal,
+        EntityType.TABLE,
+        {
+          testCaseStatus: TestCaseStatus.Aborted,
+          testCaseType: TestCaseType.all,
+        }
+      );
+
+      (result[1] as { onClick?: () => void }).onClick?.();
+      mockShowModal.mock.calls.at(-1)[0].onExport(fqn, { recursive: true });
+
+      expect(exportTestCasesInCSV).toHaveBeenLastCalledWith(fqn, {
+        recursive: true,
+        testCaseStatus: TestCaseStatus.Aborted,
+        testCaseType: TestCaseType.all,
       });
     });
 
@@ -246,14 +258,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[2] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const bulkEditButton = screen.getByTestId('bulk-edit-button');
-      bulkEditButton.click();
+      (result[2] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(`/bulk-edit/testCase/${fqn}`);
     });
@@ -269,17 +274,33 @@ describe('TestCaseUtils', () => {
         EntityType.TEST_SUITE
       );
 
-      render(
-        <MemoryRouter>
-          {(result[2] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const bulkEditButton = screen.getByTestId('bulk-edit-button');
-      bulkEditButton.click();
+      (result[2] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/bulk-edit/testCase/${fqn}?sourceEntityType=testSuite`
+      );
+    });
+
+    it('should carry the list filters into the bulk edit URL', () => {
+      const permission = { ViewAll: true, EditAll: true };
+      const result = ExtraTestCaseDropdownOptions(
+        fqn,
+        permission,
+        false,
+        mockNavigate,
+        mockShowModal,
+        EntityType.TABLE,
+        {
+          testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+          testCaseType: TestCaseType.column,
+          q: '',
+        }
+      );
+
+      (result[2] as { onClick?: () => void }).onClick?.();
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        `/bulk-edit/testCase/${fqn}?sourceEntityType=table&testCaseStatus=Failed,Aborted&testCaseType=column`
       );
     });
 
@@ -294,8 +315,8 @@ describe('TestCaseUtils', () => {
       );
 
       expect(result).toHaveLength(2);
-      expect((result[0] as ItemType)!.key).toBe('import-button');
-      expect((result[1] as ItemType)!.key).toBe('bulk-edit-button');
+      expect((result[0] as NonNullable<ItemType>).key).toBe('import-button');
+      expect((result[1] as NonNullable<ItemType>).key).toBe('bulk-edit-button');
     });
 
     it('should handle empty FQN', () => {
@@ -322,14 +343,7 @@ describe('TestCaseUtils', () => {
         mockShowModal
       );
 
-      render(
-        <MemoryRouter>
-          {(result[0] as ItemType & { label: React.ReactNode }).label}
-        </MemoryRouter>
-      );
-
-      const importButton = screen.getByTestId('import-button');
-      importButton.click();
+      (result[0] as { onClick?: () => void }).onClick?.();
 
       expect(mockNavigate).toHaveBeenCalledWith(
         `/import/testCase/${specialFqn}`

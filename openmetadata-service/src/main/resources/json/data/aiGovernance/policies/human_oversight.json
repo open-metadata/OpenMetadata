@@ -1,0 +1,24 @@
+{
+  "name": "human_oversight",
+  "displayName": "Human oversight required",
+  "description": "High-risk AI assets must have a designated human operator with override capability. Required under EU AI Act Article 14 and broadly aligned with NIST AI RMF Manage 4.2.",
+  "policyType": "ComplianceCheck",
+  "enforcementLevel": "Blocking",
+  "enabled": true,
+  "rules": [
+    {
+      "name": "high-risk-needs-oversight",
+      "ruleType": "Prohibition",
+      "condition": "riskClassification == 'High' && !subjectToHumanOversight",
+      "action": "Block",
+      "severity": "Critical",
+      "enabled": true
+    }
+  ],
+  "complianceRequirements": [
+    {
+      "standard": "EU_AI_Act",
+      "auditFrequency": "Quarterly"
+    }
+  ]
+}

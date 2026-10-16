@@ -11,8 +11,6 @@
  *  limitations under the License.
  */
 
-import { RowProps } from 'antd/lib/grid/row';
-import { Margin } from 'recharts/types/util/types';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { DataReportIndex } from '../generated/dataInsight/dataInsightChart';
 import { DataInsightChartType } from '../generated/dataInsight/dataInsightChartResult';
@@ -26,7 +24,14 @@ import {
 } from '../utils/date-time/DateTimeUtils';
 import { DEFAULT_SELECTED_RANGE } from './profiler.constant';
 
-export const BAR_CHART_MARGIN: Margin = {
+export interface ChartMargin {
+  top?: number;
+  right?: number;
+  bottom?: number;
+  left?: number;
+}
+
+export const BAR_CHART_MARGIN: ChartMargin = {
   top: 20,
   right: 30,
   left: 0,
@@ -34,28 +39,13 @@ export const BAR_CHART_MARGIN: Margin = {
 };
 
 export const DI_STRUCTURE = {
-  rowContainerGutter: 32 as RowProps['gutter'],
+  rowContainerGutter: 32,
   leftContainerSpan: 16,
   rightContainerSpan: 8,
-  rightRowGutter: [8, 0] as RowProps['gutter'],
+  rightRowGutter: [8, 0] satisfies [number, number],
 };
 
 export const GRAPH_HEIGHT = 500;
-
-export const DATA_INSIGHT_GRAPH_COLORS = [
-  '#E7B85D',
-  '#416BB3',
-  '#66B5AD',
-  '#8D6AF1',
-  '#699994',
-  '#6A86EB',
-  '#7A57A6',
-  '#7DC177',
-  '#AD4F82',
-  '#C870C5',
-  '#D87F7F',
-  '#DA996A',
-];
 
 export const INITIAL_CHART_FILTER: ChartFilter = {
   startTs: getEpochMillisForPastDays(DEFAULT_SELECTED_RANGE.days),
@@ -160,11 +150,3 @@ export const BASE_COLORS = [
   '#80CBC4',
   '#F48FB1',
 ];
-
-export const KPI_WIDGET_GRAPH_COLORS = [
-  '#7262F6',
-  '#6AD2FF',
-  '#2ED3B7',
-  '#E478FA',
-];
-export const KPI_WIDGET_GRAPH_BG_COLORS = ['#F4F2FF', '#ECFBFF'];

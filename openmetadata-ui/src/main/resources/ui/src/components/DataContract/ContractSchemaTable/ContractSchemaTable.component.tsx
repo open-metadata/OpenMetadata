@@ -10,13 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Col, Row, Tag, Typography } from 'antd';
-import { ColumnsType, ColumnType, TablePaginationConfig } from 'antd/lib/table';
+import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowIcon } from '../../../assets/svg/arrow-right-full.svg';
 import { ReactComponent as FailedIcon } from '../../../assets/svg/fail-badge.svg';
 import { ReactComponent as CompletedIcon } from '../../../assets/svg/ic-check-circle-colored.svg';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
@@ -26,7 +25,12 @@ import { SchemaValidation } from '../../../generated/entity/datacontract/dataCon
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
-import Table from '../../common/Table/Table';
+import {
+  ColumnsType,
+  ColumnType,
+  TablePaginationConfig,
+} from '../../common/Table/Table.interface';
+import Table from '../../common/Table/TableV2';
 import './contract-schema.less';
 
 const ContractSchemaTable: React.FC<{
@@ -42,9 +46,6 @@ const ContractSchemaTable: React.FC<{
       size: 'default',
       hideOnSinglePage: true,
       pageSize: LIST_SIZE,
-      prevIcon: <Icon component={ArrowIcon} />,
-      nextIcon: <Icon component={ArrowIcon} />,
-      className: 'schema-custom-pagination',
     }),
     []
   );
@@ -56,7 +57,7 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'name',
         key: 'name',
         render: (name: string) => (
-          <Typography.Text className="text-primary">{name}</Typography.Text>
+          <Typography className="text-primary">{name}</Typography>
         ),
       },
       {
@@ -64,9 +65,14 @@ const ContractSchemaTable: React.FC<{
         dataIndex: 'dataType',
         key: 'dataType',
         render: (type: string) => (
-          <Tag className="custom-tag" color="purple">
+          <Badge
+            bordered={false}
+            className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+            color="purple"
+            size="sm"
+            type="color">
             {type}
-          </Tag>
+          </Badge>
         ),
       },
       ...(entityType === EntityType.TABLE
@@ -78,13 +84,20 @@ const ContractSchemaTable: React.FC<{
               render: (constraint: string) => (
                 <div>
                   {constraint ? (
-                    <Tag className="custom-tag" color="blue">
+                    <Badge
+                      bordered={false}
+                      className="tw:mr-2 tw:inline-flex tw:max-w-full tw:whitespace-normal tw:font-medium"
+                      color="blue"
+                      size="sm"
+                      type="color">
                       {constraint}
-                    </Tag>
+                    </Badge>
                   ) : (
-                    <Typography.Text data-testid="no-constraints">
+                    <Typography
+                      className="tw:text-primary"
+                      data-testid="no-constraints">
                       {NO_DATA_PLACEHOLDER}
-                    </Typography.Text>
+                    </Typography>
                   )}
                 </div>
               ),
@@ -103,11 +116,15 @@ const ContractSchemaTable: React.FC<{
                   latestSchemaValidationResult?.failedFields?.includes(name);
                 const iconClass = isColumnFailed ? 'failed' : 'success';
 
+                const StatusIcon = isColumnFailed ? FailedIcon : CompletedIcon;
+
                 return (
-                  <Icon
+                  <StatusIcon
                     className={classNames('column-status-icon', iconClass)}
-                    component={isColumnFailed ? FailedIcon : CompletedIcon}
                     data-testid={`schema-column-${name}-${iconClass}`}
+                    fill="currentColor"
+                    height="1em"
+                    width="1em"
                   />
                 );
               },
@@ -119,8 +136,10 @@ const ContractSchemaTable: React.FC<{
   );
 
   return (
-    <Row className="contract-schema-component-container" gutter={[20, 0]}>
-      <Col span={12}>
+    <Grid
+      className="layout-row layout-grid contract-schema-component-container"
+      style={{ ...getLayoutGutter(20) }}>
+      <Grid.Item className="layout-column" span={12}>
         <Table
           columns={schemaColumns}
           dataSource={schemaDetail}
@@ -128,13 +147,16 @@ const ContractSchemaTable: React.FC<{
           rowKey="name"
           size="small"
         />
-      </Col>
-      <Col className="d-flex justify-end" span={12}>
+      </Grid.Item>
+      <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
           <div className="contract-status-container">
-            <Typography.Text>{`${t('label.entity-status', {
-              entity: t('label.schema'),
-            })} :`}</Typography.Text>
+            <Typography className="contract-status-label">{`${t(
+              'label.entity-status',
+              {
+                entity: t('label.schema'),
+              }
+            )} :`}</Typography>
             <StatusBadgeV2
               dataTestId="contract-status-card-item-schema-status"
               label={contractStatus}
@@ -142,8 +164,8 @@ const ContractSchemaTable: React.FC<{
             />
           </div>
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

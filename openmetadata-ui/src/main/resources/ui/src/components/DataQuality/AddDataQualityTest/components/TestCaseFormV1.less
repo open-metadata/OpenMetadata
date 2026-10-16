@@ -16,7 +16,7 @@
 .bundle-suite-form {
   position: relative;
   min-height: 100vh;
-  padding-bottom: 80px; // Space for fixed buttons
+  padding-bottom: var(--om-space-80); // Space for fixed buttons
 
   .ant-form-item {
     margin-bottom: @size-lg;
@@ -40,7 +40,7 @@
       top: -8px;
       display: flex;
       align-items: center;
-      z-index: 1;
+      z-index: var(--om-z-1);
 
       .test-type-label {
         color: @grey-700;
@@ -52,16 +52,7 @@
 
   .test-type-card {
     .form-switch-container {
-      margin-top: 16px;
-    }
-  }
-
-  .ant-btn-icon-only.ant-btn-sm {
-    &.list-add-btn {
-      height: 24px;
-      width: 24px;
-      padding: 0;
-      border-radius: 4px;
+      margin-top: var(--om-space-16);
     }
   }
 
@@ -72,14 +63,7 @@
   }
 
   .form-card-section {
-    background-color: @grey-26;
-    border-radius: @border-rad-sm;
     margin-bottom: @size-mlg;
-    border: none;
-
-    .ant-card-body {
-      padding: @size-md;
-    }
 
     .ant-form-item {
       margin-bottom: @size-lg;
@@ -93,7 +77,7 @@
       .card-title-text {
         color: @grey-700;
         font-weight: @font-semibold;
-        margin-bottom: 0px;
+        margin-bottom: 0;
       }
 
       .card-title-description {
@@ -101,19 +85,11 @@
         margin-bottom: @margin-mlg;
       }
     }
-
-    .schedule-interval-v1 {
-      .cron-expression-card {
-        .ant-card-body {
-          padding: @padding-xs;
-        }
-      }
-    }
   }
 
   .scheduler-card {
     .selection-card {
-      background-color: @white;
+      background-color: var(--tw-color-bg-primary);
 
       &.selected,
       &:hover {
@@ -145,12 +121,12 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: @white;
+    background: var(--tw-color-bg-primary);
     border-top: 1px solid @grey-200;
     padding: @size-lg @size-xl;
     display: flex;
     justify-content: flex-end;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -2px 8px var(--om-legacy-color-0-0-0-0-1);
   }
 
   // Drawer mode adjustments
@@ -165,12 +141,12 @@
 
   .block-editor-wrapper {
     .om-block-editor {
-      background-color: @white;
+      background-color: var(--tw-color-bg-primary);
       max-height: 120px;
       padding: @size-sm;
 
       p:last-child {
-        padding-bottom: 75px;
+        padding-bottom: var(--om-space-75);
       }
     }
 
@@ -188,61 +164,11 @@
   .floating-error-alert {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: var(--om-z-10);
   }
 
   .bundle-suite-form-test-case-selection-card {
     background-color: @grey-9;
-  }
-}
-
-.test-case-form-drawer {
-  .ant-drawer-body {
-    padding: 0 @padding-lg;
-
-    .test-case-form-v1,
-    .edit-test-case-form-v1 {
-      padding-top: @padding-lg;
-      padding-bottom: @padding-lg;
-    }
-  }
-
-  .drawer-content-wrapper .drawer-doc-panel {
-    .entity-summary-in-docs {
-      margin-top: 0;
-      margin-bottom: 0;
-    }
-
-    .entity-summary-panel-container {
-      padding-top: @padding-xs;
-    }
-  }
-}
-
-// Drawer specific styles
-.drawer-content-wrapper {
-  display: grid;
-  grid-template-columns: 65% 35%;
-  gap: 24px;
-  height: calc(100vh - 120px); // Account for drawer header and footer
-
-  .drawer-form-content {
-    overflow-y: auto;
-    padding-right: 8px;
-    height: 100%;
-
-    .test-case-form-v1,
-    .edit-test-case-form-v1 {
-      padding-bottom: 0;
-    }
-  }
-
-  .drawer-doc-panel {
-    overflow-y: auto;
-    border: 1px solid @grey-15;
-    border-radius: @border-rad-sm;
-    margin: @margin-lg @margin-lg @margin-lg 0;
-    padding: 0 @padding-mlg;
   }
 }
 
@@ -251,7 +177,93 @@
   justify-content: flex-end;
   width: 100%;
 
-  .ant-space {
+  :is(.ant-space, .layout-space) {
     width: auto;
+  }
+}
+
+.test-case-form-v1,
+.bundle-suite-form {
+  // Overlay the Custom Query action on the Select Test Type label row, like
+  // the legacy absolute header row.
+  // In custom query mode the container holds its own Test Type label and must
+  // flow normally so it does not overlap the SQL Expression label.
+  .test-type-card {
+    position: relative;
+
+    .custom-test-type-container:not(.justify-between) {
+      position: absolute;
+      top: @size-md;
+      left: @size-md;
+      right: @size-md;
+      z-index: var(--om-z-1);
+      margin: 0;
+    }
+
+    .custom-test-type-container:not(.justify-between) + * {
+      margin-top: 0;
+    }
+  }
+}
+
+// The core SlideoutMenu overlay carries no z-index, so positioned page
+// elements (e.g. the table's sticky Actions column) paint through it.
+// 40 sits above page chrome but below the select popovers (z-50).
+.test-case-form-drawer,
+.bundle-suite-form-drawer {
+  z-index: 40;
+}
+
+// Narrow in step with the hint column's 240ms collapse, or the form is
+// squeezed mid-animation.
+.test-case-form-drawer {
+  transition: max-width var(--om-duration-240) var(--om-ease-standard);
+}
+
+// Test type dropdown: show the full option description instead of a
+// clipped single line (core option spans come with whitespace-nowrap).
+.test-type-popover {
+  [role='option'] {
+    span {
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+    }
+  }
+}
+
+// Match the legacy form: the test type trigger shows only the selected
+// test name (descriptions stay in the dropdown options), and the Custom
+// Query toggle uses regular weight.
+.test-case-form-v1 {
+  .test-type-card {
+    button[aria-haspopup='listbox'] section p + p {
+      display: none;
+    }
+
+    .custom-test-type-container button {
+      font-weight: @font-regular;
+    }
+  }
+}
+
+// Center the label help icon with the label text (the core tooltip button
+// leaves its icon top-aligned in the label line box).
+.test-case-form-v1 {
+  [data-testid='form-item-label'] + button {
+    display: inline-flex;
+    align-items: center;
+
+    svg {
+      display: block;
+    }
+  }
+}
+
+// The parameter fields moved inside a wrapper (doc panel focus reporting),
+// so restore the card's vertical rhythm between the individual parameters.
+.test-case-form-v1 {
+  .parameter-fields-wrapper > * + * {
+    margin-top: @size-lg;
   }
 }

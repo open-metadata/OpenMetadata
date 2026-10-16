@@ -13,8 +13,6 @@
 Validator for table row inserted count to be between test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -27,6 +25,6 @@ from metadata.profiler.metrics.registry import Metrics
 class TableRowCountToEqualValidator(BaseTableRowCountToEqualValidator, SQAValidatorMixin):
     """Validator for table row inserted count to be between test case"""
 
-    def _run_results(self, metric: Metrics) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics) -> int | None:
         """compute result of the test case"""
         return self.run_query_results(self.runner, metric)

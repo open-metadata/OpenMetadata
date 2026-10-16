@@ -12,8 +12,8 @@
 Compatibility layer for Airflow security decorators across versions
 """
 
+from collections.abc import Callable
 from functools import wraps
-from typing import Callable  # noqa: UP035
 
 from openmetadata_managed_apis.utils.airflow_version import is_airflow_3_or_higher
 
@@ -32,7 +32,7 @@ def get_security_module():
             return None  # Will use no-op decorator
         else:  # noqa: RET505
             # Airflow 2.x uses api_connexion
-            from airflow.api_connexion import security  # noqa: PLC0415
+            from airflow.api_connexion import security
 
             return security
     except ImportError:

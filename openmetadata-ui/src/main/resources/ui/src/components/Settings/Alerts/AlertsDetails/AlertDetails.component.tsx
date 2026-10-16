@@ -11,22 +11,29 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Divider, Row, Space, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import {
   Effect,
   EventSubscription,
 } from '../../../../generated/events/eventSubscription';
+import { EDIT_LINK_PATH } from '../../../../utils/Alerts/AlertsUtil';
 import {
-  EDIT_LINK_PATH,
   getDisplayNameForEntities,
   getFunctionDisplayName,
-} from '../../../../utils/Alerts/AlertsUtil';
+} from '../../../../utils/Alerts/AlertsUtilPure';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../PageHeader/PageHeader.component';
@@ -52,76 +59,98 @@ export const AlertDetailsComponent = ({
   const { t } = useTranslation();
 
   return (
-    <Row align="middle" gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid tw:items-center"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <div className="d-flex items-center justify-between">
           {breadcrumb ? <TitleBreadcrumb titleLinks={breadcrumb} /> : null}
 
           {pageHeaderData ? <PageHeader data={pageHeaderData} /> : null}
-          <Space size={16}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={4}
+            itemClassName="layout-space-item">
             {allowEdit && (
-              <Link to={`${EDIT_LINK_PATH}/${alerts?.id}`}>
-                <Button
-                  className="flex flex-center"
-                  icon={<IconEdit height={12} />}>
-                  {t('label.edit')}
-                </Button>
-              </Link>
+              <Button
+                color="secondary"
+                href={`${EDIT_LINK_PATH}/${alerts?.id}`}
+                iconLeading={<IconEdit height={12} />}>
+                {t('label.edit')}
+              </Button>
             )}
             {allowDelete && (
               <Button
-                className="flex flex-center"
-                icon={<IconDelete height={12} />}
+                color="secondary"
+                iconLeading={<IconDelete height={12} />}
                 onClick={onDelete}>
                 {t('label.delete')}
               </Button>
             )}
-          </Space>
+          </Box>
         </div>
-      </Col>
-      <Col span={24}>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
         <Card>
-          <Space direction="vertical" size={8}>
-            <Typography.Title className="m-0" level={5}>
-              {t('label.trigger')}
-            </Typography.Title>
-            <Typography.Text data-testid="display-name-entities">
-              {alerts?.filteringRules?.resources
-                ?.map(getDisplayNameForEntities)
-                ?.join(', ')}
-            </Typography.Text>
-          </Space>
-          <Divider />
-          <Typography.Title level={5}>
-            {t('label.filter-plural')}
-          </Typography.Title>
-          <Typography.Paragraph>
-            {alerts?.filteringRules?.rules?.map((filter) => {
-              const conditions = isArray(filter.condition)
-                ? filter.condition.join(', ')
-                : filter.condition;
-              const effect = filter.effect === Effect.Include ? '===' : '!==';
-              const conditionName = getFunctionDisplayName(
-                filter.fullyQualifiedName ?? ''
-              );
+          <Card.Content>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space"
+              direction="col"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Typography
+                as="h5"
+                className="m-0"
+                size="text-md"
+                weight="semibold">
+                {t('label.trigger')}
+              </Typography>
+              <Typography data-testid="display-name-entities">
+                {alerts?.filteringRules?.resources
+                  ?.map(getDisplayNameForEntities)
+                  ?.join(', ')}
+              </Typography>
+            </Box>
+            <Divider className="tw:my-6" />
+            <Typography as="h5" size="text-md" weight="semibold">
+              {t('label.filter-plural')}
+            </Typography>
+            <Typography as="p">
+              {alerts?.filteringRules?.rules?.map((filter) => {
+                const conditions = isArray(filter.condition)
+                  ? filter.condition.join(', ')
+                  : filter.condition;
+                const effect = filter.effect === Effect.Include ? '===' : '!==';
+                const conditionName = getFunctionDisplayName(
+                  filter.fullyQualifiedName ?? ''
+                );
 
-              return (
-                <Fragment key={filter.name}>
-                  <Typography.Text code>
-                    {`${conditionName} ${effect} ${conditions}`}
-                  </Typography.Text>
-                  <br />
-                </Fragment>
-              );
-            })}
-          </Typography.Paragraph>
-          <Divider />
-          <Typography.Title level={5}>
-            {t('label.destination')}
-          </Typography.Title>
-          <Row gutter={[16, 16]} />
+                return (
+                  <Fragment key={filter.name}>
+                    <Typography>
+                      <code>{`${conditionName} ${effect} ${conditions}`}</code>
+                    </Typography>
+                    <br />
+                  </Fragment>
+                );
+              })}
+            </Typography>
+            <Divider className="tw:my-6" />
+            <Typography as="h5" size="text-md" weight="semibold">
+              {t('label.destination')}
+            </Typography>
+            <Box
+              className="layout-row"
+              style={{ ...getLayoutGutter(16, 16) }}
+              wrap="wrap"
+            />
+          </Card.Content>
         </Card>
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

@@ -31,8 +31,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 @Repository
 public class McpServerRepository extends EntityRepository<McpServer> {
-  private static final String SERVER_UPDATE_FIELDS = "tools,resources,prompts,governanceMetadata";
-  private static final String SERVER_PATCH_FIELDS = "tools,resources,prompts,governanceMetadata";
+  private static final String SERVER_UPDATE_FIELDS =
+      "tools,resources,prompts,governanceMetadata,reviewers";
+  private static final String SERVER_PATCH_FIELDS =
+      "tools,resources,prompts,governanceMetadata,reviewers";
 
   public McpServerRepository() {
     super(
@@ -43,6 +45,11 @@ public class McpServerRepository extends EntityRepository<McpServer> {
         SERVER_PATCH_FIELDS,
         SERVER_UPDATE_FIELDS);
     supportsSearch = true;
+    // Registration drives an AI asset's stage: AIAssetStatusSync derives it from the registration
+    // status when there is one, and the AI governance endpoints move it. Without one the asset
+    // starts in Draft, which sits outside the registration approval flow, so saving it records no
+    // approval.
+    workflowsOwnEntityStatus = false;
   }
 
   @Override
@@ -77,6 +84,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
     if (mcpServer.getService() != null) {
       populateService(mcpServer);
     }
+    AIAssetStatusSync.sync(mcpServer);
   }
 
   @Override
@@ -118,11 +126,17 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  public EntityInterface getParentEntity(McpServer entity, String fields) {
+  public EntityInterface<?> getParentEntity(McpServer entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
-    return Entity.getEntity(entity.getService(), fields, Include.ALL);
+    EntityReference service = entity.getService();
+    EntityRepository<?> serviceRepository = Entity.getEntityRepository(service.getType());
+    Fields parentFields = serviceRepository.getOnlySupportedFields(fields);
+    return service.getId() != null
+        ? serviceRepository.get(null, service.getId(), parentFields, Include.ALL, true)
+        : serviceRepository.getByName(
+            null, service.getFullyQualifiedName(), parentFields, Include.ALL, true);
   }
 
   private void populateService(McpServer mcpServer) {

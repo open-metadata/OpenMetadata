@@ -23,7 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
@@ -48,6 +54,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.resources.policies.PolicyResource;
@@ -66,6 +73,7 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
   private static final String ALL_RESOURCES = "All";
 
   public PolicyResourceIT() {
+    supportsEntityStatus = false;
     supportsFollowers = false;
     supportsTags = false;
     supportsDomains = false;
@@ -233,6 +241,91 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertNotNull(policy.getRules());
     assertEquals(1, policy.getRules().size());
     assertEquals("isOwner()", policy.getRules().get(0).getCondition());
+  }
+
+  /**
+   * Regression for the Orsted-reported failure (#20262): creating or updating a policy whose rule
+   * condition uses the bare, parenthesis-less form of a boolean function (e.g. {@code !isOwner})
+   * failed with "disallowed SpEL construct: PropertyOrFieldReference ('isOwner')". The bare form is
+   * functionally identical to {@code !isOwner()} — SpEL resolves it to the same getter — and is
+   * documented as valid in RuleEvaluator's @Function examples. Both create and update must succeed.
+   */
+  @Test
+  void test_createAndUpdatePolicyWithBareReferenceCondition(TestNamespace ns) {
+    Rule rule =
+        new Rule()
+            .withName("bareOwnerRule")
+            .withResources(List.of(ALL_RESOURCES))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withEffect(Effect.ALLOW)
+            .withCondition("!isOwner");
+
+    CreatePolicy create =
+        new CreatePolicy()
+            .withName(ns.prefix("bareConditionPolicy"))
+            .withRules(List.of(rule))
+            .withDescription("Policy with a bare-reference condition");
+
+    Policy policy = createEntity(create);
+    assertEquals("!isOwner", policy.getRules().get(0).getCondition());
+
+    policy.getRules().get(0).setCondition("noOwner() || isOwner");
+    Policy updated = patchEntity(policy.getId().toString(), policy);
+    assertEquals("noOwner() || isOwner", updated.getRules().get(0).getCondition());
+  }
+
+  /**
+   * SpEL short-circuits {@code &&} and {@code ||}, and every function returns false while a policy
+   * is being validated, so a reference on the right-hand side used to go unchecked. The rule then
+   * saved clean and never fired, which on a deny rule looks enforced but is not.
+   */
+  @Test
+  void test_referencesBehindAShortCircuitAreValidated(TestNamespace ns) {
+    assertMissingReferenceRejected(
+        () -> createEntity(conditionPolicy(ns, "badTag", "matchAnyTag('NoSuch.Tag')")),
+        "NoSuch.Tag",
+        "a condition naming a tag that does not exist must be rejected");
+
+    assertMissingReferenceRejected(
+        () ->
+            createEntity(
+                conditionPolicy(ns, "guardedBadTag", "noOwner() && matchAnyTag('NoSuch.Tag')")),
+        "NoSuch.Tag",
+        "the tag must still be checked when a guard short-circuits it away");
+
+    assertMissingReferenceRejected(
+        () ->
+            createEntity(
+                conditionPolicy(ns, "guardedBadTeam", "isOwner() || inAnyTeam('no-such-team')")),
+        "no-such-team",
+        "|| short-circuits the same way as &&");
+  }
+
+  /**
+   * Asserts the save failed as a validation error naming the reference that could not be resolved,
+   * so an unrelated client or fixture failure cannot make the case pass by accident.
+   */
+  private void assertMissingReferenceRejected(
+      Executable create, String missingReference, String message) {
+    InvalidRequestException error = assertThrows(InvalidRequestException.class, create, message);
+    assertEquals(400, error.getStatusCode(), message);
+    assertTrue(
+        error.getMessage() != null && error.getMessage().contains(missingReference),
+        message + " - error did not name " + missingReference + ": " + error.getMessage());
+  }
+
+  private CreatePolicy conditionPolicy(TestNamespace ns, String name, String condition) {
+    return new CreatePolicy()
+        .withName(ns.prefix(name + "Policy"))
+        .withRules(
+            List.of(
+                new Rule()
+                    .withName(name + "Rule")
+                    .withResources(List.of(ALL_RESOURCES))
+                    .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                    .withEffect(Effect.DENY)
+                    .withCondition(condition)))
+        .withDescription("Policy whose condition references a missing entity");
   }
 
   @Test
@@ -840,6 +933,90 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     Policy fetched = getEntity(policyId);
     String updatedCondition = fetched.getRules().get(0).getCondition();
     assertEquals("matchAnyTag('" + newFqn + "')", updatedCondition);
+  }
+
+  /**
+   * Regression for the lost-update race in PolicyConditionUpdater (issue #28718): two tags
+   * referenced by the same policy rule are renamed at the same moment. Both rewrites must survive —
+   * a blind full-row write would let one rename clobber the other. Repeated to raise the odds of
+   * hitting the race; with the optimistic compare-and-swap retry it passes deterministically.
+   */
+  @Test
+  void test_concurrentTagRenamesBothUpdatePolicyCondition(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    for (int iteration = 0; iteration < 3; iteration++) {
+      Tag tagA = createTagInNewClassification(client, ns, "ConcurrentA" + iteration);
+      Tag tagB = createTagInNewClassification(client, ns, "ConcurrentB" + iteration);
+
+      Rule rule =
+          new Rule()
+              .withName("concurrentRenameRule")
+              .withResources(List.of(ALL_RESOURCES))
+              .withOperations(List.of(MetadataOperation.VIEW_ALL))
+              .withEffect(Effect.ALLOW)
+              .withCondition(
+                  "matchAnyTag('"
+                      + tagA.getFullyQualifiedName()
+                      + "', '"
+                      + tagB.getFullyQualifiedName()
+                      + "')");
+
+      Policy policy =
+          createEntity(
+              new CreatePolicy()
+                  .withName(ns.prefix("concurrentRenamePolicy" + iteration))
+                  .withRules(List.of(rule))
+                  .withDescription("Policy referencing two tags renamed concurrently"));
+
+      List<String> newFqns = renameTagsConcurrently(client, tagA, tagB);
+
+      String condition = getEntity(policy.getId().toString()).getRules().get(0).getCondition();
+      assertTrue(
+          condition.contains(newFqns.get(0)),
+          "Rename of tag A was lost from policy condition: " + condition);
+      assertTrue(
+          condition.contains(newFqns.get(1)),
+          "Rename of tag B was lost from policy condition: " + condition);
+    }
+  }
+
+  private Tag createTagInNewClassification(
+      OpenMetadataClient client, TestNamespace ns, String tagName) {
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(ns.prefix(tagName + "Classification"))
+                    .withDescription("Classification for concurrent rename test"));
+    return client
+        .tags()
+        .create(
+            new CreateTag()
+                .withName(tagName)
+                .withClassification(classification.getFullyQualifiedName())
+                .withDescription("Tag renamed concurrently"));
+  }
+
+  private List<String> renameTagsConcurrently(OpenMetadataClient client, Tag tagA, Tag tagB)
+      throws Exception {
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    try {
+      Future<String> renameA = executor.submit(() -> renameTag(client, barrier, tagA));
+      Future<String> renameB = executor.submit(() -> renameTag(client, barrier, tagB));
+      return List.of(renameA.get(60, TimeUnit.SECONDS), renameB.get(60, TimeUnit.SECONDS));
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  private String renameTag(OpenMetadataClient client, CyclicBarrier barrier, Tag tag)
+      throws Exception {
+    tag.setName(tag.getName() + "Renamed");
+    barrier.await(30, TimeUnit.SECONDS);
+    return client.tags().update(tag.getId().toString(), tag).getFullyQualifiedName();
   }
 
   @Test

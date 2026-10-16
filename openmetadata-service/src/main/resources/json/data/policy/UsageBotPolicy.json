@@ -18,7 +18,7 @@
       "name": "UsageBotRule-Allow-Usage",
       "description" : "Allow handling usage and lifecycle information.",
       "resources" : ["All"],
-      "operations": ["EditAll", "ViewAll"],
+      "operations": ["EditAll", "ViewAll", "Trigger"],
       "effect": "allow"
     },
     {

@@ -14,24 +14,31 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
-import { VotingDataProps } from '../components/Entity/Voting/voting.interface';
-import { MoveGlossaryTermWebsocketResponse } from '../components/Modals/ChangeParentHierarchy/ChangeParentHierarchy.interface';
-import { ES_MAX_PAGE_SIZE, PAGE_SIZE_MEDIUM } from '../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
+import { GlossaryTermRelationGraph } from '../generated/api/data/glossaryTermRelationGraph';
+import { OntologyDataGraph } from '../generated/api/data/ontologyDataGraph';
+import { OntologySummary } from '../generated/api/data/ontologySummary';
+import { UpdateTermRelation } from '../generated/api/data/updateTermRelation';
 import { MoveGlossaryTermRequest } from '../generated/api/tests/moveGlossaryTermRequest';
+import { GlossaryTermRelationType } from '../generated/configuration/glossaryTermRelationSettings';
 import { EntityReference, Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { ChangeEvent } from '../generated/type/changeEvent';
 import { EntityHistory } from '../generated/type/entityHistory';
+import { RelationshipTypeUsage } from '../generated/type/relationshipTypeUsage';
+import { TermRelation } from '../generated/type/termRelation';
 import { ListParams, ListParamsWithOffset } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
-import APIClient from './index';
+import { CSVExportResponse } from '../interface/entity/csv.interface';
+import { VotingDataProps } from '../interface/entity/vote.interface';
+import { MoveGlossaryTermWebsocketResponse } from '../interface/governance/glossary.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
+import APIClient from './axiosClient';
 
 export type ListGlossaryTermsParams = ListParams & {
   glossary?: string;
@@ -50,9 +57,13 @@ export type SearchGlossaryTermsParams = ListParamsWithOffset & {
 
 const BASE_URL = '/glossaries';
 
-export const getGlossariesList = async (params?: ListParams) => {
+export const getGlossariesList = async (
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
     params,
+    signal,
   });
 
   return response.data;
@@ -108,43 +119,44 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-export const queryGlossaryTerms = async (glossaryName: string) => {
-  const apiUrl = `/search/query`;
-
-  const { data } = await APIClient.get(apiUrl, {
-    params: {
-      index: SearchIndex.GLOSSARY_TERM,
-      q: '',
-      from: 0,
-      size: ES_MAX_PAGE_SIZE,
-      deleted: false,
-      track_total_hits: true,
-      query_filter: JSON.stringify({
-        query: {
-          bool: {
-            must: [
-              {
-                term: {
-                  'glossary.name.keyword': glossaryName.toLocaleLowerCase(),
-                },
-              },
-            ],
-          },
-        },
-      }),
-      getHierarchy: true,
-    },
-  });
-
-  return data;
-};
-
 export const getGlossaryTermsById = async (id: string, params?: ListParams) => {
   const response = await APIClient.get<GlossaryTerm>(`/glossaryTerms/${id}`, {
     params,
   });
 
   return response.data;
+};
+
+// Backend MAX_BATCH_BY_IDS cap; larger requests 400.
+const GLOSSARY_TERMS_BY_IDS_BATCH_SIZE = 100;
+
+export const getGlossaryTermsByIds = async (
+  ids: string[],
+  params?: ListParams,
+  signal?: AbortSignal
+): Promise<GlossaryTerm[]> => {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += GLOSSARY_TERMS_BY_IDS_BATCH_SIZE) {
+    batches.push(ids.slice(i, i + GLOSSARY_TERMS_BY_IDS_BATCH_SIZE));
+  }
+
+  const responses = await Promise.all(
+    batches.map((batch) =>
+      APIClient.get<GlossaryTerm[]>('/glossaryTerms/byIds', {
+        signal,
+        params: {
+          ...params,
+          ids: batch.join(','),
+        },
+      })
+    )
+  );
+
+  return responses.flatMap((response) => response.data);
 };
 
 export const getGlossaryTermByFQN = async (fqn = '', params?: ListParams) => {
@@ -312,11 +324,12 @@ export const removeAssetsFromGlossaryTerm = async (
 export const getGlossaryTermAssets = async (
   termId: string,
   limit = 100,
-  offset = 0
+  offset = 0,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<EntityReference[]>>(
     `/glossaryTerms/${termId}/assets`,
-    { params: { limit, offset } }
+    { params: { limit, offset }, signal }
   );
 
   return response.data;
@@ -333,7 +346,48 @@ export const getGlossaryTermsAssetCounts = async (
   return response.data;
 };
 
-export const searchGlossaryTerms = async (search: string, page = 1) => {
+export interface OntologyPageParams {
+  parent?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface OntologyDataParams extends OntologyPageParams {
+  assetPreviewSize?: number;
+  connectedTermLimit?: number;
+  edgeLimit?: number;
+  lineageEdgeLimit?: number;
+}
+
+export const getOntologySummary = async (
+  params?: OntologyPageParams,
+  signal?: AbortSignal
+): Promise<OntologySummary> => {
+  const response = await APIClient.get<OntologySummary>(
+    '/glossaryTerms/ontology/summary',
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const getOntologyDataGraph = async (
+  params?: OntologyDataParams,
+  signal?: AbortSignal
+): Promise<OntologyDataGraph> => {
+  const response = await APIClient.get<OntologyDataGraph>(
+    '/glossaryTerms/ontology/data',
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const searchGlossaryTerms = async (
+  search: string,
+  page = 1,
+  signal?: AbortSignal
+) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
   const { data } = await APIClient.get(apiUrl, {
@@ -345,6 +399,7 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
       track_total_hits: true,
       getHierarchy: true,
     },
+    signal,
   });
 
   return data;
@@ -369,7 +424,8 @@ export const getFirstLevelGlossaryTermsPaginated = async (
   parentFQN: string,
   pageSize = 50,
   after?: string,
-  entityStatus?: string
+  entityStatus?: string,
+  before?: string
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -385,6 +441,7 @@ export const getFirstLevelGlossaryTermsPaginated = async (
       ],
       limit: pageSize,
       after: after,
+      before: before,
       entityStatus,
     },
   });
@@ -395,7 +452,9 @@ export const getFirstLevelGlossaryTermsPaginated = async (
 export const getGlossaryTermChildrenLazy = async (
   parentFQN: string,
   limit = 50,
-  after?: string
+  after?: string,
+  // A picker needs the name and the chevron, not the owner/reviewer joins.
+  options?: { fields?: TabSpecificField[]; signal?: AbortSignal }
 ) => {
   const apiUrl = `/glossaryTerms`;
 
@@ -404,7 +463,7 @@ export const getGlossaryTermChildrenLazy = async (
   >(apiUrl, {
     params: {
       directChildrenOf: parentFQN,
-      fields: [
+      fields: options?.fields ?? [
         TabSpecificField.CHILDREN_COUNT,
         TabSpecificField.OWNERS,
         TabSpecificField.REVIEWERS,
@@ -412,29 +471,11 @@ export const getGlossaryTermChildrenLazy = async (
       limit,
       after,
     },
+    signal: options?.signal,
   });
 
   return data;
 };
-
-export interface TermRelation {
-  relationType: string;
-  term: EntityReference;
-}
-
-export interface TermRelationGraph {
-  nodes: Array<{
-    id: string;
-    name: string;
-    fullyQualifiedName: string;
-    displayName?: string;
-  }>;
-  edges: Array<{
-    from: string;
-    to: string;
-    relationType: string;
-  }>;
-}
 
 export const addTermRelation = async (
   termId: string,
@@ -465,16 +506,53 @@ export const removeTermRelation = async (
   return response.data;
 };
 
+export const updateTermRelation = async (
+  termId: string,
+  toTermId: string,
+  termRelation: TermRelation
+): Promise<GlossaryTerm> => {
+  const response = await APIClient.put<
+    TermRelation,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${termId}/relations/${toTermId}`, termRelation);
+
+  return response.data;
+};
+
+export const removeTermRelationById = async (
+  termId: string,
+  relationshipId: string
+): Promise<GlossaryTerm> => {
+  const response = await APIClient.delete<GlossaryTerm>(
+    `/glossaryTerms/${termId}/relations/id/${relationshipId}`
+  );
+
+  return response.data;
+};
+
+export const updateTermRelationById = async (
+  termId: string,
+  relationshipId: string,
+  update: UpdateTermRelation
+): Promise<GlossaryTerm> => {
+  const response = await APIClient.put<
+    UpdateTermRelation,
+    AxiosResponse<GlossaryTerm>
+  >(`/glossaryTerms/${termId}/relations/id/${relationshipId}`, update);
+
+  return response.data;
+};
+
 export const getTermRelationGraph = async (
   termId: string,
   depth = 1,
   relationTypes?: string[]
-): Promise<TermRelationGraph> => {
+): Promise<GlossaryTermRelationGraph> => {
   const params: Record<string, number | string> = { depth };
   if (relationTypes && relationTypes.length > 0) {
     params.relationTypes = relationTypes.join(',');
   }
-  const response = await APIClient.get<TermRelationGraph>(
+  const response = await APIClient.get<GlossaryTermRelationGraph>(
     `/glossaryTerms/${termId}/relationsGraph`,
     { params }
   );
@@ -490,6 +568,53 @@ export const getGlossaryTermRelationSettings = async () => {
   return response.data?.config_value;
 };
 
+const GLOSSARY_TERM_RELATION_TYPES_URL =
+  '/system/settings/glossaryTermRelationSettings/relationTypes';
+
+export const getGlossaryTermRelationTypes = async (
+  params: ListParamsWithOffset
+): Promise<PagingResponse<GlossaryTermRelationType[]>> => {
+  const response = await APIClient.get<
+    PagingResponse<GlossaryTermRelationType[]>
+  >(GLOSSARY_TERM_RELATION_TYPES_URL, { params });
+
+  return response.data;
+};
+
+export const createGlossaryTermRelationType = async (
+  relationType: GlossaryTermRelationType
+): Promise<GlossaryTermRelationType> => {
+  const response = await APIClient.post<GlossaryTermRelationType>(
+    GLOSSARY_TERM_RELATION_TYPES_URL,
+    relationType
+  );
+
+  return response.data;
+};
+
+export const updateGlossaryTermRelationType = async (
+  relationType: GlossaryTermRelationType
+): Promise<GlossaryTermRelationType> => {
+  const response = await APIClient.put<GlossaryTermRelationType>(
+    `${GLOSSARY_TERM_RELATION_TYPES_URL}/${encodeURIComponent(
+      relationType.name
+    )}`,
+    relationType
+  );
+
+  return response.data;
+};
+
+export const deleteGlossaryTermRelationType = async (
+  relationTypeName: string
+): Promise<void> => {
+  await APIClient.delete(
+    `${GLOSSARY_TERM_RELATION_TYPES_URL}/${encodeURIComponent(
+      relationTypeName
+    )}`
+  );
+};
+
 export const updateGlossaryTermRelationSettings = async (settings: unknown) => {
   const response = await APIClient.put('/system/settings', {
     config_type: 'glossaryTermRelationSettings',
@@ -502,7 +627,18 @@ export const updateGlossaryTermRelationSettings = async (settings: unknown) => {
 export const getRelationTypeUsageCounts = async (): Promise<
   Record<string, number>
 > => {
-  const response = await APIClient.get('/glossaryTerms/relationTypes/usage');
+  const response = await APIClient.get<RelationshipTypeUsage[]>(
+    '/glossaryTerms/relationTypes/usage'
+  );
 
-  return response.data;
+  return (response.data ?? []).reduce<Record<string, number>>(
+    (counts, usage) => {
+      if (usage.relationshipType?.name) {
+        counts[usage.relationshipType.name] = usage.count ?? 0;
+      }
+
+      return counts;
+    },
+    {}
+  );
 };

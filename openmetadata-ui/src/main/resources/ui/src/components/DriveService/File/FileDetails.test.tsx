@@ -34,11 +34,18 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
+const mockFetchEntityTaskCountsInto = jest.fn();
+const mockFetchEntityActivityCountInto = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../utils/CommonUtils'),
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(),
-  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: (...args: unknown[]) =>
+    mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: unknown[]) =>
+    mockFetchEntityTaskCountsInto(...args),
+  getFeedCounts: (...args: unknown[]) => mockGetFeedCounts(...args),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
@@ -74,9 +81,15 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
   )),
 }));
 
-jest.mock('../../common/Loader/Loader', () =>
-  jest.fn(() => <div data-testid="loader">Loading...</div>)
-);
+jest.mock('../../common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loading...</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: jest.fn(({ children }) => (
@@ -321,12 +334,16 @@ describe('FileDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderFileDetails();
 
     await waitFor(
       () => {
-        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+        expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+          'test-service.test-file.txt',
+          expect.any(Function)
+        );
+        expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.FILE,
           'test-service.test-file.txt',
           expect.any(Function)

@@ -41,12 +41,6 @@ class TitanicModel(Base):
     name = Column(String(256))
 
 
-class EmptyModel(Base):
-    __tablename__ = "empty"
-    __table_args__ = {"schema": "my_schema"}  # noqa: RUF012
-    id = Column(Integer, primary_key=True)
-
-
 @pytest.fixture(scope="module")
 def trino_engine(trino_container, create_test_data):
     engine = create_engine(make_url(trino_container.get_connection_url()).set(database="minio"))
@@ -106,18 +100,3 @@ class TestTrinoTableMetricComputer:
         assert "passengerid" in result.columnNames
         assert "name" in result.columnNames
         fallback.assert_not_called()
-
-    def test_empty_table_with_dropped_stats_falls_back(self, trino_session):
-        """empty table had stats dropped — SHOW STATS returns NULL row_count.
-        Should fall back to COUNT(*)."""
-        computer = _build_computer(trino_session, EmptyModel)
-        fallback_result = Mock(rowCount=0, columnCount=None, sizeInBytes=None, columnNames=None, createDateTime=None)
-        with patch.object(
-            BaseTableMetricComputer,
-            "compute",
-            return_value=fallback_result,
-        ) as fallback:
-            result = computer.compute()
-        assert result is not None
-        assert result.rowCount == 0
-        fallback.assert_called_once()

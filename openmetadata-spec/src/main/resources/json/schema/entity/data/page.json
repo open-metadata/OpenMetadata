@@ -1,18 +1,30 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/page.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Page",
   "$comment": "@om-entity-type",
   "description": "This schema defines the type of Page.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Page",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "pageType": {
       "javaType": "org.openmetadata.schema.entity.data.PageType",
       "description": "Type of the Knowledge Page.",
       "type": "string",
       "enum": ["Article", "QuickLink"]
+    },
+    "pageProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.data.PageProcessingStatus",
+      "description": "Status of the asynchronous knowledge-pill extraction for an article's body. Distinct from the governance entityStatus.",
+      "type": "string",
+      "enum": ["Queued", "Processing", "Processed", "Failed"],
+      "javaEnums": [
+        { "name": "Queued" },
+        { "name": "Processing" },
+        { "name": "Processed" },
+        { "name": "Failed" }
+      ]
     }
   },
   "properties": {
@@ -48,6 +60,10 @@
       "description": "User who updated the Knowledge Page.",
       "type": "string"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
     "href": {
       "description": "Link to this Knowledge Page resource.",
       "$ref": "../../type/basic.json#/definitions/href"
@@ -70,7 +86,7 @@
       "$ref": "../../type/entityReferenceList.json"
     },
     "entityStatus": {
-      "description": "Status of the tag.",
+      "description": "Lifecycle stage of the page.",
       "$ref": "../../type/status.json"
     },
     "followers": {
@@ -139,6 +155,23 @@
         "$ref": "../../attachments/asset.json"
       },
       "default": null
+    },
+    "processingStatus": {
+      "description": "Status of the most recent knowledge-pill extraction run on this article's body.",
+      "$ref": "#/definitions/pageProcessingStatus"
+    },
+    "processingError": {
+      "description": "Error message from the most recent failed knowledge-pill extraction run, if any.",
+      "type": "string"
+    },
+    "extractionStats": {
+      "description": "Statistics from the most recent knowledge-pill extraction run on this page's body.",
+      "$ref": "./contextFile.json#/definitions/extractionStats"
+    },
+    "memoryCount": {
+      "description": "Number of knowledge pills (context memories) extracted from this page.",
+      "type": "integer",
+      "default": 0
     }
   },
   "required": ["name", "pageType", "page"],

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/ai/createMcpServer.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CreateMcpServerRequest",
   "description": "Create MCP Server entity request",
   "type": "object",
@@ -83,6 +83,10 @@
     "dataAccessSummary": {
       "description": "Summary of data access patterns",
       "$ref": "../../entity/ai/mcpServer.json#/definitions/dataAccessSummary"
+    },
+    "usageMetrics": {
+      "description": "Usage metrics for the MCP server",
+      "$ref": "../../entity/ai/mcpServer.json#/definitions/usageMetrics"
     },
     "securityMetrics": {
       "description": "Security metrics and settings",

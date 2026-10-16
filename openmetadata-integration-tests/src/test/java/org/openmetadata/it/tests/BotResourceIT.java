@@ -2,7 +2,6 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,6 +36,7 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
 
   // Bot has special requirements
   {
+    supportsEntityStatus = false;
     supportsFieldsQueryParam = false;
     supportsTags = false;
     supportsOwners = false; // Bot has bot user, not owners
@@ -197,6 +197,29 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
   }
 
   @Test
+  void get_entityListIncludesRequiredBotUser_200_OK(TestNamespace ns) {
+    User botUser = createBotUser(ns);
+    Bot created =
+        createEntity(
+            new CreateBot()
+                .withName(ns.prefix("listed_bot"))
+                .withDescription("Bot returned by the list endpoint")
+                .withBotUser(botUser.getName()));
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("*");
+    Bot listed =
+        listEntities(params).getData().stream()
+            .filter(bot -> bot.getId().equals(created.getId()))
+            .findFirst()
+            .orElseThrow();
+
+    assertNotNull(listed.getBotUser(), "Listed bot must include its required bot user");
+    assertEquals(botUser.getId(), listed.getBotUser().getId());
+  }
+
+  @Test
   void put_botDescription_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     User botUser = createBotUser(ns);
@@ -274,13 +297,9 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
         "Creating bot with already-used bot user should fail");
   }
 
-  /**
-   * Verifies that GET /bots without ?fields=botUser does NOT populate botUser. The fields query
-   * parameter acts as an opt-in filter — consistent with how other resources handle optional
-   * fields (e.g. owners, tags).
-   */
+  /** botUser is a required field, so GET /bots returns it even without ?fields=botUser. */
   @Test
-  void test_listBots_withoutFieldsParam_omitsBotUser(TestNamespace ns) {
+  void test_listBots_withoutFieldsParam_returnsBotUser(TestNamespace ns) {
     User botUser = createBotUser(ns);
     CreateBot request =
         new CreateBot()
@@ -301,9 +320,8 @@ public class BotResourceIT extends BaseEntityIT<Bot, CreateBot> {
             .findFirst()
             .orElseThrow(() -> new AssertionError("Created bot missing from list response"));
 
-    assertNull(
-        listedBot.getBotUser(),
-        "botUser must NOT be populated when ?fields=botUser is not requested");
+    assertNotNull(listedBot.getBotUser(), "botUser must be populated even without ?fields=botUser");
+    assertEquals(botUser.getId(), listedBot.getBotUser().getId());
   }
 
   /**

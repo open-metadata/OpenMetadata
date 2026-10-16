@@ -68,6 +68,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -91,6 +92,12 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         "",
         "");
     supportsSearch = true;
+    // A recursive hard-delete of an ancestor (database service / database) removes schema/table
+    // docs from search (deleteOrUpdateChildren by service.id / database.id) and field_relationship
+    // /
+    // tag_usage via the root cleanup() FQN prefix, so the bulk path skips the per-entity search
+    // dispatch and FQN-satellite deletes.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -532,19 +539,19 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       return;
     }
 
-    boolean needsOwnersOrDomains = super.requiresParentForInheritance(schema, fields);
+    boolean needsOwnersOrDomains = requiresParentForOwnersOrDomains(schema, fields);
     boolean needsRetention =
         shouldResolveRetentionInheritance(fields) && schema.getRetentionPeriod() == null;
-    if (!needsOwnersOrDomains && !needsRetention) {
+    boolean needsTags = requiresParentForPropagatedTags(fields);
+    if (!needsOwnersOrDomains && !needsRetention && !needsTags) {
       return;
     }
 
-    String inheritanceFields =
-        needsOwnersOrDomains
-            ? (needsRetention ? "owners,domains,retentionPeriod" : "owners,domains")
-            : "retentionPeriod";
     Database database =
-        getOrLoadInheritanceParent(schema.getDatabase(), inheritanceFields, Database.class);
+        loadInheritanceParentLeniently(
+            schema.getDatabase(),
+            inheritanceParentFields(needsOwnersOrDomains, needsRetention, needsTags),
+            Database.class);
     if (database == null) {
       return;
     }
@@ -555,6 +562,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     if (needsRetention) {
       schema.withRetentionPeriod(database.getRetentionPeriod());
     }
+    // The database was loaded through the inheritance path, so its tags already carry the
+    // service's -- that is what makes propagation transitive down to tables.
+    inheritTags(schema, fields, database);
   }
 
   @Override
@@ -569,15 +579,34 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     return entity.getDatabase();
   }
 
+  /**
+   * Carries a schema tag change down to the assets beneath it in the search index, matching the
+   * read-time inheritance in {@link EntityRepository#inheritTags}. Without it Explore would keep
+   * showing the pre-change tags while the API reported the new ones.
+   */
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    List<PropagationDescriptor> descriptors =
+        new ArrayList<>(super.getSearchPropagationDescriptors());
+    // Keeps the index in step with the read-time inheritance in EntityRepository. This cascade
+    // carries this entity's OWN tags down, and inheritance re-derives the same labels on read, so
+    // both halves have to move together or Explore and GET /{entity}/{id} disagree.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    return descriptors;
+  }
+
   @Override
   protected String getInheritableFields() {
     return "owners,domains,retentionPeriod";
   }
 
   @Override
-  protected void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface parent) {
+  protected void applyInheritance(DatabaseSchema entity, Fields fields, EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
     inheritDomains(entity, fields, parent);
+    inheritTags(entity, fields, parent);
     if (parent instanceof Database database) {
       entity.withRetentionPeriod(
           entity.getRetentionPeriod() == null
@@ -587,7 +616,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   }
 
   @Override
-  public EntityInterface getParentEntity(DatabaseSchema entity, String fields) {
+  public EntityInterface<?> getParentEntity(DatabaseSchema entity, String fields) {
     return Entity.getEntity(entity.getDatabase(), fields, ALL);
   }
 
@@ -645,7 +674,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
             schema.getFullyQualifiedName());
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
-    tables.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    tables.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Get stored procedures under this schema
     StoredProcedureRepository spRepository =
@@ -654,7 +683,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
         spRepository.listAllForCSV(
             spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
             schema.getFullyQualifiedName());
-    storedProcedures.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    storedProcedures.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
 
     // Export all entities using a single CSV
     return new DatabaseSchemaCsv(schema, user, recursive)
@@ -705,8 +734,11 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       compareAndUpdate(
           "retentionPeriod",
           () ->
-              recordChange(
-                  "retentionPeriod", original.getRetentionPeriod(), updated.getRetentionPeriod()));
+              updateUserOnlyField(
+                  "retentionPeriod",
+                  original.getRetentionPeriod(),
+                  updated.getRetentionPeriod(),
+                  updated::setRetentionPeriod));
       compareAndUpdate(
           "sourceUrl",
           () -> recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl()));
@@ -848,7 +880,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     /**
      * Add entity to CSV file with entity type and fully qualified name
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
@@ -965,7 +997,7 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
           .withColumns(nullOrEmpty(table.getColumns()) ? new ArrayList<>() : table.getColumns())
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {

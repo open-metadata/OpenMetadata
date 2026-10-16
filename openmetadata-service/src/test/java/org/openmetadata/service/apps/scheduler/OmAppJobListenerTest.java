@@ -2,13 +2,18 @@ package org.openmetadata.service.apps.scheduler;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
+import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -18,6 +23,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,13 +31,17 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.apps.logging.AppRunLogAppender;
 import org.openmetadata.service.jdbi3.AppRepository;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.RequestEntityCache;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
@@ -42,6 +52,10 @@ import sun.misc.Unsafe;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class OmAppJobListenerTest {
+
+  private static final String APP_NAME = "DataRetentionApplication";
+  private static final RelationIncludes RELATIONS =
+      RelationIncludes.fromInclude(Include.NON_DELETED);
 
   @Mock private AppRepository repository;
   @Mock private JobExecutionContext jobExecutionContext;
@@ -61,6 +75,9 @@ class OmAppJobListenerTest {
     Field repoField = OmAppJobListener.class.getDeclaredField("repository");
     repoField.setAccessible(true);
     repoField.set(listener, repository);
+
+    // JUnit reuses threads across tests, and this cache is a ThreadLocal.
+    RequestEntityCache.clear();
   }
 
   @Test
@@ -173,7 +190,7 @@ class OmAppJobListenerTest {
     App jobApp = new App().withId(appId).withName("SearchIndexingApplication");
 
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put("triggerType", "OnDemandJob");
+    dataMap.put(TRIGGER_TYPE_KEY, "OnDemandJob");
     dataMap.put(AppScheduler.APP_NAME, "SearchIndexingApplication");
 
     JobDataMap mergedMap = new JobDataMap();
@@ -210,9 +227,55 @@ class OmAppJobListenerTest {
   }
 
   @Test
+  void jobToBeExecuted_recordsWhoTriggeredAnOnDemandRun() {
+    AppRunRecord stored = runRecordFromJobToBeExecuted("alice");
+
+    assertEquals("alice", stored.getTriggeredBy());
+  }
+
+  @Test
+  void jobToBeExecuted_leavesTriggeredByUnsetForScheduledRuns() {
+    AppRunRecord stored = runRecordFromJobToBeExecuted(null);
+
+    assertNull(stored.getTriggeredBy());
+  }
+
+  private AppRunRecord runRecordFromJobToBeExecuted(String triggeredBy) {
+    App jobApp = new App().withId(UUID.randomUUID()).withName(APP_NAME);
+
+    JobDataMap dataMap = new JobDataMap();
+    dataMap.put(TRIGGER_TYPE_KEY, "OnDemandJob");
+    dataMap.put(AppScheduler.APP_NAME, APP_NAME);
+    if (triggeredBy != null) {
+      dataMap.put(AppScheduler.TRIGGERED_BY_KEY, triggeredBy);
+    }
+
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobDetail.getJobDataMap()).thenReturn(dataMap);
+    when(jobExecutionContext.getMergedJobDataMap()).thenReturn(new JobDataMap());
+    when(jobExecutionContext.isRecovering()).thenReturn(false);
+    when(repository.getByName(any(), eq(APP_NAME), any(), eq(Include.NON_DELETED), eq(true)))
+        .thenReturn(jobApp);
+
+    try (MockedStatic<ServerIdentityResolver> sirMock = mockStatic(ServerIdentityResolver.class);
+        MockedStatic<AppRunLogAppender> appenderMock = mockStatic(AppRunLogAppender.class);
+        MockedStatic<ApplicationHandler> ahMock = mockStatic(ApplicationHandler.class)) {
+      sirMock.when(ServerIdentityResolver::getInstance).thenReturn(serverIdentityResolver);
+      when(serverIdentityResolver.getServerId()).thenReturn("test-server-1");
+      ahMock.when(ApplicationHandler::getInstance).thenReturn(applicationHandler);
+
+      listener.jobToBeExecuted(jobExecutionContext);
+    }
+
+    ArgumentCaptor<AppRunRecord> captor = ArgumentCaptor.forClass(AppRunRecord.class);
+    verify(repository).addAppStatus(captor.capture());
+    return captor.getValue();
+  }
+
+  @Test
   void jobToBeExecuted_callsCleanupOnException() {
     JobDataMap dataMap = new JobDataMap();
-    dataMap.put("triggerType", "OnDemandJob");
+    dataMap.put(TRIGGER_TYPE_KEY, "OnDemandJob");
     dataMap.put(AppScheduler.APP_NAME, "NonExistentApp");
 
     when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
@@ -287,6 +350,13 @@ class OmAppJobListenerTest {
         JsonUtils.readOrConvertValue(dataMap.get("AppScheduleRun"), AppRunRecord.class);
     assert updatedRecord.getStatus() == AppRunRecord.Status.FAILED;
     assert updatedRecord.getFailureContext() != null;
+
+    IndexingError failure = updatedRecord.getFailureContext().getFailure();
+    assert failure != null;
+    assert IndexingError.ErrorSource.JOB.equals(failure.getErrorSource());
+    assert "Something went wrong".equals(failure.getMessage());
+    assert failure.getStackTrace() != null
+        && failure.getStackTrace().contains("Something went wrong");
   }
 
   @Test
@@ -329,5 +399,55 @@ class OmAppJobListenerTest {
     try (MockedStatic<AppRunLogAppender> appenderMock = mockStatic(AppRunLogAppender.class)) {
       assertDoesNotThrow(() -> listener.jobExecutionVetoed(jobExecutionContext));
     }
+  }
+
+  /**
+   * Quartz worker threads never pass through the JAX-RS response filter, so an App left in the
+   * request-scoped cache by an earlier job is served to the next one — the app then runs with a
+   * frozen appConfiguration for the life of the process. Both ends of the job bracket must drop it.
+   */
+  @Test
+  void jobToBeExecuted_dropsAnAppLeftInTheRequestScopedCacheByAnEarlierJob() {
+    App stale = new App().withId(UUID.randomUUID()).withName(APP_NAME);
+    cacheApp(stale);
+    assertNotNull(cachedApp(), "precondition: the stale App is in the request cache");
+
+    JobDataMap dataMap = new JobDataMap();
+    dataMap.put(AppScheduler.APP_NAME, APP_NAME);
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobDetail.getJobDataMap()).thenReturn(dataMap);
+    when(repository.getByName(any(), eq(APP_NAME), any(), eq(Include.NON_DELETED), eq(true)))
+        .thenThrow(new RuntimeException("not reached"));
+
+    try (MockedStatic<AppRunLogAppender> ignored = mockStatic(AppRunLogAppender.class)) {
+      listener.jobToBeExecuted(jobExecutionContext);
+    }
+
+    assertNull(cachedApp(), "the job must start from the database, not a previous job's cache");
+  }
+
+  @Test
+  void jobWasExecuted_leavesTheWorkerThreadClean() {
+    JobDataMap dataMap = new JobDataMap();
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobDetail.getJobDataMap()).thenReturn(dataMap);
+
+    cacheApp(new App().withId(UUID.randomUUID()).withName(APP_NAME));
+
+    try (MockedStatic<AppRunLogAppender> ignored = mockStatic(AppRunLogAppender.class)) {
+      assertDoesNotThrow(() -> listener.jobWasExecuted(jobExecutionContext, null));
+    }
+
+    assertNull(cachedApp(), "whatever this job cached must not leak into the next one");
+  }
+
+  private static void cacheApp(App app) {
+    RequestEntityCache.putByName(
+        Entity.APPLICATION, app.getName(), EMPTY_FIELDS, RELATIONS, true, app, App.class);
+  }
+
+  private static App cachedApp() {
+    return RequestEntityCache.getByName(
+        Entity.APPLICATION, APP_NAME, EMPTY_FIELDS, RELATIONS, true, App.class);
   }
 }

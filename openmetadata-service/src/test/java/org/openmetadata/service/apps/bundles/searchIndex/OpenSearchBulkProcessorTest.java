@@ -270,6 +270,7 @@ class OpenSearchBulkProcessorTest {
     AtomicLong totalSubmitted = new AtomicLong();
     AtomicLong totalSuccess = new AtomicLong();
     AtomicLong totalFailed = new AtomicLong();
+    AtomicLong totalWarnings = new AtomicLong();
     AtomicInteger statsUpdates = new AtomicInteger();
 
     MockedConstruction<OpenSearchAsyncClient> asyncConstruction =
@@ -287,6 +288,7 @@ class OpenSearchBulkProcessorTest {
             totalSubmitted,
             totalSuccess,
             totalFailed,
+            totalWarnings,
             statsUpdates::incrementAndGet,
             circuitBreaker);
 

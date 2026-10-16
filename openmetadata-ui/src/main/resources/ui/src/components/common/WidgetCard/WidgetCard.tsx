@@ -1,0 +1,139 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import {
+  ButtonUtility,
+  Card,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ChevronUp, Info } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { WidgetCardProps } from './WidgetCard.interface';
+
+const WidgetCard = ({
+  children,
+  title,
+  titleIcon,
+  headerExtra,
+  headerActions,
+  headerContent,
+  defaultExpanded = true,
+  onExpandStateChange,
+  isExpandDisabled = false,
+  forceExpand = false,
+  helperText,
+  dataTestId,
+  className,
+  contentClassName,
+  footer,
+}: WidgetCardProps) => {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(
+    isExpandDisabled ? false : defaultExpanded
+  );
+
+  const handleExpandClick = useCallback(() => {
+    const next = !isExpanded;
+    setIsExpanded(next);
+    onExpandStateChange?.(next);
+  }, [isExpanded, onExpandStateChange]);
+
+  useEffect(() => {
+    setIsExpanded(isExpandDisabled ? false : defaultExpanded);
+  }, [defaultExpanded, isExpandDisabled]);
+
+  const renderBody = () => (
+    <>
+      {children && (
+        <Card.Content
+          className={classNames('tw:pb-4 tw:pt-0', contentClassName)}>
+          {children}
+        </Card.Content>
+      )}
+      {footer && <Card.Footer>{footer}</Card.Footer>}
+    </>
+  );
+
+  useEffect(() => {
+    if (forceExpand) {
+      setIsExpanded(true);
+    }
+  }, [forceExpand]);
+
+  return (
+    <Card
+      className={classNames('tw:w-full', className)}
+      data-testid={dataTestId}
+      size="sm">
+      {headerContent ? (
+        // py-2 keeps the header height of the title row (p-4 + 20px line).
+        <div className="tw:flex tw:items-center tw:px-4 tw:py-2">
+          {headerContent}
+        </div>
+      ) : (
+        <Card.Header
+          className="tw:border-0 tw:p-4"
+          extra={
+            <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
+              {headerActions}
+              {!isExpandDisabled && (
+                <ButtonUtility
+                  className={classNames(
+                    'tw:p-0.5 tw:transition-transform tw:duration-200 tw:mt-0.5',
+                    { 'tw:rotate-180': !isExpanded }
+                  )}
+                  color="tertiary"
+                  data-testid="expand-collapse-icon"
+                  icon={<ChevronUp size={16} />}
+                  tooltip={t(isExpanded ? 'label.collapse' : 'label.expand')}
+                  onClick={handleExpandClick}
+                />
+              )}
+            </div>
+          }
+          title={
+            <div className="tw:flex tw:items-center tw:gap-2">
+              {titleIcon}
+              {title && (
+                <Typography
+                  as="span"
+                  className="tw:whitespace-nowrap tw:text-quaternary"
+                  size="text-sm"
+                  weight="semibold">
+                  {title}
+                </Typography>
+              )}
+              {helperText && (
+                <Tooltip title={helperText}>
+                  <ButtonUtility
+                    aria-label={t('label.info')}
+                    className="tw:p-1"
+                    color="tertiary"
+                    icon={Info}
+                    size="xs"
+                  />
+                </Tooltip>
+              )}
+              {headerExtra}
+            </div>
+          }
+        />
+      )}
+      {isExpanded && renderBody()}
+    </Card>
+  );
+};
+
+export default WidgetCard;

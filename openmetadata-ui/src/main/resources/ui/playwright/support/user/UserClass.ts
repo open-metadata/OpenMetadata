@@ -15,8 +15,20 @@ import { Operation } from 'fast-json-patch';
 import {
   DATA_CONSUMER_RULES,
   DATA_STEWARD_RULES,
+  SYSTEM_POLICY_NAMES,
 } from '../../constant/permission';
-import { generateRandomUsername, uuid } from '../../utils/common';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
+import { signInViaApi } from '../../utils/apiSignIn';
+import {
+  disableEtagConditionalReads,
+  generateRandomUsername,
+  suppressWelcomeScreen,
+  uuid,
+} from '../../utils/common';
 import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
@@ -33,6 +45,7 @@ export class UserClass {
   data: UserData;
 
   responseData: UserResponseDataType = {} as UserResponseDataType;
+  private isExistingUser = false;
   isUserDataSteward = false;
   private readonly dataStewardPolicy = new PolicyClass();
   private readonly dataStewardRoles = new RolesClass();
@@ -49,20 +62,44 @@ export class UserClass {
       '/api/v1/roles/name/DataConsumer'
     );
 
-    const dataConsumerRole = await dataConsumerRoleResponse.json();
+    const dataConsumerRole = await okJson(
+      dataConsumerRoleResponse,
+      'UserClass.create'
+    );
 
     const response = await apiContext.post('/api/v1/users/signup', {
       data: this.data,
     });
 
-    if (!response.ok()) {
-      throw new Error(
-        `UserClass.create() failed with status ${response.status()}: ${await response.text()}`
-      );
-    }
+    if (response.ok()) {
+      this.responseData = await response.json();
+    } else {
+      const body = await response.text();
 
-    this.responseData = await response.json();
-    if (assignRole) {
+      if (
+        response.status() === 400 &&
+        body.includes('User with Email Already Exists')
+      ) {
+        const userName = this.data.email.split('@')[0];
+        const existing = await apiContext.get(
+          `/api/v1/users/name/${userName}?fields=id,name,email,displayName,isAdmin,roles`
+        );
+
+        if (!existing.ok()) {
+          throw new Error(
+            `UserClass.create() fallback fetch failed with status ${existing.status()}: ${await existing.text()}`
+          );
+        }
+
+        this.responseData = await existing.json();
+        this.isExistingUser = true;
+      } else {
+        throw new Error(
+          `UserClass.create() failed with status ${response.status()}: ${body}`
+        );
+      }
+    }
+    if (assignRole && !this.isExistingUser) {
       if (this.isAdmin) {
         const { entity } = await this.patch({
           apiContext,
@@ -106,20 +143,19 @@ export class UserClass {
     apiContext: APIRequestContext;
     patchData: Operation[];
   }) {
-    const response = await apiContext.patch(
-      `/api/v1/users/${this.responseData.id}`,
-      {
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/users/${this.responseData.id}`, {
         data: patchData,
         headers: {
           'Content-Type': 'application/json-patch+json',
         },
-      }
+      })
     );
 
-    this.responseData = await response.json();
+    this.responseData = await okJson(response, 'UserClass.patch');
 
     return {
-      entity: response.body,
+      entity: this.responseData,
     };
   }
 
@@ -167,6 +203,7 @@ export class UserClass {
     await dataConsumerPolicy.create(apiContext, DATA_CONSUMER_RULES);
     await dataConsumerRoles.create(apiContext, [
       dataConsumerPolicy.responseData.name,
+      SYSTEM_POLICY_NAMES.taskAuthorPolicy,
     ]);
     const dataConsumerTeam = new TeamClass({
       name: `PW%data_consumer_team-${id}`,
@@ -208,7 +245,8 @@ export class UserClass {
       await this.dataStewardTeam?.delete(apiContext);
     }
 
-    const response = await apiContext.delete(
+    const response = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/users/${this.responseData.id}?recursive=false&hardDelete=${hardDelete}`
     );
 
@@ -226,31 +264,65 @@ export class UserClass {
   async login(
     page: Page,
     userName = this.data.email,
-    password = this.data.password
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean } = {}
   ) {
-    await page.goto('/');
+    const { suppressWelcomeScreen: shouldSuppressWelcomeScreen = true } =
+      options;
+
+    // Seed `loggedInUsers` before the first navigation so the landing-page
+    // welcome banner never renders for this session. Prefer the authoritative
+    // entity name from create(); fall back to the login email's local-part
+    // (the server-assigned username) for a pure login such as admin. Tests that
+    // exercise the welcome banner itself (e.g. Tour) opt out with
+    // `suppressWelcomeScreen: false`.
+    if (shouldSuppressWelcomeScreen) {
+      await suppressWelcomeScreen(page, this.responseData?.name ?? userName);
+    }
+
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     try {
-      await page.waitForURL('**/signin', { timeout: 5000 });
+      await page.waitForURL('**/signin', {
+        waitUntil: 'domcontentloaded',
+        timeout: 5000,
+      });
     } catch {
       await page.context().clearCookies();
-      await page.goto('/signin');
-      await page.waitForURL('**/signin');
+      await page.goto('/signin', { waitUntil: 'domcontentloaded' });
+      await page.waitForURL('**/signin', { waitUntil: 'domcontentloaded' });
     }
     await page.waitForLoadState('domcontentloaded');
-    const emailInput = page.locator('input[id="email"]');
+    const emailInput = page.locator('input[name="email"]');
     await emailInput.waitFor({ state: 'visible' });
     await emailInput.fill(userName);
-    await page.locator('#email').press('Tab');
-    await page.fill('input[id="password"]', password);
+    await emailInput.press('Tab');
+    await page.fill('input[name="password"]', password);
     const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
     await page
       .waitForURL((url) => !url.pathname.includes('/signin'), {
+        waitUntil: 'domcontentloaded',
         timeout: 60000,
       })
       .catch(() => undefined);
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+
+    await this.completeSignIn(page);
+  }
+
+  /**
+   * Everything a signed-in page owes its caller once the session exists.
+   *
+   * Shared by {@link login} and {@link signIn} so the two differ only in how
+   * the session is established. Call sites depend on all three: conditional
+   * reads off (so a test sees fresh entity state rather than a 304), the
+   * getting-started dialog dismissed, and the sidebar collapsed — the last one
+   * changes page geometry, so a sign-in path that skipped it would move every
+   * locator in the spec.
+   */
+  protected async completeSignIn(page: Page) {
+    await disableEtagConditionalReads(page);
 
     const modal = await page
       .getByRole('dialog')
@@ -273,17 +345,50 @@ export class UserClass {
       .catch(() => false);
 
     if (hasOpenClass) {
-      await page.getByTestId('sidebar-toggle').click();
+      await page.getByTestId('sidebar-toggle').dispatchEvent('click');
     }
   }
 
+  /**
+   * The same signed-in page as {@link login}, established through the API
+   * instead of the sign-in form.
+   *
+   * Prefer this everywhere except a spec that is testing the form itself.
+   * `login()` performs nine UI interactions before the test has done anything;
+   * this performs one POST. Everything after the session exists is identical —
+   * both funnel through {@link completeSignIn} — so swapping a call site over
+   * changes how the page got signed in and nothing else.
+   *
+   * Returns the access token, so callers that also need an API context can
+   * build one without a second round trip.
+   */
+  async signIn(
+    page: Page,
+    userName = this.data.email,
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean; landingPath?: string } = {}
+  ): Promise<string> {
+    const token = await signInViaApi(page, {
+      email: userName,
+      password,
+      userName: this.responseData?.name ?? userName,
+      suppressWelcome: options.suppressWelcomeScreen ?? true,
+      landingPath: options.landingPath,
+    });
+
+    await this.completeSignIn(page);
+
+    return token;
+  }
+
   async logout(page: Page) {
-    await page.getByRole('menuitem', { name: 'Logout' }).click();
+    await page.getByTestId('app-bar-item-logout').click();
 
     // Wait for logout confirmation modal specifically
     await page
-      .locator('.ant-modal-body')
+      .getByRole('dialog')
       .filter({ hasText: 'Are you sure you want' })
+
       .waitFor({ state: 'visible' });
 
     const waitLogout = page.waitForResponse(
@@ -291,7 +396,9 @@ export class UserClass {
         response.url().includes('/api/v1/users/logout') &&
         response.request().method() === 'POST'
     );
-    const waitSigninNavigation = page.waitForURL('**/signin');
+    const waitSigninNavigation = page.waitForURL('**/signin', {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Block analytics collect calls to prevent 401 errors that cause
     // page context to close in fast environments (AUT)

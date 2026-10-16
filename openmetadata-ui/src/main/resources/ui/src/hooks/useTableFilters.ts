@@ -12,7 +12,7 @@
  */
 import { isArray, isEmpty, isNil, isString } from 'lodash';
 import qs, { ParsedQs } from 'qs';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocationSearch } from './LocationSearch/useLocationSearch';
 import useCustomLocation from './useCustomLocation/useCustomLocation';
@@ -56,48 +56,67 @@ export const useTableFilters = <T extends FilterState>(initialFilters: T) => {
   };
 
   // Update URL with the filters applied for the table as query parameters.
-  const updateUrlWithFilters = (updatedFilters: FilterState) => {
-    const currentQueryParams = qs.parse(globalThis.location.search, {
-      ignoreQueryPrefix: true,
-    });
+  // Memoized (deps: navigate) so the returned setFilters keeps a stable
+  // identity across renders — consumers such as usePaging capture it in the
+  // dependency arrays of memoized callbacks, and an unstable identity would
+  // recreate those callbacks every render (silently cancelling debounced work).
+  const updateUrlWithFilters = useCallback(
+    (updatedFilters: FilterState) => {
+      const currentQueryParams = qs.parse(globalThis.location.search, {
+        ignoreQueryPrefix: true,
+      });
 
-    // Merge the existing query params with the updated filters
-    const mergedQueryParams = {
-      ...currentQueryParams,
-      ...updatedFilters,
-    };
+      // Merge the existing query params with the updated filters
+      const mergedQueryParams = {
+        ...currentQueryParams,
+        ...updatedFilters,
+      };
 
-    for (const key of Object.keys(mergedQueryParams)) {
-      const value = mergedQueryParams[key];
+      for (const key of Object.keys(mergedQueryParams)) {
+        const value = mergedQueryParams[key];
 
-      if (isNil(value) || (isArray(value) && isEmpty(value))) {
-        delete mergedQueryParams[key];
+        if (isNil(value) || (isArray(value) && isEmpty(value))) {
+          delete mergedQueryParams[key];
+        }
+        // Remove the array to string conversion to preserve array format
+        // The qs.stringify function will handle arrays properly
       }
-      // Remove the array to string conversion to preserve array format
-      // The qs.stringify function will handle arrays properly
-    }
-    navigate(
-      {
-        search: qs.stringify(mergedQueryParams, {
-          addQueryPrefix: true,
-          arrayFormat: 'brackets', // This will format arrays as key[0]=value&key[1]=value
-        }),
-      },
-      {
-        replace: true,
-      }
-    );
-  };
+      navigate(
+        {
+          // Preserve the current hash — omitting it makes react-router drop the
+          // fragment, which wipes hash-driven state (e.g. the `#members/...`
+          // tab that keeps the personal-space overlay open) on every table
+          // filter/search/page change.
+          hash: globalThis.location.hash,
+          search: qs.stringify(mergedQueryParams, {
+            addQueryPrefix: true,
+            arrayFormat: 'brackets', // This will format arrays as key[0]=value&key[1]=value
+          }),
+        },
+        {
+          replace: true,
+        }
+      );
+    },
+    [navigate]
+  );
 
   const filters = useMemo(
     () => parseFiltersFromUrl(),
+    // parseFiltersFromUrl is pure over location.search (via searchQuery) and
+    // initialFilters — the listed deps; including the function itself would
+    // recompute every render with no behavioural change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [location.search, initialFilters]
   );
 
   // Update multiple filters at a time
-  const setFilters = (newFilters: FilterState) => {
-    updateUrlWithFilters(newFilters);
-  };
+  const setFilters = useCallback(
+    (newFilters: FilterState) => {
+      updateUrlWithFilters(newFilters);
+    },
+    [updateUrlWithFilters]
+  );
 
   return { filters, setFilters };
 };

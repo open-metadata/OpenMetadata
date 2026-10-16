@@ -95,7 +95,7 @@ public final class ContextFileUploadSupport {
     if (sanitized.length() > 180) {
       sanitized = sanitized.substring(0, 180);
     }
-    return sanitized + "_" + UUID.randomUUID().toString().substring(0, 8);
+    return sanitized;
   }
 
   static ContextFileType detectFileType(String contentType) {

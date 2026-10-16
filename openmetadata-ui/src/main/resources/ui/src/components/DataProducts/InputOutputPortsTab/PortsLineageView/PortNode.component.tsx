@@ -14,21 +14,22 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
 import '../../../Entity/EntityLineage/custom-node.less';
+import { LINEAGE_NODE_DARK_CLASS } from '../../../Entity/EntityLineage/CustomNode.utils';
 import LineageNodeLabelV1 from '../../../Entity/EntityLineage/LineageNodeLabelV1';
 import { PortNodeProps } from './PortsLineageView.types';
 
 const PortNode = memo(({ data }: PortNodeProps) => {
-  const { port, isInputPort } = data;
+  const { port, isInputPort, handleId } = data;
   const { entityType: _, ...portWithoutEntityType } = port;
 
   return (
     <div
-      className="lineage-node"
+      className={`lineage-node ${LINEAGE_NODE_DARK_CLASS}`}
       data-testid={`port-node-${port.fullyQualifiedName}`}>
       {isInputPort && (
         <Handle
           className="lineage-node-handle"
-          id={port.id}
+          id={handleId}
           position={Position.Right}
           type="source"
         />
@@ -36,7 +37,7 @@ const PortNode = memo(({ data }: PortNodeProps) => {
       {!isInputPort && (
         <Handle
           className="lineage-node-handle"
-          id={port.id}
+          id={handleId}
           position={Position.Left}
           type="target"
         />

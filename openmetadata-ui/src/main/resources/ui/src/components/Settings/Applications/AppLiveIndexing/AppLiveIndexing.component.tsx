@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+
+import {
+  Box,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +32,8 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import Table from '../../../common/Table/Table';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
 import { AppLiveIndexingProps } from './AppLiveIndexing.interface';
 
 const STATUS_TYPE_MAP: Record<string, StatusType> = {
@@ -41,9 +47,10 @@ const STATUS_TYPE_MAP: Record<string, StatusType> = {
 
 const PAGE_SIZE = 15;
 
-const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
+const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
   const { t } = useTranslation();
-  const { fqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const fqn = appData?.fullyQualifiedName ?? routeFqn;
   const [isLoading, setIsLoading] = useState(true);
   const [records, setRecords] = useState<SearchIndexRetryRecord[]>([]);
 
@@ -75,7 +82,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         setIsLoading(false);
       }
     },
-    [fqn, pageSize]
+    [fqn, handlePagingChange, pageSize]
   );
 
   const handlePageChangeHandler = useCallback(
@@ -83,14 +90,15 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       handlePageChange(page);
       fetchRetryQueue((page - 1) * pageSize);
     },
-    [fetchRetryQueue, pageSize]
+    [fetchRetryQueue, handlePageChange, pageSize]
   );
 
+  // Also refetches after a page-size change, since fetchRetryQueue depends on it.
   useEffect(() => {
     if (fqn) {
       fetchRetryQueue();
     }
-  }, [fqn]);
+  }, [fetchRetryQueue, fqn]);
 
   const columns: ColumnsType<SearchIndexRetryRecord> = useMemo(
     () => [
@@ -100,7 +108,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'entityType',
         width: 140,
         render: (entityType: string) => (
-          <Typography.Text>{entityType || NO_DATA_PLACEHOLDER}</Typography.Text>
+          <Typography className="tw:text-primary">
+            {entityType || NO_DATA_PLACEHOLDER}
+          </Typography>
         ),
       },
       {
@@ -109,11 +119,12 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'entityFqn',
         ellipsis: true,
         render: (entityFqn: string) => (
-          <Typography.Text
+          <Typography
+            className="tw:text-primary"
             ellipsis={{ tooltip: entityFqn }}
             style={{ maxWidth: 300 }}>
             {entityFqn || NO_DATA_PLACEHOLDER}
-          </Typography.Text>
+          </Typography>
         ),
       },
       {
@@ -134,7 +145,9 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         dataIndex: 'retryCount',
         key: 'retryCount',
         width: 120,
-        render: (count: number) => <Typography.Text>{count}</Typography.Text>,
+        render: (count: number) => (
+          <Typography className="tw:text-primary">{count}</Typography>
+        ),
       },
       {
         title: t('label.failure-reason'),
@@ -142,11 +155,12 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         key: 'failureReason',
         ellipsis: true,
         render: (reason: string) => (
-          <Typography.Text
+          <Typography
+            className="tw:text-primary"
             ellipsis={{ tooltip: reason }}
             style={{ maxWidth: 300 }}>
             {reason || NO_DATA_PLACEHOLDER}
-          </Typography.Text>
+          </Typography>
         ),
       },
     ],
@@ -162,11 +176,12 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
       loading={isLoading}
       locale={{
         emptyText: (
-          <div className="tw:py-8 tw:text-center">
-            <Typography.Text className="tw:text-text-secondary">
-              {t('message.no-retry-queue-records')}
-            </Typography.Text>
-          </div>
+          <Box className="tw:relative tw:min-h-60">
+            <EmptyPlaceholder
+              icon={CheckCircle}
+              title={t('message.no-retry-queue-records')}
+            />
+          </Box>
         ),
       }}
       pageSize={pageSize}
@@ -178,10 +193,7 @@ const AppLiveIndexing = ({ appData: _appData }: AppLiveIndexingProps) => {
         pageSizeOptions: ['10', '15', '25', '50'],
         onChange: (page) =>
           handlePageChangeHandler({ currentPage: page, cursorType: '' }),
-        onShowSizeChange: (_, size) => {
-          handlePageSizeChange(size);
-          fetchRetryQueue(0);
-        },
+        onShowSizeChange: (_, size) => handlePageSizeChange(size),
       }}
       paginationVisible={records.length > 0 && paging.total > pageSize}
       rowKey={(record) => `${record.entityId}-${record.entityFqn}`}

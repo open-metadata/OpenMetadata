@@ -17,16 +17,12 @@ import concurrent.futures
 import time
 import traceback
 from abc import ABC
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import Any
 
-import confluent_kafka
+import confluent_kafka.admin
+from cachetools import LRUCache
 from confluent_kafka import KafkaError, KafkaException
-from confluent_kafka.admin import ConfigResource
-from confluent_kafka.error import (
-    ConsumeError,
-    KeyDeserializationError,
-    ValueDeserializationError,
-)
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka.schema_registry.schema_registry_client import Schema
 
@@ -58,6 +54,19 @@ from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 logger = ingestion_logger()
 
+# Confluent wire format: a zero magic byte followed by a 4-byte schema id.
+CONFLUENT_MAGIC_BYTE = 0
+CONFLUENT_HEADER_LENGTH = 5
+
+AVRO_DESERIALIZER_CACHE_SIZE = 100
+
+
+def strip_confluent_framing(record: bytes) -> bytes:
+    """Drop the Confluent wire-format header from a payload that carries one."""
+    if len(record) >= CONFLUENT_HEADER_LENGTH and record[0] == CONFLUENT_MAGIC_BYTE:
+        return record[CONFLUENT_HEADER_LENGTH:]
+    return record
+
 
 def on_partitions_assignment_to_consumer(consumer, partitions):
     # get offset tuple from the first partition
@@ -80,13 +89,17 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.generate_sample_data = self.config.sourceConfig.config.generateSampleData
+        source_config = self.config.sourceConfig.config
+        self.generate_sample_data = getattr(source_config, "storeSampleData", None) or getattr(
+            source_config, "generateSampleData", False
+        )  # pyright: ignore[reportAttributeAccessIssue]
         if self.generate_sample_data and self._is_sample_data_storing_globally_disabled():
             self.generate_sample_data = False
         self.service_connection = self.config.serviceConnection.root.config
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self.context.processed_schemas = {}
+        self._avro_deserializers = LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE)
         if self.generate_sample_data:
             self.consumer_client = self.connection.consumer_client
 
@@ -103,7 +116,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
     def yield_topic(self, topic_details: BrokerTopicDetails) -> Iterable[Either[CreateTopicRequest]]:
         try:
-            schema_type_map = {key.lower(): value.value for key, value in SchemaType.__members__.items()}
+            schema_type_map = {key.lower(): value for key, value in SchemaType.__members__.items()}
             logger.info(f"Fetching topic schema {topic_details.topic_name}")
             topic_schema = self._parse_topic_metadata(topic_details.topic_name)
             logger.info(f"Fetching topic config {topic_details.topic_name}")
@@ -113,11 +126,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 partitions=len(topic_details.topic_metadata.partitions),
                 replicationFactor=len(topic_details.topic_metadata.partitions.get(0).replicas),
             )
-            topic_config_resource = self.admin_client.describe_configs(
-                [ConfigResource(confluent_kafka.admin.RESOURCE_TOPIC, topic_details.topic_name)]
+            # confluent_kafka.admin ships py.typed but declares no __all__, so every name
+            # it exposes reads as a private import to the type checker.
+            config_resource = confluent_kafka.admin.ConfigResource(  # pyright: ignore[reportPrivateImportUsage]
+                confluent_kafka.admin.RESOURCE_TOPIC,  # pyright: ignore[reportPrivateImportUsage]
+                topic_details.topic_name,
             )
+            topic_config_resource = self.admin_client.describe_configs([config_resource])
             self.add_properties_to_topic_from_resource(topic, topic_config_resource)
-            if topic_schema is not None:
+            if topic_schema is not None and topic_schema.schema_type is not None:
                 schema_type = topic_schema.schema_type.lower()
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
@@ -133,7 +150,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
-                    schemaType=schema_type_map.get(topic_schema.schema_type.lower(), SchemaType.Other.value),
+                    schemaType=schema_type_map.get(schema_type, SchemaType.Other),
                     schemaFields=schema_fields if schema_fields is not None else [],
                 )
             else:
@@ -179,11 +196,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     topic_config[key] = conf_response.value
                 topic.topicConfig = topic_config
 
-        except (KafkaException, KafkaError) as exc:
+        # KafkaError is an error-detail object, not a BaseException subclass, so it
+        # cannot appear in an except clause -- Python raises TypeError on match.
+        except KafkaException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
-    def _get_schema_text_with_references(self, schema) -> Optional[str]:  # noqa: UP045
+    def _get_schema_text_with_references(self, schema) -> str | None:
         """
         Returns the schema text with references resolved using recursive calls
         """
@@ -204,7 +223,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.error(f"Failed to get schema with references: {exc}")
         return None
 
-    def _parse_topic_metadata(self, topic_name: str) -> Optional[Schema]:  # noqa: UP045
+    def _parse_topic_metadata(self, topic_name: str) -> Schema | None:
 
         # To find topic in artifact registry, dafault is "<topic_name>-value"
         # But suffix can be overridden using schemaRegistryTopicSuffixName
@@ -244,7 +263,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 if self.consumer_client:
                     self.consumer_client.subscribe([topic_name], on_assign=on_partitions_assignment_to_consumer)
                     logger.info(f"Broker consumer polling for sample messages in topic {topic_name}")
-                    # DeserializingConsumer does not implement consume(), use poll() in a loop instead.
                     messages = []
                     n_poll = 10
                     total_timeout = 10
@@ -256,17 +274,16 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                             if remaining <= 0:
                                 break
                             msg = self.consumer_client.poll(timeout=remaining)
-                        except ConsumeError as exc:
+                        except KafkaException as exc:
                             logger.warning(f"Consumer error polling topic {topic_name}: {exc}")
-                            continue
-                        except (
-                            KeyDeserializationError,
-                            ValueDeserializationError,
-                        ) as exc:
-                            logger.warning(f"Failed to deserialize message from topic {topic_name}: {exc}")
                             continue
                         if msg is None:
                             break
+                        if msg.error():
+                            # End of a partition is not a failure; other partitions may still have data.
+                            if msg.error().code() != KafkaError._PARTITION_EOF:
+                                logger.warning(f"Consumer error polling topic {topic_name}: {msg.error()}")
+                            continue
                         messages.append(msg)
             except Exception as exc:
                 yield Either(
@@ -299,15 +316,29 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             )
 
-    def decode_message(self, record: bytes, schema: str, schema_type: SchemaType):
+    def decode_message(self, record: Any, schema: str, schema_type: SchemaType):
+        if not isinstance(record, (bytes, bytearray, memoryview)):
+            return str(record)
         if schema_type == SchemaType.Avro:
-            deserializer = AvroDeserializer(schema_str=schema, schema_registry_client=self.schema_registry_client)
-            return str(deserializer(record, None))
+            # One deserializer per schema: this runs once per sampled message.
+            deserializer = self._avro_deserializers.get(schema)
+            if deserializer is None:
+                # confluent_kafka.schema_registry.avro stacks `import *` from _async, _sync
+                # and common, so a type checker binds AvroDeserializer to the wrong class;
+                # at runtime _sync wins and these keywords are correct.
+                deserializer = AvroDeserializer(
+                    schema_str=schema,  # pyright: ignore[reportCallIssue]
+                    schema_registry_client=self.schema_registry_client,  # pyright: ignore[reportCallIssue]
+                )
+                self._avro_deserializers[schema] = deserializer
+            return str(deserializer(bytes(record), None))
         if schema_type == SchemaType.Protobuf:
             logger.debug("Protobuf deserializing sample data is not supported")
             return ""
-        return str(record.decode("utf-8"))
+        # Strict: a binary payload we cannot type (Avro with no registry configured)
+        # must be skipped by the caller, not stored as mojibake.
+        return strip_confluent_framing(bytes(record)).decode("utf-8")
 
     def close(self):
-        if self.generate_sample_data and self.consumer_client:
-            self.consumer_client.close()
+        # The consumer belongs to the connection, which closes it on teardown.
+        super().close()

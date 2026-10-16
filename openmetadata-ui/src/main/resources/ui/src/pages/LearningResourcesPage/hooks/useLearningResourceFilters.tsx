@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@mui/material';
-import { XClose } from '@untitledui/icons';
-import { Space } from 'antd';
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
+import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
 import {
   CATEGORIES,
@@ -158,27 +163,24 @@ export const useLearningResourceFilters = (
 
   const quickFilters = useMemo(
     () => (
-      <Space wrap className="explore-quick-filters-container" size={[8, 0]}>
+      <Box className="explore-quick-filters-container" gap={2} wrap="wrap">
         {FILTER_FIELDS.map((field) => (
-          <SearchDropdown
+          <FilterSelectDropdown
             hideCounts
-            showSelectedCounts
             isSuggestionsLoading={false}
             key={field.key}
             label={translateWithNestedKeys(field.labelKey)}
             options={optionsByKey[field.key] ?? field.options}
             searchKey={field.key}
             selectedKeys={getSelectedKeys(field.key)}
-            triggerButtonSize="middle"
             onChange={handleDropdownChange}
             onGetInitialOptions={handleGetInitialOptions}
             onSearch={handleSearch}
           />
         ))}
-      </Space>
+      </Box>
     ),
     [
-      filterState,
       optionsByKey,
       getSelectedKeys,
       handleDropdownChange,
@@ -245,30 +247,44 @@ export const useLearningResourceFilters = (
     }
 
     return (
-      <Box className="filter-selection-container">
-        <Box className="filter-selection-chips-wrapper">
+      <Box align="center" className="tw:w-full">
+        <Box className="tw:flex-1" gap={2} wrap="wrap">
           {selectedFilters.map((filter) => (
-            <Box className="filter-selection-chip" key={filter.key}>
-              <Box className="filter-selection-chip-content" component="span">
-                <span className="filter-selection-label">{filter.label}: </span>
-                <span className="filter-selection-value" title={filter.value}>
-                  {filter.value}
-                </span>
-              </Box>
+            <Badge
+              className="filter-selection-chip tw:outline-0 tw:gap-1"
+              color="brand"
+              key={filter.key}
+              size="lg"
+              type="color">
               <Box
-                aria-label="Remove filter"
-                className="filter-selection-remove-btn"
-                component="button"
-                onClick={() => handleRemoveFilter(filter.key)}>
-                <XClose size={14} />
+                align="center"
+                data-testid={`filter-chip-${filter.key}`}
+                gap={1}>
+                <Typography className="tw:text-tertiary" weight="medium">
+                  {filter.label}
+                  {': '}
+                </Typography>
+                <Box className="tw:max-w-80" direction="col">
+                  <Typography
+                    ellipsis
+                    as="p"
+                    className="tw:text-brand-secondary"
+                    title={filter.value}
+                    weight="medium">
+                    {filter.value}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
+              <ButtonUtility
+                aria-label={t('label.remove')}
+                color="tertiary"
+                icon={<XClose size={14} />}
+                onClick={() => handleRemoveFilter(filter.key)}
+              />
+            </Badge>
           ))}
         </Box>
-        <Button
-          className="filter-selection-clear-all"
-          variant="text"
-          onClick={handleClearAll}>
+        <Button color="link-color" onClick={handleClearAll}>
           {t('label.clear-entity', { entity: t('label.all-lowercase') })}
         </Button>
       </Box>

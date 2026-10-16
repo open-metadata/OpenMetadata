@@ -41,6 +41,22 @@ import org.openmetadata.schema.utils.JsonUtils;
 public class CacheInvalidationPubSub {
   private static final String CHANNEL = "om:cache:invalidate";
 
+  /**
+   * Non-entity invalidation type. Published when a persona's materialized AI context is rebuilt
+   * ({@code ?refresh=true}), which mutates no entity — peers must drop their local copy of the
+   * document without the message being treated as an entity write (no L1 epoch bump, no entity
+   * cache eviction). Rides the same channel so no second subscriber is needed, exactly like the
+   * {@code session}/{@code revoke} signal handled in {@code CacheBundle}.
+   */
+  public static final String TYPE_PERSONA_CONTEXT = "personaContext";
+
+  /**
+   * Non-entity signal: a setting was written, with its name in {@code fqn}. Peers check the stored
+   * settings right away instead of at their next poll. The database stays the source of truth, so
+   * a lost message only delays the change.
+   */
+  public static final String TYPE_SETTINGS = "settings";
+
   private final CacheConfig.Redis redisConfig;
   @Getter private final String instanceId;
   private final AtomicBoolean running = new AtomicBoolean(false);

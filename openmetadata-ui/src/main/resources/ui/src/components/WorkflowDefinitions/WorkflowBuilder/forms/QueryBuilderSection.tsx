@@ -12,7 +12,6 @@
  */
 
 import { Registry } from '@rjsf/utils';
-import { ConfigProvider } from 'antd';
 import { noop } from 'lodash';
 import React, { useEffect, useState } from 'react';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
@@ -20,27 +19,12 @@ import { EntityType } from '../../../../enums/entity.enum';
 import QueryBuilderWidget from '../../../common/Form/JSONSchema/JsonSchemaWidgets/QueryBuilderWidget/QueryBuilderWidget';
 import { SearchOutputType } from '../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 
-const PORTAL_CONTAINER_ID = 'workflow-query-builder-portal';
-
-const getQueryBuilderPortalContainer = (): HTMLElement => {
-  let container = document.getElementById(PORTAL_CONTAINER_ID);
-  if (!container) {
-    container = document.createElement('div');
-    container.id = PORTAL_CONTAINER_ID;
-    container.setAttribute('data-react-aria-top-layer', 'true');
-    container.style.position = 'absolute';
-    container.style.zIndex = '10001';
-    document.body.appendChild(container);
-  }
-
-  return container;
-};
-
 interface QueryBuilderSectionProps {
   entityTypes?: EntityType;
   forceReadOnly?: boolean;
   label?: string;
   outputType?: SearchOutputType;
+  showExploreLink?: boolean;
   value: string;
   onChange: (value: string) => void;
 }
@@ -51,6 +35,7 @@ export const QueryBuilderSection: React.FC<QueryBuilderSectionProps> = ({
   label,
   onChange,
   outputType,
+  showExploreLink = true,
   value,
 }) => {
   const { isViewMode } = useWorkflowModeContext();
@@ -75,26 +60,25 @@ export const QueryBuilderSection: React.FC<QueryBuilderSectionProps> = ({
     <div
       className={readOnly ? 'tw:pointer-events-none' : ''}
       data-testid="query-builder-section">
-      <ConfigProvider getPopupContainer={getQueryBuilderPortalContainer}>
-        <QueryBuilderWidget
-          data-testid="query-builder-widget"
-          id={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
-          label={label || ''}
-          name={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
-          options={{}}
-          registry={emptyRegistry}
-          schema={{
-            entityType: entityTypes,
-            ...(outputType === SearchOutputType.JSONLogic && {
-              outputType,
-            }),
-          }}
-          value={internalValue}
-          onBlur={noop}
-          onChange={handleChange}
-          onFocus={noop}
-        />
-      </ConfigProvider>
+      <QueryBuilderWidget
+        data-testid="query-builder-widget"
+        id={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
+        label={label || ''}
+        name={`query-builder-${label?.toLowerCase().replace(/\s+/g, '-')}`}
+        options={{}}
+        registry={emptyRegistry}
+        schema={{
+          entityType: entityTypes,
+          showExploreLink,
+          ...(outputType === SearchOutputType.JSONLogic && {
+            outputType,
+          }),
+        }}
+        value={internalValue}
+        onBlur={noop}
+        onChange={handleChange}
+        onFocus={noop}
+      />
     </div>
   );
 };

@@ -12,17 +12,17 @@
  */
 @import '../../../styles/variables.less';
 .summary-card {
-  padding: 16px;
+  padding: var(--om-space-16);
   min-width: 200px;
   width: 100%;
   border: @global-border;
-  border-radius: 10px;
-  background: @white;
+  border-radius: var(--om-radius-10);
+  background: var(--tw-color-bg-primary);
   justify-content: space-between;
 
   .summary-card-title {
     color: @text-grey-muted;
-    margin-bottom: 4px;
+    margin-bottom: var(--om-space-4);
   }
 
   .inverse-label {
@@ -31,15 +31,9 @@
   }
 
   .summary-card-description {
-    font-weight: 500;
-    font-size: 18px;
+    font-weight: var(--om-font-weight-medium);
+    font-size: var(--om-font-size-lg);
     margin-bottom: 0;
-  }
-
-  .ant-progress-circle {
-    .ant-progress-text {
-      font-weight: 500;
-    }
   }
 
   &.bg-success {
@@ -53,54 +47,5 @@
   }
   &.bg-primary {
     background-color: @blue-8;
-  }
-
-  .new.ant-progress-circle {
-    .ant-progress-circle-path {
-      stroke: @blue-3 !important;
-    }
-    .ant-progress-text {
-      color: @blue-3;
-    }
-  }
-  .success.ant-progress-circle {
-    .ant-progress-circle-path {
-      stroke: @green-3 !important;
-    }
-    .ant-progress-text {
-      color: @green-3;
-    }
-  }
-  .aborted.ant-progress-circle {
-    .ant-progress-circle-path {
-      stroke: @yellow-2 !important;
-    }
-    .ant-progress-text {
-      color: @yellow-2;
-    }
-  }
-  .failed.ant-progress-circle {
-    .ant-progress-circle-path {
-      stroke: @red-3 !important;
-    }
-    .ant-progress-text {
-      color: @red-3;
-    }
-  }
-  .acknowledged.ant-progress-circle {
-    .ant-progress-circle-path {
-      stroke: @blue-2 !important;
-    }
-    .ant-progress-text {
-      color: @blue-2;
-    }
-  }
-  .assigned.ant-progress-circle {
-    .ant-progress-circle-path {
-      stroke: @purple-3 !important;
-    }
-    .ant-progress-text {
-      color: @purple-3;
-    }
   }
 }

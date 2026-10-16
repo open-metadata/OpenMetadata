@@ -11,37 +11,40 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
+  Box,
+  Button,
+  EmptyPlaceholder,
+  Skeleton,
   Table,
   TableCard,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
-import { Button, Col, Row, Skeleton } from 'antd';
+import {
+  Dataflow03,
+  HelpCircle,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DISABLED, NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import {
-  IngestionServicePermission,
-  ResourceEntity,
-} from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { Table as TableType } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/rule';
 import {
   IngestionPipeline,
-  PipelineStatus,
   StepSummary,
 } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestSuite } from '../../../../generated/tests/testCase';
@@ -52,10 +55,9 @@ import {
   deployIngestionPipelineById,
   enableDisableIngestionPipelineById,
   getIngestionPipelines,
-  getRunHistoryForPipeline,
   triggerIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {
   renderNameField,
@@ -64,14 +66,15 @@ import {
 } from '../../../../utils/IngestionListTableUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getTestSuiteIngestionPath } from '../../../../utils/RouterUtils';
+import { getSkeletonMockData } from '../../../../utils/Skeleton.utils';
 import { getServiceFromTestSuiteFQN } from '../../../../utils/TestSuiteUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import ButtonSkeleton from '../../../common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
-import EntityDeleteModal from '../../../Modals/EntityDeleteModal/EntityDeleteModal';
 import IngestionStatusCount from '../../../Settings/Services/Ingestion/IngestionListTable/IngestionStatusCount/IngestionStatusCount';
 import PipelineActions from '../../../Settings/Services/Ingestion/IngestionListTable/PipelineActions/PipelineActions';
 import { IngestionRecentRuns } from '../../../Settings/Services/Ingestion/IngestionRecentRun/IngestionRecentRuns.component';
@@ -90,6 +93,7 @@ interface SelectedRowDetails {
 interface PipelineTableRow extends IngestionPipeline {
   runId?: string;
   runStatus?: StepSummary;
+  pipelinePermissions?: OperationPermission;
 }
 
 const TestSuitePipelineTab = ({
@@ -114,7 +118,6 @@ const TestSuitePipelineTab = ({
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isIngestionRunsLoading, setIsIngestionRunsLoading] = useState(false);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [testSuitePipelines, setTestSuitePipelines] = useState<
     IngestionPipeline[]
@@ -122,10 +125,8 @@ const TestSuitePipelineTab = ({
   const [pipelineIdToFetchStatus, setPipelineIdToFetchStatus] =
     useState<string>();
   const [ingestionPipelinePermissions, setIngestionPipelinePermissions] =
-    useState<IngestionServicePermission>();
-  const [recentRunStatuses, setRecentRunStatuses] = useState<
-    Record<string, PipelineStatus[]>
-  >({});
+    useState<Map<string, OperationPermission>>();
+  const permissionFetchId = useRef(0);
   const [deleteSelection, setDeleteSelection] = useState<SelectedRowDetails>({
     id: '',
     name: '',
@@ -177,13 +178,13 @@ const TestSuitePipelineTab = ({
 
   const fetchIngestionPipelineExtraDetails = useCallback(async () => {
     if (!testSuitePipelines.length) {
-      setRecentRunStatuses({});
-      setIngestionPipelinePermissions(undefined);
+      setIngestionPipelinePermissions(new Map<string, OperationPermission>());
 
       return;
     }
 
-    setIsIngestionRunsLoading(true);
+    permissionFetchId.current += 1;
+    const fetchId = permissionFetchId.current;
 
     const permissionPromises = testSuitePipelines.map((item) =>
       getEntityPermissionByFqn(
@@ -192,49 +193,21 @@ const TestSuitePipelineTab = ({
       )
     );
 
-    const recentRunStatusPromises = testSuitePipelines.map((item) =>
-      getRunHistoryForPipeline(item.fullyQualifiedName ?? '', { limit: 5 })
-    );
+    const permissionResponse = await Promise.allSettled(permissionPromises);
 
-    Promise.allSettled(permissionPromises).then((permissionResponse) => {
-      const permissionData = permissionResponse.reduce((acc, cv, index) => {
-        return {
-          ...acc,
-          [testSuitePipelines[index]?.name]:
-            cv.status === 'fulfilled' ? cv.value : {},
-        };
-      }, {});
+    if (fetchId !== permissionFetchId.current) {
+      return;
+    }
 
-      setIngestionPipelinePermissions(
-        permissionData as IngestionServicePermission
-      );
-    });
+    const permissionData = permissionResponse.reduce((acc, cv, index) => {
+      if (cv.status === 'fulfilled') {
+        acc.set(testSuitePipelines[index]?.name ?? '', cv.value);
+      }
 
-    Promise.allSettled(recentRunStatusPromises)
-      .then((recentRunStatusResponse) => {
-        const recentRunStatusData = recentRunStatusResponse.reduce(
-          (acc, cv, index) => {
-            let value: PipelineStatus[] = [];
+      return acc;
+    }, new Map<string, OperationPermission>());
 
-            if (cv.status === 'fulfilled') {
-              const runs = cv.value.data ?? [];
-              const ingestion = testSuitePipelines[index];
-              value =
-                runs.length === 0 && ingestion?.pipelineStatuses
-                  ? [ingestion.pipelineStatuses]
-                  : runs;
-            }
-
-            return {
-              ...acc,
-              [testSuitePipelines[index]?.name]: value,
-            };
-          },
-          {}
-        );
-        setRecentRunStatuses(recentRunStatusData);
-      })
-      .finally(() => setIsIngestionRunsLoading(false));
+    setIngestionPipelinePermissions(permissionData);
   }, [testSuitePipelines, getEntityPermissionByFqn]);
 
   const handlePipelinePageChange = useCallback(
@@ -377,34 +350,38 @@ const TestSuitePipelineTab = ({
     return sortedByTestCaseLength.map((pipeline) => ({
       ...pipeline,
       key: pipeline.name,
-      runStatus: recentRunStatuses?.[pipeline.name]?.[0]?.status?.[0],
-      runId: recentRunStatuses?.[pipeline.name]?.[0]?.runId,
+      runStatus: pipeline.pipelineStatuses?.[0]?.status?.[0],
+      runId: pipeline.pipelineStatuses?.[0]?.runId,
+      pipelinePermissions: ingestionPipelinePermissions?.get(pipeline.name),
     }));
-  }, [testSuitePipelines, recentRunStatuses]);
+  }, [testSuitePipelines, ingestionPipelinePermissions]);
 
   const emptyPlaceholder = useMemo(
     () =>
       testSuite ? (
-        <ErrorPlaceHolder
-          button={
-            <Button
-              ghost
-              className="p-x-lg"
-              data-testid="add-placeholder-button"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleAddPipelineRedirection}>
-              {t('label.add')}
-            </Button>
-          }
-          heading={t('label.pipeline')}
-          permission={createPermission}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.test-suite-ingestion'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
-          {t('message.no-table-pipeline')}
-        </ErrorPlaceHolder>
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
+          <EmptyPlaceholder
+            actions={
+              createPermission
+                ? [
+                    {
+                      key: 'add-pipeline',
+                      label: t('label.add-entity', {
+                        entity: t('label.pipeline'),
+                      }),
+                      color: 'primary' as const,
+                      iconLeading: Plus,
+                      onPress: handleAddPipelineRedirection,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.no-table-pipeline')}
+            icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
+            title={t('message.no-pipelines-yet')}
+            variant="blank"
+          />
+        </Box>
       ) : (
         <ErrorPlaceHolder
           placeholderText={t('message.no-test-suite-table-pipeline')}
@@ -442,170 +419,180 @@ const TestSuitePipelineTab = ({
   }
 
   return (
-    <Row className="m-l-0 m-r-0 m-t-md m-b-md" gutter={[16, 16]}>
+    <Box
+      className="test-suite-pipeline-tab tw:px-2 m-l-0 m-r-0 m-t-md m-b-md"
+      direction="col"
+      gap={4}>
       {dataSource.length > 0 && (
-        <Col className="d-flex justify-end" span={24}>
+        <Box justify="end">
           <Button
             data-testid="add-pipeline-button"
-            type="primary"
-            onClick={handleAddPipelineRedirection}>
+            onPress={handleAddPipelineRedirection}>
             {t('label.add-entity', { entity: t('label.pipeline') })}
           </Button>
-        </Col>
+        </Box>
       )}
-      <Col span={24}>
-        <TableCard.Root>
-          <Table
-            aria-label={t('label.pipeline')}
-            data-testid="ingestion-list-table">
-            <Table.Header
-              columns={[
-                { id: 'name', name: t('label.name') },
-                {
-                  id: 'testCases',
-                  name: t('label.test-case-plural'),
-                  headerContent: (
-                    <Tooltip
-                      placement="top"
-                      title={t('message.test-case-count-info')}>
-                      <TooltipTrigger
-                        className="tw:flex tw:items-center tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
-                        data-testid="test-cases-info-tooltip-trigger">
-                        <HelpCircle
-                          className="tw:size-3"
-                          data-testid="test-cases-info-tooltip-icon"
-                        />
-                      </TooltipTrigger>
-                    </Tooltip>
-                  ),
-                },
-                { id: 'count', name: t('label.count') },
-                { id: 'schedule', name: t('label.schedule') },
-                { id: 'recentRuns', name: t('label.recent-run-plural') },
-                { id: 'status', name: t('label.status') },
-                { id: 'actions', name: t('label.action-plural') },
-              ]}>
-              {(column) => (
-                <Table.Head id={column.id} key={column.id} label={column.name}>
-                  {column.headerContent}
-                </Table.Head>
-              )}
-            </Table.Header>
-
-            <Table.Body
-              items={isLoading ? [] : dataSource}
-              renderEmptyState={() => (isLoading ? <></> : emptyPlaceholder)}>
-              {(item) => {
-                const record = item as PipelineTableRow;
-                const testCasesCount =
-                  record?.sourceConfig?.config?.testCases?.length ??
-                  t('label.all');
-
-                return (
-                  <Table.Row
-                    data-row-key={record.fullyQualifiedName}
-                    id={record.id}
-                    key={record.id}>
-                    <Table.Cell className="tw:align-middle tw:w-72">
-                      {renderNameField()(record.name, record)}
-                    </Table.Cell>
-
-                    <Table.Cell className="tw:align-middle tw:w-36">
-                      <span data-testid={`test-case-count-${record.name}`}>
-                        {testCasesCount}
-                      </span>
-                    </Table.Cell>
-
-                    <Table.Cell className="tw:align-middle tw:w-44">
-                      {isIngestionRunsLoading ? (
-                        <Skeleton.Input active size="small" />
-                      ) : (
-                        <IngestionStatusCount
-                          runId={record.runId}
-                          summary={record.runStatus}
-                        />
-                      )}
-                    </Table.Cell>
-
-                    <Table.Cell className="tw:align-middle tw:w-44">
-                      {renderScheduleField(record.name, record)}
-                    </Table.Cell>
-
-                    <Table.Cell className="tw:align-middle tw:w-44">
-                      <IngestionRecentRuns
-                        appRuns={recentRunStatuses[record.name]}
-                        classNames="align-middle"
-                        fetchStatus={false}
-                        handlePipelineIdToFetchStatus={
-                          handlePipelineIdToFetchStatus
-                        }
-                        ingestion={record}
-                        isAppRunsLoading={isIngestionRunsLoading}
-                        pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+      <TableCard.Root>
+        <Table
+          aria-label={t('label.pipeline')}
+          data-testid="ingestion-list-table">
+          <Table.Header
+            columns={[
+              { id: 'name', name: t('label.name') },
+              {
+                id: 'testCases',
+                name: t('label.test-case-plural'),
+                headerContent: (
+                  <Tooltip
+                    placement="top"
+                    title={t('message.test-case-count-info')}>
+                    <TooltipTrigger
+                      className="tw:flex tw:items-center tw:text-fg-quaternary tw:transition tw:duration-100 tw:ease-linear tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+                      data-testid="test-cases-info-tooltip-trigger">
+                      <HelpCircle
+                        className="tw:size-3"
+                        data-testid="test-cases-info-tooltip-icon"
                       />
-                    </Table.Cell>
+                    </TooltipTrigger>
+                  </Tooltip>
+                ),
+              },
+              { id: 'count', name: t('label.count') },
+              { id: 'schedule', name: t('label.schedule') },
+              { id: 'recentRuns', name: t('label.recent-run-plural') },
+              { id: 'status', name: t('label.status') },
+              { id: 'actions', name: t('label.action-plural') },
+            ]}>
+            {(column) => (
+              <Table.Head id={column.id} key={column.id} label={column.name}>
+                {column.headerContent}
+              </Table.Head>
+            )}
+          </Table.Header>
 
-                    <Table.Cell className="tw:align-middle tw:w-28">
-                      {renderStatusField(record.name, record)}
-                    </Table.Cell>
+          <Table.Body
+            items={isLoading ? [] : dataSource}
+            renderEmptyState={() =>
+              isLoading ? (
+                <div
+                  className="tw:p-4"
+                  data-testid="pipeline-table-loading-skeletons">
+                  {getSkeletonMockData(5).map((skeletonId) => (
+                    <Skeleton
+                      className="tw:mb-2"
+                      height={40}
+                      key={skeletonId}
+                      width="100%"
+                    />
+                  ))}
+                </div>
+              ) : (
+                emptyPlaceholder
+              )
+            }>
+            {(item) => {
+              const record = item;
+              const testCasesCount =
+                record?.sourceConfig?.config?.testCases?.length ??
+                t('label.all');
 
-                    <Table.Cell className="tw:align-middle tw:w-60">
-                      {isFetchingStatus ? (
-                        <ButtonSkeleton size="default" />
-                      ) : isPlatformDisabled ? (
-                        NO_DATA_PLACEHOLDER
-                      ) : (
-                        <PipelineActions
-                          deployIngestion={handleDeployIngestion}
-                          handleDeleteSelection={(row) =>
-                            setDeleteSelection(row)
-                          }
-                          handleEnableDisableIngestion={
-                            handleEnableDisableIngestion
-                          }
-                          handleIsConfirmationModalOpen={
-                            setIsConfirmationModalOpen
-                          }
-                          ingestionPipelinePermissions={
-                            ingestionPipelinePermissions
-                          }
-                          pipeline={record}
-                          serviceCategory={ServiceCategory.DATABASE_SERVICES}
-                          serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}
-                          triggerIngestion={handleTriggerIngestion}
-                          onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
-                        />
-                      )}
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              }}
-            </Table.Body>
-          </Table>
+              const permissions = record.pipelinePermissions;
 
-          {showPagination && (
-            <NextPrevious
-              isNumberBased
-              currentPage={currentPage}
-              isLoading={isLoading}
-              pageSize={pageSize}
-              paging={paging}
-              pagingHandler={handlePipelinePageChange}
-              onShowSizeChange={handlePageSizeChange}
-            />
-          )}
-        </TableCard.Root>
-      </Col>
+              return (
+                <Table.Row
+                  data-row-key={record.fullyQualifiedName}
+                  id={record.id}
+                  key={record.id}>
+                  <Table.Cell className="tw:align-middle tw:w-full tw:min-w-56">
+                    {renderNameField()(record.name, record)}
+                  </Table.Cell>
 
-      <EntityDeleteModal
-        bodyText={ingestionDeleteMessage}
-        entityName={getEntityName(deleteSelection)}
-        entityType={t('label.ingestion-lowercase')}
-        visible={isConfirmationModalOpen}
+                  <Table.Cell className="tw:align-middle tw:w-36">
+                    <span data-testid={`test-case-count-${record.name}`}>
+                      {testCasesCount}
+                    </span>
+                  </Table.Cell>
+
+                  <Table.Cell className="tw:align-middle tw:w-44">
+                    <IngestionStatusCount
+                      runId={record.runId}
+                      summary={record.runStatus}
+                    />
+                  </Table.Cell>
+
+                  <Table.Cell className="tw:align-middle tw:w-44 tw:max-w-44">
+                    {renderScheduleField(record.name, record)}
+                  </Table.Cell>
+
+                  <Table.Cell className="tw:align-middle tw:w-44">
+                    <IngestionRecentRuns
+                      appRuns={record.pipelineStatuses}
+                      classNames="align-middle"
+                      fetchStatus={false}
+                      handlePipelineIdToFetchStatus={
+                        handlePipelineIdToFetchStatus
+                      }
+                      ingestion={record}
+                      pipelineIdToFetchStatus={pipelineIdToFetchStatus}
+                    />
+                  </Table.Cell>
+
+                  <Table.Cell className="tw:align-middle tw:w-28">
+                    {renderStatusField(record.name, record)}
+                  </Table.Cell>
+
+                  <Table.Cell className="tw:align-middle tw:w-60">
+                    {isFetchingStatus && <ButtonSkeleton size="default" />}
+                    {!isFetchingStatus &&
+                      isPlatformDisabled &&
+                      NO_DATA_PLACEHOLDER}
+                    {!isFetchingStatus && !isPlatformDisabled && (
+                      <PipelineActions
+                        deployIngestion={handleDeployIngestion}
+                        handleDeleteSelection={(row) => setDeleteSelection(row)}
+                        handleEnableDisableIngestion={
+                          handleEnableDisableIngestion
+                        }
+                        handleIsConfirmationModalOpen={
+                          setIsConfirmationModalOpen
+                        }
+                        ingestionPipelinePermissions={permissions}
+                        pipeline={record}
+                        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+                        serviceName={getServiceFromTestSuiteFQN(testSuiteFQN)}
+                        triggerIngestion={handleTriggerIngestion}
+                        onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
+                      />
+                    )}
+                  </Table.Cell>
+                </Table.Row>
+              );
+            }}
+          </Table.Body>
+        </Table>
+
+        {showPagination && (
+          <NextPrevious
+            isNumberBased
+            currentPage={currentPage}
+            isLoading={isLoading}
+            pageSize={pageSize}
+            paging={paging}
+            pagingHandler={handlePipelinePageChange}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </TableCard.Root>
+
+      <DeleteModal
+        entityTitle={getEntityName(deleteSelection)}
+        isDeleting={deleteSelection.state === 'waiting'}
+        message={ingestionDeleteMessage}
+        open={isConfirmationModalOpen}
         onCancel={handleCancelConfirmationModal}
-        onConfirm={handleDeleteConfirm}
+        onDelete={handleDeleteConfirm}
       />
-    </Row>
+    </Box>
   );
 };
 

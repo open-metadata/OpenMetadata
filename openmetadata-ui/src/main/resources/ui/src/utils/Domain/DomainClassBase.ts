@@ -11,19 +11,27 @@
  *  limitations under the License.
  */
 
+import { FieldProp } from '@openmetadata/ui-core-components';
 import { createElement } from 'react';
+import { ListingExtraColumn } from '../../components/common/atoms/shared/types';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
+  CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
   GridSizes,
   KNOWLEDGE_ARTICLE_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
-import { DOMAIN_DUMMY_DATA } from '../../constants/Domain.constants';
+import {
+  DOMAIN_DEFAULT_QUICK_FILTERS,
+  DOMAIN_DUMMY_DATA,
+  DOMAIN_FILTERS,
+  SUBDOMAIN_DEFAULT_QUICK_FILTERS,
+  SUB_DOMAIN_FILTERS,
+} from '../../constants/Domain.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
@@ -32,9 +40,10 @@ import { Domain } from '../../generated/entity/domains/domain';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from '../CustomizePage/CustomizePagePureUtils';
 import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
 import i18n from '../i18next/LocalUtil';
+import { LazyDataQualityDashboard } from './LazyDomainComponents';
 
 export interface DomainDetailPageTabProps {
   domain: Domain;
@@ -43,7 +52,8 @@ export interface DomainDetailPageTabProps {
   subDomainsCount: number;
   dataProductsCount: number;
   assetCount: number;
-  activeTab: EntityTabs;
+  // Undefined when no tab is explicitly selected (landing URL / tree view).
+  activeTab?: EntityTabs;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
   onDeleteSubDomain: () => void;
@@ -73,6 +83,8 @@ type DomainWidgetKeys =
   | DetailPageWidgetKeys.DOMAIN_TYPE
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
+
+const NO_EXTRA_COLUMNS: ListingExtraColumn<Domain>[] = [];
 
 class DomainClassBase {
   defaultWidgetHeight: Record<DomainWidgetKeys, number>;
@@ -107,7 +119,7 @@ class DomainClassBase {
         name: i18n.t('label.data-observability'),
       }),
       key: EntityTabs.DATA_OBSERVABILITY,
-      children: createElement(DataQualityDashboard, {
+      children: createElement(LazyDataQualityDashboard, {
         isGovernanceView: true,
         className: 'data-quality-governance-tab-wrapper',
         initialFilters: domainDetailsPageProps.domain.fullyQualifiedName
@@ -256,12 +268,22 @@ class DomainClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      CUSTOM_PROPERTIES_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
     return getDomainWidgetsFromKey(widgetConfig);
+  }
+
+  public getCoverImageField(): FieldProp | null {
+    return null;
+  }
+
+  // Reviewers are Collate-only; overridden downstream.
+  public getReviewersField(): FieldProp | null {
+    return null;
   }
 
   public getWidgetHeight(widgetName: string) {
@@ -287,6 +309,21 @@ class DomainClassBase {
       default:
         return 1;
     }
+  }
+
+  // Identity-stable: callers feed the result straight into a useMemo dep list.
+  public getListingExtraColumns(): ListingExtraColumn<Domain>[] {
+    return NO_EXTRA_COLUMNS;
+  }
+
+  public getListingFilters(isSubDomain = false) {
+    return isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS;
+  }
+
+  public getListingQuickFilterKeys(isSubDomain = false) {
+    return isSubDomain
+      ? SUBDOMAIN_DEFAULT_QUICK_FILTERS
+      : DOMAIN_DEFAULT_QUICK_FILTERS;
   }
 }
 

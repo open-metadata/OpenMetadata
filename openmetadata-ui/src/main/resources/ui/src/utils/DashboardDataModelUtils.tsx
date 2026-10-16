@@ -10,29 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
+
+import { Card } from '@openmetadata/ui-core-components';
 import { get } from 'lodash';
 import { lazy, Suspense } from 'react';
-import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
-import ModelTab from '../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
-import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { CSMode } from '../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { Column } from '../generated/entity/data/container';
-import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Operation } from '../generated/entity/policies/policy';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { DashboardDataModelDetailPageTabProps } from './DashboardDataModelClassBase';
 import i18n, { t } from './i18next/LocalUtil';
@@ -40,10 +38,50 @@ import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from './PermissionsUtils';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../components/common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component'
+    ).then((module) => ({ default: module.ActivityFeedTab }))
+  )
+);
+
+const ContractTab = withSuspenseFallback(
+  lazy(() =>
+    import('../components/DataContract/ContractTab/ContractTab').then(
+      (module) => ({ default: module.ContractTab })
+    )
+  )
+);
+
 const EntityLineageTab = lazy(() =>
   import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
     (module) => ({ default: module.EntityLineageTab })
   )
+);
+
+const ModelTab = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component'
+      )
+  )
+);
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../components/Database/SchemaEditor/SchemaEditor'))
 );
 
 export const getDashboardDataModelDetailPageTabs = ({
@@ -111,16 +149,18 @@ export const getDashboardDataModelDetailPageTabs = ({
             key: EntityTabs.SQL,
             children: (
               <Card>
-                <SchemaEditor
-                  editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
-                  mode={{ name: CSMode.SQL }}
-                  options={{
-                    styleActiveLine: false,
-                    readOnly: true,
-                  }}
-                  refreshEditor={activeTab === EntityTabs.SQL}
-                  value={dataModelData?.sql}
-                />
+                <Card.Content>
+                  <SchemaEditor
+                    editorClass="custom-query-editor custom-code-mirror-theme full-screen-editor-height"
+                    mode={{ name: CSMode.SQL }}
+                    options={{
+                      styleActiveLine: false,
+                      readOnly: true,
+                    }}
+                    refreshEditor={activeTab === EntityTabs.SQL}
+                    value={dataModelData?.sql}
+                  />
+                </Card.Content>
               </Card>
             ),
           },
@@ -183,22 +223,6 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
     },
   ];
-};
-
-export const extractDataModelColumns = <
-  T extends Omit<EntityReference, 'type'>
->(
-  data: T
-): Column[] => {
-  const dataModel = data as Partial<DashboardDataModel>;
-
-  return (dataModel.columns ?? []).map(
-    (column) =>
-      ({
-        ...column,
-        tags: column.tags ?? [],
-      } as Column)
-  );
 };
 
 export const getDashboardDataModelWidgetsFromKey = (

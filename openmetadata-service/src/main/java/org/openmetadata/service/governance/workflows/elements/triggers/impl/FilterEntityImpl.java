@@ -1,16 +1,15 @@
 package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -19,16 +18,16 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
-import org.openmetadata.schema.type.WorkflowTriggerFields;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
+import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
-import org.openmetadata.service.rules.RuleEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,118 +55,53 @@ public class FilterEntityImpl implements JavaDelegate {
     String entityLinkStr =
         (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
 
+    // eventBasedEntity triggers get relatedEntity from the change event that started them; a
+    // null value here means the trigger was invoked without one (e.g. the manual trigger REST
+    // endpoint for a workflow type that expects an event context). Short-circuit with
+    // passesFilter=false so the workflow does not advance, instead of NPE'ing in the parser.
+    if (entityLinkStr == null || entityLinkStr.isBlank()) {
+      log.debug(
+          "Trigger {} - no relatedEntity in variables; skipping",
+          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()));
+      execution.setVariable(PASSES_FILTER_VARIABLE, false);
+      return;
+    }
+
     // Parse entity type from entity link to determine which filter to use
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
 
     // Extract entity-specific filter
     String filterLogic =
-        extractEntitySpecificFilter(
+        TriggerEntityFilter.forEntityType(
             filterExpr != null ? filterExpr.getValue(execution) : null, entityType);
 
+    ChangeRequestRun changeRequest = ChangeRequestRun.from(varHandler).orElse(null);
     boolean passesFilter;
     if (isTagFeedbackCreation(varHandler)) {
       // We skip the entity filtering for this special case
       passesFilter = true;
+    } else if (changeRequest != null) {
+      // A change-request run was admitted at submission with the reviewing workflow's own
+      // include/exclude/filter; only that workflow runs it and every other hook workflow on the
+      // entity type ignores it.
+      passesFilter = mainWorkflowName(execution).equals(changeRequest.workflowName());
     } else {
       passesFilter =
-          passesExcludedFilter(entityLinkStr, excludedFilter, includeFields, filterLogic);
+          passesExcludedFilter(
+              entityLinkStr, entityType, excludedFilter, includeFields, filterLogic);
     }
 
-    if (passesFilter) {
-      String triggerWorkflowDefinitionKey =
-          WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
-      String mainWorkflowDefinitionName =
-          TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(triggerWorkflowDefinitionKey);
-      String currentProcessInstanceId = execution.getProcessInstanceId();
-      // Terminate duplicate instances asynchronously to prevent a MySQL FK violation.
-      // This JavaDelegate runs inside Flowable's signalEventReceived command context (TX_A).
-      // Calling deleteProcessInstance() from within TX_A reuses the same DB transaction; the
-      // uncommitted execution DELETE holds an X-lock, and Flowable's job executor may try to
-      // INSERT a timer job referencing that execution (FK wait), causing a constraint violation
-      // when TX_A commits. Running in a separate thread gives terminateDuplicateInstances its
-      // own Flowable command context and independent DB transaction, avoiding that FK issue.
-      // The deadlock (PostgreSQL lock-order reversal between deleteProcessInstance and a
-      // concurrently auto-completing process) is prevented inside terminateDuplicateInstances
-      // by skipping deletion for processes that have no active user tasks.
-      final String workflowName = mainWorkflowDefinitionName;
-      final String entityLinkStrFinal = entityLinkStr;
-      final String processInstanceId = currentProcessInstanceId;
-      CompletableFuture.runAsync(
-              () ->
-                  WorkflowHandler.getInstance()
-                      .terminateDuplicateInstances(
-                          workflowName, entityLinkStrFinal, processInstanceId))
-          .exceptionally(
-              ex -> {
-                log.error("Async termination of duplicate instances failed", ex);
-                return null;
-              });
-    }
-
+    // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
+    // supersedes the old" at trigger time is too early: this filter runs before the workflow
+    // evaluates checkChangeDescription/checkEntityAttributes, so a no-op event that passes the
+    // entity filter but creates no task would still kill a valid pending approval. The supersede
+    // now happens at task-creation time in CreateTask, where the run has genuinely produced a new
+    // approval task. See CreateTask#supersedePriorApprovalTask.
     String workflowKey =
         WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     log.debug("Trigger {} - Entity {} passes filter: {}", workflowKey, entityLinkStr, passesFilter);
     execution.setVariable(PASSES_FILTER_VARIABLE, passesFilter);
-  }
-
-  private String extractEntitySpecificFilter(Object filterObj, String entityType) {
-    if (filterObj == null || entityType == null) {
-      return null;
-    }
-
-    // Parse JSON string into map if needed
-    if (filterObj instanceof String filterStr) {
-      // Handle empty string as "no filter"
-      if (filterStr.trim().isEmpty()) {
-        return null; // Empty string means no filtering
-      }
-      // Check if it's a JSON object string
-      if (filterStr.trim().startsWith("{") && filterStr.trim().endsWith("}")) {
-        try {
-          java.util.Map<String, String> filterMap =
-              JsonUtils.readValue(filterStr, java.util.Map.class);
-          return extractFromFilterMap(filterMap, entityType);
-        } catch (Exception e) {
-          log.error(
-              "Invalid filter format. Expected JSON object with entity-specific filters: {}",
-              filterStr);
-          return null;
-        }
-      }
-      log.warn("Plain string filters are no longer supported. Use entity-specific filter object.");
-      return null;
-    }
-
-    // Handle map format with entity-specific filters
-    if (filterObj instanceof java.util.Map) {
-      @SuppressWarnings("unchecked")
-      java.util.Map<String, String> filterMap = (java.util.Map<String, String>) filterObj;
-      return extractFromFilterMap(filterMap, entityType);
-    }
-
-    log.error("Unexpected filter object type: {}", filterObj.getClass().getName());
-    return null;
-  }
-
-  private String extractFromFilterMap(java.util.Map<String, String> filterMap, String entityType) {
-    if (filterMap == null || entityType == null) {
-      return null;
-    }
-
-    // First check for entity-specific filter
-    String specificFilter = filterMap.get(entityType);
-    if (specificFilter != null && !specificFilter.trim().isEmpty()) {
-      return specificFilter;
-    }
-
-    // Fall back to default filter if no specific filter found
-    String defaultFilter = filterMap.get("default");
-    if (defaultFilter != null && !defaultFilter.trim().isEmpty()) {
-      return defaultFilter;
-    }
-
-    return null;
   }
 
   private boolean isTagFeedbackCreation(WorkflowVariableHandler varHandler) {
@@ -205,72 +139,56 @@ public class FilterEntityImpl implements JavaDelegate {
     return feedback.getTagFQN().equals(entityLink.getEntityFQN());
   }
 
+  private String mainWorkflowName(DelegateExecution execution) {
+    String key = WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    return key != null && key.endsWith("Trigger")
+        ? TriggerFactory.getMainWorkflowDefinitionNameFromTrigger(key)
+        : String.valueOf(key);
+  }
+
   private boolean passesExcludedFilter(
       String entityLinkStr,
+      String entityType,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
-    EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+    EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
+
+    // A null change description means a Create event.
+    ChangeDescription change = entity.getChangeDescription();
 
     boolean fieldBasedFilter;
-    Optional<ChangeDescription> oChangeDescription =
-        Optional.ofNullable(entity.getChangeDescription());
-
-    // ChangeDescription is empty means it is a Create event.
-    if (oChangeDescription.isEmpty()) {
+    if (change == null) {
       fieldBasedFilter = true;
     } else {
-      ChangeDescription changeDescription = oChangeDescription.get();
-      List<FieldChange> changedFields = getAllChangedFields(changeDescription);
-
+      List<FieldChange> changedFields = getAllChangedFields(change);
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(changedFields, includeFields, excludedFilter);
+              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
     }
 
-    // Apply JSON filter
-    boolean passesJsonFilter = true;
-    if (filterLogic != null && !filterLogic.trim().isEmpty()) {
-      passesJsonFilter =
-          Boolean.TRUE.equals(
-              RuleEngine.getInstance().apply(filterLogic, JsonUtils.getMap(entity)));
-    }
-
-    return fieldBasedFilter && passesJsonFilter;
+    return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
   }
 
   private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {
-    List<FieldChange> allChanges = new ArrayList<>(changeDescription.getFieldsAdded());
-    allChanges.addAll(changeDescription.getFieldsDeleted());
-    allChanges.addAll(changeDescription.getFieldsUpdated());
+    List<FieldChange> allChanges = new ArrayList<>(listOrEmpty(changeDescription.getFieldsAdded()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
+    allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
     return allChanges;
   }
 
   private boolean passesFieldBasedFilter(
-      List<FieldChange> changedFields, List<String> includeFields, List<String> excludedFilter) {
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludedFilter) {
+    // A change fires the workflow when it touches one of this entity type's trigger fields,
+    // subject to include/exclude (see WorkflowTriggerFilters).
     return changedFields.stream()
         .anyMatch(
-            field -> {
-              String fieldName = field.getName();
-              boolean isTriggerField =
-                  Arrays.stream(WorkflowTriggerFields.values())
-                      .map(WorkflowTriggerFields::value)
-                      .anyMatch(tf -> matchesField(fieldName, tf));
-              if (!isTriggerField) {
-                return false;
-              }
-
-              if (includeFields != null && !includeFields.isEmpty()) {
-                return includeFields.stream().anyMatch(f -> matchesField(fieldName, f));
-              }
-
-              return excludedFilter == null
-                  || excludedFilter.stream().noneMatch(f -> matchesField(fieldName, f));
-            });
-  }
-
-  private boolean matchesField(String fieldName, String triggerField) {
-    return fieldName.equals(triggerField) || fieldName.startsWith(triggerField + Entity.SEPARATOR);
+            field ->
+                WorkflowTriggerFilters.fieldTriggers(
+                    entityType, field.getName(), includeFields, excludedFilter));
   }
 }

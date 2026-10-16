@@ -18,8 +18,6 @@ import static org.openmetadata.service.util.email.TemplateConstants.ACCOUNT_STAT
 import static org.openmetadata.service.util.email.TemplateConstants.ACTION_KEY;
 import static org.openmetadata.service.util.email.TemplateConstants.ACTION_STATUS_KEY;
 import static org.openmetadata.service.util.email.TemplateConstants.APPLICATION_LOGIN_LINK;
-import static org.openmetadata.service.util.email.TemplateConstants.CHANGE_EVENT_TEMPLATE;
-import static org.openmetadata.service.util.email.TemplateConstants.CHANGE_EVENT_UPDATE;
 import static org.openmetadata.service.util.email.TemplateConstants.DEFAULT_EXPIRATION_TIME;
 import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_IGNORE_MSG;
 import static org.openmetadata.service.util.email.TemplateConstants.EMAIL_VERIFICATION_LINKKEY;
@@ -34,7 +32,6 @@ import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RES
 import static org.openmetadata.service.util.email.TemplateConstants.PASSWORD_RESET_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.REPORT_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.SUPPORT_URL;
-import static org.openmetadata.service.util.email.TemplateConstants.TASK_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.TEST_EMAIL_SUBJECT;
 import static org.openmetadata.service.util.email.TemplateConstants.TEST_MAIL_TEMPLATE;
 import static org.openmetadata.service.util.email.TemplateConstants.USERNAME;
@@ -52,19 +49,18 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
-import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
-import org.openmetadata.service.apps.bundles.changeEvent.email.EmailMessage;
-import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
-import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
-import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.template.DataInsightDescriptionAndOwnerTemplate;
+import org.openmetadata.service.apps.bundles.insights.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.simplejavamail.api.email.Email;
 import org.simplejavamail.api.email.EmailPopulatingBuilder;
@@ -193,34 +189,6 @@ public class EmailUtil {
     }
   }
 
-  public static void sendTaskAssignmentNotificationToUser(
-      String assigneeName,
-      String email,
-      String taskLink,
-      Thread thread,
-      String subject,
-      String templateFilePath)
-      throws IOException, TemplateException {
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-
-      Map<String, Object> templatePopulator =
-          new TemplatePopulatorBuilder()
-              .add("assignee", assigneeName)
-              .add("createdBy", thread.getCreatedBy())
-              .add("taskName", thread.getMessage())
-              .add("taskStatus", thread.getTask().getStatus().toString())
-              .add("taskType", thread.getTask().getType().toString())
-              .add("fieldOldValue", thread.getTask().getOldValue())
-              .add("fieldNewValue", thread.getTask().getSuggestion())
-              .add("taskLink", taskLink)
-              .build();
-
-      sendMail(subject, templatePopulator, email, templateFilePath, true);
-    } else {
-      LOG.warn(EMAIL_IGNORE_MSG, email);
-    }
-  }
-
   public static void sendMail(
       String subject, Map<String, Object> model, String to, String templateName, boolean async)
       throws IOException, TemplateException {
@@ -280,7 +248,17 @@ public class EmailUtil {
    * @param htmlContent Pre-rendered HTML content (already processed by HandlebarsNotificationMessageEngine)
    */
   public static void sendNotificationEmail(String to, String subject, String htmlContent) {
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+    handOverNotificationEmail(to, subject, htmlContent);
+  }
+
+  /**
+   * Hands the email to the mail library and answers with the mail server's verdict, which a caller
+   * may wait for. It is already complete when nothing was handed over.
+   */
+  public static CompletableFuture<Void> handOverNotificationEmail(
+      String to, String subject, String htmlContent) {
+    CompletableFuture<Void> outcome = CompletableFuture.completedFuture(null);
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer()) && mailer != null) {
       Email email =
           EmailBuilder.startingBlank()
               .withSubject(subject)
@@ -288,11 +266,11 @@ public class EmailUtil {
               .from(getSmtpSettings().getSenderMail())
               .withHTMLText(htmlContent)
               .buildEmail();
-
-      sendMail(email, true);
+      outcome = mailer.sendMail(email, true);
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, to);
     }
+    return outcome;
   }
 
   public static void sendInviteMailToAdmin(User user, String password) {
@@ -320,40 +298,6 @@ public class EmailUtil {
       }
     } else {
       LOG.warn(EMAIL_IGNORE_MSG, user.getEmail());
-    }
-  }
-
-  public static void sendChangeEventMail(
-      String publisherName, String receiverMail, EmailMessage emailMessaged) {
-    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
-
-      StringBuilder buff = new StringBuilder();
-      for (String cmessage : emailMessaged.getChangeMessage()) {
-        buff.append(cmessage);
-        buff.append("\n");
-      }
-
-      Map<String, Object> templatePopulator =
-          new TemplatePopulatorBuilder()
-              .add(USERNAME, receiverMail.split("@")[0])
-              .add("updatedBy", emailMessaged.getUpdatedBy())
-              .add("entityUrl", emailMessaged.getEntityUrl())
-              .add("changeMessage", buff.toString())
-              .build();
-
-      try {
-        EmailUtil.sendMail(
-            EmailUtil.getChangeEventTemplate(publisherName),
-            templatePopulator,
-            receiverMail,
-            CHANGE_EVENT_TEMPLATE,
-            true);
-      } catch (Exception ex) {
-        LOG.error(
-            "Failed in sending Mail to user [{}]. Reason : {}", receiverMail, ex.getMessage());
-      }
-    } else {
-      LOG.warn(EMAIL_IGNORE_MSG, receiverMail);
     }
   }
 
@@ -428,14 +372,6 @@ public class EmailUtil {
     return String.format(INVITE_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
 
-  public static String getChangeEventTemplate(String publisherName) {
-    return String.format(CHANGE_EVENT_UPDATE, publisherName, getSmtpSettings().getEmailingEntity());
-  }
-
-  public static String getTaskAssignmentSubject() {
-    return String.format(TASK_SUBJECT, getSmtpSettings().getEmailingEntity());
-  }
-
   public static String getTestEmailSubject() {
     return String.format(TEST_EMAIL_SUBJECT, getSmtpSettings().getEmailingEntity());
   }
@@ -457,16 +393,11 @@ public class EmailUtil {
     return emailConfig;
   }
 
-  public static Boolean isValidEmail(String email) {
-    if (StringUtils.isBlank(email)) {
-      return false;
-    }
-    return email.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$");
-  }
-
   public static String getOMBaseURL() {
+    // The registered repository, not a new one: the SystemRepository constructor re-registers
+    // itself, which would replace a distribution's subclass (and its status cards) at runtime.
     Settings setting =
-        new SystemRepository()
+        Entity.getSystemRepository()
             .getConfigWithKey(SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION.value());
     OpenMetadataBaseUrlConfiguration urlConfiguration =
         (OpenMetadataBaseUrlConfiguration) setting.getConfigValue();

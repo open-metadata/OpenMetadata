@@ -38,6 +38,14 @@ export interface UserApprovalTask {
 
 export interface NodeConfiguration {
     /**
+     * In a workflow in Enforce approval mode, let reviewers approve or reject some of a change
+     * request's changes and leave the rest pending. Changes reviewers agree to approve are
+     * published and changes they agree to reject are dropped, while this task stays open with
+     * the remaining changes; the workflow leaves it through approve or reject once nothing is
+     * pending. A change is agreed once it reaches the approval or rejection threshold.
+     */
+    allowPartialDecisions?: boolean;
+    /**
      * Number of reviewers that must approve for the task to be completed. Default is 1 (any
      * single reviewer can approve).
      */
@@ -50,6 +58,13 @@ export interface NodeConfiguration {
      * Optional label describing how assignees are derived for the stage.
      */
     assigneeStrategy?: string;
+    /**
+     * Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date
+     * variable. The boundary timer interrupts the user task and exits the subprocess with the
+     * configured transitionId as the node's result, so an outgoing edge with that condition
+     * routes the workflow downstream (e.g. to auto-revoke or auto-close).
+     */
+    expiryTimer?: ExpiryTimer;
     /**
      * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
      * single reviewer can reject). This allows for scenarios where you want multiple approvals
@@ -90,6 +105,13 @@ export interface Assignees {
      * List of specific candidates (users or teams) assigned to this task.
      */
     candidates?: EntityReference[];
+    /**
+     * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+     * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+     * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+     * excluding the requester so self-approval can never happen.
+     */
+    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
 }
 
 /**
@@ -142,6 +164,68 @@ export interface EntityReference {
 }
 
 /**
+ * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+ * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+ * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+ * excluding the requester so self-approval can never happen.
+ */
+export enum EmptyAssigneeStrategy {
+    AssignAdmins = "assignAdmins",
+    None = "none",
+}
+
+/**
+ * Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date
+ * variable. The boundary timer interrupts the user task and exits the subprocess with the
+ * configured transitionId as the node's result, so an outgoing edge with that condition
+ * routes the workflow downstream (e.g. to auto-revoke or auto-close).
+ */
+export interface ExpiryTimer {
+    /**
+     * When set, the underlying Task entity is closed at the moment the timer fires with this
+     * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+     * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+     * for closing the Task (avoids double-resolve).
+     */
+    closeAsResolution?: ResolutionType;
+    /**
+     * Name of the process variable holding the absolute ISO 8601 date/time when the timer
+     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').
+     */
+    dateVariable?: string;
+    /**
+     * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
+     * 'P14D').
+     */
+    durationVariable?: string;
+    /**
+     * Result value emitted when the timer fires. Must match an outgoing edge condition from
+     * this node.
+     */
+    transitionId: string;
+}
+
+/**
+ * When set, the underlying Task entity is closed at the moment the timer fires with this
+ * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+ * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+ * for closing the Task (avoids double-resolve).
+ *
+ * How the task was resolved.
+ */
+export enum ResolutionType {
+    Approved = "Approved",
+    AutoApproved = "AutoApproved",
+    AutoRejected = "AutoRejected",
+    Cancelled = "Cancelled",
+    Completed = "Completed",
+    Expired = "Expired",
+    Rejected = "Rejected",
+    Revoked = "Revoked",
+    TimedOut = "TimedOut",
+}
+
+/**
  * Coarse task status mapped while this user task is active.
  *
  * Current status of the task in its lifecycle.
@@ -150,8 +234,11 @@ export enum TaskStatus {
     Approved = "Approved",
     Cancelled = "Cancelled",
     Completed = "Completed",
+    Expired = "Expired",
     Failed = "Failed",
+    Granted = "Granted",
     InProgress = "InProgress",
+    ManualRevoke = "ManualRevoke",
     Open = "Open",
     Pending = "Pending",
     Rejected = "Rejected",
@@ -166,20 +253,6 @@ export interface TransitionMetadatum {
     resolutionType?:  ResolutionType;
     targetStageId:    string;
     targetTaskStatus: TaskStatus;
-}
-
-/**
- * How the task was resolved.
- */
-export enum ResolutionType {
-    Approved = "Approved",
-    AutoApproved = "AutoApproved",
-    AutoRejected = "AutoRejected",
-    Cancelled = "Cancelled",
-    Completed = "Completed",
-    Rejected = "Rejected",
-    Revoked = "Revoked",
-    TimedOut = "TimedOut",
 }
 
 export interface InputNamespaceMap {

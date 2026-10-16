@@ -11,16 +11,17 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
-import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../../enums/entity.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { PageType } from '../../../generated/system/ui/page';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -29,20 +30,26 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
+import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -53,7 +60,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
-
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,
@@ -125,6 +131,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
         })
       );
       onToggleDelete(newVersion);
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -132,6 +140,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           entity: t('label.api-endpoint'),
         })
       );
+
+      return false;
     }
   };
 
@@ -179,37 +189,70 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityTaskCountsInto(decodedApiEndpointFqn, setFeedCount);
+    }
+  }, [decodedApiEndpointFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.API_ENDPOINT,
+        decodedApiEndpointFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedApiEndpointFqn]);
+
+  // The endpoint FQN is service.collection.endpoint, so the positional
+  // Service+Database parts yield the collection FQN when the loaded entity
+  // doesn't carry its apiCollection reference.
+  const apiCollectionFqn =
+    apiEndpointDetails.apiCollection?.fullyQualifiedName ??
+    getPartialNameFromTableFQN(
+      decodedApiEndpointFqn,
+      [FqnPart.Service, FqnPart.Database],
+      FQN_SEPARATOR_CHAR
+    );
+
   const afterDeleteAction = useCallback(
-    (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
-    [navigate]
+    (isSoftDelete?: boolean) =>
+      !isSoftDelete &&
+      navigate(
+        getEntityDetailsPath(EntityType.API_COLLECTION, apiCollectionFqn)
+      ),
+    [apiCollectionFqn, navigate]
   );
 
+  // Consumer via prop (`apiEndpointPermissions: OperationPermission`, raw contract kept — fed
+  // straight through to DataAssetsHeader/GenericProvider verbatim, GenericProvider
+  // precedent). Two derivations (TableDetailsPageV1.tsx precedent): the edit flags are
+  // gated on `deleted` (the old raw expressions explicitly ANDed `!deleted` themselves);
+  // view flags never are, so a second, ungated call supplies those.
   const {
     editCustomAttributePermission,
     editLineagePermission,
     viewAllPermission,
     viewCustomPropertiesPermission,
-  } = useMemo(
-    () => ({
-      editCustomAttributePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditCustomFields) &&
-        !deleted,
-      editLineagePermission:
-        (apiEndpointPermissions.EditAll ||
-          apiEndpointPermissions.EditLineage) &&
-        !deleted,
-      viewAllPermission: apiEndpointPermissions.ViewAll,
-      viewCustomPropertiesPermission: getPrioritizedViewPermission(
-        apiEndpointPermissions,
-        Operation.ViewCustomFields
-      ),
-    }),
-    [apiEndpointPermissions, deleted]
-  );
+  } = useMemo(() => {
+    const gatedFlags = getDerivedPermissionFlags(
+      apiEndpointPermissions,
+      Boolean(deleted)
+    );
+    const ungatedFlags = getDerivedPermissionFlags(apiEndpointPermissions);
+
+    return {
+      editCustomAttributePermission: gatedFlags.canEditCustomFields,
+      editLineagePermission: gatedFlags.canEditLineage,
+      viewAllPermission: ungatedFlags.canViewAll,
+      viewCustomPropertiesPermission: ungatedFlags.canViewCustomFields,
+    };
+  }, [apiEndpointPermissions, deleted]);
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
 
   const tabs = useMemo(() => {
@@ -276,8 +319,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
 
   return (
     <PageLayoutV1 pageTitle={getEntityName(apiEndpointDetails)}>
-      <Row gutter={[0, 12]}>
-        <Col span={24}>
+      <Box direction="col" gap={3}>
+        <div>
           <DataAssetsHeader
             isDqAlertSupported
             isRecursiveDelete
@@ -296,7 +339,7 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
             onUpdateVote={onUpdateVote}
             onVersionClick={onVersionChange}
           />
-        </Col>
+        </div>
         <GenericProvider<APIEndpoint>
           customizedPage={customizedPage}
           data={apiEndpointDetails}
@@ -304,28 +347,42 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
           permissions={apiEndpointPermissions}
           type={EntityType.API_ENDPOINT}
           onUpdate={onApiEndpointUpdate}>
-          <Col className="entity-details-page-tabs" span={24}>
+          <div className="entity-details-page-tabs">
             <Tabs
-              activeKey={activeTab}
-              className="tabs-new"
+              className="tw:gap-3"
               data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+              selectedKey={getRenderedActiveTab(tabs, activeTab)}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                actions={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                size="sm"
+                type="underline"
+                variant="card">
+                {tabs.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key}>
+                    {label}
+                  </Tabs.Item>
+                ))}
+              </Tabs.List>
+              {tabs.map(({ key, children }) => (
+                <Tabs.Panel id={key} key={key}>
+                  {children}
+                </Tabs.Panel>
+              ))}
+            </Tabs>
+          </div>
         </GenericProvider>
-      </Row>
+      </Box>
       <LimitWrapper resource="apiEndpoint">
         <></>
       </LimitWrapper>

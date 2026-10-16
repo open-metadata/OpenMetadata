@@ -38,16 +38,19 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +61,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -80,12 +84,12 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
-import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
-import org.openmetadata.service.resources.feeds.FeedUtil;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.resources.teams.UserResource;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
@@ -93,21 +97,31 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
+import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.auth.UserTokenCache;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.tasks.TaskAssigneeCleanup;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
 public class UserRepository extends EntityRepository<User> {
+  private static final int PAGE_SIZE = 500;
   private static final int MAX_TASK_CLEANUP_RETRIES = 3;
   private static final long INITIAL_TASK_CLEANUP_RETRY_DELAY_MILLIS = 100L;
   private static final long MAX_TASK_CLEANUP_RETRY_DELAY_MILLIS = 1000L;
@@ -126,12 +140,17 @@ public class UserRepository extends EntityRepository<User> {
   static final String ROLES_FIELD = "roles";
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
+  public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,defaultDomain,domains,personaPreferences";
+  private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
+  private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+  private final UserPreferencesRepository userPreferencesRepository =
+      new UserPreferencesRepository();
 
   public UserRepository() {
     super(
@@ -151,6 +170,7 @@ public class UserRepository extends EntityRepository<User> {
     this.fieldFetchers.put("follows", this::fetchAndSetFollows);
     this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
     this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
+    this.fieldFetchers.put("defaultDomain", this::fetchAndSetDefaultDomain);
     this.fieldFetchers.put("inheritedPersonas", this::fetchAndSetInheritedPersonas);
     this.fieldFetchers.put("domains", this::fetchAndSetDomains);
 
@@ -221,6 +241,20 @@ public class UserRepository extends EntityRepository<User> {
     return withHref(uriInfo, entityClone);
   }
 
+  /**
+   * Email lookup for authentication flows. Unlike {@link #getByEmail}, a soft-deleted user is not a
+   * valid login identity: deactivated accounts must not resolve, be updated, or be resurrected by
+   * an SSO login.
+   */
+  public User getActiveUserByEmailForAuth(String email, Fields fields) {
+    User user = getByEmail(null, email, fields);
+    if (Boolean.TRUE.equals(user.getDeleted())) {
+      throw new AuthenticationException(
+          "Your account has been deactivated. Contact your administrator.");
+    }
+    return user;
+  }
+
   public User getUserByNameAndEmail(UriInfo uriInfo, String name, String email, Fields fields) {
     String userString = daoCollection.userDAO().findUserByNameAndEmail(name, email);
     if (userString == null) {
@@ -238,8 +272,50 @@ public class UserRepository extends EntityRepository<User> {
   /** Ensures that the default roles are added for POST, PUT and PATCH operations. */
   @Override
   public void prepare(User user, boolean update) {
+    // Email is the identity lookup key and every read compares it lowercased, so normalize here
+    // rather than only in UserMapper -- prepare() is on every write path, including callers that
+    // build a User directly instead of going through the mapper.
+    if (user.getEmail() != null) {
+      user.setEmail(user.getEmail().trim().toLowerCase(Locale.ROOT));
+    }
     validateTeams(user);
+    if (!update) {
+      validateGroupTeams(user.getTeams());
+    }
     validateRoles(user.getRoles());
+    validateDefaultDomain(user);
+  }
+
+  /**
+   * Names of users whose navbar selection ({@code defaultDomain}) is one of {@code domainIds}. The
+   * selection is a {@code DEFAULTS_TO} relationship, so deleting the domain removes it; callers use
+   * this only to evict those users' cached context.
+   */
+  public List<String> listUsersDefaultingTo(Collection<UUID> domainIds) {
+    List<String> userIds =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                domainIds.stream().map(UUID::toString).toList(),
+                Relationship.DEFAULTS_TO.ordinal(),
+                Entity.DOMAIN,
+                USER)
+            .stream()
+            .map(CollectionDAO.EntityRelationshipObject::getToId)
+            .distinct()
+            .toList();
+    return batchResolveRefs(USER, userIds.stream().map(UUID::fromString).toList()).values().stream()
+        .map(EntityReference::getName)
+        .toList();
+  }
+
+  /** A navbar selection must resolve to a real domain; anything else is rejected up front. */
+  private void validateDefaultDomain(User user) {
+    if (user.getDefaultDomain() != null) {
+      user.setDefaultDomain(
+          Entity.getEntityReferenceById(
+              Entity.DOMAIN, user.getDefaultDomain().getId(), NON_DELETED));
+    }
   }
 
   @Override
@@ -256,12 +332,16 @@ public class UserRepository extends EntityRepository<User> {
     if (Boolean.TRUE.equals(user.getIsBot())) {
       return Collections.emptyList(); // No inherited roles for bots
     }
-    return SubjectContext.getRolesForTeams(getTeams(user));
+    // setFields resolves teams before inherited roles, so re-reading them here is a wasted query.
+    // Teams are stripped from the stored JSON, so a non-null value can only have come from there.
+    List<EntityReference> teams = user.getTeams() != null ? user.getTeams() : getTeams(user);
+    return SubjectContext.getRolesForTeams(teams);
   }
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona");
+    return List.of(
+        "roles", "teams", "inheritedRoles", "inheritedPersonas", "defaultPersona", "defaultDomain");
   }
 
   @Override
@@ -379,6 +459,7 @@ public class UserRepository extends EntityRepository<User> {
     assignRoles(user, user.getRoles());
     assignTeams(user, user.getTeams());
     assignDefaultPersona(user, user.getDefaultPersona());
+    assignDefaultDomain(user, user.getDefaultDomain());
     assignPersonas(user, user.getPersonas());
     user.setInheritedRoles(getInheritedRoles(user));
     user.setInheritedPersonas(getInheritedPersonas(user));
@@ -389,15 +470,10 @@ public class UserRepository extends EntityRepository<User> {
     // If user does not have domain, then inherit it from parent Team
     // TODO have default team when a user belongs to multiple teams
     if (fields.contains(FIELD_DOMAINS)) {
-      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
       List<EntityReference> teams =
           !fields.contains(TEAMS_FIELD) ? getTeams(user) : user.getTeams();
-      if (!nullOrEmpty(teams)) {
-        for (EntityReference team : teams) {
-          Team parent = Entity.getEntity(TEAM, team.getId(), "domains", ALL);
-          combinedParent.addAll(parent.getDomains());
-        }
-      }
+      Set<EntityReference> combinedParent = new TreeSet<>(EntityUtil.compareEntityReferenceById);
+      combinedParent.addAll(TeamHierarchyResolver.domainsForTeams(teams));
       user.setDomains(
           EntityUtil.mergedInheritedEntityRefs(
               user.getDomains(), combinedParent.stream().toList()));
@@ -419,6 +495,8 @@ public class UserRepository extends EntityRepository<User> {
     user.setPersonas(fields.contains("personas") ? getPersonas(user) : user.getPersonas());
     user.setDefaultPersona(
         fields.contains("defaultPersona") ? getDefaultPersona(user) : user.getDefaultPersona());
+    user.setDefaultDomain(
+        fields.contains("defaultDomain") ? getDefaultDomain(user) : user.getDefaultDomain());
     user.withInheritedRoles(
         fields.contains(ROLES_FIELD) ? getInheritedRoles(user) : user.getInheritedRoles());
     user.setInheritedPersonas(
@@ -441,6 +519,7 @@ public class UserRepository extends EntityRepository<User> {
     user.setLastLoginTime(fields.contains("lastLoginTime") ? user.getLastLoginTime() : null);
     user.setPersonas(fields.contains("personas") ? user.getPersonas() : null);
     user.setDefaultPersona(fields.contains("defaultPersona") ? user.getDefaultPersona() : null);
+    user.setDefaultDomain(fields.contains("defaultDomain") ? user.getDefaultDomain() : null);
     user.setInheritedPersonas(fields.contains("personas") ? user.getInheritedPersonas() : null);
     user.setDomains(fields.contains("domains") ? user.getDomains() : null);
   }
@@ -509,8 +588,20 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  private void validateGroupTeams(List<EntityReference> teamReferences) {
+    for (EntityReference teamReference : listOrEmpty(teamReferences)) {
+      if (!teamReference.getId().equals(getOrganization().getId())) {
+        Team team = Entity.getEntity(TEAM, teamReference.getId(), "teamType", ALL);
+        if (!TeamType.GROUP.equals(team.getTeamType())) {
+          throw new IllegalArgumentException(
+              CatalogExceptionMessage.invalidTeamDirectUserAssignment(team.getTeamType()));
+        }
+      }
+    }
+  }
+
   protected void entitySpecificCleanup(User entityInterface) {
-    FeedUtil.cleanUpTaskForAssignees(entityInterface.getId(), USER);
+    TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), USER);
   }
 
   /* Validate if the user is already part of the given team */
@@ -534,16 +625,24 @@ public class UserRepository extends EntityRepository<User> {
     return daoCollection.userDAO().checkUserNameExists(username) > 0;
   }
 
+  /**
+   * Creates the admin and test users of the authorizer configuration in effect, the same one the
+   * request filters enforce, rather than the configuration file's copy, which a value saved in the
+   * UI may override.
+   */
   public void initializeUsers(OpenMetadataApplicationConfig config) {
     AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
-    // Create Admins
-    Set<String> adminUsers =
-        new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());
-    String domain = SecurityUtil.getDomain(config);
-    UserUtil.addUsers(authProvider, adminUsers, domain, true);
+    AuthorizerConfiguration authorizer =
+        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthzConfig())
+            .orElse(config.getAuthorizerConfiguration());
 
-    // Create Test Users
-    Set<String> testUsers = new HashSet<>(config.getAuthorizerConfiguration().getTestPrincipals());
+    UserUtil.createOrUpdateAdminUsers(authProvider, authorizer);
+
+    String domain = SecurityUtil.getDomain(authorizer);
+    Set<String> testUsers =
+        authorizer.getTestPrincipals() == null
+            ? new HashSet<>()
+            : new HashSet<>(authorizer.getTestPrincipals());
     UserUtil.addUsers(authProvider, testUsers, domain, null);
   }
 
@@ -594,23 +693,26 @@ public class UserRepository extends EntityRepository<User> {
     } catch (EntityNotFoundException e) {
       boolean existByName = checkUserNameExists(username);
       boolean existByEmail = checkEmailAlreadyExists(email);
-      if (existByName && !existByEmail) {
+      if (existByEmail) {
+        // Same semantics as the login flows: a deactivated account and an ambiguous duplicate
+        // email must both fail authentication rather than resolve to an arbitrary account.
+        User userByEmail = getActiveUserByEmailForAuth(email, fields);
+        if (!userByEmail.getName().equals(username)) {
+          LOG.debug(
+              "Username mismatch for email '{}': JWT-derived='{}', DB-actual='{}'. "
+                  + "Resolving by email (authoritative identifier).",
+              email,
+              username,
+              userByEmail.getName());
+        }
+        return userByEmail;
+      } else if (existByName) {
         User userByName = getByName(uriInfo, username, Fields.EMPTY_FIELDS);
         LOG.error(
             "User with given name exists but is not associated with the provided email. "
                 + "Matching User Found By Name [username:email] : [{}:{}], Provided User: [{}:{}]",
             userByName.getName().toLowerCase(),
             userByName.getEmail().toLowerCase(),
-            username,
-            email);
-        throw BadRequestException.of("Account already exists. Please contact administrator.");
-      } else if (!existByName && existByEmail) {
-        User userByEmail = getByEmail(uriInfo, email, Fields.EMPTY_FIELDS);
-        LOG.error(
-            "User with given email exists but is not associated with provider username. "
-                + "Matching User Found By Email [username:email] : [{}:{}], Provided User: [{}:{}]",
-            userByEmail.getName().toLowerCase(),
-            userByEmail.getEmail().toLowerCase(),
             username,
             email);
         throw BadRequestException.of("Account already exists. Please contact administrator.");
@@ -655,6 +757,10 @@ public class UserRepository extends EntityRepository<User> {
 
   public List<EntityReference> getPersonas(User user) {
     return findFrom(user.getId(), USER, Relationship.APPLIED_TO, Entity.PERSONA);
+  }
+
+  public EntityReference getDefaultDomain(User user) {
+    return getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN, false);
   }
 
   public EntityReference getDefaultPersona(User user) {
@@ -706,6 +812,113 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * Internal-only mutation of the bot impersonation grant. {@code allowImpersonation} is read-only
+   * on the user APIs (see {@link UserUpdater}); bots receive or lose the grant through {@code
+   * BotResource}, which delegates here.
+   */
+  public void updateBotImpersonation(
+      UUID botUserId, boolean allowImpersonation, EntityReference impersonationRole) {
+    User user = find(botUserId, Include.NON_DELETED, false);
+    user.setAllowImpersonation(allowImpersonation);
+    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    updateImpersonationRole(user, allowImpersonation, impersonationRole);
+    SubjectCache.invalidateUser(user.getName());
+  }
+
+  /**
+   * Fields an authentication flow must load before it mutates a user and PUTs it back. {@code
+   * createOrUpdate} compares the whole entity against the stored one, so any field {@link
+   * #clearFields} nulls and the caller did not ask for is recorded as a deletion and erased --
+   * that is the user's profile, their authentication mechanism, personas and domains. The two
+   * login timestamps are added on top of the update fields because they live in the stored JSON
+   * but are not part of the PUT field set.
+   */
+  public Fields getAuthUpdateFields() {
+    Set<String> fields = new HashSet<>(putFields.getFieldList());
+    fields.addAll(Set.of("lastLoginTime", "lastActivityTime"));
+    return new Fields(fields);
+  }
+
+  /**
+   * Streams the accounts whose email sits in {@code domain}, ordered by name, in pages. The
+   * {@code change-email} ops flow uses this to find accounts still holding a
+   * {@code user@principalDomain} address that the legacy identity flow synthesized rather than the
+   * identity provider supplying -- those are the accounts that will not match a real address once
+   * email-first login is enabled. Paged rather than listed in one shot so a large catalog does not
+   * have to fit in the operator's heap.
+   */
+  public void forEachUserInEmailDomain(String domain, Consumer<UserDAO.NameEmail> consumer) {
+    String domainSuffix = "%@" + domain.toLowerCase(Locale.ROOT);
+    String afterName = "";
+    List<UserDAO.NameEmail> page;
+    do {
+      page = daoCollection.userDAO().listUsersWithEmailDomain(domainSuffix, afterName, PAGE_SIZE);
+      page.forEach(consumer);
+      if (!page.isEmpty()) {
+        afterName = page.getLast().name();
+      }
+    } while (page.size() == PAGE_SIZE);
+  }
+
+  /**
+   * Internal-only mutation of a user's email. Email is deliberately immutable on the user APIs (see
+   * {@link UserUpdater}, which pins it to the stored value) because it is the identity key for
+   * email-first SSO. Administrators reach this through the {@code change-email} ops command to
+   * repair a synthesized address, follow a real-world address change, or release an address that
+   * the identity provider reassigned.
+   *
+   * @param clearIdentityProviderSubject also drop the recorded IdP subject so the next login
+   *     re-binds; required when the address was reassigned to a different person.
+   */
+  public User changeEmail(
+      String currentEmail, String newEmail, boolean clearIdentityProviderSubject) {
+    String normalizedNewEmail = newEmail.trim().toLowerCase(Locale.ROOT);
+    if (!SecurityUtil.isValidEmail(normalizedNewEmail)) {
+      throw new IllegalArgumentException(String.format("'%s' is not a valid email", newEmail));
+    }
+    // getByEmail resolves the account and rejects the ambiguous duplicate-email case, but it
+    // returns a field-cleared copy. Re-read through find() to get the stored entity intact:
+    // clearFields() nulls authenticationMechanism, profile and the login timestamps, which are
+    // persisted in the JSON rather than derived from relationships, so writing the cleared copy
+    // back would erase them -- for a bot, that means its token.
+    UUID userId = getByEmail(null, currentEmail, EntityUtil.Fields.EMPTY_FIELDS).getId();
+    if (checkEmailAlreadyExists(normalizedNewEmail)
+        && !normalizedNewEmail.equalsIgnoreCase(currentEmail)) {
+      throw new IllegalArgumentException(
+          String.format("Email %s is already used by another account", normalizedNewEmail));
+    }
+    User user = find(userId, Include.NON_DELETED, false);
+
+    String previousEmail = user.getEmail();
+    user.setEmail(normalizedNewEmail);
+    if (clearIdentityProviderSubject) {
+      user.setIdentityProviderSubject(null);
+    }
+    dao.update(user.getId(), user.getFullyQualifiedName(), JsonUtils.pojoToJson(user));
+    invalidateCacheForEntity(USER, user.getId(), user.getFullyQualifiedName());
+    JwtFilter.invalidateResolvedEmailIdentity(previousEmail);
+    JwtFilter.invalidateResolvedEmailIdentity(normalizedNewEmail);
+    SubjectCache.invalidateUser(user.getName());
+    LOG.info(
+        "Changed email for user {} from {} to {}",
+        user.getName(),
+        previousEmail,
+        normalizedNewEmail);
+    return user;
+  }
+
+  private void updateImpersonationRole(
+      User user, boolean allowImpersonation, EntityReference impersonationRole) {
+    if (allowImpersonation) {
+      addRelationship(user.getId(), impersonationRole.getId(), USER, Entity.ROLE, Relationship.HAS);
+    } else {
+      deleteRelationship(
+          user.getId(), USER, impersonationRole.getId(), Entity.ROLE, Relationship.HAS);
+    }
+  }
+
   private void assignTeams(User user, List<EntityReference> teams) {
     teams = listOrEmpty(teams);
     for (EntityReference team : teams) {
@@ -730,6 +943,12 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  private void assignDefaultDomain(User user, EntityReference domain) {
+    if (domain != null) {
+      addRelationship(domain.getId(), user.getId(), Entity.DOMAIN, USER, Relationship.DEFAULTS_TO);
+    }
+  }
+
   private void assignDefaultPersona(User user, EntityReference persona) {
     if (persona != null) {
       addRelationship(
@@ -738,6 +957,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssets(UUID userId, int limit, int offset) {
+    return getUserAssets(userId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getUserAssets(
+      UUID userId, int limit, int offset, SubjectContext caller) {
     User user = get(null, userId, getFields("id,teams"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -752,7 +977,7 @@ public class UserRepository extends EntityRepository<User> {
             : new ArrayList<>();
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit);
+        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -766,8 +991,13 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssetsByName(String userName, int limit, int offset) {
+    return getUserAssetsByName(userName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getUserAssetsByName(
+      String userName, int limit, int offset, SubjectContext caller) {
     User user = getByName(null, userName, getFields("id"));
-    return getUserAssets(user.getId(), limit, offset);
+    return getUserAssets(user.getId(), limit, offset, caller);
   }
 
   // Bulk fetch methods for User-specific fields
@@ -783,13 +1013,16 @@ public class UserRepository extends EntityRepository<User> {
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
 
+    Map<UUID, EntityReference> teamRefsById =
+        batchResolveRefs(
+            Entity.TEAM, teamRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
     Map<UUID, List<EntityReference>> userToTeams = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
       UUID userId = UUID.fromString(record.getToId());
-      EntityReference teamRef =
-          Entity.getEntityReferenceById(
-              Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
-      userToTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+      EntityReference teamRef = teamRefsById.get(UUID.fromString(record.getFromId()));
+      if (teamRef != null) {
+        userToTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+      }
     }
 
     for (User user : users) {
@@ -825,76 +1058,157 @@ public class UserRepository extends EntityRepository<User> {
             .relationshipDAO()
             .findToBatch(userIds, Relationship.HAS.ordinal(), USER, Entity.ROLE);
 
+    Map<UUID, EntityReference> roleRefsById =
+        batchResolveRefs(
+            Entity.ROLE, roleRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
     Map<UUID, List<EntityReference>> userToRoles = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : roleRecords) {
       UUID userId = UUID.fromString(record.getFromId());
-      EntityReference roleRef =
-          Entity.getEntityReferenceById(
-              Entity.ROLE, UUID.fromString(record.getToId()), Include.ALL);
-      userToRoles.computeIfAbsent(userId, k -> new ArrayList<>()).add(roleRef);
+      EntityReference roleRef = roleRefsById.get(UUID.fromString(record.getToId()));
+      if (roleRef != null) {
+        userToRoles.computeIfAbsent(userId, k -> new ArrayList<>()).add(roleRef);
+      }
     }
+
+    Map<UUID, List<EntityReference>> userToTeams = batchFetchTeamsForUsers(userIds);
+    // One hierarchy walk for the whole page rather than one per user: members of the same teams
+    // share almost all of it, and a user in many teams would otherwise pay for each of them.
+    Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy =
+        TeamHierarchyResolver.closure(effectiveTeams(users, userToTeams));
 
     for (User user : users) {
       List<EntityReference> roleRefs = userToRoles.get(user.getId());
       user.setRoles(roleRefs != null ? roleRefs : new ArrayList<>());
-      // Also set inherited roles
-      user.withInheritedRoles(getInheritedRoles(user));
+      user.withInheritedRoles(getInheritedRoles(user, userToTeams.get(user.getId()), hierarchy));
     }
   }
 
+  /** Teams whose roles the page inherits, with the organization standing in for no membership. */
+  private Set<EntityReference> effectiveTeams(
+      List<User> users, Map<UUID, List<EntityReference>> userToTeams) {
+    Set<EntityReference> teams = new HashSet<>();
+    for (User user : users) {
+      if (!Boolean.TRUE.equals(user.getIsBot())) {
+        teams.addAll(effectiveTeams(userToTeams.get(user.getId())));
+      }
+    }
+    return teams;
+  }
+
+  private List<EntityReference> effectiveTeams(List<EntityReference> teams) {
+    return nullOrEmpty(teams) ? List.of(getOrganization()) : teams;
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchTeamsForUsers(List<String> userIds) {
+    Map<UUID, List<EntityReference>> userToTeams = new HashMap<>();
+    List<CollectionDAO.EntityRelationshipObject> teamRecords =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, Include.ALL);
+    Map<UUID, EntityReference> teamRefsById =
+        batchResolveRefs(
+            Entity.TEAM, teamRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
+    for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+      UUID userId = UUID.fromString(record.getToId());
+      EntityReference teamRef = teamRefsById.get(UUID.fromString(record.getFromId()));
+      if (teamRef != null && !Boolean.TRUE.equals(teamRef.getDeleted())) {
+        userToTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+      }
+    }
+    return userToTeams;
+  }
+
+  private List<EntityReference> getInheritedRoles(
+      User user, List<EntityReference> teams, Map<UUID, TeamHierarchyResolver.TeamNode> hierarchy) {
+    List<EntityReference> roles;
+    if (Boolean.TRUE.equals(user.getIsBot())) {
+      roles = Collections.emptyList();
+    } else {
+      roles = TeamHierarchyResolver.rolesForTeams(effectiveTeams(teams), hierarchy);
+    }
+    return roles;
+  }
+
   private void fetchAndSetOwns(List<User> users, Fields fields) {
+    fetchAndSetOwns(users, fields, null);
+  }
+
+  private void fetchAndSetOwns(List<User> users, Fields fields, ListFilter filter) {
     if (!fields.contains("owns") || users == null || users.isEmpty()) {
       return;
     }
 
     List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    String ownsEntityType = filter == null ? null : filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM);
+    boolean directOwnsOnly =
+        filter != null && Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM));
 
     // Get entities owned by users
     List<CollectionDAO.EntityRelationshipObject> ownsRecords =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL);
+        nullOrEmpty(ownsEntityType)
+            ? daoCollection
+                .relationshipDAO()
+                .findToBatchAllTypes(userIds, Relationship.OWNS.ordinal(), Include.ALL)
+            : daoCollection
+                .relationshipDAO()
+                .findToBatch(userIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
     // Also get entities owned by teams that users belong to
     // First get all teams for all users
     Map<UUID, List<EntityReference>> userTeams = new HashMap<>();
-    if (!fields.contains(TEAMS_FIELD)) {
-      // If teams weren't already fetched, we need to get them
-      List<CollectionDAO.EntityRelationshipObject> teamRecords =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
-      for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
-        UUID userId = UUID.fromString(record.getToId());
-        EntityReference teamRef =
-            Entity.getEntityReferenceById(
-                Entity.TEAM, UUID.fromString(record.getFromId()), Include.ALL);
-        userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
-      }
-    } else {
-      // Use already fetched teams
-      for (User user : users) {
-        if (user.getTeams() != null) {
-          userTeams.put(user.getId(), user.getTeams());
+    if (!directOwnsOnly) {
+      if (!fields.contains(TEAMS_FIELD)) {
+        // If teams weren't already fetched, we need to get them
+        List<CollectionDAO.EntityRelationshipObject> teamRecords =
+            daoCollection
+                .relationshipDAO()
+                .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.TEAM, USER);
+        Map<UUID, EntityReference> teamRefsById =
+            batchResolveRefs(
+                Entity.TEAM,
+                teamRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
+        for (CollectionDAO.EntityRelationshipObject record : teamRecords) {
+          UUID userId = UUID.fromString(record.getToId());
+          EntityReference teamRef = teamRefsById.get(UUID.fromString(record.getFromId()));
+          if (teamRef != null) {
+            userTeams.computeIfAbsent(userId, k -> new ArrayList<>()).add(teamRef);
+          }
+        }
+      } else {
+        // Use already fetched teams
+        for (User user : users) {
+          if (user.getTeams() != null) {
+            userTeams.put(user.getId(), user.getTeams());
+          }
         }
       }
     }
 
     // Get entities owned by teams
     Set<String> allTeamIds =
-        userTeams.values().stream()
-            .flatMap(List::stream)
-            .map(EntityReference::getId)
-            .map(UUID::toString)
-            .collect(Collectors.toSet());
+        directOwnsOnly
+            ? Collections.emptySet()
+            : userTeams.values().stream()
+                .flatMap(List::stream)
+                .map(EntityReference::getId)
+                .map(UUID::toString)
+                .collect(Collectors.toSet());
 
     List<CollectionDAO.EntityRelationshipObject> teamOwnsRecords = new ArrayList<>();
     if (!allTeamIds.isEmpty()) {
       teamOwnsRecords =
-          daoCollection
-              .relationshipDAO()
-              .findToBatchAllTypes(
-                  new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL);
+          nullOrEmpty(ownsEntityType)
+              ? daoCollection
+                  .relationshipDAO()
+                  .findToBatchAllTypes(
+                      new ArrayList<>(allTeamIds), Relationship.OWNS.ordinal(), Include.ALL)
+              : daoCollection
+                  .relationshipDAO()
+                  .findToBatch(
+                      new ArrayList<>(allTeamIds),
+                      Relationship.OWNS.ordinal(),
+                      ownsEntityType,
+                      Include.ALL);
     }
 
     // Map user to owned entities
@@ -944,6 +1258,23 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  @Override
+  public void setFieldsInBulk(Fields fields, List<User> users, ListFilter filter) {
+    if (fields.contains("owns")
+        && filter != null
+        && (!nullOrEmpty(filter.getQueryParam(OWNS_ENTITY_TYPE_PARAM))
+            || Boolean.parseBoolean(filter.getQueryParam(DIRECT_OWNS_ONLY_PARAM)))) {
+      fetchAndSetFieldsExcept(users, fields, Set.of("owns"));
+      fetchAndSetOwns(users, fields, filter);
+      setInheritedFields(users, fields);
+      for (User user : users) {
+        clearFieldsInternal(user, fields);
+      }
+      return;
+    }
+    super.setFieldsInBulk(fields, users);
+  }
+
   private void fetchAndSetFollows(List<User> users, Fields fields) {
     if (!fields.contains("follows") || users == null || users.isEmpty()) {
       return;
@@ -987,19 +1318,45 @@ public class UserRepository extends EntityRepository<User> {
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.APPLIED_TO.ordinal(), Entity.PERSONA, USER);
 
+    Map<UUID, EntityReference> personaRefsById =
+        batchResolveRefs(
+            Entity.PERSONA,
+            personaRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
     Map<UUID, List<EntityReference>> userToPersonas = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : personaRecords) {
       UUID userId = UUID.fromString(record.getToId());
-      EntityReference personaRef =
-          Entity.getEntityReferenceById(
-              Entity.PERSONA, UUID.fromString(record.getFromId()), Include.ALL);
-      userToPersonas.computeIfAbsent(userId, k -> new ArrayList<>()).add(personaRef);
+      EntityReference personaRef = personaRefsById.get(UUID.fromString(record.getFromId()));
+      if (personaRef != null) {
+        userToPersonas.computeIfAbsent(userId, k -> new ArrayList<>()).add(personaRef);
+      }
     }
 
     for (User user : users) {
       List<EntityReference> personaRefs = userToPersonas.get(user.getId());
       user.setPersonas(personaRefs != null ? personaRefs : new ArrayList<>());
     }
+  }
+
+  private void fetchAndSetDefaultDomain(List<User> users, Fields fields) {
+    if (!fields.contains("defaultDomain") || users == null || users.isEmpty()) {
+      return;
+    }
+    List<String> userIds = users.stream().map(User::getId).map(UUID::toString).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findFromBatch(userIds, Relationship.DEFAULTS_TO.ordinal(), Entity.DOMAIN, USER);
+    Map<UUID, EntityReference> domainsById =
+        batchResolveRefs(
+            Entity.DOMAIN, records.stream().map(r -> UUID.fromString(r.getFromId())).toList());
+    Map<UUID, EntityReference> userToDomain = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference domainRef = domainsById.get(UUID.fromString(record.getFromId()));
+      if (domainRef != null) {
+        userToDomain.put(UUID.fromString(record.getToId()), domainRef);
+      }
+    }
+    users.forEach(user -> user.setDefaultDomain(userToDomain.get(user.getId())));
   }
 
   private void fetchAndSetDefaultPersona(List<User> users, Fields fields) {
@@ -1014,13 +1371,17 @@ public class UserRepository extends EntityRepository<User> {
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.DEFAULTS_TO.ordinal(), Entity.PERSONA, USER);
 
+    Map<UUID, EntityReference> defaultPersonaRefsById =
+        batchResolveRefs(
+            Entity.PERSONA,
+            defaultPersonaRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
     Map<UUID, EntityReference> userToDefaultPersona = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : defaultPersonaRecords) {
       UUID userId = UUID.fromString(record.getToId());
-      EntityReference personaRef =
-          Entity.getEntityReferenceById(
-              Entity.PERSONA, UUID.fromString(record.getFromId()), Include.ALL);
-      userToDefaultPersona.put(userId, personaRef);
+      EntityReference personaRef = defaultPersonaRefsById.get(UUID.fromString(record.getFromId()));
+      if (personaRef != null) {
+        userToDefaultPersona.put(userId, personaRef);
+      }
     }
 
     for (User user : users) {
@@ -1078,13 +1439,15 @@ public class UserRepository extends EntityRepository<User> {
             .findToBatch(
                 new ArrayList<>(allTeamIds), Relationship.HAS.ordinal(), TEAM, Entity.PERSONA);
 
+    Map<UUID, EntityReference> inheritedPersonaRefsById =
+        batchResolveRefs(
+            Entity.PERSONA,
+            personaRecords.stream().map(r -> UUID.fromString(r.getToId())).toList());
     Map<UUID, EntityReference> teamToPersona = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : personaRecords) {
       UUID teamId = UUID.fromString(record.getFromId());
-      EntityReference personaRef =
-          Entity.getEntityReferenceById(
-              Entity.PERSONA, UUID.fromString(record.getToId()), Include.ALL);
-      if (!Boolean.TRUE.equals(personaRef.getDeleted())) {
+      EntityReference personaRef = inheritedPersonaRefsById.get(UUID.fromString(record.getToId()));
+      if (personaRef != null && !Boolean.TRUE.equals(personaRef.getDeleted())) {
         teamToPersona.put(teamId, personaRef);
       }
     }
@@ -1120,13 +1483,17 @@ public class UserRepository extends EntityRepository<User> {
             .relationshipDAO()
             .findFromBatch(userIds, Relationship.HAS.ordinal(), Entity.DOMAIN, USER);
 
+    Map<UUID, EntityReference> domainRefsById =
+        batchResolveRefs(
+            Entity.DOMAIN,
+            domainRecords.stream().map(r -> UUID.fromString(r.getFromId())).toList());
     Map<UUID, List<EntityReference>> userToDomains = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : domainRecords) {
       UUID userId = UUID.fromString(record.getToId());
-      EntityReference domainRef =
-          Entity.getEntityReferenceById(
-              Entity.DOMAIN, UUID.fromString(record.getFromId()), Include.ALL);
-      userToDomains.computeIfAbsent(userId, k -> new ArrayList<>()).add(domainRef);
+      EntityReference domainRef = domainRefsById.get(UUID.fromString(record.getFromId()));
+      if (domainRef != null) {
+        userToDomains.computeIfAbsent(userId, k -> new ArrayList<>()).add(domainRef);
+      }
     }
 
     for (User user : users) {
@@ -1161,9 +1528,41 @@ public class UserRepository extends EntityRepository<User> {
                       .withIsAdmin(getBoolean(printer, csvRecord, 5)))
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
+      rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
       }
+    }
+
+    /**
+     * The import endpoints authorize {@code EDIT_ALL} on users, not administrator, so anyone who
+     * can manage a team could otherwise hand themselves {@code isAdmin} or any role straight from
+     * the spreadsheet - the escalation the PATCH and PUT paths already reject.
+     *
+     * <p>Keyed off {@code importedBy} rather than a {@code SecurityContext} because the async
+     * import ({@code PUT /v1/users/importAsync}) runs the rows on a background thread where no
+     * request context exists.
+     */
+    private void rejectPrivilegedFieldsFromNonAdmin(
+        CSVPrinter printer, CSVRecord csvRecord, User user) throws IOException {
+      if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
+        return;
+      }
+      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+        importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
+        processRecord = false;
+        return;
+      }
+      if (!nullOrEmpty(user.getRoles())) {
+        importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
+        processRecord = false;
+      }
+    }
+
+    public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
+      String error = String.format("Only an admin can set %s during user import", fieldName);
+      return String.format(
+          "#%s: Field %d error - %s", CsvErrorType.INVALID_FIELD, field + 1, error);
     }
 
     @Override
@@ -1249,23 +1648,86 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   @Override
+  protected DeleteLifecycle beginDeleteLifecycle(User entity, String deletedBy) {
+    DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(entity, deletedBy);
+    try {
+      Runnable finishCredentialDelete =
+          Boolean.TRUE.equals(entity.getIsBot())
+              ? BotTokenCache.denyToken(entity.getName())
+              : UserTokenCache.denyToken(entity.getName());
+      return () -> {
+        try (parentLifecycle) {
+          finishCredentialDelete.run();
+        }
+      };
+    } catch (RuntimeException | Error failure) {
+      try {
+        parentLifecycle.close();
+      } catch (RuntimeException | Error closeFailure) {
+        failure.addSuppressed(closeFailure);
+      }
+      throw failure;
+    }
+  }
+
+  @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    // If the User is bot it's token needs to be invalidated
-    if (Boolean.TRUE.equals(entity.getIsBot())) {
-      BotTokenCache.invalidateToken(entity.getName());
+    JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
+    revokeLiveSessions(entity);
+    if (hardDelete) {
+      // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
+      userPreferencesRepository.delete(entity.getId());
     }
     deleteSuggestionTasksForUser(entity);
 
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-    executorService.submit(
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            DatabaseOperation.USER_CLEANUP,
+            entity.getFullyQualifiedName(),
+            () -> {
+              try {
+                updateIncidentAssignee(entity);
+              } catch (Exception ex) {
+                LOG.error("Error updating test case incident assignee: ", ex);
+              }
+            });
+  }
+
+  @Override
+  protected void postRestore(User entity) {
+    super.postRestore(entity);
+    String userName = entity.getName();
+    boolean isBot = Boolean.TRUE.equals(entity.getIsBot());
+    PostCommitActionQueue.runOrDefer(
         () -> {
-          try {
-            updateIncidentAssignee(entity);
-          } catch (Exception ex) {
-            LOG.error("Error updating test case incident assignee: ", ex);
+          if (isBot) {
+            BotTokenCache.reloadToken(userName);
+          } else {
+            UserTokenCache.reloadToken(userName);
           }
         });
+  }
+
+  /**
+   * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
+   * user's existing session-bound tokens keep working until natural expiry (7 days by default)
+   * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
+   * sockets as well.
+   */
+  private void revokeLiveSessions(User entity) {
+    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    if (sessionService == null || entity.getId() == null) {
+      return;
+    }
+    try {
+      int revoked = sessionService.revokeSessionsForUser(entity.getId().toString());
+      if (revoked > 0) {
+        LOG.info("Revoked {} session(s) for deleted user {}", revoked, entity.getName());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to revoke sessions for deleted user {}", entity.getName(), e);
+    }
   }
 
   private void deleteSuggestionTasksForUser(User entity) {
@@ -1281,12 +1743,44 @@ public class UserRepository extends EntityRepository<User> {
                     event.getWaitInterval().toMillis(),
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
+    String creatorId = entity.getId().toString();
+    String category = TaskCategory.MetadataUpdate.value();
+    // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
+    // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
+    // and its cache-invalidate hook — without explicit eviction the next GET on a
+    // previously-read task returns the stale cached row even though the DB row is gone.
+    // FQN is required because tasks expose both GET /v1/tasks/{id}
+    // (EntityRepository.CACHE_WITH_ID-keyed) and
+    // GET /v1/tasks/name/{taskId} (EntityRepository.CACHE_WITH_NAME-keyed); dropping only by id
+    // would
+    // leave a
+    // by-name reader pinned to a stale entry.
+    List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
     retry.executeRunnable(
-        () ->
-            daoCollection
-                .taskDAO()
-                .deleteByCreatorAndCategory(
-                    entity.getId().toString(), TaskCategory.MetadataUpdate.value()));
+        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+    if (!tasksToInvalidate.isEmpty()) {
+      invalidateTaskCacheForIds(tasksToInvalidate);
+    }
+  }
+
+  private void invalidateTaskCacheForIds(List<EntityDAO.EntityIdFqnPair> tasks) {
+    // Task is in UNCACHED_ENTITY_TYPES, so invalidateCacheForEntity clears only the local L1
+    // Guava cache and skips the pub/sub fan-out (deliberate perf optimization for the
+    // cascade-heavy bot/domain/data-product paths). In a multi-pod deployment, peer instances
+    // that previously read one of these tasks still hold it in their L1 cache and would serve
+    // the stale "deleted" row after this bulk SQL DELETE. Publish each (id, fqn) explicitly so
+    // peers drop both their by-id and by-name L1 entries.
+    var pubsub = CacheBundle.getCacheInvalidationPubSub();
+    for (EntityDAO.EntityIdFqnPair task : tasks) {
+      if (task.id == null) {
+        continue;
+      }
+      EntityRepository.invalidateCacheForEntity(Entity.TASK, task.id, task.fqn);
+      if (pubsub != null) {
+        pubsub.publish(Entity.TASK, task.id, task.fqn, "bot-task-cleanup");
+      }
+    }
   }
 
   static long getTaskCleanupRetryDelayMillis(int attempt) {
@@ -1311,6 +1805,15 @@ public class UserRepository extends EntityRepository<User> {
       }
     }
     return false;
+  }
+
+  /**
+   * Evicts a cached subject twice: now, so this request reads its own write, and again after the
+   * commit, so a concurrent load that captured the pre-commit row cannot outlive the update.
+   */
+  static void evictNowAndAfterCommit(Runnable evict) {
+    evict.run();
+    PostCommitActionQueue.runOrDefer(evict);
   }
 
   /** Handles entity updated from PUT and POST operation. */
@@ -1397,6 +1900,7 @@ public class UserRepository extends EntityRepository<User> {
       compareAndUpdate("teams", () -> updateTeams(original, updated));
       compareAndUpdate("personas", () -> updatePersonas(original, updated));
       compareAndUpdate("defaultPersona", () -> updateDefaultPersona(original, updated));
+      compareAndUpdate("defaultDomain", () -> updateDefaultDomain(original, updated));
       compareAndUpdate(
           "profile",
           () -> recordChange("profile", original.getProfile(), updated.getProfile(), true));
@@ -1412,17 +1916,35 @@ public class UserRepository extends EntityRepository<User> {
           () ->
               recordChange(
                   "isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified()));
-      compareAndUpdate(
-          "allowImpersonation",
-          () ->
-              recordChange(
-                  "allowImpersonation",
-                  original.getAllowImpersonation(),
-                  updated.getAllowImpersonation()));
+      compareAndUpdate(ALLOW_IMPERSONATION_FIELD, this::updateAllowImpersonation);
       compareAndUpdate("personaPreferences", () -> updatePersonaPreferences(original, updated));
       compareAndUpdate(
           "authenticationMechanism", () -> updateAuthenticationMechanism(original, updated));
-      compareAndUpdateAny(() -> SubjectCache.invalidateUser(updated.getName()), "roles", "teams");
+      compareAndUpdateAny(
+          () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUser(updated.getName())),
+          "roles",
+          "teams");
+      // Authorization reads these from the cached user context (e.g. hasDomain() and admin checks)
+      compareAndUpdateAny(
+          () -> evictNowAndAfterCommit(() -> SubjectCache.invalidateUserContext(updated.getName())),
+          "personas",
+          "defaultPersona",
+          "defaultDomain",
+          FIELD_DOMAINS,
+          "isAdmin");
+      JwtFilter.invalidateResolvedEmailIdentity(original.getEmail());
+      JwtFilter.invalidateResolvedEmailIdentity(updated.getEmail());
+    }
+
+    private void updateAllowImpersonation() {
+      if (operation.isPut()) {
+        // CreateUser does not carry allowImpersonation; PUT must not wipe the stored grant
+        updated.setAllowImpersonation(original.getAllowImpersonation());
+      } else if (!Objects.equals(
+          original.getAllowImpersonation(), updated.getAllowImpersonation())) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.readOnlyAttribute(USER, ALLOW_IMPERSONATION_FIELD));
+      }
     }
 
     private void updateRoles(User original, User updated) {
@@ -1483,11 +2005,13 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     private void updateTeams(User original, User updated) {
+      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      List<EntityReference> requestedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
+      validateGroupTeams(findAddedTeams(origTeams, requestedTeams));
+
       // Remove teams from original and add teams from updated
       deleteTo(original.getId(), USER, Relationship.HAS, Entity.TEAM);
-      assignTeams(updated, updated.getTeams());
-
-      List<EntityReference> origTeams = filterValidTeams(listOrEmpty(original.getTeams()));
+      assignTeams(updated, requestedTeams);
       List<EntityReference> updatedTeams = filterValidTeams(listOrEmpty(updated.getTeams()));
 
       origTeams.sort(EntityUtil.compareEntityReference);
@@ -1502,9 +2026,18 @@ public class UserRepository extends EntityRepository<User> {
       Stream.concat(added.stream(), deleted.stream())
           .forEach(
               teamRef -> {
-                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
+                EntityInterface<?> team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
                 searchRepository.updateEntityIndex(team);
               });
+    }
+
+    private List<EntityReference> findAddedTeams(
+        List<EntityReference> originalTeams, List<EntityReference> requestedTeams) {
+      final Set<UUID> originalTeamIds =
+          originalTeams.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      return requestedTeams.stream()
+          .filter(team -> !originalTeamIds.contains(team.getId()))
+          .toList();
     }
 
     private void updatePersonas(User original, User updated) {
@@ -1527,6 +2060,27 @@ public class UserRepository extends EntityRepository<User> {
           added,
           deleted,
           EntityUtil.entityReferenceMatch);
+    }
+
+    private void updateDefaultDomain(User original, User updated) {
+      // The relationship is: domain --DEFAULTS_TO--> user
+      EntityReference originalDefaultDomain = getDefaultDomain(original);
+      if (operation.isPut() && updated.getDefaultDomain() == null) {
+        // A PUT body (CreateUser) has no defaultDomain; it must not clear the saved selection.
+        updated.setDefaultDomain(originalDefaultDomain);
+        return;
+      }
+      EntityReference updatedDefaultDomain = updated.getDefaultDomain();
+      deleteTo(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN);
+      assignDefaultDomain(updated, updatedDefaultDomain);
+      // A view preference (e.g. the navbar pick): saved without a version bump, like lastLoginTime.
+      recordChange(
+          "defaultDomain",
+          originalDefaultDomain,
+          updatedDefaultDomain,
+          true,
+          EntityUtil.entityReferenceMatch,
+          false);
     }
 
     private void updateDefaultPersona(User original, User updated) {

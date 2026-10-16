@@ -14,8 +14,9 @@ Test looker source
 
 import uuid
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -27,6 +28,7 @@ from looker_sdk.sdk.api40.models import (
     Query,
     User,
 )
+from pydantic import AnyUrl
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -47,6 +49,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -293,6 +296,25 @@ class LookerUnitTest(TestCase):
                 create_dashboard_request,
             )
 
+    def test_display_url_defaults_to_host_port(self):
+        assert self.looker._display_url == "https://my-looker.com"
+
+    def test_yield_dashboard_uses_display_url(self):
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
+
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
+            create_dashboard_request = CreateDashboardRequest(
+                name="1",
+                displayName="title1",
+                description="description",
+                charts=[],
+                sourceUrl="https://ui.example.com/dashboards/1",
+                service=self.looker.context.get().dashboard_service,
+                owners=None,
+            )
+
+            assert next(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD)).right == create_dashboard_request
+
     def test_clean_table_name(self):
         """
         Check table cleaning
@@ -517,11 +539,47 @@ class LookerUnitTest(TestCase):
 
         # We don't blow up if the chart cannot be built.
         # Let's mock a random function exploding
-        def something_bad():
+        def something_bad(_):
             raise Exception("something bad")  # noqa: TRY002
 
         with patch.object(LookerSource, "build_chart_description", side_effect=something_bad):
-            self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)
+            result = next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
+
+        assert result.left is not None
+        assert "something bad" in result.left.error
+
+    def test_yield_dashboard_chart_keeps_text_tile(self):
+        dashboard = LookerDashboard(
+            id="1",
+            title="title1",
+            dashboard_elements=[DashboardElement(id="4977", type="text", body_text="Searchable text")],
+            description="description",
+        )
+
+        result = next(self.looker.yield_dashboard_chart(dashboard)).right
+
+        assert result is not None
+        assert result.description.root == "Searchable text"
+        assert result.sourceUrl.root == "https://my-looker.com/dashboards/1"
+
+    def test_yield_dashboard_chart_merge_tile(self):
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
+        dashboard = LookerDashboard(
+            id="1",
+            title="title1",
+            dashboard_elements=[DashboardElement(id="merge_1", title="Merged", type="table", merge_result_id="abc123")],
+            description="description",
+        )
+
+        create_chart_request = CreateChartRequest(
+            name="merge_1",
+            displayName="Merged",
+            chartType=ChartType.Table,
+            sourceUrl="https://ui.example.com/merge?mid=abc123",
+            service=self.looker.context.get().dashboard_service,
+        )
+
+        assert next(self.looker.yield_dashboard_chart(dashboard)).right == create_chart_request
 
     def test_yield_dashboard_usage(self):
         """
@@ -725,6 +783,7 @@ class LookerUnitTest(TestCase):
         """
         Check that sourceUrl is set for LookMlExplore data models
         """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         mock_explore = LookmlModelExplore(
             name="my_explore",
             model_name="my_model",
@@ -751,15 +810,13 @@ class LookerUnitTest(TestCase):
         ):
             results = [r for r in self.looker.yield_bulk_datamodel(mock_explore) if r.right]
             explore_result = results[0].right
-            self.assertEqual(
-                explore_result.sourceUrl.root,
-                "https://my-looker.com/explore/my_model/my_explore",
-            )
+            assert explore_result.sourceUrl.root == "https://ui.example.com/explore/my_model/my_explore"
 
     def test_view_source_url(self):
         """
         Check that sourceUrl is set for LookMlView data models
         """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         from unittest.mock import MagicMock
 
         from metadata.ingestion.source.dashboard.looker.models import LookMlView
@@ -798,9 +855,8 @@ class LookerUnitTest(TestCase):
         ):
             results = list(self.looker._process_view(view_name="my_view", explore=mock_explore))
             view_result = results[0].right
-            self.assertEqual(
-                view_result.sourceUrl.root,
-                "https://my-looker.com/projects/my_project/files/views/my_view.view.lkml",
+            assert (
+                view_result.sourceUrl.root == "https://ui.example.com/projects/my_project/files/views/my_view.view.lkml"
             )
 
     def test_view_source_url_none_when_no_source_file(self):
@@ -851,8 +907,9 @@ class LookerUnitTest(TestCase):
         """
         Check that sourceUrl uses query share_url for charts
         """
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
         result = next(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD)).right
-        self.assertEqual(result.sourceUrl.root, "https://my-looker.com/hello")
+        assert result.sourceUrl.root == "https://my-looker.com/hello"
 
     def test_chart_source_url_fallback_to_merge(self):
         """
@@ -912,3 +969,182 @@ class LookerUnitTest(TestCase):
         list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
         assert len(self.looker.chart_source_state) == 1
         assert any("looker_source_test" in fqn for fqn in self.looker.chart_source_state)
+
+    def test_list_datamodels_declares_datamodel_total(self):
+        """
+        Check that list_datamodels declares the DashboardDataModel progress
+        total from the explore navigation, and marks it reconcilable so
+        standalone views can grow it later.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 3)
+        self.assertTrue(counter.reconcilable)
+
+    def test_list_datamodels_excludes_filtered_models_from_total(self):
+        """
+        Check that list_datamodels excludes explores belonging to models
+        filtered out by dataModelFilterPattern when computing the
+        DashboardDataModel progress total, matching what
+        fetch_lookml_explores actually yields.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["^m2$"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
+    def test_list_datamodels_excludes_filtered_explore_from_total(self):
+        """
+        Check that a dataModelFilterPattern matching an explore's composite
+        datamodel name (model_explore) excludes only that explore from the
+        total, mirroring the per-explore filter in yield_bulk_datamodel.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["m1_e2"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
+    def test_get_dashboards_list_declares_dashboard_total(self):
+        """
+        Check that get_dashboards_list declares the Dashboard progress total
+        from the name-filtered dashboard list.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertEqual(registry._global["Dashboard"].total, 2)
+
+    def test_get_dashboards_list_reconcilable_when_project_filtered(self):
+        """
+        projectFilterPattern is applied downstream in the base get_dashboard
+        (needs per-dashboard project detail), so get_dashboards_list falls back
+        to a reconcilable running count instead of an unreachable pre-filter
+        total.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+        self.looker.source_config.projectFilterPattern = FilterPattern(excludes=["^skip$"])
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertTrue(registry._global["Dashboard"].reconcilable)
+        self.assertIsNone(registry._global["Dashboard"].total)
+
+    def test_yield_bulk_datamodel_tracks_progress(self):
+        """
+        Check that yield_bulk_datamodel advances the DashboardDataModel
+        counter after successfully yielding the explore request.
+        """
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+            fields=LookmlModelExploreFieldset(dimensions=[], measures=[]),
+        )
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_get_explore_sql", return_value=None),
+        ):
+            list(self.looker.yield_bulk_datamodel(mock_explore))
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_standalone_datamodels_tracks_progress(self):
+        """
+        Check that yield_standalone_datamodels advances the
+        DashboardDataModel counter after successfully yielding a view request.
+        """
+        from metadata.ingestion.source.dashboard.looker.models import LookMlView
+
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_view = LookMlView(name="my_view", source_file="views/my_view.view.lkml")
+        mock_parser = MagicMock()
+        mock_parser._views_cache = {"my_view": mock_view}
+        mock_parser.parsed_files = {}
+
+        self.looker._repo_credentials = True
+        self.looker._project_parsers = {"my_project": mock_parser}
+        self.looker._views_cache = {}
+        self.looker._all_lookml_models = [SimpleNamespace(name="my_model")]
+        self.looker.service_connection.displayUrl = AnyUrl("https://ui.example.com/")
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_add_standalone_view_lineage", return_value=iter([])),
+        ):
+            results = list(self.looker.yield_standalone_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+        assert (
+            results[0].right.sourceUrl.root
+            == "https://ui.example.com/projects/my_project/files/views/my_view.view.lkml"
+        )
+
+    def test_yield_dashboard_tracks_progress(self):
+        """
+        Check that yield_dashboard advances the Dashboard counter after
+        successfully yielding the dashboard request.
+        """
+        self.looker.progress_tracking.manual.set_total("Dashboard", 5)
+
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
+            list(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD))
+
+        counter = self.looker.progress_tracking.registry._global["Dashboard"]
+        self.assertGreaterEqual(counter.done, 1)

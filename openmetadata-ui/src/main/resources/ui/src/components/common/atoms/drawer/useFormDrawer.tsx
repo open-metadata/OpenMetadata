@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import React, { ReactNode, useCallback, useMemo, useState } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { createScrollToErrorHandler } from '../../../../utils/formUtils';
+import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import {
   CompositeDrawerConfig,
   useCompositeDrawer,
@@ -31,6 +31,8 @@ export interface FormDrawerConfig<T> extends CompositeDrawerConfig {
   loading?: boolean;
   submitTestId?: string;
   cancelTestId?: string;
+  /** Loading shown only on the submit button (no body overlay). */
+  submitLoading?: boolean;
   headerActions?: ReactNode;
   footerAlign?: 'left' | 'center' | 'right' | 'space-between';
   closeOnEscape?: boolean;
@@ -89,6 +91,7 @@ export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
     submitLabel = t('label.save'),
     cancelLabel = t('label.cancel'),
     loading = false,
+    submitLoading = false,
     submitTestId = 'save-btn',
     cancelTestId = 'cancel-btn',
     headerActions,
@@ -128,8 +131,8 @@ export const useFormDrawer = <T,>(config: FormDrawerConfig<T>) => {
         label: submitLabel,
         color: 'primary',
         testId: submitTestId,
-        loading: loading || isSubmitting,
-        disabled: loading || isSubmitting,
+        loading: loading || isSubmitting || submitLoading,
+        disabled: loading || isSubmitting || submitLoading,
         onClick: async () => {
           try {
             setIsSubmitting(true);

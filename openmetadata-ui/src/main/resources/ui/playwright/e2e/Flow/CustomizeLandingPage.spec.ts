@@ -10,55 +10,88 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  redirectToHomePage,
-  removeLandingBanner,
-  toastNotification,
-} from '../../utils/common';
+import { redirectToHomePage, toastNotification } from '../../utils/common';
 import {
   checkAllDefaultWidgets,
   navigateToCustomizeLandingPage,
   openAddCustomizeWidgetModal,
   removeAndCheckWidget,
   saveCustomizeLayoutPage,
-  setUserDefaultPersona,
+  waitForLandingPageWidget,
 } from '../../utils/customizeLandingPage';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
-const adminUser = new UserClass();
-const persona = new PersonaClass();
-const persona2 = new PersonaClass();
+type LandingPageTestFixtures = {
+  adminPage: Page;
+  testUser: UserClass;
+  persona: PersonaClass;
+};
 
-const test = base.extend<{ adminPage: Page; userPage: Page }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+// Issue #31407 (same class of bug as CustomizeWidgets). Every test here rewrites
+// the whole `persona.<name>` layout document, and the landing page resolves its
+// layout from `currentUser.defaultPersona`. Under `fullyParallel` this file's
+// tests run in different workers, so both the persona and the user have to be
+// per test: a shared persona makes layout saves last-write-wins across tests,
+// and previously only one test set the default persona, leaving the others to
+// assert the persona layout against a session that rendered the stock layout.
+// The user is the worker's isolated admin (tests within a worker run serially);
+// the persona stays per test.
+const test = base.extend<LandingPageTestFixtures>({
+  testUser: async ({ isolatedUser }, use) => {
+    await use(isolatedUser);
+  },
+
+  persona: async ({ browser, testUser }, use) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const testPersona = new PersonaClass();
+    await testPersona.create(apiContext, [testUser.responseData.id]);
+
+    const personaReference = {
+      id: testPersona.responseData.id,
+      type: 'persona',
+      name: testPersona.responseData.name,
+      fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
+      description: testPersona.responseData.description,
+      displayName: testPersona.responseData.displayName,
+    };
+
+    await apiContext.patch(`/api/v1/users/${testUser.responseData.id}`, {
+      data: [
+        { op: 'add', path: '/personas/0', value: personaReference },
+        { op: 'add', path: '/defaultPersona', value: personaReference },
+      ],
+      headers: {
+        'Content-Type': 'application/json-patch+json',
+      },
+    });
+    await afterAction();
+
+    await use(testPersona);
+
+    const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
+      await performAdminLogin(browser);
+    await testPersona.delete(cleanupContext);
+    await cleanupAfterAction();
+  },
+
+  adminPage: async ({ isolatedUserPage, persona }, use) => {
+    // `persona` is depended on for its side effect - the default persona has to
+    // be attached to the user before the app loads, otherwise the session starts
+    // with the stock layout instead of the persona's customizable one.
+    void persona;
+
+    await redirectToHomePage(isolatedUserPage);
+    await use(isolatedUserPage);
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
-  await persona.create(apiContext, [adminUser.responseData.id]);
-  await persona2.create(apiContext);
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  const { afterAction, apiContext } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await persona.delete(apiContext);
-  await persona2.delete(apiContext);
-  await afterAction();
-});
+test.use({ isolatedUserOptions: { isAdmin: true } });
 
 test.describe(
   'Customize Landing Page Flow',
@@ -69,13 +102,16 @@ test.describe(
       await checkAllDefaultWidgets(adminPage);
     });
 
+    // Following, My Data and Total Assets are excluded from both the grid and
+    // the picker now; the three widgets driven here are their counterparts in
+    // the default layout, so the flow is unchanged and only the keys move.
     test('Add, Remove and Reset widget should work properly', async ({
       adminPage,
+      persona,
     }) => {
       test.slow(true);
 
       await redirectToHomePage(adminPage);
-      await setUserDefaultPersona(adminPage, persona.responseData.displayName);
 
       await test.step('Remove widget', async () => {
         test.slow(true);
@@ -88,7 +124,7 @@ test.describe(
           widgetKey: 'KnowledgePanel.ActivityFeed',
         });
         await removeAndCheckWidget(adminPage, {
-          widgetKey: 'KnowledgePanel.Following',
+          widgetKey: 'KnowledgePanel.YoursAndFollowed',
         });
         await removeAndCheckWidget(adminPage, {
           widgetKey: 'KnowledgePanel.KPI',
@@ -103,7 +139,7 @@ test.describe(
           adminPage.locator('[data-testid="KnowledgePanel.ActivityFeed"]')
         ).not.toBeVisible();
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+          adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
         ).not.toBeVisible();
         await expect(
           adminPage.locator('[data-testid="KnowledgePanel.KPI"]')
@@ -122,7 +158,7 @@ test.describe(
           adminPage.locator('[data-testid="KnowledgePanel.ActivityFeed"]')
         ).not.toBeVisible();
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+          adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
         ).not.toBeVisible();
         await expect(
           adminPage.locator('[data-testid="KnowledgePanel.KPI"]')
@@ -130,28 +166,26 @@ test.describe(
 
         // Check if other widgets are present
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.MyData"]')
+          adminPage.locator('[data-testid="KnowledgePanel.DataEstate"]')
         ).toBeVisible();
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.TotalAssets"]')
+          adminPage.locator('[data-testid="KnowledgePanel.PlatformHealth"]')
         ).toBeVisible();
 
         await openAddCustomizeWidgetModal(adminPage);
 
-        await adminPage.locator('[data-testid="loader"]').first().waitFor({
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(adminPage);
 
         // Check if 'check' icon is present for existing widgets
         await expect(
           adminPage
-            .locator('[data-testid="sidebar-option-KnowledgePanel.MyData"]')
+            .locator('[data-testid="sidebar-option-KnowledgePanel.DataEstate"]')
             .locator('.selected-widget-icon')
         ).toBeVisible();
         await expect(
           adminPage
             .locator(
-              '[data-testid="sidebar-option-KnowledgePanel.TotalAssets"]'
+              '[data-testid="sidebar-option-KnowledgePanel.PlatformHealth"]'
             )
             .locator('.selected-widget-icon')
         ).toBeVisible();
@@ -166,7 +200,9 @@ test.describe(
         ).not.toBeVisible();
         await expect(
           adminPage
-            .locator('[data-testid="sidebar-option-KnowledgePanel.Following"]')
+            .locator(
+              '[data-testid="sidebar-option-KnowledgePanel.YoursAndFollowed"]'
+            )
             .locator('.selected-widget-icon')
         ).not.toBeVisible();
         await expect(
@@ -177,13 +213,13 @@ test.describe(
 
         // Add Following widget
         await adminPage
-          .locator('[data-testid="KnowledgePanel.Following"]')
+          .locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
           .click();
 
         await adminPage.locator('[data-testid="apply-btn"]').click();
 
         await expect(
-          adminPage.locator('[data-testid="KnowledgePanel.Following"]')
+          adminPage.locator('[data-testid="KnowledgePanel.YoursAndFollowed"]')
         ).toBeVisible();
 
         // Check if check icons are present in tab labels for newly added widgets
@@ -192,7 +228,9 @@ test.describe(
         // Check if 'check' icon is present for the Following widget
         await expect(
           adminPage
-            .locator('[data-testid="sidebar-option-KnowledgePanel.Following"]')
+            .locator(
+              '[data-testid="sidebar-option-KnowledgePanel.YoursAndFollowed"]'
+            )
             .locator('.selected-widget-icon')
         ).toBeVisible();
 
@@ -214,9 +252,10 @@ test.describe(
         ).not.toBeVisible();
 
         // Check if newly added widgets are present on the landing page
-        await expect(
-          adminPage.getByTestId('KnowledgePanel.Following')
-        ).toBeVisible();
+        await waitForLandingPageWidget(
+          adminPage,
+          'KnowledgePanel.YoursAndFollowed'
+        );
       });
 
       await test.step('Resetting the layout flow should work properly', async () => {
@@ -247,9 +286,7 @@ test.describe(
         // Confirm reset in modal
         const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
 
-        await adminPage
-          .getByRole('button', { name: 'Reset', exact: true })
-          .click();
+        await adminPage.getByTestId('unsaved-changes-modal-save').click();
 
         await resetResponse;
 
@@ -268,7 +305,7 @@ test.describe(
       });
     });
 
-    test('Widget drag and drop reordering', async ({ adminPage }) => {
+    test('Widget drag and drop reordering', async ({ adminPage, persona }) => {
       test.slow(true);
 
       await navigateToCustomizeLandingPage(adminPage, {
@@ -277,10 +314,10 @@ test.describe(
 
       // Test dragging widgets to reorder them
       const widget1 = adminPage.locator(
-        '[data-testid="KnowledgePanel.MyData"]'
+        '[data-testid="KnowledgePanel.DataEstate"]'
       );
       const widget2 = adminPage.locator(
-        '[data-testid="KnowledgePanel.Following"]'
+        '[data-testid="KnowledgePanel.YoursAndFollowed"]'
       );
 
       if ((await widget1.count()) > 0 && (await widget2.count()) > 0) {
@@ -296,26 +333,53 @@ test.describe(
 
           await saveCustomizeLayoutPage(adminPage);
           await redirectToHomePage(adminPage, false);
-          await removeLandingBanner(adminPage);
           await waitForAllLoadersToDisappear(adminPage).catch(() => undefined);
 
-          await expect
-            .poll(
-              async () => ({
-                myData: await adminPage
-                  .getByTestId('KnowledgePanel.MyData')
-                  .isVisible()
-                  .catch(() => false),
-                following: await adminPage
-                  .getByTestId('KnowledgePanel.Following')
-                  .isVisible()
-                  .catch(() => false),
-              }),
-              { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
-            )
-            .toEqual({ myData: true, following: true });
+          await waitForLandingPageWidget(
+            adminPage,
+            'KnowledgePanel.DataEstate'
+          );
+          await waitForLandingPageWidget(
+            adminPage,
+            'KnowledgePanel.YoursAndFollowed'
+          );
         }
       }
+    });
+
+    // Regression: cancel button used to trigger both CustomizablePageHeader's
+    // local modal AND NavigationBlocker's modal, forcing users to click
+    // Discard twice. A single Discard click must exit the customize page.
+    test('Cancel button should show a single confirmation modal and Discard should exit the customize landing page', async ({
+      adminPage,
+      persona,
+    }) => {
+      test.slow();
+
+      await navigateToCustomizeLandingPage(adminPage, {
+        personaName: persona.responseData.name,
+      });
+
+      await removeAndCheckWidget(adminPage, {
+        widgetKey: 'KnowledgePanel.DataEstate',
+      });
+
+      await adminPage.getByTestId('cancel-button').click();
+
+      // Assert on -title (inside the visible .ant-modal) rather than the
+      // root testid, whose 0×0 wrapper trips Playwright's toBeVisible.
+      await expect(
+        adminPage.getByTestId('unsaved-changes-modal-title')
+      ).toBeVisible();
+
+      await adminPage.getByTestId('unsaved-changes-modal-discard').click();
+
+      await expect(
+        adminPage.getByTestId('unsaved-changes-modal-title')
+      ).toBeHidden();
+      await expect(
+        adminPage.getByTestId('customize-landing-page-header')
+      ).toBeHidden();
     });
   }
 );

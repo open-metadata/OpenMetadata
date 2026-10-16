@@ -12,11 +12,17 @@
  */
 
 import {
-  CloseCircleOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
-} from '@ant-design/icons';
-import { Button, Col, Row, Space, Tooltip, Typography } from 'antd';
+  Box,
+  Button,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  SortAscending,
+  SortDescending,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniqBy } from 'lodash';
@@ -38,24 +44,24 @@ import {
   QUERY_SORT_OPTIONS,
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Query } from '../../../generated/entity/data/query';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import {
   getQueryById,
   patchQueries,
   updateQueryVote,
 } from '../../../rest/queryAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   createQueryFilter,
@@ -69,17 +75,16 @@ import DatePicker, {
   RangePickerProps,
 } from '../../common/DatePicker/DatePicker';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import SortingDropDown from '../../Explore/SortingDropDown';
 import PaginationComponent from '../../PaginationComponent/PaginationComponent';
-import SearchDropdown from '../../SearchDropdown/SearchDropdown';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
 import QueryCard from './QueryCard';
 import {
   FetchFilteredQueriesType,
   QueryFilterType,
-  QueryVote,
   TableQueriesProp,
 } from './TableQueries.interface';
 import TableQueryRightPanel from './TableQueryRightPanel/TableQueryRightPanel.component';
@@ -239,6 +244,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       tags,
       owners,
       pageNumber = INITIAL_PAGING_VALUE,
+      pageSize: selectedPageSize = pageSize,
       timeRange,
       sortField = sortQuery.field,
       sortOrder = sortQuery.order,
@@ -252,7 +258,7 @@ const TableQueries: FC<TableQueriesProp> = ({
         query: WILD_CARD_CHAR,
         queryFilter: createQueryFilter({ tableId, tags, timeRange, owners }),
         pageNumber: pageNumber,
-        pageSize: pageSize,
+        pageSize: selectedPageSize,
         searchIndex: SearchIndex.QUERY,
         sortField,
         sortOrder,
@@ -282,6 +288,8 @@ const TableQueries: FC<TableQueriesProp> = ({
               tableId,
               query: selectedQueryData.id,
               queryFrom: pageNumber,
+              currentPage: pageNumber,
+              pageSize: selectedPageSize,
             }),
           },
           { replace: true }
@@ -443,10 +451,11 @@ const TableQueries: FC<TableQueriesProp> = ({
   };
 
   const pagingHandler = (currentPage: number, pageSize: number) => {
+    handlePageSizeChange(pageSize);
     fetchFilteredQueries({
       pageNumber: currentPage,
+      pageSize,
     });
-    handlePageSizeChange(pageSize);
   };
 
   const handleSortFieldChange = (value: string) => {
@@ -489,13 +498,16 @@ const TableQueries: FC<TableQueriesProp> = ({
 
   const addButton = (
     <Tooltip
+      arrow
+      isDisabled={permissions?.query.Create}
       placement="top"
-      title={!permissions?.query.Create && t(NO_PERMISSION_FOR_ACTION)}>
+      title={t(NO_PERMISSION_FOR_ACTION)}>
       <Button
+        color="primary"
         data-testid="add-query-btn"
-        disabled={!permissions?.query.Create}
-        type="primary"
-        onClick={handleAddQueryClick}>
+        isDisabled={!permissions?.query.Create}
+        size="sm"
+        onPress={handleAddQueryClick}>
         {t('label.add')}
       </Button>
     </Tooltip>
@@ -533,21 +545,25 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
 
   const queryTabBody = isError.search ? (
-    <Col
-      className="flex-center font-medium mt-24 p-b-md"
+    <Grid.Item
+      className="layout-column flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
       <ErrorPlaceHolder>
-        <Typography.Paragraph>
+        <Typography as="p">
           {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
             entity: t('label.query-lowercase-plural'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       </ErrorPlaceHolder>
-    </Col>
+    </Grid.Item>
   ) : (
     tableQueries.map((query) => (
-      <Col data-testid="query-card" key={query.id} span={24}>
+      <Grid.Item
+        className="layout-column"
+        data-testid="query-card"
+        key={query.id}
+        span={24}>
         <QueryCard
           afterDeleteAction={fetchFilteredQueries}
           isExpanded={false}
@@ -558,24 +574,43 @@ const TableQueries: FC<TableQueriesProp> = ({
           onQueryUpdate={handleQueryUpdate}
           onUpdateVote={updateVote}
         />
-      </Col>
+      </Grid.Item>
     ))
   );
 
   return (
-    <Row className="m-b-md" gutter={8} id="tablequeries" wrap={false}>
-      <Col className="tab-content-height-with-resizable-panel" span={24}>
+    <Box
+      className="layout-row m-b-md"
+      id="tablequeries"
+      style={{ ...getLayoutGutter(8) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block tab-content-height-with-resizable-panel"
+        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
             allowScroll: true,
             cardClassName: 'm-x-auto',
             children: (
-              <Row data-testid="queries-container" gutter={[8, 16]}>
-                <Col span={24}>
-                  <Space className="justify-between w-full">
-                    <Space size={16}>
-                      <SearchDropdown
+              <Grid
+                className="layout-row layout-grid"
+                data-testid="queries-container"
+                style={{ ...getLayoutGutter(8, 16) }}>
+                <Grid.Item className="layout-column" span={24}>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal justify-between w-full"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
+                      <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isOwnerLoading}
                         label={t('label.owner')}
@@ -587,7 +622,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onSearch={handleOwnerSearch}
                       />
 
-                      <SearchDropdown
+                      <FilterSelectDropdown
                         hideCounts
                         isSuggestionsLoading={isTagsLoading}
                         label={t('label.tag')}
@@ -598,20 +633,22 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <Button
-                        className="p-x-0"
-                        type="text"
+                      <span
+                        className="tw:inline-flex tw:cursor-pointer tw:items-center"
+                        role="presentation"
                         onClick={() => {
                           setIsClickedCalendar(true);
                         }}>
                         <span>
-                          <label>{t('label.created-date')}</label>
+                          <Typography>{t('label.created-date')}</Typography>
                           <DatePicker.RangePicker
                             allowClear
                             showNow
                             bordered={false}
                             className="p-t-0"
-                            clearIcon={<CloseCircleOutlined />}
+                            clearIcon={
+                              <XCircle className="tw:shrink-0" size={14} />
+                            }
                             data-testid="data-range-picker"
                             open={isClickedCalendar}
                             suffixIcon={null}
@@ -621,36 +658,44 @@ const TableQueries: FC<TableQueriesProp> = ({
                             }}
                           />
                         </span>
-                      </Button>
-                    </Space>
-                    <Space size={16}>
+                      </span>
+                    </Box>
+
+                    <Box
+                      inline
+                      align="center"
+                      className="layout-space layout-space-horizontal"
+                      gap={4}
+                      itemClassName="layout-space-item">
                       <SortingDropDown
                         fieldList={translatedQuerySortOptions}
                         handleFieldDropDown={handleSortFieldChange}
                         sortField={sortQuery.field}
                       />
                       <Button
-                        className="p-0"
+                        color="tertiary"
                         data-testid="sort-order-button"
-                        type="text"
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
                         }>
                         {isAscSortOrder ? (
-                          <SortAscendingOutlined
-                            className="text-base text-grey-muted"
-                            style={{ fontSize: '14px' }}
+                          <SortAscending
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={14}
                           />
                         ) : (
-                          <SortDescendingOutlined className="text-sm text-grey-muted" />
+                          <SortDescending
+                            className="tw:text-quaternary tw:shrink-0"
+                            size={14}
+                          />
                         )}
                       </Button>
                       {addButton}
-                    </Space>
-                  </Space>
-                </Col>
+                    </Box>
+                  </Box>
+                </Grid.Item>
 
                 {isLoading.query ? (
                   <Loader />
@@ -658,7 +703,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                   <>
                     {queryTabBody}
                     {showPagination && (
-                      <Col span={24}>
+                      <Grid.Item className="layout-column" span={24}>
                         <PaginationComponent
                           hideOnSinglePage
                           showSizeChanger
@@ -669,11 +714,11 @@ const TableQueries: FC<TableQueriesProp> = ({
                           total={paging.total}
                           onChange={pagingHandler}
                         />
-                      </Col>
+                      </Grid.Item>
                     )}
                   </>
                 )}
-              </Row>
+              </Grid>
             ),
             minWidth: 800,
             flex: 0.87,
@@ -694,8 +739,8 @@ const TableQueries: FC<TableQueriesProp> = ({
               'entity-summary-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 };
 

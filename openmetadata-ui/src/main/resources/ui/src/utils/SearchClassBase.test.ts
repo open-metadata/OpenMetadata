@@ -25,10 +25,11 @@ import {
   TAG_DROPDOWN_ITEMS,
   TOPIC_DROPDOWN_ITEMS,
 } from '../constants/AdvancedSearch.constants';
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Chart } from '../generated/entity/data/chart';
-import { getEntityLinkFromType } from './EntityUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
 import { SearchClassBase } from './SearchClassBase';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -37,10 +38,16 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteFQN: jest.fn(),
 }));
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn(),
-  getEntityName: jest.fn(),
+}));
+
+jest.mock('./EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn(),
+}));
+
+jest.mock('./EntityNameUtils', () => ({
+  getEntityName: jest.fn(),
 }));
 
 describe('SearchClassBase', () => {
@@ -48,6 +55,19 @@ describe('SearchClassBase', () => {
 
   beforeEach(() => {
     searchClassBase = new SearchClassBase();
+  });
+
+  it('should map data contracts to their own search index both ways', () => {
+    expect(
+      searchClassBase.getEntityTypeSearchIndexMapping()[
+        EntityType.DATA_CONTRACT
+      ]
+    ).toBe(SearchIndex.DATA_CONTRACT);
+    expect(
+      searchClassBase.getSearchIndexEntityTypeMapping()[
+        SearchIndex.DATA_CONTRACT
+      ]
+    ).toBe(EntityType.DATA_CONTRACT);
   });
 
   it('should return the correct search index for each entity type', () => {
@@ -218,6 +238,20 @@ describe('SearchClassBase', () => {
     expect(databaseItems).toEqual(COMMON_DROPDOWN_ITEMS);
     expect(databaseSchemaItems).toEqual(COMMON_DROPDOWN_ITEMS);
     expect(apiCollectionItems).toEqual(COMMON_DROPDOWN_ITEMS);
+  });
+
+  it('should expose the data product quick filter for asset indices', () => {
+    const dataProductFilter = {
+      label: 'label.data-product-plural',
+      key: EntityFields.DATA_PRODUCT,
+    };
+
+    expect(searchClassBase.getDropDownItems(SearchIndex.TABLE)).toContainEqual(
+      dataProductFilter
+    );
+    expect(
+      searchClassBase.getDropDownItems(SearchIndex.DATA_ASSET)
+    ).toContainEqual(dataProductFilter);
   });
 
   it('should return empty dropdown item based if index not related to explore items', () => {

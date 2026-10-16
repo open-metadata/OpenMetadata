@@ -10,16 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { FC, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Team } from '../../../../../generated/entity/teams/team';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
-  getEntityName,
   highlightSearchText,
-} from '../../../../../utils/EntityUtils';
+  renderHighlightedText,
+} from '../../../../../utils/EntitySearchUtils';
 import { getTeamsWithFqnPath } from '../../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../../utils/StringsUtils';
 
 type TeamHierarchyNameCellProps = {
   record: Team;
@@ -65,14 +65,19 @@ export const TeamHierarchyNameCell: FC<TeamHierarchyNameCellProps> = ({
       data-testid={`team-name-${record.name}`}
       ref={linkRef}
       to={getTeamsWithFqnPath(record.fullyQualifiedName || record.name)}>
-      {stringToHTML(highlightSearchText(displayName, searchTerm))}
+      {renderHighlightedText(highlightSearchText(displayName, searchTerm))}
     </Link>
   );
 
   return (
     <span className="teams-hierarchy-team-name-cell">
       {isTruncated ? (
-        <Tooltip placement="topLeft" title={displayName}>
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          placement="top left"
+          title={displayName}
+          triggerClassName="tw:inline-flex">
           <span className="teams-hierarchy-team-name-tooltip-trigger">
             {link}
           </span>

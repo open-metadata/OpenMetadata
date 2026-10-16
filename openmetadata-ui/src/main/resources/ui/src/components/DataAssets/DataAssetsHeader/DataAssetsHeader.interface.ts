@@ -46,10 +46,11 @@ import { PipelineService } from '../../../generated/entity/services/pipelineServ
 import { SearchService } from '../../../generated/entity/services/searchService';
 import { StorageService } from '../../../generated/entity/services/storageService';
 import { EntityReference } from '../../../generated/entity/type';
+import { Style } from '../../../generated/type/schema';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
-import { QueryVote } from '../../Database/TableQueries/TableQueries.interface';
 
 export type DataAssetsType =
   | Table
@@ -140,13 +141,15 @@ export type DataAssetsHeaderProps = {
   isRecursiveDelete?: boolean;
   isDqAlertSupported?: boolean;
   badge?: React.ReactNode;
+  /** Entity-specific primary actions, rendered ahead of the manage menu. */
+  headerActions?: React.ReactNode;
   afterDomainUpdateAction?: (asset: DataAssetWithDomains) => void;
   afterDeleteAction?: (isSoftDelete?: boolean, version?: number) => void;
   onTierUpdate: (tier?: Tag) => Promise<void>;
   onOwnerUpdate: (owner?: EntityReference[]) => Promise<void>;
   onVersionClick?: () => void;
   onFollowClick?: () => Promise<void>;
-  onRestoreDataAsset: () => Promise<void>;
+  onRestoreDataAsset: () => Promise<boolean>;
   onDisplayNameUpdate: (data: EntityName) => Promise<void>;
   onProfilerSettingUpdate?: () => void;
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
@@ -158,7 +161,9 @@ export type DataAssetsHeaderProps = {
   afterTriggerAction?: VoidFunction;
   isAutoPilotWorkflowStatusLoading?: boolean;
   onCertificationUpdate?: (certificate?: Tag) => Promise<void>;
+  onStyleUpdate?: (style: Style | null) => Promise<void>;
   disableRunAgentsButtonMessage?: string;
+  breadcrumbData?: TitleBreadcrumbProps['titleLinks'];
 } & (
   | DataAssetTable
   | DataAssetTopic

@@ -10,6 +10,7 @@ import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.GluePipelineConnection;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.service.Entity;
 
 /**
  * Factory for creating PipelineService entities in integration tests.
@@ -38,7 +39,8 @@ public class PipelineServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Airflow service");
 
-    return SdkClients.adminClient().pipelineServices().create(request);
+    return ns.trackRoot(
+        Entity.PIPELINE_SERVICE, SdkClients.adminClient().pipelineServices().create(request));
   }
 
   /**
@@ -64,7 +66,8 @@ public class PipelineServiceTestFactory {
             .withConnection(conn)
             .withDescription("Test Glue service");
 
-    return SdkClients.adminClient().pipelineServices().create(request);
+    return ns.trackRoot(
+        Entity.PIPELINE_SERVICE, SdkClients.adminClient().pipelineServices().create(request));
   }
 
   /** Get pipeline service by ID. */

@@ -13,30 +13,18 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from copy import deepcopy  # noqa: I001
-from typing import Dict, Optional, Union  # noqa: UP035
+from copy import deepcopy
 
-from sqlalchemy import Column
+from sqlalchemy import Column, text
 from sqlalchemy import Table as SqaTable
-from sqlalchemy import text
 from sqlalchemy.orm import Query
 
 from metadata.generated.schema.entity.data.table import Table, TableType
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
 from metadata.generated.schema.type.basic import ProfileSampleType
-from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import SampleConfig
-from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -51,36 +39,17 @@ class BigQuerySampler(SQASampler):
     run the query in the whole table.
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
-        ometa_client: OpenMetadata,
-        entity: Table,
-        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
-        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
-        sample_query: Optional[str] = None,  # noqa: UP045
-        storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
-        **kwargs,
-    ):
-        super().__init__(
-            service_connection_config=service_connection_config,
-            ometa_client=ometa_client,
-            entity=entity,
-            sample_config=sample_config,
-            partition_details=partition_details,
-            sample_query=sample_query,
-            storage_config=storage_config,
-            sample_data_count=sample_data_count,
-            **kwargs,
+    def __init__(self, *args, **kwargs):
+        table_type = kwargs.pop("table_type", None)
+        super().__init__(*args, **kwargs)
+        self.raw_dataset_type: TableType | None = table_type or (
+            self.entity.tableType if isinstance(self.entity, Table) else None
         )
-        self.raw_dataset_type: Optional[TableType] = entity.tableType  # noqa: UP045
 
-        connection_config = deepcopy(service_connection_config)
+        connection_config = deepcopy(self.service_connection_config)
         # Create a modified connection for BigQuery with the correct project ID
-        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:
-            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)
+        if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.entity.database:  # pyright: ignore[reportAttributeAccessIssue]
+            connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)  # pyright: ignore[reportAttributeAccessIssue]
             self.connection = get_ssl_connection(connection_config)
 
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
@@ -110,7 +79,7 @@ class BigQuerySampler(SQASampler):
         Returns:
         """
         # pylint: disable=import-outside-toplevel
-        from sqlalchemy_bigquery import STRUCT  # noqa: PLC0415
+        from sqlalchemy_bigquery import STRUCT
 
         if column is not None:
             column_parts = column.name.split(".")
@@ -122,7 +91,12 @@ class BigQuerySampler(SQASampler):
                 # FROM sample TABLESAMPLE SYSTEM (n PERCENT)
                 column = Column(column_parts[0], STRUCT)
                 # pylint: disable=protected-access
-                column._set_parent(self.raw_dataset.__table__)
+                table = self.raw_dataset.__table__  # pyright: ignore[reportOptionalMemberAccess]
+                column._set_parent(
+                    table,
+                    all_names={c.name: c for c in table.columns},  # pyright: ignore[reportCallIssue]
+                    allow_replacements=True,
+                )
                 # pylint: enable=protected-access
 
         return super()._base_sample_query(selectable, column, label=label)

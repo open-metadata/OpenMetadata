@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
-import { getTagImageSrc } from '../../../utils/IconUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
@@ -30,23 +30,22 @@ const CertificationTag = ({
   showName?: boolean;
 }) => {
   const imageItem = useMemo(() => {
-    if (certification.tagLabel.style?.iconURL) {
-      const name = getEntityName(certification.tagLabel);
-      const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
+    const iconURL = certification.tagLabel.style?.iconURL;
+    const name = getEntityName(certification.tagLabel);
+    const defaultIconSize = 16;
 
-      return (
-        <img
-          alt={`certification: ${name}`}
-          className="certification-img"
-          src={tagSrc}
-        />
-      );
-    }
-
-    const iconSize = showName ? 14 : 20;
-
-    return <CertificationIcon height={iconSize} width={iconSize} />;
-  }, [certification.tagLabel.style?.iconURL, showName]);
+    return (
+      <Icon
+        alt={`certification: ${name}`}
+        fallback={
+          <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
+        }
+        iconValue={iconURL}
+        imageClassName="tw:h-3.5 tw:w-3.5"
+        size={defaultIconSize}
+      />
+    );
+  }, [certification.tagLabel]);
 
   const certificationRender = useMemo(() => {
     const name = getEntityName(certification.tagLabel);
@@ -55,19 +54,17 @@ const CertificationTag = ({
 
     const tagStyle = showName
       ? {
-          backgroundColor: certification.tagLabel.style?.color
-            ? certification.tagLabel.style?.color + '33'
-            : '#f8f8f8',
           padding: '2px 6px',
         }
       : {};
 
     return (
       <Tooltip
+        excludeTriggerFromTabOrder
         title={getTagTooltip(name, certification.tagLabel.description)}
-        trigger="hover">
+        triggerClassName="tw:inline-flex">
         <Link
-          className={classNames('d-flex items-center', {
+          className={classNames('d-flex items-center tw:leading-0', {
             'certification-tag-with-name  gap-1': showName,
           })}
           data-testid={`certification-${certification.tagLabel.tagFQN}`}
@@ -75,18 +72,20 @@ const CertificationTag = ({
           to={tagLink}>
           {imageItem}
           {showName && (
-            <Typography.Text
+            <Typography
+              // The outer tooltip already shows the full name; a nested one
+              // would steal its hover.
+              ellipsis
               className={classNames('text-sm font-medium certification-text', {
                 [`${actualName.toLowerCase()}`]: Boolean(actualName),
-              })}
-              ellipsis={{ tooltip: true }}>
+              })}>
               {name}
-            </Typography.Text>
+            </Typography>
           )}
         </Link>
       </Tooltip>
     );
-  }, [certification, imageItem]);
+  }, [certification, imageItem, showName]);
 
   return certificationRender;
 };

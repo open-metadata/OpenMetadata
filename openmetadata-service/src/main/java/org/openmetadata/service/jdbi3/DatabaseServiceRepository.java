@@ -91,7 +91,7 @@ public class DatabaseServiceRepository
             repository.getFields("name,owners,tags,domains,extension"),
             databaseService.getFullyQualifiedName());
 
-    databases.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    databases.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new DatabaseServiceCsv(databaseService, user, recursive)
         .exportAllCsv(databases, recursive, callback);
   }
@@ -195,7 +195,7 @@ public class DatabaseServiceRepository
     /**
      * Add entity to CSV file with entity type
      */
-    public <E extends EntityInterface> void addEntityToCSV(
+    public <E extends EntityInterface<?>> void addEntityToCSV(
         CsvFile csvFile, E entity, String entityType) {
       List<String> recordList = new ArrayList<>();
       addField(recordList, entity.getName());
@@ -287,7 +287,7 @@ public class DatabaseServiceRepository
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(tagLabels)
           .withCertification(certification)
-          .withDomains(getDomains(printer, csvRecord, 8))
+          .withDomains(getDomains(printer, csvRecord, 8, database.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 9));
 
       if (processRecord) {
@@ -371,7 +371,7 @@ public class DatabaseServiceRepository
           .withTags(tagLabels)
           .withCertification(certification)
           .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, database.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11));
 
       if (processRecord) {
@@ -448,7 +448,7 @@ public class DatabaseServiceRepository
           .withCertification(certification)
           .withRetentionPeriod(csvRecord.get(8))
           .withSourceUrl(csvRecord.get(9))
-          .withDomains(getDomains(printer, csvRecord, 10))
+          .withDomains(getDomains(printer, csvRecord, 10, schema.getDomains()))
           .withExtension(getExtension(printer, csvRecord, 11))
           .withUpdatedAt(System.currentTimeMillis())
           .withUpdatedBy(importedBy);

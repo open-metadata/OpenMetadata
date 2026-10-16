@@ -19,6 +19,7 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 
 import io.dropwizard.core.setup.Environment;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -28,9 +29,11 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
@@ -49,17 +52,23 @@ public class SecurityConfigurationManager {
     private static final SecurityConfigurationManager INSTANCE = new SecurityConfigurationManager();
   }
 
-  private volatile AuthenticationConfiguration currentAuthConfig;
-  private volatile AuthorizerConfiguration currentAuthzConfig;
+  private record SecurityState(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {}
+
   private volatile MCPConfiguration currentMcpConfig;
   private final List<ConfigurationChangeListener> listeners = new CopyOnWriteArrayList<>();
 
-  public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
-    this.currentAuthConfig = authConfig;
+  private volatile SecurityState currentState = new SecurityState(null, null);
+
+  public synchronized void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
+    SecurityState state = currentState;
+    currentState = new SecurityState(authConfig, state.authorizerConfiguration());
   }
 
-  public void setCurrentAuthzConfig(AuthorizerConfiguration authzConfig) {
-    this.currentAuthzConfig = authzConfig;
+  public synchronized void setCurrentAuthzConfig(AuthorizerConfiguration authzConfig) {
+    SecurityState state = currentState;
+    currentState = new SecurityState(state.authenticationConfiguration(), authzConfig);
   }
 
   public void setCurrentMcpConfig(MCPConfiguration mcpConfig) {
@@ -80,11 +89,11 @@ public class SecurityConfigurationManager {
   }
 
   public static AuthenticationConfiguration getCurrentAuthConfig() {
-    return getInstance().currentAuthConfig;
+    return getInstance().currentState.authenticationConfiguration();
   }
 
   public static AuthorizerConfiguration getCurrentAuthzConfig() {
-    return getInstance().currentAuthzConfig;
+    return getInstance().currentState.authorizerConfiguration();
   }
 
   public static MCPConfiguration getCurrentMcpConfig() {
@@ -102,21 +111,27 @@ public class SecurityConfigurationManager {
     this.config = config;
 
     try {
-      currentAuthConfig =
-          SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
-      currentAuthzConfig =
-          SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
+      currentState =
+          new SecurityState(
+              SettingsCache.getSetting(
+                  AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class),
+              SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class));
       LOG.info(
           "Loaded security configuration from database - provider: {}",
-          currentAuthConfig != null ? currentAuthConfig.getProvider() : "null");
+          currentState.authenticationConfiguration() != null
+              ? currentState.authenticationConfiguration().getProvider()
+              : "null");
     } catch (Exception e) {
       LOG.warn(
           "Failed to load configuration from database, falling back to YAML: {}", e.getMessage());
-      currentAuthConfig = config.getAuthenticationConfiguration();
-      currentAuthzConfig = config.getAuthorizerConfiguration();
+      currentState =
+          new SecurityState(
+              config.getAuthenticationConfiguration(), config.getAuthorizerConfiguration());
       LOG.info(
           "Using security configuration from YAML - provider: {}",
-          currentAuthConfig != null ? currentAuthConfig.getProvider() : "null");
+          currentState.authenticationConfiguration() != null
+              ? currentState.authenticationConfiguration().getProvider()
+              : "null");
     }
 
     // MCP config is optional — load separately so its absence doesn't affect auth config
@@ -126,6 +141,8 @@ public class SecurityConfigurationManager {
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
+    SecurityState state = currentState;
+    AuthenticationConfiguration currentAuthConfig = state.authenticationConfiguration();
     // Apply LDAP default values before returning to prevent JSON PATCH errors
     // when updating fields that were previously null in the database
     if (currentAuthConfig != null && currentAuthConfig.getLdapConfiguration() != null) {
@@ -135,29 +152,55 @@ public class SecurityConfigurationManager {
 
     return new SecurityConfiguration()
         .withAuthenticationConfiguration(currentAuthConfig)
-        .withAuthorizerConfiguration(currentAuthzConfig);
+        .withAuthorizerConfiguration(state.authorizerConfiguration());
   }
 
-  public void reloadSecuritySystem() {
+  /**
+   * Reloads only when the stored configuration differs from the one this server runs. Used when
+   * another server, the CLI or an administration job changed the stored configuration.
+   */
+  public synchronized boolean reloadIfStoredChanged() {
+    SecurityState stored =
+        new SecurityState(
+            SettingsCache.getSetting(
+                AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class),
+            SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class));
+    MCPConfiguration storedMcp =
+        SettingsCache.getSettingOrDefault(
+            MCP_CONFIGURATION, deploymentMcpConfiguration(), MCPConfiguration.class);
+    boolean changed = !sameJson(stored, currentState) || !sameJson(storedMcp, currentMcpConfig);
+    if (changed) {
+      reloadSecuritySystem();
+    }
+    return changed;
+  }
+
+  private static boolean sameJson(Object left, Object right) {
+    return Objects.equals(JsonUtils.pojoToJson(left), JsonUtils.pojoToJson(right));
+  }
+
+  /** The MCP configuration of the configuration file; reloads must not lose it when none is stored. */
+  private MCPConfiguration deploymentMcpConfiguration() {
+    return ConfigSources.deployment()
+        .flatMap(deployment -> deployment.setting(MCP_CONFIGURATION))
+        .map(setting -> JsonUtils.convertValue(setting.value(), MCPConfiguration.class))
+        .orElse(null);
+  }
+
+  /** Synchronized: a reload requested by the API and one noticed by the watcher must not overlap. */
+  public synchronized void reloadSecuritySystem() {
     try {
       previousSecurityConfig = getCurrentSecurityConfig();
       previousMcpConfig = currentMcpConfig;
-      currentAuthConfig =
-          SettingsCache.getSetting(AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class);
-      currentAuthzConfig =
-          SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class);
+      currentState =
+          new SecurityState(
+              SettingsCache.getSetting(
+                  AUTHENTICATION_CONFIGURATION, AuthenticationConfiguration.class),
+              SettingsCache.getSetting(AUTHORIZER_CONFIGURATION, AuthorizerConfiguration.class));
       currentMcpConfig =
-          SettingsCache.getSettingOrDefault(MCP_CONFIGURATION, null, MCPConfiguration.class);
-
-      OpenMetadataApplicationConfig appConfig = this.config;
-      appConfig.setAuthenticationConfiguration(currentAuthConfig);
-      appConfig.setAuthorizerConfiguration(currentAuthzConfig);
-      if (currentMcpConfig != null) {
-        appConfig.setMcpConfiguration(currentMcpConfig);
-      }
-
-      application.reinitializeAuthSystem(appConfig, environment);
-
+          SettingsCache.getSettingOrDefault(
+              MCP_CONFIGURATION, deploymentMcpConfiguration(), MCPConfiguration.class);
+      applyToApplication();
       notifyListeners();
 
       LOG.info("Successfully reloaded security system with new configuration");
@@ -183,9 +226,11 @@ public class SecurityConfigurationManager {
   }
 
   private void notifyListeners() {
+    SecurityState state = currentState;
     for (ConfigurationChangeListener listener : listeners) {
       try {
-        listener.onConfigurationChanged(currentAuthConfig, currentAuthzConfig, currentMcpConfig);
+        listener.onConfigurationChanged(
+            state.authenticationConfiguration(), state.authorizerConfiguration(), currentMcpConfig);
         LOG.debug(
             "Notified configuration change listener: {}", listener.getClass().getSimpleName());
       } catch (Exception e) {
@@ -197,12 +242,40 @@ public class SecurityConfigurationManager {
     }
   }
 
+  /** Copies the current state into the application configuration and rebuilds authentication. */
+  private void applyToApplication() {
+    OpenMetadataApplicationConfig appConfig = this.config;
+    SecurityState state = currentState;
+    appConfig.setAuthenticationConfiguration(state.authenticationConfiguration());
+    appConfig.setAuthorizerConfiguration(state.authorizerConfiguration());
+    if (currentMcpConfig != null) {
+      appConfig.setMcpConfiguration(currentMcpConfig);
+    }
+    application.reinitializeAuthSystem(appConfig, environment);
+  }
+
+  /**
+   * Restores the previous configuration everywhere the failed reload reached, including the
+   * application configuration and the authenticators it may already have replaced, so this server
+   * is never left half switched.
+   */
   private void rollbackConfiguration() {
     if (previousSecurityConfig != null) {
-      currentAuthConfig = previousSecurityConfig.getAuthenticationConfiguration();
-      currentAuthzConfig = previousSecurityConfig.getAuthorizerConfiguration();
+      currentState =
+          new SecurityState(
+              previousSecurityConfig.getAuthenticationConfiguration(),
+              previousSecurityConfig.getAuthorizerConfiguration());
       currentMcpConfig = previousMcpConfig;
+      restoreApplication();
       LOG.info("Rolled back to previous security configuration");
+    }
+  }
+
+  private void restoreApplication() {
+    try {
+      applyToApplication();
+    } catch (RuntimeException failure) {
+      LOG.error("Could not rebuild authentication for the previous configuration", failure);
     }
   }
 
@@ -213,7 +286,7 @@ public class SecurityConfigurationManager {
 
   public static boolean isBasicAuth() {
     AuthenticationConfiguration authConfig = getCurrentAuthConfig();
-    return authConfig != null && AuthProvider.BASIC.equals(authConfig.getProvider());
+    return authConfig != null && isNativePasswordProvider(authConfig.getProvider());
   }
 
   public static boolean isLdap() {
@@ -238,5 +311,9 @@ public class SecurityConfigurationManager {
   public static boolean isConfidentialClient() {
     AuthenticationConfiguration authConfig = getCurrentAuthConfig();
     return authConfig != null && ClientType.CONFIDENTIAL.equals(authConfig.getClientType());
+  }
+
+  public static boolean isNativePasswordProvider(AuthProvider provider) {
+    return AuthProvider.BASIC.equals(provider) || AuthProvider.OPENMETADATA.equals(provider);
   }
 }

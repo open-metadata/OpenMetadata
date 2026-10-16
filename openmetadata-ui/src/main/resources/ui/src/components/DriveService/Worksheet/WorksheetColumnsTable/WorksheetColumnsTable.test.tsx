@@ -24,19 +24,23 @@ import { LabelType, State } from '../../../../generated/type/tagLabel';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import WorksheetColumnsTable from './WorksheetColumnsTable';
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name),
 }));
 jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn(() => []),
-  searchTagInData: jest.fn(() => true),
+  getFilteredTagsData: jest.fn((data) => data),
 }));
-jest.mock('../../../../utils/TableUtils', () => ({
-  ...jest.requireActual('../../../../utils/TableUtils'),
+jest.mock('../../../../utils/TablePureUtils', () => ({
+  ...jest.requireActual('../../../../utils/TablePureUtils'),
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
-  prepareConstraintIcon: jest.fn(() => null),
   updateFieldDescription: jest.fn(),
   updateFieldTags: jest.fn(),
+}));
+
+jest.mock('../../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../../utils/TableUtils'),
+  prepareConstraintIcon: jest.fn(() => null),
   getTableExpandableConfig: jest.fn(() => ({})),
 }));
 jest.mock(
@@ -50,7 +54,7 @@ jest.mock(
 jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn(() => <div data-testid="error-placeholder">No columns available</div>)
 );
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource, expandable }) => (
     <div data-testid="worksheet-data-model-table">
       <div data-testid="table-columns-count">{columns?.length || 0}</div>
@@ -79,7 +83,7 @@ const mockUseGenericContextResult = {
   setDisplayedColumns: jest.fn(),
 };
 
-jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn(() => mockUseGenericContextResult),
 }));
 jest.mock('../../../Database/ColumnFilter/ColumnFilter.component', () => ({
@@ -87,7 +91,12 @@ jest.mock('../../../Database/ColumnFilter/ColumnFilter.component', () => ({
 }));
 jest.mock('../../../Database/TableDescription/TableDescription.component', () =>
   jest.fn(({ columnData, onClick }) => (
-    <div data-testid="table-description" onClick={onClick}>
+    <div
+      data-testid="table-description"
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={onClick}>
       {columnData.field || 'No description'}
     </div>
   ))
@@ -108,7 +117,11 @@ jest.mock(
         visible ? (
           <div data-testid="modal-with-markdown-editor">
             <h3>{header}</h3>
-            <textarea data-testid="description-input" defaultValue={value} />
+            <textarea
+              aria-label="Description"
+              data-testid="description-input"
+              defaultValue={value}
+            />
             <button
               data-testid="save-button"
               onClick={() => onSave('Updated description')}>
@@ -558,5 +571,48 @@ describe('WorksheetColumnsTable', () => {
     expect(
       screen.getByTestId('worksheet-data-model-table')
     ).toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion (Task 8 Batch 4):
+  // an explicit per-field deny must win over a bare EditAll grant (explicit-deny-wins,
+  // Task 6 Finding 1) — the old raw `(EditAll || EditX) && !deleted` OR let EditAll grant
+  // unconditionally. Rather than reworking the Table mock (which renders dataSource
+  // directly, bypassing antd-style column `render` callbacks), read the `columns` prop
+  // the component actually passed to <Table> and invoke each column's `render` directly
+  // to inspect the permission prop it wires into TableDescription/TableTags.
+  const MockedTable = jest.requireMock('../../../common/Table/TableV2');
+  const getRenderedProps = (columnKey: string, columnData: Column) => {
+    const { columns } =
+      MockedTable.mock.calls[MockedTable.mock.calls.length - 1][0];
+    const column = columns.find((c: { key: string }) => c.key === columnKey);
+
+    return column.render(columnData.tags, columnData, 0).props;
+  };
+
+  it('denies description edit when EditDescription is explicitly false, even with EditAll true', () => {
+    renderWorksheetColumnsTable({}, { EditAll: true, EditDescription: false });
+
+    expect(
+      getRenderedProps('description', mockColumns[0]).hasEditPermission
+    ).toBe(false);
+  });
+
+  it('denies tags edit when EditTags is explicitly false, even with EditAll true', () => {
+    renderWorksheetColumnsTable({}, { EditAll: true, EditTags: false });
+
+    expect(getRenderedProps('tags', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
+  });
+
+  it('denies glossary term edit when EditGlossaryTerms is explicitly false, even with EditAll true', () => {
+    renderWorksheetColumnsTable(
+      {},
+      { EditAll: true, EditGlossaryTerms: false }
+    );
+
+    expect(getRenderedProps('glossary', mockColumns[0]).hasTagEditAccess).toBe(
+      false
+    );
   });
 });

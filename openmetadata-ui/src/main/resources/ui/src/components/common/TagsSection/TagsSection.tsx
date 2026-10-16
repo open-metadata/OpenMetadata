@@ -10,21 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import {
+  Button,
+  ClassificationTag,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import ClassificationTagPicker from '../ClassificationTagPicker/ClassificationTagPicker';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
-import { TagSelectableList } from '../TagSelectableList/TagSelectableList.component';
 import { TagsSectionProps } from './TagsSection.interface';
 import './TagsSection.less';
+
+const getTagFqn = (tag: TagLabel) =>
+  (tag.tagFQN || tag.name || tag.displayName || '').toString();
 
 const TagsSectionV1: React.FC<TagsSectionProps> = ({
   tags = [],
@@ -37,35 +41,31 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showAllTags, setShowAllTags] = useState(false);
-  const [editingTags, setEditingTags] = useState<TagLabel[]>([]);
 
   const {
     isEditing,
     isLoading,
-    popoverOpen,
     displayData: displayTags,
     setDisplayData: setDisplayTags,
     setIsLoading,
-    setPopoverOpen,
     startEditing,
     completeEditing,
     cancelEditing,
   } = useEditableSection<TagLabel[]>(tags);
 
-  const getTagFqn = (tag: TagLabel) =>
-    (tag.tagFQN || tag.name || tag.displayName || '').toString();
-
-  const nonTierTags: TagLabel[] = (displayTags || []).filter(
-    (t) => !getTagFqn(t).startsWith('Tier.') && t.source !== TagSource.Glossary
+  const { nonTierTags, tierTags } = useMemo(
+    () => ({
+      nonTierTags: (displayTags || []).filter(
+        (tag) =>
+          !getTagFqn(tag).startsWith('Tier.') &&
+          tag.source !== TagSource.Glossary
+      ),
+      tierTags: (displayTags || []).filter((tag) =>
+        getTagFqn(tag).startsWith('Tier.')
+      ),
+    }),
+    [displayTags]
   );
-  const tierTags: TagLabel[] = (displayTags || []).filter((t) =>
-    getTagFqn(t).startsWith('Tier.')
-  );
-
-  const handleEditClick = () => {
-    setEditingTags(nonTierTags);
-    startEditing();
-  };
 
   const handleSaveWithTags = useCallback(
     async (tagsToSave: TagLabel[]) => {
@@ -90,8 +90,6 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
           }
           completeEditing();
         } catch {
-          // Revert editing state so the UI doesn't show the failed selection
-          setEditingTags(nonTierTags);
           cancelEditing();
           setIsLoading(false);
         }
@@ -128,107 +126,85 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
       setDisplayTags,
       setIsLoading,
       completeEditing,
+      cancelEditing,
     ]
   );
 
-  const handleTagSelection = async (selectedTags: TagLabel[]) => {
-    setEditingTags(selectedTags);
-    await handleSaveWithTags(selectedTags);
-  };
-
-  const handlePopoverOpenChange = (open: boolean) => {
-    setPopoverOpen(open);
-    if (!open) {
-      setEditingTags(nonTierTags);
-    }
-  };
-
-  const loadingState = useMemo(() => <Loader size="small" />, []);
-
-  const editingState = useMemo(
-    () => (
-      <TagSelectableList
-        hasPermission={hasPermission}
-        popoverProps={{
-          placement: 'top',
-          open: popoverOpen,
-          onOpenChange: handlePopoverOpenChange,
-          overlayClassName: 'tag-select-popover',
-        }}
-        selectedTags={editingTags}
-        onCancel={() => {
-          setPopoverOpen(false);
-          cancelEditing();
-        }}
-        onUpdate={handleTagSelection}>
-        <div className="d-none tag-selector-display">
-          {editingTags.length > 0 ? (
-            <div className="selected-tags-list">
-              {editingTags.map((tag) => (
-                <div
-                  className="selected-tag-chip"
-                  data-testid={`tag-${tag.tagFQN}`}
-                  key={tag.tagFQN}>
-                  <ClassificationIcon className="tag-icon" />
-                  <span className="tag-name">{getEntityName(tag)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-entity-assigned', {
+  const editButton = useMemo(
+    () =>
+      showEditButton && hasPermission && !isLoading ? (
+        <ClassificationTagPicker
+          commitMode="staged"
+          data-testid="classification-tag-picker"
+          isOpen={isEditing}
+          renderTrigger={({ toggle }) => (
+            <EditIconButton
+              newLook
+              data-testid="edit-icon-tags"
+              disabled={false}
+              size="small"
+              title={t('label.edit-entity', {
                 entity: t('label.tag-plural'),
               })}
-            </span>
+              onClick={toggle}
+            />
           )}
-        </div>
-      </TagSelectableList>
-    ),
+          value={nonTierTags}
+          onChange={handleSaveWithTags}
+          onOpenChange={(open) => (open ? startEditing() : cancelEditing())}
+        />
+      ) : null,
     [
+      showEditButton,
       hasPermission,
-      popoverOpen,
-      handlePopoverOpenChange,
-      editingTags,
-      handleTagSelection,
+      isLoading,
+      isEditing,
+      nonTierTags,
+      handleSaveWithTags,
+      startEditing,
+      cancelEditing,
+      t,
     ]
   );
 
-  const emptyContent = useMemo(() => {
+  const tagsContent = useMemo(() => {
     if (isLoading) {
-      return loadingState;
+      return <Loader size="small" />;
     }
-    if (isEditing) {
-      return editingState;
+
+    if (!nonTierTags.length) {
+      return (
+        <span className="no-data-placeholder">
+          {t('label.no-entity-assigned', {
+            entity: t('label.tag-plural'),
+          })}
+        </span>
+      );
     }
 
     return (
-      <span className="no-data-placeholder">
-        {t('label.no-entity-assigned', {
-          entity: t('label.tag-plural'),
-        })}
-      </span>
-    );
-  }, [isLoading, isEditing, loadingState, editingState, t]);
-
-  const tagsDisplay = useMemo(
-    () => (
-      <div className="tags-display">
-        <div className="tags-list">
+      <div className="tags-display" data-testid="tags-section-container">
+        <div className="tw:flex tw:flex-wrap tw:gap-1">
           {(showAllTags
             ? nonTierTags
             : nonTierTags.slice(0, maxVisibleTags)
           ).map((tag) => (
-            <div
-              className="tag-item"
+            <ClassificationTag
+              color={tag.style?.color}
               data-testid={`tag-${tag.tagFQN}`}
-              key={tag.tagFQN}>
-              <ClassificationIcon className="tag-icon" />
-              <span className="tag-name">{getEntityName(tag)}</span>
-            </div>
+              href={getTagRedirectLink(tag)}
+              icon={tag.style?.iconURL}
+              key={tag.tagFQN}
+              label={getTagName(tag)}
+              maxWidth={200}
+              size="sm"
+              tooltip={getTagName(tag)}
+            />
           ))}
           {nonTierTags.length > maxVisibleTags && (
-            <button
-              className="show-more-tags-button"
+            <Button
+              color="link-color"
+              size="xs"
               type="button"
               onClick={() => setShowAllTags(!showAllTags)}>
               {showAllTags
@@ -236,72 +212,20 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
                 : `+${nonTierTags.length - maxVisibleTags} ${t(
                     'label.more-lowercase'
                   )}`}
-            </button>
+            </Button>
           )}
         </div>
-      </div>
-    ),
-    [showAllTags, nonTierTags, maxVisibleTags, t]
-  );
-
-  const tagsContent = useMemo(() => {
-    if (isLoading) {
-      return loadingState;
-    }
-    if (isEditing) {
-      return editingState;
-    }
-
-    return tagsDisplay;
-  }, [isLoading, isEditing, loadingState, editingState, tagsDisplay]);
-
-  const canShowEditButton = showEditButton && hasPermission && !isLoading;
-
-  if (!nonTierTags.length) {
-    return (
-      <div className="tags-section">
-        <div className="tags-header">
-          <Typography.Text className="tags-title">
-            {t('label.tag-plural')}
-          </Typography.Text>
-          {canShowEditButton && (
-            <EditIconButton
-              newLook
-              data-testid="edit-icon-tags"
-              disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-              size="small"
-              title={t('label.edit-entity', {
-                entity: t('label.tag-plural'),
-              })}
-              onClick={handleEditClick}
-            />
-          )}
-        </div>
-        <div className="tags-content">{emptyContent}</div>
       </div>
     );
-  }
+  }, [isLoading, nonTierTags, showAllTags, maxVisibleTags, t]);
 
   return (
     <div className="tags-section">
       <div className="tags-header">
-        <Typography.Text className="tags-title">
+        <Typography size="text-xs" weight="semibold">
           {t('label.tag-plural')}
-        </Typography.Text>
-        {canShowEditButton && (
-          <EditIconButton
-            newLook
-            data-testid="edit-icon-tags"
-            disabled={false}
-            icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-            size="small"
-            title={t('label.edit-entity', {
-              entity: t('label.tag-plural'),
-            })}
-            onClick={handleEditClick}
-          />
-        )}
+        </Typography>
+        {editButton}
       </div>
       <div className="tags-content">{tagsContent}</div>
     </div>

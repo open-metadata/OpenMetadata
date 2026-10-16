@@ -16,7 +16,7 @@ import { TagFilterOptions, TagsData } from 'Models';
 import React from 'react';
 import { TableTagsProps } from '../../components/Database/TableTags/TableTags.interface';
 import { TagLabel, TagSource } from '../../generated/type/tagLabel';
-import { isCertificationTag, isTierTag } from '../TableUtils';
+import { isCertificationTag, isTierTag } from '../TablePureUtils';
 
 export const getFilterTags = (tags: TagLabel[]): TableTagsProps =>
   reduce(
@@ -70,21 +70,26 @@ export const getAllTags = (data: TagsData[]): TagFilterOptions[] => {
   return Array.from(tagMap.values());
 };
 
-export const searchTagInData = (
-  tagToSearch: React.Key | boolean,
-  data: TagsData
-) => {
-  if (data.tags && data.tags.some((tag) => tag.tagFQN === tagToSearch)) {
-    return true;
-  }
+/**
+ * Antd's column filter only prunes top-level rows and leaves nested `children`
+ * untouched, so filtering by a tag on a tree (schema fields, table columns)
+ * would keep every child of a matched parent. This recursively prunes the tree
+ * to only the nodes that carry one of the selected tags, while retaining the
+ * ancestor path needed to reach a matched descendant.
+ */
+export const getFilteredTagsData = <T extends TagsData>(
+  data: T[],
+  selectedTags: (React.Key | boolean)[]
+): T[] =>
+  data.reduce<T[]>((acc, item) => {
+    const filteredChildren = item.children?.length
+      ? getFilteredTagsData(item.children as T[], selectedTags)
+      : [];
+    const isSelfTagged = (item.tags ?? []).some((tag) =>
+      selectedTags.includes(tag.tagFQN)
+    );
 
-  if (data.children?.length) {
-    for (const child of data.children) {
-      if (searchTagInData(tagToSearch, child)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-};
+    return isSelfTagged || filteredChildren.length
+      ? acc.concat({ ...item, children: filteredChildren })
+      : acc;
+  }, []);

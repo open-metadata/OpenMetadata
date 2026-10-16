@@ -16,14 +16,18 @@ import { isEmpty } from 'lodash';
 import { BrowserRouter } from 'react-router-dom';
 import { EntityType } from '../enums/entity.enum';
 import { SummaryEntityType } from '../enums/EntitySummary.enum';
+import type { Metric } from '../generated/entity/data/metric';
+import { Language } from '../generated/entity/data/metric';
 import { Column } from '../generated/entity/data/table';
 import {
-  getEntityChildDetails,
-  getFormattedEntityData,
   getHighlightOfListItem,
   getMapOfListHighlights,
   getSortedTagsWithHighlight,
   getSummaryListItemType,
+} from './EntitySummaryPanelPureUtils';
+import {
+  getEntityChildDetails,
+  getFormattedEntityData,
   getTitle,
 } from './EntitySummaryPanelUtils';
 import {
@@ -55,6 +59,14 @@ jest.mock('../constants/EntitySummaryPanelUtils.constant', () => ({
     'columns.description',
     'columns.children.name',
   ],
+}));
+
+jest.mock('../hooks/useEntityRules', () => ({
+  useEntityRules: jest.fn().mockReturnValue({
+    entityRules: {},
+    isLoading: false,
+    rules: [],
+  }),
 }));
 
 jest.mock('../components/Database/SchemaEditor/SchemaEditor', () => {
@@ -155,6 +167,23 @@ describe('EntitySummaryPanelUtils tests', () => {
       expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
     });
 
+    it.each(['javascript:alert(1)', 'data:text/html,<script>', 'not a url'])(
+      'getTitle should return title as text if sourceUrl is not http(s): %s',
+      (sourceUrl) => {
+        const title = getTitle({
+          ...mockEntityDataWithoutNesting[0],
+          sourceUrl,
+        });
+
+        render(<BrowserRouter>{title}</BrowserRouter>);
+
+        expect(screen.queryByRole('link')).not.toBeInTheDocument();
+        expect(screen.getByTestId('entity-title')).toHaveTextContent(
+          'dim_address Task'
+        );
+      }
+    );
+
     it('getTitle should return title as link without icon if type: dashboard present in listItem', () => {
       const linkBasedTitle = getTitle(mockEntityReferenceDashboardData);
 
@@ -213,7 +242,7 @@ describe('EntitySummaryPanelUtils tests', () => {
     };
 
     describe('STORED_PROCEDURE cases', () => {
-      it('should render stored procedure with code correctly', () => {
+      it('should render stored procedure with code correctly', async () => {
         const result = getEntityChildDetails(
           EntityType.STORED_PROCEDURE,
           mockStoredProcedureWithCode
@@ -221,14 +250,16 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent(
           'CREATE PROCEDURE test_stored_procedure() BEGIN SELECT * FROM users; END'
         );
       });
 
-      it('should render stored procedure without code correctly (null storedProcedureCode)', () => {
+      it('should render stored procedure without code correctly (null storedProcedureCode)', async () => {
         const result = getEntityChildDetails(
           EntityType.STORED_PROCEDURE,
           mockStoredProcedureWithoutCode
@@ -236,14 +267,14 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-          'No code available'
-        );
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent('No code available');
       });
 
-      it('should render stored procedure with empty code correctly', () => {
+      it('should render stored procedure with empty code correctly', async () => {
         const result = getEntityChildDetails(
           EntityType.STORED_PROCEDURE,
           mockStoredProcedureWithEmptyCode
@@ -251,14 +282,14 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-          'No code available'
-        );
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent('No code available');
       });
 
-      it('should render stored procedure with undefined code field correctly', () => {
+      it('should render stored procedure with undefined code field correctly', async () => {
         const mockStoredProcedureWithUndefinedCode = {
           ...mockStoredProcedureWithCode,
           storedProcedureCode: {
@@ -274,11 +305,11 @@ describe('EntitySummaryPanelUtils tests', () => {
 
         renderWithRouter(result as JSX.Element);
 
+        const schemaEditor = await screen.findByTestId('schema-editor');
+
         expect(screen.getByText('label.code')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
-        expect(screen.getByTestId('schema-editor')).toHaveTextContent(
-          'No code available'
-        );
+        expect(schemaEditor).toBeInTheDocument();
+        expect(schemaEditor).toHaveTextContent('No code available');
       });
 
       it('should render stored procedure heading and testId correctly', () => {
@@ -294,6 +325,26 @@ describe('EntitySummaryPanelUtils tests', () => {
           'label.code'
         );
       });
+    });
+
+    it('renders the supplied metric expression in the summary', async () => {
+      const metric = {
+        id: 'metric-id',
+        name: 'gross_margin',
+        fullyQualifiedName: 'gross_margin',
+        metricExpression: {
+          code: 'SUM(profit) / SUM(revenue)',
+          language: Language.SQL,
+        },
+      } as Metric;
+
+      const result = getEntityChildDetails(EntityType.METRIC, metric);
+
+      renderWithRouter(result as JSX.Element);
+
+      expect(await screen.findByTestId('code-component')).toHaveTextContent(
+        'SUM(profit) / SUM(revenue)'
+      );
     });
   });
 });

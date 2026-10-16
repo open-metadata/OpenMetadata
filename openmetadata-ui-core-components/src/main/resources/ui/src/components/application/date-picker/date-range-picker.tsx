@@ -8,7 +8,7 @@ import {
   today,
 } from '@internationalized/date';
 import { useControlledState } from '@react-stately/utils';
-import { Calendar as CalendarIcon } from '@untitledui/icons';
+import { Calendar as CalendarIcon } from '../../../icons';
 import { useDateFormatter } from 'react-aria';
 import type {
   DateRangePickerProps as AriaDateRangePickerProps,
@@ -22,20 +22,82 @@ import {
   useLocale,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DateInput } from './date-input';
 import { RangeCalendar } from './range-calendar';
 import { RangePresetButton } from './range-preset';
 
-const now = today(getLocalTimeZone());
+export const getDateRangePresets = (
+  locale: string,
+  now = today(getLocalTimeZone())
+) => ({
+  today: { label: 'Today', value: { start: now, end: now } },
+  yesterday: {
+    label: 'Yesterday',
+    value: {
+      start: now.subtract({ days: 1 }),
+      end: now.subtract({ days: 1 }),
+    },
+  },
+  thisWeek: {
+    label: 'This week',
+    value: { start: startOfWeek(now, locale), end: endOfWeek(now, locale) },
+  },
+  lastWeek: {
+    label: 'Last week',
+    value: {
+      start: startOfWeek(now, locale).subtract({ weeks: 1 }),
+      end: endOfWeek(now, locale).subtract({ weeks: 1 }),
+    },
+  },
+  thisMonth: {
+    label: 'This month',
+    value: { start: startOfMonth(now), end: endOfMonth(now) },
+  },
+  lastMonth: {
+    label: 'Last month',
+    value: {
+      start: startOfMonth(now).subtract({ months: 1 }),
+      end: endOfMonth(now).subtract({ months: 1 }),
+    },
+  },
+  thisYear: {
+    label: 'This year',
+    value: {
+      start: startOfMonth(now.set({ month: 1 })),
+      end: endOfMonth(now.set({ month: 12 })),
+    },
+  },
+  lastYear: {
+    label: 'Last year',
+    value: {
+      start: startOfMonth(now.set({ month: 1 }).subtract({ years: 1 })),
+      end: endOfMonth(now.set({ month: 12 }).subtract({ years: 1 })),
+    },
+  },
+  allTime: {
+    label: 'All time',
+    value: {
+      start: now.set({ year: 2000, month: 1, day: 1 }),
+      end: now,
+    },
+  },
+});
+
+export type DateRangePresetKey = keyof ReturnType<typeof getDateRangePresets>;
 
 const highlightedDates = [today(getLocalTimeZone())];
 
 interface DateRangePickerProps extends AriaDateRangePickerProps<DateValue> {
-  /** The function to call when the apply button is clicked. */
-  onApply?: () => void;
+  /** Called on Apply with the preset key when the range came from a preset. */
+  onApply?: (presetKey?: DateRangePresetKey) => void;
   /** The function to call when the cancel button is clicked. */
   onCancel?: () => void;
+  /** Size of the trigger button, to line up with the inputs beside it. */
+  size?: 'sm' | 'md';
+  /** Stretch the trigger across its container instead of sizing it to the dates. */
+  fullWidth?: boolean;
 }
 
 export const DateRangePicker = ({
@@ -44,8 +106,11 @@ export const DateRangePicker = ({
   onChange,
   onApply,
   onCancel,
+  size = 'md',
+  fullWidth = false,
   ...props
 }: DateRangePickerProps) => {
+  const { t } = useCoreTranslation();
   const { locale } = useLocale();
   const formatter = useDateFormatter({
     month: 'short',
@@ -66,74 +131,38 @@ export const DateRangePicker = ({
     ? formatter.format(value.end.toDate(getLocalTimeZone()))
     : 'Select date';
 
-  const presets = useMemo(
-    () => ({
-      today: { label: 'Today', value: { start: now, end: now } },
-      yesterday: {
-        label: 'Yesterday',
-        value: {
-          start: now.subtract({ days: 1 }),
-          end: now.subtract({ days: 1 }),
-        },
-      },
-      thisWeek: {
-        label: 'This week',
-        value: { start: startOfWeek(now, locale), end: endOfWeek(now, locale) },
-      },
-      lastWeek: {
-        label: 'Last week',
-        value: {
-          start: startOfWeek(now, locale).subtract({ weeks: 1 }),
-          end: endOfWeek(now, locale).subtract({ weeks: 1 }),
-        },
-      },
-      thisMonth: {
-        label: 'This month',
-        value: { start: startOfMonth(now), end: endOfMonth(now) },
-      },
-      lastMonth: {
-        label: 'Last month',
-        value: {
-          start: startOfMonth(now).subtract({ months: 1 }),
-          end: endOfMonth(now).subtract({ months: 1 }),
-        },
-      },
-      thisYear: {
-        label: 'This year',
-        value: {
-          start: startOfMonth(now.set({ month: 1 })),
-          end: endOfMonth(now.set({ month: 12 })),
-        },
-      },
-      lastYear: {
-        label: 'Last year',
-        value: {
-          start: startOfMonth(now.set({ month: 1 }).subtract({ years: 1 })),
-          end: endOfMonth(now.set({ month: 12 }).subtract({ years: 1 })),
-        },
-      },
-      allTime: {
-        label: 'All time',
-        value: {
-          start: now.set({ year: 2000, month: 1, day: 1 }),
-          end: now,
-        },
-      },
-    }),
-    [locale]
-  );
+  const presets = useMemo(() => getDateRangePresets(locale), [locale]);
+  const [presetKey, setPresetKey] = useState<DateRangePresetKey>();
 
   return (
     <AriaDateRangePicker
-      aria-label="Date range picker"
+      aria-label={t('label.date-range-picker', 'Date range picker')}
       shouldCloseOnSelect={false}
       {...props}
       value={value}
-      onChange={setValue}>
+      onChange={(range) => {
+        setPresetKey(undefined);
+        setValue(range);
+      }}
+      onOpenChange={(isOpen) => {
+        // Apply reads the key before closing, so a key still set here belongs
+        // to a dismissed picker and must not reach the next Apply.
+        if (!isOpen) {
+          setPresetKey(undefined);
+        }
+        props.onOpenChange?.(isOpen);
+      }}>
       <AriaGroup>
-        <Button color="secondary" iconLeading={CalendarIcon} size="md">
+        {/* The picker's sm/md match input heights (36/40px): Button md/lg. */}
+        <Button
+          className={cx(fullWidth && 'tw:w-full tw:justify-start')}
+          color="secondary"
+          iconLeading={CalendarIcon}
+          size={size === 'md' ? 'lg' : 'md'}>
           {!value ? (
-            <span className="tw:text-placeholder">Select dates</span>
+            <span className="tw:text-placeholder">
+              {t('label.select-dates', 'Select dates')}
+            </span>
           ) : (
             `${formattedStartDate} – ${formattedEndDate}`
           )}
@@ -149,17 +178,21 @@ export const DateRangePicker = ({
               'tw:duration-100 tw:ease-in tw:animate-out tw:fade-out tw:placement-right:slide-out-to-left-0.5 tw:placement-top:slide-out-to-bottom-0.5 tw:placement-bottom:slide-out-to-top-0.5'
           )
         }
-        offset={8}
+        offset={4}
         placement="bottom right">
-        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-primary tw:shadow-xl tw:ring tw:ring-secondary_alt tw:focus:outline-hidden">
+        {/* `outline-[3px]` ports the bare `tw:ring` faithfully (3px in Tailwind v4 — likely
+            unintended vs ring-1 elsewhere; tracked as a follow-up). `focus:outline-hidden`
+            removed: it would suppress this border. */}
+        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
           {({ close }) => (
             <>
               <div className="tw:hidden tw:w-38 tw:flex-col tw:gap-0.5 tw:border-r tw:border-solid tw:border-secondary tw:p-3 tw:lg:flex">
-                {Object.values(presets).map((preset) => (
+                {Object.entries(presets).map(([key, preset]) => (
                   <RangePresetButton
-                    key={preset.label}
+                    key={key}
                     value={preset.value}
                     onClick={() => {
+                      setPresetKey(key as DateRangePresetKey);
                       setValue(preset.value);
                       setFocusedValue(preset.value.start);
                     }}>
@@ -177,6 +210,9 @@ export const DateRangePicker = ({
                     lastYear: presets.lastYear,
                   }}
                   onFocusChange={setFocusedValue}
+                  onPresetSelect={(key) =>
+                    setPresetKey(key as DateRangePresetKey)
+                  }
                 />
                 <div className="tw:flex tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:p-4">
                   <div className="tw:hidden tw:items-center tw:gap-3 tw:md:flex">
@@ -187,7 +223,7 @@ export const DateRangePicker = ({
                   <div className="tw:grid tw:w-full tw:grid-cols-2 tw:gap-3 tw:md:flex tw:md:w-auto">
                     <Button
                       color="secondary"
-                      size="md"
+                      size="lg"
                       onClick={() => {
                         onCancel?.();
                         close();
@@ -196,9 +232,9 @@ export const DateRangePicker = ({
                     </Button>
                     <Button
                       color="primary"
-                      size="md"
+                      size="lg"
                       onClick={() => {
-                        onApply?.();
+                        onApply?.(presetKey);
                         close();
                       }}>
                       Apply

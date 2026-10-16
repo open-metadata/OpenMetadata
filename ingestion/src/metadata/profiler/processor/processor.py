@@ -13,7 +13,7 @@ Profiler Processor Step
 """
 
 import traceback
-from typing import Optional, Type, cast  # noqa: UP035
+from typing import cast
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -52,7 +52,7 @@ class ProfilerProcessor(Processor):
     def __init__(
         self,
         config: OpenMetadataWorkflowConfig,
-        profiler_config_class: Inject[Type[ProfilerProcessorConfig]] = None,  # noqa: UP006
+        profiler_config_class: Inject[type[ProfilerProcessorConfig]] = None,
     ):
         if profiler_config_class is None:
             raise DependencyNotFoundError(
@@ -103,7 +103,7 @@ class ProfilerProcessor(Processor):
         return Either()
 
     @classmethod
-    def create(cls, config_dict: dict, _: OpenMetadata, pipeline_name: Optional[str] = None) -> "Step":  # noqa: UP045
+    def create(cls, config_dict: dict, _: OpenMetadata, pipeline_name: str | None = None) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config)
 

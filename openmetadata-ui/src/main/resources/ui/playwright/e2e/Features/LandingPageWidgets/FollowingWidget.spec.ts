@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -22,6 +22,7 @@ import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
 import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
+import { test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
@@ -29,6 +30,7 @@ import {
   followEntity,
   validateFollowedEntityToWidget,
 } from '../../../utils/entity';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 
 const entities = [
   TableClass,
@@ -42,14 +44,14 @@ const entities = [
   DashboardDataModelClass,
   StoredProcedureClass,
   MetricClass,
-] as const;
+];
 
 const adminUser = new UserClass();
 
 const test = base.extend<{ adminPage: Page }>({
   adminPage: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -68,7 +70,7 @@ base.afterAll('Delete admin user', async ({ browser }) => {
   await afterAction();
 });
 
-entities.forEach((EntityClass) => {
+pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
@@ -91,10 +93,11 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(adminPage);
 
-      const entityName = entity.entityResponseData?.['displayName'];
+      const entityName =
+        entity.entityResponseData?.['displayName'] ?? entity.entity.name;
 
       await followEntity(adminPage, entity.endpoint);
-      await validateFollowedEntityToWidget(adminPage, entityName ?? '', true);
+      await validateFollowedEntityToWidget(adminPage, entityName, true);
     });
   });
 });

@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -27,6 +34,22 @@ import {
 } from './mocks/PlatformLineage.mock';
 import PlatformLineage from './PlatformLineage';
 
+// PlatformLineage now fetches its own permissions via useEntityPermissions (Task 8
+// batch-final) instead of a manual getEntityPermissionByFqn + getOperationPermissions
+// call — both of those still live inside the hook itself, so the existing REST-layer mocks
+// below continue to drive it; only a real QueryClientProvider needs to be added around each
+// render (useEntityPermissions.test.tsx precedent), no mock rewrites required.
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: false } },
+});
+const QueryClientProviderWrapper = ({
+  children,
+}: {
+  children: React.ReactNode;
+}) => (
+  <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+);
+
 const mockNavigate = jest.fn();
 const mockGetEntityAPIfromSource = jest.fn();
 const mockGetEntityPermissionByFqn = jest.fn();
@@ -35,11 +58,35 @@ const mockShowErrorToast = jest.fn();
 const mockShowModal = jest.fn();
 const mockGetOperationPermissions = jest.fn();
 const mockDebouncedSearchCallback = jest.fn();
+const mockSetLineageConfig = jest.fn();
+
+// Captures the last props LineageConfigModal was rendered with so tests can
+// exercise its onSave/onCancel callbacks — enough to prove the modal is wired
+// to the store setter (the fix) without depending on antd's real modal DOM.
+let lastLineageConfigModalProps:
+  | {
+      config: unknown;
+      visible: boolean;
+      onSave: (config: unknown) => void;
+      onCancel: () => void;
+    }
+  | undefined;
 
 let mockFqn = 'test.fqn';
 let mockEntityType = EntityType.TABLE;
 let mockLocationSearch = '';
 let mockAppPreferences = MOCK_APP_PREFERENCES;
+let mockStoreLineageConfig: {
+  upstreamDepth: number;
+  downstreamDepth: number;
+  nodesPerLayer: number;
+  pipelineViewMode: PipelineViewMode;
+} = {
+  upstreamDepth: 3,
+  downstreamDepth: 3,
+  nodesPerLayer: 50,
+  pipelineViewMode: PipelineViewMode.Node,
+};
 
 jest.mock('@openmetadata/ui-core-components', () => {
   type GridProps = { children?: React.ReactNode };
@@ -53,8 +100,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   GridMock.Item = jest.fn(({ children }: GridProps) => <div>{children}</div>);
 
+  const CardMock = Object.assign(
+    ({ children }: GridProps) => <div>{children}</div>,
+    {
+      Content: ({ children }: GridProps) => <div>{children}</div>,
+    }
+  );
+
+  const SelectMock = Object.assign(jest.fn(), {
+    ComboBox: jest.fn(() => <div>Select</div>),
+    Item: ({ children }: GridProps) => <div>{children}</div>,
+  });
+
   return {
+    Card: CardMock,
     Grid: GridMock,
+    Select: SelectMock,
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -105,6 +166,16 @@ jest.mock('../../hooks/useApplicationStore', () => ({
   })),
 }));
 
+jest.mock('../../hooks/useLineageStore', () => ({
+  // Zustand selector-hook shape: called with `(state) => state.field`.
+  useLineageStore: jest.fn((selector: (state: unknown) => unknown) =>
+    selector({
+      lineageConfig: mockStoreLineageConfig,
+      setLineageConfig: mockSetLineageConfig,
+    })
+  ),
+}));
+
 jest.mock('../../utils/Assets/AssetsUtils', () => ({
   getEntityAPIfromSource: jest.fn(() => mockGetEntityAPIfromSource),
 }));
@@ -124,22 +195,31 @@ jest.mock('../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
+  // useEntityPermissions also imports DEFAULT_ENTITY_PERMISSION (and PermissionDerivation
+  // imports getPrioritizedEditPermission/getPrioritizedViewPermission) from this same
+  // module — a mock that only exports getOperationPermissions would silently undefine those,
+  // crashing getDerivedPermissionFlags. Spread the real module and override only the one
+  // function this suite needs to control.
+  ...jest.requireActual('../../utils/PermissionsUtils'),
   getOperationPermissions: jest.fn((perms) =>
     mockGetOperationPermissions(perms)
   ),
 }));
 
-jest.mock('../../utils/EntityLineageUtils', () => ({
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   getLineageEntityExclusionFilter: jest.fn(() => ({ mustNot: [] })),
+}));
+
+jest.mock('../../utils/EntityLineageLayoutUtils', () => ({
   getViewportForLineageExport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn((val) => `escaped_${val}`),
   getEncodedFqn: jest.fn((val) => encodeURIComponent(val)),
 }));
 
-const mockEscapeESReservedCharacters = require('../../utils/StringsUtils')
+const mockEscapeESReservedCharacters = require('../../utils/StringUtils')
   .escapeESReservedCharacters as jest.Mock;
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
@@ -177,9 +257,8 @@ jest.mock('../../components/Lineage/Lineage.component', () => ({
   default: jest.fn(() => <div>Lineage</div>),
 }));
 
-jest.mock('../../context/LineageProvider/LineageProvider', () => ({
-  __esModule: true,
-  default: jest.fn(({ children }: { children: React.ReactNode }) => (
+jest.mock('../../components/Lineage/Lineage/Lineage', () => ({
+  Lineage: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
 }));
@@ -193,16 +272,23 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 
 const mockLineage = require('../../components/Lineage/Lineage.component')
   .default as jest.Mock;
-const mockLineageProvider =
-  require('../../context/LineageProvider/LineageProvider').default as jest.Mock;
+const mockLineageWrapper = require('../../components/Lineage/Lineage/Lineage')
+  .Lineage as jest.Mock;
 const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
   .default as jest.Mock;
+const mockEntitySuggestionOption =
+  require('../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component')
+    .default as jest.Mock;
+const mockSelect = require('@openmetadata/ui-core-components').Select
+  .ComboBox as jest.Mock;
 
 jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
   __esModule: true,
-  default: jest.fn(() => (
-    <div data-testid="lineage-config-modal">Config Modal</div>
-  )),
+  default: jest.fn((props: typeof lastLineageConfigModalProps) => {
+    lastLineageConfigModalProps = props;
+
+    return <div data-testid="lineage-config-modal">Config Modal</div>;
+  }),
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -231,20 +317,6 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Select: jest.fn(() => <div>Select</div>),
-    Card: jest.fn(({ children }) => <div>{children}</div>),
-  };
-});
-
-jest.mock('../../components/LineageTable/LineageTable.styled', () => ({
-  StyledIconButton: jest.fn(({ children }) => <button>{children}</button>),
-}));
-
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,
 }));
@@ -253,7 +325,7 @@ jest.mock('../../assets/svg/ic-settings-gear.svg', () => ({
   ReactComponent: () => <div>SettingsIcon</div>,
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Expand05: () => <div>Expand05</div>,
   Home02: () => <div>Home02</div>,
   Minimize02: () => <div>Minimize02</div>,
@@ -262,10 +334,21 @@ jest.mock('@untitledui/icons', () => ({
 describe('PlatformLineage Component Logic', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // Fresh cache per test — the permission query key is keyed only by resource/fqn (both
+    // reset to the same defaults below across most tests), so a shared cache would silently
+    // serve a prior test's cached response instead of exercising a test's own mock override.
+    queryClient.clear();
     mockFqn = 'test.fqn';
     mockEntityType = EntityType.TABLE;
     mockLocationSearch = '';
     mockAppPreferences = MOCK_APP_PREFERENCES;
+    mockStoreLineageConfig = {
+      upstreamDepth: 3,
+      downstreamDepth: 3,
+      nodesPerLayer: 50,
+      pipelineViewMode: PipelineViewMode.Node,
+    };
+    lastLineageConfigModalProps = undefined;
     mockGetEntityAPIfromSource.mockResolvedValue(MOCK_TABLE_ENTITY);
     mockGetEntityPermissionByFqn.mockResolvedValue({
       permissions: ['ViewAll', 'EditLineage'],
@@ -275,8 +358,14 @@ describe('PlatformLineage Component Logic', () => {
     mockEscapeESReservedCharacters.mockImplementation(
       (val) => `escaped_${val}`
     );
+    // `jest.clearAllMocks` above clears calls but keeps implementations, so
+    // these have to be restored per test or one test's override leaks on.
+    mockSelect.mockImplementation(() => <div>Select</div>);
+    mockEntitySuggestionOption.mockImplementation(() => (
+      <div>EntitySuggestionOption</div>
+    ));
     mockLineage.mockImplementation(() => <div>Lineage</div>);
-    mockLineageProvider.mockImplementation(
+    mockLineageWrapper.mockImplementation(
       ({ children }: { children: React.ReactNode }) => <div>{children}</div>
     );
     mockPageLayoutV1.mockImplementation(
@@ -286,7 +375,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Data Fetching Logic', () => {
     it('should fetch entity data on mount when fqn and entityType are provided', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockGetEntityAPIfromSource).toHaveBeenCalledWith('test.fqn');
@@ -294,7 +383,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should fetch permissions on mount when fqn and entityType are provided', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
@@ -307,7 +396,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should not fetch data when fqn is undefined', async () => {
       mockFqn = '';
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockGetEntityAPIfromSource).not.toHaveBeenCalled();
@@ -318,7 +407,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should not fetch data when entityType is undefined', async () => {
       mockEntityType = '' as EntityType;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockGetEntityAPIfromSource).not.toHaveBeenCalled();
@@ -331,7 +420,7 @@ describe('PlatformLineage Component Logic', () => {
         new Error('Permission error')
       );
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockGetEntityAPIfromSource).toHaveBeenCalled();
@@ -344,7 +433,7 @@ describe('PlatformLineage Component Logic', () => {
         permissions: ['EditAll'],
       });
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockGetOperationPermissions).toHaveBeenCalledWith({
@@ -356,7 +445,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Lineage Configuration State', () => {
     it('should initialize lineage config from app preferences', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -371,7 +460,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should use default config when app preferences are not available', async () => {
       mockAppPreferences = {} as AppPreferences;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -381,7 +470,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should use default downstream depth of 1 when not in preferences', async () => {
       mockAppPreferences = { lineageConfig: {} } as unknown as AppPreferences;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -391,7 +480,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should use default upstream depth of 1 when not in preferences', async () => {
       mockAppPreferences = { lineageConfig: {} } as unknown as AppPreferences;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -401,7 +490,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should use default pipeline view mode when not in preferences', async () => {
       mockAppPreferences = { lineageConfig: {} } as unknown as AppPreferences;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -416,7 +505,7 @@ describe('PlatformLineage Component Logic', () => {
         },
       } as unknown as AppPreferences;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -430,7 +519,7 @@ describe('PlatformLineage Component Logic', () => {
         },
       } as unknown as AppPreferences;
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -440,7 +529,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Search Functionality', () => {
     it('should call search API with correct indices', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -474,7 +563,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should escape search query characters before calling search API', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -507,8 +596,94 @@ describe('PlatformLineage Component Logic', () => {
       );
     });
 
+    it('should keep the newest results when an older search answers late', async () => {
+      // `onFocus` starts a search for '' and typing starts another; both are in
+      // flight, and the empty one is the slower of the pair. Resolve them out
+      // of order and the list must still belong to the query the box holds.
+      // `onFocus` only searches when the box has no preset value, which is the
+      // state the platform lineage root page starts in.
+      mockFqn = '';
+      const resolvers: Array<(value: unknown) => void> = [];
+      mockSearchQuery.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolvers.push(resolve);
+          })
+      );
+      mockEntitySuggestionOption.mockImplementation(
+        ({ entity }: { entity: { fullyQualifiedName?: string } }) => (
+          <div>{entity.fullyQualifiedName}</div>
+        )
+      );
+      mockLineage.mockImplementation(
+        ({ platformHeader }: { platformHeader: React.ReactNode }) => (
+          <div>{platformHeader}</div>
+        )
+      );
+      // The shared stub throws every prop away, so the component's own search
+      // wiring is unreachable from a test. Stand in for just the parts this
+      // one drives: focus, typing, and the option list it is handed.
+      mockSelect.mockImplementation(
+        ({
+          items,
+          children,
+          onFocus,
+          onInputChange,
+        }: {
+          items?: { id: string; label: string }[];
+          children: (item: { id: string; label: string }) => React.ReactNode;
+          onFocus?: () => void;
+          onInputChange?: (value: string) => void;
+        }) => (
+          <div>
+            <input
+              aria-label="Search entity"
+              data-testid="entity-search-input"
+              onChange={(event) => onInputChange?.(event.target.value)}
+              onFocus={() => onFocus?.()}
+            />
+            {items?.map((item) => (
+              <div key={item.id}>{children(item)}</div>
+            ))}
+          </div>
+        )
+      );
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalled();
+      });
+
+      const combobox = screen.getByTestId('entity-search-input');
+      fireEvent.focus(combobox);
+
+      await waitFor(() => expect(resolvers).toHaveLength(1), {
+        timeout: 3000,
+      });
+
+      fireEvent.change(combobox, { target: { value: 'dim_customer' } });
+
+      await waitFor(() => expect(resolvers).toHaveLength(2), {
+        timeout: 3000,
+      });
+
+      await act(async () => {
+        resolvers[1](MOCK_SEARCH_RESULTS);
+      });
+      await act(async () => {
+        resolvers[0](MOCK_EMPTY_SEARCH_RESULTS);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(MOCK_TABLE_ENTITY.fullyQualifiedName ?? '')
+        ).toBeInTheDocument();
+      });
+    });
+
     it('should include lineage entity exclusion filter', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -516,7 +691,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should exclude deleted entities from search', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -526,7 +701,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should handle empty search results', async () => {
       mockSearchQuery.mockResolvedValue(MOCK_EMPTY_SEARCH_RESULTS);
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -536,7 +711,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should handle search API errors gracefully', async () => {
       mockSearchQuery.mockRejectedValue(new Error('Search failed'));
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -546,7 +721,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Export Functionality', () => {
     it('should pass export callback in platformHeader', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -563,7 +738,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should parse fullscreen from query params', async () => {
       mockLocationSearch = '?fullscreen=true';
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -573,7 +748,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should default to false when fullscreen param is not present', async () => {
       mockLocationSearch = '';
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -585,7 +760,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should default to Service view when not specified', async () => {
       mockLocationSearch = '';
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -595,7 +770,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should parse platformView from query params', async () => {
       mockLocationSearch = '?platformView=Domain';
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -605,7 +780,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should handle DataProduct platform view', async () => {
       mockLocationSearch = '?platformView=DataProduct';
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -615,7 +790,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Props Passed to Lineage Component', () => {
     it('should pass isPlatformLineage=true', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -628,7 +803,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should pass fetched entity', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -641,7 +816,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should pass entityType from params', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -656,7 +831,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should pass hasEditAccess=true when EditAll permission exists', async () => {
       mockGetOperationPermissions.mockReturnValue(MOCK_PERMISSIONS_FULL_ACCESS);
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -673,7 +848,7 @@ describe('PlatformLineage Component Logic', () => {
         MOCK_PERMISSIONS_LINEAGE_EDIT
       );
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -688,7 +863,7 @@ describe('PlatformLineage Component Logic', () => {
     it('should pass hasEditAccess=false when no edit permissions', async () => {
       mockGetOperationPermissions.mockReturnValue(MOCK_PERMISSIONS_VIEW_ONLY);
 
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -701,7 +876,7 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should pass platformHeader prop', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalledWith(
@@ -723,7 +898,9 @@ describe('PlatformLineage Component Logic', () => {
           })
       );
 
-      const { container } = render(<PlatformLineage />);
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.querySelector('[data-testid="loader"]')).toBeTruthy();
     });
@@ -736,7 +913,9 @@ describe('PlatformLineage Component Logic', () => {
           })
       );
 
-      const { container } = render(<PlatformLineage />);
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.querySelector('[data-testid="loader"]')).toBeTruthy();
 
@@ -746,18 +925,18 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should render Lineage after data loads', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
       });
     });
 
-    it('should wrap Lineage in LineageProvider', async () => {
-      render(<PlatformLineage />);
+    it('should wrap Lineage in the Lineage provider component', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineageProvider).toHaveBeenCalled();
+        expect(mockLineageWrapper).toHaveBeenCalled();
         expect(mockLineage).toHaveBeenCalled();
       });
     });
@@ -765,7 +944,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should not render breadcrumb in fullscreen mode', async () => {
       mockLocationSearch = '?fullscreen=true';
 
-      const { container } = render(<PlatformLineage />);
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.textContent).not.toContain('Breadcrumb');
     });
@@ -773,7 +954,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should render breadcrumb when not in fullscreen', async () => {
       mockLocationSearch = '';
 
-      const { container } = render(<PlatformLineage />);
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       await waitFor(() => {
         expect(container.textContent).toContain('Breadcrumb');
@@ -783,7 +966,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should not render page header in fullscreen mode', async () => {
       mockLocationSearch = '?fullscreen=true';
 
-      const { container } = render(<PlatformLineage />);
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       expect(container.textContent).not.toContain('PageHeader');
     });
@@ -791,7 +976,9 @@ describe('PlatformLineage Component Logic', () => {
     it('should render page header when not in fullscreen', async () => {
       mockLocationSearch = '';
 
-      const { container } = render(<PlatformLineage />);
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       await waitFor(() => {
         expect(container.textContent).toContain('PageHeader');
@@ -801,7 +988,7 @@ describe('PlatformLineage Component Logic', () => {
 
   describe('Navigation Logic', () => {
     it('should navigate to entity lineage when entity is selected', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
@@ -819,11 +1006,71 @@ describe('PlatformLineage Component Logic', () => {
     });
 
     it('should encode fqn in navigation URL', async () => {
-      render(<PlatformLineage />);
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
       });
+    });
+  });
+
+  // Regression: on /lineage the settings modal used to write into local
+  // page state instead of the shared Zustand store the LineageProvider fetch
+  // effect listens to, so upstream/downstream depth changes silently produced
+  // no network call. These tests pin PlatformLineage to the store's
+  // lineageConfig / setLineageConfig so the wiring can't drift back.
+  describe('Lineage Store Integration', () => {
+    it('should pass the store lineageConfig to LineageConfigModal', async () => {
+      mockStoreLineageConfig = {
+        upstreamDepth: 5,
+        downstreamDepth: 7,
+        nodesPerLayer: 42,
+        pipelineViewMode: PipelineViewMode.Node,
+      };
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      expect(lastLineageConfigModalProps?.config).toEqual({
+        upstreamDepth: 5,
+        downstreamDepth: 7,
+        nodesPerLayer: 42,
+        pipelineViewMode: PipelineViewMode.Node,
+      });
+    });
+
+    it('should call store setLineageConfig when modal onSave is invoked', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      const newConfig = {
+        upstreamDepth: 4,
+        downstreamDepth: 4,
+        nodesPerLayer: 50,
+        pipelineViewMode: PipelineViewMode.Node,
+      };
+      lastLineageConfigModalProps?.onSave(newConfig);
+
+      expect(mockSetLineageConfig).toHaveBeenCalledTimes(1);
+      expect(mockSetLineageConfig).toHaveBeenCalledWith(newConfig);
+    });
+
+    it('should not call store setLineageConfig when modal is cancelled', async () => {
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      await waitFor(() => {
+        expect(lastLineageConfigModalProps).toBeDefined();
+      });
+
+      lastLineageConfigModalProps?.onCancel();
+
+      expect(mockSetLineageConfig).not.toHaveBeenCalled();
     });
   });
 });

@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { TagLabel } from '../../generated/type/tagLabel';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 
 interface TierTagProps {
   tier: TagLabel;
@@ -23,15 +24,16 @@ interface TierTagProps {
 
 const TierTag: React.FC<TierTagProps> = ({ tier, className = '' }) => {
   return (
-    <span
-      className={classNames(
-        'tier-tag inline-block font-medium p-x-xs p-y-xss text-xs',
-        className
-      )}
-      data-testid="tier-tag"
-      title={tier.tagFQN}>
-      {getEntityName(tier)}
-    </span>
+    <Tooltip title={tier.tagFQN}>
+      <span
+        className={classNames(
+          'tier-tag inline-block font-medium p-x-xs p-y-xss text-xs',
+          className
+        )}
+        data-testid="tier-tag">
+        {getEntityName(tier)}
+      </span>
+    </Tooltip>
   );
 };
 

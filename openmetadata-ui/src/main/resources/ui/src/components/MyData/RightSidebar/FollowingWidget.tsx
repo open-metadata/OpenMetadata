@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Box, Owner, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { ExtraInfo } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/ic-following-assets.svg';
 import { ReactComponent as NoDataAssetsPlaceholder } from '../../../assets/svg/no-notifications.svg';
+import { ReactComponent as FollowingAssetsIcon } from '../../../assets/svg/widget/following.svg';
 import {
   PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
@@ -31,24 +31,23 @@ import {
   getSortOrder,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/entity/type';
+import type { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { EntityIconSize } from '../../../utils/EntityIconUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
-import { getTermQuery } from '../../../utils/SearchUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { UserPageTabs } from '../../Settings/Users/Users.interface';
 import WidgetEmptyState from '../Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -74,11 +73,16 @@ function FollowingWidget({
   const [followedData, setFollowedData] = useState<SourceType[]>([]);
   const [isLoadingOwnedData, setIsLoadingOwnedData] = useState<boolean>(true);
 
-  const fetchUserFollowedData = async () => {
+  const fetchUserFollowedData = useCallback(async () => {
     if (!currentUser?.id) {
+      setFollowedData([]);
+      setIsLoadingOwnedData(false);
+
       return;
     }
+
     setIsLoadingOwnedData(true);
+
     try {
       const sortField = getSortField(selectedEntityFilter);
       const sortOrder = getSortOrder(selectedEntityFilter);
@@ -97,21 +101,18 @@ function FollowingWidget({
       });
 
       const sourceData = res.hits.hits.map((hit) => hit._source);
-      // Apply client-side sorting as well to ensure consistent results
-      const sortedData = applySortToData(sourceData, selectedEntityFilter);
-      setFollowedData(sortedData);
+
+      setFollowedData(applySortToData(sourceData, selectedEntityFilter));
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsLoadingOwnedData(false);
     }
-  };
+  }, [currentUser?.id, selectedEntityFilter]);
 
   useEffect(() => {
-    if (currentUser) {
-      fetchUserFollowedData();
-    }
-  }, [currentUser, selectedEntityFilter]);
+    fetchUserFollowedData();
+  }, [fetchUserFollowedData]);
   // Check if widget is in expanded form (full size)
   const isExpanded = useMemo(() => {
     const currentWidget = currentLayout?.find(
@@ -143,7 +144,7 @@ function FollowingWidget({
       extraInfo.push({
         key: 'Owner',
         value: (
-          <OwnerLabel
+          <Owner
             isCompactView={false}
             owners={(item.owners as EntityReference[]) ?? []}
             showLabel={false}
@@ -153,22 +154,6 @@ function FollowingWidget({
     }
 
     return extraInfo;
-  };
-
-  const getEntityIcon = (item: any) => {
-    if (item.serviceType) {
-      return (
-        <img
-          alt={item.name}
-          className="w-8 h-8"
-          src={serviceUtilClassBase.getServiceTypeLogo({
-            serviceType: item.serviceType,
-          } as SearchSourceAlias)}
-        />
-      );
-    } else {
-      return searchClassBase.getEntityIcon(item.type ?? '');
-    }
   };
 
   const widgetData = useMemo(
@@ -203,57 +188,62 @@ function FollowingWidget({
             const extraInfo = getEntityExtraInfo(item);
 
             return (
-              <div
-                className="following-widget-list-item w-full p-xs border-radius-sm"
+              <Box
+                align="center"
+                className="tw:w-full tw:max-w-full tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-secondary tw:p-2"
                 data-testid={`Following-${getEntityName(item)}`}
+                justify="between"
                 key={item.id}>
-                <div className="d-flex items-center justify-between w-full">
-                  <Link
-                    className="item-link w-min-0"
-                    to={entityUtilClassBase.getEntityLink(
-                      item.entityType ?? '',
-                      item.fullyQualifiedName as string
-                    )}>
-                    <Button
-                      className="entity-button flex items-center gap-2 p-0 w-full"
-                      icon={
-                        <div className="entity-button-icon d-flex items-center justify-center flex-shrink">
-                          {getEntityIcon(item)}
-                        </div>
-                      }
-                      type="text">
-                      <div className="d-flex w-max-full w-min-0 flex-column">
-                        {'serviceType' in item && item.serviceType && (
-                          <Typography.Text
-                            className="text-left text-sm font-regular text-grey-600"
-                            ellipsis={{ tooltip: true }}>
-                            {item.serviceType}
-                          </Typography.Text>
+                <Link
+                  className="tw:min-w-0 tw:flex-1 tw:no-underline tw:hover:no-underline"
+                  to={getEntityLinkFromType(
+                    item.fullyQualifiedName as string,
+                    item.entityType as EntityType
+                  )}>
+                  <Box align="center" className="tw:w-full" gap={2}>
+                    <Box
+                      align="center"
+                      className="tw:shrink-0"
+                      justify="center">
+                      {getEntityIcon(item, EntityIconSize.Size24)}
+                    </Box>
+                    <Box className="tw:min-w-0 tw:max-w-full" direction="col">
+                      {'serviceType' in item && item.serviceType && (
+                        <Typography
+                          className="tw:text-left tw:text-sm tw:font-normal tw:text-tertiary"
+                          ellipsis={{
+                            tooltip: true,
+                            excludeTriggerFromTabOrder: true,
+                          }}>
+                          {item.serviceType}
+                        </Typography>
+                      )}
+                      <Typography
+                        className="tw:text-left tw:text-sm tw:font-normal tw:text-primary"
+                        ellipsis={{
+                          tooltip: true,
+                          excludeTriggerFromTabOrder: true,
+                        }}>
+                        {getEntityName(item)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Link>
+                {isExpanded && (
+                  <Box align="center" gap={3} wrap="wrap">
+                    {extraInfo.map((info, i) => (
+                      <Fragment key={info.key}>
+                        <EntitySummaryDetails data={info} />
+                        {i !== extraInfo.length - 1 && (
+                          <span className="tw:inline-block tw:px-1.5 tw:text-xl tw:font-semibold">
+                            {t('label.middot-symbol')}
+                          </span>
                         )}
-                        <Typography.Text
-                          className="text-left text-sm font-regular text-grey-800"
-                          ellipsis={{ tooltip: true }}>
-                          {getEntityName(item)}
-                        </Typography.Text>
-                      </div>
-                    </Button>
-                  </Link>
-                  {isExpanded && (
-                    <div className="d-flex items-center gap-3 flex-wrap">
-                      {extraInfo.map((info, i) => (
-                        <>
-                          <EntitySummaryDetails data={info} key={info.key} />
-                          {i !== extraInfo.length - 1 && (
-                            <span className="px-1.5 d-inline-block text-xl font-semibold">
-                              {t('label.middot-symbol')}
-                            </span>
-                          )}
-                        </>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
+                      </Fragment>
+                    ))}
+                  </Box>
+                )}
+              </Box>
             );
           })}
         </div>
@@ -276,7 +266,7 @@ function FollowingWidget({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<FollowingAssetsIcon height={22} width={22} />}
+        icon={<FollowingAssetsIcon height={24} width={24} />}
         isEditView={isEditView}
         selectedSortBy={selectedEntityFilter}
         sortOptions={translatedSortOptions}
@@ -306,7 +296,7 @@ function FollowingWidget({
     return (
       <div
         className="following-widget-container"
-        data-testId="following-widget">
+        data-testid="following-widget">
         <div className="widget-content flex-1">
           {isEmpty(followedData) ? emptyState : followingContent}
           <WidgetFooter

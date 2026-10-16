@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import { KnowledgePage, PageType } from 'interface/knowledge-center.interface';
-import { MOCK_KNOWLEDGE_PAGE_DATA } from 'pages/KnowledgePage/KnowledgePage.mock';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  KnowledgePage,
+  PageType,
+} from '../../../interface/knowledge-center.interface';
+import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => {
-    return <div>OwnerLabel</div>;
-  }),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 jest.mock(
   'components/common/SummaryTagsDescription/SummaryTagsDescription.component',
@@ -43,7 +45,7 @@ jest.mock(
     })
 );
 
-jest.mock('utils/EntityUtils', () => ({
+jest.mock('utils/EntityPureUtils', () => ({
   DRAWER_NAVIGATION_OPTIONS: {
     explore: 'Explore',
     lineage: 'Lineage',
@@ -58,8 +60,12 @@ describe('KnowledgePageSummary', () => {
       wrapper: MemoryRouter,
     });
 
-    expect(screen.getByText('CommonEntitySummaryInfo')).toBeInTheDocument();
-    expect(screen.getByText('SummaryTagsDescription')).toBeInTheDocument();
+    expect(
+      await screen.findByText('CommonEntitySummaryInfo')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryTagsDescription')
+    ).toBeInTheDocument();
   });
 
   it('should render correctly with quick link', async () => {
@@ -78,8 +84,37 @@ describe('KnowledgePageSummary', () => {
       }
     );
 
-    expect(screen.getByText('CommonEntitySummaryInfo')).toBeInTheDocument();
-    expect(screen.getByText('SummaryTagsDescription')).toBeInTheDocument();
+    expect(
+      await screen.findByText('CommonEntitySummaryInfo')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('SummaryTagsDescription')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('quick-link-data')).toBeInTheDocument();
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    render(
+      <KnowledgePageSummary
+        entityDetails={{
+          ...mockData,
+          page: {
+            url: 'javascript:alert(document.domain)',
+          },
+          pageType: PageType.QUICK_LINK,
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    // The mocked summary children render as <div>s, so the only anchor is the
+    // quick-link. getSafeHttpUrl drops the javascript: scheme, so the '#'
+    // fallback is used — React Router renders that as href="/".
+    const link = await screen.findByRole('link');
+
+    expect(link.getAttribute('href')).not.toContain('javascript:');
+    expect(link).toHaveAttribute('href', '/');
   });
 });

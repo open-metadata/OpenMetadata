@@ -1,0 +1,15 @@
+{
+  "title": "JWT Auth",
+  "description": "Common Database Connection Config",
+  "javaType": "org.openmetadata.schema.services.connections.database.common.jwtAuth",
+  "type": "object",
+  "properties": {
+    "jwt": {
+      "title": "JWT",
+      "description": "JWT to connect to source.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false
+}

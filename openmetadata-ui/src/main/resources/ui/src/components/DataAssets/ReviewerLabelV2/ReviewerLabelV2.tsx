@@ -10,20 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../common/IconButtons/EditIconButton';
-import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+  WidgetEditButton,
+  WidgetPlusButton,
+} from '../../common/WidgetActionButton/WidgetActionButton';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const UserTeamSelectableList = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../common/UserTeamSelectableList/UserTeamSelectableList.component'
+    ).then((m) => ({ default: m.UserTeamSelectableList }))
+  ),
+  null
+);
 
 export const ReviewerLabelV2 = <
   T extends {
@@ -35,9 +45,20 @@ export const ReviewerLabelV2 = <
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
   const { t } = useTranslation();
 
-  const hasEditReviewerAccess = useMemo(() => {
-    return permissions.EditAll || permissions.EditReviewers;
-  }, [permissions]);
+  // Named-flag derivation (Task 8 sweep): no named `canEdit*` flag exists for
+  // `EditReviewers`, so `can(Operation.EditReviewers)` is the documented escape hatch —
+  // applies the same prioritization the named flags use, replacing the old raw OR
+  // (explicit-deny-wins fix, same precedent as canViewBasic, Task 6 Finding 1). No `deleted`
+  // argument: the generic `T` constraint here has no `deleted` field, and the old expression
+  // never referenced one either.
+  const { can } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+  const hasEditReviewerAccess = useMemo(
+    () => can(Operation.EditReviewers),
+    [can]
+  );
 
   const { assignedReviewers, hasReviewers } = useMemo(() => {
     const inheritedReviewers: EntityReference[] = [];
@@ -64,56 +85,44 @@ export const ReviewerLabelV2 = <
     await onUpdate(updatedEntity);
   };
 
-  const header = useMemo(
-    () => (
-      <div className="d-flex items-center gap-2">
-        <Typography.Text
-          className="text-sm font-medium"
-          data-testid="heading-name">
-          {t('label.reviewer-plural')}
-        </Typography.Text>
-        {hasEditReviewerAccess && (
-          <UserTeamSelectableList
-            previewSelected
-            hasPermission={hasEditReviewerAccess}
-            label={t('label.reviewer-plural')}
-            listHeight={200}
-            multiple={{ user: true, team: false }}
-            owner={assignedReviewers ?? []}
-            popoverProps={{ placement: 'topLeft' }}
-            onUpdate={handleReviewerSave}>
-            {hasReviewers ? (
-              <EditIconButton
-                newLook
-                data-testid="edit-reviewer-button"
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}
-              />
-            ) : (
-              <PlusIconButton
-                data-testid="Add"
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.reviewer-plural'),
-                })}
-              />
-            )}
-          </UserTeamSelectableList>
-        )}
-      </div>
-    ),
+  const headerExtra = useMemo(
+    () =>
+      hasEditReviewerAccess ? (
+        <UserTeamSelectableList
+          previewSelected
+          hasPermission={hasEditReviewerAccess}
+          label={t('label.reviewer-plural')}
+          listHeight={200}
+          multiple={{ user: true, team: false }}
+          owner={assignedReviewers ?? []}
+          popoverProps={{ placement: 'topLeft' }}
+          onUpdate={handleReviewerSave}>
+          {hasReviewers ? (
+            <WidgetEditButton
+              data-testid="edit-reviewer-button"
+              title={t('label.edit-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+            />
+          ) : (
+            <WidgetPlusButton
+              data-testid="Add"
+              title={t('label.add-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+            />
+          )}
+        </UserTeamSelectableList>
+      ) : null,
     [data, permissions, handleReviewerSave]
   );
 
   return (
-    <ExpandableCard
-      cardProps={{
-        title: header,
-      }}
+    <WidgetCard
       dataTestId="glossary-reviewer"
-      isExpandDisabled={!hasReviewers}>
+      headerExtra={headerExtra}
+      isExpandDisabled={!hasReviewers}
+      title={t('label.reviewer-plural')}>
       {hasReviewers ? (
         <div data-testid="glossary-reviewer-name">
           {getOwnerVersionLabel(
@@ -124,6 +133,6 @@ export const ReviewerLabelV2 = <
           )}
         </div>
       ) : null}
-    </ExpandableCard>
+    </WidgetCard>
   );
 };

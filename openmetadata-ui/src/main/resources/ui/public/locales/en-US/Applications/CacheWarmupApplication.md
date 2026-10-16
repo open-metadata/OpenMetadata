@@ -3,7 +3,9 @@
 Cache Warmup Application Configuration.
 
 $$section
-### entities $(id="entities")
+### Entities $(id="entities")
+
+List of entity types to warm up in cache. Use 'all' to warm up all entity types.
 
 $$
 

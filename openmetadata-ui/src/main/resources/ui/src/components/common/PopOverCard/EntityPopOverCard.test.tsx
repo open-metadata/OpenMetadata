@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategoryPlural } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -21,6 +28,7 @@ import { getApiCollectionByFQN } from '../../../rest/apiCollectionsAPI';
 import { getApiEndPointByFQN } from '../../../rest/apiEndpointsAPI';
 import { getApplicationByName } from '../../../rest/applicationAPI';
 import { getMarketPlaceApplicationByFqn } from '../../../rest/applicationMarketPlaceAPI';
+import { getBotByName } from '../../../rest/botsAPI';
 import { getChartByFqn } from '../../../rest/chartsAPI';
 import { getContract } from '../../../rest/contractAPI';
 import { getDataProductByName } from '../../../rest/dataProductAPI';
@@ -41,20 +49,20 @@ import { getServiceByFQN } from '../../../rest/serviceAPI';
 import { getTagByFqn } from '../../../rest/tagAPI';
 import { getTeamByName } from '../../../rest/teamsAPI';
 import { getTestCaseByFqn, getTestSuiteByName } from '../../../rest/testAPI';
-import { getBotByName, getUserByName } from '../../../rest/userAPI';
+import { getUserByName } from '../../../rest/userAPI';
 import EntityPopOverCard, { PopoverContent } from './EntityPopOverCard';
 
 const updateCachedEntityData = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn(),
   getEncodedFqn: jest.fn(),
 }));
@@ -201,8 +209,11 @@ jest.mock('../../../rest/teamsAPI', () => ({
   getTeamByName: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../../rest/userAPI', () => ({
+jest.mock('../../../rest/botsAPI', () => ({
   getBotByName: jest.fn().mockImplementation(() => Promise.resolve({})),
+}));
+
+jest.mock('../../../rest/userAPI', () => ({
   getUserByName: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
@@ -239,7 +250,8 @@ describe('Test EntityPopoverCard component', () => {
         entityFQN={MOCK_TAG_ENCODED_FQN}
         entityType={EntityType.TAG}>
         <div data-testid="popover-container">Test_Popover</div>
-      </EntityPopOverCard>
+      </EntityPopOverCard>,
+      { wrapper: MemoryRouter }
     );
 
     expect(screen.getByTestId('popover-container')).toBeInTheDocument();
@@ -290,6 +302,52 @@ describe('Test EntityPopoverCard component', () => {
     });
 
     expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+  });
+
+  it('EntityPopoverCard should show permission placeholder when the api returns 403', async () => {
+    (getTagByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({
+        response: { status: 403, data: { message: 'Forbidden!' } },
+      })
+    );
+
+    await act(async () => {
+      render(
+        <PopoverContent
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}
+        />
+      );
+    });
+
+    expect(
+      screen.getByText('message.no-permission-to-view')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.no-data-found')).toBeNull();
+  });
+
+  it('EntityPopoverCard should open the preview on hover and close it on leave', async () => {
+    await act(async () => {
+      render(
+        <EntityPopOverCard
+          entityFQN={MOCK_TAG_ENCODED_FQN}
+          entityType={EntityType.TAG}>
+          <div data-testid="popover-container">Test_Popover</div>
+        </EntityPopOverCard>
+      );
+    });
+
+    expect(screen.queryByText('label.no-data-found')).toBeNull();
+
+    fireEvent.mouseEnter(screen.getByTestId('popover-container'));
+
+    expect(await screen.findByText('label.no-data-found')).toBeInTheDocument();
+
+    fireEvent.mouseLeave(screen.getByTestId('popover-container'));
+
+    await waitFor(() =>
+      expect(screen.queryByText('label.no-data-found')).toBeNull()
+    );
   });
 
   it('EntityPopoverCard should call tags api if entity type is tag card', async () => {

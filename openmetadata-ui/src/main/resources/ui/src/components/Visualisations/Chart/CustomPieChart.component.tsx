@@ -10,108 +10,105 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space, Typography } from 'antd';
-import { isString, isUndefined } from 'lodash';
-import { useMemo } from 'react';
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import type { PieDatum } from '@openmetadata/ui-core-components/charts';
+import {
+  chartColor,
+  PieChart,
+  useChartPalette,
+} from '@openmetadata/ui-core-components/charts';
+
+import { isString } from 'lodash';
+import { useCallback } from 'react';
 import { CHART_SMALL_SIZE } from '../../../constants/Chart.constants';
-import { GREY_200 } from '../../../constants/Color.constants';
-import { TEXT_GREY_MUTED } from '../../../constants/constants';
-import { formatNumberWithComma } from '../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../utils/NumberUtils';
 import { CustomPieChartProps } from './Chart.interface';
 import './chart.less';
 
+const LEGEND_HIDDEN = { show: false };
+
 const CustomPieChart = ({
   name,
+  ariaLabel,
   data,
   label,
+  minAngle = 3,
   showLegends = false,
   onSegmentClick,
 }: CustomPieChartProps) => {
-  const hasClickHandler = Boolean(onSegmentClick);
+  const palette = useChartPalette();
+  const centerLabel = isString(label) ? (
+    <Typography color="secondary" size="text-sm" weight="medium">
+      {label}
+    </Typography>
+  ) : (
+    label
+  );
 
-  const centerLabel = useMemo(() => {
-    if (isUndefined(label)) {
-      return '';
-    }
-
-    if (isString(label)) {
-      return (
-        <text dy={8} fill={TEXT_GREY_MUTED} textAnchor="middle" x="50%" y="50%">
-          {label}
-        </text>
-      );
-    }
-
-    return label;
-  }, [label]);
+  const handleSliceClick = useCallback(
+    (slice: PieDatum) => {
+      const index = data.findIndex((entry) => entry.name === slice.name);
+      if (index >= 0) {
+        onSegmentClick?.(data[index], index);
+      }
+    },
+    [data, onSegmentClick]
+  );
 
   return (
     <div className="custom-pie-chart">
-      <PieChart
-        height={CHART_SMALL_SIZE}
-        id={`${name}-pie-chart`}
-        width={CHART_SMALL_SIZE}>
-        <Pie
-          cx="50%"
-          cy="50%"
-          // to show the empty pie chart when there is no data
-          data={[{ value: 1 }]}
-          dataKey="value"
-          endAngle={-270}
-          fill={GREY_200}
-          innerRadius={55}
-          outerRadius={80}
-          // to hide tooltip when there is no data
-          pointerEvents="none"
-          startAngle={90}>
-          <Cell fill={GREY_200} />
-        </Pie>
-        <Pie
-          className={hasClickHandler ? 'custom-pie-chart-clickable' : ''}
-          cx="50%"
-          cy="50%"
+      <div className="tw:w-50" id={`${name}-pie-chart`}>
+        <PieChart
+          track
+          ariaLabel={ariaLabel}
+          centerLabel={centerLabel}
           data={data}
-          dataKey="value"
-          endAngle={-270}
-          innerRadius={60}
-          outerRadius={80}
-          startAngle={90}
-          onClick={
-            onSegmentClick
-              ? (_, index) => {
-                  const entry = data[index];
-                  if (entry) {
-                    onSegmentClick(entry, index);
-                  }
-                }
-              : undefined
-          }>
-          {data.map((entry) => (
-            <Cell fill={entry.color} key={`cell-${entry.name}`} />
-          ))}
-        </Pie>
-        <Tooltip />
-        {centerLabel}
-      </PieChart>
+          height={CHART_SMALL_SIZE}
+          innerRadius="60%"
+          legend={LEGEND_HIDDEN}
+          minAngle={minAngle}
+          outerRadius="80%"
+          onSliceClick={onSegmentClick ? handleSliceClick : undefined}
+        />
+      </div>
 
       {showLegends && (
-        <Space wrap size={16}>
-          {data.map((item) => (
-            <Space key={item.name} size={8}>
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={4}
+          itemClassName="layout-space-item"
+          wrap="wrap">
+          {data.map((item, index) => (
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item"
+              key={item.name}>
               <div
                 className="legend-dot"
-                style={{ backgroundColor: item.color }}
+                style={{
+                  backgroundColor: chartColor(palette, index, item.status),
+                }}
               />
-              <Typography.Paragraph className="text-grey-muted m-b-0">
+              <Typography
+                as="p"
+                className="m-b-0 font-medium"
+                color="secondary">
                 {item.name}{' '}
-                <Typography.Text strong className="text-grey-muted">
+                <Typography
+                  color="secondary"
+                  data-testid={`legend-count-${item.name.toLowerCase()}`}
+                  weight="semibold">
                   {formatNumberWithComma(item.value)}
-                </Typography.Text>
-              </Typography.Paragraph>
-            </Space>
+                </Typography>
+              </Typography>
+            </Box>
           ))}
-        </Space>
+        </Box>
       )}
     </div>
   );

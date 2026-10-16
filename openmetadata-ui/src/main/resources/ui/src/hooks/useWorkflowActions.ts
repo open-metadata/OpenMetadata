@@ -14,7 +14,7 @@
 import axios, { AxiosError } from 'axios';
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Node } from 'reactflow';
+import type { Node } from 'reactflow';
 import { useWorkflowModeContext } from '../contexts/WorkflowModeContext';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { UseWorkflowActionsProps } from '../interface/workflow-builder-components.interface';
@@ -29,6 +29,7 @@ import {
 import { shouldShowForm, shouldUseConfigSidebar } from '../utils/NodeUtils';
 import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 import { getWorkflowDefinitionsListPath } from '../utils/WorkflowRouterUtils';
+import { useApprovalEnforcedEntityTypesStore } from './useApprovalEnforcedEntityTypesStore';
 import { useWorkflowEdgeManagement } from './useWorkflowEdgeManagement';
 
 export const useWorkflowActions = ({
@@ -178,6 +179,7 @@ export const useWorkflowActions = ({
       );
 
       const savedWorkflow = await updateWorkflowDefinition(workflowData);
+      useApprovalEnforcedEntityTypesStore.getState().invalidate();
       showSuccessToast('Workflow saved successfully!');
 
       setWorkflowDefinition(savedWorkflow);
@@ -242,6 +244,7 @@ export const useWorkflowActions = ({
 
     try {
       await deleteWorkflowByFQN(workflowMetadata.name, true);
+      useApprovalEnforcedEntityTypesStore.getState().invalidate();
       showSuccessToast('Workflow deleted successfully');
 
       navigate(getWorkflowDefinitionsListPath());

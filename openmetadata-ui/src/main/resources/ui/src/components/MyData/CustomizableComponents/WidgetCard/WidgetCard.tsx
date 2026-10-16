@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Card, Typography } from 'antd';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +20,6 @@ import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import customizeDetailPageClassBase from '../../../../utils/CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizePageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
-import './widget-card.less';
 
 interface WidgetCardProps {
   widget: DocStoreDocument;
@@ -47,8 +45,7 @@ const WidgetCard = ({
         );
       case PageType.LandingPage:
         return customizePageClassBase.getWidgetImageFromKey(
-          widget.fullyQualifiedName,
-          1
+          widget.fullyQualifiedName
         );
       default:
         return customizeDetailPageClassBase.getDetailPageWidgetImageFromKey(
@@ -58,40 +55,64 @@ const WidgetCard = ({
     }
   }, [currentPageType, widget]);
 
+  // `displayName` is what the widget is called today; `name` is the stable key
+  // and lags a rename. The preview's alt text has to name the same widget the
+  // caption below it does.
+  const widgetLabel = widget.displayName ?? startCase(widget.name);
+
   const handleClick = () => {
     onSelectWidget?.(widget.id ?? '');
   };
 
   return (
     <Card
-      className={`widget-card h-full d-flex flex-col ${
-        isSelected ? 'selected' : ''
-      }`}
+      isClickable
+      className="widget-card tw:flex tw:h-full tw:flex-col tw:overflow-hidden"
       data-testid={widget.fullyQualifiedName}
+      isSelected={isSelected}
       onClick={handleClick}>
-      <div className="widget-card-content d-flex justify-between items-center flex-1">
-        <img
-          alt={widget.name}
-          className="h-full w-full"
-          data-testid="widget-image"
-          src={widgetImage}
-        />
-        {isSelected && (
-          <div className="check-box bg-white border-radius-sm p-sm d-flex items-center justify-center">
-            <Icon className="check-icon" component={CheckIcon} />
-          </div>
+      <Box className="widget-card-content tw:relative tw:min-h-0 tw:flex-1">
+        {/* An empty src resolves against the page URL, so the browser paints a
+          broken-image icon rather than nothing. Widgets added without a preview
+          screenshot keep an empty tile instead. */}
+        {widgetImage ? (
+          <img
+            alt={widgetLabel}
+            className="tw:h-full tw:w-full tw:object-cover"
+            data-testid="widget-image"
+            src={widgetImage}
+          />
+        ) : (
+          <div
+            className="tw:h-full tw:w-full"
+            data-testid="widget-image-placeholder"
+          />
         )}
-      </div>
-      <div className="p-t-md p-x-sm">
-        <Typography.Text className="text-sm font-medium">
-          {startCase(widget.name)}
-        </Typography.Text>
-        <Typography.Paragraph
-          className="widget-desc m-t-xs text-xs font-regular"
-          data-testid="widget-description">
+        {isSelected && (
+          <Box
+            align="center"
+            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:text-fg-brand-primary"
+            data-testid="widget-selected-check"
+            justify="center">
+            <CheckIcon className="tw:size-4" />
+          </Box>
+        )}
+      </Box>
+      <Box
+        className="tw:shrink-0 tw:px-4 tw:pt-3 tw:pb-4"
+        direction="col"
+        gap={1}>
+        <Typography className="tw:text-primary" size="text-sm" weight="medium">
+          {widgetLabel}
+        </Typography>
+        <Typography
+          as="p"
+          className="widget-desc tw:m-0 tw:text-tertiary"
+          data-testid="widget-description"
+          size="text-xs">
           {widget.description ?? t('message.no-description-available')}
-        </Typography.Paragraph>
-      </div>
+        </Typography>
+      </Box>
     </Card>
   );
 };

@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React, { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { SearchIndex } from '../../../enums/search.enum';
 import { AuthProvider } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -32,6 +33,25 @@ jest.mock('../../../hooks/authHooks', () => ({
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test' }),
 }));
+
+// Per frontend-permissions.md: mock the hook, run the real derivation over a minimal
+// permission object so the component sees genuine flags rather than hand-written booleans.
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => {
+  const { getDerivedPermissionFlags } = jest.requireActual(
+    '../../../utils/PermissionDerivation'
+  );
+  const permissions = { ViewCustomFields: true, EditCustomFields: true };
+
+  return {
+    useEntityPermissions: jest.fn().mockReturnValue({
+      permissions,
+      isLoading: false,
+      error: null,
+      refresh: jest.fn(),
+      ...getDerivedPermissionFlags(permissions, false),
+    }),
+  };
+});
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -78,12 +98,18 @@ jest.mock(
   })
 );
 
+jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
+  CustomPropertyTable: jest
+    .fn()
+    .mockReturnValue(<div>CustomPropertyTable</div>),
+}));
+
 jest.mock('../../Glossary/GlossaryTerms/tabs/AssetsTabs.component', () => {
   return jest.fn().mockImplementation((props) => {
     React.useEffect(() => {
       if (props.queryFilter === 'my-data') {
         searchQuery({
-          searchIndex: ['all'] as any,
+          searchIndex: ['all'] as unknown as SearchIndex[],
           query: '*',
           filters: props.queryFilter,
         });
@@ -148,7 +174,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () =>
     )
 );
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../common/EntityDescription/Description', () => {
   return jest
     .fn()
     .mockImplementation(({ onDescriptionUpdate, hasEditAccess }) => (
@@ -315,6 +341,18 @@ describe('Test User Component', () => {
     expect(assetComponent).toBeInTheDocument();
   });
 
+  it('Custom Properties tab should render the custom property table', async () => {
+    mockParams.tab = UserPageTabs.CUSTOM_PROPERTIES;
+
+    await act(async () => {
+      render(<Users userData={mockUserData} {...mockProp} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(await screen.findByText('CustomPropertyTable')).toBeInTheDocument();
+  });
+
   it('Access Token tab should show user access component', async () => {
     (useApplicationStore as unknown as jest.Mock).mockImplementationOnce(
       () => ({
@@ -361,8 +399,8 @@ describe('Test User Component', () => {
     });
 
     expect(
-      (await screen.findByTestId('access-token'))?.closest('.ant-tabs-tab')
-    ).toHaveClass('ant-tabs-tab-disabled');
+      await screen.findByRole('tab', { name: /label.access-token/ })
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('MyData tab should make query call only once on initial load', async () => {

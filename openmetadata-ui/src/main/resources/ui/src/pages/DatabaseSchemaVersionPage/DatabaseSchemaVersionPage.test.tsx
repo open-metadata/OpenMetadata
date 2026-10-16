@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import DatabaseSchemaVersionPage from './DatabaseSchemaVersionPage';
 import {
   CUSTOM_PROPERTY_TABLE,
@@ -72,15 +74,31 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-const mockGetEntityPermissionByFqn = jest.fn().mockReturnValue({
-  ViewAll: true,
-  ViewCustomFields: true,
-});
+// DatabaseSchemaVersionPage now fetches its own permissions via useEntityPermissions
+// (Task 8 batch-final) rather than an imperative usePermissionProvider()
+// .getEntityPermissionByFqn call — mock the hook directly, mirroring
+// ServiceVersionPage.test.tsx's setMockPermissions helper.
+const mockUseEntityPermissions = jest.fn();
 
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockReturnValue({
-    getEntityPermissionByFqn: jest.fn(() => mockGetEntityPermissionByFqn()),
-  }),
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {
+    ViewAll: true,
+    ViewCustomFields: true,
+  }
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
 }));
 
 jest.mock('../../components/common/TabsLabel/TabsLabel.component', () =>
@@ -104,8 +122,11 @@ jest.mock('../../pages/DatabaseSchemaPage/SchemaTablesTab', () =>
 );
 
 jest.mock(
-  '../../components/Customization/GenericProvider/GenericProvider',
+  '../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericContext'
+    ),
     useGenericContext: jest.fn().mockImplementation(() => ({
       data: {
         tableDetails: {
@@ -140,7 +161,7 @@ jest.mock('../../rest/tableAPI', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
 }));
 
@@ -165,17 +186,18 @@ jest.mock(
     GenericProvider: jest
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
-    useGenericContext: jest.fn().mockImplementation(() => ({
-      data: {},
-    })),
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>description</div>)
 );
 
 describe('DatabaseSchemaVersionPage', () => {
+  beforeEach(() => {
+    setMockPermissions();
+  });
+
   it('should render all necessary components', async () => {
     await act(async () => {
       render(<DatabaseSchemaVersionPage />);
@@ -189,7 +211,7 @@ describe('DatabaseSchemaVersionPage', () => {
   });
 
   it('should show ErrorPlaceHolder if not have view permission', async () => {
-    mockGetEntityPermissionByFqn.mockResolvedValueOnce({});
+    setMockPermissions({});
 
     await act(async () => {
       render(<DatabaseSchemaVersionPage />);

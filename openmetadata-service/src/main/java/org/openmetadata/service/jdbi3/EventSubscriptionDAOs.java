@@ -1,0 +1,407 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.jdbi3;
+
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindJson;
+
+public interface EventSubscriptionDAOs {
+  @CreateSqlObject
+  EventSubscriptionDAO eventSubscriptionDAO();
+
+  @CreateSqlObject
+  NotificationTemplateDAO notificationTemplateDAO();
+
+  interface EventSubscriptionDAO extends EntityDAO<EventSubscription> {
+    @Override
+    default String getTableName() {
+      return "event_subscription_entity";
+    }
+
+    @Override
+    default Class<EventSubscription> getEntityClass() {
+      return EventSubscription.class;
+    }
+
+    @SqlQuery("SELECT json FROM event_subscription_entity")
+    List<String> listAllEventsSubscriptions();
+
+    @SqlQuery("SELECT id FROM event_subscription_entity")
+    List<String> listAllIds();
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    @SqlQuery("SELECT json FROM change_event_consumers where id = :id AND extension = :extension")
+    String getSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)"
+                + "ON DUPLICATE KEY UPDATE json = :json, jsonSchema = :jsonSchema",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, jsonSchema = EXCLUDED.jsonSchema",
+        connectionType = POSTGRES)
+    void upsertSubscriberExtension(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @BindJson("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, :json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO change_event_consumers(id, extension, jsonSchema, json) "
+                + "VALUES (:id, :extension, :jsonSchema, (:json :: jsonb)) "
+                + "ON CONFLICT (id, extension) DO NOTHING",
+        connectionType = POSTGRES)
+    int insertSubscriberExtensionIfAbsent(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @BindJson("json") String json);
+
+    // MySQL compares a JSON column with a plain string parameter as strings, so the expected
+    // document is cast. Both engines then compare values, not text.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_event_consumers SET json = :json "
+                + "WHERE id = :id AND extension = :extension AND json = CAST(:expected AS JSON)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE change_event_consumers SET json = (:json :: jsonb) "
+                + "WHERE id = :id AND extension = :extension AND json = (:expected :: jsonb)",
+        connectionType = POSTGRES)
+    int compareAndSetSubscriberExtension(
+        @Bind("id") String id,
+        @Bind("extension") String extension,
+        @BindJson("json") String json,
+        @BindJson("expected") String expected);
+
+    @SqlQuery("SELECT extension, json FROM change_event_consumers WHERE id = :id")
+    @RegisterRowMapper(SubscriberExtensionMapper.class)
+    List<SubscriberExtension> listSubscriberExtensions(@Bind("id") String id);
+
+    @SqlUpdate("DELETE FROM change_event_consumers WHERE id = :id AND extension = :extension")
+    int deleteSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
+
+    @SqlQuery("SELECT DISTINCT id FROM change_event_consumers WHERE extension IN (<extensions>)")
+    List<String> listIdsHavingExtensions(@BindList("extensions") List<String> extensions);
+
+    // The database's clock, for comparisons with times another server stored.
+    @ConnectionAwareSqlQuery(
+        value = "SELECT CAST(UNIX_TIMESTAMP(NOW(3)) * 1000 AS UNSIGNED)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT (EXTRACT(EPOCH FROM NOW()) * 1000)::bigint",
+        connectionType = POSTGRES)
+    long databaseTimeMillis();
+
+    record SubscriberExtension(String extension, String json) {}
+
+    class SubscriberExtensionMapper implements RowMapper<SubscriberExtension> {
+      @Override
+      public SubscriberExtension map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new SubscriberExtension(rs.getString("extension"), rs.getString("json"));
+      }
+    }
+
+    /** One row of an alert's failed events: its key within the alert, the failure and its side. */
+    record FailedEventRow(String extension, String json, String source) {}
+
+    // An alert's failure rows in one batched write, as its delivered rows are. One row per key,
+    // the last, as writing them one after another would leave: Postgres rejects a rewritten
+    // multi-row INSERT that updates the same row twice.
+    default void batchUpsertFailedEvents(String alertId, List<FailedEventRow> rows) {
+      if (rows.isEmpty()) {
+        return;
+      }
+      List<FailedEventRow> lastOfEachKey =
+          pickByIndex(
+              rows, lastIndexOfEachKey(rows.stream().map(FailedEventRow::extension).toList()));
+      batchUpsertFailedEventsInternal(
+          Collections.nCopies(lastOfEachKey.size(), alertId),
+          lastOfEachKey.stream().map(FailedEventRow::extension).toList(),
+          lastOfEachKey.stream().map(FailedEventRow::json).toList(),
+          lastOfEachKey.stream().map(FailedEventRow::source).toList());
+    }
+
+    // VALUES(json), not :json: a placeholder in the update clause stops the MySQL driver from
+    // sending the batch as one statement.
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, :json, :source) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), source = VALUES(source)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO consumers_dlq(id, extension, json, source) "
+                + "VALUES (:id, :extension, CAST(:json AS jsonb), :source) "
+                + "ON CONFLICT (id, extension) "
+                + "DO UPDATE SET json = EXCLUDED.json, source = EXCLUDED.source",
+        connectionType = POSTGRES)
+    void batchUpsertFailedEventsInternal(
+        @Bind("id") List<String> alertIds,
+        @Bind("extension") List<String> extensions,
+        @BindJson("json") List<String> jsonList,
+        @Bind("source") List<String> sources);
+
+    // Batch insert for successful events - reduces connection pool contention
+    // from N connections to 1 when processing multiple events.
+    // Deduplicates by (change_event_id, event_subscription_id) first: the primary key has no
+    // destination dimension, and Postgres rejects a rewritten multi-row INSERT whose own rows
+    // conflict on the arbiter key ("ON CONFLICT DO UPDATE command cannot affect row a second
+    // time").
+    default void batchUpsertSuccessfulChangeEvents(
+        List<String> changeEventIds,
+        List<String> eventSubscriptionIds,
+        List<String> jsonList,
+        List<Long> timestamps) {
+      List<Integer> keep = distinctLastIndexes(changeEventIds, eventSubscriptionIds);
+      if (keep.size() == changeEventIds.size()) {
+        batchUpsertSuccessfulChangeEventsInternal(
+            changeEventIds, eventSubscriptionIds, jsonList, timestamps);
+      } else {
+        batchUpsertSuccessfulChangeEventsInternal(
+            pickByIndex(changeEventIds, keep),
+            pickByIndex(eventSubscriptionIds, keep),
+            pickByIndex(jsonList, keep),
+            pickByIndex(timestamps, keep));
+      }
+    }
+
+    static List<Integer> distinctLastIndexes(
+        List<String> changeEventIds, List<String> eventSubscriptionIds) {
+      List<String> keys = new ArrayList<>(changeEventIds.size());
+      for (int i = 0; i < changeEventIds.size(); i++) {
+        keys.add(changeEventIds.get(i) + "|" + eventSubscriptionIds.get(i));
+      }
+      return lastIndexOfEachKey(keys);
+    }
+
+    /** The index of the last occurrence of each key, in the order the keys first appear. */
+    static List<Integer> lastIndexOfEachKey(List<String> keys) {
+      LinkedHashMap<String, Integer> lastIndexByKey = new LinkedHashMap<>();
+      for (int i = 0; i < keys.size(); i++) {
+        lastIndexByKey.put(keys.get(i), i);
+      }
+      return new ArrayList<>(lastIndexByKey.values());
+    }
+
+    static <T> List<T> pickByIndex(List<T> source, List<Integer> indexes) {
+      List<T> result = new ArrayList<>(indexes.size());
+      for (int index : indexes) {
+        result.add(source.get(index));
+      }
+      return result;
+    }
+
+    @Transaction
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, :json, :timestamp) "
+                + "ON DUPLICATE KEY UPDATE json = VALUES(json), timestamp = VALUES(timestamp)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO successful_sent_change_events (change_event_id, event_subscription_id, json, timestamp) "
+                + "VALUES (:change_event_id, :event_subscription_id, CAST(:json AS jsonb), :timestamp) "
+                + "ON CONFLICT (change_event_id, event_subscription_id) "
+                + "DO UPDATE SET json = EXCLUDED.json, timestamp = EXCLUDED.timestamp",
+        connectionType = POSTGRES)
+    void batchUpsertSuccessfulChangeEventsInternal(
+        @Bind("change_event_id") List<String> changeEventIds,
+        @Bind("event_subscription_id") List<String> eventSubscriptionIds,
+        @BindJson("json") List<String> jsonList,
+        @Bind("timestamp") List<Long> timestamps);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    long getSuccessfulRecordCount(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    // Events delivered through one channel and failed through another have a row in both tables.
+    @SqlQuery(
+        "SELECT COUNT(*) FROM consumers_dlq d JOIN successful_sent_change_events s "
+            + "ON s.event_subscription_id = d.id "
+            + "AND d.extension = CONCAT('eventSubscription.failedEvent-', s.change_event_id) "
+            + "WHERE d.id = :eventSubscriptionId")
+    long countEventsBothDeliveredAndFailed(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlQuery(
+        "SELECT event_subscription_id FROM successful_sent_change_events "
+            + "GROUP BY event_subscription_id "
+            + "HAVING COUNT(*) >= :threshold")
+    List<String> findSubscriptionsAboveThreshold(@Bind("threshold") int threshold);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events WHERE ctid IN (SELECT ctid FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp ASC LIMIT :limit)",
+        connectionType = POSTGRES)
+    void deleteOldRecords(
+        @Bind("eventSubscriptionId") String eventSubscriptionId, @Bind("limit") long limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events "
+                + "WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM successful_sent_change_events "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM successful_sent_change_events "
+                + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteSuccessfulSentChangeEventsInBatches(
+        @Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM change_event "
+                + "WHERE eventTime < :cutoff ORDER BY eventTime LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM change_event "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM change_event "
+                + "  WHERE eventTime < :cutoff ORDER BY eventTime LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteChangeEventsInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM consumers_dlq "
+                + "WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM consumers_dlq "
+                + "WHERE ctid IN ( "
+                + "  SELECT ctid FROM consumers_dlq "
+                + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                + ")",
+        connectionType = POSTGRES)
+    int deleteConsumersDlqInBatches(@Bind("cutoff") long cutoff, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT json FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId ORDER BY timestamp DESC LIMIT :limit OFFSET :paginationOffset")
+    List<String> getSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId,
+        @Bind("limit") int limit,
+        @Bind("paginationOffset") long paginationOffset);
+
+    @SqlUpdate(
+        "DELETE FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    void deleteSuccessfulChangeEventBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlUpdate("DELETE FROM consumers_dlq WHERE id = :eventSubscriptionId")
+    void deleteFailedRecordsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @SqlUpdate("DELETE from change_event_consumers cec where id = :eventSubscriptionId;")
+    void deleteAlertMetrics(@Bind("eventSubscriptionId") String eventSubscriptionId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ( "
+                + "    SELECT json, 'FAILED' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'SUCCESSFUL' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM ( "
+                + "    SELECT json, 'failed' AS status, timestamp "
+                + "    FROM consumers_dlq WHERE id = :id "
+                + "    UNION ALL "
+                + "    SELECT json, 'successful' AS status, timestamp "
+                + "    FROM successful_sent_change_events WHERE event_subscription_id = :id "
+                + ") AS combined_events",
+        connectionType = POSTGRES)
+    int countAllEventsWithStatuses(@Bind("id") String id);
+
+    @SqlQuery("SELECT COUNT(*) FROM consumers_dlq WHERE id = :id")
+    int countFailedEventsById(@Bind("id") String id);
+
+    @SqlQuery(
+        "SELECT COUNT(*) FROM successful_sent_change_events WHERE event_subscription_id = :eventSubscriptionId")
+    int countSuccessfulEventsBySubscriptionId(
+        @Bind("eventSubscriptionId") String eventSubscriptionId);
+  }
+
+  interface NotificationTemplateDAO extends EntityDAO<NotificationTemplate> {
+    @Override
+    default String getTableName() {
+      return "notification_template_entity";
+    }
+
+    @Override
+    default Class<NotificationTemplate> getEntityClass() {
+      return NotificationTemplate.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+}

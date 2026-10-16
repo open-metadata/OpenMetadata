@@ -1,5 +1,4 @@
 import re
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
@@ -50,7 +49,7 @@ def parse_databricks_native_query_source(
     source_expression: str,
     dataset: Dataset,
     parser_type: QueryParserType = QueryParserType.Auto,
-) -> Optional[List[dict]]:  # noqa: UP006, UP045
+) -> list[dict] | None:
     # cleanup new lines and excessive spaces
     source_expression = source_expression.replace("\n", " ")
     source_expression = re.sub(r"\s+", " ", source_expression).strip()

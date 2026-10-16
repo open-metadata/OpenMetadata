@@ -28,6 +28,7 @@ from metadata.ingestion.source.database.redshift.models import RedshiftInstanceT
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_SQL_STATEMENT_MAP,
 )
+from metadata.utils.filters import filter_by_table
 
 mock_redshift_config = {
     "source": {
@@ -78,6 +79,19 @@ class RedshiftUnitTest(unittest.TestCase):
         """Test connection closing"""
         mock_connection.return_value = True
         self.redshift_source.close()
+
+    def test_connection_defaults_filter_internal_materialized_view_tables(self):
+        table_filter = self.redshift_source.service_connection.tableFilterPattern
+        assert table_filter is not None
+
+        self.assertTrue(filter_by_table(table_filter, "mv_tbl__orders_rollup__0"))
+        self.assertTrue(
+            filter_by_table(
+                table_filter,
+                "redshift_service.database.schema.mv_tbl__orders_rollup__0",
+            )
+        )
+        self.assertFalse(filter_by_table(table_filter, "orders_rollup"))
 
     def test_detect_provisioned_when_stl_accessible(self):
         """Test detection of Provisioned cluster when STL tables are accessible"""

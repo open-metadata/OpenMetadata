@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Space } from 'antd';
+import { Box, Button, Grid, Tooltip } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import ButtonSkeleton from '../../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
@@ -23,10 +27,15 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
+import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
+import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ELASTIC_SEARCH_RE_INDEX_PAGE_TABS } from '../../../enums/ElasticSearch.enum';
 import { TeamType } from '../../../generated/entity/teams/team';
+import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useAuth } from '../../../hooks/authHooks';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import globalSettingsClassBase from '../../../utils/GlobalSettingsClassBase';
 import {
@@ -38,35 +47,65 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../utils/RouterUtils';
+import { canCreateAnyServiceCategory } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import '../global-setting-page.style.less';
 
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();
+  const { isFetchingStatus } = useAirflowStatus();
   const navigate = useNavigate();
   const { settingCategory } = useRequiredParams<{
     settingCategory: GlobalSettingsMenuCategory;
   }>();
   const { permissions } = usePermissionProvider();
   const { isAdminUser } = useAuth();
+  const authProvider = useApplicationStore(
+    (state) => state.authConfig?.provider
+  );
 
   const { pathname } = useLocation();
   const isEmbedded = pathname.startsWith('/askCollate');
+  // This landing page spans every service category, so the wizard opens on the `all` sentinel:
+  // every category's connectors in one grid, none pre-selected.
+  const handleAddServiceClick = () => {
+    navigate(
+      connectionsRouterClassBase.getAddServicePath(ALL_SERVICES_CATEGORY)
+    );
+  };
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
     const crumbs = getSettingPageEntityBreadCrumb(settingCategory);
     if (isEmbedded) {
-      return crumbs.map((crumb, i) =>
-        i === 0 ? { ...crumb, url: '' } : crumb
-      );
+      const categoryName = crumbs[crumbs.length - 1]?.name ?? '';
+
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name: categoryName,
+          url: '',
+          activeTitle: true,
+        },
+      ];
     }
 
     return crumbs;
-  }, [settingCategory, isEmbedded]);
+  }, [settingCategory, isEmbedded, t]);
 
   const settingCategoryData: SettingMenuItem | undefined = useMemo(() => {
     let categoryItem = globalSettingsClassBase
-      .getGlobalSettingsMenuWithPermission(permissions, isAdminUser)
+      .getGlobalSettingsMenuWithPermission(
+        permissions,
+        isAdminUser,
+        authProvider
+      )
       .find((item) => item.key === settingCategory);
 
     if (categoryItem) {
@@ -77,14 +116,28 @@ const GlobalSettingCategoryPage = () => {
     }
 
     return categoryItem;
-  }, [settingCategory, permissions, isAdminUser]);
+  }, [settingCategory, permissions, isAdminUser, authProvider]);
+
+  // Being able to create any one category is enough for this page's button — checking a single
+  // hardcoded category would hide it from a user who can only create, say, API services.
+  const addServicePermission = useMemo(
+    () => !isEmpty(permissions) && canCreateAnyServiceCategory(permissions),
+    [permissions]
+  );
 
   const handleSettingItemClick = useCallback((key: string) => {
     const [category, option] = key.split('.');
 
     switch (option) {
       case GlobalSettingOptions.TEAMS:
-        navigate(getTeamsWithFqnPath(TeamType.Organization));
+        // `teams` is an option under both Members (the hierarchy, which opens on
+        // Organization) and Custom Properties (the property definitions page), so the
+        // category has to disambiguate — the option alone no longer identifies the target.
+        if (category === GlobalSettingsMenuCategory.MEMBERS) {
+          navigate(getTeamsWithFqnPath(TeamType.Organization));
+        } else {
+          navigate(getSettingPath(category, option));
+        }
 
         break;
       case GlobalSettingOptions.ONLINE_USERS:
@@ -122,36 +175,78 @@ const GlobalSettingCategoryPage = () => {
   return (
     <PageLayoutV1 pageTitle={t('label.setting-plural')}>
       {isEmbedded && <div className="tw:h-4" />}
-      <Row gutter={[0, 20]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 20) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Space className="w-full d-flex justify-between">
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-space layout-space-horizontal w-full d-flex justify-between"
+            gap={2}
+            itemClassName="layout-space-item">
             <PageHeader
               data={{
                 header: settingCategoryData?.category,
                 subHeader: settingCategoryData?.description ?? '',
               }}
             />
-          </Space>
-        </Col>
+            {settingCategoryData?.key ===
+              GlobalSettingsMenuCategory.SERVICES && (
+              <>
+                {isFetchingStatus ? (
+                  <ButtonSkeleton size="default" />
+                ) : (
+                  <Tooltip
+                    placement="left"
+                    title={
+                      addServicePermission
+                        ? t('label.add-entity', {
+                            entity: t('label.service'),
+                          })
+                        : t(NO_PERMISSION_FOR_ACTION)
+                    }>
+                    {addServicePermission && (
+                      <LimitWrapper resource="dataAssets">
+                        <Button
+                          className="m-b-xs"
+                          data-testid="add-service-button"
+                          type="primary"
+                          onClick={handleAddServiceClick}>
+                          {t('label.add-new-entity', {
+                            entity: t('label.service'),
+                          })}
+                        </Button>
+                      </LimitWrapper>
+                    )}
+                  </Tooltip>
+                )}
+              </>
+            )}
+          </Box>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Row className={settingCategoryData?.key} gutter={[20, 20]}>
+        <Grid.Item className="layout-column" span={24}>
+          <Grid
+            className={`layout-row layout-grid ${settingCategoryData?.key}`}
+            style={{ ...getLayoutGutter(20, 20) }}>
             {settingCategoryData?.items?.map((category) => (
-              <Col key={category?.key} lg={8} md={12} sm={24}>
+              <Grid.Item
+                className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 tw:min-[992px]:col-span-8"
+                key={category?.key}>
                 <SettingItemCard
                   className="global-setting-card"
                   data={category}
                   onClick={handleSettingItemClick}
                 />
-              </Col>
+              </Grid.Item>
             ))}
-          </Row>
-        </Col>
-      </Row>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

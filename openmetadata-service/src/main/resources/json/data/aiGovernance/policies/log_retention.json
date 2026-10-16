@@ -1,0 +1,24 @@
+{
+  "name": "log_retention",
+  "displayName": "Audit log retention — 90 days",
+  "description": "Automatic event logs for high-risk AI assets must be retained for at least 90 days. Backs EU AI Act Article 12 and supports incident forensics.",
+  "policyType": "ComplianceCheck",
+  "enforcementLevel": "Warning",
+  "enabled": true,
+  "rules": [
+    {
+      "name": "min-retention-days",
+      "ruleType": "Threshold",
+      "condition": "dataRetentionPeriod >= 90",
+      "action": "Notify",
+      "severity": "Medium",
+      "enabled": true
+    }
+  ],
+  "complianceRequirements": [
+    {
+      "standard": "EU_AI_Act",
+      "auditFrequency": "Annually"
+    }
+  ]
+}

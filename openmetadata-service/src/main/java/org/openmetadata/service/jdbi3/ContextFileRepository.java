@@ -2,35 +2,54 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
+import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
+import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 @Repository
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
+  private static final String DUPLICATE_FILE_NAME_MESSAGE =
+      "A file named '%s' already exists in this folder.";
+  private static final String ARCHIVED_FILE_NAME_MESSAGE =
+      "A file named '%s' is in the Archive. Restore it, or permanently delete it from the Archive, "
+          + "before adding a file with this name.";
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
+  private final CollectionDAO.ContextFileDAO contextFileDAO;
 
   public ContextFileRepository(Jdbi jdbi) {
     super(
@@ -45,6 +64,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     CollectionDAO dao = jdbi.onDemand(CollectionDAO.class);
     this.assetRepository = new AssetRepository(dao.assetDAO());
     this.contentRepository = new ContextFileContentRepository(jdbi);
+    this.contextFileDAO = (CollectionDAO.ContextFileDAO) getDao();
   }
 
   public AssetRepository getAssetRepository() {
@@ -59,11 +79,23 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public void setFields(
       ContextFile file, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
     file.setFolder(fields.contains("folder") ? getFolder(file) : file.getFolder());
+    if (fields.contains("memoryCount")) {
+      file.setMemoryCount(
+          findTo(
+                  file.getId(),
+                  CONTEXT_FILE_ENTITY,
+                  Relationship.MENTIONED_IN,
+                  Entity.CONTEXT_MEMORY)
+              .size());
+    }
   }
 
   @Override
   public void clearFields(ContextFile file, EntityUtil.Fields fields) {
     file.setFolder(fields.contains("folder") ? file.getFolder() : null);
+    if (!fields.contains("memoryCount")) {
+      file.setMemoryCount(null);
+    }
   }
 
   @Override
@@ -75,6 +107,14 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (fields.contains("folder")) {
       var folderMap = batchFetchFromIdsAndRelationSingleRelation(entities, Relationship.CONTAINS);
       entities.forEach(file -> file.setFolder(folderMap.get(file.getId())));
+    }
+
+    if (fields.contains("memoryCount")) {
+      // Batched: the per-entity path in setFields would be one query per file here.
+      Map<UUID, Integer> countsByFileId =
+          MemoryCountFetcher.countByEntityId(
+              daoCollection, entityListToStrings(entities), CONTEXT_FILE_ENTITY);
+      entities.forEach(file -> file.setMemoryCount(countsByFileId.getOrDefault(file.getId(), 0)));
     }
 
     fetchAndSetFields(entities, fields);
@@ -99,6 +139,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       Folder folder = Entity.getEntity(file.getFolder(), "", Include.NON_DELETED);
       file.setFolder(folder.getEntityReference());
     }
+    // Enforce name uniqueness at the create chokepoint so every create path (REST create, upload,
+    // import) gets the actionable error rather than a raw DB unique-constraint 409. Skipped on
+    // update: a same-name PUT resolves to the existing row (restore), and move validates itself.
+    if (!update) {
+      validateNoDuplicateFileName(file.getName(), file.getFolder(), null);
+    }
   }
 
   @Override
@@ -107,6 +153,17 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     file.withFolder(null);
     store(file, update);
     file.withFolder(folder);
+  }
+
+  @Override
+  protected void storeEntityWithVersion(ContextFile file, boolean update, Double expectedVersion) {
+    EntityReference folder = file.getFolder();
+    file.withFolder(null);
+    try {
+      store(file, update, expectedVersion);
+    } finally {
+      file.withFolder(folder);
+    }
   }
 
   @Override
@@ -119,6 +176,27 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
           CONTEXT_FILE_ENTITY,
           Relationship.CONTAINS);
     }
+  }
+
+  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
+  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
+  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
+  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
+  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
+  @Override
+  @Transaction
+  protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  @Override
+  @Transaction
+  protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
+    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private ContextMemoryRepository contextMemoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
   @Override
@@ -136,6 +214,53 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return getFromEntityRef(file.getId(), Relationship.CONTAINS, FOLDER_ENTITY, false);
   }
 
+  public ContextFile moveContextFile(UUID id, EntityReference newFolderRef, String user) {
+    ContextFile original =
+        Entity.getEntity(CONTEXT_FILE_ENTITY, id, "folder,owners,tags", Include.NON_DELETED);
+    ContextFile updated = JsonUtils.deepCopy(original, ContextFile.class);
+
+    EntityReference resolvedFolder = null;
+    if (newFolderRef != null && newFolderRef.getId() != null) {
+      Folder folder =
+          Entity.getEntity(FOLDER_ENTITY, newFolderRef.getId(), "", Include.NON_DELETED);
+      resolvedFolder = folder.getEntityReference();
+    }
+    updated.setFolder(resolvedFolder);
+    validateNoDuplicateFileName(original.getName(), resolvedFolder, updated.getId());
+    setFullyQualifiedName(updated);
+    updated.setUpdatedBy(user);
+    updated.setUpdatedAt(System.currentTimeMillis());
+
+    ContextFileUpdater updater = new ContextFileUpdater(original, updated, Operation.PUT);
+    updater.update();
+    emitMoveChangeEvent(original, updated);
+    return updated;
+  }
+
+  private void emitMoveChangeEvent(ContextFile original, ContextFile updated) {
+    if (updated.getChangeDescription() == null
+        || isNullOrEmptyChangeDescription(updated.getChangeDescription())) {
+      return;
+    }
+    try {
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(entityType)
+              .withEntityId(updated.getId())
+              .withEntityFullyQualifiedName(updated.getFullyQualifiedName())
+              .withUserName(updated.getUpdatedBy())
+              .withPreviousVersion(original.getVersion())
+              .withCurrentVersion(updated.getVersion())
+              .withTimestamp(System.currentTimeMillis())
+              .withEntity(updated);
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    } catch (Exception e) {
+      LOG.error("Failed to insert change event for context file move", e);
+    }
+  }
+
   public class ContextFileUpdater extends EntityUpdater {
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
@@ -146,8 +271,37 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("fileType", original.getFileType(), updated.getFileType());
       recordChange(
           "processingStatus", original.getProcessingStatus(), updated.getProcessingStatus());
+      recordChange("processingError", original.getProcessingError(), updated.getProcessingError());
+      recordChange(
+          "extractionStats", original.getExtractionStats(), updated.getExtractionStats(), true);
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
+      recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
+      updateFolder();
+    }
+
+    private void updateFolder() {
+      EntityReference oldFolder = original.getFolder();
+      EntityReference newFolder = updated.getFolder();
+      if (!recordChange("folder", oldFolder, newFolder, true, entityReferenceMatch)) {
+        return;
+      }
+      if (oldFolder != null) {
+        deleteRelationship(
+            oldFolder.getId(),
+            FOLDER_ENTITY,
+            updated.getId(),
+            CONTEXT_FILE_ENTITY,
+            Relationship.CONTAINS);
+      }
+      if (newFolder != null) {
+        addRelationship(
+            newFolder.getId(),
+            updated.getId(),
+            FOLDER_ENTITY,
+            CONTEXT_FILE_ENTITY,
+            Relationship.CONTAINS);
+      }
     }
   }
 
@@ -184,6 +338,165 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     UUID contentId = parseUuid(id);
     return contentId == null ? null : contentRepository.getById(contentId);
   }
+
+  /**
+   * Whether any live document is a view of this stored asset. A file can reach the Context Center
+   * from somewhere that has its own copy of the blob — a chat attachment — and that owner needs to
+   * know whether deleting its copy would take a document's content with it.
+   */
+  public boolean existsForAsset(String assetId) {
+    return assetId != null && contextFileDAO.countByAssetId(assetId) > 0;
+  }
+
+  /** The live documents that are views of this stored asset. */
+  public List<ContextFile> findByAsset(String assetId) {
+    if (assetId == null) {
+      return List.of();
+    }
+    return contextFileDAO.findByAssetId(assetId).stream()
+        .map(json -> JsonUtils.readValue(json, ContextFile.class))
+        .toList();
+  }
+
+  public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {
+    return JsonUtils.readObjects(
+        contextFileDAO.listByExtractedSourceHash(sourceHash, excludeId.toString()),
+        ContextFile.class);
+  }
+
+  public void validateNoDuplicateFileName(String fileName, EntityReference folder, UUID excludeId) {
+    if (fileName == null || fileName.isBlank()) {
+      return;
+    }
+    String folderId = folder == null ? null : folder.getId().toString();
+    String excludedId = excludeId == null ? null : excludeId.toString();
+    int count =
+        contextFileDAO.countByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (count > 0) {
+      throw new BadRequestException(String.format(DUPLICATE_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+    // A soft-deleted (archived) file keeps its name reserved so it can still be restored, so a
+    // same-name create would otherwise fail the DB unique constraint with a generic "Entity already
+    // exists". Detect it here and tell the user where to resolve it instead.
+    int archivedCount =
+        contextFileDAO.countArchivedByFileNameInFolder(
+            fileName.trim(), folderId, excludedId, Relationship.CONTAINS.ordinal());
+    if (archivedCount > 0) {
+      throw new BadRequestException(String.format(ARCHIVED_FILE_NAME_MESSAGE, fileName.trim()));
+    }
+  }
+
+  public ResultList<ContextFile> listByUpdatedAt(
+      UriInfo uriInfo,
+      EntityUtil.Fields fields,
+      ListFilter filter,
+      int limitParam,
+      String before,
+      String after,
+      OrderBy orderBy) {
+    int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
+    List<ContextFile> entities = new ArrayList<>();
+    if (limitParam <= 0) {
+      return getResultList(entities, null, null, total);
+    }
+
+    if (before != null && !before.isEmpty()) {
+      UpdatedAtCursor cursor = parseUpdatedAtCursor(before);
+      List<String> jsons =
+          orderBy == OrderBy.ASC
+              ? contextFileDAO.listBeforeByUpdatedAtAsc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id())
+              : contextFileDAO.listBeforeByUpdatedAtDesc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id());
+      entities = hydrateList(jsons, fields, uriInfo, filter);
+      String beforeCursor = null;
+      String afterCursor = null;
+      if (entities.size() > limitParam) {
+        entities.remove(0);
+        beforeCursor = updatedAtCursorValue(entities.get(0));
+      }
+      if (!entities.isEmpty()) {
+        afterCursor = updatedAtCursorValue(entities.get(entities.size() - 1));
+      }
+      return getResultList(entities, beforeCursor, afterCursor, total);
+    }
+
+    List<String> jsons;
+    if (after == null || after.isEmpty()) {
+      jsons =
+          orderBy == OrderBy.ASC
+              ? contextFileDAO.listByUpdatedAtAsc(
+                  filter.getQueryParams(), filter.getCondition(), limitParam + 1)
+              : contextFileDAO.listByUpdatedAtDesc(
+                  filter.getQueryParams(), filter.getCondition(), limitParam + 1);
+    } else {
+      UpdatedAtCursor cursor = parseUpdatedAtCursor(after);
+      jsons =
+          orderBy == OrderBy.ASC
+              ? contextFileDAO.listAfterByUpdatedAtAsc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id())
+              : contextFileDAO.listAfterByUpdatedAtDesc(
+                  filter.getQueryParams(),
+                  filter.getCondition(),
+                  limitParam + 1,
+                  cursor.updatedAt(),
+                  cursor.id());
+    }
+
+    entities = hydrateList(jsons, fields, uriInfo, filter);
+    String beforeCursor =
+        after == null || after.isEmpty() || entities.isEmpty()
+            ? null
+            : updatedAtCursorValue(entities.get(0));
+    String afterCursor = null;
+    if (entities.size() > limitParam) {
+      entities.remove(limitParam);
+      afterCursor = updatedAtCursorValue(entities.get(limitParam - 1));
+    }
+    return getResultList(entities, beforeCursor, afterCursor, total);
+  }
+
+  private List<ContextFile> hydrateList(
+      List<String> jsons, EntityUtil.Fields fields, UriInfo uriInfo, ListFilter filter) {
+    List<ContextFile> entities = JsonUtils.readObjects(jsons, ContextFile.class);
+    setFieldsInBulk(fields, entities, filter);
+    entities.forEach(entity -> withHref(uriInfo, entity));
+    return entities;
+  }
+
+  private UpdatedAtCursor parseUpdatedAtCursor(String cursor) {
+    Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(cursor));
+    String updatedAt = cursorMap.get("updatedAt");
+    String id = cursorMap.get("id");
+    if (updatedAt == null || updatedAt.isBlank() || id == null || id.isBlank()) {
+      throw new BadRequestException("Invalid cursor for orderBy pagination");
+    }
+    try {
+      return new UpdatedAtCursor(Long.parseLong(updatedAt), id);
+    } catch (NumberFormatException e) {
+      throw new BadRequestException("Invalid cursor for orderBy pagination");
+    }
+  }
+
+  private String updatedAtCursorValue(ContextFile file) {
+    return JsonUtils.pojoToJson(
+        Map.of("updatedAt", String.valueOf(file.getUpdatedAt()), "id", file.getId().toString()));
+  }
+
+  private record UpdatedAtCursor(long updatedAt, String id) {}
 
   private UUID parseUuid(String value) {
     if (value == null || value.isEmpty()) {

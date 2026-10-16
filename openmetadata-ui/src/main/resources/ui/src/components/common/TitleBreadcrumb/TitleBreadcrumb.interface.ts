@@ -12,6 +12,7 @@
  */
 
 import { LinkProps, NavigateOptions } from 'react-router-dom';
+import type { EntityType } from '../../../enums/entity.enum';
 
 export type TitleLink = {
   name: string;
@@ -20,6 +21,8 @@ export type TitleLink = {
   imgSrc?: string;
   activeTitle?: boolean;
   icon?: React.ReactNode;
+  iconType?: EntityType | string;
+  isServiceBreadcrumb?: boolean;
 };
 export type TitleBreadcrumbProps = {
   titleLinks: Array<TitleLink>;

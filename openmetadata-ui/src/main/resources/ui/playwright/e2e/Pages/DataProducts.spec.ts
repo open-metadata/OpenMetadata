@@ -12,6 +12,7 @@
  */
 
 import base, { expect, Page } from '@playwright/test';
+import { SearchIndex } from '../../../src/enums/search.enum';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -23,21 +24,30 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
-import { descriptionBox, redirectToHomePage } from '../../utils/common';
+import {
+  fillDescriptionBox,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import {
   addAssetsToDataProduct,
   createDataProductFromListPage,
   removeAssetsFromDataProduct,
   selectDataProduct,
 } from '../../utils/domain';
-import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  followEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
+import { waitForAriaOverlayToSettle } from '../../utils/waitHelpers';
 
 const user = new UserClass();
 const domain = new Domain();
 const classification = new ClassificationClass({
-  provider: 'system',
+  provider: 'user',
   mutuallyExclusive: true,
 });
 const tag = new TagClass({
@@ -51,13 +61,15 @@ const test = base.extend<{
   userPage: Page;
 }>({
   page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
+    const { page, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
     await setPage(page);
-    await page.close();
+    await afterAction();
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -65,7 +77,6 @@ const test = base.extend<{
 
 test.describe('Data Products', () => {
   test.describe.configure({ mode: 'serial' });
-  test.slow();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -114,12 +125,14 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify view toggle buttons', async () => {
-      await expect(page.locator('button[title="table"]')).toBeVisible();
-      await expect(page.locator('button[title="card"]')).toBeVisible();
+      await expect(page.getByTestId('table-view-toggle')).toBeVisible();
+      await expect(page.getByTestId('card-view-toggle')).toBeVisible();
     });
   });
 
   test('Create Data Product and Manage Assets', async ({ page }) => {
+    // Add assets flow waits on the search API which can take >30s under CI load
+    test.slow();
     const dataProduct = new DataProduct([domain]);
     const table = new TableClass();
 
@@ -134,11 +147,13 @@ test.describe('Data Products', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -185,15 +200,16 @@ test.describe('Data Products', () => {
 
     await test.step('Delete data product', async () => {
       await page.getByTestId('manage-button').click();
+      await expect(page.getByTestId('delete-button-title')).toBeVisible();
+      await waitForAriaOverlayToSettle(page);
       await page.getByTestId('delete-button-title').click();
 
-      await expect(
-        page.getByTestId('modal-header').getByText(dataProduct.data.name)
-      ).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(page.getByTestId('modal-header')).toContainText(
+        dataProduct.data.name
+      );
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
     });
@@ -207,8 +223,9 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    const dataProduct1 = new DataProduct([domain]);
-    const dataProduct2 = new DataProduct([domain]);
+    // Names share no token: n-gram matching pulled a shared `catalog` in.
+    const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
+    const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 
     await test.step('Create test data products', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
@@ -225,10 +242,21 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Search for specific data product', async () => {
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          response.request().method() === 'GET' &&
+          url.pathname === '/api/v1/search/query' &&
+          url.searchParams.get('index') === SearchIndex.DATA_PRODUCT &&
+          url.searchParams.get('q') === dataProduct1.data.name
+        );
+      });
       await page
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
+      expect((await searchResponse).status()).toBe(200);
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
@@ -241,7 +269,7 @@ test.describe('Data Products', () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -281,7 +309,9 @@ test.describe('Data Products', () => {
       // Table should be hidden, cards should be visible
       await expect(page.getByTestId('table-view-container')).not.toBeVisible();
       await expect(page.getByTestId('card-view-container')).toBeVisible();
-      await expect(page.getByTestId('entity-card').first()).toBeVisible();
+      await expect(
+        page.getByTestId('entity-card').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('Switch back to table view', async () => {
@@ -323,32 +353,32 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByTestId('pagination');
+      const pagination = page.getByLabel('Pagination Navigation');
       await expect(pagination).toBeVisible();
       await expect(
-        pagination.getByRole('button', { name: 'page 1', exact: true })
+        pagination.getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate to page 2', async () => {
-      await page.getByTestId('next').click();
+      await page.getByLabel('Next Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 2', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 2', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate back to page 1', async () => {
-      await page.getByTestId('previous').click();
+      await page.getByLabel('Previous Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 1', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
@@ -398,11 +428,18 @@ test.describe('Data Products', () => {
 
     await test.step('Verify empty state is shown', async () => {
       await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
-      await expect(page.getByTestId('data-product-add-button')).toBeVisible();
+      await expect(
+        page
+          .getByTestId('no-data-placeholder')
+          .getByRole('button', { name: 'Add Data Product' })
+      ).toBeVisible();
     });
 
     await test.step('Click add button from empty state', async () => {
-      await page.getByTestId('data-product-add-button').click();
+      await page
+        .getByTestId('no-data-placeholder')
+        .getByRole('button', { name: 'Add Data Product' })
+        .click();
 
       await expect(
         page.getByRole('heading', { name: /add data product/i })
@@ -465,7 +502,7 @@ test.describe('Data Products', () => {
       await page
         .locator('#root\\/displayName')
         .fill(dataProduct.data.displayName);
-      await page.locator(descriptionBox).fill(dataProduct.data.description);
+      await fillDescriptionBox(page, dataProduct.data.description);
 
       const domainContainer = page.getByTestId('domain-select');
       await domainContainer.scrollIntoViewIfNeeded();
@@ -496,7 +533,7 @@ test.describe('Data Products', () => {
       await expect(
         page
           .getByTestId('add-domain-form')
-          .getByTestId('tags-container')
+          .getByTestId('filter-chip')
           .getByText(tag.data.displayName)
       ).toBeVisible();
     });
@@ -516,6 +553,55 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Cleanup', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await dataProduct.delete(apiContext);
+      await afterAction();
+    });
+  });
+
+  test('Data Product — Data Observability tab', async ({ page }) => {
+    const dataProduct = new DataProduct([domain]);
+
+    await test.step('Create test data product', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await dataProduct.create(apiContext);
+      await afterAction();
+    });
+
+    await test.step('Navigate to data product details', async () => {
+      // The listing is not what this test covers; going straight to the
+      // details page avoids the sidebar click and the search-index lag.
+      await page.goto(
+        `/dataProduct/${encodeURIComponent(
+          dataProduct.responseData.fullyQualifiedName ?? dataProduct.data.name
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Data Observability tab is visible on data product page', async () => {
+      await expect(
+        page.getByRole('tab', { name: /data observability/i })
+      ).toBeVisible({ timeout: 15000 });
+    });
+
+    await test.step('Clicking Data Observability tab loads DQ dashboard', async () => {
+      const dqReportResponse = page.waitForResponse((r) =>
+        r.url().includes('/api/v1/dataQuality/testSuites/dataQualityReport')
+      );
+      await page.getByRole('tab', { name: /data observability/i }).click();
+      expect((await dqReportResponse).ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('dq-dashboard-container')).toBeVisible();
+    });
+
+    await test.step('Cleanup test data product', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
         page.context().browser()!
       );

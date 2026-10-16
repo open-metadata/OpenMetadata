@@ -12,6 +12,12 @@
       "resources" : ["all"],
       "operations": ["ViewAll", "EditDescription", "EditDisplayName", "EditLineage", "EditOwners", "EditTags", "EditTier", "EditGlossaryTerms", "EditCertification"],
       "effect": "allow"
+    },
+    {
+      "name": "DataStewardPolicy-TriggerRule",
+      "resources": ["all"],
+      "operations": ["Trigger"],
+      "effect": "allow"
     }
   ]
 }

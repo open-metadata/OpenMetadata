@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineServiceType } from '../../../../generated/entity/data/pipeline';
 import { MetadataServiceType } from '../../../../generated/entity/services/metadataService';
@@ -28,44 +28,44 @@ import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
 import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
 import ServiceConnectionDetails from './ServiceConnectionDetails.component';
 
-jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
-  getDatabaseConfig: jest.fn().mockReturnValue({
+jest.mock('../../../../utils/DatabaseServicePureUtils', () => ({
+  getDatabaseConfig: jest.fn().mockResolvedValue({
     schema: MOCK_ATHENA_SERVICE,
   }),
 }));
 
 jest.mock('../../../../utils/DashboardServiceUtils', () => ({
-  getDashboardConfig: jest.fn().mockReturnValue({
+  getDashboardConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/MessagingServiceUtils', () => ({
-  getMessagingConfig: jest.fn().mockReturnValue({
+  getMessagingConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/MetadataServiceUtils', () => ({
-  getMetadataConfig: jest.fn().mockReturnValue({
+  getMetadataConfig: jest.fn().mockResolvedValue({
     schema: ATLAS_CONNECTION,
   }),
 }));
 
 jest.mock('../../../../utils/MlmodelServiceUtils', () => ({
-  getMlmodelConfig: jest.fn().mockReturnValue({
+  getMlmodelConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
 
 jest.mock('../../../../utils/PipelineServiceUtils', () => ({
-  getPipelineConfig: jest.fn().mockReturnValue({
+  getPipelineConfig: jest.fn().mockResolvedValue({
     schema: AIR_BYTE_CONNECTION,
   }),
 }));
 
 jest.mock('../../../../utils/SearchServiceUtils', () => ({
-  getSearchServiceConfig: jest.fn().mockReturnValue({
+  getSearchServiceConfig: jest.fn().mockResolvedValue({
     schema: {},
   }),
 }));
@@ -131,13 +131,15 @@ const services = [
 
 describe('ServiceConnectionDetails', () => {
   it('renders Service Connection Details', async () => {
-    render(
-      <ServiceConnectionDetails
-        connectionDetails={databaseSchema}
-        serviceCategory={ServiceCategory.DATABASE_SERVICES}
-        serviceFQN="test"
-      />
-    );
+    await act(async () => {
+      render(
+        <ServiceConnectionDetails
+          connectionDetails={databaseSchema}
+          serviceCategory={ServiceCategory.DATABASE_SERVICES}
+          serviceFQN="test"
+        />
+      );
+    });
 
     expect(
       await screen.findByTestId('service-connection-details')
@@ -177,29 +179,26 @@ describe('ServiceConnectionDetails', () => {
     );
     expect(await screen.findByText('scope:')).toBeInTheDocument();
     expect(
-      await screen
-        .queryAllByTestId('input-field')[4]
-        .querySelector('span[title=test_scope1]')
-    ).toHaveTextContent('test_scope1');
+      within(screen.queryAllByTestId('input-field')[4]).getByText('test_scope1')
+    ).toBeInTheDocument();
     expect(
-      await screen
-        .queryAllByTestId('input-field')[4]
-        .querySelector('span[title=test_scope2]')
-    ).toHaveTextContent('test_scope2');
+      within(screen.queryAllByTestId('input-field')[4]).getByText('test_scope2')
+    ).toBeInTheDocument();
   });
 
   services.map((service) => {
     it(`should render ${service.name} service`, async () => {
-      render(
-        <ServiceConnectionDetails
-          connectionDetails={databaseSchema}
-          serviceCategory={service.name}
-          serviceFQN="test"
-        />
-      );
       await act(async () => {
-        expect(service.configVal).toHaveBeenCalled();
+        render(
+          <ServiceConnectionDetails
+            connectionDetails={databaseSchema}
+            serviceCategory={service.name}
+            serviceFQN="test"
+          />
+        );
       });
+
+      expect(service.configVal).toHaveBeenCalled();
     });
   });
 
@@ -234,13 +233,15 @@ describe('ServiceConnectionDetails', () => {
   });
 
   it('should render metadata service', async () => {
-    render(
-      <ServiceConnectionDetails
-        connectionDetails={metaDataSchema as ConfigData}
-        serviceCategory={ServiceCategory.METADATA_SERVICES}
-        serviceFQN="test"
-      />
-    );
+    await act(async () => {
+      render(
+        <ServiceConnectionDetails
+          connectionDetails={metaDataSchema as ConfigData}
+          serviceCategory={ServiceCategory.METADATA_SERVICES}
+          serviceFQN="test"
+        />
+      );
+    });
 
     expect(await screen.findByText('username:')).toBeInTheDocument();
     expect(await screen.queryAllByTestId('input-field')[0]).toHaveValue(

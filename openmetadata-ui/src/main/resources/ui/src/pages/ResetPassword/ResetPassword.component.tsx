@@ -11,23 +11,29 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Form, Input, Row, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  FieldProp,
+  FieldTypes,
+  FormFields,
+  HookForm,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import QueryString from 'qs';
 import { useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import AlertBar from '../../components/AlertBar/AlertBar';
-import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
+import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthContext';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
-import { ROUTES, VALIDATION_MESSAGES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { passwordRegex } from '../../constants/regex.constants';
 import { PasswordResetRequest } from '../../generated/auth/passwordResetRequest';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { showErrorToast } from '../../utils/ToastUtils';
-import './reset-password.style.less';
 
 interface ResetFormData {
   password: string;
@@ -36,13 +42,12 @@ interface ResetFormData {
 
 const ResetPassword = () => {
   const { t } = useTranslation();
-  const [form] = Form.useForm();
   const location = useCustomLocation();
-  const { alert } = useAlertStore();
-
   const { handleResetPassword } = useBasicAuth();
-
   const navigate = useNavigate();
+  const form = useForm<ResetFormData>({
+    defaultValues: { password: '', confirmPassword: '' },
+  });
 
   const params = useMemo(() => {
     const search = location.search;
@@ -52,8 +57,6 @@ const ResetPassword = () => {
 
     return data as { token: string; user: string };
   }, [location]);
-
-  const password = Form.useWatch('password', form);
 
   const handleSubmit = async (data: ResetFormData) => {
     const ResetRequest = {
@@ -71,103 +74,91 @@ const ResetPassword = () => {
     }
   };
 
+  const passwordField: FieldProp = {
+    name: 'password',
+    type: FieldTypes.PASSWORD,
+    label: t('label.new-password'),
+    id: 'root/password',
+    placeholder: t('label.enter-entity', { entity: t('label.new-password') }),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.password'),
+      }),
+      pattern: {
+        value: passwordRegex,
+        message: t('message.password-pattern-error'),
+      },
+    },
+    props: { 'data-testid': 'password', size: 'md' },
+  };
+
+  const confirmPasswordField: FieldProp = {
+    name: 'confirmPassword',
+    type: FieldTypes.PASSWORD,
+    label: t('label.confirm-new-password'),
+    id: 'root/confirmPassword',
+    placeholder: t('label.re-enter-new-password'),
+    required: true,
+    rules: {
+      required: t('message.field-text-is-required', {
+        fieldText: t('label.confirm-new-password'),
+      }),
+      validate: (value: string) => {
+        if (!value) {
+          return true;
+        }
+
+        return (
+          value === form.getValues('password') || t('label.password-not-match')
+        );
+      },
+      deps: ['password'],
+    },
+    props: { 'data-testid': 'confirm-password', size: 'md' },
+  };
+
   return (
-    <div className="h-full p-y-36" data-testid="reset-password-container">
+    <div
+      className="tw:min-h-screen tw:w-full tw:bg-primary tw:py-36"
+      data-testid="reset-password-container">
       <DocumentTitle title={t('label.reset-your-password')} />
       <Card
-        bodyStyle={{ padding: '48px' }}
-        className="m-auto p-x-lg"
-        style={{ maxWidth: '450px' }}>
-        <Row gutter={[16, 24]}>
-          <Col className="text-center" data-testid="brand-image" span={24}>
-            <BrandImage className="m-auto" height="auto" width={200} />
-          </Col>
+        className="tw:mx-auto tw:w-full tw:max-w-[450px] tw:shadow-xl"
+        variant="elevated">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-6 tw:p-12">
+          <BrandImage
+            isMonoGram
+            className="tw:mx-auto"
+            height="auto"
+            width={50}
+          />
 
-          <Col className="mt-12 text-center" span={24}>
-            <Typography.Text className="text-xl font-medium text-grey-muted">
-              {t('label.reset-your-password')}
-            </Typography.Text>
-          </Col>
+          <Typography
+            as="p"
+            className="tw:text-center"
+            color="secondary"
+            size="text-xl"
+            weight="medium">
+            {t('label.reset-your-password')}
+          </Typography>
 
-          {alert && (
-            <Col className="m-b-lg" span={24}>
-              <AlertBar
-                defaultExpand
-                message={alert?.message}
-                type={alert?.type}
-              />
-            </Col>
-          )}
+          <HookForm
+            className="tw:flex tw:w-full tw:flex-col tw:gap-6"
+            form={form}
+            onSubmit={form.handleSubmit(handleSubmit)}>
+            <FormFields fields={[passwordField, confirmPasswordField]} />
 
-          <Col span={24}>
-            <Form
-              className="w-full"
-              form={form}
-              layout="vertical"
-              validateMessages={VALIDATION_MESSAGES}
-              onFinish={handleSubmit}>
-              <Form.Item
-                label={t('label.new-password')}
-                name="password"
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.password'),
-                    }),
-                  },
-                  {
-                    pattern: passwordRegex,
-                    message: t('message.password-pattern-error'),
-                  },
-                ]}>
-                <Input.Password
-                  autoComplete="off"
-                  className="w-full"
-                  data-testid="password"
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.new-password'),
-                  })}
-                />
-              </Form.Item>
-              <Form.Item
-                label={t('label.confirm-new-password')}
-                name="confirmPassword"
-                rules={[
-                  {
-                    required: true,
-                    message: t('message.field-text-is-required', {
-                      fieldText: t('label.confirm-new-password'),
-                    }),
-                  },
-                  {
-                    validator: (_, value) => {
-                      if (password === value) {
-                        return Promise.resolve();
-                      }
-
-                      return Promise.reject(t('label.password-not-match'));
-                    },
-                  },
-                ]}>
-                <Input.Password
-                  autoComplete="off"
-                  className="w-full"
-                  data-testid="confirm-password"
-                  placeholder={t('label.re-enter-new-password')}
-                />
-              </Form.Item>
-
-              <Button
-                className="w-full m-t-lg"
-                data-testid="submit-button"
-                htmlType="submit"
-                type="primary">
-                {t('label.save')}
-              </Button>
-            </Form>
-          </Col>
-        </Row>
+            <Button
+              className="tw:mt-2 tw:w-full tw:justify-center"
+              color="primary"
+              data-testid="submit-button"
+              size="lg"
+              type="submit">
+              {t('label.save')}
+            </Button>
+          </HookForm>
+        </Card.Content>
       </Card>
     </div>
   );

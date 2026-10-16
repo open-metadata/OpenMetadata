@@ -8,6 +8,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.util.RestUtil;
 
@@ -25,11 +26,12 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = new JdbiFactory().build(environment, dbFactory, "database");
     jdbiInstance.setSqlLogger(new OMSqlLogger());
+    LazySqlObjectFactory.install(jdbiInstance);
     // Set the Database type for choosing correct queries from annotations
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
-    jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
+    configureStatements(jdbiInstance, dbFactory);
 
     return jdbiInstance;
   }
@@ -46,12 +48,24 @@ public class JdbiUtils {
 
     Jdbi jdbiInstance = Jdbi.create(dbFactory.build(new NoopMetricRegistry(), "open-metadata-ops"));
     jdbiInstance.installPlugin(new SqlObjectPlugin());
+    LazySqlObjectFactory.install(jdbiInstance);
     jdbiInstance
         .getConfig(SqlObjects.class)
         .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dbFactory.getDriverClass()));
+    // No query timeout here: it bounds API requests, while ops commands such as migrate run
+    // statements that legitimately take longer on large databases
+    // (ADR:2026-10-14-ops-commands-run-without-the-request-query-timeout).
     jdbiInstance.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
 
     return jdbiInstance;
+  }
+
+  static void configureStatements(Jdbi jdbi, DataSourceFactory dbFactory) {
+    SqlStatements statements = jdbi.getConfig(SqlStatements.class);
+    statements.setUnusedBindingAllowed(true);
+    if (dbFactory instanceof HikariCPDataSourceFactory hikariFactory) {
+      statements.setQueryTimeout(hikariFactory.getQueryTimeoutSeconds());
+    }
   }
 
   public static int getOffset(String offset) {

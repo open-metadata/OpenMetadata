@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import EditKPIPage from './EditKPIPage';
 import { KPI_DATA } from './KPIMock.mock';
@@ -48,7 +47,7 @@ jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));
 
-jest.mock('../../utils/DataInsightUtils', () => ({
+jest.mock('../../utils/DataInsightPureUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
   getDisabledDates: jest.fn().mockReturnValue(true),
@@ -132,8 +131,8 @@ describe('Edit KPI page', () => {
 
     const metricType = await screen.findByTestId('metricType');
 
-    expect(chart).toHaveClass('ant-select-disabled');
+    expect(within(chart).getByRole('button')).toBeDisabled();
 
-    expect(metricType).toHaveClass('ant-select-disabled');
+    expect(within(metricType).getByRole('button')).toBeDisabled();
   });
 });

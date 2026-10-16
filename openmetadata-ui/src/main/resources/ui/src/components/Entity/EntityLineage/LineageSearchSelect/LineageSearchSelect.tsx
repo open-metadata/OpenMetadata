@@ -10,188 +10,89 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RightOutlined } from '@ant-design/icons';
-import { Select, Space, Typography } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
-import { debounce } from 'lodash';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Autocomplete,
+  type SelectItemType,
+} from '@openmetadata/ui-core-components';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
-import {
-  DEBOUNCE_TIMEOUT,
-  INITIAL_NODE_ITEMS_LENGTH,
-  NODE_ITEMS_PAGE_SIZE,
-  ZOOM_TRANSITION_DURATION,
-} from '../../../../constants/Lineage.constants';
-import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
-import { Column } from '../../../../generated/entity/data/table';
+import { useShallow } from 'zustand/react/shallow';
+import { ZOOM_TRANSITION_DURATION } from '../../../../constants/Lineage.constants';
+import { LineagePlatformView } from '../../../../hooks/lineage/types';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
-import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
-import searchClassBase from '../../../../utils/SearchClassBase';
+import { getEntityChildrenAndLabel } from '../../../../utils/EntityLineageNodeUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
+import { useLineageHandlers } from '../../../Lineage/Lineage/LineageHandlersContext';
 
 const LineageSearchSelect = () => {
   const { t } = useTranslation();
-  const { nodes, reactFlowInstance, onNodeClick } = useLineageProvider();
+  const { onNodeClick } = useLineageHandlers();
+  const { nodes, reactFlowInstance } = useLineageStore(
+    useShallow((s) => ({
+      nodes: s.nodes,
+      reactFlowInstance: s.reactFlowInstance,
+    }))
+  );
   const { zoomValue, isPlatformLineage, platformView, setSelectedColumn } =
     useLineageStore();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [allOptions, setAllOptions] = useState<DefaultOptionType[]>([]);
-  const [renderedOptions, setRenderedOptions] = useState<DefaultOptionType[]>(
-    []
-  );
-  const [searchValue, setSearchValue] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
+  // Options are built on first focus: a large graph has thousands of columns.
+  const [isActivated, setIsActivated] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<SelectItemType[]>([]);
 
-  const generateNodeOptions = useCallback(() => {
-    const options: DefaultOptionType[] = [];
+  const options = useMemo(() => {
+    if (!isActivated) {
+      return [];
+    }
+    const optionsMap = new Map<string, SelectItemType>();
 
     nodes.forEach((nodeObj) => {
       const { node } = nodeObj.data;
-      if (!node) {
+      if (!node?.fullyQualifiedName) {
         return;
       }
 
-      const nodeOption = {
-        label: (
-          <Space data-testid={`option-${node.fullyQualifiedName}`} size={0}>
-            <img
-              alt={node.serviceType}
-              className="m-r-xss"
-              height="16px"
-              src={serviceUtilClassBase.getServiceTypeLogo(node)}
-              width="16px"
-            />
-            <Typography.Text>{getEntityName(node)}</Typography.Text>
-          </Space>
-        ),
-        value: node.fullyQualifiedName,
-        dataLabel: getEntityName(node),
-      };
-      options.push(nodeOption);
+      const icon = (
+        <img
+          alt={node.serviceType}
+          height="16px"
+          src={serviceUtilClassBase.getServiceTypeLogo(node)}
+          width="16px"
+        />
+      );
+      const nodeName = getEntityName(node);
+      optionsMap.set(node.fullyQualifiedName, {
+        id: node.fullyQualifiedName,
+        label: nodeName,
+        icon,
+      });
 
       const { children: childrenFlatten } = getEntityChildrenAndLabel(node);
 
-      childrenFlatten.forEach((column: Column) => {
-        const columnOption = {
-          label: (
-            <div
-              className="d-flex items-center gap-1"
-              data-testid={`option-${column.fullyQualifiedName}`}>
-              <div className="d-flex items-center gap-1">
-                <img
-                  alt={node.serviceType}
-                  height="16px"
-                  src={serviceUtilClassBase.getServiceTypeLogo(node)}
-                  width="16px"
-                />
-                <Typography.Text className="text-grey-muted text-xs">
-                  {getEntityName(node)}
-                </Typography.Text>
-                <RightOutlined className="text-grey-muted text-xss" />
-              </div>
-              <div className="d-flex items-center gap-1 ">
-                <div className="flex-center w-4 h-4 text-base-color">
-                  {searchClassBase.getEntityIcon(node.entityType ?? '')}
-                </div>
-                <Typography.Text>{getEntityName(column)}</Typography.Text>
-              </div>
-            </div>
-          ),
-          value: column.fullyQualifiedName,
-          dataLabel: getEntityName(column),
-        };
-        options.push(columnOption);
+      childrenFlatten.forEach((column) => {
+        // A metric is its own column-lineage endpoint, so its only child is the
+        // node itself. Both options key on FQN, so without this the child would
+        // overwrite the node option added above and render the node with the
+        // column-style label.
+        if (
+          !column.fullyQualifiedName ||
+          column.fullyQualifiedName === node.fullyQualifiedName
+        ) {
+          return;
+        }
+
+        optionsMap.set(column.fullyQualifiedName, {
+          id: column.fullyQualifiedName,
+          label: getEntityName(column),
+          supportingText: nodeName,
+          icon,
+        });
       });
     });
 
-    return options;
-  }, [nodes]);
-
-  useEffect(() => {
-    if (isDropdownOpen && allOptions.length === 0) {
-      setIsLoading(true);
-      const options = generateNodeOptions();
-      setAllOptions(options);
-      setRenderedOptions(options.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-      setIsLoading(false);
-    }
-  }, [isDropdownOpen, allOptions.length, generateNodeOptions]);
-
-  useEffect(() => {
-    setAllOptions([]);
-    setRenderedOptions([]);
-    setSearchValue('');
-  }, [nodes]);
-
-  const filterOptions = useCallback(
-    (value: string) => {
-      if (value) {
-        const filteredOptions = allOptions.filter((option) =>
-          option.dataLabel
-            ?.toString()
-            .toLowerCase()
-            .includes(value.toLowerCase())
-        );
-        setRenderedOptions(filteredOptions);
-      } else {
-        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-      }
-    },
-    [allOptions]
-  );
-
-  // Create a debounced version of the filter function
-  const debouncedFilterOptions = useMemo(
-    () => debounce(filterOptions, DEBOUNCE_TIMEOUT),
-    [filterOptions]
-  );
-
-  // Cleanup debounce on unmount
-  useEffect(() => {
-    return () => {
-      debouncedFilterOptions.cancel();
-    };
-  }, [debouncedFilterOptions]);
-
-  const handleSearch = (value: string) => {
-    setSearchValue(value);
-    debouncedFilterOptions(value);
-  };
-
-  const loadMoreData = () => {
-    if (searchValue) {
-      // If searching, just use the filtered options from allOptions
-      filterOptions(searchValue);
-    } else {
-      const nextLength = Math.min(
-        renderedOptions.length + NODE_ITEMS_PAGE_SIZE,
-        allOptions.length
-      );
-      setRenderedOptions(allOptions.slice(0, nextLength));
-    }
-  };
-
-  const handleDropdownVisibleChange = useCallback(
-    (open: boolean) => {
-      setIsDropdownOpen(open);
-      if (!open) {
-        setSearchValue('');
-        setRenderedOptions(allOptions.slice(0, INITIAL_NODE_ITEMS_LENGTH));
-        debouncedFilterOptions.cancel();
-      }
-    },
-    [allOptions, debouncedFilterOptions]
-  );
-
-  const handlePopupScroll = (e: React.UIEvent<HTMLElement, UIEvent>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    if (scrollTop + clientHeight >= scrollHeight - 10) {
-      loadMoreData();
-    }
-  };
+    return Array.from(optionsMap.values());
+  }, [isActivated, nodes]);
 
   const onOptionSelect = useCallback(
     (value?: string) => {
@@ -199,9 +100,25 @@ const LineageSearchSelect = () => {
         (node: Node) => node.data.node.fullyQualifiedName === value
       );
       if (selectedNode) {
-        const { position } = selectedNode;
         onNodeClick(selectedNode);
-        reactFlowInstance?.setCenter(position.x, position.y, {
+
+        // Centre on what is actually drawn. LineageMap keeps the laid-out nodes
+        // in its own state and feeds them to React Flow; the array reached here
+        // through the provider is a different one, whose nodes are seeded at the
+        // origin and never carry the ELK coordinates. Centring on those puts the
+        // viewport at (0,0), and since the canvas renders with
+        // onlyRenderVisibleElements, the node just picked is never drawn -- the
+        // drawer opens on it while the graph sits somewhere else entirely.
+        // Matching on fullyQualifiedName, the same key the lookup above uses,
+        // avoids depending on the two arrays sharing node ids.
+        const renderedPosition = reactFlowInstance
+          ?.getNodes()
+          .find(
+            (node) => node.data?.node?.fullyQualifiedName === value
+          )?.position;
+        const { x, y } = renderedPosition ?? selectedNode.position;
+
+        reactFlowInstance?.setCenter(x, y, {
           duration: ZOOM_TRANSITION_DURATION,
           zoom: zoomValue,
         });
@@ -212,32 +129,52 @@ const LineageSearchSelect = () => {
     [onNodeClick, reactFlowInstance, setSelectedColumn, nodes, zoomValue]
   );
 
+  const handleItemInserted = useCallback(
+    (key: React.Key) => {
+      const item = options.find((option) => option.id === key);
+      setSelectedItems(item ? [item] : []);
+      onOptionSelect(String(key));
+    },
+    [options, onOptionSelect]
+  );
+
+  const handleItemCleared = useCallback(() => {
+    setSelectedItems([]);
+    onOptionSelect(undefined);
+  }, [onOptionSelect]);
+
   if (isPlatformLineage || platformView !== LineagePlatformView.None) {
     return null;
   }
 
+  const placeholder = t('label.search-entity', {
+    entity: t('label.lineage'),
+  });
+
   return (
-    <Select
-      allowClear
-      showSearch
-      className="custom-control-search-box"
-      data-testid="lineage-search"
-      dropdownMatchSelectWidth={false}
-      listHeight={300}
-      loading={isLoading}
-      optionFilterProp="dataLabel"
-      optionLabelProp="dataLabel"
-      options={renderedOptions}
-      placeholder={t('label.search-entity', {
-        entity: t('label.lineage'),
-      })}
-      popupClassName="lineage-search-options-list"
-      searchValue={searchValue}
-      onChange={onOptionSelect}
-      onDropdownVisibleChange={handleDropdownVisibleChange}
-      onPopupScroll={handlePopupScroll}
-      onSearch={handleSearch}
-    />
+    <div className="tw:w-80">
+      <Autocomplete
+        aria-label={placeholder}
+        data-testid="lineage-search"
+        items={options}
+        multiple={false}
+        placeholder={placeholder}
+        selectedItems={selectedItems}
+        onFocus={() => setIsActivated(true)}
+        onItemCleared={handleItemCleared}
+        onItemInserted={handleItemInserted}>
+        {(item) => (
+          <Autocomplete.Item
+            data-testid={`option-${item.id}`}
+            icon={item.icon}
+            id={item.id}
+            key={item.id}
+            label={item.label}
+            supportingText={item.supportingText}
+          />
+        )}
+      </Autocomplete>
+    </div>
   );
 };
 

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import { EntityTags } from 'Models';
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
@@ -26,7 +27,7 @@ import type {
   ExtentionEntities,
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -64,7 +65,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   onDataProductUpdate,
   viewCustomPropertiesPermission,
 }: EntityRightPanelProps<T>) => {
-  const { entityRules } = useEntityRules(entityType);
+  const { entityRules, isRulesLoaded } = useEntityRules(entityType);
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();
@@ -79,7 +80,13 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   return (
     <>
       {beforeSlot}
-      <Space className="w-full" direction="vertical" size="large">
+      <Box
+        inline
+        align="stretch"
+        className="layout-space w-full"
+        direction="col"
+        gap={6}
+        itemClassName="layout-space-item">
         {showDataProductContainer && (
           <div data-testid="KnowledgePanel.DataProducts">
             <DataProductsContainer
@@ -87,7 +94,10 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
               activeDomains={domains}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
-              multiple={entityRules.canAddMultipleDataProducts}
+              multiple={isRulesLoaded && entityRules.canAddMultipleDataProducts}
+              requireDomainForDataProduct={
+                !isRulesLoaded || entityRules.requireDomainForDataProduct
+              }
               onSave={onDataProductUpdate}
             />
           </div>
@@ -133,7 +143,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
           />
         )}
         <PartitionedKeys />
-      </Space>
+      </Box>
       {afterSlot}
     </>
   );

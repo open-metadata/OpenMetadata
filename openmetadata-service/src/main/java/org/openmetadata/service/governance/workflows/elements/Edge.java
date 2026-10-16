@@ -8,6 +8,7 @@ import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
 
 @Slf4j
 public class Edge {
@@ -35,6 +36,14 @@ public class Edge {
   }
 
   private String getFlowableCondition(String from, String condition) {
+    if (!WorkflowExpressionValidator.isSafeNodeReference(from)) {
+      throw new IllegalArgumentException(
+          String.format("[WorkflowEdge] Unsafe edge source node reference: '%s'", from));
+    }
+    if (!WorkflowExpressionValidator.isSafeCondition(condition)) {
+      throw new IllegalArgumentException(
+          String.format("[WorkflowEdge] Unsafe edge condition: '%s'", condition));
+    }
     String variableName = getNamespacedVariableName(from, RESULT_VARIABLE);
     String expression = String.format("${%s == '%s'}", variableName, condition);
     LOG.debug(

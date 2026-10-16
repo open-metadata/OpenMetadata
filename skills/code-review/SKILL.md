@@ -93,7 +93,6 @@ Now review the implementation quality.
 
 **TypeScript/React:**
 - [ ] No `any` types — use proper types or `unknown` with type guards
-- [ ] No MUI imports — use `openmetadata-ui-core-components`
 - [ ] Tailwind classes use `tw:` prefix
 - [ ] Strings use i18n (`t('label.xxx')`) not string literals
 - [ ] CSS custom properties for colors/spacing, no hardcoded values
@@ -111,6 +110,10 @@ Now review the implementation quality.
 - [ ] User input validated at system boundaries
 - [ ] No SQL injection vectors (parameterized queries)
 - [ ] No XSS vectors in frontend (proper escaping)
+
+**Decisions (`docs/decisions/`, rules in its `README.md`):**
+- [ ] No change undoes an Accepted record without adding the record that supersedes it
+- [ ] A durable decision — a contract another component or repo must agree with, a new default or limit, an ordering that must hold, a rule stated only in the PR description — ships its record in this PR
 
 ### Report Format (Stage 2)
 

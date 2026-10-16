@@ -13,10 +13,13 @@
 
 import { cloneDeep, isEqual, uniqBy } from 'lodash';
 import { EntityField } from '../constants/Feeds.constants';
-import { ChangeDescription, Pipeline } from '../generated/entity/data/pipeline';
-import { TagLabel } from '../generated/type/tagLabel';
-import { EntityDiffProps } from '../interface/EntityVersion.interface';
-import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import type {
+  ChangeDescription,
+  Pipeline,
+} from '../generated/entity/data/pipeline';
+import type { TagLabel } from '../generated/type/tagLabel';
+import type { EntityDiffProps } from '../interface/EntityVersion.interface';
+import type { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
 import {
   getAllChangedEntityNames,
   getAllDiffByFieldName,
@@ -24,11 +27,11 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-  getTagsDiff,
-  getTextDiff,
   isEndsWithField,
-} from './EntityVersionUtils';
-import { TagLabelWithStatus } from './EntityVersionUtils.interface';
+} from './EntityDiffPureUtils';
+import { getTextDiff } from './EntityDiffUtils';
+import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
+import { getTagsDiff } from './EntityVersionUtilsPure';
 
 const handleTaskDescriptionChangeDiff = (
   tasksDiff: EntityDiffProps,
@@ -83,6 +86,21 @@ const handleTaskTagChangeDiff = (
   return taskList;
 };
 
+const formatAddedTaskData = (
+  arr: Pipeline['tasks'],
+  task: NonNullable<Pipeline['tasks']>[number]
+) => {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, task.name)) {
+      i.tags = task.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', task.description ?? '');
+      i.taskType = getTextDiff('', task.taskType ?? '');
+      i.name = getTextDiff('', task.name);
+      i.displayName = getTextDiff('', task.displayName ?? '');
+    }
+  });
+};
+
 const handleTaskDiffAdded = (
   tasksDiff: EntityDiffProps,
   taskList: Pipeline['tasks'] = []
@@ -91,18 +109,7 @@ const handleTaskDiffAdded = (
     tasksDiff.added?.newValue ?? '[]'
   );
   newTask?.forEach((task) => {
-    const formatTaskData = (arr: Pipeline['tasks']) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, task.name)) {
-          i.tags = task.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', task.description ?? '');
-          i.taskType = getTextDiff('', task.taskType ?? '');
-          i.name = getTextDiff('', task.name);
-          i.displayName = getTextDiff('', task.displayName ?? '');
-        }
-      });
-    };
-    formatTaskData(taskList);
+    formatAddedTaskData(taskList, task);
   });
 
   return taskList;

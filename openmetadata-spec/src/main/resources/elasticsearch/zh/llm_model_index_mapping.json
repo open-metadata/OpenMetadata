@@ -6,7 +6,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,21 +16,25 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -50,6 +55,10 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
         }
       },
       "tokenizer": {
@@ -70,6 +79,24 @@
   },
   "mappings": {
     "properties": {
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -142,6 +169,9 @@
       },
       "version": {
         "type": "float"
+      },
+      "modelVersion": {
+        "type": "keyword"
       },
       "updatedAt": {
         "type": "date",
@@ -255,7 +285,8 @@
         }
       },
       "extension": {
-        "type": "flattened"
+        "type": "object",
+        "enabled": false
       },
       "mlFeatures": {
         "properties": {
@@ -701,6 +732,69 @@
       "lineageSqlQueries": {
         "type": "object",
         "enabled": false
+      },
+      "aiGovernance": {
+        "type": "object",
+        "properties": {
+          "assetSubtype": {
+            "type": "keyword"
+          },
+          "registrationStatus": {
+            "type": "keyword"
+          },
+          "riskLevel": {
+            "type": "keyword"
+          },
+          "accessesPii": {
+            "type": "boolean"
+          },
+          "accessesSensitiveData": {
+            "type": "boolean"
+          },
+          "dataCategories": {
+            "type": "keyword"
+          },
+          "detection": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "keyword"
+              },
+              "severity": {
+                "type": "keyword"
+              },
+              "suspectedTeam": {
+                "type": "keyword"
+              },
+              "detectedAt": {
+                "type": "date",
+                "format": "strict_date_optional_time||epoch_millis"
+              },
+              "flags": {
+                "type": "keyword"
+              }
+            }
+          },
+          "complianceStatus": {
+            "type": "flattened"
+          },
+          "frameworks": {
+            "type": "keyword"
+          },
+          "euRiskClassification": {
+            "type": "keyword"
+          },
+          "regions": {
+            "type": "keyword"
+          },
+          "lastAssessedAt": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "affectedUserCount": {
+            "type": "integer"
+          }
+        }
       }
     }
   }

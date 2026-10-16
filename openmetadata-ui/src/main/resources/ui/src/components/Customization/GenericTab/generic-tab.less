@@ -18,43 +18,55 @@
 
   .react-grid-item {
     background: transparent;
-    transition: all 200ms ease;
+    transition: all var(--om-duration-200) ease;
     transition-property: left, top;
 
-    .ant-card.ant-card-bordered,
-    .ant-card.new-description-card {
-      &.empty-widget-placeholder {
-        .ant-card-body {
-          max-height: initial;
-        }
-      }
+    // The dragged widget lifts above the grid; the placeholder marks its slot.
+    &.react-draggable-dragging {
+      z-index: var(--om-z-docked);
+      box-shadow: var(--om-shadow-lg);
+      cursor: grabbing;
+    }
+
+    &.react-grid-placeholder {
+      background: var(--om-color-bg-brand);
+      border: 2px dashed var(--om-color-border-brand);
+      border-radius: var(--om-radius-xl);
+      opacity: 1;
     }
   }
 
   &.custom-tab {
-    background: @white;
+    background: var(--om-color-bg-surface);
     border-radius: @border-rad-sm;
     padding: @padding-sm;
   }
 
   > #KnowledgePanel\.LeftPanel {
-    background: white;
-    padding: @padding-md;
+    background: var(--om-color-bg-surface);
     border-radius: @border-rad-sm;
     border: 1px solid @grey-15;
     box-shadow: 0px 0px 0px 4px @grey-100;
-    box-shadow: 0px 1px 2px 0px #0a0d120d;
-  }
-}
+    box-shadow: 0px 1px 2px 0px var(--om-legacy-color-10-13-18-0-051);
 
-.ant-tabs.ant-tabs-top.tabs-new {
-  .grid-container > #KnowledgePanel\.LeftPanel {
-    // Let it's content take the height
-    height: initial !important;
+    > .dynamic-height-widget > .left-panel-content {
+      // Keep padding in the observed content so its height is fully reserved.
+      padding: @padding-md;
+    }
   }
 
-  .grid-container > #KnowledgePanel\.DomainType {
-    height: initial !important;
+  // Entity tabs (GenericTab): drop the left-panel frame card so the widget cards
+  // sit directly on the page; the frame stays only on the customize page grid.
+  // Also drop the frame's inner padding so the widget lines up flush with the
+  // tabs (left) and the right panel (top) instead of being inset by the frame gap.
+  &.flat-left-panel > #KnowledgePanel\.LeftPanel {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+
+    > .dynamic-height-widget > .left-panel-content {
+      padding: 0;
+    }
   }
 }
 

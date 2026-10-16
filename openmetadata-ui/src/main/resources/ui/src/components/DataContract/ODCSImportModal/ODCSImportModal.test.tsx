@@ -35,84 +35,305 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContractImportModal from './ODCSImportModal.component';
 
-const mockTheme = {
-  palette: {
-    grey: {
-      50: '#fafafa',
-      100: '#f5f5f5',
-    },
-    primary: {
-      main: '#1976d2',
-    },
-    divider: '#e0e0e0',
-    text: {
-      primary: '#212121',
-      secondary: '#757575',
-    },
-    action: {
-      hover: 'rgba(0, 0, 0, 0.04)',
-    },
-    allShades: {
-      success: {
-        50: '#e8f5e9',
-        500: '#4caf50',
-        700: '#388e3c',
-      },
-      error: {
-        50: '#ffebee',
-        100: '#ffcdd2',
-        600: '#e53935',
-      },
-      warning: {
-        50: '#fff8e1',
-        300: '#ffb74d',
-        600: '#fb8c00',
-        800: '#ef6c00',
-      },
-    },
-  },
-};
-
-jest.mock('@mui/material', () => {
-  const actualMui = jest.requireActual('@mui/material');
-
-  return {
-    ...actualMui,
-    useTheme: () => mockTheme,
-    Select: ({
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  BadgeWithIcon: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <span>{children}</span>
+  )),
+  Box: jest.fn(
+    ({
       children,
-      value,
-      onChange,
-      displayEmpty,
+      className,
+      ...rest
+    }: {
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
+    }) => (
+      <div className={className} {...rest}>
+        {children}
+      </div>
+    )
+  ),
+  Button: jest.fn(
+    ({
+      children,
+      isDisabled,
+      onClick,
+      ...rest
     }: {
       children: React.ReactNode;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => (
+      <button disabled={isDisabled} onClick={onClick} {...rest}>
+        {children}
+      </button>
+    )
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      onClick,
+      ...rest
+    }: {
+      onClick?: () => void;
+      [key: string]: unknown;
+    }) => <button onClick={onClick} {...rest} />
+  ),
+  Checkbox: jest.fn(
+    ({
+      hint,
+      isDisabled,
+      isSelected,
+      label,
+      onChange,
+      ...rest
+    }: {
+      hint?: React.ReactNode;
+      isDisabled?: boolean;
+      isSelected?: boolean;
+      label?: React.ReactNode;
+      onChange?: (selected: boolean) => void;
+      [key: string]: unknown;
+    }) => (
+      <div>
+        <input
+          aria-label={String(label)}
+          checked={isSelected}
+          disabled={isDisabled}
+          type="checkbox"
+          onChange={(e) => onChange?.(e.target.checked)}
+          {...rest}
+        />
+        <span>{hint}</span>
+      </div>
+    )
+  ),
+  Card: Object.assign(
+    jest.fn(
+      ({
+        children,
+        className,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+      }) => <div className={className}>{children}</div>
+    ),
+    {
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    }
+  ),
+  FileUploadDropZone: jest.fn(
+    ({
+      accept,
+      clickToUploadLabel,
+      hint,
+      'input-data-testid': inputTestId,
+      onDropFiles,
+      orDragAndDropLabel,
+    }: {
+      accept?: string;
+      clickToUploadLabel?: string;
+      hint?: string;
+      'input-data-testid'?: string;
+      onDropFiles?: (f: FileList) => void;
+      orDragAndDropLabel?: string;
+    }) => {
+      const isAccepted = (fileName: string) =>
+        !accept ||
+        accept.split(',').some((ext) => fileName.endsWith(ext.trim()));
+      const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        const raw = e.dataTransfer?.files;
+        const files: File[] = raw ? Array.from(raw as unknown as File[]) : [];
+        const accepted = files.filter((f) => isAccepted(f.name));
+        if (accepted.length > 0) {
+          onDropFiles?.(accepted as unknown as FileList);
+        }
+      };
+
+      return (
+        <div
+          role="presentation"
+          onDragLeave={(e) => e.preventDefault()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={handleDrop}>
+          <span>{clickToUploadLabel}</span>
+          <span>{orDragAndDropLabel}</span>
+          {hint && <span>{hint}</span>}
+          <input
+            aria-label={inputTestId ?? 'file-upload-input'}
+            data-testid={inputTestId ?? 'file-upload-input'}
+            type="file"
+            onChange={(e) => e.target.files && onDropFiles?.(e.target.files)}
+          />
+        </div>
+      );
+    }
+  ),
+  Dialog: Object.assign(
+    jest.fn(
+      ({
+        children,
+        onClose,
+      }: {
+        children: React.ReactNode;
+        onClose?: () => void;
+      }) => (
+        <div data-testid="import-contract-modal">
+          <button data-testid="dialog-close-button" onClick={onClose}>
+            close
+          </button>
+          {children}
+        </div>
+      )
+    ),
+    {
+      Content: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Footer: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+      Header: jest.fn(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    }
+  ),
+  Modal: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  ModalOverlay: jest.fn(
+    ({ children, isOpen }: { children: React.ReactNode; isOpen?: boolean }) =>
+      isOpen ? <div data-testid="modal-overlay">{children}</div> : null
+  ),
+  RadioButton: jest.fn(
+    ({
+      value,
+      className,
+      checked,
+      onChange,
+    }: {
       value: string;
-      onChange: (e: { target: { value: string } }) => void;
-      displayEmpty?: boolean;
+      className?: string;
+      checked?: boolean;
+      onChange?: React.ChangeEventHandler<HTMLInputElement>;
+    }) => (
+      <input
+        aria-label={value}
+        checked={checked}
+        className={className}
+        type="radio"
+        value={value}
+        onChange={onChange ?? (() => undefined)}
+      />
+    )
+  ),
+  RadioGroup: jest.fn(
+    ({
+      children,
+      onChange,
+      value,
+    }: {
+      children: React.ReactNode;
+      onChange?: (value: string) => void;
+      value?: string;
+    }) => {
+      const handleRadioChange = (e: React.ChangeEvent<HTMLInputElement>) =>
+        onChange?.(e.target.value);
+      const cloneChildren = (node: React.ReactNode): React.ReactNode =>
+        React.Children.map(node, (c) => {
+          if (!React.isValidElement(c)) {
+            return c;
+          }
+          const cProps = c.props as Record<string, unknown>;
+          const newProps: Record<string, unknown> = {};
+          if (cProps.value !== undefined) {
+            newProps.checked = cProps.value === value;
+            newProps.onChange = handleRadioChange;
+          }
+          if (cProps.children) {
+            newProps.children = cloneChildren(
+              cProps.children as React.ReactNode
+            );
+          }
+
+          return React.cloneElement(c, newProps);
+        });
+      const childrenWithChecked = React.Children.map(children, (child) => {
+        if (!React.isValidElement(child)) {
+          return child;
+        }
+
+        return cloneChildren(child);
+      });
+
+      return (
+        <div
+          data-testid="radio-group"
+          data-value={value}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+            onChange?.(e.target.value)
+          }>
+          {childrenWithChecked}
+        </div>
+      );
+    }
+  ),
+  Select: jest.fn(
+    ({
+      items,
+      onSelectionChange,
+      placeholder,
+      selectedKey,
+    }: {
+      items?: Array<{ id: string; label?: string }>;
+      onSelectionChange?: (key: string | null) => void;
+      placeholder?: string;
+      selectedKey?: string | null;
     }) => (
       <select
-        data-testid="object-selector"
-        value={value}
-        onChange={(e) => onChange({ target: { value: e.target.value } })}>
-        {displayEmpty && <option value="">Select Schema Object</option>}
-        {children}
+        data-testid="schema-object-select"
+        value={selectedKey ?? ''}
+        onChange={(e) => onSelectionChange?.(e.target.value || null)}>
+        <option value="">{placeholder}</option>
+        {items?.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.label}
+          </option>
+        ))}
       </select>
-    ),
-    MenuItem: ({
+    )
+  ),
+  Typography: jest.fn(
+    ({
+      as: Tag = 'span',
       children,
-      value,
-      disabled,
+      className,
+      ...rest
     }: {
-      children: React.ReactNode;
-      value: string;
-      disabled?: boolean;
+      as?: React.ElementType;
+      children?: React.ReactNode;
+      className?: string;
+      [key: string]: unknown;
     }) => (
-      <option disabled={disabled} value={value}>
+      <Tag className={className} {...rest}>
         {children}
-      </option>
-    ),
-  };
-});
+      </Tag>
+    )
+  ),
+}));
 
 jest.mock('../../../rest/contractAPI', () => ({
   createContract: jest.fn(),
@@ -124,6 +345,22 @@ jest.mock('../../../rest/contractAPI', () => ({
   validateContractYaml: jest.fn(),
   validateODCSYaml: jest.fn(),
 }));
+
+jest.mock(
+  '../../data-contract/ODCSImportReport/ODCSImportReport',
+  () =>
+    function ODCSImportReportStub() {
+      return <div data-testid="odcs-import-report" />;
+    }
+);
+
+jest.mock(
+  '../../data-contract/ODCSImportSummary/ODCSImportSummary',
+  () =>
+    function ODCSImportSummaryStub() {
+      return <div data-testid="odcs-import-summary" />;
+    }
+);
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -219,6 +456,9 @@ jest.mock('react-i18next', () => ({
         'label.contract-validation': 'Contract Validation',
         'label.validation-failed': 'Validation Failed',
         'label.error-plural': 'Errors',
+        'label.import-with-warnings': 'Import with Warnings',
+        'label.create-test-cases-from-quality-rules':
+          'Create Test Cases from Quality Rules',
       };
 
       return translations[key] || key;
@@ -648,7 +888,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       await act(async () => {
         fireEvent.dragOver(dropZone, { preventDefault: jest.fn() });
@@ -671,7 +911,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       await act(async () => {
         fireEvent.dragLeave(dropZone, { preventDefault: jest.fn() });
@@ -694,7 +934,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       const file = new File([validODCSYaml], 'contract.yaml', {
         type: 'application/x-yaml',
@@ -725,7 +965,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       const file = new File(['invalid'], 'contract.txt', {
         type: 'text/plain',
@@ -754,7 +994,7 @@ describe('ContractImportModal', () => {
 
       const dropZone = screen
         .getByText('Click to upload')
-        .closest('div[class*="MuiBox"]') as HTMLElement;
+        .closest('div') as HTMLElement;
 
       await act(async () => {
         fireEvent.drop(dropZone, {
@@ -1344,7 +1584,8 @@ describe('ContractImportModal', () => {
           expect.any(String),
           'table-1',
           'table',
-          'users'
+          'users',
+          true
         );
       });
     });
@@ -1415,12 +1656,12 @@ describe('ContractImportModal', () => {
       });
 
       await waitFor(() => {
-        const objectSelector = screen.getByTestId('object-selector');
+        const objectSelector = screen.getByTestId('schema-object-select');
 
         expect(objectSelector).toBeInTheDocument();
       });
 
-      const objectSelector = screen.getByTestId('object-selector');
+      const objectSelector = screen.getByTestId('schema-object-select');
 
       await act(async () => {
         fireEvent.change(objectSelector, { target: { value: 'orders' } });
@@ -1431,7 +1672,8 @@ describe('ContractImportModal', () => {
           expect.any(String),
           'table-1',
           'table',
-          'orders'
+          'orders',
+          true
         );
       });
     });
@@ -1482,7 +1724,8 @@ describe('ContractImportModal', () => {
           validODCSYaml,
           'table-1',
           'table',
-          'users'
+          'users',
+          true
         );
       });
     });
@@ -1532,7 +1775,8 @@ describe('ContractImportModal', () => {
           'table-1',
           'table',
           'merge',
-          'users'
+          'users',
+          true
         );
         expect(deleteContractById).not.toHaveBeenCalled();
       });
@@ -1586,7 +1830,8 @@ describe('ContractImportModal', () => {
           'table-1',
           'table',
           'replace',
-          'users'
+          'users',
+          true
         );
       });
     });
@@ -2009,13 +2254,10 @@ termsOfUse: Updated terms`;
         />
       );
 
-      const closeIcon = screen.getByTestId('CloseIcon').parentElement;
+      const closeButton = screen.getByTestId('dialog-close-button');
+      fireEvent.click(closeButton);
 
-      if (closeIcon) {
-        fireEvent.click(closeIcon);
-
-        expect(mockOnClose).toHaveBeenCalled();
-      }
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 
@@ -2248,6 +2490,363 @@ version: 1.0`;
         expect(screen.getByText('Security')).toBeInTheDocument();
         expect(screen.getByText('Semantics')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('ODCS Import Report', () => {
+    const reportWithWarnings = {
+      odcsVersion: 'v3.1.0',
+      canImport: true,
+      canCreateTestCases: true,
+      issues: [
+        {
+          severity: 'warning',
+          category: 'schema',
+          field: 'businessName',
+          message: '`businessName` is not imported.',
+        },
+      ],
+      qualityRules: [
+        {
+          name: 'Row count range',
+          outcome: 'testCase',
+          testDefinition: 'tableRowCountToBeBetween',
+          testCaseName: 'odcs_row_count_range',
+        },
+      ],
+    };
+
+    const uploadODCSFile = async () => {
+      const file = new File([validODCSYaml], 'contract.yaml', {
+        type: 'application/x-yaml',
+      });
+      const input = document.querySelector(
+        'input[type="file"]'
+      ) as HTMLInputElement;
+
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [file] } });
+      });
+    };
+
+    const renderModal = () =>
+      render(
+        <ContractImportModal
+          visible
+          entityId="table-1"
+          entityType="table"
+          existingContract={null}
+          format="odcs"
+          onClose={mockOnClose}
+          onSuccess={mockOnSuccess}
+        />
+      );
+
+    it('shows the import report and says the import comes with warnings', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: true,
+        odcsImportReport: reportWithWarnings,
+      });
+
+      renderModal();
+      await uploadODCSFile();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('odcs-import-summary')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('odcs-import-report')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Import with Warnings' })
+      ).toBeEnabled();
+    });
+
+    it('turning test case creation off re-validates and imports without test cases', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: true,
+        odcsImportReport: reportWithWarnings,
+      });
+      (importContractFromODCSYaml as jest.Mock).mockResolvedValue(
+        mockImportedContract
+      );
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenLastCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Import with Warnings' })
+        );
+      });
+
+      await waitFor(() => {
+        expect(importContractFromODCSYaml).toHaveBeenCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+    });
+
+    it('lets a user without test case permission clear the option to unblock the import', async () => {
+      (validateODCSYaml as jest.Mock)
+        .mockResolvedValueOnce({
+          valid: false,
+          odcsImportReport: {
+            ...reportWithWarnings,
+            canImport: false,
+            canCreateTestCases: false,
+            issues: [
+              ...reportWithWarnings.issues,
+              {
+                severity: 'blocking',
+                category: 'quality',
+                field: 'quality',
+                message:
+                  'You may not create test cases on this table. Import with createTestCases=false to keep the rules without running them.',
+              },
+            ],
+          },
+        })
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: {
+            ...reportWithWarnings,
+            canCreateTestCases: false,
+            qualityRules: [
+              { ...reportWithWarnings.qualityRules[0], outcome: 'notExecuted' },
+            ],
+          },
+        });
+      (importContractFromODCSYaml as jest.Mock).mockResolvedValue(
+        mockImportedContract
+      );
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('import-button')).toBeDisabled();
+      });
+
+      expect(checkbox).toBeEnabled();
+      expect(checkbox).toBeChecked();
+      expect(
+        screen.getByText('message.no-permission-to-create-test-cases')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenLastCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+
+      const importButton = await screen.findByRole('button', {
+        name: 'Import with Warnings',
+      });
+
+      expect(importButton).toBeEnabled();
+      expect(
+        screen.queryByText('message.no-permission-to-create-test-cases')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(importButton);
+      });
+
+      await waitFor(() => {
+        expect(importContractFromODCSYaml).toHaveBeenCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          false
+        );
+      });
+    });
+
+    it('lets the user turn test case creation back on after clearing it', async () => {
+      (validateODCSYaml as jest.Mock)
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        })
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: {
+            ...reportWithWarnings,
+            canCreateTestCases: false,
+          },
+        })
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        });
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(checkbox).toBeEnabled();
+      });
+
+      expect(checkbox).not.toBeChecked();
+      expect(
+        screen.queryByText('message.no-permission-to-create-test-cases')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      await waitFor(() => {
+        expect(validateODCSYaml).toHaveBeenLastCalledWith(
+          validODCSYaml,
+          'table-1',
+          'table',
+          'users',
+          true
+        );
+      });
+
+      expect(checkbox).toBeChecked();
+    });
+
+    it('keeps the test case checkbox disabled until re-validation answers', async () => {
+      let answerRevalidation: (validation: unknown) => void = jest.fn();
+      (validateODCSYaml as jest.Mock)
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        })
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              answerRevalidation = resolve;
+            })
+        );
+
+      renderModal();
+      await uploadODCSFile();
+
+      const checkbox = await screen.findByTestId('create-test-cases-checkbox');
+
+      await act(async () => {
+        fireEvent.click(checkbox);
+      });
+
+      expect(checkbox).toBeDisabled();
+
+      await act(async () => {
+        answerRevalidation({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        });
+      });
+
+      expect(checkbox).toBeEnabled();
+      expect(checkbox).not.toBeChecked();
+    });
+
+    it('ignores a validation that answers after a newer one', async () => {
+      let answerFirstUpload: (validation: unknown) => void = jest.fn();
+      (validateODCSYaml as jest.Mock)
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              answerFirstUpload = resolve;
+            })
+        )
+        .mockResolvedValueOnce({
+          valid: true,
+          odcsImportReport: reportWithWarnings,
+        });
+
+      renderModal();
+      await uploadODCSFile();
+      const removeFile = await screen.findByTestId('remove-file-button');
+      await act(async () => {
+        fireEvent.click(removeFile);
+      });
+      await uploadODCSFile();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: 'Import with Warnings' })
+        ).toBeEnabled();
+      });
+
+      await act(async () => {
+        answerFirstUpload({
+          valid: false,
+          odcsImportReport: { ...reportWithWarnings, canImport: false },
+        });
+      });
+
+      expect(
+        screen.getByRole('button', { name: 'Import with Warnings' })
+      ).toBeEnabled();
+    });
+
+    it('disables the import when the report has blocking issues', async () => {
+      (validateODCSYaml as jest.Mock).mockResolvedValue({
+        valid: false,
+        odcsImportReport: {
+          ...reportWithWarnings,
+          canImport: false,
+          issues: [
+            {
+              severity: 'blocking',
+              category: 'document',
+              field: 'apiVersion',
+              message: 'ODCS v9.0.0 is not supported.',
+            },
+          ],
+        },
+      });
+
+      renderModal();
+      await uploadODCSFile();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('odcs-import-summary')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('import-button')).toBeDisabled();
     });
   });
 });

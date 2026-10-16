@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -45,6 +48,26 @@ class UriUtilsTest {
   }
 
   @Test
+  void testConstructRedirectUri_opaqueStateRoundTripsWithSingleEncoding() {
+    // Regression: a base64 state with '+' and '=' padding must survive byte-for-byte after a
+    // single URL-decode. Previously the encoded query was re-quoted by the multi-arg URI
+    // constructor ("a==" -> "a%3D%3D" -> "a%253D%253D"), breaking clients that compare state
+    // exactly (e.g. VS Code's loopback redirect -> "State does not match").
+    String state = "n+eBY2DPiNEk3xEe7rqmtg==";
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("code", "abc123");
+    params.put("state", state);
+
+    String result = UriUtils.constructRedirectUri("http://127.0.0.1:33418/", params);
+
+    String returnedState =
+        URLDecoder.decode(
+            result.replaceAll(".*[?&]state=", "").replaceAll("&.*", ""), StandardCharsets.UTF_8);
+    assertThat(returnedState).isEqualTo(state);
+    assertThat(result).doesNotContain("%25");
+  }
+
+  @Test
   void testConstructRedirectUri_skipsNullValues() {
     Map<String, String> params = new LinkedHashMap<>();
     params.put("code", "abc123");
@@ -67,6 +90,65 @@ class UriUtilsTest {
   void testConstructRedirectUri_invalidUri_throwsIllegalArgument() {
     assertThatThrownBy(() -> UriUtils.constructRedirectUri("not a valid uri[", Map.of("k", "v")))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_addsIssuer() {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("code", "abc123");
+    params.put("state", "xyz");
+
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback", params, "https://om.example.com/mcp");
+
+    assertThat(result).contains("code=abc123");
+    assertThat(result).contains("state=xyz");
+    assertThat(result)
+        .contains("iss=" + URLEncoder.encode("https://om.example.com/mcp", StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_omitsNullIssuer() {
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback", Map.of("code", "abc123"), null);
+
+    assertThat(result).contains("code=abc123");
+    assertThat(result).doesNotContain("iss=");
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_omitsEmptyIssuer() {
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback", Map.of("code", "abc123"), "");
+
+    assertThat(result).doesNotContain("iss=");
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_doesNotMutateCallerParams() {
+    Map<String, String> params = new LinkedHashMap<>();
+    params.put("code", "abc123");
+
+    UriUtils.constructAuthorizationResponseUri(
+        "https://example.com/callback", params, "https://om.example.com/mcp");
+
+    assertThat(params).containsOnlyKeys("code");
+  }
+
+  @Test
+  void testConstructAuthorizationResponseUri_preservesExistingQueryParams() {
+    String result =
+        UriUtils.constructAuthorizationResponseUri(
+            "https://example.com/callback?tenant=acme",
+            Map.of("code", "abc123"),
+            "https://om.example.com/mcp");
+
+    assertThat(result).contains("tenant=acme");
+    assertThat(result).contains("code=abc123");
+    assertThat(result).contains("iss=");
   }
 
   @Test

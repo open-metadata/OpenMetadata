@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
 
@@ -80,6 +81,79 @@ class PIIMaskerTest {
     assertEquals("city [MASKED]", maskedTable.getSampleData().getColumns().get(1));
     assertEquals(PIIMasker.MASKED_VALUE, maskedTable.getSampleData().getRows().get(0).get(0));
     assertEquals(PIIMasker.MASKED_VALUE, maskedTable.getSampleData().getRows().get(0).get(1));
+  }
+
+  @Test
+  void maskSampleDataIgnoresSensitiveColumnsTheSampleDoesNotInclude() {
+    String tableFqn = "service.db.schema.orders";
+    Column customer =
+        column(tableFqn, "customer", false)
+            .withChildren(List.of(column(tableFqn + ".customer", "email", true)));
+    List<Column> columns =
+        List.of(
+            column(tableFqn, "id", false),
+            column(tableFqn, "phone", true),
+            column(tableFqn, "amount", false),
+            customer);
+    TableData sampleData =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("amount", "phone")))
+            .withRows(new ArrayList<>(List.of(new ArrayList<>(List.of(100, "555-0100")))));
+
+    TableData masked =
+        PIIMasker.maskSampleData(sampleData, table(tableFqn, columns, false, List.of()), columns);
+
+    assertEquals(List.of("amount", "phone [MASKED]"), masked.getColumns());
+    assertEquals(List.of(100, PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
+  }
+
+  @Test
+  void maskSampleDataMatchesSensitiveColumnsIgnoringCase() {
+    String tableFqn = "service.db.schema.orders";
+    List<Column> columns =
+        List.of(column(tableFqn, "email", true), column(tableFqn, "city", false));
+    TableData sampleData =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("EMAIL", "city")))
+            .withRows(
+                new ArrayList<>(List.of(new ArrayList<>(List.of("alice@example.com", "Paris")))));
+
+    TableData masked =
+        PIIMasker.maskSampleData(sampleData, table(tableFqn, columns, false, List.of()), columns);
+
+    assertEquals(List.of("EMAIL [MASKED]", "city"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE, "Paris"), masked.getRows().getFirst());
+  }
+
+  @Test
+  void maskSampleDataMasksEverySampledColumnOfASensitiveTable() {
+    String tableFqn = "service.db.schema.orders";
+    List<Column> columns = List.of(column(tableFqn, "email", false));
+    Table piiTable = table(tableFqn, columns, true, List.of());
+    TableData wider =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("email", "city")))
+            .withRows(new ArrayList<>(List.of(new ArrayList<>(List.of("secret", "Paris")))));
+
+    TableData masked = PIIMasker.maskSampleData(wider, piiTable, columns);
+
+    assertEquals(List.of("email [MASKED]", "city [MASKED]"), masked.getColumns());
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
+
+    List<Column> moreColumns =
+        List.of(column(tableFqn, "email", false), column(tableFqn, "city", false));
+    TableData narrower =
+        new TableData()
+            .withColumns(new ArrayList<>(List.of("email")))
+            .withRows(new ArrayList<>(List.of(new ArrayList<>(List.of("secret")))));
+
+    masked =
+        PIIMasker.maskSampleData(
+            narrower, table(tableFqn, moreColumns, true, List.of()), moreColumns);
+
+    assertEquals(List.of("email [MASKED]"), masked.getColumns());
+    assertEquals(List.of(PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
   }
 
   @Test
@@ -235,6 +309,54 @@ class PIIMaskerTest {
   }
 
   @Test
+  void getTestCasesTolerateTestCasesWhoseTableWasHardDeleted() {
+    String liveFqn = "service.db.schema.orders";
+    String orphanFqn = "service.db.schema.deleted_orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table live = table(liveFqn, List.of(column(liveFqn, "email", false)), false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+
+    TestCase orphan =
+        new TestCase()
+            .withName("email_not_null")
+            .withDescription("Should not leak sensitive details")
+            .withEntityLink(
+                new MessageParser.EntityLink(Entity.TABLE, orphanFqn, "columns", "email", null)
+                    .getLinkString())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("min").withValue("1")))
+            .withTestCaseResult(new TestCaseResult());
+    TestCase liveCase =
+        new TestCase()
+            .withName("row_count")
+            .withEntityLink(new MessageParser.EntityLink(Entity.TABLE, liveFqn).getLinkString());
+    ResultList<TestCase> testCases = new ResultList<>(new ArrayList<>(List.of(orphan, liveCase)));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, orphanFqn, "owners,tags,columns", Include.ALL))
+          .thenThrow(new EntityNotFoundException("Entity not found: table " + orphanFqn));
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(Entity.TABLE, liveFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(live);
+
+      ResultList<TestCase> masked = PIIMasker.getTestCases(testCases, authorizer, securityContext);
+
+      // The orphan is masked rather than dropped or thrown on, and the rest of the page survives.
+      assertEquals("email_not_null [MASKED]", masked.getData().get(0).getName());
+      assertNull(masked.getData().get(0).getTestCaseResult());
+      assertEquals("row_count", masked.getData().get(1).getName());
+    }
+  }
+
+  @Test
   void getQueriesAndMaskUserHideSensitiveValuesForUnauthorizedUsers() {
     Authorizer authorizer = mock(Authorizer.class);
     SecurityContext securityContext = mock(SecurityContext.class);
@@ -261,6 +383,26 @@ class PIIMaskerTest {
     assertEquals(PIIMasker.MASKED_VALUE, maskedQueries.getData().get(0).getQuery());
     assertEquals("select city from customer", maskedQueries.getData().get(1).getQuery());
     assertEquals(PIIMasker.MASKED_MAIL, maskedUser.getEmail());
+  }
+
+  @Test
+  void getQueriesHandlesNullTagsForUnauthorizedUsers() {
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    EntityReference owner = entityReference(Entity.USER, "owner");
+
+    Query query = new Query().withQuery("select email from customer").withOwners(List.of(owner));
+
+    query.setTags(null);
+
+    ResultList<Query> queries = new ResultList<>(new ArrayList<>(List.of(query)));
+
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false);
+
+    ResultList<Query> result = PIIMasker.getQueries(queries, authorizer, securityContext);
+
+    assertEquals("select email from customer", result.getData().get(0).getQuery());
   }
 
   @Test

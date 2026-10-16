@@ -10,13 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { DataType } from '../../../src/generated/entity/data/table';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { DashboardDataModelClass } from '../../support/entity/DashboardDataModelClass';
+import { DatabaseClass } from '../../support/entity/DatabaseClass';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { FileClass } from '../../support/entity/FileClass';
@@ -28,6 +31,7 @@ import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass'
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { WorksheetClass } from '../../support/entity/WorksheetClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -38,10 +42,12 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 let adminUser: UserClass;
 
-const entityClasses = [
+const allEntityClasses = [
   ApiEndpointClass,
   TableClass,
   StoredProcedureClass,
@@ -58,12 +64,16 @@ const entityClasses = [
   WorksheetClass,
 ];
 
+const entityClasses = pickEntityMatrix(__filename, allEntityClasses, [
+  TableClass,
+]);
+
 let entities: InstanceType<(typeof entityClasses)[number]>[];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -71,8 +81,6 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Entity Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow();
-
     adminUser = new UserClass();
     entities = entityClasses.map((EntityClass) => new EntityClass());
 
@@ -115,13 +123,15 @@ test.describe('Entity Version pages', () => {
           },
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.id,
-              type: 'domain',
-              name: domain.name,
-              description: domain.description,
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.id,
+                type: 'domain',
+                name: domain.name,
+                description: domain.description,
+              },
+            ],
           },
           ...(dataTypeDisplayPath
             ? [
@@ -144,8 +154,6 @@ test.describe('Entity Version pages', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
-
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.delete(apiContext);
 
@@ -168,9 +176,12 @@ test.describe('Entity Version pages', () => {
       const setupVersionText = `v${Number.parseFloat(
         String(setupPatchVersion)
       ).toFixed(1)}`;
-      const versionDetailResponse = page.waitForResponse(
+      const versionDetailResponse = waitForResponseWithStatus(
+        page,
         (response) =>
-          response.url().includes('/versions') && response.status() === 200
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
       );
       await page.locator('[data-testid="version-button"]').click();
       await versionDetailResponse;
@@ -202,13 +213,13 @@ test.describe('Entity Version pages', () => {
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PersonalData.SpecialCategory"]'
           )
         ).toBeVisible();
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PII.Sensitive"]'
           )
         ).toBeVisible();
       });
@@ -238,10 +249,12 @@ test.describe('Entity Version pages', () => {
         const ownerVersionText = `v${Number.parseFloat(
           String(ownerPatchVersion)
         ).toFixed(1)}`;
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/versions/${ownerPatchVersion}`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/versions/${ownerPatchVersion}`),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -276,10 +289,11 @@ test.describe('Entity Version pages', () => {
           await page.locator('#displayName').fill('New Column Name');
 
           await page
-            .locator('.ant-modal-footer [data-testid="save-button"]')
+            .getByTestId('entity-name-modal')
+            .getByTestId('save-button')
             .click();
 
-          await page.locator('.ant-modal-body').waitFor({
+          await page.getByTestId('entity-name-modal').waitFor({
             state: 'detached',
           });
 
@@ -321,10 +335,12 @@ test.describe('Entity Version pages', () => {
         const tierVersionText = `v${Number.parseFloat(
           String(tierPatchVersion)
         ).toFixed(1)}`;
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            response.url().includes(`/versions/${tierPatchVersion}`) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            response.url().includes(`/versions/${tierPatchVersion}`),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -349,11 +365,10 @@ test.describe('Entity Version pages', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="delete-button"]');
 
-        await page.locator('[role="dialog"].ant-modal').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
         const deleteResponse = page.waitForResponse(
           `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
         );
@@ -375,10 +390,12 @@ test.describe('Entity Version pages', () => {
 
         // Soft-delete is UI-only — no patch response to read the version from,
         // so match any version URL and select the first (latest) panel entry.
-        const versionDetailResponse = page.waitForResponse(
+        const versionDetailResponse = waitForResponseWithStatus(
+          page,
           (response) =>
-            /\/versions\/\d+\.\d+/.test(response.url()) &&
-            response.status() === 200
+            response.request().method() === 'GET' &&
+            /\/versions\/\d+\.\d+/.test(response.url()),
+          200
         );
         await page.locator('[data-testid="version-button"]').click();
         await versionDetailResponse;
@@ -401,6 +418,245 @@ test.describe('Entity Version pages', () => {
           page.locator('[data-testid="deleted-badge"]')
         ).toBeVisible();
       });
+    });
+  });
+
+  test.describe('Table historical column values', () => {
+    let freshTable: TableClass;
+    let col0Name: string;
+    let col0OriginalDesc: string;
+    const col0UpdatedDesc =
+      'Updated description to verify historical version view';
+    const col0OriginalDataType = 'decimal(9,1)';
+    const col0UpdatedDataType = 'decimal(15,3)';
+
+    test.beforeAll(
+      'Create table with historical column values',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+
+        freshTable = new TableClass();
+        Object.assign(freshTable.children[0], {
+          dataType: DataType.Decimal,
+          dataTypeDisplay: col0OriginalDataType,
+          precision: 9,
+          scale: 1,
+        });
+        await freshTable.create(apiContext);
+
+        col0Name = freshTable.entity.columns[0].name;
+        col0OriginalDesc = freshTable.children[0].description ?? '';
+
+        expect(
+          col0OriginalDesc,
+          'seed column must have a description for this regression check'
+        ).not.toBe('');
+
+        const { entity: patchedTable } = await freshTable.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'replace',
+              path: '/columns/0/description',
+              value: col0UpdatedDesc,
+            },
+            {
+              op: 'replace',
+              path: '/columns/0/dataTypeDisplay',
+              value: col0UpdatedDataType,
+            },
+            {
+              op: 'replace',
+              path: '/columns/0/precision',
+              value: 15,
+            },
+            {
+              op: 'replace',
+              path: '/columns/0/scale',
+              value: 3,
+            },
+          ],
+        });
+
+        expect(patchedTable.columns[0]).toMatchObject({
+          dataType: DataType.Decimal,
+          dataTypeDisplay: col0UpdatedDataType,
+          description: col0UpdatedDesc,
+          precision: 15,
+          scale: 3,
+        });
+
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await freshTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('Table - should show historical column metadata in version view', async ({
+      page,
+    }) => {
+      test.slow();
+
+      await freshTable.visitEntityPage(page);
+
+      const versionListResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page
+        .locator('[data-testid="version-selector-v0.1"]')
+        .waitFor({ state: 'visible' });
+
+      const versionDetailResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions/0.1'),
+        200
+      );
+      await page.locator('[data-testid="version-selector-v0.1"]').click();
+      await versionDetailResponse;
+
+      await test.step('should show the historical column description', async () => {
+        await expect(
+          page.locator(
+            `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+          )
+        ).toContainText(col0OriginalDesc);
+
+        await expect(
+          page.locator(
+            `[data-row-key$="${col0Name}"] [data-testid="column-description-cell"] [data-testid="viewer-container"]`
+          )
+        ).not.toContainText(col0UpdatedDesc);
+      });
+
+      await test.step('should show the historical data type after precision and scale change', async () => {
+        const historicalColumnRow = page.locator(
+          `[data-row-key$="${col0Name}"]`
+        );
+
+        await expect(historicalColumnRow).toContainText(col0OriginalDataType);
+        await expect(historicalColumnRow).not.toContainText(
+          col0UpdatedDataType
+        );
+      });
+    });
+  });
+
+  test.describe('Version drawer close should restore default tab', () => {
+    let table: TableClass;
+    let database: DatabaseClass;
+    let databaseSchema: DatabaseSchemaClass;
+
+    test.beforeAll('Setup entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      table = new TableClass();
+      database = new DatabaseClass();
+      databaseSchema = new DatabaseSchemaClass();
+      await table.create(apiContext);
+      await database.create(apiContext);
+      await databaseSchema.create(apiContext);
+      await afterAction();
+    });
+
+    test.afterAll('Cleanup entities', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.delete(apiContext);
+      await database.delete(apiContext);
+      await databaseSchema.delete(apiContext);
+      await afterAction();
+    });
+
+    test('Table - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await table.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+
+    test('Database - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await database.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
+    });
+
+    test('DatabaseSchema - closing version drawer navigates to entity page without tab', async ({
+      page,
+    }) => {
+      await databaseSchema.visitEntityPage(page);
+      const entityPathname = new URL(page.url()).pathname;
+      const escapedPathname = entityPathname.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const versionListResponse = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          response.url().includes('/versions'),
+        200
+      );
+      await page.locator('[data-testid="version-button"]').click();
+      await versionListResponse;
+
+      await page.locator('[data-testid="version-button"]').click();
+
+      await expect(page).toHaveURL(
+        new RegExp(`^[^?]*${escapedPathname}(\\?.*)?$`)
+      );
     });
   });
 });

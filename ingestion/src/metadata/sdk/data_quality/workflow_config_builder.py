@@ -12,7 +12,7 @@
 """Builder for creating OpenMetadata workflow configurations for test suite execution."""
 # pyright: reportOptionalMemberAccess=false
 
-from typing import Any, List, Optional, Type, TypeVar, cast  # noqa: UP035
+from typing import Any, TypeVar, cast
 
 from typing_extensions import Self
 
@@ -50,8 +50,36 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.entity_reference import require_entity_reference_id
 
 T = TypeVar("T", bound=BaseModel)
+
+# PasswordEntityMasker.PASSWORD_MASK. The API substitutes this for every secret field
+# when the caller is not a bot (Authorizer.shouldMaskPasswords == !subjectContext.isBot()).
+SERVER_PASSWORD_MASK = "*" * 9
+
+
+def _find_masked_fields(value: Any, path: str = "") -> list[str]:
+    """Collect dotted paths of connection fields holding the server's password mask.
+
+    Walks the dumped connection rather than the model so that `secret:` references are
+    left untouched: resolving one would mean a live call to the secrets manager, which
+    a validation pass has no business making.
+    """
+    if isinstance(value, str):
+        return [path] if value == SERVER_PASSWORD_MASK else []
+    if isinstance(value, dict):
+        return [
+            masked
+            for key, child in value.items()
+            for masked in _find_masked_fields(child, f"{path}.{key}" if path else str(key))
+        ]
+    if isinstance(value, list):
+        return [
+            masked for index, child in enumerate(value) for masked in _find_masked_fields(child, f"{path}[{index}]")
+        ]
+    return []
 
 
 class WorkflowConfigBuilder:
@@ -80,9 +108,9 @@ class WorkflowConfigBuilder:
         """
         self.client: OMeta[Any, Any] = client
 
-        self.table: Optional[Table] = None  # noqa: UP045
-        self.service_connection: Optional[DatabaseConnection] = None  # noqa: UP045
-        self.test_definitions: List[TestCaseDefinition] = []  # noqa: UP006
+        self.table: Table | None = None
+        self.service_connection: DatabaseConnection | None = None
+        self.test_definitions: list[TestCaseDefinition] = []
         self.force_test_update: bool = True
         self.log_level: LogLevels = LogLevels.INFO
         self.raise_on_error: bool = False
@@ -100,7 +128,7 @@ class WorkflowConfigBuilder:
         self.test_definitions.append(test_definition)
         return self
 
-    def add_test_definitions(self, test_definitions: List[TestCaseDefinition]) -> Self:  # noqa: UP006
+    def add_test_definitions(self, test_definitions: list[TestCaseDefinition]) -> Self:
         """Add test definitions to the workflow configuration.
 
         Args:
@@ -125,11 +153,33 @@ class WorkflowConfigBuilder:
             ],
         )
 
-        service_id = cast(EntityReference, self.table.service).id  # noqa: TC006
+        service_id = require_entity_reference_id(cast(EntityReference, self.table.service), "Table service")  # noqa: TC006
         service = self._safe_get_by_id(DatabaseService, service_id)
 
         self.service_connection = cast(DatabaseConnection, service.connection)  # noqa: TC006
+        self._raise_if_credentials_masked(model_str(service.name))
         return self
+
+    def _raise_if_credentials_masked(self, service_name: str) -> None:
+        """Fail here rather than letting a masked credential reach the source.
+
+        A workflow built from masked credentials fails much later as an authentication
+        error from the source itself, which points at the source instead of at the token
+        that caused it.
+        """
+        if self.service_connection is None:
+            return
+
+        masked_fields = _find_masked_fields(self.service_connection.model_dump())
+        if not masked_fields:
+            return
+
+        raise ValueError(
+            f"Connection credentials for service '{service_name}' came back masked "
+            f"({', '.join(masked_fields)}). OpenMetadata returns real credentials only to bot "
+            "accounts, so authenticate with a bot token (for example ingestion-bot) rather than "
+            "a personal access token."
+        )
 
     def with_force_test_update(self, force_test_update: bool) -> Self:
         self.force_test_update = force_test_update
@@ -217,7 +267,7 @@ class WorkflowConfigBuilder:
         return config  # noqa: RET504
 
     @staticmethod
-    def _convert_ometa_exception(entity: Type[T], identifier: str | Uuid, e: Exception) -> Exception:  # noqa: UP006
+    def _convert_ometa_exception(entity: type[T], identifier: str | Uuid, e: Exception) -> Exception:
         """Handle OpenMetadata exceptions."""
         if not isinstance(e, APIError):
             return e
@@ -234,7 +284,7 @@ class WorkflowConfigBuilder:
 
         return e
 
-    def _safe_get_by_name(self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None) -> T:  # noqa: UP006, UP045
+    def _safe_get_by_name(self, entity_type: type[T], fqn: str, fields: list[str] | None = None) -> T:
         """Safely fetch entity by name with exception handling.
 
         Args:
@@ -260,7 +310,7 @@ class WorkflowConfigBuilder:
         except Exception as exc:
             raise self._convert_ometa_exception(entity_type, fqn, exc)  # noqa: B904
 
-    def _safe_get_by_id(self, entity_type: Type[T], entity_id: str | Uuid) -> T:  # noqa: UP006
+    def _safe_get_by_id(self, entity_type: type[T], entity_id: str | Uuid) -> T:
         """Safely fetch entity by ID with exception handling.
 
         Args:

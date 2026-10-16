@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Progress } from 'antd';
+import { ProgressBar } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';
+import { useDataInsightChartColors } from '../../hooks/insights/useDataInsightChartColors';
 import CustomStatistic from './CustomStatistic';
 
 interface DataInsightProgressBarProps {
@@ -32,6 +33,19 @@ interface DataInsightProgressBarProps {
   showProgress?: boolean;
 }
 
+const renderProgressTarget = (target?: number, suffix?: string) => (
+  <>
+    {target ? (
+      <span className="data-insight-kpi-target" style={{ width: `${target}%` }}>
+        <span className="target-text">
+          {round(target, 2)}
+          {suffix}
+        </span>
+      </span>
+    ) : null}
+  </>
+);
+
 const DataInsightProgressBar = ({
   width,
   progress,
@@ -44,6 +58,8 @@ const DataInsightProgressBar = ({
   duration,
   showProgress = true,
 }: DataInsightProgressBarProps) => {
+  const { progress: progressColor } = useDataInsightChartColors();
+
   return (
     <div
       className={classNames(className)}
@@ -58,31 +74,15 @@ const DataInsightProgressBar = ({
 
       {showProgress && (
         <div className={classNames('flex', { 'm-t-sm': Boolean(target) })}>
-          <Progress
-            className="data-insight-progress-bar"
-            format={() => (
-              <>
-                {target ? (
-                  <span
-                    className="data-insight-kpi-target"
-                    style={{ width: `${target}%` }}>
-                    <span className="target-text">
-                      {round(target, 2)}
-                      {suffix}
-                    </span>
-                  </span>
-                ) : null}
-              </>
-            )}
-            percent={progress}
-            strokeColor="#B3D4F4"
-          />
-          {showSuccessInfo && progress >= 100 && (
-            <Icon
-              className="align-middle m-l-xs"
-              component={IconSuccessBadge}
-              style={{ fontSize: '16px' }}
+          <div className="data-insight-progress-bar tw:relative tw:w-full">
+            <ProgressBar
+              color={progressColor}
+              value={Math.min(100, Math.max(0, progress || 0))}
             />
+            {renderProgressTarget(target, suffix)}
+          </div>
+          {showSuccessInfo && progress >= 100 && (
+            <IconSuccessBadge className="tw:align-middle tw:ml-2 tw:size-4 tw:shrink-0" />
           )}
         </div>
       )}

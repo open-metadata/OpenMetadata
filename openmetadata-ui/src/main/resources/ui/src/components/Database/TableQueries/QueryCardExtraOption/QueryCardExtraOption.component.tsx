@@ -10,7 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, MenuProps, Space, Tag, Tooltip } from 'antd';
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
@@ -22,16 +30,17 @@ import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.s
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
 import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
+import { QueryVoteType } from '../../../../interface/entity/vote.interface';
 import { deleteQuery } from '../../../../rest/queryAPI';
-import { pluralize } from '../../../../utils/CommonUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import queryClassBase from '../../../../utils/QueryClassBase';
 import { getQueryPath } from '../../../../utils/RouterUtils';
+import { pluralize } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
-import { QueryVoteType } from '../TableQueries.interface';
 import './query-card-extra-option.style.less';
 import { QueryCardExtraOptionProps } from './QueryCardExtraOption.interface';
 
@@ -42,7 +51,20 @@ const QueryCardExtraOption = ({
   onEditClick,
   afterDeleteAction,
 }: QueryCardExtraOptionProps) => {
-  const { EditAll, EditQueries, Delete } = permission;
+  // Derive named flags instead of destructuring raw EditAll off `permission`.
+  // EditQueries has no dedicated canEditX flag, so `can(Operation.X)` is the
+  // sanctioned escape hatch. This is NOT the same computation as the old raw
+  // `EditAll || EditQueries` OR — it's the prioritized (field-over-EditAll)
+  // derivation: an explicit EditQueries value, when present, wins outright
+  // over EditAll (explicit-deny-wins when EditQueries is false, same
+  // precedent as canViewBasic, Task 6 Finding 1); EditAll is only a fallback
+  // for when the EditQueries key is absent. See the file's tests for the
+  // scenario where this diverges from the old raw OR.
+  const { canDelete, can } = useMemo(
+    () => getDerivedPermissionFlags(permission),
+    [permission]
+  );
+  const canEditQuery = can(Operation.EditQueries);
   const { fqn: datasetFQN } = useFqn();
   const navigate = useNavigate();
   const QueryHeaderButton = queryClassBase.getQueryHeaderActionsButtons();
@@ -72,33 +94,23 @@ const QueryCardExtraOption = ({
   }, [query]);
 
   const dropdownItems = useMemo(() => {
-    const items: MenuProps['items'] = [
+    return [
       {
         key: 'edit-query',
         label: t('label.edit'),
-        icon: (
-          <EditIcon
-            height={16}
-            opacity={EditAll || EditQueries ? 1 : 0.5}
-            width={16}
-          />
-        ),
-        disabled: !(EditAll || EditQueries),
-        onClick: () => onEditClick(true),
-        title: EditAll || EditQueries ? undefined : t(NO_PERMISSION_FOR_ACTION),
+        icon: EditIcon,
+        disabled: !canEditQuery,
+        onAction: () => onEditClick(true),
       },
       {
         key: 'delete-query',
         label: t('label.delete'),
-        icon: <DeleteIcon height={16} opacity={Delete ? 1 : 0.5} width={16} />,
-        disabled: !Delete,
-        onClick: () => setShowDeleteModal(true),
-        title: Delete ? undefined : t(NO_PERMISSION_FOR_ACTION),
+        icon: DeleteIcon,
+        disabled: !canDelete,
+        onAction: () => setShowDeleteModal(true),
       },
     ];
-
-    return items;
-  }, [permission]);
+  }, [canEditQuery, canDelete]);
 
   const queryLine = useMemo(() => {
     const lineCount = split(query.query, '\n').length;
@@ -140,41 +152,44 @@ const QueryCardExtraOption = ({
   };
 
   return (
-    <Space
-      className="query-card-extra-option"
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal query-card-extra-option"
       data-testid="extra-option-container"
-      size={8}>
+      gap={2}
+      itemClassName="layout-space-item">
       {QueryHeaderButton && (
         <QueryHeaderButton onClickHandler={onExpandClick} />
       )}
 
-      <Tag className="query-lines" data-testid="query-line">
+      <Badge color="gray" data-testid="query-line" size="sm">
         {queryLine}
-      </Tag>
+      </Badge>
 
-      <Tooltip title={t('label.up-vote')}>
+      <Tooltip arrow title={t('label.up-vote')}>
         <Button
-          className="vote-button"
+          color="secondary"
           data-testid="up-vote-btn"
-          icon={
+          iconLeading={
             voteStatus === QueryVoteType.votedUp ? (
               <ThumbsUpFilled className="text-success" height={15} width={15} />
             ) : (
               <ThumbsUpOutline height={15} width={15} />
             )
           }
-          loading={loading === QueryVoteType.votedUp}
-          size="small"
-          onClick={() => handleVoteChange(QueryVoteType.votedUp)}>
+          isLoading={loading === QueryVoteType.votedUp}
+          size="xs"
+          onPress={() => handleVoteChange(QueryVoteType.votedUp)}>
           {query.votes?.upVotes || 0}
         </Button>
       </Tooltip>
 
-      <Tooltip title={t('label.down-vote')}>
+      <Tooltip arrow title={t('label.down-vote')}>
         <Button
-          className="vote-button"
+          color="secondary"
           data-testid="down-vote-btn"
-          icon={
+          iconLeading={
             voteStatus === QueryVoteType.votedDown ? (
               <ThumbsUpFilled
                 className="rotate-inverse text-warning-7"
@@ -189,37 +204,46 @@ const QueryCardExtraOption = ({
               />
             )
           }
-          loading={loading === QueryVoteType.votedDown}
-          size="small"
-          onClick={() => handleVoteChange(QueryVoteType.votedDown)}>
+          isLoading={loading === QueryVoteType.votedDown}
+          size="xs"
+          onPress={() => handleVoteChange(QueryVoteType.votedDown)}>
           {query.votes?.downVotes || 0}
         </Button>
       </Tooltip>
 
-      <Dropdown
-        destroyPopupOnHide
-        arrow={{ pointAtCenter: true }}
-        menu={{
-          items: dropdownItems,
-          style: {
-            minWidth: '120px',
-          },
-        }}
-        placement="bottomRight"
-        trigger={['click']}>
-        <Tooltip
-          title={t('label.manage-entity', {
+      <Dropdown.Root>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="query-btn"
+          icon={IconDropdown}
+          size="xs"
+          tooltip={t('label.manage-entity', {
             entity: t('label.query'),
-          })}>
-          <Button
-            className="flex-center button-size"
-            data-testid="query-btn"
-            icon={<IconDropdown />}
-            size="small"
-            type="text"
-          />
-        </Tooltip>
-      </Dropdown>
+          })}
+        />
+        <Dropdown.Popover className="tw:w-auto tw:min-w-30">
+          <Dropdown.Menu
+            aria-label={t('label.manage-entity', {
+              entity: t('label.query'),
+            })}
+            disabledKeys={dropdownItems
+              .filter((item) => item.disabled)
+              .map((item) => item.key)}
+            selectionMode="none">
+            {dropdownItems.map((item) => (
+              <Dropdown.Item
+                data-testid={item.key}
+                icon={item.icon}
+                id={item.key}
+                key={item.key}
+                textValue={item.label}
+                onAction={item.onAction}>
+                {item.label}
+              </Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
       <ConfirmationModal
         bodyText={t('message.delete-entity-permanently', {
           entityType: t('label.query'),
@@ -232,7 +256,7 @@ const QueryCardExtraOption = ({
         onCancel={() => setShowDeleteModal(false)}
         onConfirm={onDeleteClick}
       />
-    </Space>
+    </Box>
   );
 };
 

@@ -34,7 +34,7 @@ jest.mock('../../../components/common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader">Loader</div>)
 );
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('data'),
 }));
 
@@ -42,13 +42,16 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
-  ...jest.requireActual('../../../utils/StringsUtils'),
+jest.mock('../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityUtils'),
+jest.mock('../../../utils/EntitySearchUtils', () => ({
+  ...jest.requireActual('../../../utils/EntitySearchUtils'),
   highlightSearchText: jest.fn((text) => text),
 }));
 
@@ -77,10 +80,10 @@ describe('Test Add attribute modal', () => {
     render(<AddAttributeModal {...mockProps} />);
 
     const container = await screen.findByTestId('modal-container');
-    const title = await screen.findByTestId('modal-title');
+    const title = await screen.findByTestId('dialog-title');
 
-    const sumbitButton = await screen.findByText('Submit');
-    const cancelButton = await screen.findByText('Cancel');
+    const sumbitButton = await screen.findByText('label.save');
+    const cancelButton = await screen.findByText('label.cancel');
 
     expect(container).toBeInTheDocument();
 
@@ -102,7 +105,7 @@ describe('Test Add attribute modal', () => {
   it('Submit button should work', async () => {
     render(<AddAttributeModal {...mockProps} />);
 
-    const sumbitButton = await screen.findByText('Submit');
+    const sumbitButton = await screen.findByText('label.save');
 
     expect(sumbitButton).toBeInTheDocument();
 
@@ -116,7 +119,7 @@ describe('Test Add attribute modal', () => {
   it('Cancel button should work', async () => {
     render(<AddAttributeModal {...mockProps} />);
 
-    const cancelButton = await screen.findByText('Cancel');
+    const cancelButton = await screen.findByText('label.cancel');
 
     expect(cancelButton).toBeInTheDocument();
 

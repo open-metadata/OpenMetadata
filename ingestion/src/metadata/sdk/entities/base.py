@@ -2,20 +2,14 @@
 
 from __future__ import annotations
 
+import builtins  # noqa: TC003
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import (  # noqa: UP035
+from typing import (
     Any,
-    Callable,
     ClassVar,
-    Dict,
     Generic,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Type,
     TypeVar,
-    Union,
     cast,
 )
 
@@ -33,8 +27,8 @@ class EntityList(Generic[TEntity]):
     """Simple typed container for paginated responses."""
 
     entities: Sequence[TEntity]
-    after: Optional[str] = None  # noqa: UP045
-    before: Optional[str] = None  # noqa: UP045
+    after: str | None = None
+    before: str | None = None
 
 
 @dataclass
@@ -42,7 +36,7 @@ class CsvExportOperation(Generic[TEntity]):
     """Stateful helper that performs synchronous or async CSV exports."""
 
     client: OMetaClient
-    entity: Type[TEntity]  # noqa: UP006
+    entity: type[TEntity]
     name: str
     async_enabled: bool = field(default=False, init=False)
 
@@ -62,13 +56,61 @@ class CsvExportOperation(Generic[TEntity]):
 
 
 @dataclass
+class AsyncJobResponse:
+    """Response shape for server-side async operations.
+
+    Returned with HTTP 202 Accepted by endpoints such as ``PUT /restore?async=true``
+    (issue #4003). The ``job_id`` correlates with WebSocket notifications on the
+    ``restoreEntityChannel`` channel emitted when the work completes.
+    """
+
+    job_id: str
+    message: str | None = None
+
+    @classmethod
+    def from_response(cls, payload: Any) -> "AsyncJobResponse":  # noqa: UP037
+        if isinstance(payload, AsyncJobResponse):
+            return payload
+        if isinstance(payload, dict):
+            job_id = payload.get("jobId")
+            if not job_id:
+                raise ValueError(f"Async response is missing a non-empty jobId: {payload!r}")
+            return cls(job_id=str(job_id), message=payload.get("message"))
+        raise TypeError(f"Cannot coerce {type(payload).__name__} into AsyncJobResponse")
+
+
+@dataclass
+class RestoreOperation(Generic[TEntity]):
+    """Fluent restore builder with optional server-side async dispatch.
+
+    Mirrors the Java SDK's ``Tables.find(id).restore().async().execute()`` style.
+    ``execute()`` runs the synchronous restore and returns the restored entity;
+    ``with_async()`` switches to the server-side async path that returns an
+    :class:`AsyncJobResponse` with a job id (issue #4003).
+    """
+
+    entity_cls: Any  # the BaseEntity subclass that owns this operation
+    entity_id: str
+    async_enabled: bool = field(default=False, init=False)
+
+    def with_async(self) -> "RestoreOperation[TEntity]":  # noqa: UP037
+        self.async_enabled = True
+        return self
+
+    def execute(self) -> Any:
+        if self.async_enabled:
+            return self.entity_cls._restore_server_async(self.entity_id)
+        return self.entity_cls._restore_sync(self.entity_id)
+
+
+@dataclass
 class CsvImportOperation(Generic[TEntity]):
     """Stateful helper for CSV import operations."""
 
     client: OMetaClient
-    entity: Type[TEntity]  # noqa: UP006
+    entity: type[TEntity]
     name: str
-    csv_data: Optional[str] = None  # noqa: UP045
+    csv_data: str | None = None
     dry_run: bool = False
     async_enabled: bool = field(default=False, init=False)
 
@@ -109,7 +151,7 @@ class CsvImportOperation(Generic[TEntity]):
 class BaseEntity(Generic[TEntity, TCreate]):
     """Typed facade over the ingestion `OpenMetadata` client."""
 
-    _default_client: ClassVar[Optional[OMetaClient]] = None  # noqa: UP045
+    _default_client: ClassVar[OMetaClient | None] = None
 
     # ------------------------------------------------------------------
     # Client handling
@@ -121,12 +163,12 @@ class BaseEntity(Generic[TEntity, TCreate]):
         return cls._default_client
 
     @classmethod
-    def use_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:  # noqa: UP007
+    def use_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Register a default client for SDK calls."""
         cls._default_client = client.ometa if isinstance(client, OpenMetadata) else client
 
     @classmethod
-    def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:  # noqa: UP007
+    def set_default_client(cls, client: OpenMetadata | OMetaClient) -> None:
         """Backward-compatible alias used across legacy tests/examples."""
         cls.use_client(client)
 
@@ -134,7 +176,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     # Entity metadata
     # ------------------------------------------------------------------
     @classmethod
-    def entity_type(cls) -> Type[TEntity]:  # noqa: UP006
+    def entity_type(cls) -> type[TEntity]:
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -151,8 +193,8 @@ class BaseEntity(Generic[TEntity, TCreate]):
         cls,
         entity_id: UuidLike,
         *,
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        nullable: Optional[bool] = None,  # noqa: UP045
+        fields: Sequence[str] | None = None,
+        nullable: bool | None = None,
     ) -> TEntity:
         """Retrieve an entity by its unique identifier."""
         client = cls._get_client()
@@ -175,10 +217,10 @@ class BaseEntity(Generic[TEntity, TCreate]):
     @classmethod
     def retrieve_by_name(
         cls,
-        fqn: Union[str, FullyQualifiedEntityName],  # noqa: UP007
+        fqn: str | FullyQualifiedEntityName,
         *,
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        nullable: Optional[bool] = None,  # noqa: UP045
+        fields: Sequence[str] | None = None,
+        nullable: bool | None = None,
     ) -> TEntity:
         """Retrieve an entity by its fully-qualified name."""
         client = cls._get_client()
@@ -232,10 +274,10 @@ class BaseEntity(Generic[TEntity, TCreate]):
         cls,
         *,
         limit: int = 10,
-        after: Optional[str] = None,  # noqa: UP045
-        before: Optional[str] = None,  # noqa: UP045
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        filters: Optional[Mapping[str, str]] = None,  # noqa: UP045
+        after: str | None = None,
+        before: str | None = None,
+        fields: Sequence[str] | None = None,
+        filters: Mapping[str, str] | None = None,
     ) -> EntityList[TEntity]:
         """Fetch a single page of entities from OpenMetadata."""
         client = cls._get_client()
@@ -260,13 +302,13 @@ class BaseEntity(Generic[TEntity, TCreate]):
         cls,
         *,
         batch_size: int = 100,
-        fields: Optional[Sequence[str]] = None,  # noqa: UP045
-        filters: Optional[Mapping[str, str]] = None,  # noqa: UP045
-    ) -> List[TEntity]:  # noqa: UP006
+        fields: Sequence[str] | None = None,
+        filters: Mapping[str, str] | None = None,
+    ) -> builtins.list[TEntity]:
         """Iterate through all entities by repeatedly calling :meth:`list`."""
 
-        results: List[TEntity] = []  # noqa: UP006
-        after: Optional[str] = None  # noqa: UP045
+        results: list[TEntity] = []
+        after: str | None = None
         while True:
             page = cls.list(
                 limit=batch_size,
@@ -388,8 +430,12 @@ class BaseEntity(Generic[TEntity, TCreate]):
 
     @classmethod
     def restore(cls, entity_id: UuidLike) -> TEntity:
-        """Restore a soft-deleted entity."""
+        """Restore a soft-deleted entity (synchronous)."""
 
+        return cls._restore_sync(entity_id)
+
+    @classmethod
+    def _restore_sync(cls, entity_id: UuidLike) -> TEntity:
         client = cls._get_client()
         rest_client = cls._get_rest_client(client)
         endpoint = cls._get_endpoint_path(client)
@@ -400,10 +446,54 @@ class BaseEntity(Generic[TEntity, TCreate]):
         return cls._coerce_entity(response)
 
     @classmethod
+    def restore_async(cls, entity_id: UuidLike) -> "AsyncJobResponse":  # noqa: UP037
+        """Trigger a server-side async restore.
+
+        Issues ``PUT /restore?async=true`` and returns the 202 Accepted payload
+        containing the job id. Use this for hierarchies large enough that the
+        synchronous response would exceed proxy / ALB idle timeouts (issue #4003).
+        """
+
+        return cls._restore_server_async(entity_id)
+
+    @classmethod
+    def _restore_server_async(cls, entity_id: UuidLike) -> "AsyncJobResponse":  # noqa: UP037
+        client = cls._get_client()
+        rest_client = cls._get_rest_client(client)
+        endpoint = cls._get_endpoint_path(client)
+        response = rest_client.put(
+            f"{endpoint}/restore?async=true",
+            json={"id": cls._stringify_identifier(entity_id)},
+        )
+        try:
+            return AsyncJobResponse.from_response(response)
+        except ValueError as missing_job_id:
+            # Defensive guard for older servers that don't honor ?async=true (or any
+            # future case where the resource short-circuits with a 200 + entity payload).
+            # Without this, the generic AsyncJobResponse jobId-missing error would be
+            # confusing.
+            raise ValueError(
+                f"Server did not return an async job for {endpoint}/restore. "
+                f"The server may be older than the async-restore release."
+            ) from missing_job_id
+
+    @classmethod
+    def restore_request(cls, entity_id: UuidLike) -> "RestoreOperation[TEntity]":  # noqa: UP037
+        """Return a fluent restore builder.
+
+        Examples::
+
+            restored = Table.restore_request(table_id).execute()
+            job = Table.restore_request(table_id).with_async().execute()
+        """
+
+        return RestoreOperation(entity_cls=cls, entity_id=cls._stringify_identifier(entity_id))
+
+    @classmethod
     def update_custom_properties(cls, identifier: UuidLike):
         """Convenience accessor for custom property updates by entity id."""
 
-        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel
             CustomProperties,
         )
 
@@ -415,7 +505,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     def update_custom_properties_by_name(cls, fqn: str):
         """Convenience accessor for custom property updates by entity FQN."""
 
-        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel
             CustomProperties,
         )
 
@@ -434,7 +524,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, BaseModel):
             return cast(TEntity, payload)  # noqa: TC006
         if isinstance(payload, dict):
-            typed_payload = cast(Dict[str, Any], payload)  # noqa: TC006, UP006
+            typed_payload = cast(dict[str, Any], payload)  # noqa: TC006
             model_validate = getattr(entity_cls, "model_validate", None)
             if not callable(model_validate):
                 raise TypeError("Entity type does not support model validation")
@@ -446,7 +536,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, dict):
             return cast(JsonDict, payload)  # noqa: TC006
         if isinstance(payload, BaseModel):
-            json_result: Dict[str, Any] = payload.model_dump(mode="json")  # noqa: UP006
+            json_result: dict[str, Any] = payload.model_dump(mode="json")
             return json_result
         raise TypeError("Expected mapping-compatible payload")
 
@@ -477,7 +567,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
     # EntityReference helper
     # ------------------------------------------------------------------
     @staticmethod
-    def to_entity_reference(entity: Any) -> Dict[str, Any]:  # noqa: UP006
+    def to_entity_reference(entity: Any) -> dict[str, Any]:
         """Convert an entity to an EntityReference dict.
 
         This is useful when setting owners, domains, or other reference fields
@@ -509,7 +599,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if entity_id is None:
             raise ValueError("Entity must have an 'id' attribute")
 
-        ref: Dict[str, Any] = {  # noqa: UP006
+        ref: dict[str, Any] = {
             "id": BaseEntity._stringify_identifier(entity_id),
             "type": entity_type or entity.__class__.__name__.lower(),
         }

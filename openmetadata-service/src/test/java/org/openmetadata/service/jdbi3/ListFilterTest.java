@@ -1,11 +1,18 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
   @Test
@@ -17,6 +24,90 @@ class ListFilterTest {
     assertEquals("a''b''c\\_d", ListFilter.escape("a'b'c_d"));
     assertEquals("a''b\\_c\\_d", ListFilter.escape("a'b_c_d"));
     assertEquals("a\\_b\\_c\\_d", ListFilter.escape("a_b_c_d"));
+  }
+
+  // A bound LIKE value keeps apostrophes as typed and escapes only the LIKE metacharacters.
+  @Test
+  void test_escapeLikeBindValue() {
+    assertEquals("customer's", ListFilter.escapeLikeBindValue("customer's"));
+    assertEquals("100\\%", ListFilter.escapeLikeBindValue("100%"));
+    assertEquals("a\\_b", ListFilter.escapeLikeBindValue("a_b"));
+    assertEquals("c:\\\\dir", ListFilter.escapeLikeBindValue("c:\\dir"));
+  }
+
+  @Test
+  void test_escapeBackslashAndApostrophe_passesThroughPlainStrings() {
+    assertEquals("abcd", ListFilter.escapeBackslashAndApostrophe("abcd"));
+    assertEquals("", ListFilter.escapeBackslashAndApostrophe(""));
+  }
+
+  @Test
+  void test_escapeBackslashAndApostrophe_doublesApostrophes() {
+    // ' → '' for the SQL string-literal layer
+    assertEquals("a''b", ListFilter.escapeBackslashAndApostrophe("a'b"));
+    assertEquals("''", ListFilter.escapeBackslashAndApostrophe("'"));
+  }
+
+  @Test
+  void test_escapeBackslashAndApostrophe_doublesBackslashesBeforeApostrophes() {
+    // \ → \\ for the SQL string-literal layer (MySQL default + Postgres legacy mode);
+    // backslash escape must run BEFORE apostrophe escape so the \\ we just inserted
+    // is not itself re-doubled by a subsequent pass.
+    assertEquals("a\\\\b", ListFilter.escapeBackslashAndApostrophe("a\\b"));
+    assertEquals("\\\\\\\\", ListFilter.escapeBackslashAndApostrophe("\\\\"));
+    assertEquals("a\\\\''b", ListFilter.escapeBackslashAndApostrophe("a\\'b"));
+  }
+
+  @Test
+  void test_escape_alsoDoublesBackslashesViaBackslashAndApostrophe() {
+    // Regression guard: escape() composes through escapeBackslashAndApostrophe, so a
+    // literal backslash in the input must come out doubled (defence-in-depth against
+    // SQL string-literal escape interpretation, on top of the existing LIKE underscore
+    // escape).
+    assertEquals("a\\\\b", ListFilter.escape("a\\b"));
+    assertEquals("a\\\\b\\_c", ListFilter.escape("a\\b_c"));
+  }
+
+  @Test
+  void test_escapeForMySqlRegexReplacement_passesThroughPlainStrings() {
+    assertEquals("abcd", ListFilter.escapeForMySqlRegexReplacement("abcd"));
+    assertEquals("", ListFilter.escapeForMySqlRegexReplacement(""));
+  }
+
+  @Test
+  void test_escapeForMySqlRegexReplacement_doublesApostrophesOnce() {
+    // Apostrophes only matter for the SQL string-literal layer — REGEXP_REPLACE's
+    // replacement context doesn't reserve them. Expect a single ' → '' doubling.
+    assertEquals("a''b", ListFilter.escapeForMySqlRegexReplacement("a'b"));
+  }
+
+  @Test
+  void test_escapeForMySqlRegexReplacement_quadruplesBackslashes() {
+    // One input backslash needs to round-trip to one literal backslash in the
+    // REGEXP_REPLACE output, so it must be FOUR backslashes in the emitted SQL text:
+    //   SQL text  : \\\\  (4 backslashes)
+    //   SQL parser: \\    (2 backslashes — '\\' is the SQL string-literal escape for '\')
+    //   regex eng : \     (1 backslash — '\\' in the regex replacement is a literal '\')
+    // Without the regex-replacement escape, the regex engine would interpret the lone
+    // remaining '\' as the start of an escape/backref sequence.
+    assertEquals("a\\\\\\\\b", ListFilter.escapeForMySqlRegexReplacement("a\\b"));
+    assertEquals("\\\\\\\\", ListFilter.escapeForMySqlRegexReplacement("\\"));
+  }
+
+  @Test
+  void test_escapeForMySqlRegexReplacement_protectsBackreferenceLookalikes() {
+    // Without the extra regex-replacement layer, "\1" in the input would survive as "\1"
+    // in the regex replacement and be interpreted as a backreference to capture group 1
+    // (REGEXP_REPLACE doesn't have groups when called like updateFqn does, but the
+    // behaviour is implementation-defined — usually empty-string substitution). After
+    // the double escape it survives as a literal "\1" in the output.
+    assertEquals("\\\\\\\\1bar", ListFilter.escapeForMySqlRegexReplacement("\\1bar"));
+  }
+
+  @Test
+  void test_escapeForMySqlRegexReplacement_combinesBackslashAndApostrophe() {
+    // Backslashes get four-x'd, apostrophes double once.
+    assertEquals("a\\\\\\\\''b", ListFilter.escapeForMySqlRegexReplacement("a\\'b"));
   }
 
   @Test
@@ -47,6 +138,162 @@ class ListFilterTest {
     filter.addQueryParam("testCaseStatus", "Failed");
     condition = filter.getCondition("foo");
     assertEquals("WHERE foo.deleted = FALSE AND status = :testCaseStatus", condition);
+  }
+
+  @Test
+  void taskConditions_bindValuesInsteadOfInliningThemInSql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("taskType", "task-type");
+    filter.addQueryParam("taskFormType", "form-type");
+    filter.addQueryParam("taskFormCategory", "follow-up");
+    filter.addQueryParam("taskPriority", "high");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("type = :taskType"), condition);
+    assertTrue(condition.contains("taskType = :taskFormType"), condition);
+    assertTrue(condition.contains("taskCategory = :taskFormCategory"), condition);
+    assertTrue(condition.contains("priority = :taskPriority"), condition);
+    assertFalse(condition.contains("follow-up"), condition);
+    assertEquals("task-type", filter.getQueryParam("taskType"));
+    assertEquals("form-type", filter.getQueryParam("taskFormType"));
+    assertEquals("follow-up", filter.getQueryParam("taskFormCategory"));
+    assertEquals("high", filter.getQueryParam("taskPriority"));
+  }
+
+  @Test
+  void getCondition_neverFiltersMemoriesByShareConfigVisibility() {
+    // The search reindex reads memories through this filter, and a user's own PRIVATE/SHARED
+    // memories have to reach the index to stay findable in the ContextCenter listing.
+    String condition = new ListFilter().getCondition("context_memory");
+
+    assertFalse(condition.contains("shareConfig.visibility"));
+    assertFalse(condition.contains("shareConfig'->>'visibility"));
+  }
+
+  @Test
+  void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("cm");
+    assertTrue(condition.contains("SELECT entity_relationship.toId"));
+    assertTrue(condition.contains("entity_relationship.fromId = :primaryEntityIdParam"));
+    assertTrue(condition.contains("entity_relationship.toEntity = 'contextMemory'"));
+    assertTrue(
+        condition.contains(
+            "entity_relationship.relation = "
+                + org.openmetadata.schema.type.Relationship.APPLIED_TO.ordinal()));
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111",
+        filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
+  void getDomainCondition_appliedForDataAssetEntityType() {
+    // A data-asset list is scoped to the selected domain (navbar global domain filter).
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("entityType", "table");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "data-asset list should be scoped by the selected domain");
+  }
+
+  @Test
+  void getDomainCondition_matchesEveryGivenDomainId() {
+    // The navbar filter passes the selected domain and its sub-domains as resolved ids.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam(
+        "domainId", "11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains(
+            "fromId IN ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')"));
+    assertFalse(condition.contains("domain_entity"));
+  }
+
+  @Test
+  void getDomainCondition_bindsAnIdThatIsNotAUuid() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "x') OR ('1'='1");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(condition.contains("fromId IN (:domainId_0)"));
+    assertEquals("x) OR (1=1", filter.getQueryParams().get("domainId_0"));
+  }
+
+  @Test
+  void getDomainCondition_restrictsMembershipRowsToTheListedType() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table");
+    assertTrue(
+        filter.getCondition("table_entity").contains("entity_relationship.toEntity = 'table'"));
+
+    filter.addQueryParam("domainAccessControl", "true");
+    String accessCondition = filter.getCondition("table_entity");
+    assertTrue(accessCondition.contains("er.toEntity = 'table'"));
+    assertTrue(accessCondition.contains("er2.toEntity = 'table'"));
+  }
+
+  @Test
+  void getDomainCondition_accessCheckIsOneAntiJoinOnPostgresAndAnOrOnMySql() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainAccessControl", "true");
+    String postgres = filter.getCondition("table_entity");
+    assertTrue(postgres.contains("AND NOT EXISTS (SELECT er2.toId"));
+    assertTrue(postgres.contains("er2.toId = er.toId"));
+    assertFalse(postgres.contains(" OR "));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      String mysql = filter.getCondition("table_entity");
+      assertTrue(mysql.contains(") OR table_entity.id IN (SELECT er2.toId"));
+      assertFalse(mysql.contains("er2.toId = er.toId"));
+    }
+  }
+
+  @Test
+  void getDomainCondition_ignoresAnEntityTypeThatIsNotAPlainName() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    filter.addQueryParam("domainEntityType", "table' OR '1'='1");
+    assertFalse(filter.getCondition("table_entity").contains("toEntity"));
+  }
+
+  @Test
+  void getDomainCondition_appliedWhenEntityTypeUnset_backwardCompatible() {
+    // Existing ?domain= callers do not set entityType; that path must keep working unchanged.
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("table_entity");
+    assertTrue(
+        condition.contains("'11111111-1111-1111-1111-111111111111'"),
+        "explicit ?domain= without entityType must still apply (backward-compatible)");
+  }
+
+  @Test
+  void getAssignee_dottedUsername_hashesNameAsSingleFqnComponent() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("assignee", "john.doe");
+    filter.getCondition("task");
+
+    String actual = filter.getQueryParams().get("assigneeFqnHash_0");
+    assertEquals(FullyQualifiedName.buildHash(FullyQualifiedName.quoteName("john.doe")), actual);
+    assertNotEquals(FullyQualifiedName.buildHash("john.doe"), actual);
+  }
+
+  @Test
+  void getAssignee_plainUsername_hashUnchanged() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("assignee", "admin");
+    filter.getCondition("task");
+
+    assertEquals(
+        FullyQualifiedName.buildHash("admin"), filter.getQueryParams().get("assigneeFqnHash_0"));
   }
 
   @Test
@@ -122,29 +369,36 @@ class ListFilterTest {
   }
 
   @Test
-  void test_serverIdConditionOnlyAppliesToMcpExecutionTable() {
+  void test_serverIdConditionAppliesWhenServerIdParamPresent() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("serverId", "mcp-server-1");
 
-    assertFalse(filter.getCondition("table_entity").contains("serverId = :serverId"));
-    assertEquals(
-        "WHERE mcp_execution_entity.deleted = FALSE AND serverId = :serverId",
-        filter.getCondition("mcp_execution_entity"));
+    // The MCP execution time-series list/delete path builds its WHERE via the no-arg
+    // getCondition() (null table name, to avoid a deleted-column clause time-series tables lack).
+    // serverId is an MCP-execution-only query param, so gating the predicate on the table name
+    // silently dropped the server scope and leaked other servers' rows into the result.
+    assertTrue(filter.getCondition().contains("serverId = :serverId"));
+    assertTrue(filter.getCondition("mcp_execution_entity").contains("serverId = :serverId"));
+
+    ListFilter noServerId = new ListFilter();
+    assertFalse(noServerId.getCondition().contains("serverId = :serverId"));
   }
 
   /**
    * `?service=` filtering must bind two related patterns:
    *   - {@code :serviceHash} for "any descendant of the service" — used by every
    *     service-filtered listing's WHERE clause via getFqnPrefixCondition.
-   *   - {@code :serviceHashChild} for "any descendant strictly below the immediate
-   *     level" — used by the root listing to negate descendants and keep only
+   *   - {@code :serviceHashExact} for "the service itself as a parent" — matched against
+   *     the generated {@code parentFqnHash} column by the root listing to keep only
    *     direct children.
    *
-   * Both binds must reflect the same MD5 prefix, only differing in the LIKE pattern's
-   * tail. This is the contract that ContainerDAO.listRoot{Before,After,Count} relies on.
+   * Both binds must reflect the same MD5 prefix; only the trailing LIKE pattern differs.
+   * This is the contract that ContainerDAO.listRoot{Before,After,Count} relies on — and
+   * {@code serviceHashExact} carries no wildcard precisely so the planner can serve it
+   * from idx_storage_container_entity_parent_children (#22530).
    */
   @Test
-  void test_getServiceCondition_bindsBothPrefixAndChildDepthPatterns() {
+  void test_getServiceCondition_bindsBothPrefixAndExactParentPatterns() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("service", "aws_s3");
 
@@ -154,20 +408,23 @@ class ListFilterTest {
         "WHERE clause should reference the service prefix LIKE bind. Got: " + condition);
 
     String hashLike = (String) filter.getQueryParams().get("serviceHash");
-    String hashLikeChild = (String) filter.getQueryParams().get("serviceHashChild");
+    String hashExact = (String) filter.getQueryParams().get("serviceHashExact");
     assertNotNull(hashLike, "serviceHash bind must be set when service is filtered");
-    assertNotNull(hashLikeChild, "serviceHashChild bind must be set for depth-aware listings");
+    assertNotNull(hashExact, "serviceHashExact bind must be set for depth-aware listings");
 
-    // Both binds share the same hashed prefix; only the LIKE-pattern tail differs.
     // In ContainerDAO.listRoot* the SQL uses them as:
-    //   fqnHash LIKE     :serviceHash       -- '<hash>.%'   matches all descendants
-    //   fqnHash NOT LIKE :serviceHashChild  -- '<hash>.%.%' rejects depth >= 2
-    // so the combination keeps only direct children (depth = 1).
+    //   fqnHash       LIKE :serviceHash       -- '<hash>.%' matches all descendants
+    //   parentFqnHash LIKE :serviceHashExact  -- '<hash>'   keeps only direct children
     int prefixEnd = hashLike.indexOf('%');
     assertTrue(prefixEnd > 0, "serviceHash should be of form '<hash>.%', got: " + hashLike);
     String prefix = hashLike.substring(0, prefixEnd);
     assertEquals(prefix + "%", hashLike);
-    assertEquals(prefix + "%.%", hashLikeChild);
+    assertEquals(prefix.substring(0, prefix.length() - 1), hashExact);
+    assertFalse(
+        hashExact.contains("%") || hashExact.contains("_"),
+        "serviceHashExact must stay wildcard-free so the LIKE degenerates to an indexable"
+            + " equality. Got: "
+            + hashExact);
   }
 
   /**
@@ -185,9 +442,9 @@ class ListFilterTest {
     filter.getCondition("storage_container_entity");
 
     String hashLike = (String) filter.getQueryParams().get("serviceHash");
-    String hashLikeChild = (String) filter.getQueryParams().get("serviceHashChild");
+    String hashExact = (String) filter.getQueryParams().get("serviceHashExact");
     assertNotNull(hashLike);
-    assertNotNull(hashLikeChild);
+    assertNotNull(hashExact);
 
     // The MD5 of a single quoted segment is 32 hex chars; with the trailing ".%" suffix
     // the prefix bind is exactly 34 chars. Two-segment-or-more service names would
@@ -196,14 +453,14 @@ class ListFilterTest {
     int prefixEnd = hashLike.indexOf('%');
     assertEquals(34, prefixEnd + 1, "Dotted service name should hash to exactly one segment");
 
-    // The child bind must mirror this: same 33-char hashed prefix + ".%.%".
-    int childPrefixEnd = hashLikeChild.indexOf('%');
-    assertEquals(prefixEnd, childPrefixEnd, "Both binds must share the same prefix length");
+    // The exact bind must mirror this: the same single 32-char hashed segment, no suffix.
+    assertEquals(32, hashExact.length(), "Dotted service name should hash to one 32-char segment");
+    assertEquals(hashLike.substring(0, 32), hashExact, "Both binds must share the same hash");
   }
 
   /**
    * {@code ?root=true} without {@code ?service=} must not bind {@code :serviceHash}
-   * either — confirming that the depth bind {@code :serviceHashChild} the
+   * either — confirming that the depth bind {@code :serviceHashExact} the
    * {@code ContainerDAO.listRoot*} SQL references is not silently produced by ListFilter
    * for a no-service call. The DAO override has to default this bind itself
    * ({@code rootListingParams}) so the SQL stays runnable. Regression guard for the
@@ -218,8 +475,8 @@ class ListFilterTest {
         filter.getQueryParams().get("serviceHash"),
         "serviceHash must not be bound when ?service= is absent");
     assertNull(
-        filter.getQueryParams().get("serviceHashChild"),
-        "serviceHashChild must not be bound when ?service= is absent — DAO defaults it");
+        filter.getQueryParams().get("serviceHashExact"),
+        "serviceHashExact must not be bound when ?service= is absent — DAO defaults it");
   }
 
   /**
@@ -245,5 +502,270 @@ class ListFilterTest {
     ListFilter delFilter = new ListFilter(Include.DELETED).addQueryParam("service", "aws_s3");
     String delCond = delFilter.getCondition("storage_container_entity");
     assertTrue(delCond.contains("storage_container_entity.deleted = TRUE"), delCond);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_bothBounds() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("taskStartTs", "1000");
+    filter.addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_startOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStartTs", "1000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertFalse(condition.contains("createdAt <="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_endOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+    assertFalse(condition.contains("createdAt >="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_absentWhenNoParams() {
+    String condition = new ListFilter().getCondition("task_entity");
+    assertFalse(condition.contains("createdAt"), condition);
+  }
+
+  @Test
+  void test_getFolderCondition_emptyWhenFolderIdAbsent() {
+    assertEquals("", new ListFilter(Include.ALL).getFolderCondition());
+  }
+
+  @Test
+  void test_getFolderCondition_emptyWhenFolderIdBlank() {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", "");
+    assertEquals("", filter.getFolderCondition());
+  }
+
+  @Test
+  void test_getFolderCondition_buildsParameterizedContainsSubquery() {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", "folder-123");
+
+    String expected =
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = "
+            + Relationship.CONTAINS.ordinal()
+            + "))";
+
+    assertEquals(expected, filter.getFolderCondition());
+    assertEquals("folder-123", filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_taskStatusGroup_openIncludesSharedOpenAndDarApproved() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
+    String condition = filter.getCondition("task_entity");
+
+    // Shared open statuses. Granted is not here — it's DAR-only and routed to the Closed bucket.
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'ManualRevoke')"),
+        condition);
+    // DAR-only bump: Approved counts as open for DataAccessRequest rows (still awaiting grant).
+    assertTrue(
+        condition.contains(
+            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        condition);
+    // Granted must not appear on the open side — the reported UX bug.
+    assertFalse(condition.contains("'Granted'"), condition);
+  }
+
+  @Test
+  void test_taskStatusGroup_closedIncludesTerminalAndGrantedAndNonDarApproved() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
+    String condition = filter.getCondition("task_entity");
+
+    // Shared terminal statuses — Granted is in this list unconditionally because it's
+    // DAR-only in practice; keeps the SQL branch count minimal.
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Granted', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
+        condition);
+    // Non-DAR Approved is terminal (Glossary/DescriptionUpdate/etc.) — belongs in Closed tab.
+    assertTrue(
+        condition.contains(
+            "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        condition);
+  }
+
+  @Test
+  void test_taskStatusGroup_openAndClosedAreDisjoint() {
+    // Row-aware buckets: every (type, status) combination lands in exactly one of
+    // open/closed so All = Open + Closed for both DAR and non-DAR task types.
+    ListFilter openFilter = new ListFilter().addQueryParam("taskStatusGroup", "open");
+    ListFilter closedFilter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
+
+    String openCond = openFilter.getCondition("task_entity");
+    String closedCond = closedFilter.getCondition("task_entity");
+
+    // Non-DAR Approved lives in closed, never in open.
+    assertFalse(
+        openCond.contains("<> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        "Non-DAR Approved must not appear in the open bucket: " + openCond);
+    // DAR Approved lives in open, never in closed.
+    assertFalse(
+        closedCond.contains(
+            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        "DAR Approved must not appear in the closed bucket: " + closedCond);
+    // DAR Granted lives in closed, never in open (Slack-thread regression guard).
+    assertFalse(
+        openCond.contains("'Granted'"),
+        "Granted must not appear in the open bucket at all: " + openCond);
+  }
+
+  @Test
+  void test_taskStatusGroup_activeIsUnchanged() {
+    // Preserves the existing 'active' definition used by DAR-scoped callers.
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "active");
+    String condition = filter.getCondition("task_entity");
+
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke')"),
+        condition);
+  }
+
+  @Test
+  void test_getFolderCondition_folderIdIsNotInlined_soNoInjection() {
+    String hostile = "x') OR 1=1 --";
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", hostile);
+
+    String condition = filter.getFolderCondition();
+    assertFalse(condition.contains("OR 1=1"), condition);
+    assertTrue(condition.contains(":folderIdParam"), condition);
+    assertEquals(hostile, filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_getServiceCondition_filtersDatabaseHierarchyTables() {
+    // The database hierarchy below `databases` is FQN-prefixed by the service, so the
+    // generic service condition applies to it unchanged.
+    List<String> tableNames =
+        List.of("table_entity", "database_schema_entity", "stored_procedure_entity");
+    for (String tableName : tableNames) {
+      ListFilter filter =
+          new ListFilter(Include.NON_DELETED).addQueryParam("service", "my_service");
+      assertEquals(tableName + ".fqnHash LIKE :serviceHash", filter.getServiceCondition(tableName));
+      assertEquals(
+          FullyQualifiedName.buildHash("my_service") + ".%",
+          filter.getQueryParams().get("serviceHash"));
+    }
+  }
+
+  @Test
+  void test_getServiceCondition_absentServiceYieldsNoCondition() {
+    assertEquals("", new ListFilter(Include.NON_DELETED).getServiceCondition("table_entity"));
+  }
+
+  /**
+   * The generic list and count paths call {@code getCondition()}, which passes a null table name,
+   * so these predicates have to survive that rather than keying off the table.
+   */
+  @Test
+  void test_announcementStatus_derivesTheWindowWithoutATableName() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Expired");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("endTime <"), condition);
+  }
+
+  @Test
+  void test_announcementStatus_scheduledLooksAtStartTime() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Scheduled");
+
+    assertTrue(filter.getCondition().contains("startTime >"));
+  }
+
+  /**
+   * The stored {@code status} column is a snapshot of the last write, so the announcement filter
+   * must never fall through to it - and the generic {@code status} parameter, which other resources
+   * share, must keep meaning that column.
+   */
+  @Test
+  void test_announcementStatus_doesNotTouchTheStoredStatusColumn() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementStatus", "Active");
+
+    String condition = filter.getCondition();
+
+    assertFalse(condition.contains("status IN"), condition);
+    assertFalse(condition.contains("status LIKE"), condition);
+    assertTrue(condition.contains("startTime <="), condition);
+    assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_isTimeDependent_coversTheWindowDerivedFilters() {
+    // These two compare the announcement window against the wall clock, so their row set changes
+    // with nothing written — ListCountCache has to skip them rather than cache a total that
+    // invalidation hooks will never clear.
+    ListFilter byStatus = new ListFilter(Include.NON_DELETED);
+    byStatus.addQueryParam("announcementStatus", "Active");
+
+    ListFilter byActive = new ListFilter(Include.NON_DELETED);
+    byActive.addQueryParam("active", "true");
+
+    assertTrue(byStatus.isTimeDependent());
+    assertTrue(byActive.isTimeDependent());
+  }
+
+  @Test
+  void test_isTimeDependent_isFalseForFiltersDerivedFromStoredState() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Notice");
+
+    assertFalse(filter.isTimeDependent());
+    assertFalse(new ListFilter(Include.NON_DELETED).isTimeDependent());
+  }
+
+  @Test
+  void test_active_appliesWithoutATableName() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("active", "true");
+
+    String condition = filter.getCondition();
+
+    assertTrue(condition.contains("startTime <="), condition);
+    assertTrue(condition.contains("endTime >="), condition);
+  }
+
+  @Test
+  void test_announcementType_filtersOnTheGeneratedColumn() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("announcementType", "Deprecation");
+
+    assertTrue(filter.getCondition().contains("type = :announcementType"));
+  }
+
+  @Test
+  void test_systemAnnouncement_true_matchesAnnouncementsWithNoEntityLink() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("systemAnnouncement", "true");
+
+    assertTrue(filter.getCondition().contains("entityLink IS NULL"));
+  }
+
+  @Test
+  void test_systemAnnouncement_false_matchesEntityAnnouncementsOnly() {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    filter.addQueryParam("systemAnnouncement", "false");
+
+    assertTrue(filter.getCondition().contains("entityLink IS NOT NULL"));
   }
 }

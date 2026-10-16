@@ -16,15 +16,17 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import {
   Column,
   ColumnProfilerConfig,
+  CustomMetric,
   PartitionProfilerConfig,
   ProfileSampleType,
   Table,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
-import { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityUtils';
+import { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 
 export interface TableProfilerProps {
@@ -39,12 +41,14 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
 export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
   testCaseSummary?: Record<string, TestCaseCountByStatus>;
-  permissions: OperationPermission;
+  /** Unset in read-only previews (the custom metric drawer), which hides edit actions. */
+  permissions?: OperationPermission;
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;
   tableProfiler?: Table;
   customMetric?: Table;
   allTestCases: TestCase[];
+  allTestCasesPermissions?: Record<string, ResourcePermission>;
   overallSummary: OverallTableSummaryType[];
   onTestCaseUpdate: (testCase?: TestCase) => void;
   onSettingButtonClick: () => void;
@@ -55,6 +59,10 @@ export interface TableProfilerContextInterface {
   table?: Table;
   isTestCaseDrawerOpen: boolean;
   onTestCaseDrawerOpen: (type: TestLevel) => void;
+  onCustomMetricDrawerOpen: (
+    isColumnMetric: boolean,
+    metric?: CustomMetric
+  ) => void;
 }
 
 export type TableTestsType = {
@@ -110,7 +118,6 @@ export interface ProfilerSettingModalState {
   excludeCol: string[];
   includeCol: ColumnProfilerConfig[];
   enablePartition: boolean;
-  partitionData: PartitionProfilerConfig | undefined;
   selectedProfileSampleType: ProfileSampleType | undefined;
 }
 

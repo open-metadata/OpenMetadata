@@ -16,13 +16,18 @@ Source connection helper
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, List, Tuple  # noqa: UP035
+from typing import Any
 
+from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from pydantic import BaseModel
 from sqlalchemy import inspect, text
 
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
+)
+from metadata.generated.schema.security.credentials.gcpCredentials import (
+    GcpADC,
+    GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
@@ -31,11 +36,43 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_CONSTRAINTS
 from metadata.utils.bigquery_utils import get_bigquery_client
+from metadata.utils.credentials import (
+    DEFAULT_GOOGLE_UNIVERSE_DOMAIN,
+    get_gcp_impersonate_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
 CONSTRAINT_CACHE = {}
+
+# The connection schema defaults `hostPort` to this value, so it must be treated
+# as "unset" when resolving the API endpoint for a custom `universeDomain` -
+# otherwise a non-default universe would never fall back to
+# `bigquery.{universe_domain}` unless the user also overrode `hostPort` explicitly.
+DEFAULT_BIGQUERY_HOST_PORT = "bigquery.googleapis.com"
+
+
+def with_https_scheme(endpoint: str) -> str:
+    if endpoint.startswith(("http://", "https://")):
+        return endpoint
+    return f"https://{endpoint}"
+
+
+def get_api_endpoint(service_connection: BigQueryConnection) -> str | None:
+    """
+    Resolve the BigQuery API endpoint override for a custom GCP universe domain,
+    or ``None`` when the default `googleapis.com` universe applies.
+    """
+    endpoint = None
+    gcp_config = service_connection.credentials.gcpConfig
+    universe_domain = getattr(gcp_config, "universeDomain", None)
+    if universe_domain and universe_domain != DEFAULT_GOOGLE_UNIVERSE_DOMAIN:
+        host_port = service_connection.hostPort
+        if not host_port or host_port == DEFAULT_BIGQUERY_HOST_PORT:
+            host_port = f"bigquery.{universe_domain}"
+        endpoint = with_https_scheme(host_port)
+    return endpoint
 
 
 def clear_constraint_cache():
@@ -60,28 +97,113 @@ class InspectorWrapper(BaseModel):
     inspector: Any
 
 
+def clone_connection_for_project(database_name: str, service_connection: BigQueryConnection) -> BigQueryConnection:
+    """
+    Return a copy of the service connection scoped to a single project, so each
+    project in a multi-project connection can be inspected/tested independently.
+
+    Every ``gcpConfig`` variant that supports a multi-project ``projectId``
+    (a raw key via ``GcpCredentialsValues``, Application Default Credentials
+    via ``GcpADC``, or a key file path via ``GcpCredentialsPath``) needs this
+    override - without it, a multi-project connection using ADC or a key path
+    silently re-scans the first configured project on every iteration instead
+    of actually switching projects, since ``get_connection_url`` only ever
+    resolves those two variants' ``MultipleProjectId`` to their first entry.
+    """
+    new_service_connection = deepcopy(service_connection)
+    if isinstance(new_service_connection.credentials.gcpConfig, (GcpCredentialsValues, GcpADC, GcpCredentialsPath)):
+        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
+    return new_service_connection
+
+
+def get_impersonate_client_kwargs(service_connection: BigQueryConnection) -> dict:
+    """
+    Build the impersonation kwargs for ``get_bigquery_client`` when a target
+    service account is configured.
+
+    ``gcpImpersonateServiceAccount`` lives on the parent credentials object and
+    is valid regardless of the selected ``gcpConfig`` type, so it must not be
+    gated on a specific type. A blank or whitespace-only target email is treated
+    as "not configured" and returns an empty dict, leaving the default
+    (non-impersonated) behaviour untouched.
+    """
+    kwargs = {}
+    impersonate = service_connection.credentials.gcpImpersonateServiceAccount
+    if impersonate and impersonate.impersonateServiceAccount:
+        target_service_account = impersonate.impersonateServiceAccount.strip()
+        if target_service_account:
+            kwargs["impersonate_service_account"] = target_service_account
+            kwargs["lifetime"] = impersonate.lifetime
+    return kwargs
+
+
+def get_data_catalog_client_options(service_connection: BigQueryConnection) -> dict | None:
+    """
+    Build ``client_options`` for the Data Catalog (Policy Tag) client on a custom
+    GCP universe domain, or ``None`` when the default `googleapis.com` universe
+    applies.
+
+    ``PolicyTagManagerClient`` targets ``datacatalog.googleapis.com`` and the
+    default universe unless told otherwise. On a sovereign/partner cloud the
+    service-account credentials carry a non-default ``universe_domain``, and
+    recent ``google-api-core`` clients raise a ``ValueError`` on a
+    credentials/client universe mismatch - so this must be set whenever
+    ``get_api_endpoint`` resolves a custom universe, mirroring the BigQuery
+    client configuration.
+    """
+    client_options = None
+    universe_domain = getattr(service_connection.credentials.gcpConfig, "universeDomain", None)
+    if universe_domain and universe_domain != DEFAULT_GOOGLE_UNIVERSE_DOMAIN:
+        client_options = {
+            "api_endpoint": f"datacatalog.{universe_domain}",
+            "universe_domain": universe_domain,
+        }
+    return client_options
+
+
+def get_policy_tag_client(service_connection: BigQueryConnection) -> PolicyTagManagerClient:
+    """
+    Build the Data Catalog client used to read policy tags and taxonomies.
+
+    ``PolicyTagManagerClient()`` with no credentials falls back to
+    ``google.auth.default()``, i.e. the source service account, so a connection
+    configured with ``gcpImpersonateServiceAccount`` would read policy tags under
+    the wrong identity while every other BigQuery call impersonates correctly.
+    Without impersonation the credential-less client is returned unchanged so the
+    ADC / JSON-key / external-account paths keep their existing behaviour.
+    """
+    client_options = get_data_catalog_client_options(service_connection)
+    kwargs = get_impersonate_client_kwargs(service_connection)
+    if not kwargs:
+        return PolicyTagManagerClient(client_options=client_options)
+    credentials = get_gcp_impersonate_credentials(
+        impersonate_service_account=kwargs["impersonate_service_account"],
+        lifetime=kwargs["lifetime"],
+    )
+    return PolicyTagManagerClient(credentials=credentials, client_options=client_options)
+
+
+def get_bigquery_client_for_project(database_name: str, service_connection: BigQueryConnection):
+    """Build a project-scoped ``bigquery.Client`` (no engine/inspector), shared by
+    the inspector setup and the progress-totals dataset listing."""
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
+    kwargs = get_impersonate_client_kwargs(new_service_connection)
+    if new_service_connection.usageLocation:
+        kwargs["location"] = new_service_connection.usageLocation
+    api_endpoint = get_api_endpoint(new_service_connection)
+    if api_endpoint:
+        kwargs["api_endpoint"] = api_endpoint
+    return get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+
+
 def get_inspector_details(database_name: str, service_connection: BigQueryConnection) -> InspectorWrapper:
     """
     Method to get the bigquery inspector details
     """
     # TODO support location property in JSON Schema
     # TODO support OAuth 2.0 scopes
-    new_service_connection = deepcopy(service_connection)
-    kwargs = {}
-
-    if new_service_connection.usageLocation:
-        kwargs["location"] = new_service_connection.usageLocation
-
-    if isinstance(new_service_connection.credentials.gcpConfig, GcpCredentialsValues):
-        new_service_connection.credentials.gcpConfig.projectId = SingleProjectId(database_name)
-        if new_service_connection.credentials.gcpImpersonateServiceAccount:
-            kwargs["impersonate_service_account"] = (
-                new_service_connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-            )
-
-            kwargs["lifetime"] = new_service_connection.credentials.gcpImpersonateServiceAccount.lifetime
-
-    client = get_bigquery_client(project_id=new_service_connection.billingProjectId or database_name, **kwargs)
+    new_service_connection = clone_connection_for_project(database_name, service_connection)
+    client = get_bigquery_client_for_project(database_name, service_connection)
     engine = get_connection(new_service_connection)
     inspector = inspect(engine)
 
@@ -145,7 +267,7 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):  # pylint
         return []
 
 
-def parse_bigqeury_labels(labels: str) -> List[Tuple[str, str]]:  # noqa: UP006
+def parse_bigqeury_labels(labels: str) -> list[tuple[str, str]]:
     """
     This function is used to parse BigQuery label string into a list of tuples.
     """

@@ -21,7 +21,7 @@ import React from 'react';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import InlineSeverity from './InlineSeverity.component';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
   ChevronUp: () => <svg data-testid="icon-chevron-up" />,
 }));
@@ -86,7 +86,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div
       data-testid={`dropdown-item-${id}`}
       role="menuitem"
-      onClick={() => onAction?.(id)}>
+      tabIndex={0}
+      onClick={() => onAction?.(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onAction?.(id);
+        }
+      }}>
       {children ?? label}
     </div>
   );
@@ -106,6 +112,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         return (
           <div data-testid="dropdown-root">
             <div
+              role="presentation"
               onClick={() => {
                 setOpen(true);
                 onOpenChange?.(true);

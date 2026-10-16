@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.12.0-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
 
@@ -15,9 +15,34 @@
   <properties>
     <skipTests>false</skipTests>
     <yarnInheritsProxyConfigFromMaven>false</yarnInheritsProxyConfigFromMaven>
+    <!-- Overridden to `true` by the skip-ui-build profile below when BOTH
+         `env.SKIP_UI_BUILD=true` is set (exported by .github/actions/cache-ui-dist
+         on a cache HIT) AND the library dist already exists on disk.
+         Frontend-maven-plugin honors <skip> to short-circuit its executions. -->
+    <skip.ui.build>false</skip.ui.build>
   </properties>
 
   <profiles>
+    <!-- Activates ONLY when the composite action .github/actions/cache-ui-dist
+         signals a cache hit by exporting SKIP_UI_BUILD=true, AND the compiled
+         library dist exists on disk. The env-var gate defends against a stale
+         source-tree dist silently suppressing a rebuild during a local `mvn
+         clean package` after the developer edited UI sources. -->
+    <profile>
+      <id>skip-ui-build</id>
+      <activation>
+        <property>
+          <name>env.SKIP_UI_BUILD</name>
+          <value>true</value>
+        </property>
+        <file>
+          <exists>${project.basedir}/src/main/resources/ui/dist/index.es.js</exists>
+        </file>
+      </activation>
+      <properties>
+        <skip.ui.build>true</skip.ui.build>
+      </properties>
+    </profile>
     <profile>
       <id>release</id>
       <build>
@@ -91,10 +116,15 @@
         <artifactId>frontend-maven-plugin</artifactId>
         <version>1.12.1</version>
 
-        <!-- optional -->
+        <!-- Share a single node/yarn install between openmetadata-ui-core-components
+             and openmetadata-ui (see openmetadata-ui/pom.xml). The reactor builds
+             this module first, downloads node+yarn here, and the ui module reuses
+             the same install (frontend-maven-plugin skips re-download when the
+             version matches). Path is outside target/ so `mvn clean` at either
+             module does not wipe the shared install. -->
         <configuration>
           <workingDirectory>src/main/resources/ui/</workingDirectory>
-          <installDirectory>target</installDirectory>
+          <installDirectory>${maven.multiModuleProjectDirectory}/target/frontend</installDirectory>
         </configuration>
 
         <executions>
@@ -104,8 +134,9 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v22.17.0</nodeVersion>
+              <nodeVersion>v22.22.2</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -117,6 +148,7 @@
             <configuration>
               <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
               <arguments>install --frozen-lockfile</arguments>
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
           <execution>
@@ -132,6 +164,7 @@
                   (and you can remove this whole <configuration> section.) -->
               <arguments>run build</arguments>
               <!--arguments>build</arguments-->
+              <skip>${skip.ui.build}</skip>
             </configuration>
           </execution>
         </executions>

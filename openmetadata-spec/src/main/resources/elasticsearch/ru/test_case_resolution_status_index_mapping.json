@@ -39,7 +39,8 @@
           "type": "custom",
           "tokenizer": "edge_ngram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -47,6 +48,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -181,73 +183,69 @@
               }
             }
           },
-          "resolved": {
+          "testCaseFailureReason": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 15
+              }
+            }
+          },
+          "testCaseFailureComment": {
+            "type": "text",
+            "analyzer": "om_analyzer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              }
+            }
+          },
+          "resolvedBy": {
             "properties": {
-              "testCaseFailureReason": {
+              "id": {
                 "type": "keyword",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "ignore_above": 15
+                    "ignore_above": 36
                   }
                 }
               },
-              "testCaseFailureComment": {
-                "type": "text",
-                "analyzer": "om_analyzer",
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "fields": {
                   "keyword": {
                     "type": "keyword",
-                    "normalizer": "lowercase_normalizer"
+                    "ignore_above": 256
                   }
                 }
               },
-              "resolvedBy": {
-                "properties": {
-                  "id": {
+              "displayName": {
+                "type": "keyword",
+                "fields": {
+                  "keyword": {
                     "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 36
-                      }
-                    }
-                  },
-                  "type": {
-                    "type": "keyword"
-                  },
-                  "name": {
-                    "type": "keyword",
-                    "normalizer": "lowercase_normalizer",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "displayName": {
-                    "type": "keyword",
-                    "fields": {
-                      "keyword": {
-                        "type": "keyword",
-                        "ignore_above": 256
-                      }
-                    }
-                  },
-                  "fullyQualifiedName": {
-                    "type": "text"
-                  },
-                  "description": {
-                    "type": "text"
-                  },
-                  "deleted": {
-                    "type": "text"
-                  },
-                  "href": {
-                    "type": "text"
+                    "ignore_above": 256
                   }
                 }
+              },
+              "fullyQualifiedName": {
+                "type": "text"
+              },
+              "description": {
+                "type": "text"
+              },
+              "deleted": {
+                "type": "text"
+              },
+              "href": {
+                "type": "text"
               }
             }
           }
@@ -625,6 +623,46 @@
           }
         }
       },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          }
+        }
+      },
       "testSuite": {
         "properties": {
           "id": {
@@ -767,7 +805,8 @@
                     "type": "text",
                     "analyzer": "om_analyzer"
                   }
-                }
+                },
+                "normalizer": "lowercase_normalizer"
               },
               "labelType": {
                 "type": "keyword"

@@ -12,6 +12,7 @@
  */
 
 import { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { EntityClass } from '../../../support/entity/EntityClass';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { CustomPropertiesPageObject } from './CustomPropertiesPageObject';
@@ -131,8 +132,6 @@ export class RightPanelPageObject {
   private readonly panelEditTier: Locator;
   private readonly panelAddDomain: Locator;
   private readonly panelEditDataProducts: Locator;
-  private readonly panelLoaders: Locator;
-  private readonly pageLoader: Locator;
 
   // Data asset configurations aligned with EntityRightPanelVerticalNav (hasSchemaTab, hasLineageTab, data quality for Table only, hasCustomPropertiesTab)
   private static readonly DATA_ASSET_CONFIGS: Record<string, DataAssetConfig> =
@@ -337,6 +336,36 @@ export class RightPanelPageObject {
     );
   }
 
+  private static resolveConfig(
+    configKey: string,
+    entityTypeLabel: string
+  ): DataAssetConfig {
+    return (
+      RightPanelPageObject.DATA_ASSET_CONFIGS[configKey] ?? {
+        entityType: entityTypeLabel,
+        availableTabs: [
+          RIGHT_PANEL_TAB.OVERVIEW,
+          RIGHT_PANEL_TAB.LINEAGE,
+          RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
+        ],
+        supportsCustomProperties: true,
+      }
+    );
+  }
+
+  /** Static tab-availability check usable at test-collection time (no browser/page object). */
+  public static isTabAvailableForEntity(
+    entity: EntityClass,
+    tabName: string
+  ): boolean {
+    const entityType = entity.getType();
+
+    return RightPanelPageObject.resolveConfig(
+      entityType,
+      entityType
+    ).availableTabs.includes(tabName.toLowerCase());
+  }
+
   constructor(page: Page, entity?: EntityClass) {
     this.page = page;
 
@@ -365,10 +394,6 @@ export class RightPanelPageObject {
     this.panelAddDomain = this.getSummaryPanel().getByTestId('add-domain');
     this.panelEditDataProducts =
       this.getSummaryPanel().getByTestId('edit-data-products');
-    this.panelLoaders = this.getSummaryPanel().locator(
-      '[data-testid="loader"]'
-    );
-    this.pageLoader = this.page.locator('[data-testid="loader"]');
 
     // Set entity configuration if provided
     if (entity) {
@@ -383,19 +408,10 @@ export class RightPanelPageObject {
   public setEntityConfig(entity: EntityClass): void {
     this.entityEndpoint = entity.endpoint;
     const entityType = entity.getType();
-    this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[entityType];
-
-    if (!this.entityConfig) {
-      this.entityConfig = {
-        entityType,
-        availableTabs: [
-          RIGHT_PANEL_TAB.OVERVIEW,
-          RIGHT_PANEL_TAB.LINEAGE,
-          RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
-        ],
-        supportsCustomProperties: true,
-      };
-    }
+    this.entityConfig = RightPanelPageObject.resolveConfig(
+      entityType,
+      entityType
+    );
   }
 
   /**
@@ -404,18 +420,10 @@ export class RightPanelPageObject {
    */
   public setEntityConfigByType(assetType: string): void {
     const configKey = RightPanelPageObject.getConfigKey(assetType);
-    this.entityConfig = RightPanelPageObject.DATA_ASSET_CONFIGS[configKey];
-    if (!this.entityConfig) {
-      this.entityConfig = {
-        entityType: assetType,
-        availableTabs: [
-          RIGHT_PANEL_TAB.OVERVIEW,
-          RIGHT_PANEL_TAB.LINEAGE,
-          RIGHT_PANEL_TAB.CUSTOM_PROPERTIES,
-        ],
-        supportsCustomProperties: true,
-      };
-    }
+    this.entityConfig = RightPanelPageObject.resolveConfig(
+      configKey,
+      assetType
+    );
   }
 
   /**
@@ -731,7 +739,7 @@ export class RightPanelPageObject {
    */
   public async verifyTabExists(tabName: string): Promise<boolean> {
     try {
-      const tab = this.getSummaryPanel().getByRole('menuitem', {
+      const tab = this.getSummaryPanel().getByRole('tab', {
         name: new RegExp(tabName, 'i'),
       });
       await expect(tab).toBeVisible();
@@ -760,13 +768,13 @@ export class RightPanelPageObject {
 
   /**
    * Get the locator for a tab by name (case-insensitive).
-   * Matches Ant Design Menu items (li.ant-menu-item) by visible label text.
+   * Matches the vertical nav tabs (role="tab") by visible label text.
    */
   getTabLocator(tabName: string): Locator {
     const normalized = tabName.trim();
     const pattern = new RegExp(normalized.replace(/\s+/g, '\\s*'), 'i');
     return this.getSummaryPanel()
-      .locator('li.ant-menu-item')
+      .getByRole('tab')
       .filter({ hasText: pattern })
       .first();
   }
@@ -928,12 +936,16 @@ export class RightPanelPageObject {
    * 3. Panel is ready for interaction
    * @param timeout - Optional timeout in milliseconds (default: 30000)
    */
-  async waitForPanelLoaded(timeout: number = 30000) {
+  async waitForPanelLoaded(timeout: number = ACTION_TIMEOUT) {
     // Step 1: Wait for panel to be visible
     await this.getSummaryPanel().waitFor({ state: 'visible', timeout });
 
     // Step 2: Wait for all loaders within the panel to disappear
-    await expect(this.panelLoaders).toHaveCount(0, { timeout });
+    await waitForAllLoadersToDisappear(
+      this.getSummaryPanel(),
+      'loader',
+      timeout
+    );
 
     // Step 3: Wait for any remaining loaders on the page (fallback)
     await this.waitForLoadersToDisappear(timeout);
@@ -948,7 +960,7 @@ export class RightPanelPageObject {
   async navigateToTab(tabName: string) {
     const tab = this.getTabLocator(tabName);
     await tab.click();
-    await this.pageLoader.waitFor({ state: 'detached' });
+    await waitForAllLoadersToDisappear(this.page, 'loader', 10_000);
   }
 
   /**

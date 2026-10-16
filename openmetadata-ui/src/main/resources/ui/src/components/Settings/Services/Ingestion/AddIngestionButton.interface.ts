@@ -15,6 +15,7 @@ import { ServiceCategory } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from '../../../../interface/service.interface';
+import { ManageMenuItem } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
 
 export interface AddIngestionButtonProps {
   serviceDetails: ServicesType;
@@ -22,4 +23,5 @@ export interface AddIngestionButtonProps {
   ingestionList: Array<IngestionPipeline>;
   serviceCategory: ServiceCategory;
   serviceName: string;
+  extraMenuItems?: ManageMenuItem[];
 }

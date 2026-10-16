@@ -22,6 +22,9 @@ public class AiApplicationIndex implements TaggableIndex, LineageIndex {
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    AIGovernanceIndexProjection.project(
+        doc, aiApplication.getGovernanceMetadata(), aiApplication.getApplicationType());
+
     return doc;
   }
 }

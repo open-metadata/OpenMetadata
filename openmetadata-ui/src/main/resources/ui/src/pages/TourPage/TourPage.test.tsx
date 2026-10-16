@@ -15,6 +15,10 @@ import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { CurrentTourPageType } from '../../enums/tour.enum';
 import TourPage from './TourPage.component';
 
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
+);
+
 const mockUseTourProvider = {
   isTourOpen: true,
   updateIsTourOpen: jest.fn(),
@@ -82,6 +86,10 @@ jest.mock('../TableDetailsPageV1/TableDetailsPageV1', () => {
 jest.mock('../../utils/TourUtils', () => ({
   getTourSteps: jest.fn().mockImplementation((props) => props),
 }));
+const mockPreloadTourTableTabs = jest.fn().mockResolvedValue([]);
+jest.mock('../../utils/TableTabsUtils', () => ({
+  preloadTourTableTabs: () => mockPreloadTourTableTabs(),
+}));
 
 describe('TourPage component', () => {
   beforeEach(() => {
@@ -107,6 +115,27 @@ describe('TourPage component', () => {
     await waitForTourReadyCheck();
 
     expect(await screen.findByText('Tour.component')).toBeInTheDocument();
+  });
+
+  it('should not start the tour until the lazy tab chunks it highlights are loaded', async () => {
+    let resolvePreload: () => void = () => undefined;
+    mockPreloadTourTableTabs.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolvePreload = resolve;
+      })
+    );
+
+    render(<TourPage />);
+    await waitForTourReadyCheck();
+
+    expect(screen.queryByText('Tour.component')).not.toBeInTheDocument();
+
+    await act(async () => {
+      resolvePreload();
+    });
+    await waitForTourReadyCheck();
+
+    expect(screen.getByText('Tour.component')).toBeInTheDocument();
   });
 
   it('clear search term should work correctly', async () => {
@@ -202,6 +231,24 @@ describe('TourPage component', () => {
     expect(await screen.findByText('MyDataPage.component')).toBeInTheDocument();
   });
 
+  it('pre-mounts Explore laid out but invisible while the tour is on My Data', async () => {
+    (useTourProvider as jest.Mock).mockReset();
+    (useTourProvider as jest.Mock).mockImplementation(() => ({
+      ...mockUseTourProvider,
+      currentTourPage: CurrentTourPageType.MY_DATA_PAGE,
+    }));
+    render(<TourPage />);
+    await waitForTourReadyCheck();
+
+    const explore = screen.getByTestId('tour-explore-page');
+
+    // `display: none` would let the resizable results panel measure 0px and keep it.
+    expect(explore).not.toHaveStyle({ display: 'none' });
+    expect(explore).toHaveClass('tw:invisible', 'tw:fixed');
+    expect(explore).toHaveAttribute('aria-hidden', 'true');
+    expect(explore).toHaveTextContent('ExplorePageV1Component.component');
+  });
+
   it('ExplorePage Component should be visible, if currentTourPage is explorePage', async () => {
     (useTourProvider as jest.Mock).mockReset();
     (useTourProvider as jest.Mock).mockImplementation(() => ({
@@ -214,6 +261,11 @@ describe('TourPage component', () => {
     expect(
       await screen.findByText('ExplorePageV1Component.component')
     ).toBeInTheDocument();
+
+    const explore = screen.getByTestId('tour-explore-page');
+
+    expect(explore).not.toHaveClass('tw:invisible');
+    expect(explore).toHaveAttribute('aria-hidden', 'false');
   });
 
   it('TableDetailsPage Component should be visible, if currentTourPage is datasetPage', async () => {

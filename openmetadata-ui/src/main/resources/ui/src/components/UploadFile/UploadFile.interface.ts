@@ -10,16 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RcFile } from 'antd/lib/upload';
 
 declare type BeforeUploadValueType = void | boolean | string | Blob | File;
 
 export interface UploadFileProps {
+  acceptedFileDescription?: string;
   disabled?: boolean;
   fileType: string;
+  variant?: 'compact' | 'default';
   beforeUpload?: (
-    file: RcFile,
-    FileList: RcFile[]
+    file: File,
+    FileList: File[]
   ) => BeforeUploadValueType | Promise<BeforeUploadValueType>;
-  onCSVUploaded: (event: ProgressEvent<FileReader>) => void;
+  onCSVUploaded: (event: ProgressEvent<FileReader>, file?: File) => void;
 }

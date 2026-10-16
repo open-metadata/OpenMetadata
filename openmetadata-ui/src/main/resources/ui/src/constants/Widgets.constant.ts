@@ -14,7 +14,7 @@ import { ActivityFeedTabs } from '../components/ActivityFeed/ActivityFeedTab/Act
 import { CURATED_ASSETS_SORT_BY_KEYS } from '../components/MyData/Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { FeedFilter, MyTaskFilter } from '../enums/mydata.enum';
-import { getEntityName } from '../utils/EntityUtils';
+import { getEntityName } from '../utils/EntityNameUtils';
 
 export const TAB_SUPPORTED_FILTER = [
   ActivityFeedTabs.ALL,
@@ -205,19 +205,3 @@ export const applySortToData = (
       return sortedData;
   }
 };
-
-export const KPI_WIDGET_GRAPH_COLORS = [
-  '#7262F6',
-  '#6AD2FF',
-  '#2ED3B7',
-  '#E478FA',
-  //   TODO: Add more colors for more KPIs
-  '#7262F6',
-  '#6AD2FF',
-  '#2ED3B7',
-  '#E478FA',
-  '#7262F6',
-  '#6AD2FF',
-  '#2ED3B7',
-  '#E478FA',
-];

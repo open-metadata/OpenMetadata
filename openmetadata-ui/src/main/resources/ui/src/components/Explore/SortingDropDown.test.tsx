@@ -11,69 +11,87 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
+import {
+  columnSortingFields,
+  INITIAL_SORT_FIELD,
+} from '../../constants/explore.constants';
 import SortingDropDown from './SortingDropDown';
 
-const handleFieldDropDown = jest.fn();
 const fieldList = [
   { name: 'Popularity', value: 'totalVotes' },
   { name: 'Name', value: 'displayName.keyword' },
-  { name: 'Weekly Usage', value: 'usageSummary.weeklyStats.count' },
-  { name: 'Relevance', value: '_score' },
   { name: 'Last Updated', value: 'updatedAt' },
 ];
-const sortField = '';
 
-const mockPorps = {
-  fieldList,
-  sortField,
-  handleFieldDropDown,
+const SortingHarness = () => {
+  const [sortField, setSortField] = useState('totalVotes');
+
+  return (
+    <SortingDropDown
+      fieldList={fieldList}
+      handleFieldDropDown={setSortField}
+      sortField={sortField}
+    />
+  );
 };
 
-describe('Test Sorting DropDown Component', () => {
-  it('Should render dropdown component', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <SortingDropDown {...mockPorps} />
+describe('SortingDropDown', () => {
+  it('marks the current sort and moves that selection after choosing another field', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SortingHarness />);
+    await user.click(screen.getByRole('button', { name: 'Popularity' }));
+    const menu = await screen.findByRole('menu');
+
+    expect(within(menu).getAllByRole('menuitemradio')).toHaveLength(
+      fieldList.length
     );
+    expect(
+      within(menu).getByRole('menuitemradio', { name: 'Popularity' })
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(
+      within(menu).getByRole('menuitemradio', { name: 'Name' })
+    ).toHaveAttribute('aria-checked', 'false');
 
-    const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    await user.click(within(menu).getByRole('menuitemradio', { name: 'Name' }));
+    await user.click(screen.getByRole('button', { name: 'Name' }));
 
-    expect(dropdownLabel).toBeInTheDocument();
-
-    fireEvent.click(dropdownLabel);
-
-    const dropdownMenu = await findByRole('menu');
-
-    expect(dropdownMenu).toBeInTheDocument();
-
-    const menuItems = await findAllByTestId('dropdown-menu-item');
-
-    expect(menuItems).toHaveLength(fieldList.length);
+    expect(
+      await screen.findByRole('menuitemradio', { name: 'Name' })
+    ).toHaveAttribute('aria-checked', 'true');
+    expect(
+      screen.getByRole('menuitemradio', { name: 'Popularity' })
+    ).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('Should call onSelect method on onClick option', async () => {
-    const { findByTestId, findByRole, findAllByTestId } = render(
-      <SortingDropDown {...mockPorps} />
+  it('selects the displayed fallback for unsupported column sorts', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    // Columns do not support the asset-level popularity default.
+    expect(
+      columnSortingFields.some((field) => field.value === INITIAL_SORT_FIELD)
+    ).toBe(false);
+
+    render(
+      <SortingDropDown
+        fieldList={columnSortingFields}
+        handleFieldDropDown={jest.fn()}
+        sortField={INITIAL_SORT_FIELD}
+      />
     );
 
-    const dropdownLabel = await findByTestId('sorting-dropdown-label');
+    expect(screen.getByTestId('sorting-dropdown-label')).toHaveTextContent(
+      columnSortingFields[0].name
+    );
 
-    expect(dropdownLabel).toBeInTheDocument();
+    await user.click(screen.getByTestId('sorting-dropdown-label'));
 
-    fireEvent.click(dropdownLabel);
-
-    const dropdownMenu = await findByRole('menu');
-
-    expect(dropdownMenu).toBeInTheDocument();
-
-    const menuItems = await findAllByTestId('dropdown-menu-item');
-
-    expect(menuItems).toHaveLength(fieldList.length);
-
-    act(() => {
-      fireEvent.click(menuItems[0]);
-    });
-
-    expect(handleFieldDropDown).toHaveBeenCalledWith('totalVotes');
+    expect(
+      await screen.findByRole('menuitemradio', {
+        name: columnSortingFields[0].name,
+      })
+    ).toHaveAttribute('aria-checked', 'true');
   });
 });

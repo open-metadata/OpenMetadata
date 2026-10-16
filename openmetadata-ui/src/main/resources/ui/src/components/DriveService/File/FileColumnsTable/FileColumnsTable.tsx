@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import {
   cloneDeep,
@@ -22,7 +21,7 @@ import {
   uniqBy,
 } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { useMemo, useState } from 'react';
+import { lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
 import {
@@ -34,27 +33,37 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { File } from '../../../../generated/entity/data/file';
 import { Column, TagSource } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
-  getAllTags,
-  searchTagInData,
-} from '../../../../utils/TableTags/TableTags.utils';
-import {
-  getTableExpandableConfig,
-  prepareConstraintIcon,
   pruneEmptyChildren,
   updateFieldDescription,
   updateFieldTags,
+} from '../../../../utils/TablePureUtils';
+import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
+import {
+  getTableExpandableConfig,
+  prepareConstraintIcon,
 } from '../../../../utils/TableUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
-import { useGenericContext } from '../../../Customization/GenericProvider/GenericProvider';
+import { ColumnsType } from '../../../common/Table/Table.interface';
+import Table from '../../../common/Table/TableV2';
+import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
-import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
+
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor'
+    ).then((m) => ({ default: m.ModalWithMarkdownEditor }))
+  )
+);
 
 function FileColumnsTable() {
   const { t } = useTranslation();
@@ -67,24 +76,19 @@ function FileColumnsTable() {
   const [editFileColumnDescription, setEditFileColumnDescription] =
     useState<Column>();
 
-  const {
-    editDescriptionPermission,
-    editGlossaryTermsPermission,
-    editTagsPermission,
-    deleted,
-  } = useMemo(() => {
-    const isDeleted = fileDetails?.deleted;
+  const deleted = fileDetails?.deleted;
 
-    return {
-      editDescriptionPermission:
-        (permissions.EditAll || permissions.EditDescription) && !isDeleted,
-      editGlossaryTermsPermission:
-        (permissions.EditAll || permissions.EditGlossaryTerms) && !isDeleted,
-      editTagsPermission:
-        (permissions.EditAll || permissions.EditTags) && !isDeleted,
-      deleted: isDeleted,
-    };
-  }, [permissions, fileDetails]);
+  // Consumer via useGenericContext(). Original local names kept (used throughout this
+  // file) but sourced from getDerivedPermissionFlags's prioritized flags instead of raw
+  // (EditX || EditAll) && !deleted ORs — explicit-deny-wins fix (Task 6 Finding 1).
+  const {
+    canEditDescription: editDescriptionPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditTags: editTagsPermission,
+  } = useMemo(
+    () => getDerivedPermissionFlags(permissions, deleted),
+    [permissions, deleted]
+  );
 
   // Original schema with empty children is required to maintain the integrity of the data and for
   // operations like updating tags and descriptions.
@@ -136,6 +140,9 @@ function FileColumnsTable() {
     >;
   }, [schema]);
 
+  const { tagFilterState, filteredData, handleTableChange } =
+    useTreeTagFilter(prunedChildrenSchema);
+
   const columns: ColumnsType<Column> = useMemo(
     () => [
       {
@@ -156,18 +163,20 @@ function FileColumnsTable() {
                   columnName: name,
                   columnConstraint: record.constraint,
                 })}
-                <Typography.Text
-                  className={classNames('m-b-0 d-block break-word')}
+                <Typography
+                  className={classNames(
+                    'm-b-0 d-block break-word tw:text-primary'
+                  )}
                   data-testid="column-name">
                   {name}
-                </Typography.Text>
+                </Typography>
               </div>
               {isEmpty(displayName) ? null : (
-                <Typography.Text
-                  className="m-b-0 d-block break-word"
+                <Typography
+                  className="m-b-0 d-block break-word tw:text-primary"
                   data-testid="column-display-name">
                   {getEntityName(record)}
-                </Typography.Text>
+                </Typography>
               )}
             </div>
           );
@@ -185,16 +194,13 @@ function FileColumnsTable() {
         ) => {
           return (
             <Tooltip
-              destroyTooltipOnHide
-              overlayInnerStyle={{
-                maxWidth: '420px',
-                overflowWrap: 'break-word',
-                textAlign: 'center',
-              }}
-              title={toLower(dataTypeDisplay)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(dataTypeDisplay)}
+              triggerClassName="tw:block tw:min-w-0">
+              <Typography ellipsis className="cursor-pointer tw:text-primary">
                 {dataTypeDisplay ?? record.dataType}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           );
         },
@@ -227,7 +233,7 @@ function FileColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Classification,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={fileDetails?.fullyQualifiedName ?? ''}
@@ -250,7 +256,7 @@ function FileColumnsTable() {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        onFilter: searchTagInData,
+        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={fileDetails?.fullyQualifiedName ?? ''}
@@ -275,6 +281,7 @@ function FileColumnsTable() {
       editFileColumnDescription,
       getEntityName,
       handleFileColumnTagChange,
+      tagFilterState,
     ]
   );
 
@@ -288,7 +295,7 @@ function FileColumnsTable() {
         className="align-table-filter-left"
         columns={columns}
         data-testid="file-columns-table"
-        dataSource={prunedChildrenSchema}
+        dataSource={filteredData}
         defaultVisibleColumns={DEFAULT_WORKSHEET_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(),
@@ -299,6 +306,7 @@ function FileColumnsTable() {
         scroll={TABLE_SCROLL_VALUE}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
+        onChange={handleTableChange}
       />
       {editFileColumnDescription && (
         <EntityAttachmentProvider

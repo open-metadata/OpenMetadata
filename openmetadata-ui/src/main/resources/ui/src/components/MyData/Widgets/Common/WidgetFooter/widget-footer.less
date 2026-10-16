@@ -10,26 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../../styles/variables.less';
 
 .widget-footer {
   width: 100%;
-  background-color: @white;
-  border-bottom-right-radius: 12px;
-  border-bottom-left-radius: 12px;
-  box-shadow: 0px 0px 24px -8px rgba(10, 13, 18, 0.08);
+  border-bottom-right-radius: var(--om-radius-xl);
+  border-bottom-left-radius: var(--om-radius-xl);
+  box-shadow: 0px 0px 24px -8px var(--om-legacy-color-10-13-18-0-08);
   padding: 0;
-  z-index: 1;
-
-  .ant-btn {
-    border-radius: 6px;
-    height: 40px;
-    font-weight: 400;
-    padding-top: 1px !important;
-  }
-
-  .footer-view-more-button {
-    margin-top: 8px;
-    margin-bottom: 8px;
-  }
+  z-index: var(--om-z-1);
 }

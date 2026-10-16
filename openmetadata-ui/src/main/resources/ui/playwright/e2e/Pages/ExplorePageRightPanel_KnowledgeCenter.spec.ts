@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Page } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { expect, test as baseTest } from '../../support/fixtures/userPages';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -24,6 +25,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForOwnerIndexed, waitForSearchIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -67,6 +69,31 @@ export const test = baseTest.extend<{
     await use(new OverviewPageObject(rightPanel));
   },
 });
+
+/**
+ * Wait for the search index to carry the owner (the panel renders owners from
+ * the search document), then re-open the entity and assert the chip.
+ */
+async function expectOwnerInPanel(
+  page: Page,
+  entityName: string,
+  owner: UserClass
+) {
+  await waitForOwnerIndexed(
+    page,
+    knowledgeCenter.responseData.fullyQualifiedName,
+    'page',
+    owner.responseData.id,
+    true,
+    { timeout: 90_000 }
+  );
+  await navigateToKCEntity(page, entityName);
+
+  const ownerChip = page
+    .locator('[data-testid="entity-summary-panel-container"]')
+    .getByTestId(owner.getUserDisplayName());
+  await expect(ownerChip).toBeVisible();
+}
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
   test.beforeAll(async ({ browser }) => {
@@ -163,7 +190,6 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       test('Should update owners for knowledgeCenter', async ({
         adminPage,
         rightPanel,
-        overview,
       }) => {
         await navigateToKCEntity(
           adminPage,
@@ -174,7 +200,11 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
         await addOwnerInKCPanel(adminPage, user1.getUserDisplayName());
-        await overview.shouldShowOwner(user1.getUserDisplayName());
+        await expectOwnerInPanel(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData),
+          user1
+        );
       });
     });
 
@@ -277,17 +307,29 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         rightPanel.setEntityConfigByType('knowledgeCenter');
 
         await addOwnerInKCPanel(adminPage, user1.getUserDisplayName());
-        await overview.shouldShowOwner(user1.getUserDisplayName());
+        await expectOwnerInPanel(
+          adminPage,
+          getEntityDisplayName(knowledgeCenter.responseData),
+          user1
+        );
 
         await overview.removeOwner([user1.getUserDisplayName()], 'Users');
         await waitForAllLoadersToDisappear(adminPage);
 
+        await waitForOwnerIndexed(
+          adminPage,
+          knowledgeCenter.responseData.fullyQualifiedName,
+          'page',
+          user1.responseData.id,
+          false,
+          { timeout: 90_000 }
+        );
         await navigateToKCEntity(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData)
         );
         const ownerElement = adminPage
-          .locator('.owners-section')
+          .getByTestId('owners-section')
           .getByText(user1.getUserDisplayName());
         await expect(ownerElement).not.toBeVisible();
       });
@@ -638,8 +680,13 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       test('Should clear description for knowledgeCenter', async ({
         adminPage,
       }) => {
-        const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!);
+        const {
+          page: authenticatedPage,
+          apiContext,
+          afterAction,
+        } = await performAdminLogin(adminPage.context().browser()!, {
+          navigate: true,
+        });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
@@ -653,9 +700,36 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           const descriptionText = `Description to remove - ${uuid()}`;
           await localOverview.editDescription(descriptionText);
+          await waitForSearchIndexed(
+            apiContext,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            {
+              timeout: 90_000,
+              queryFilter: JSON.stringify({
+                query: { match_phrase: { description: descriptionText } },
+              }),
+            }
+          );
           await localOverview.shouldShowDescriptionWithText(descriptionText);
 
           await localOverview.editDescription('');
+
+          await waitForSearchIndexed(
+            apiContext,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            {
+              timeout: 90_000,
+              queryFilter: JSON.stringify({
+                query: {
+                  bool: {
+                    must_not: [{ match: { description: descriptionText } }],
+                  },
+                },
+              }),
+            }
+          );
 
           await navigateToKCEntity(
             authenticatedPage,
@@ -663,10 +737,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           );
           await rightPanel.waitForPanelVisible();
 
-          const descElement = authenticatedPage
-            .locator('.description-section')
-            .getByText(descriptionText);
-          await expect(descElement).not.toBeVisible();
+          await localOverview.shouldShowEmptyDescription();
         } finally {
           await afterAction();
         }
@@ -678,7 +749,9 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         adminPage,
       }) => {
         const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!);
+          await performAdminLogin(adminPage.context().browser()!, {
+            navigate: true,
+          });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 

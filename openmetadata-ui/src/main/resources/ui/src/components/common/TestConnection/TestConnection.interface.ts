@@ -13,6 +13,7 @@
 import { ServiceCategory } from '../../../enums/service.enum';
 import { StatusType } from '../../../generated/entity/automations/workflow';
 import { ConfigData } from '../../../interface/service.interface';
+import { RenderTestConnectionFailureAction } from './TestConnectionModal/TestConnectionModal.interface';
 
 export interface TestConnectionProps {
   isTestingDisabled: boolean;
@@ -22,9 +23,13 @@ export interface TestConnectionProps {
   showDetails?: boolean;
   serviceName?: string;
   shouldValidateForm?: boolean;
+  missingRequiredFieldsCount?: number;
+  isFormValidationPending?: boolean;
   onValidateFormRequiredFields?: () => boolean;
+  onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
   hostIp?: string;
   extraInfo?: string;
+  renderFailureAction?: RenderTestConnectionFailureAction;
 }
 
 export type TestStatus = Exclude<StatusType, 'Running'> | 'Warning' | undefined;

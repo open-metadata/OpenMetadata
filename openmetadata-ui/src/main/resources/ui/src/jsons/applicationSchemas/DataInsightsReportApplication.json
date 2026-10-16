@@ -1,0 +1,17 @@
+{
+  "title": "Data Insights Report Application",
+  "description": "This schema defines configuration for Data Insights Report Application.",
+  "properties": {
+    "sendToAdmins": {
+      "title": "Send To Admins",
+      "type": "boolean",
+      "default": true
+    },
+    "sendToTeams": {
+      "title": "Send To Teams",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false
+}

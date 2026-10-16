@@ -10,15 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from 'antd';
-import { useMemo } from 'react';
+
+import { Card } from '@openmetadata/ui-core-components';
+import { lazy, useMemo } from 'react';
 import { CSMode } from '../../../enums/codemirror.enum';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
 } from '../../../generated/entity/data/storedProcedure';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import SchemaEditor from '../SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../SchemaEditor/SchemaEditor'))
+);
 
 export const StoredProcedureCodeCard = () => {
   const { data } = useGenericContext<StoredProcedure>();
@@ -32,15 +37,17 @@ export const StoredProcedureCodeCard = () => {
 
   return (
     <Card className="m-b-md" data-testid="code-component">
-      <SchemaEditor
-        editorClass="custom-code-mirror-theme full-screen-editor-height"
-        mode={{ name: CSMode.SQL }}
-        options={{
-          styleActiveLine: false,
-          readOnly: true,
-        }}
-        value={code}
-      />
+      <Card.Content>
+        <SchemaEditor
+          editorClass="custom-code-mirror-theme full-screen-editor-height"
+          mode={{ name: CSMode.SQL }}
+          options={{
+            styleActiveLine: false,
+            readOnly: true,
+          }}
+          value={code}
+        />
+      </Card.Content>
     </Card>
   );
 };

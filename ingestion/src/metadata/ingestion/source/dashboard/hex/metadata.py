@@ -13,7 +13,7 @@ Hex source module with direct warehouse query support for lineage
 """
 
 import traceback
-from typing import Dict, Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -43,7 +43,6 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.hex.connection import get_connection
 from metadata.ingestion.source.dashboard.hex.models import Project
 from metadata.ingestion.source.dashboard.hex.query_fetcher import (
     HexProjectLineage,
@@ -51,7 +50,6 @@ from metadata.ingestion.source.dashboard.hex.query_fetcher import (
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 logger = ingestion_logger()
 
@@ -69,11 +67,10 @@ class HexSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.client = get_connection(self.service_connection)
         self.projects = []  # We will populate this in `prepare`
 
         # Initialize lineage components
-        self.hex_project_lineage: Dict[str, HexProjectLineage] = {}  # noqa: UP006
+        self.hex_project_lineage: dict[str, HexProjectLineage] = {}
 
         # Initialize query fetcher for lineage
         self.query_fetcher = HexQueryFetcher(metadata=metadata, lookback_days=7)
@@ -83,7 +80,7 @@ class HexSource(DashboardServiceSource):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: HexConnection = config.serviceConnection.root.config
@@ -147,7 +144,7 @@ class HexSource(DashboardServiceSource):
         """Get dashboard details - in Hex, we already have all details from list API"""
         return dashboard
 
-    def get_owner_ref(self, dashboard_details: Project) -> Optional[EntityReferenceList]:  # noqa: UP045
+    def get_owner_ref(self, dashboard_details: Project) -> EntityReferenceList | None:
         """
         Get owner from email
         """
@@ -171,13 +168,11 @@ class HexSource(DashboardServiceSource):
         """Create classification and tags for dashboard"""
         tags = self._extract_tags_from_project(dashboard_details)
         if tags and self.source_config.includeTags:
-            yield from get_ometa_tag_and_classification(
+            yield from self.yield_tag_definitions(
                 tags=tags,
                 classification_name=HEX_TAG_CATEGORY,
                 tag_description="Hex Tag",
                 classification_description="Tags associated with Hex projects",
-                include_tags=self.source_config.includeTags,
-                metadata=self.metadata,
             )
 
     def _extract_tags_from_project(self, dashboard_details):
@@ -202,11 +197,10 @@ class HexSource(DashboardServiceSource):
             tags = self._extract_tags_from_project(dashboard_details)
 
             if tags:
-                return get_tag_labels(
-                    metadata=self.metadata,
+                return self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
                     tags=tags,
                     classification_name=HEX_TAG_CATEGORY,
-                    include_tags=True,
                 )
 
         return None
@@ -249,7 +243,7 @@ class HexSource(DashboardServiceSource):
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: Project,
-        db_service_prefix: Optional[str] = None,  # noqa: UP045
+        db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
         """
         Get lineage between dashboard and data sources using warehouse queries.

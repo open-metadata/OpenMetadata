@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.CONFLICT;
 import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.api.teams.CreateUser.CreatePasswordType.ADMIN_CREATE;
 import static org.openmetadata.schema.auth.ChangePasswordRequest.RequestType.SELF;
@@ -29,7 +30,9 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DEFAULT_BOT_ROLE;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
+import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
+import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationToken;
 import static org.openmetadata.service.util.UserUtil.getUser;
@@ -54,9 +57,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -81,6 +87,7 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -95,6 +102,8 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.teams.UserPreferences;
+import org.openmetadata.schema.api.teams.preferences.AppModePreference;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.ChangePasswordRequest;
 import org.openmetadata.schema.auth.CreatePersonalToken;
@@ -114,13 +123,13 @@ import org.openmetadata.schema.auth.TokenRefreshRequest;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -132,7 +141,9 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.RoleRepository;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.TokenRepository;
+import org.openmetadata.service.jdbi3.UserPreferencesRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.limits.Limits;
@@ -141,6 +152,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.security.AuthServeletHandlerRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.CatalogPrincipal;
@@ -154,6 +166,7 @@ import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.saml.JwtTokenCacheManager;
+import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -181,12 +194,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
-  private AuthenticationConfiguration authenticationConfiguration;
-  private AuthorizerConfiguration authorizerConfiguration;
+  private final UserPreferencesRepository preferencesRepository;
   private final AuthenticatorHandler authHandler;
-  private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,defaultDomain,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -207,23 +218,34 @@ public class UserResource extends EntityResource<User, UserRepository> {
     allowedFields.remove(USER_PROTECTED_FIELDS);
     tokenRepository = Entity.getTokenRepository();
     roleRepository = Entity.getRoleRepository();
-    UserTokenCache.initialize();
+    preferencesRepository = new UserPreferencesRepository();
     authHandler = authenticatorHandler;
   }
 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
-    return listOf(MetadataOperation.EDIT_TEAMS);
+    return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
   }
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.repository.initializeUsers(config);
-    this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
+  }
+
+  /**
+   * Read per request from the configuration in effect: a change saved in the UI, or applied from
+   * another server, then holds here too instead of only after a restart.
+   */
+  private static boolean usesRolesFromProvider() {
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    return authorizer != null && Boolean.TRUE.equals(authorizer.getUseRolesFromProvider());
+  }
+
+  private static boolean isSelfSignUpEnabled() {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    return authConfig != null && Boolean.TRUE.equals(authConfig.getEnableSelfSignup());
   }
 
   public static class UserList extends ResultList<User> {
@@ -292,17 +314,44 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @QueryParam("isBot")
           Boolean isBot,
       @Parameter(
+              description =
+                  "When fields contains owns, only include owned entities of this entity type.",
+              schema = @Schema(type = "string", example = "pipeline"))
+          @QueryParam("ownsEntityType")
+          String ownsEntityType,
+      @Parameter(
+              description =
+                  "When fields contains owns, only include entities directly owned by the user.",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("directOwnsOnly")
+          Boolean directOwnsOnly,
+      @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include).addQueryParam("team", teamParam);
+    if (teamParam != null) {
+      // Non-Group teams (Department/Division/BusinessUnit) hold no direct members; list the members
+      // inherited from their sub-group descendants (empty for Group/Organization teams).
+      TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
+      List<String> subtreeTeamIds = teamRepository.getSubtreeTeamIds(teamParam);
+      if (!subtreeTeamIds.isEmpty()) {
+        filter.addQueryParam("teamIds", String.join(",", subtreeTeamIds));
+      }
+    }
     if (isAdmin != null) {
       filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
     }
     if (isBot != null) {
       filter.addQueryParam("isBot", String.valueOf(isBot));
+    }
+    if (ownsEntityType != null) {
+      filter.addQueryParam("ownsEntityType", ownsEntityType);
+    }
+    if (directOwnsOnly != null) {
+      filter.addQueryParam("directOwnsOnly", String.valueOf(directOwnsOnly));
     }
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -332,10 +381,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Parameter(
               description =
-                  "Time window in minutes (default: 5). Examples: 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
+                  "Time window in minutes (default: 5). Use 0 for all time. Examples: 0 (all time), 1 (last minute), 5 (last 5 minutes), 60 (last hour), 1440 (last day)",
               schema = @Schema(type = "integer", example = "5"))
           @QueryParam("timeWindow")
           @DefaultValue("5")
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int timeWindow,
       @Parameter(
               description = "Fields requested in the returned resource",
@@ -368,8 +418,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Create filter for online users - uses both lastLoginTime and lastActivityTime
     ListFilter filter = new ListFilter(Include.NON_DELETED);
-    filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
     filter.addQueryParam("isBot", "false"); // Exclude bots from online users
+    if (timeWindow > 0) {
+      filter.addQueryParam("lastActivityTimeGreaterThan", String.valueOf(thresholdTimestamp));
+    }
 
     ResultList<User> users =
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -525,10 +577,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
             uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
 
     // Sync the Roles from token to User
-    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && !(user.getIsBot() != null && user.getIsBot())) {
+    if (usesRolesFromProvider() && !(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
+          uriInfo,
+          user,
+          getRolesFromAuthorizationToken(catalogSecurityContext),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
     }
     return addHref(uriInfo, user);
   }
@@ -575,6 +629,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response logoutUser(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletRequest httpServletRequest,
+      @Context HttpServletResponse httpServletResponse,
       @Valid LogoutRequest request) {
     Date logoutTime = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
     JwtTokenCacheManager.getInstance()
@@ -586,6 +642,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
     if (isBasicAuth() && request.getRefreshToken() != null) {
       // need to clear the refresh token as well
       tokenRepository.deleteToken(request.getRefreshToken());
+    }
+    SessionService sessionService =
+        AuthServeletHandlerRegistry.getSessionService(httpServletRequest.getServletContext());
+    if (sessionService != null) {
+      sessionService.revokeSession(httpServletRequest, httpServletResponse);
     }
     return Response.status(200).entity("Logout Successful").build();
   }
@@ -641,17 +702,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Context ContainerRequestContext containerRequestContext,
       @Valid CreateUser create) {
+    if (grantsPrivileges(create)) {
+      authorizeAdminForPrivilegedFields(securityContext);
+    }
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
     if (Boolean.TRUE.equals(user.getIsBot())) {
       addAuthMechanismToBot(user, create, uriInfo);
       addRolesToBot(user, uriInfo);
     }
 
-    //
     try {
-      // Email Validation
       validateEmailAlreadyExists(user.getEmail());
       addUserAuthForBasic(user, create);
+      ensureUniqueUsername(user);
     } catch (RuntimeException ex) {
       return Response.status(CONFLICT)
           .type(MediaType.APPLICATION_JSON_TYPE)
@@ -668,7 +731,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
-      if (isSelfSignUpEnabled) {
+      if (isSelfSignUpEnabled()) {
         if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
           User created =
               addHref(
@@ -702,7 +765,6 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private void addUserAuthForBasic(User user, CreateUser create) {
     if (isBasicAuth()) {
-      user.setName(user.getEmail().split("@")[0]);
       if (Boolean.FALSE.equals(create.getIsBot())
           && create.getCreatePasswordType() == ADMIN_CREATE) {
         addAuthMechanismToUser(user, create);
@@ -710,12 +772,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
+  private void ensureUniqueUsername(User user) {
+    if (!isBasicAuth() && repository.checkUserNameExists(user.getName())) {
+      String username = generateUsernameFromEmail(user.getEmail(), repository::checkUserNameExists);
+      user.setName(username);
+      user.setFullyQualifiedName(EntityInterfaceUtil.quoteName(username));
+    }
+  }
+
   private void updateUserRolesIfRequired(
       User user, ContainerRequestContext containerRequestContext) {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
-    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && !(user.getIsBot() != null && user.getIsBot())) {
+    if (usesRolesFromProvider() && !(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }
@@ -738,7 +807,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private boolean isBasicAuth() {
-    return authenticationConfiguration.getProvider().equals(AuthProvider.BASIC);
+    return SecurityConfigurationManager.isNativePasswordProvider(
+        SecurityConfigurationManager.getCurrentAuthConfig().getProvider());
   }
 
   @PUT
@@ -760,8 +830,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateUser create) {
     User user = getUser(securityContext.getUserPrincipal().getName(), create);
-    repository.prepareInternal(user, true);
+    repository.setFullyQualifiedName(user);
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
+    repository.prepareInternal(user, existingUser != null);
     if (existingUser == null) {
       limits.enforceLimits(
           securityContext,
@@ -769,12 +840,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
           new OperationContext(entityType, MetadataOperation.CREATE));
     }
     ResourceContext<?> resourceContext = getResourceContextByName(user.getFullyQualifiedName());
-    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
-      authorizer.authorizeAdmin(securityContext);
-    } else if (!securityContext.getUserPrincipal().getName().equals(user.getName())) {
+    // Privileged fields are admin only whoever the target is. This has to be checked before the
+    // ownership branch below, otherwise a principal holding EDIT on users would be able to grant
+    // roles to somebody else through PUT while PATCH refuses the same change.
+    if (grantsPrivileges(create, existingUser, user)) {
+      authorizeAdminForPrivilegedFields(securityContext);
+    } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
-      // however that is not supported for User.
+      // however that is not supported for User. The principal name comes from the token unmodified
+      // while user.getName() is normalized to lower case, so this comparison ignores case.
       OperationContext createOperationContext =
           new OperationContext(entityType, EntityUtil.createOrUpdateOperation(resourceContext));
       authorizer.authorize(securityContext, createOperationContext, resourceContext);
@@ -831,10 +906,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-
-    // Invalidate cached token for bot user
-    BotTokenCache.invalidateToken(user.getName());
+    BotTokenCache.mutateToken(
+        user.getName(),
+        () ->
+            repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName()));
 
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
@@ -896,13 +971,18 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
-
-    // Invalidate any cached token for this user
     if (isBotUser) {
-      BotTokenCache.invalidateToken(user.getName());
+      BotTokenCache.mutateToken(
+          user.getName(),
+          () ->
+              repository.createOrUpdate(
+                  uriInfo, user, securityContext.getUserPrincipal().getName()));
     } else {
-      UserTokenCache.invalidateToken(user.getName());
+      UserTokenCache.mutateToken(
+          user.getName(),
+          () ->
+              repository.createOrUpdate(
+                  uriInfo, user, securityContext.getUserPrincipal().getName()));
     }
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
@@ -938,10 +1018,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
         new AuthenticationMechanism().withConfig(jwtAuthMechanism).withAuthType(JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        BotTokenCache.mutateToken(
+            user.getName(),
+            () ->
+                repository.createOrUpdate(
+                    uriInfo, user, securityContext.getUserPrincipal().getName()));
     addHref(uriInfo, response.getEntity());
-    // Invalidate Bot Token in Cache
-    BotTokenCache.invalidateToken(user.getName());
     return response.toResponse();
   }
 
@@ -1041,22 +1123,32 @@ public class UserResource extends EntityResource<User, UserRepository> {
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    boolean isSelf = getSubjectContext(securityContext).user().getId().equals(id);
+    // Editing another user needs EDIT_ALL on that user, as PUT requires, so broad grants on all
+    // resources (e.g. DataConsumer's EditDescription) only ever reach the caller's own profile.
+    if (!isSelf) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+          getResourceContextById(id));
+    }
     for (JsonValue patchOp : patch.toJsonArray()) {
       JsonObject patchOpObject = patchOp.asJsonObject();
-      if (patchOpObject.containsKey("path") && patchOpObject.containsKey("value")) {
-        String path = patchOpObject.getString("path");
-        if (path.equals("/isAdmin") || path.equals("/isBot") || path.contains("/roles")) {
-          authorizer.authorizeAdmin(securityContext);
-          continue;
-        }
+      if (!patchOpObject.containsKey("path")) {
+        continue;
+      }
+      String path = patchOpObject.getString("path");
+      if (path.startsWith("/defaultDomain") && !isSelf) {
+        throw new AuthorizationException("Users can only update their own default domain");
+      }
+      if (isPrivilegedUserPatchPath(path)) {
+        authorizer.authorizeAdmin(securityContext);
+        continue;
+      }
+      if (patchOpObject.containsKey("value")) {
         // Check if updating personaPreferences - users can only update their own
-        if (path.startsWith("/personaPreferences")) {
-          String authenticatedUserName = securityContext.getUserPrincipal().getName();
-          User authenticatedUser =
-              repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
-          if (!authenticatedUser.getId().equals(id)) {
-            throw new AuthorizationException("Users can only update their own persona preferences");
-          }
+        if (path.startsWith("/personaPreferences") && !isSelf) {
+          throw new AuthorizationException("Users can only update their own persona preferences");
         }
         // if path contains team, check if team is join able by any user
         if (patchOpObject.containsKey("op")
@@ -1079,6 +1171,246 @@ public class UserResource extends EntityResource<User, UserRepository> {
       }
     }
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  private static final String IS_ADMIN_PATCH_PATH = "/isAdmin";
+  private static final String IS_BOT_PATCH_PATH = "/isBot";
+  private static final String ROLES_FIELD = "roles";
+  private static final String TEAMS_FIELD = "teams";
+  private static final String PRIVILEGED_FIELDS = ROLES_FIELD + "," + TEAMS_FIELD;
+  private static final String ROLES_PATCH_PATH_SEGMENT = "/" + ROLES_FIELD;
+
+  // A root-level operation (path "") replaces the whole user document, so it covers the same
+  // fields as the explicit paths below.
+  private static boolean isPrivilegedUserPatchPath(String path) {
+    return path.isEmpty()
+        || path.equals(IS_ADMIN_PATCH_PATH)
+        || path.equals(IS_BOT_PATCH_PATH)
+        || path.contains(ROLES_PATCH_PATH_SEGMENT);
+  }
+
+  // Fields on an update that only an admin may set, whoever the user being changed is. The teams
+  // are read from the request rather than from updatedUser: prepareInternal() substitutes the
+  // organization for an absent team list, and that default is the server's doing, not something
+  // the caller asked for.
+  private boolean grantsPrivileges(CreateUser create, User existingUser, User updatedUser) {
+    if (Boolean.TRUE.equals(create.getIsAdmin()) || Boolean.TRUE.equals(create.getIsBot())) {
+      return true;
+    }
+    if (nullOrEmpty(updatedUser.getRoles()) && nullOrEmpty(create.getTeams())) {
+      return false;
+    }
+    // Reading back what the user already holds only pays off once the request names a role or a
+    // team - nothing else can be an elevation.
+    User currentUser = loadPrivilegedFields(existingUser);
+    return hasRoleElevation(currentUser, updatedUser)
+        || joinsClosedTeam(currentUser, create.getTeams());
+  }
+
+  // findByNameOrNull() sets core fields only, so the roles and teams the user already holds have to
+  // be loaded before the request can be compared against them. A null existingUser means the user
+  // is being created, so everything the request asks for is new.
+  private User loadPrivilegedFields(User existingUser) {
+    if (existingUser == null) {
+      return null;
+    }
+    return repository.get(null, existingUser.getId(), getFields(PRIVILEGED_FIELDS), ALL, false);
+  }
+
+  // True when the request asks for a role the user does not already hold.
+  private boolean hasRoleElevation(User currentUser, User updatedUser) {
+    Set<UUID> updatedRoleIds = entityIds(updatedUser.getRoles());
+    if (updatedRoleIds.isEmpty()) {
+      return false;
+    }
+    if (currentUser == null) {
+      return true;
+    }
+    return !entityIds(currentUser.getRoles()).containsAll(updatedRoleIds);
+  }
+
+  // Members of a team hold the team's defaultRoles as inherited roles and are governed by its
+  // policies, so joining a team that is not open to everyone grants privileges the same way naming
+  // a role does. PATCH has always required an admin for it. Teams the user is already in are
+  // dropped first so the joinable lookup only runs for the ones actually being added.
+  private boolean joinsClosedTeam(User currentUser, List<UUID> requestedTeamIds) {
+    Set<UUID> currentTeamIds = currentUser == null ? Set.of() : entityIds(currentUser.getTeams());
+    return listOrEmpty(requestedTeamIds).stream()
+        .filter(teamId -> !currentTeamIds.contains(teamId))
+        .anyMatch(this::isClosedTeam);
+  }
+
+  private boolean isClosedTeam(UUID teamId) {
+    return !repository.isTeamJoinable(teamId.toString());
+  }
+
+  // Fields on CreateUser that only an admin may set, whoever the user being created is. Every team
+  // named on a create request is one the user is not a member of yet.
+  private boolean grantsPrivileges(CreateUser create) {
+    return Boolean.TRUE.equals(create.getIsAdmin())
+        || Boolean.TRUE.equals(create.getIsBot())
+        || grantsRolesFromRequestBody(create)
+        || joinsClosedTeam(null, create.getTeams());
+  }
+
+  // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
+  // authorization token when useRolesFromProvider is on, so there the body has no effect.
+  private boolean grantsRolesFromRequestBody(CreateUser create) {
+    return !nullOrEmpty(create.getRoles()) && !usesRolesFromProvider();
+  }
+
+  // The principal is not in the database yet during self sign-up, and authorizeAdmin() resolves the
+  // subject from it, so a plain call would surface the outcome as a 404 instead of a 403.
+  private void authorizeAdminForPrivilegedFields(SecurityContext securityContext) {
+    String principal = securityContext.getUserPrincipal().getName();
+    try {
+      authorizer.authorizeAdmin(securityContext);
+    } catch (EntityNotFoundException e) {
+      throw new AuthorizationException(CatalogExceptionMessage.notAdmin(principal));
+    }
+  }
+
+  private static Set<UUID> entityIds(List<EntityReference> references) {
+    if (nullOrEmpty(references)) {
+      return Set.of();
+    }
+    return references.stream().map(EntityReference::getId).collect(Collectors.toSet());
+  }
+
+  /** Preference {@code type} discriminator -> the concrete POJO it deserializes to. */
+  private static final Map<String, Class<?>> PREFERENCE_TYPES =
+      Map.of(AppModePreference.Type.APP_MODE.value(), AppModePreference.class);
+
+  @GET
+  @Path("/{userId}/preferences")
+  @Operation(
+      operationId = "getUserPreferences",
+      summary = "Get user preferences",
+      description =
+          "Get the per-user UI preferences list. Users can read their own; admins can read anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences getPreferences(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    List<Object> preferences = preferencesRepository.get(userId);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  @PUT
+  @Path("/{userId}/preferences/{type}")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "putUserPreference",
+      summary = "Create or replace a user preference",
+      description =
+          "Create or replace the preference entry of the given `type`. The request body is a "
+              + "typed discriminated union `{type, config}` (see "
+              + "`api/teams/preferences/*.json`). Users can update their own; admins can update "
+              + "anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences putPreference(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId,
+      @Parameter(description = "Discriminator of the preference entry, e.g. `appMode`")
+          @PathParam("type")
+          String type,
+      @RequestBody(
+              description = "Typed preference entry `{type, config}`",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON,
+                      examples = {
+                        @ExampleObject("{\"type\": \"appMode\", \"config\": {\"value\": \"ai\"}}")
+                      }))
+          Map<String, Object> preference) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    Object typedPreference = convertPreference(type, preference);
+    List<Object> preferences = preferencesRepository.putByType(userId, type, typedPreference);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  @DELETE
+  @Path("/{userId}/preferences/{type}")
+  @Operation(
+      operationId = "deleteUserPreference",
+      summary = "Delete a user preference",
+      description =
+          "Remove the preference entry of the given `type`, if present. Users can update their "
+              + "own; admins can update anyone's.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "User preferences",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserPreferences.class)))
+      })
+  public UserPreferences deletePreference(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID"))
+          @PathParam("userId")
+          UUID userId,
+      @Parameter(description = "Discriminator of the preference entry, e.g. `appMode`")
+          @PathParam("type")
+          String type) {
+    authorizeSelfOrAdmin(uriInfo, securityContext, userId);
+    List<Object> preferences = preferencesRepository.deleteByType(userId, type);
+    return new UserPreferences().withUserId(userId).withPreferences(preferences);
+  }
+
+  /**
+   * Converts the raw request body into the concrete POJO registered for {@code type} in {@link
+   * #PREFERENCE_TYPES}, so JAX-RS can accept a single generic body shape for the `{type}`
+   * path-templated endpoint while still storing (and returning) fully typed preference entries.
+   * Adding a new preference type only requires a new schema + a new map entry here.
+   */
+  private static Object convertPreference(String type, Map<String, Object> preference) {
+    Class<?> preferenceClass = PREFERENCE_TYPES.get(type);
+    if (preferenceClass == null) {
+      throw new BadRequestException("Unsupported user preference type: " + type);
+    }
+    Object bodyType = preference == null ? null : preference.get("type");
+    if (!type.equals(bodyType)) {
+      throw new BadRequestException(
+          String.format(
+              "Preference type in path (%s) does not match request body (%s)", type, bodyType));
+    }
+    return JsonUtils.convertValue(preference, preferenceClass);
+  }
+
+  /** Users can act on their own preferences; anyone else requires admin. */
+  private void authorizeSelfOrAdmin(UriInfo uriInfo, SecurityContext securityContext, UUID userId) {
+    String authenticatedUserName = securityContext.getUserPrincipal().getName();
+    User authenticatedUser =
+        repository.getByName(uriInfo, authenticatedUserName, new Fields(Set.of("id")));
+    if (!authenticatedUser.getId().equals(userId)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   @DELETE
@@ -1206,7 +1538,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getUserAssets(id, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1244,7 +1582,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
+    return Response.ok(
+            repository.getUserAssetsByName(name, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @POST
@@ -1333,16 +1677,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response generateResetPasswordLink(@Context UriInfo uriInfo, @Valid EmailRequest request) {
-    String userName = request.getEmail().split("@")[0];
     User registeredUser;
     try {
       registeredUser =
-          repository.getByName(
-              uriInfo, userName, new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
+          repository.getByEmail(
+              uriInfo,
+              request.getEmail().toLowerCase(),
+              new Fields(Set.of(USER_PROTECTED_FIELDS), USER_PROTECTED_FIELDS));
     } catch (EntityNotFoundException ex) {
       LOG.error(
           "[GeneratePasswordReset] Got Error while fetching user : {},  error message {}",
-          userName,
+          request.getEmail(),
           ex.getMessage());
       return Response.status(Response.Status.OK)
           .entity("Please check your mail to for Reset Password Link.")
@@ -1442,8 +1787,8 @@ public class UserResource extends EntityResource<User, UserRepository> {
       })
   public Response checkEmailVerified(@Context UriInfo uriInfo, @Valid EmailRequest request) {
     User user =
-        repository.getByName(
-            uriInfo, request.getEmail().split("@")[0], getFields("isEmailVerified"));
+        repository.getByEmail(
+            uriInfo, request.getEmail().toLowerCase(), getFields("isEmailVerified"));
     return Response.status(Response.Status.OK).entity(user.getIsEmailVerified()).build();
   }
 
@@ -1581,15 +1926,19 @@ public class UserResource extends EntityResource<User, UserRepository> {
       userName = securityContext.getUserPrincipal().getName();
     }
     User user = repository.getByName(null, userName, getFields("id"), Include.NON_DELETED, false);
-    if (removeAll) {
-      tokenRepository.deleteTokenByUserAndType(
-          user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
-    } else {
-      List<String> ids =
-          request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
-      tokenRepository.deleteAllToken(ids);
-    }
-    UserTokenCache.invalidateToken(user.getName());
+    UserTokenCache.mutateToken(
+        user.getName(),
+        () -> {
+          if (removeAll) {
+            tokenRepository.deleteTokenByUserAndType(
+                user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+          } else {
+            List<String> ids =
+                request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
+            tokenRepository.deleteAllToken(ids);
+          }
+          return null;
+        });
     List<TokenInterface> tokens =
         tokenRepository.findByUserIdAndType(user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
     return Response.status(Response.Status.OK).entity(new ResultList<>(tokens)).build();
@@ -1638,8 +1987,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
                   null);
       PersonalAccessToken personalAccessToken =
           TokenUtil.getPersonalAccessToken(tokenRequest, user, authMechanism);
-      tokenRepository.insertToken(personalAccessToken);
-      UserTokenCache.invalidateToken(user.getName());
+      UserTokenCache.mutateToken(
+          user.getName(),
+          () -> {
+            tokenRepository.insertToken(personalAccessToken);
+            return null;
+          });
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
     }
     throw new CustomExceptionMessage(
@@ -1795,7 +2148,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext) {
     User original = retrieveBotUser(user, uriInfo);
     String botName = create.getBotName();
-    EntityInterface bot = retrieveBot(botName);
+    EntityInterface<?> bot = retrieveBot(botName);
     // check if the bot user exists
     if (original != null
         && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
@@ -1829,12 +2182,16 @@ public class UserResource extends EntityResource<User, UserRepository> {
     addAuthMechanismToBot(user, create, uriInfo);
     addRolesToBot(user, uriInfo);
     PutResponse<User> response =
-        repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName());
+        BotTokenCache.mutateToken(
+            user.getName(),
+            () ->
+                repository.createOrUpdate(
+                    uriInfo, user, securityContext.getUserPrincipal().getName()));
     decryptOrNullify(securityContext, response.getEntity());
     return response.toResponse();
   }
 
-  private EntityInterface retrieveBot(String botName) {
+  private EntityInterface<?> retrieveBot(String botName) {
     try {
       return Entity.getEntityRepository(Entity.BOT).getByName(null, botName, Fields.EMPTY_FIELDS);
     } catch (Exception e) {
@@ -1842,7 +2199,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
+  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface<?> botUser) {
     List<CollectionDAO.EntityRelationshipRecord> userBotRelationship =
         retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
@@ -1855,7 +2212,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
-  private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
+  private boolean botHasRelationshipWithUser(EntityInterface<?> bot, User user) {
     if (bot == null || user == null) {
       return false;
     }
@@ -1866,7 +2223,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(
-      EntityInterface bot) {
+      EntityInterface<?> bot) {
     return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 

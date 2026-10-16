@@ -13,16 +13,20 @@ Base class for ingesting Object Storage services
 """
 
 import json
+import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from contextlib import closing
+from typing import Annotated, Any, cast
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
+from metadata.domain.tags import TagCanonicalizer, TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createContainer import CreateContainerRequest
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column as TableColumn
 from metadata.generated.schema.entity.data.table import ColumnName
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
@@ -41,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.storageServiceMetadataPipeline 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
@@ -54,7 +59,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
@@ -64,6 +75,7 @@ from metadata.utils.datalake.datalake_utils import (
     DataFrameColumnParser,
     fetch_dataframe_first_chunk,
 )
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.path_pattern import (
@@ -73,6 +85,7 @@ from metadata.utils.path_pattern import (
     infer_structure_format,
     pattern_to_regex,
 )
+from metadata.utils.schema_inference import NO_LIMITS, InferenceLimits, InferenceReport
 from metadata.utils.storage_metadata_config import (
     StorageMetadataConfigException,
     get_manifest,
@@ -117,7 +130,6 @@ class StorageServiceTopology(ServiceTopology):
                 processor="yield_create_request_objectstore_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["container"],
@@ -129,18 +141,17 @@ class StorageServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
+                context=None,
                 processor="yield_tag_details",
                 nullable=True,
-                store_all_in_context=True,
+                store_all_in_context=False,
             ),
             NodeStage(
                 type_=Container,
                 context="container",
-                processor="yield_create_container_requests",
+                processor="yield_container_details",
                 consumer=["objectstore_service"],
                 nullable=True,
-                use_cache=True,
             ),
         ],
     )
@@ -160,9 +171,27 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
     topology = StorageServiceTopology()
     context = TopologyContextManager(topology)
-    container_source_state: Set = set()  # noqa: RUF012, UP006
+    container_source_state: set = set()  # noqa: RUF012
 
-    global_manifest: Optional[ManifestMetadataConfig]  # noqa: UP045
+    global_manifest: ManifestMetadataConfig | None
+
+    @property
+    def tags_registry(self) -> TagRegistry:
+        """Per-source registry for tag definitions and container labels."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tags_registry")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
+
+    @property
+    def tag_canonicalizer(self) -> TagCanonicalizer:
+        """Per-source canonicalizer for tag and classification names."""
+        instance_dict = vars(self)
+        cached = instance_dict.get("tag_canonicalizer")
+        if cached is not None:
+            return cached
+        return instance_dict.setdefault("tag_canonicalizer", TagCanonicalizer(metadata=self.metadata))
 
     @retry_with_docker_host()
     def __init__(
@@ -175,20 +204,23 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self.inference_limits = InferenceLimits.from_source_config(self.source_config)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         # Try to get the global manifest
-        self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()  # noqa: UP045
+        self.global_manifest: ManifestMetadataConfig | None = self.get_manifest_file()
 
     @property
     def name(self) -> str:
         return self.service_connection.type.name
 
-    def get_manifest_file(self) -> Optional[ManifestMetadataConfig]:  # noqa: UP045
+    def get_manifest_file(self) -> ManifestMetadataConfig | None:
         if self.source_config.storageMetadataConfigSource and not isinstance(
             self.source_config.storageMetadataConfigSource,
             NoMetadataConfigurationSource,
@@ -207,7 +239,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         return None  # noqa: RET501
 
-    def _parsed_default_manifest(self) -> Optional[ManifestMetadataConfig]:  # noqa: UP045
+    def _parsed_default_manifest(self) -> ManifestMetadataConfig | None:
         """Parse the ``defaultManifest`` JSON string from the pipeline
         config. Cached on first use; returns ``None`` if unset or invalid.
 
@@ -221,7 +253,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             return self._default_manifest_cache
 
         raw = getattr(self.source_config, "defaultManifest", None)
-        parsed: Optional[ManifestMetadataConfig] = None  # noqa: UP045
+        parsed: ManifestMetadataConfig | None = None
         if raw and isinstance(raw, str) and raw.strip():
             try:
                 payload = json.loads(raw)
@@ -254,7 +286,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self._default_manifest_cache = parsed
         return parsed
 
-    def _resolve_manifest_entries(self, bucket_name: str) -> List[MetadataEntry]:  # noqa: UP006
+    def _resolve_manifest_entries(self, bucket_name: str) -> list[MetadataEntry]:
         """Resolve manifest entries for a bucket using this precedence:
 
         1. Global manifest (``storageMetadataConfigSource``), filtered to
@@ -301,7 +333,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """Generate the create container requests based on the received details"""
 
     def close(self):
-        """By default, nothing needs to be closed"""
+        if self._connection is not None:
+            self._connection.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -315,22 +348,81 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """
 
     def yield_tag_details(self, container_details: Any) -> Iterable[Either[OMetaTagAndClassification]]:
-        """
-        From topology. To be run for each container
-        """
-        if self.source_config.includeTags:
-            yield from self.yield_container_tags(container_details) or []
+        """Publish tag definitions before creating the container."""
+        completed = False
+        try:
+            if self.source_config.includeTags:
+                yield from self.yield_container_tags(container_details) or []
+                with closing(self.tags_registry.drain()) as definitions:
+                    for record in definitions:
+                        yield Either(right=record, left=None)
+            completed = True
+        finally:
+            if not completed and container_details.container_fqn:
+                self.tags_registry.clear_scope(container_details.container_fqn)
+
+    def register_tag(
+        self, *, entity_fqn: str, definition: TagDefinition
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Resolve and attach a definition, yielding individual registration failures."""
+        if not definition.tag_name or not definition.tag_name.strip():
+            return
+        if not (
+            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
+        ):
+            logger.warning(
+                "%s: Skipped invalid tag %r in classification %r",
+                entity_fqn,
+                definition.tag_name,
+                definition.classification_name,
+            )
+            return
+        try:
+            tag = self.tag_canonicalizer.resolve(
+                classification_name=definition.classification_name,
+                tag_name=definition.tag_name,
+                classification_description=definition.classification_description,
+                tag_description=definition.tag_description,
+            )
+            self.tags_registry.define(tag)
+            self.tags_registry.attach(entity_fqn=entity_fqn, tag=tag)
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name="Tags and Classifications",
+                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+    def get_tag_by_fqn(self, entity_fqn: str | None) -> list[TagLabel] | None:
+        """Return the labels attached to the current container."""
+        return (self.tags_registry.labels_for(entity_fqn) or None) if entity_fqn else None
+
+    def yield_container_details(self, container_details: Any) -> Iterable[Either[CreateContainerRequest]]:
+        """Create the container and release its tag attachments when consumed."""
+        try:
+            yield from self.yield_create_container_requests(container_details)
+        finally:
+            if container_details.container_fqn:
+                self.tags_registry.clear_scope(container_details.container_fqn)
 
     def register_record(self, container_request: CreateContainerRequest) -> None:
         """
         Mark the container record as scanned and update
         the storage_source_state
         """
-        parent_container = (
-            self.metadata.get_by_id(entity=Container, entity_id=container_request.parent.id).fullyQualifiedName.root
-            if container_request.parent
-            else None
-        )
+        parent_container = None
+        if container_request.parent:
+            parent_id = require_entity_reference_id(container_request.parent, "Parent container")
+            parent = cast(
+                "Container",
+                self.metadata.get_by_id(entity=Container, entity_id=parent_id, nullable=False),
+            )
+            if parent.fullyQualifiedName is None:
+                raise ValueError(f"Parent container {parent_id.root} must include fullyQualifiedName")
+            parent_container = parent.fullyQualifiedName.root
         container_fqn = fqn.build(
             self.metadata,
             entity_type=Container,
@@ -342,7 +434,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""
@@ -351,7 +446,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=Container,
                 entity_source_state=self.container_source_state,
-                mark_deleted_entity=self.source_config.markDeletedContainers,
+                recursive=self.source_config.markDeletedContainers,
                 params={"service": self.context.get().objectstore_service},
             )
 
@@ -361,7 +456,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
     @staticmethod
     def _manifest_entries_to_metadata_entries_by_container(
         container_name: str, manifest: ManifestMetadataConfig
-    ) -> List[MetadataEntry]:  # noqa: UP006
+    ) -> list[MetadataEntry]:
         """
         Convert manifest entries (which have an extra bucket property) to bucket-level metadata entries, filtered by
         a given bucket. Wildcard-related fields are preserved so downstream
@@ -388,7 +483,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         ]
 
     @staticmethod
-    def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> Optional[str]:  # noqa: UP045
+    def _get_sample_file_prefix(metadata_entry: MetadataEntry) -> str | None:
         """
         Return a prefix if we have structure data to read
         """
@@ -409,7 +504,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         client: Any,
         metadata_entry: MetadataEntry,
         session: Any = None,
-    ) -> List[Column]:  # noqa: UP006
+        *,
+        limits: InferenceLimits = NO_LIMITS,
+        report: InferenceReport | None = None,
+    ) -> list[Column]:
         """Extract Column related metadata from s3"""
         data_structure_details, raw_data = fetch_dataframe_first_chunk(
             config_source=config_source,
@@ -429,14 +527,16 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 data_structure_details,
                 SupportedTypes(metadata_entry.structureFormat),
                 raw_data=raw_data,
+                limits=limits,
+                report=report,
             )
             return column_parser.get_columns()
         return []
 
     @staticmethod
     def _partition_columns_to_table_columns(
-        partition_columns: Optional[List[PartitionColumn]],  # noqa: UP006, UP045
-    ) -> List[TableColumn]:  # noqa: UP006
+        partition_columns: list[PartitionColumn] | None,
+    ) -> list[TableColumn]:
         """Convert lightweight manifest PartitionColumn entries into full
         table Column objects expected by ContainerDataModel."""
         if not partition_columns:
@@ -459,8 +559,9 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         config_source: ConfigSource,
         client: Any,
         session: Any = None,
-    ) -> Optional[List[Column]]:  # noqa: UP006, UP045
+    ) -> list[Column] | None:
         """Get the columns from the file and partition information"""
+        inference_report = InferenceReport()
         extracted_cols = self.extract_column_definitions(
             container_name,
             sample_key,
@@ -468,11 +569,14 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
             client,
             metadata_entry,
             session,
+            limits=self.inference_limits,
+            report=inference_report,
         )
+        inference_report.emit(self.status, f"{container_name}/{sample_key}", self.inference_limits)
         partition_cols = self._partition_columns_to_table_columns(metadata_entry.partitionColumns)
         return partition_cols + (extracted_cols or [])
 
-    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[Tuple[str, int]]:  # noqa: UP006
+    def list_keys(self, bucket_name: str, prefix: str) -> Iterable[tuple[str, int]]:
         """List (key, size_bytes) pairs for files under prefix.
 
         Must be overridden by each provider to enable glob-style
@@ -504,7 +608,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         exclude_paths = set(entry.excludePaths) if entry.excludePaths is not None else DEFAULT_EXCLUDE_PATHS
         exclude_regexes = [pattern_to_regex(ep) for ep in (entry.excludePatterns or [])]
 
-        matched: List[Tuple[str, int]] = []  # noqa: UP006
+        matched: list[tuple[str, int]] = []
         scanned = 0
         for key, size in self.list_keys(bucket_name, static_prefix):
             scanned += 1
@@ -599,7 +703,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 unstructuredData=False,
             )
 
-    def expand_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:  # noqa: UP006
+    def expand_entries(self, bucket_name: str, entries: list[MetadataEntry]) -> list[MetadataEntry]:
         """Expand all entries whose dataPath is a glob. Literal paths pass
         through. Returns a concrete list safe to iterate multiple times.
 
@@ -609,7 +713,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         processing. Failures are logged and reported to the workflow
         status so the user can see which entry went bad.
         """
-        result: List[MetadataEntry] = []  # noqa: UP006
+        result: list[MetadataEntry] = []
         for entry in entries:
             try:
                 result.extend(self.expand_entry(bucket_name, entry))
@@ -625,7 +729,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                     self.status.warning(bucket_name, msg)
         return result
 
-    def filter_manifest_entries(self, bucket_name: str, entries: List[MetadataEntry]) -> List[MetadataEntry]:  # noqa: UP006
+    def filter_manifest_entries(self, bucket_name: str, entries: list[MetadataEntry]) -> list[MetadataEntry]:
         """Drop manifest entries whose ``dataPath`` should not become a
         container, applying:
 
@@ -642,11 +746,11 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         Called by the source after ``expand_entries`` so both literal
         and expanded entries are filtered uniformly.
         """
-        from metadata.utils.filters import filter_by_container  # noqa: PLC0415
-        from metadata.utils.storage_utils import is_excluded_artifact  # noqa: PLC0415
+        from metadata.utils.filters import filter_by_container
+        from metadata.utils.storage_utils import is_excluded_artifact
 
         pattern = getattr(self.source_config, "containerFilterPattern", None)
-        filtered: List[MetadataEntry] = []  # noqa: UP006
+        filtered: list[MetadataEntry] = []
         for entry in entries:
             path = entry.dataPath or ""
             # 1. Default skip list — never let Spark artifacts become

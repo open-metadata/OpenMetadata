@@ -1,0 +1,21 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/applications/configuration/rdfInferenceApp.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RdfInferenceAppConfig",
+  "description": "Scheduled RDF inference materialization configuration.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.applications.configuration.internal.RdfInferenceAppConfig",
+  "properties": {
+    "force": {
+      "description": "Recompute every rule even when no rule is dirty.",
+      "type": "boolean",
+      "default": false
+    },
+    "ruleName": {
+      "description": "Optional rule that must exist. The run still computes every rule, because rules read each other's conclusions.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
+    }
+  },
+  "additionalProperties": false
+}

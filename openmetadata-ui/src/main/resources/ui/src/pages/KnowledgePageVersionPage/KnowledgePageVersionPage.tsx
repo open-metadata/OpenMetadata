@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { toString, uniqueId } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { toString } from 'lodash';
+import { FC, useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import KnowledgePageVersion from '../../components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion';
@@ -27,14 +27,15 @@ import {
   getKnowledgePageVersionsList,
 } from '../../rest/knowledgeCenterAPI';
 
-import { Col, Row, Skeleton, Space } from 'antd';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ROUTES } from '../../constants/constants';
-import i18n from '../../utils/i18next/LocalUtil';
 import {
-  getKnowledgePagePath,
-  getKnowledgeVersionsPath,
-} from '../../utils/KnowledgePageUtils';
+  Box,
+  Skeleton,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
+
+import contextCenterClassBase from '../../utils/ContextCenterClassBase';
+import i18n from '../../utils/i18next/LocalUtil';
+import { getKnowledgePageName } from '../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 
@@ -58,6 +59,33 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   );
   const [selectedData, setSelectedData] = useState<KnowledgePage>();
 
+  const fetchActiveVersion = useCallback(async () => {
+    if (!knowledgePage) {
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await getKnowledgePageVersionData(knowledgePage.id, version);
+      setSelectedData(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, [knowledgePage, version]);
+
+  const fetchKnowledgePage = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await getKnowledgePageByFqn(fqn);
+      setKnowledgePage(res);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoading(false);
+    }
+  }, [fqn]);
+
   const fetchVersionsInfo = useCallback(async () => {
     if (!knowledgePage) {
       return;
@@ -73,60 +101,20 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     }
   }, [knowledgePage]);
 
-  const fetchActiveVersion = useCallback(async () => {
-    if (!knowledgePage) {
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await getKnowledgePageVersionData(knowledgePage.id, version);
-      setSelectedData(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, [knowledgePage]);
-
-  const fetchKnowledgePage = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await getKnowledgePageByFqn(fqn);
-      setKnowledgePage(res);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, [fqn]);
-
-  const breadcrumbs = useMemo(
-    () => [
-      {
-        name: t('label.home'),
-        url: ROUTES.HOME,
-      },
-      {
-        name: t('label.knowledge-center'),
-        url: ROUTES.KNOWLEDGE_CENTER,
-      },
-      {
-        name: (knowledgePage?.displayName ?? '') || t('label.untitled'),
-        url: '',
-        activeTitle: false,
-      },
-    ],
-    [knowledgePage?.displayName]
-  );
-
   const onVersionChange = (selectedVersion: string) => {
-    const path = getKnowledgeVersionsPath(fqn, selectedVersion);
-    navigate(path);
+    navigate(
+      contextCenterClassBase.getArticleVersionPath(fqn, selectedVersion)
+    );
   };
 
   const onBackHandler = () => {
-    const path = getKnowledgePagePath(selectedData?.fullyQualifiedName ?? '');
-    navigate(path);
+    navigate(
+      contextCenterClassBase.getArticlePath(
+        knowledgePage?.fullyQualifiedName ??
+          selectedData?.fullyQualifiedName ??
+          fqn
+      )
+    );
   };
 
   const getVersionTimeLineElement = useCallback(
@@ -141,73 +129,64 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     [version, versionList, onVersionChange, onBackHandler]
   );
 
-  const getHeaderElement = useCallback(
-    () => (
-      <div className="p-y-sm p-x-sm w-full border-bottom bg-white">
-        <Row>
-          {loading ? (
-            Array(3)
-              .fill(null)
-              .map(() => (
-                <Col key={uniqueId()}>
-                  <Skeleton
-                    active
-                    className="m-r-xs m-b-xss"
-                    paragraph={{ rows: 1, width: 100 }}
-                    title={false}
-                  />
-                </Col>
-              ))
-          ) : (
-            <Col className="d-flex items-center" span={16}>
-              <TitleBreadcrumb titleLinks={breadcrumbs} />
-            </Col>
-          )}
-        </Row>
-      </div>
-    ),
-    [breadcrumbs, loading]
-  );
-
   useEffect(() => {
     fetchKnowledgePage();
-  }, [fqn, version]);
+  }, [fqn]);
 
   useEffect(() => {
     fetchVersionsInfo();
-    fetchActiveVersion();
-  }, [knowledgePage]);
+  }, [knowledgePage?.id]);
+
+  useEffect(() => {
+    if (knowledgePage) {
+      fetchActiveVersion();
+    }
+  }, [version, knowledgePage?.id]);
 
   useEffect(() => {
     onPageChange({
-      rightPanel: getVersionTimeLineElement(),
-      title: selectedData?.displayName || t('label.untitled'),
-      data: undefined,
-      header: getHeaderElement(),
+      rightPanel: null,
+      title: getKnowledgePageName(selectedData, t),
+      data: knowledgePage,
     });
   }, [selectedData, loading, versionList, version, knowledgePage]);
 
   if (loading) {
     return (
-      <div className="knowledge-version-page-container">
-        <Space direction="vertical" style={{ width: '650px' }}>
-          <Skeleton active avatar paragraph={{ rows: 2 }} title={false} />
-          <Skeleton
-            active
-            className="m-t-sm"
-            paragraph={{ rows: 8 }}
-            title={false}
-          />
-        </Space>
-      </div>
+      <>
+        <div className="version-data">
+          <Box
+            inline
+            align="stretch"
+            className="layout-space"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item"
+            style={{ width: '650px' }}>
+            <div className="tw:flex tw:gap-4">
+              <Skeleton className="tw:shrink-0" variant="circular" width={40} />
+              <div className="tw:flex-1">
+                <SkeletonParagraph rows={2} title={false} />
+              </div>
+            </div>
+            <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
+          </Box>
+        </div>
+      </>
     );
   }
 
   return (
     <>
-      {selectedData && (
-        <KnowledgePageVersion knowledgePage={selectedData} loading={loading} />
-      )}
+      <div className="version-data">
+        {selectedData && (
+          <KnowledgePageVersion
+            knowledgePage={selectedData}
+            loading={loading}
+          />
+        )}
+      </div>
+      {getVersionTimeLineElement()}
     </>
   );
 };

@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/changeEvent.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ChangeEvent",
   "description": "This schema defines the change event type to capture the changes to entities. Entities change due to user activity, such as updating description of a dataset, changing ownership, or adding new tags. Entity also changes due to activities at the metadata sources, such as a new dataset was created, a datasets was deleted, or schema of a dataset is modified. When state of entity changes, an event is produced. These events can be used to build apps and bots that respond to the change from activities.",
   "type": "object",
@@ -60,6 +60,10 @@
     "incrementalChangeDescription": {
       "description": "Change that lead to this version of the entity.",
       "$ref": "../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "recursive": {
+      "description": "True when this change event represents a recursive (cascade) delete of the entity together with its children. A single event is recorded for the deleted root entity; cascaded descendants do not produce individual change events.",
+      "type": "boolean"
     },
     "entity": {
       "description": "For `eventType` `entityCreated`, this field captures JSON coded string of the entity using the schema corresponding to `entityType`."

@@ -32,8 +32,12 @@ const CoreTextAreaWidget = ({
   onBlur,
   onFocus,
 }: WidgetProps) => {
+  const handleChange = (nextValue: string) =>
+    onChange(nextValue === '' ? options.emptyValue ?? undefined : nextValue);
+
   return (
     <TextArea
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is schema-driven per RJSF widget contract
       autoFocus={autofocus}
       hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}
@@ -45,7 +49,7 @@ const CoreTextAreaWidget = ({
       textAreaRef={undefined}
       value={value ?? ''}
       onBlur={() => onBlur(id, value)}
-      onChange={onChange}
+      onChange={handleChange}
       onFocus={() => onFocus(id, value)}
     />
   );

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -11,8 +12,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -25,9 +33,154 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 
 class SearchIndexUtilsTest {
+
+  @ParameterizedTest
+  @MethodSource("indexTargets")
+  void getEntityTypesForIndexSelectsOnlyRequestedMembers(String index, List<String> expected) {
+    assertEquals(
+        expected,
+        SearchIndexUtils.getEntityTypesForIndex(index, resolutionMappings(), Map.of(), "cluster"));
+  }
+
+  static Stream<Arguments> indexTargets() {
+    return Stream.of(
+        Arguments.of("table", List.of("table")),
+        Arguments.of("table_search_index", List.of("table")),
+        Arguments.of("cluster_table_search_index", List.of("table")),
+        Arguments.of("table, table_search_index, table", List.of("table")),
+        Arguments.of(" table , databaseSchema ", List.of("databaseSchema", "table")),
+        Arguments.of("dataAsset", List.of("databaseSchema", "table", "tableColumn")),
+        Arguments.of("cluster_dataAsset", List.of("databaseSchema", "table", "tableColumn")),
+        Arguments.of("all", List.of("databaseSchema", "table", "tableColumn", "team")),
+        Arguments.of("customEntity", List.of("customEntity")),
+        Arguments.of("table, ,unknown,", List.of("table")),
+        Arguments.of("cluster_all", List.of("databaseSchema", "table", "tableColumn", "team")),
+        Arguments.of("tableColumn", List.of("tableColumn")));
+  }
+
+  @ParameterizedTest
+  @NullSource
+  @ValueSource(strings = {"unknown", "", " , "})
+  void getEntityTypesForIndexReturnsEmptyForUnknownTargets(String index) {
+    assertEquals(
+        List.of(),
+        SearchIndexUtils.getEntityTypesForIndex(index, resolutionMappings(), Map.of(), "cluster"));
+  }
+
+  @Test
+  void getEntityTypesForIndexWorksWithoutClusterPrefixAndReturnsImmutableResults() {
+    List<String> types =
+        SearchIndexUtils.getEntityTypesForIndex(
+            "table,dataAsset", resolutionMappings(), Map.of(), null);
+    assertEquals(List.of("databaseSchema", "table", "tableColumn"), types);
+    assertThrows(UnsupportedOperationException.class, () -> types.add("team"));
+  }
+
+  private static Map<String, IndexMapping> resolutionMappings() {
+    return Map.of(
+        "table", resolutionMapping("table", List.of("all", "dataAsset")),
+        "tableColumn", resolutionMapping("column", List.of("all", "dataAsset", "table")),
+        "databaseSchema", resolutionMapping("schema", List.of("all", "dataAsset")),
+        "team", resolutionMapping("team", List.of("all")),
+        "customEntity", resolutionMapping("custom", null));
+  }
+
+  private static IndexMapping resolutionMapping(String name, List<String> parents) {
+    return IndexMapping.builder().indexName(name + "_search_index").parentAliases(parents).build();
+  }
+
+  @Test
+  void getEntityTypesForIndexSupportsRegisteredAliases() {
+    Map<String, IndexMapping> mappings = resolutionMappings();
+    assertEquals(
+        List.of("customEntity"),
+        SearchIndexUtils.getEntityTypesForIndex(
+            "customAlias",
+            mappings,
+            Map.of("customAlias", mappings.get("customEntity")),
+            "cluster"));
+  }
+
+  @Test
+  void getEntityTypesForIndexSupportsEmptyRegistryAndClusterPrefix() {
+    assertEquals(
+        List.of(), SearchIndexUtils.getEntityTypesForIndex("all", Map.of(), Map.of(), null));
+    assertEquals(List.of(), SearchIndexUtils.getEntityTypesForIndex("all", null, null, "cluster"));
+    assertEquals(
+        List.of("table"),
+        SearchIndexUtils.getEntityTypesForIndex(
+            "table_search_index", resolutionMappings(), Map.of(), ""));
+  }
+
+  @Test
+  void knownIndexNamesCoversEntityTypesIndexNamesAndAliases() {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+
+    assertTrue(known.containsAll(List.of("table", "tableColumn", "customEntity")));
+    assertTrue(known.containsAll(List.of("table_search_index", "custom_search_index")));
+    assertTrue(known.containsAll(List.of("all", "dataAsset")));
+    assertFalse(known.contains("nope_search_index"));
+    assertEquals(Set.of(), SearchIndexUtils.knownIndexNames(null));
+  }
+
+  @ParameterizedTest
+  @MethodSource("typedIndexes")
+  void unknownIndexNamesNamesOnlyWhatOpenMetadataDoesNotManage(
+      String typed, List<String> expected) {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+    for (String clusterAlias : new String[] {"cluster", null}) {
+      String resolved =
+          SearchIndexUtils.getIndexOrAliasName(typed, resolutionMappings(), Map.of(), clusterAlias);
+      assertEquals(
+          expected,
+          SearchIndexUtils.unknownIndexNames(resolved, known, clusterAlias),
+          typed + " with cluster alias " + clusterAlias);
+    }
+  }
+
+  static Stream<Arguments> typedIndexes() {
+    return Stream.of(
+        Arguments.of("table", List.of()),
+        Arguments.of("table_search_index", List.of()),
+        Arguments.of("all", List.of()),
+        Arguments.of("dataAsset", List.of()),
+        Arguments.of("nope_search_index", List.of("nope_search_index")),
+        Arguments.of("table,nope", List.of("nope")),
+        Arguments.of("nope,nope", List.of("nope")),
+        Arguments.of("nope*", List.of()),
+        Arguments.of("di-data-assets-table", List.of()));
+  }
+
+  @Test
+  void unknownIndexNamesStripsTheClusterPrefixTheCallerAlreadyTyped() {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+    assertEquals(
+        List.of(),
+        SearchIndexUtils.unknownIndexNames("cluster_table_search_index", known, "cluster"));
+    assertEquals(
+        List.of("nope"), SearchIndexUtils.unknownIndexNames("cluster_nope", known, "cluster"));
+  }
+
+  @Test
+  void unknownIndexNamesKeepsServerErrorWhenItCannotClassify() {
+    assertEquals(List.of(), SearchIndexUtils.unknownIndexNames("nope", Set.of(), "cluster"));
+    assertEquals(List.of(), SearchIndexUtils.unknownIndexNames(null, Set.of("table"), null));
+  }
+
+  @Test
+  void getIndexOrAliasNamePreservesNullAndUnknownTargetsWithoutRegistry() {
+    assertNull(SearchIndexUtils.getIndexOrAliasName(null, null, null, null));
+    assertEquals("", SearchIndexUtils.getIndexOrAliasName("", null, null, "cluster"));
+    assertEquals("unknown", SearchIndexUtils.getIndexOrAliasName("unknown", null, null, null));
+    assertEquals(
+        "cluster_unknown", SearchIndexUtils.getIndexOrAliasName("unknown", null, null, "cluster"));
+  }
 
   @Test
   void testParseHelpersAndRemoveFieldByPathSupportsNestedLists() {
@@ -61,6 +214,41 @@ class SearchIndexUtilsTest {
     assertFalse(column1.containsKey("description"));
     assertFalse(column2.containsKey("description"));
     assertFalse(doc.containsKey("simple"));
+  }
+
+  @Test
+  void testNormalizeFollowersExpandsIdStringsIntoEntityReferences() {
+    UUID followerId = UUID.randomUUID();
+    Map<String, Object> source = new HashMap<>();
+    source.put("id", UUID.randomUUID().toString());
+    source.put("name", "test-page");
+    source.put("pageType", "Article");
+    source.put("followers", new ArrayList<>(List.of(followerId.toString())));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> JsonUtils.readOrConvertValueLenient(source, Page.class));
+
+    SearchIndexUtils.normalizeFollowers(source);
+    Page page = JsonUtils.readOrConvertValueLenient(source, Page.class);
+
+    assertEquals(1, page.getFollowers().size());
+    EntityReference follower = page.getFollowers().getFirst();
+    assertEquals(followerId, follower.getId());
+    assertEquals(Entity.USER, follower.getType());
+  }
+
+  @Test
+  void testNormalizeFollowersLeavesEmptyOrMissingFollowersUntouched() {
+    Map<String, Object> missing = new HashMap<>();
+    missing.put("name", "no-followers");
+    SearchIndexUtils.normalizeFollowers(missing);
+    assertFalse(missing.containsKey("followers"));
+
+    Map<String, Object> empty = new HashMap<>();
+    empty.put("followers", new ArrayList<>());
+    SearchIndexUtils.normalizeFollowers(empty);
+    assertEquals(List.of(), empty.get("followers"));
   }
 
   @Test
@@ -178,6 +366,34 @@ class SearchIndexUtilsTest {
     assertEquals(1, tagAndTierSources.getTagSources().get(TagLabel.LabelType.MANUAL.value()));
     assertEquals(1, tagAndTierSources.getTierSources().get(TagLabel.LabelType.MANUAL.value()));
     assertEquals(2, descriptionSources.get(ChangeSource.SUGGESTED.value()));
+  }
+
+  @Test
+  void testAiBotAppliedTagsCountAsGenerated() {
+    TagLabel botTag =
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withAppliedBy("collateaiapplicationbot");
+    TagLabel botTier =
+        new TagLabel()
+            .withTagFQN("Tier.Tier1")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withAppliedBy("aiautomationapplicationbot");
+    TagLabel humanTag =
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withAppliedBy("analyst");
+    Table table = new Table().withTags(List.of(botTag, botTier, humanTag));
+
+    SearchIndexUtils.TagAndTierSources tagAndTierSources =
+        SearchIndexUtils.processTagAndTierSources(table);
+
+    assertEquals(1, tagAndTierSources.getTagSources().get(TagLabel.LabelType.GENERATED.value()));
+    assertEquals(1, tagAndTierSources.getTierSources().get(TagLabel.LabelType.GENERATED.value()));
+    assertEquals(1, tagAndTierSources.getTagSources().get(TagLabel.LabelType.MANUAL.value()));
+    assertNull(tagAndTierSources.getTierSources().get(TagLabel.LabelType.MANUAL.value()));
   }
 
   @Test
@@ -448,5 +664,117 @@ class SearchIndexUtilsTest {
   private static void assertContainsWords(String value, String... expectedWords) {
     Set<String> actualWords = Set.of(value.split(" "));
     assertEquals(Set.of(expectedWords), actualWords);
+  }
+
+  @Test
+  void stripDocMapIfOversizedDropsColumnTreeWhenStillTooLargeAfterLineage() {
+    Map<String, Object> doc = oversizedContainerDoc();
+    int before = JsonUtils.pojoToJson(doc).getBytes(StandardCharsets.UTF_8).length;
+
+    Map<String, Object> stripped =
+        SearchIndexUtils.stripDocMapIfOversized(doc, 4096, "doc-1", "container");
+
+    int after = JsonUtils.pojoToJson(stripped).getBytes(StandardCharsets.UTF_8).length;
+    assertTrue(after < before, "doc should shrink");
+    assertTrue(after <= 4096, "doc should fit under the cap after the column tree is stripped");
+    assertColumnTreeStripped(stripped, 3);
+  }
+
+  @Test
+  void stripLineageForSizeDropsColumnTreeWhenStillTooLargeAfterLineage() {
+    String json = JsonUtils.pojoToJson(oversizedContainerDoc());
+
+    String stripped = SearchIndexUtils.stripLineageForSize(json, 4096, "doc-2", "container");
+
+    assertTrue(stripped.getBytes(StandardCharsets.UTF_8).length <= 4096);
+    assertFalse(stripped.contains("\"children\""), "nested children stripped from JSON");
+    assertFalse(stripped.contains("columnNamesFuzzy"), "derived columnNamesFuzzy stripped");
+  }
+
+  @Test
+  void stripDocMapIfOversizedLeavesNormalContainerUntouched() {
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("id", UUID.randomUUID().toString());
+    Map<String, Object> dataModel = new HashMap<>();
+    dataModel.put("columns", new ArrayList<>(List.of(columnWithChildren("c1", 2))));
+    doc.put("dataModel", dataModel);
+    doc.put("columnNames", List.of("c1"));
+
+    Map<String, Object> result =
+        SearchIndexUtils.stripDocMapIfOversized(doc, 10 * 1024 * 1024, "doc-3", "container");
+
+    assertColumnsRetainChildren(result);
+    assertTrue(result.containsKey("columnNames"), "normal doc keeps columnNames");
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void stripColumnTreeForSizeAlsoHandlesTopLevelTableColumns() {
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("columns", new ArrayList<>(List.of(columnWithChildren("c1", 3))));
+    doc.put("columnNames", List.of("c1", "c1.a"));
+    doc.put("columnNamesFuzzy", "c1 c1.a");
+
+    SearchIndexUtils.stripColumnTreeForSize(doc);
+
+    List<Map<String, Object>> columns = (List<Map<String, Object>>) doc.get("columns");
+    assertFalse(columns.get(0).containsKey("children"), "table columns lose children too");
+    assertFalse(doc.containsKey("columnNames"));
+    assertFalse(doc.containsKey("columnNamesFuzzy"));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void assertColumnTreeStripped(Map<String, Object> doc, int expectedTopLevel) {
+    Map<String, Object> dataModel = (Map<String, Object>) doc.get("dataModel");
+    List<Map<String, Object>> columns = (List<Map<String, Object>>) dataModel.get("columns");
+    assertEquals(expectedTopLevel, columns.size(), "top-level columns are kept");
+    for (Map<String, Object> column : columns) {
+      assertFalse(column.containsKey("children"), "nested children are stripped");
+    }
+    assertFalse(doc.containsKey("columnNames"), "derived columnNames is stripped");
+    assertFalse(doc.containsKey("columnNamesFuzzy"), "derived columnNamesFuzzy is stripped");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void assertColumnsRetainChildren(Map<String, Object> doc) {
+    Map<String, Object> dataModel = (Map<String, Object>) doc.get("dataModel");
+    List<Map<String, Object>> columns = (List<Map<String, Object>>) dataModel.get("columns");
+    assertTrue(columns.get(0).containsKey("children"), "small doc keeps children");
+  }
+
+  private static Map<String, Object> oversizedContainerDoc() {
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("id", UUID.randomUUID().toString());
+    doc.put("name", "huge_container");
+    List<Map<String, Object>> columns = new ArrayList<>();
+    List<String> flattened = new ArrayList<>();
+    for (int c = 0; c < 3; c++) {
+      columns.add(columnWithChildren("col" + c, 2000));
+      for (int i = 0; i < 2000; i++) {
+        flattened.add("col" + c + ".child" + i);
+      }
+    }
+    Map<String, Object> dataModel = new HashMap<>();
+    dataModel.put("columns", columns);
+    doc.put("dataModel", dataModel);
+    doc.put("columnNames", flattened);
+    doc.put("columnNamesFuzzy", String.join(" ", flattened));
+    return doc;
+  }
+
+  private static Map<String, Object> columnWithChildren(String name, int childCount) {
+    Map<String, Object> column = new HashMap<>();
+    column.put("name", name);
+    column.put("dataType", "STRUCT");
+    List<Map<String, Object>> children = new ArrayList<>();
+    for (int i = 0; i < childCount; i++) {
+      Map<String, Object> child = new HashMap<>();
+      child.put("name", "child" + i);
+      child.put("dataType", "VARCHAR");
+      child.put("description", "child column with descriptive text to add bytes " + i);
+      children.add(child);
+    }
+    column.put("children", children);
+    return column;
   }
 }

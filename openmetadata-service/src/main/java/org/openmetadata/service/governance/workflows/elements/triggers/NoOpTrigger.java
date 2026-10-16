@@ -22,33 +22,35 @@ import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.StartEvent;
 import org.openmetadata.schema.governance.workflows.elements.triggers.NoOpTriggerDefinition;
+import org.openmetadata.service.governance.workflows.SubWorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.elements.TriggerInterface;
 import org.openmetadata.service.governance.workflows.flowable.builders.CallActivityBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 
 public class NoOpTrigger implements TriggerInterface {
   private static final Set<String> TASK_WORKFLOW_PASSTHROUGH_VARIABLES =
       Set.of(
-          "taskEntityId",
-          "taskWorkflowManaged",
-          "taskName",
-          "taskDisplayName",
-          "taskDescription",
-          "taskType",
-          "taskCategory",
-          "taskPriority",
-          "taskPayload",
-          "taskDueDate",
-          "taskExternalReference",
-          "taskTags",
-          "taskCreatedBy",
-          "taskUpdatedBy",
-          "taskReviewers",
-          "taskAssignees",
-          "taskFormSchemaId",
-          "taskFormSchemaVersion",
-          "workflowDefinitionId");
+          WorkflowStartVariables.TASK_ENTITY_ID,
+          WorkflowStartVariables.TASK_WORKFLOW_MANAGED,
+          WorkflowStartVariables.TASK_NAME,
+          WorkflowStartVariables.TASK_DISPLAY_NAME,
+          WorkflowStartVariables.TASK_DESCRIPTION,
+          WorkflowStartVariables.TASK_TYPE,
+          WorkflowStartVariables.TASK_CATEGORY,
+          WorkflowStartVariables.TASK_PRIORITY,
+          WorkflowStartVariables.TASK_PAYLOAD,
+          WorkflowStartVariables.TASK_DUE_DATE,
+          WorkflowStartVariables.TASK_EXTERNAL_REFERENCE,
+          WorkflowStartVariables.TASK_TAGS,
+          WorkflowStartVariables.TASK_CREATED_BY,
+          WorkflowStartVariables.TASK_UPDATED_BY,
+          WorkflowStartVariables.TASK_REVIEWERS,
+          WorkflowStartVariables.TASK_ASSIGNEES,
+          WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
+          WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION,
+          WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
   private final Process process;
 
   @Getter private final String triggerWorkflowId;
@@ -131,7 +133,9 @@ public class NoOpTrigger implements TriggerInterface {
     outputParameter.setTarget(getNamespacedVariableName(GLOBAL_NAMESPACE, EXCEPTION_VARIABLE));
 
     workflowTrigger.setInParameters(inputParameters);
-    workflowTrigger.setOutParameters(List.of(outputParameter));
+    workflowTrigger.setOutParameters(
+        List.of(outputParameter, SubWorkflowFailureListener.outParameter()));
+    workflowTrigger.getExecutionListeners().add(SubWorkflowFailureListener.endListener());
 
     return workflowTrigger;
   }

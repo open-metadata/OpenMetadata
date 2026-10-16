@@ -8,7 +8,6 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Default values
 SERVER_URL="http://localhost:8585"
-RECREATE_INDEX=false
 ENTITY_TYPES=""
 BATCH_SIZE=100
 PARTITION_SIZE=10000
@@ -19,10 +18,6 @@ while [[ $# -gt 0 ]]; do
         --server)
             SERVER_URL="$2"
             shift 2
-            ;;
-        --recreate)
-            RECREATE_INDEX=true
-            shift
             ;;
         --entities)
             ENTITY_TYPES="$2"
@@ -41,7 +36,6 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Options:"
             echo "  --server URL          Target server URL (default: http://localhost:8585)"
-            echo "  --recreate            Drop and recreate indices before reindexing"
             echo "  --entities TYPES      Comma-separated entity types to reindex (default: all)"
             echo "  --batch-size NUM      Batch size for indexing (default: 100)"
             echo "  --partition-size NUM  Partition size for distributed indexing (default: 10000, range: 1000-50000)"
@@ -51,7 +45,6 @@ while [[ $# -gt 0 ]]; do
             echo "Examples:"
             echo "  $0                                    # Reindex all on server 1"
             echo "  $0 --server http://localhost:8587    # Trigger on server 2"
-            echo "  $0 --recreate                        # Drop and recreate indices"
             echo "  $0 --entities table,dashboard        # Reindex only tables and dashboards"
             echo "  $0 --partition-size 2000             # Use smaller partitions for better distribution"
             exit 0
@@ -67,7 +60,7 @@ echo "======================================"
 echo "Triggering Search Reindexing"
 echo "======================================"
 echo "Server: $SERVER_URL"
-echo "Recreate indices: $RECREATE_INDEX"
+echo "Indexing mode: staged indexes with alias promotion"
 echo "Batch size: $BATCH_SIZE"
 echo "Partition size: $PARTITION_SIZE"
 if [ -n "$ENTITY_TYPES" ]; then
@@ -96,13 +89,6 @@ fi
 echo "Authenticated successfully."
 echo ""
 
-# Build the reindex request body
-if [ "$RECREATE_INDEX" == "true" ]; then
-    RECREATE_FLAG="true"
-else
-    RECREATE_FLAG="false"
-fi
-
 # Build entities array
 if [ -n "$ENTITY_TYPES" ]; then
     # Convert comma-separated to JSON array
@@ -113,11 +99,9 @@ fi
 
 REQUEST_BODY=$(cat <<EOF
 {
-  "recreateIndex": $RECREATE_FLAG,
   "entities": $ENTITIES_JSON,
   "batchSize": $BATCH_SIZE,
   "partitionSize": $PARTITION_SIZE,
-  "useDistributedIndexing": true,
   "runMode": "BATCH"
 }
 EOF

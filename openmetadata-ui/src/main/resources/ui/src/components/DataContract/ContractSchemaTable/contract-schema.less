@@ -15,75 +15,9 @@
 
 .contract-schema-component-container {
   .column-status-icon {
-    font-size: 16px;
+    font-size: var(--om-font-size-md);
     &.success {
       color: transparent;
-    }
-  }
-}
-
-.ant-pagination.schema-custom-pagination {
-  align-items: center;
-  &.ant-table-pagination-right {
-    justify-content: center;
-  }
-
-  .ant-pagination-prev,
-  .ant-pagination-next {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 8px;
-    background: @white;
-    box-shadow: 0 0 0 1px rgba(10, 13, 18, 0.18) inset,
-      0 -2px 0 0 rgba(10, 13, 18, 0.05) inset,
-      0 1px 2px 0 rgba(10, 13, 18, 0.05);
-
-    .anticon {
-      color: @grey-400;
-    }
-
-    &:hover {
-      background: @grey-100;
-    }
-  }
-
-  .ant-pagination-prev {
-    margin-right: 10px;
-    .anticon {
-      transform: rotate(180deg);
-    }
-  }
-
-  .ant-pagination-disabled {
-    opacity: 0.3;
-  }
-
-  .ant-pagination-item {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    a {
-      color: @grey-500;
-    }
-
-    &:hover {
-      a {
-        color: @grey-300;
-      }
-    }
-  }
-
-  .ant-pagination-item-active {
-    background: @grey-46;
-
-    a {
-      color: @grey-500;
     }
   }
 }

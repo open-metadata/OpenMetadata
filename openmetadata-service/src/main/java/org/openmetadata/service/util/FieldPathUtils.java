@@ -15,10 +15,15 @@ package org.openmetadata.service.util;
 
 import jakarta.json.JsonPatch;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 
@@ -49,11 +54,29 @@ public class FieldPathUtils {
    * @return true if update was successful
    */
   public static boolean updateFieldDescription(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
       String newDescription) {
+    return updateFieldDescription(entity, repository, user, fieldPath, newDescription, null);
+  }
+
+  /**
+   * Update a field's description, recording where the new text came from.
+   *
+   * <p>The source rides the patch, so one versioned write carries the provenance into the change
+   * summary and, through the normal lifecycle, the search document's {@code descriptionSource}.
+   *
+   * @param changeSource provenance of the new text, or null to leave it defaulted
+   */
+  public static boolean updateFieldDescription(
+      EntityInterface<?> entity,
+      EntityRepository<?> repository,
+      String user,
+      String fieldPath,
+      String newDescription,
+      ChangeSource changeSource) {
 
     // Take snapshot before modification
     String originalJson = JsonUtils.pojoToJson(entity);
@@ -75,10 +98,23 @@ public class FieldPathUtils {
     }
 
     // Apply patch
-    repository.patch(null, entity.getId(), user, patch, null, null);
+    repository.patch(null, entity.getId(), user, patch, changeSource, null);
     LOG.info(
         "[FieldPathUtils] Updated description at '{}' in entity '{}'", fieldPath, entity.getName());
     return true;
+  }
+
+  /**
+   * Locate the nested field POJO addressed by {@code fieldPath} (e.g. a Column or SchemaField).
+   * Returns empty when the path cannot be resolved. Callers can then read/mutate the POJO via
+   * its own getters/setters and generate a JSON patch against the parent entity.
+   */
+  public static Optional<Object> findField(EntityInterface<?> entity, String fieldPath) {
+    FieldPathComponents components = parseFieldPath(fieldPath);
+    if (components == null) {
+      return Optional.empty();
+    }
+    return locateField(entity, components);
   }
 
   /**
@@ -88,7 +124,7 @@ public class FieldPathUtils {
    * @param fieldPath The field path (e.g., "columns::customer_id::description")
    * @return the current description if the field path could be resolved
    */
-  public static Optional<String> getFieldDescription(EntityInterface entity, String fieldPath) {
+  public static Optional<String> getFieldDescription(EntityInterface<?> entity, String fieldPath) {
     if (fieldPath == null
         || fieldPath.isEmpty()
         || fieldPath.equals("description")
@@ -110,7 +146,7 @@ public class FieldPathUtils {
    * Modifies the entity in memory.
    */
   private static boolean setFieldDescription(
-      EntityInterface entity, String fieldPath, String description) {
+      EntityInterface<?> entity, String fieldPath, String description) {
 
     // Handle entity-level description
     if (fieldPath == null
@@ -183,12 +219,23 @@ public class FieldPathUtils {
       }
     }
 
-    // Handle dot separator format
+    // Handle dot separator format. The property is always the final segment; everything
+    // between the container and it is the field name, which may itself be a dotted path
+    // into nested children (e.g. columns.profile.personal.full_name.description).
     if (fieldPath.contains(".")) {
-      String[] parts = fieldPath.split("\\.", 3);
-      if (parts.length >= 2) {
-        return new FieldPathComponents(
-            parts[0], parts[1], parts.length >= 3 ? parts[2] : "description");
+      try {
+        String[] parts = FullyQualifiedName.split(fieldPath);
+        if (parts.length >= 2) {
+          boolean hasProperty = parts.length >= 3;
+          String property = hasProperty ? parts[parts.length - 1] : "description";
+          int fieldEnd = hasProperty ? parts.length - 1 : parts.length;
+          String fieldName =
+              FullyQualifiedName.unquoteName(
+                  String.join(".", Arrays.copyOfRange(parts, 1, fieldEnd)));
+          return new FieldPathComponents(parts[0], fieldName, property);
+        }
+      } catch (ParseCancellationException | IllegalArgumentException e) {
+        LOG.warn("[FieldPathUtils] Could not parse dot field path: {}", fieldPath, e);
       }
     }
 
@@ -197,115 +244,58 @@ public class FieldPathUtils {
 
   /** Navigate entity structure and set description on target field. */
   private static boolean navigateAndSetDescription(
-      EntityInterface entity, FieldPathComponents components, String description) {
-
-    String container = components.containerName();
-    String fieldName = components.fieldName();
-
-    // Try direct field lists first (columns, fields, schemaFields, tasks, charts)
-    List<?> fieldList = getFieldList(entity, container);
-    if (fieldList != null) {
-      return setDescriptionInList(fieldList, fieldName, description);
+      EntityInterface<?> entity, FieldPathComponents components, String description) {
+    List<?> fieldList = resolveContainerList(entity, components.containerName());
+    if (fieldList == null) {
+      LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
     }
-
-    // Handle nested containers (messageSchema.schemaFields, dataModel.columns)
-    return handleNestedContainer(entity, container, fieldName, description);
+    return fieldList != null
+        && setDescriptionInList(fieldList, components.fieldName(), description);
   }
 
   /** Navigate entity structure and get the description on the target field. */
   private static Optional<String> navigateAndGetDescription(
-      EntityInterface entity, FieldPathComponents components) {
-
-    String container = components.containerName();
-    String fieldName = components.fieldName();
-
-    List<?> fieldList = getFieldList(entity, container);
-    if (fieldList != null) {
-      return getDescriptionFromList(fieldList, fieldName);
+      EntityInterface<?> entity, FieldPathComponents components) {
+    List<?> fieldList = resolveContainerList(entity, components.containerName());
+    if (fieldList == null) {
+      LOG.warn("[FieldPathUtils] Unknown container type: {}", components.containerName());
     }
-
-    return getNestedContainerDescription(entity, container, fieldName);
+    return fieldList == null
+        ? Optional.empty()
+        : getDescriptionFromList(fieldList, components.fieldName());
   }
 
-  /** Handle nested containers like messageSchema.schemaFields or dataModel.columns. */
-  private static boolean handleNestedContainer(
-      EntityInterface entity, String container, String fieldName, String description) {
-
-    // Topic: messageSchema -> schemaFields
-    if ("messageSchema".equals(container)) {
-      Object schema = invokeGetter(entity, "getMessageSchema");
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return setDescriptionInList(schemaFields, fieldName, description);
-        }
-      }
+  /**
+   * Resolve the list of child POJOs that a field path's container segment names.
+   *
+   * <p>The registry is consulted before the plain reflective getter so that a container segment on
+   * a registry type always means what the registry says it means. Falling back to the getter only
+   * serves entity types the registry does not cover.
+   *
+   * <p>The reflective fallback refuses a list whose elements are {@link EntityReference}. An
+   * EntityReference is a projection of a separate entity (e.g. a dashboard's charts reference a
+   * Chart), not an editable child POJO: mutating it in memory, diffing the parent, and patching the
+   * parent is silently reverted by the parent repository's {@code prepare()}, which rebuilds the
+   * references from the persisted child entities. Returning null here surfaces the no-op as a
+   * visible failure instead of reporting success while doing nothing.
+   */
+  private static List<?> resolveContainerList(EntityInterface<?> entity, String container) {
+    List<?> fromRegistry = ChildFieldResolver.containerListFor(entity, container);
+    if (fromRegistry != null) {
+      return fromRegistry;
     }
-
-    // Container: dataModel -> columns
-    if ("dataModel".equals(container)) {
-      Object dataModel = invokeGetter(entity, "getDataModel");
-      if (dataModel != null) {
-        List<?> columns = getFieldListFromObject(dataModel, "columns");
-        if (columns != null) {
-          return setDescriptionInList(columns, fieldName, description);
-        }
-      }
+    List<?> reflective = getFieldList(entity, container);
+    if (reflective != null
+        && !reflective.isEmpty()
+        && reflective.get(0) instanceof EntityReference) {
+      LOG.warn(
+          "[FieldPathUtils] '{}' resolves to an EntityReference list on {}; "
+              + "child must be patched directly, not through the parent",
+          container,
+          entity.getClass().getSimpleName());
+      return null;
     }
-
-    // API Endpoint: responseSchema/requestSchema -> schemaFields
-    if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
-      String methodName = "get" + capitalize(container);
-      Object schema = invokeGetter(entity, methodName);
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return setDescriptionInList(schemaFields, fieldName, description);
-        }
-      }
-    }
-
-    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
-    return false;
-  }
-
-  /** Handle nested containers like messageSchema.schemaFields or dataModel.columns. */
-  private static Optional<String> getNestedContainerDescription(
-      EntityInterface entity, String container, String fieldName) {
-
-    if ("messageSchema".equals(container)) {
-      Object schema = invokeGetter(entity, "getMessageSchema");
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return getDescriptionFromList(schemaFields, fieldName);
-        }
-      }
-    }
-
-    if ("dataModel".equals(container)) {
-      Object dataModel = invokeGetter(entity, "getDataModel");
-      if (dataModel != null) {
-        List<?> columns = getFieldListFromObject(dataModel, "columns");
-        if (columns != null) {
-          return getDescriptionFromList(columns, fieldName);
-        }
-      }
-    }
-
-    if ("responseSchema".equals(container) || "requestSchema".equals(container)) {
-      String methodName = "get" + capitalize(container);
-      Object schema = invokeGetter(entity, methodName);
-      if (schema != null) {
-        List<?> schemaFields = getFieldListFromObject(schema, "schemaFields");
-        if (schemaFields != null) {
-          return getDescriptionFromList(schemaFields, fieldName);
-        }
-      }
-    }
-
-    LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
-    return Optional.empty();
+    return reflective;
   }
 
   /**
@@ -314,6 +304,12 @@ public class FieldPathUtils {
    */
   private static boolean setDescriptionInList(
       List<?> fieldList, String fieldName, String description) {
+
+    // Before any match: an ambiguous name must not be resolved by position, and must not fall
+    // through to the nested/recursive branches below either, which would write to a grandchild.
+    if (isAmbiguous(fieldList, fieldName)) {
+      return false;
+    }
 
     // Try exact match first
     Optional<?> field = findFieldByName(fieldList, fieldName);
@@ -336,14 +332,17 @@ public class FieldPathUtils {
       }
     }
 
-    // Search recursively in children
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        if (setDescriptionInList(children, fieldName, description)) {
-          return true;
-        }
-      }
+    // Search the immediate children of every sibling. The recursive "descend into the first
+    // matching subtree" shape used to short-circuit on the first sibling whose children
+    // contained fieldName, so a bare leaf shared by two siblings' subtrees silently wrote to
+    // whichever sibling was iterated first and reported success. Collecting every hit across
+    // siblings first turns that first-match write into a detectable, refusable ambiguity.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return false;
+    }
+    if (nestedHits.size() == 1) {
+      return setDescription(nestedHits.get(0), description);
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
@@ -352,6 +351,10 @@ public class FieldPathUtils {
 
   /** Find field by name in list and get its description. */
   private static Optional<String> getDescriptionFromList(List<?> fieldList, String fieldName) {
+
+    if (isAmbiguous(fieldList, fieldName)) {
+      return Optional.empty();
+    }
 
     Optional<?> field = findFieldByName(fieldList, fieldName);
     if (field.isPresent()) {
@@ -372,29 +375,141 @@ public class FieldPathUtils {
       }
     }
 
-    for (Object item : fieldList) {
-      List<?> children = getFieldListFromObject(item, "children");
-      if (children != null && !children.isEmpty()) {
-        Optional<String> description = getDescriptionFromList(children, fieldName);
-        if (description.isPresent()) {
-          return description;
-        }
-      }
+    // Mirror setDescriptionInList: collect the immediate-children match from every sibling so a
+    // bare leaf shared by two siblings' subtrees is refused instead of returning the first hit.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return Optional.empty();
+    }
+    if (nestedHits.size() == 1) {
+      return getDescription(nestedHits.get(0));
     }
 
     LOG.warn("[FieldPathUtils] Field '{}' not found in list", fieldName);
     return Optional.empty();
   }
 
+  /** Navigate the parsed components to the target field POJO. */
+  private static Optional<Object> locateField(
+      EntityInterface<?> entity, FieldPathComponents components) {
+    String container = components.containerName();
+    String fieldName = components.fieldName();
+
+    List<?> fieldList = resolveContainerList(entity, container);
+    if (fieldList == null) {
+      LOG.warn("[FieldPathUtils] Unknown container type: {}", container);
+    }
+    return fieldList == null ? Optional.empty() : findFieldInList(fieldList, fieldName);
+  }
+
+  /**
+   * Locate a field POJO in a list by name, traversing `children` for dotted paths and the
+   * immediate-children fallback, mirroring {@link #setDescriptionInList}.
+   */
+  @SuppressWarnings("unchecked")
+  private static Optional<Object> findFieldInList(List<?> fieldList, String fieldName) {
+    // The tag path resolves through here (TaskWorkflowHandler.patchFieldTags), so an approved
+    // `columns.<name>.tags` on an apiEndpoint would otherwise write onto whichever of the request
+    // and response schemas holds that name first. The isAmbiguous guard handles the same-list
+    // form; findNestedHits below handles the cross-subtree form.
+    if (isAmbiguous(fieldList, fieldName)) {
+      return Optional.empty();
+    }
+
+    Optional<Object> found = (Optional<Object>) findFieldByName(fieldList, fieldName);
+    if (found.isPresent()) {
+      return found;
+    }
+
+    if (fieldName.contains(".")) {
+      String[] parts = fieldName.split("\\.", 2);
+      Optional<?> parent = findFieldByName(fieldList, parts[0]);
+      if (parent.isPresent()) {
+        List<?> children = getFieldListFromObject(parent.get(), "children");
+        if (children != null) {
+          Optional<Object> childHit = findFieldInList(children, parts[1]);
+          if (childHit.isPresent()) {
+            return childHit;
+          }
+        }
+      }
+    }
+
+    // Mirror the description walkers: collect the immediate-children match from every sibling
+    // so a bare leaf shared by two siblings' subtrees is refused instead of resolving to the
+    // first sibling's child POJO. Without this, an approved `columns.<name>.tags` suggestion
+    // would write onto whichever of the two schemas' same-named fields came first.
+    List<Object> nestedHits = findNestedHits(fieldList, fieldName);
+    if (nestedHits.size() > 1) {
+      return Optional.empty();
+    }
+    if (nestedHits.size() == 1) {
+      return Optional.of(nestedHits.get(0));
+    }
+
+    return Optional.empty();
+  }
+
   /** Find a field by name in a list of fields. */
   private static Optional<?> findFieldByName(List<?> fieldList, String name) {
     for (Object item : fieldList) {
-      String itemName = (String) invokeGetter(item, "getName");
+      String itemName = (String) ChildFieldResolver.invokeGetter(item, "getName");
       if (name.equals(itemName)) {
         return Optional.of(item);
       }
     }
     return Optional.empty();
+  }
+
+  /**
+   * Collect every immediate {@code children} entry named {@code fieldName} across the siblings in
+   * {@code fieldList}, so the caller can refuse an ambiguous name instead of writing to the first
+   * match.
+   *
+   * <p>Only the immediate {@code children} lists are scanned (one level deep). The previous
+   * depth-first "descend into the first matching subtree" fallback resolved a bare leaf shared by
+   * two siblings' subtrees to whichever sibling was iterated first and reported success;
+   * collecting every sibling's hit first turns that silent first-match write into a detectable
+   * ambiguity (size {@code > 1}) the callers refuse to guess.
+   */
+  private static List<Object> findNestedHits(List<?> fieldList, String fieldName) {
+    List<Object> hits = new ArrayList<>();
+    for (Object item : fieldList) {
+      List<?> children = getFieldListFromObject(item, "children");
+      if (children != null && !children.isEmpty()) {
+        findFieldByName(children, fieldName).ifPresent(hits::add);
+      }
+    }
+    return hits;
+  }
+
+  /**
+   * Whether more than one child in this list answers to {@code name}.
+   *
+   * <p>The {@code columns} alias serves an apiEndpoint by concatenating its request and response
+   * schemas, and a REST endpoint normally echoes its request shape in its response, so
+   * {@code columns.category.description} names two different fields. Resolving that by position
+   * wrote the caller's text onto whichever came first and reported success. A caller that means
+   * one of them addresses it through that field's own container
+   * ({@code requestSchema.category.description}), which resolves to a single list and is
+   * unambiguous.
+   */
+  private static boolean isAmbiguous(List<?> fieldList, String name) {
+    int matches = 0;
+    for (Object item : fieldList) {
+      if (name.equals(ChildFieldResolver.invokeGetter(item, "getName"))) {
+        matches++;
+      }
+    }
+    if (matches > 1) {
+      LOG.warn(
+          "[FieldPathUtils] Field '{}' matches {} children of this entity; refusing to guess. "
+              + "Address it through its own container, e.g. requestSchema.{}.description",
+          name,
+          matches,
+          name);
+    }
+    return matches > 1;
   }
 
   /** Set description on a field object. */
@@ -411,40 +526,20 @@ public class FieldPathUtils {
 
   /** Get description from a field object. */
   private static Optional<String> getDescription(Object field) {
-    Object description = invokeGetter(field, "getDescription");
+    Object description = ChildFieldResolver.invokeGetter(field, "getDescription");
     return Optional.ofNullable((String) description);
   }
 
   /** Get a field list from entity by name (columns, fields, schemaFields, etc.). */
-  private static List<?> getFieldList(EntityInterface entity, String listName) {
-    String methodName = "get" + capitalize(listName);
-    Object result = invokeGetter(entity, methodName);
+  private static List<?> getFieldList(EntityInterface<?> entity, String listName) {
+    Object result =
+        ChildFieldResolver.invokeGetter(entity, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;
   }
 
   /** Get a field list from an object by name. */
   private static List<?> getFieldListFromObject(Object obj, String listName) {
-    String methodName = "get" + capitalize(listName);
-    Object result = invokeGetter(obj, methodName);
+    Object result = ChildFieldResolver.invokeGetter(obj, ChildFieldResolver.getterName(listName));
     return result instanceof List<?> ? (List<?>) result : null;
-  }
-
-  /** Invoke a getter method on an object. */
-  private static Object invokeGetter(Object obj, String methodName) {
-    try {
-      Method method = obj.getClass().getMethod(methodName);
-      return method.invoke(obj);
-    } catch (NoSuchMethodException e) {
-      // Expected for some entity types
-      return null;
-    } catch (Exception e) {
-      LOG.debug("[FieldPathUtils] Could not invoke {}: {}", methodName, e.getMessage());
-      return null;
-    }
-  }
-
-  /** Capitalize first letter of a string. */
-  private static String capitalize(String s) {
-    return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
   }
 }

@@ -267,6 +267,10 @@ public final class Users {
     public UserDeleter delete() {
       return new UserDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<User> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(client.users(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -387,5 +391,15 @@ public final class Users {
       modified = true;
       return this;
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().users().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().users().getContextByName(fqn);
   }
 }

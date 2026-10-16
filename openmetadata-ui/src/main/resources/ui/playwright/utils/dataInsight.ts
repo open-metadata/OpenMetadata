@@ -11,19 +11,47 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { Kpi } from '../../src/generated/dataInsight/kpi/kpi';
 import { KPIData } from '../constant/dataInsight.interface';
-import { descriptionBox } from './common';
+import { deleteFixtureEntity, okJson, settleAll } from './apiResponse';
+import { fillDescriptionBox, selectOptionWithRetry } from './common';
 
-export const deleteKpiRequest = async (apiRequest: APIRequestContext) => {
-  const kpis = await apiRequest.get('/api/v1/kpi').then((res) => res.json());
+export const deleteKpiRequest = async (
+  apiRequest: APIRequestContext,
+  kpiIds: string[]
+) => {
+  await settleAll(
+    kpiIds.map((id) =>
+      deleteFixtureEntity(
+        apiRequest,
+        `/api/v1/kpi/${id}?hardDelete=true&recursive=false`
+      )
+    )
+  );
+};
 
-  if (kpis.data.length > 0) {
-    for (const element of kpis.data) {
-      await apiRequest.delete(
-        `/api/v1/kpi/${element.id}?hardDelete=true&recursive=false`
-      );
-    }
-  }
+// The server allows one KPI per chart and the Add KPI dropdown hides charts
+// that already have one. Collate seeds a "Migration ... KPI" on each chart, so
+// free the chart before creating a KPI on it; KPIs other specs create are left alone.
+export const deleteSeededKpisOnChart = async (
+  apiRequest: APIRequestContext,
+  chart: 'description' | 'owner'
+) => {
+  const { data } = await okJson<{ data: Kpi[] }>(
+    await apiRequest.get('/api/v1/kpi?fields=dataInsightChart&limit=100'),
+    'List KPIs'
+  );
+
+  await deleteKpiRequest(
+    apiRequest,
+    data
+      .filter(
+        (kpi) =>
+          kpi.displayName?.startsWith('Migration') &&
+          kpi.dataInsightChart.fullyQualifiedName?.includes(chart)
+      )
+      .map((kpi) => kpi.id as string)
+  );
 };
 
 export const addKpi = async (page: Page, data: KPIData) => {
@@ -49,12 +77,16 @@ export const addKpi = async (page: Page, data: KPIData) => {
       : currentDate.getDate();
   const endDate = `${currentDate.getFullYear()}-${nextMonth}-${nextDate}`;
 
-  await page.click('#chartType');
-  await page.click(`.ant-select-dropdown [title="${data.dataInsightChart}"]`);
+  await selectOptionWithRetry(
+    page.getByTestId('chartType').getByRole('button'),
+    page.getByRole('option', { name: data.dataInsightChart, exact: true })
+  );
   await page.getByTestId('displayName').fill(data.displayName);
-  await page.getByTestId('metricType').click();
-  await page.click(`.ant-select-dropdown [title="${data.metricType}"]`);
-  await page.locator('.ant-slider-mark-text', { hasText: '100%' }).click();
+  await selectOptionWithRetry(
+    page.getByTestId('metricType').getByRole('button'),
+    page.getByRole('option', { name: data.metricType, exact: true })
+  );
+  await page.getByRole('spinbutton').fill('100');
 
   await page.getByTestId('start-date').click();
   await page.getByTestId('start-date').fill(startDate);
@@ -63,8 +95,22 @@ export const addKpi = async (page: Page, data: KPIData) => {
   await page.getByTestId('end-date').fill(endDate);
   await page.getByTestId('end-date').press('Enter');
 
-  await page.locator(descriptionBox).fill('Playwright KPI test description');
+  await fillDescriptionBox(page, 'Playwright KPI test description');
 
+  const createdKpiResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/v1/kpi' &&
+      response.request().method() === 'POST' &&
+      response.request().postDataJSON()?.displayName === data.displayName
+  );
   await page.getByTestId('submit-btn').click();
-  await page.waitForURL('**/data-insights/kpi');
+  const kpi = await okJson<Kpi>(await createdKpiResponse, 'Create KPI');
+  if (!kpi.id || !kpi.fullyQualifiedName) {
+    throw new Error(`Created KPI is missing its identity: ${data.displayName}`);
+  }
+  await page.waitForURL('**/data-insights/kpi', {
+    waitUntil: 'domcontentloaded',
+  });
+
+  return { ...kpi, id: kpi.id, fullyQualifiedName: kpi.fullyQualifiedName };
 };

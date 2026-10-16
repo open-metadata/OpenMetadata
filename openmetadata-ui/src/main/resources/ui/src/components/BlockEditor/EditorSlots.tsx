@@ -10,19 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Editor, ReactRenderer } from '@tiptap/react';
+import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
+import { getDialogContainer } from './Extensions/getDialogContainer';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
 
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
-  ({ editor, menuType }, ref) => {
+  ({ editable = true, editor, menuType }, ref) => {
     const [isLinkModalOpen, setIsLinkModalOpen] = useState<boolean>(false);
 
     const handleLinkToggle = () => {
@@ -50,7 +51,24 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       }
 
       if (op === 'add') {
-        editor?.chain().focus().setLink({ href: values.href }).run();
+        const { from, to } = editor.state.selection;
+        const hasSelectedText = from !== to;
+
+        if (hasSelectedText) {
+          editor.chain().focus().setLink({ href: values.href }).run();
+        } else {
+          // setLink on an empty selection only sets a stored mark and renders
+          // nothing, so insert the href as the link text to get a visible link.
+          editor
+            .chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: values.href,
+              marks: [{ type: 'link', attrs: { href: values.href } }],
+            })
+            .run();
+        }
       }
 
       // move cursor at the end
@@ -59,6 +77,9 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       // close the modal
       handleLinkToggle();
     };
+
+    const getContainer = (): HTMLElement =>
+      editor ? getDialogContainer(editor.view) : document.body;
 
     const handleUnlink = () => {
       if (isNil(editor)) {
@@ -122,7 +143,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
 
         popup = tippy('body', {
           getReferenceClientRect: () => target.getBoundingClientRect(),
-          appendTo: () => document.body,
+          appendTo: getContainer,
           content: component.element,
           showOnCreate: true,
           interactive: true,
@@ -142,7 +163,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
      * render the bubble menu only if the editor is available
      * and the menu type is bubble
      */
-    const menus = !isNil(editor) && menuType === 'bubble' && (
+    const menus = !isNil(editor) && editable && menuType === 'bubble' && (
       <BubbleMenu editor={editor} toggleLink={handleLinkToggle} />
     );
 
@@ -160,6 +181,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         {isLinkModalOpen && (
           <LinkModal
             data={{ href: editor?.getAttributes('link').href }}
+            getContainer={getContainer}
             isOpen={isLinkModalOpen}
             onCancel={handleLinkCancel}
             onSave={(values) =>
@@ -171,7 +193,9 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
           />
         )}
         {menus}
-        {!isNil(editor) && (
+        {/* Read-only previews never use these menus. Their react-aria buttons
+            would also capture the trigger of any tooltip they render inside. */}
+        {!isNil(editor) && editable && (
           <>
             <BlockMenu editor={editor} />
             <TableMenu editor={editor} />

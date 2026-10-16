@@ -11,6 +11,20 @@
  *  limitations under the License.
  */
 
+import { normalizeHexColor } from '@/colors/colorValidation';
+import {
+  ENTITY_PALETTE_HEX,
+  getEntityPalettePresentationColor,
+} from '@/colors/entityPalette';
+import { Popover } from '@/components/application/popover/popover';
+import { Tabs } from '@/components/application/tabs/tabs';
+import { Box } from '@/components/base/box/box';
+import { Button } from '@/components/base/buttons/button';
+import { Input } from '@/components/base/input/input';
+import { getTagImageSrc } from '@/components/foundations/icon/icon.utils';
+import { Typography } from '@/components/foundations/typography';
+import { cx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type { FC, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import {
   createElement,
@@ -20,15 +34,6 @@ import {
   useState,
 } from 'react';
 import type { Key } from 'react-aria-components';
-import { normalizeHexColor } from '@/colors/colorValidation';
-import { ENTITY_PALETTE_HEX } from '@/colors/entityPalette';
-import { Tabs } from '@/components/application/tabs/tabs';
-import { Box } from '@/components/base/box/box';
-import { Button } from '@/components/base/buttons/button';
-import { Input } from '@/components/base/input/input';
-import { Typography } from '@/components/foundations/typography';
-import { cx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 import type {
   FormSelectItem,
   IconPickerFieldLabels,
@@ -105,12 +110,15 @@ export const IconPickerField = ({
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'icons' | 'url'>('icons');
   const selectedItem = items.find((item) => item.id === value);
-  const backgroundColor =
+  const normalizedBackgroundColor =
     (backgroundColorProp ? normalizeHexColor(backgroundColorProp) : null) ??
-    ENTITY_PALETTE_HEX[6];
+    // Index 0 (blue) is the established default when no color is picked yet
+    // (glossary terms, tags, domains pass an undefined color until selection).
+    ENTITY_PALETTE_HEX[0];
+  const backgroundColor = getEntityPalettePresentationColor(
+    normalizedBackgroundColor
+  );
   const hasCustomImage = allowUrl && value !== '' && !selectedItem;
-  const onBlurRef = useRef(onBlur);
-  onBlurRef.current = onBlur;
 
   useEffect(() => {
     if (!isOpen) {
@@ -118,36 +126,12 @@ export const IconPickerField = ({
     }
   }, [allowUrl, hasCustomImage, isOpen]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      onBlur?.();
     }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (
-        event.target instanceof Node &&
-        !wrapperRef.current?.contains(event.target)
-      ) {
-        setIsOpen(false);
-        onBlurRef.current?.();
-      }
-    };
-
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsOpen(false);
-        onBlurRef.current?.();
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleEscape);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleEscape);
-    };
-  }, [isOpen]);
+  };
 
   const handleIconSelection = (item: FormSelectItem) => {
     onBlur?.();
@@ -166,7 +150,7 @@ export const IconPickerField = ({
         <img
           alt=""
           className="tw:h-7 tw:w-7 tw:rounded-sm tw:object-contain"
-          src={value}
+          src={getTagImageSrc(value)}
         />
       );
     }
@@ -204,11 +188,16 @@ export const IconPickerField = ({
               'aria-label': item.label ?? item.id,
               'aria-pressed': isSelected,
               className: cx(
-                'tw:size-9 tw:rounded-lg tw:p-0! tw:ring-1 tw:ring-secondary_alt tw:transition tw:duration-150',
+                'tw:size-9 tw:rounded-lg tw:p-0! tw:outline-1 tw:outline-secondary_alt tw:transition tw:duration-150',
                 isSelected
-                  ? 'tw:bg-primary_hover tw:ring-brand'
+                  ? 'tw:bg-primary_hover tw:outline-brand'
                   : 'tw:bg-primary tw:hover:bg-primary_hover',
-                'tw:focus-visible:ring-2 tw:focus-visible:ring-brand'
+                // The old focus ring had no `ring-offset`, so it sat flush against Button's
+                // own 2px focus outline at offset 2 and read as a single 4px brand band.
+                // `outline-4` at offset 0 reproduces that. The colour must be set here too:
+                // Button only contributes focus width/offset, and its base `outline-brand`
+                // is overridden by the base colours above.
+                'tw:focus-visible:outline-4 tw:focus-visible:outline-offset-0 tw:focus-visible:outline-brand'
               ),
               color: 'tertiary' as const,
               size: 'sm' as const,
@@ -259,17 +248,21 @@ export const IconPickerField = ({
   );
 
   return (
-    <div className="tw:relative tw:w-fit" ref={wrapperRef}>
+    <div className="tw:w-fit" ref={wrapperRef}>
       <Button
         aria-label={
           ariaLabel ?? placeholder ?? labels?.emptyState ?? 'Select icon'
         }
         className={cx(
-          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:ring-1 tw:ring-black/5 tw:transition tw:duration-150',
+          'tw:size-[34px] tw:rounded-[10px] tw:p-0! tw:shadow-xs tw:outline-1 tw:outline-black/5 tw:transition tw:duration-150',
           !disabled && 'tw:hover:scale-[1.02]',
           disabled && 'tw:opacity-50',
-          'tw:focus-visible:ring-2 tw:focus-visible:ring-brand tw:focus-visible:ring-offset-2',
-          isOpen && 'tw:ring-2 tw:ring-brand tw:ring-offset-2'
+          // The focus colour must be set explicitly. Button contributes the focus
+          // *width/offset* only; its `outline-brand` is a base colour that
+          // `outline-black/5` above overrides, so without this the focus ring would be
+          // 5% black — effectively invisible.
+          'tw:focus-visible:outline-brand',
+          isOpen && 'tw:outline-2 tw:outline-brand tw:outline-offset-2'
         )}
         color="tertiary"
         data-testid={dataTestId}
@@ -288,30 +281,35 @@ export const IconPickerField = ({
         }}
       />
 
-      {isOpen && (
-        <div className="tw:absolute tw:top-[calc(100%+8px)] tw:left-0 tw:z-50 tw:w-[22rem] tw:max-w-[calc(100vw-2rem)] tw:rounded-xl tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt">
-          {allowUrl ? (
-            <Tabs
-              selectedKey={activeTab}
-              onSelectionChange={(key) =>
-                setActiveTab(key === 'url' ? 'url' : 'icons')
-              }>
-              <Tabs.List
-                fullWidth
-                className="tw:border-b tw:border-secondary_alt tw:p-1"
-                size="sm"
-                type="button-minimal">
-                <Tabs.Item id="icons" label={labels?.iconsTab ?? 'Icons'} />
-                <Tabs.Item id="url" label={labels?.urlTab ?? 'URL'} />
-              </Tabs.List>
-              <Tabs.Panel id="icons">{iconGrid}</Tabs.Panel>
-              <Tabs.Panel id="url">{urlPanel}</Tabs.Panel>
-            </Tabs>
-          ) : (
-            iconGrid
-          )}
-        </div>
-      )}
+      {/* Portaled so a scrolling container (e.g. a modal body) can't clip it. */}
+      <Popover
+        className="tw:w-88 tw:max-w-[calc(100vw-2rem)]"
+        isOpen={isOpen}
+        offset={8}
+        placement="bottom start"
+        triggerRef={wrapperRef}
+        onOpenChange={handleOpenChange}>
+        {allowUrl ? (
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(key) =>
+              setActiveTab(key === 'url' ? 'url' : 'icons')
+            }>
+            <Tabs.List
+              fullWidth
+              className="tw:border-b tw:border-secondary_alt tw:p-1"
+              size="sm"
+              type="button-minimal">
+              <Tabs.Item id="icons" label={labels?.iconsTab ?? 'Icons'} />
+              <Tabs.Item id="url" label={labels?.urlTab ?? 'URL'} />
+            </Tabs.List>
+            <Tabs.Panel id="icons">{iconGrid}</Tabs.Panel>
+            <Tabs.Panel id="url">{urlPanel}</Tabs.Panel>
+          </Tabs>
+        ) : (
+          iconGrid
+        )}
+      </Popover>
     </div>
   );
 };

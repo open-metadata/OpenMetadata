@@ -10,15 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import { Button, Result } from 'antd';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 
 import React from 'react';
 import { FallbackProps } from 'react-error-boundary';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as OmUpgradeIcon } from '../../../assets/svg/om-upgrade.svg';
 import { ERROR500 } from '../../../constants/constants';
-import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { t } from '../../../utils/i18next/LocalUtil';
 
 const ErrorFallback: React.FC<FallbackProps> = ({
@@ -40,9 +38,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
     : error.message;
 
   const title = isChunkLoadError
-    ? t('message.look-like-upgraded-om', {
-        brandName: brandClassBase.getPageTitle(),
-      })
+    ? t('message.look-like-upgraded-om')
     : ERROR500;
 
   const handleReset = () => {
@@ -54,20 +50,25 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   };
 
   return (
-    <Result
-      className="error-boundary-result"
-      extra={
-        <Button
-          className="ant-btn-primary-custom"
-          type="primary"
-          onClick={handleReset}>
-          {isChunkLoadError ? t('label.refresh') : t('label.home')}
-        </Button>
-      }
-      icon={<OmUpgradeIcon />}
-      subTitle={message}
-      title={title}
-    />
+    <Box
+      align="center"
+      className="tw:h-full tw:px-8 tw:py-12 tw:text-center"
+      direction="col"
+      gap={6}
+      justify="center">
+      <OmUpgradeIcon />
+      <Box align="center" direction="col" gap={2}>
+        <Typography size="display-xs" weight="semibold">
+          {title}
+        </Typography>
+        <Typography as="p" color="secondary" size="text-sm">
+          {message}
+        </Typography>
+      </Box>
+      <Button color="primary" onPress={handleReset}>
+        {isChunkLoadError ? t('label.refresh') : t('label.home')}
+      </Button>
+    </Box>
   );
 };
 

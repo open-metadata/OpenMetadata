@@ -125,4 +125,25 @@ WHERE json->'classification'->>'name' = 'PII'
     json->>'autoClassificationEnabled' IS NULL
     OR (json->>'autoClassificationEnabled')::boolean = false
   );
-  
+
+-- Remove default column_name recognizers from PII tags (no longer used as boosters)
+UPDATE tag
+SET json = jsonb_set(
+    json::jsonb,
+    '{recognizers}',
+    COALESCE(
+        (
+            SELECT jsonb_agg(r)
+            FROM jsonb_array_elements(json::jsonb->'recognizers') AS r
+            WHERE r->>'target' IS NULL OR r->>'target' != 'column_name'
+        ),
+        '[]'::jsonb
+    )
+)::json
+WHERE json->'classification'->>'name' = 'PII'
+  AND json->>'name' IN ('NonSensitive', 'Sensitive')
+  AND EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(json::jsonb->'recognizers') AS r
+    WHERE r->>'target' = 'column_name'
+  );

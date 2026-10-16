@@ -27,6 +27,38 @@ import { useApplicationStore } from '../useApplicationStore';
 
 let userProfilePicsLoading: string[] = [];
 
+const isCacheableErrorStatus = (status?: number): boolean =>
+  status === ClientErrors.NOT_FOUND ||
+  status === ClientErrors.FORBIDDEN ||
+  status === ClientErrors.UNAUTHORIZED ||
+  status === ClientErrors.BAD_REQUEST;
+
+const shouldCachePlaceholderOnError = (status?: number): boolean =>
+  isCacheableErrorStatus(status) || status === 500 || status === undefined;
+
+// Profile images are best-effort. Cache a placeholder on any read failure so avatar loaders
+// can settle and we do not keep retrying a denied/missing profile forever.
+const handleProfileFetchError = (
+  error: unknown,
+  cacheKey: string,
+  name: string,
+  updateUserProfilePics: (payload: { id: string; user: User }) => void
+): void => {
+  const errorStatus = (error as AxiosError)?.response?.status;
+  if (!shouldCachePlaceholderOnError(errorStatus)) {
+    return;
+  }
+
+  updateUserProfilePics({
+    id: cacheKey,
+    user: {
+      name,
+      id: cacheKey,
+      email: '',
+    } as User,
+  });
+};
+
 export const useUserProfile = ({
   permission,
   name,
@@ -89,25 +121,7 @@ export const useUserProfile = ({
         user,
       });
     } catch (error) {
-      // Profile images are best-effort. Cache a placeholder on any read failure so avatar loaders
-      // can settle and we do not keep retrying a denied/missing profile forever.
-      if (
-        (error as AxiosError)?.response?.status === ClientErrors.NOT_FOUND ||
-        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN ||
-        (error as AxiosError)?.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error as AxiosError)?.response?.status === ClientErrors.BAD_REQUEST ||
-        (error as AxiosError)?.response?.status === ClientErrors.SERVER_ERROR ||
-        (error as AxiosError)?.response?.status === undefined
-      ) {
-        updateUserProfilePics({
-          id: cacheKey,
-          user: {
-            name,
-            id: cacheKey,
-            email: '',
-          },
-        });
-      }
+      handleProfileFetchError(error, cacheKey, name, updateUserProfilePics);
     } finally {
       userProfilePicsLoading = userProfilePicsLoading.filter(
         (p) => p !== cacheKey

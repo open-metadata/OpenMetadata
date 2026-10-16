@@ -34,12 +34,12 @@
 
     ::-webkit-scrollbar-track {
       background: transparent;
-      border-radius: 3px;
+      border-radius: var(--om-radius-3);
     }
 
     ::-webkit-scrollbar-thumb {
       background: @grey-300;
-      border-radius: 3px;
+      border-radius: var(--om-radius-3);
       opacity: 0.6;
 
       &:hover {
@@ -55,11 +55,5 @@
     // Firefox scrollbar styles
     scrollbar-width: thin;
     scrollbar-color: @grey-300 transparent;
-  }
-}
-
-.grid-wrapper {
-  .grid-container {
-    margin-top: -220px;
   }
 }

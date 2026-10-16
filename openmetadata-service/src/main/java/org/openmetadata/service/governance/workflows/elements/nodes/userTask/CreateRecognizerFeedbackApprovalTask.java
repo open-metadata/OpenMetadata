@@ -87,7 +87,7 @@ public class CreateRecognizerFeedbackApprovalTask implements NodeInterface {
     FieldExtension taskTypeExpr =
         new FieldExtensionBuilder()
             .fieldName("taskTypeExpr")
-            .fieldValue(TaskEntityType.DataQualityReview.value())
+            .fieldValue(TaskEntityType.RecognizerFeedbackApproval.value())
             .build();
 
     FieldExtension taskCategoryExpr =

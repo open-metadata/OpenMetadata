@@ -12,8 +12,6 @@
 Table related pydantic definitions
 """
 
-from typing import Dict, List, Optional  # noqa: UP035
-
 from pydantic import BaseModel, Field
 
 from metadata.generated.schema.entity.data.table import Table, TableConstraint
@@ -27,8 +25,8 @@ class OMetaTableConstraints(BaseModel):
     """
 
     table: Table
-    foreign_constraints: Optional[List[Dict]] = None  # noqa: UP006, UP045
-    constraints: Optional[List[TableConstraint]] = None  # noqa: UP006, UP045
+    foreign_constraints: list[dict] | None = None
+    constraints: list[TableConstraint] | None = None
 
 
 class ColumnTag(BaseModel):
@@ -42,4 +40,4 @@ class ColumnDescription(BaseModel):
     """Column FQN and description information"""
 
     column_fqn: str
-    description: Optional[basic.Markdown] = Field(None, description="Description of a column.")  # noqa: UP045
+    description: basic.Markdown | None = Field(None, description="Description of a column.")

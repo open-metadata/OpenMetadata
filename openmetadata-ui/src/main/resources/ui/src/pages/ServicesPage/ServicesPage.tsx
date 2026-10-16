@@ -11,18 +11,19 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
 import { capitalize, isEmpty, startCase } from 'lodash';
 import qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { IngestionPipelineList } from '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component';
 import Services from '../../components/Settings/Services/Services';
+import { ROUTES } from '../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -33,11 +34,19 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { useAuth } from '../../hooks/authHooks';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { getRenderedActiveTab } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { userPermissions } from '../../utils/PermissionsUtils';
-import { getResourceEntityFromServiceCategory } from '../../utils/ServiceUtils';
+import { getResourceEntityFromServiceCategory } from '../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import './service-page.less';
+
+const isValidServiceTab = (
+  tab: string,
+  serviceCategoryValues: Set<string>
+): boolean =>
+  tab === GlobalSettingOptions.DATA_OBSERVABILITY ||
+  Boolean(SERVICE_CATEGORY[tab]) ||
+  serviceCategoryValues.has(tab);
 
 const ServicesPage = () => {
   const { tab } = useRequiredParams<{ tab: string }>();
@@ -56,13 +65,28 @@ const ServicesPage = () => {
       ? 'pipelines'
       : 'services');
 
-  const serviceName = useMemo(
-    () =>
-      tab === GlobalSettingOptions.DATA_OBSERVABILITY
-        ? 'dataObservabilityServices'
-        : SERVICE_CATEGORY[tab] ?? ServiceCategory.DATABASE_SERVICES,
-    [tab]
+  const serviceCategoryValues = useMemo(
+    () => new Set<string>(Object.values(ServiceCategory)),
+    []
   );
+
+  const isValidTab = isValidServiceTab(tab, serviceCategoryValues);
+
+  const serviceName = useMemo(() => {
+    if (tab === GlobalSettingOptions.DATA_OBSERVABILITY) {
+      return 'dataObservabilityServices';
+    }
+
+    if (SERVICE_CATEGORY[tab]) {
+      return SERVICE_CATEGORY[tab];
+    }
+
+    if (serviceCategoryValues.has(tab)) {
+      return tab as ServiceCategory;
+    }
+
+    return ServiceCategory.DATABASE_SERVICES;
+  }, [tab, serviceCategoryValues]);
 
   const { permissions } = usePermissionProvider();
 
@@ -87,78 +111,104 @@ const ServicesPage = () => {
     );
 
     if (isEmbedded) {
-      return crumbs.map((crumb) => {
-        if (!crumb.activeTitle && crumb.url) {
-          return {
-            ...crumb,
-            url: '/askCollate/connections/settings/services',
-          };
-        }
-
-        return crumb;
-      });
+      return [
+        {
+          name: t('label.ask-collate'),
+          url: '/askCollate',
+        },
+        {
+          name: t('label.connection-plural'),
+          url: '/askCollate/connections',
+        },
+        {
+          name:
+            tab === GlobalSettingOptions.DATA_OBSERVABILITY
+              ? t('label.data-observability')
+              : capitalize(tab),
+          url: '',
+          activeTitle: true,
+        },
+      ];
     }
 
     return crumbs;
   }, [tab, t, isEmbedded]);
 
+  const tabItems = useMemo(
+    () => [
+      ...(serviceName === 'dataObservabilityServices'
+        ? []
+        : [
+            {
+              key: 'services',
+              children: <Services serviceName={serviceName} />,
+              label: 'Services',
+            },
+          ]),
+      ...(isAdminUser
+        ? [
+            {
+              key: 'pipelines',
+              children: (
+                <IngestionPipelineList
+                  serviceName={
+                    serviceName === 'dataObservabilityServices'
+                      ? 'testSuites'
+                      : serviceName
+                  }
+                />
+              ),
+              label: 'Pipelines',
+            },
+          ]
+        : []),
+    ],
+    [serviceName, isAdminUser]
+  );
+
+  if (!isValidTab) {
+    return <Navigate replace to={ROUTES.NOT_FOUND} />;
+  }
+
   return viewAllPermission ? (
-    <PageLayoutV1 pageTitle={serviceName}>
+    <PageLayoutV1 pageTitle={startCase(serviceName)}>
       {isEmbedded && <div className="tw:h-4" />}
-      <Row gutter={isEmbedded ? [0, 8] : [0, 16]}>
-        <Col span={24}>
-          <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col className="h-full" span={24}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={search as string}
-            className="tabs-new services-tabs"
-            items={[
-              ...(serviceName === 'dataObservabilityServices'
-                ? []
-                : [
-                    {
-                      key: 'services',
-                      children: <Services serviceName={serviceName} />,
-                      label: 'Services',
-                    },
-                  ]),
-              ...(isAdminUser
-                ? [
-                    {
-                      key: 'pipelines',
-                      children: (
-                        <IngestionPipelineList
-                          serviceName={
-                            serviceName === 'dataObservabilityServices'
-                              ? 'testSuites'
-                              : serviceName
-                          }
-                        />
-                      ),
-                      label: 'Pipelines',
-                    },
-                  ]
-                : []),
-            ]}
-            onChange={(activeKey) => navigate({ search: `tab=${activeKey}` })}
-          />
-        </Col>
-      </Row>
+      <Box direction="col" gap={isEmbedded ? 2 : 4}>
+        <TitleBreadcrumb titleLinks={breadcrumbs} />
+        <Tabs
+          className="tw:gap-3"
+          selectedKey={getRenderedActiveTab(tabItems, search as string)}
+          onSelectionChange={(activeKey) =>
+            navigate({ search: `tab=${String(activeKey)}` })
+          }>
+          <Tabs.List size="sm" type="underline" variant="card">
+            {tabItems.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabItems.map(({ key, children }) => (
+            <Tabs.Panel
+              className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-5"
+              id={key}
+              key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </Box>
     </PageLayoutV1>
   ) : (
-    <Row>
-      <Col span={24}>
-        <ErrorPlaceHolder
-          className="border-none h-min-80"
-          permissionValue={t('label.view-entity', {
-            entity: startCase(serviceName),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
-      </Col>
-    </Row>
+    <div>
+      <ErrorPlaceHolder
+        className="border-none h-min-80"
+        permissionValue={t('label.view-entity', {
+          entity: startCase(serviceName),
+        })}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    </div>
   );
 };
 

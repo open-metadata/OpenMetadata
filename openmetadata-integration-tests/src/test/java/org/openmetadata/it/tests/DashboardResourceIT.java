@@ -43,8 +43,11 @@ import org.openmetadata.sdk.models.ListResponse;
 @Execution(ExecutionMode.CONCURRENT)
 public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard> {
 
+  private String defaultListService;
+
   {
     supportsLifeCycle = true;
+    supportsCreationAudit = true;
     supportsListHistoryByTimestamp = true;
     supportsBulkAPI = true;
     supportsDataContract = true;
@@ -79,7 +82,11 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
 
   @Override
   protected Dashboard createEntity(CreateDashboard createRequest) {
-    return SdkClients.adminClient().dashboards().create(createRequest);
+    Dashboard dashboard = SdkClients.adminClient().dashboards().create(createRequest);
+    if (defaultListService == null && dashboard.getService() != null) {
+      defaultListService = dashboard.getService().getFullyQualifiedName();
+    }
+    return dashboard;
   }
 
   @Override
@@ -135,6 +142,10 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
 
   @Override
   protected ListResponse<Dashboard> listEntities(ListParams params) {
+    if (!params.getFilters().containsKey("service") && defaultListService != null) {
+      params = params.copy();
+      params.setService(defaultListService);
+    }
     return SdkClients.adminClient().dashboards().list(params);
   }
 
@@ -567,6 +578,7 @@ public class DashboardResourceIT extends BaseEntityIT<Dashboard, CreateDashboard
     // List dashboards
     ListParams params = new ListParams();
     params.setLimit(100);
+    params.setService(service.getFullyQualifiedName());
     ListResponse<Dashboard> response = listEntities(params);
     assertNotNull(response);
 

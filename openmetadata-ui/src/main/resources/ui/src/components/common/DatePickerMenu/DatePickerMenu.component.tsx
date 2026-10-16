@@ -11,50 +11,89 @@
  *  limitations under the License.
  */
 
-import { CloseCircleOutlined } from '@ant-design/icons';
-import { Button, Dropdown, MenuProps, Space } from 'antd';
-import { SizeType } from 'antd/lib/config-provider/SizeContext';
+import {
+  Box,
+  Button,
+  Dropdown,
+  Popover,
+  RangeCalendar,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  ChevronRight,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
-import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useMemo, useState } from 'react';
+import {
+  ComponentProps,
+  Key,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
   DEFAULT_SELECTED_RANGE,
   PROFILER_FILTER_RANGE,
 } from '../../../constants/profiler.constant';
+import { dateValueToMillis } from '../../../utils/date-time/calendarDate.utils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import {
+  CUSTOM_DATE_RANGE_KEY,
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
 import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
-import MyDatePicker from '../DatePicker/DatePicker';
-import './date-picker-menu.less';
+
+type DatePickerMenuSize = 'small' | 'middle' | 'large';
+
+const getTriggerClassName = (
+  size: DatePickerMenuSize | undefined,
+  isCustomRangeSelected: boolean
+) => {
+  if (size !== 'small') {
+    return undefined;
+  }
+
+  return classNames(
+    'tw:inline-flex tw:h-8 tw:min-w-0 tw:items-center tw:justify-center tw:overflow-hidden',
+    isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-72'
+  );
+};
+
+const getActiveItemClassName = (isActive: boolean) =>
+  isActive ? 'tw:[&>div]:bg-active' : undefined;
 
 interface DatePickerMenuProps {
+  allowClear?: boolean;
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;
   handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
-  size?: SizeType;
+  onClear?: () => void;
+  placeholder?: string;
+  size?: DatePickerMenuSize;
 }
 
 const DatePickerMenu = ({
+  allowClear = false,
   defaultDateRange,
   showSelectedCustomRange,
   handleDateRangeChange,
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  onClear,
+  placeholder,
   size,
 }: DatePickerMenuProps) => {
   const { t } = useTranslation();
@@ -80,11 +119,16 @@ const DatePickerMenu = ({
     };
   }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOptions = pick(translatedDefaultRange, ['title', 'key']);
+    const defaultOptions = placeholder
+      ? { key: '', title: placeholder }
+      : pick(translatedDefaultRange, ['title', 'key']);
 
     if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
-      if (defaultDateRange.key === 'customRange' && defaultDateRange.title) {
+      if (
+        defaultDateRange.key === CUSTOM_DATE_RANGE_KEY &&
+        defaultDateRange.title
+      ) {
         defaultOptions.title = defaultDateRange.title;
       } else if (
         options &&
@@ -103,53 +147,77 @@ const DatePickerMenu = ({
       menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions,
     };
-  }, [options]);
+  }, [
+    defaultDateRange,
+    options,
+    placeholder,
+    translatedDefaultRange,
+    translatedProfileFilterRange,
+  ]);
+  const { key: defaultTimeRangeKey, title: defaultTimeRangeTitle } =
+    defaultOptions;
 
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    defaultOptions.title
+    defaultTimeRangeTitle
   );
   // state to determine the selected value to highlight in the dropdown
-  const [selectedTimeRangeKey, setSelectedTimeRangeKey] = useState<string>(
-    defaultOptions.key
-  );
+  const [selectedTimeRangeKey, setSelectedTimeRangeKey] =
+    useState<string>(defaultTimeRangeKey);
+  const isCustomRangeSelected = selectedTimeRangeKey === CUSTOM_DATE_RANGE_KEY;
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [isCustomRangeOpen, setIsCustomRangeOpen] = useState<boolean>(false);
+  const customRangeTriggerRef = useRef<HTMLDivElement>(null);
 
-  const handleCustomDateChange = (
-    values: [start: DateTime | null, end: DateTime | null] | null,
-    dateStrings: [string, string]
-  ) => {
-    if (values) {
-      const startTs = values[0]?.startOf('day').valueOf() ?? 0;
-
-      const endTs = values[1]?.endOf('day').valueOf() ?? 0;
-
-      const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
-
-      const selectedRangeLabel = getTimestampLabel(
-        dateStrings[0],
-        dateStrings[1],
-        showSelectedCustomRange
-      );
-
-      setSelectedTimeRange(selectedRangeLabel);
-      setSelectedTimeRangeKey('customRange');
-      setIsMenuOpen(false);
-      handleDateRangeChange?.(
-        {
-          startTs,
-          endTs,
-          key: 'customRange',
-          title: selectedRangeLabel,
-        },
-        daysCount
-      );
-      handleSelectedTimeRange?.(selectedRangeLabel);
+  const handleMenuOpenChange = (open: boolean) => {
+    setIsMenuOpen(open);
+    if (!open) {
+      setIsCustomRangeOpen(false);
     }
   };
 
-  const handleOptionClick = ({ key }: MenuInfo) => {
+  useEffect(() => {
+    setSelectedTimeRange(defaultTimeRangeTitle);
+    setSelectedTimeRangeKey(defaultTimeRangeKey);
+  }, [defaultTimeRangeKey, defaultTimeRangeTitle]);
+
+  const handleCustomDateChange: NonNullable<
+    ComponentProps<typeof RangeCalendar>['onChange']
+  > = (values) => {
+    if (!values) {
+      return;
+    }
+    const startDate = values.start.toString();
+    const endDate = values.end.toString();
+    const selectedRangeLabel = getTimestampLabel(
+      startDate,
+      endDate,
+      showSelectedCustomRange
+    );
+    setSelectedTimeRange(selectedRangeLabel);
+    setSelectedTimeRangeKey(CUSTOM_DATE_RANGE_KEY);
+    handleMenuOpenChange(false);
+    handleDateRangeChange?.(
+      {
+        startTs: dateValueToMillis(values.start),
+        endTs: dateValueToMillis(values.end.add({ days: 1 })) - 1,
+        key: CUSTOM_DATE_RANGE_KEY,
+        title: selectedRangeLabel,
+      },
+      getDaysCount(startDate, endDate)
+    );
+    handleSelectedTimeRange?.(selectedRangeLabel);
+  };
+
+  const handleOptionClick = (menuKey: Key) => {
+    const key = String(menuKey);
+    if (key === CUSTOM_DATE_RANGE_KEY) {
+      setIsCustomRangeOpen(true);
+
+      return;
+    }
+
     const filterRange = menuOptions[key];
     if (isUndefined(filterRange)) {
       return;
@@ -162,7 +230,7 @@ const DatePickerMenu = ({
 
     setSelectedTimeRange(menuOptions[key].title);
     setSelectedTimeRangeKey(key);
-    setIsMenuOpen(false);
+    handleMenuOpenChange(false);
 
     handleDateRangeChange?.(
       { startTs, endTs, key, title: filterRange.title },
@@ -171,63 +239,110 @@ const DatePickerMenu = ({
     handleSelectedTimeRange?.(menuOptions[key].title);
   };
 
-  const getMenuItems = () => {
-    const items: MenuProps['items'] = Object.entries(menuOptions).map(
-      ([key, value]) => ({
-        label: value.title,
-        key,
-      })
+  const handleClear = () => {
+    setSelectedTimeRange(
+      placeholder ?? t('label.select-entity', { entity: t('label.date') })
     );
-
-    allowCustomRange &&
-      items.push({
-        label: t('label.custom-range'),
-        key: 'customRange',
-        children: [
-          {
-            label: (
-              <MyDatePicker.RangePicker
-                allowClear
-                bordered={false}
-                clearIcon={<CloseCircleOutlined />}
-                format={(value) => value.toUTC().toFormat('YYYY-MM-DD')}
-                open={isMenuOpen}
-                placement="bottomRight"
-                suffixIcon={null}
-                onChange={handleCustomDateChange}
-              />
-            ),
-            key: 'datePicker',
-          },
-        ],
-        popupClassName: 'date-picker-sub-menu-popup',
-      });
-
-    return items;
+    setSelectedTimeRangeKey('');
+    setIsMenuOpen(false);
+    onClear?.();
   };
 
-  const items: MenuProps['items'] = getMenuItems();
+  const datePickerMenu = (
+    <Dropdown.Root isOpen={isMenuOpen} onOpenChange={handleMenuOpenChange}>
+      <Button
+        className={getTriggerClassName(size, isCustomRangeSelected)}
+        color="secondary"
+        data-testid="date-picker-menu"
+        iconTrailing={<ChevronDown size={14} />}
+        size={size === 'small' ? 'sm' : 'md'}>
+        <Typography
+          as="span"
+          className={classNames(
+            isCustomRangeSelected && 'tw:whitespace-nowrap',
+            !selectedTimeRangeKey && 'tw:text-disabled'
+          )}
+          ellipsis={!isCustomRangeSelected}>
+          {selectedTimeRange}
+        </Typography>
+      </Button>
+      <Dropdown.Popover
+        className="tw:w-auto tw:min-w-44 tw:overflow-visible"
+        placement="bottom start">
+        <Dropdown.Menu
+          aria-label={selectedTimeRange}
+          selectionMode="none"
+          onAction={handleOptionClick}>
+          {Object.entries(menuOptions).map(([key, value]) => (
+            <Dropdown.Item
+              className={getActiveItemClassName(key === selectedTimeRangeKey)}
+              id={key}
+              key={key}
+              label={value.title}
+            />
+          ))}
+          {allowCustomRange && (
+            <Dropdown.Item
+              className={getActiveItemClassName(isCustomRangeSelected)}
+              id={CUSTOM_DATE_RANGE_KEY}
+              shouldCloseOnSelect={false}
+              textValue={t('label.custom-range')}>
+              <Box
+                align="center"
+                gap={2}
+                justify="between"
+                ref={customRangeTriggerRef}>
+                {t('label.custom-range')}
+                <ChevronRight className="tw:text-fg-quaternary" size={14} />
+              </Box>
+            </Dropdown.Item>
+          )}
+        </Dropdown.Menu>
+        {isCustomRangeOpen && (
+          <Popover
+            isOpen
+            aria-label={t('label.custom-range')}
+            placement="left bottom"
+            triggerRef={customRangeTriggerRef}
+            onOpenChange={setIsCustomRangeOpen}>
+            <RangeCalendar
+              aria-label={t('label.custom-range')}
+              firstDayOfWeek="mon"
+              onChange={handleCustomDateChange}
+            />
+          </Popover>
+        )}
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+
+  if (!allowClear) {
+    return datePickerMenu;
+  }
 
   return (
-    <Dropdown
-      destroyPopupOnHide
-      getPopupContainer={getPopupContainer}
-      menu={{
-        items,
-        triggerSubMenuAction: 'click',
-        onClick: handleOptionClick,
-        selectedKeys: [selectedTimeRangeKey],
-      }}
-      open={isMenuOpen}
-      trigger={['click']}
-      onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button data-testid="date-picker-menu" size={size}>
-        <Space align="center" size={8}>
-          {selectedTimeRange}
-          <DropdownIcon className="align-middle" height={14} width={14} />
-        </Space>
-      </Button>
-    </Dropdown>
+    <Box
+      align="center"
+      className={classNames(
+        'tw:relative tw:inline-flex tw:h-8 tw:items-center',
+        isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-80',
+        selectedTimeRangeKey &&
+          'tw:[&_[data-testid=date-picker-menu]>span:first-of-type]:pr-6'
+      )}
+      data-testid="date-picker-container">
+      {datePickerMenu}
+      {selectedTimeRangeKey && (
+        <Button
+          aria-label={t('label.clear')}
+          className="tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:-translate-y-1/2"
+          color="tertiary"
+          data-testid="clear-date-picker"
+          iconLeading={XCircle}
+          size="xs"
+          onPress={handleClear}
+        />
+      )}
+    </Box>
   );
 };
 

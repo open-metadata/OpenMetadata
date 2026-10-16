@@ -52,11 +52,14 @@ const mockProps: EntityTasksProps = {
   onThreadLinkSelect: jest.fn(),
 };
 
-jest.mock('../../../utils/TasksUtils', () => ({
+jest.mock('../../../utils/TaskFieldUtils', () => ({
   getEntityTaskDetails: jest.fn().mockReturnValue({
     fqnPart: FqnPart.NestedColumn,
     entityField: EntityField.COLUMNS,
   }),
+}));
+
+jest.mock('../../../utils/TaskNavigationUtils', () => ({
   getRequestDescriptionPath: jest
     .fn()
     .mockImplementation(() => mockRequestDescription),
@@ -75,7 +78,8 @@ jest.mock('../../../utils/FeedElementUtils', () => ({
     )),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
+  ...jest.requireActual('../../../utils/FqnUtils'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('test'),
 }));
 

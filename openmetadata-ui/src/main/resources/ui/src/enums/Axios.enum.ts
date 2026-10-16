@@ -17,6 +17,7 @@ export enum ClientErrors {
   PAYMENT_REQUIRED = 402,
   FORBIDDEN = 403,
   NOT_FOUND = 404,
+  CONFLICT = 409,
 }
 
 export enum ErrorTypes {

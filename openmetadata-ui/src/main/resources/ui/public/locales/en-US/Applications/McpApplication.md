@@ -11,16 +11,23 @@ MCP Server app installs an embedded Model Context Protocol(MCP) server within Op
     - This endpoint can be used by client if Streamable-Http transport is used.
 
 $$section
-### Should Origin Header Be validated $(id="originValidationEnabled")
+### Base URL $(id="baseUrl")
 
-When enabled, clients must include a valid Origin header when connecting via Streamable-Http transport. This prevents unauthorized cross-origin requests.
+External-facing base URL advertised in the MCP OAuth metadata (issuer and endpoint URLs). Leave empty to fall back to the OpenMetadata base URL from system settings. Set this explicitly for clustered deployments where the service is reached through a load balancer or ingress.
+Example: `https://openmetadata.example.com`
 
 $$
 
 $$section
-### Origin Header URI $(id="originHeaderUri")
+### Allowed Origins $(id="allowedOrigins")
 
-The allowed origin URI that clients must include in their Origin header when validation is enabled. Only requests from this URI will be accepted.
-Example: `https://myapp.example.com`
+Origins allowed to call the MCP OAuth endpoints from a browser (CORS allowlist). An empty list rejects every cross-origin request, which stops browser-based MCP clients from connecting. Use exact origins in production; `*` is accepted but not recommended.
+
+$$
+
+$$section
+### Max Response Characters $(id="maxResponseChars")
+
+Largest MCP tool response, in characters. Tools return fewer items to stay under it, so it bounds how much of the MCP client's context one call can use. Lower it for clients with a small context window; raise it for ones with a large window. Default: 100,000 (about 25,000 tokens); minimum 25,000. A saved change applies right away on the server that handled the save; other servers in a cluster pick it up on restart.
 
 $$

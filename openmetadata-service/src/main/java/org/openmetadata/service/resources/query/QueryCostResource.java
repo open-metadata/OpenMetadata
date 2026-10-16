@@ -65,14 +65,17 @@ public class QueryCostResource
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = QueryCostRecord.class)))
+                    schema = @Schema(implementation = QueryCostRecord.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Query cost record for instance {id} is not found")
       })
   public QueryCostRecord get(
       @Context SecurityContext securityContext,
       @Parameter(description = "Get query cost record by id", schema = @Schema(type = "UUID"))
           @PathParam("id")
-          UUID testCaseResolutionStatusId) {
-    QueryCostRecord costRecord = repository.getById(testCaseResolutionStatusId);
+          UUID id) {
+    QueryCostRecord costRecord = repository.getByIdOrNotFound(id);
     OperationContext queryCostOperationContext =
         new OperationContext(Entity.QUERY, MetadataOperation.VIEW_ALL);
     ResourceContextInterface queryResourceContext =

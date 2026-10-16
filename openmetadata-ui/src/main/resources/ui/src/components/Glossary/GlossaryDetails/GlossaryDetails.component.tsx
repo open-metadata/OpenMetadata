@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,35 +11,74 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Tabs } from 'antd';
+import { Box, Tabs } from '@openmetadata/ui-core-components';
+
 import { isEmpty, noop } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { ComponentType } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { FeedCounts } from '../../../interface/feed.interface';
-import { getFeedCounts } from '../../../utils/CommonUtils';
+import type { FeedCounts } from '../../../interface/feed.interface';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
-import { GenericTab } from '../../Customization/GenericTab/GenericTab';
-import OntologyExplorer from '../../OntologyExplorer/OntologyExplorer';
-import GlossaryHeader from '../GlossaryHeader/GlossaryHeader.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
-import { GlossaryDetailsProps } from './GlossaryDetails.interface';
+import type { GlossaryDetailsProps } from './GlossaryDetails.interface';
+
+const GlossaryHeader = withSuspenseFallback(
+  lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
+);
+
+const ActivityFeedTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component').then(
+      (module) => ({ default: module.ActivityFeedTab })
+    )
+  )
+);
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../../common/TabsLabel/TabsLabel.component'))
+);
+
+const GenericTab = withSuspenseFallback(
+  lazy(() =>
+    import('../../Customization/GenericTab/GenericTab').then((module) => ({
+      default: module.GenericTab,
+    }))
+  )
+);
+
+const OntologyExplorer = withSuspenseFallback(
+  lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
+);
+
+const AlignRightIconButton = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/IconButtons/EditIconButton').then((module) => ({
+      default: module.AlignRightIconButton,
+    }))
+  )
+) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
@@ -71,6 +110,20 @@ const GlossaryDetails = ({
       handleFeedCount
     );
   };
+
+  const fetchTaskCounts = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityTaskCountsInto(fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
+
+  const fetchActivityCount = useCallback(() => {
+    const fqn = glossary.fullyQualifiedName ?? '';
+    if (fqn) {
+      fetchEntityActivityCountInto(EntityType.GLOSSARY, fqn, setFeedCount);
+    }
+  }, [glossary.fullyQualifiedName]);
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey !== activeTab) {
@@ -164,7 +217,7 @@ const GlossaryDetails = ({
   ]);
 
   useEffect(() => {
-    getEntityFeedCount();
+    Promise.all([fetchTaskCounts(), fetchActivityCount()]);
   }, [glossary.fullyQualifiedName]);
 
   const isExpandViewSupported = useMemo(
@@ -177,36 +230,56 @@ const GlossaryDetails = ({
   }
 
   return (
-    <Row
-      className="glossary-details"
+    <Box
+      className="glossary-details tw:h-full"
       data-testid="glossary-details"
-      gutter={[0, 12]}>
-      <Col span={24}>
+      direction="col"
+      gap={3}>
+      <div className="tw:flex-none">
         <GlossaryHeader
           updateVote={updateVote}
           onAddGlossaryTerm={onAddGlossaryTerm}
           onDelete={handleGlossaryDelete}
         />
-      </Col>
-      <Col className="glossary-page-tabs" span={24}>
+      </div>
+      <div className="glossary-page-tabs tw:min-h-0 tw:flex-auto">
         <Tabs
-          activeKey={activeTab}
-          className="tabs-new"
+          className="tw:gap-3"
           data-testid="tabs"
-          items={tabs}
-          tabBarExtraContent={
-            isExpandViewSupported && (
-              <AlignRightIconButton
-                className={isTabExpanded ? 'rotate-180' : ''}
-                title={isTabExpanded ? t('label.collapse') : t('label.expand')}
-                onClick={toggleTabExpanded}
-              />
-            )
-          }
-          onChange={handleTabChange}
-        />
-      </Col>
-    </Row>
+          selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
+          onSelectionChange={(key) => handleTabChange(String(key))}>
+          <Tabs.List
+            actions={
+              isExpandViewSupported && (
+                <AlignRightIconButton
+                  className={isTabExpanded ? 'rotate-180' : ''}
+                  title={
+                    isTabExpanded ? t('label.collapse') : t('label.expand')
+                  }
+                  onClick={toggleTabExpanded}
+                />
+              )
+            }
+            size="sm"
+            type="underline"
+            variant="card">
+            {tabs.map(({ key, label }) => (
+              <Tabs.Item id={key} key={key}>
+                {label}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+          {tabs.map(({ key, children }) => (
+            <Tabs.Panel
+              className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:flex tw:flex-col tw:overflow-hidden"
+              id={key}
+              key={key}>
+              {children}
+            </Tabs.Panel>
+          ))}
+        </Tabs>
+      </div>
+    </Box>
   );
 };
 

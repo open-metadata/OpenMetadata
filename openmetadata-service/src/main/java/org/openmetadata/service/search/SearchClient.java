@@ -4,6 +4,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface SearchClient
     extends IndexManagementClient,
@@ -37,6 +39,7 @@ public interface SearchClient
   String GLOBAL_SEARCH_ALIAS = "all";
   String DATA_ASSET_SEARCH_ALIAS = "dataAsset";
   String GLOSSARY_TERM_SEARCH_INDEX = "glossary_term_search_index";
+  String RELATIONSHIP_TYPE_SEARCH_INDEX = "relationship_type_search_index";
   String TABLE_SEARCH_INDEX = "table_search_index";
   String TAG_SEARCH_INDEX = "tag_search_index";
   String DEFAULT_UPDATE_SCRIPT =
@@ -52,7 +55,8 @@ public interface SearchClient
         }
       }
       """;
-  String REMOVE_DOMAINS_CHILDREN_SCRIPT = "ctx._source.remove('domain')";
+  String REMOVE_DOMAINS_CHILDREN_SCRIPT =
+      "ctx._source.domains.removeIf(domain -> domain.id == params.id)";
 
   // Updates field if null or if inherited is true and the parent is the same (matched by previous
   // ID), setting inherited=true on the new object.
@@ -65,13 +69,13 @@ public interface SearchClient
       }
       """;
 
-  String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', '%s')";
+  String PROPAGATE_FIELD_SCRIPT = "ctx._source.put('%s', params.%s);";
 
-  String PROPAGATE_NESTED_FIELD_SCRIPT = "ctx._source.%s = params.%s";
+  String PROPAGATE_NESTED_FIELD_SCRIPT = "ctx._source.%s = params.%s;";
 
   String REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT =
       "if ((ctx._source.%s != null) && (ctx._source.%s.inherited == true)){ ctx._source.remove('%s');}";
-  String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s')";
+  String REMOVE_PROPAGATED_FIELD_SCRIPT = "ctx._source.remove('%s');";
 
   // Updates field if inherited is true and the parent is the same (matched by previous ID), setting
   // inherited=true on the new object.
@@ -83,8 +87,112 @@ public interface SearchClient
         ctx._source.put('%s', newObject);
       }
       """;
-  String SOFT_DELETE_RESTORE_SCRIPT = "ctx._source.put('deleted', '%s')";
-  String REMOVE_TAGS_CHILDREN_SCRIPT = "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn)";
+
+  /**
+   * Painless snippet that re-derives {@code tier} / {@code classificationTags} /
+   * {@code glossaryTags} from the current state of {@code ctx._source.tags}. Append this to every
+   * script that mutates {@code tags[]} so live-indexing updates produce the same separation that
+   * {@code TaggableIndex.applyTagFields} (the reindex path) produces. Without this, a propagation
+   * or glossary-rename script can leave the lifted fields stale or land a Tier.* TagLabel inside
+   * {@code tags[]}.
+   *
+   * <p>The shape mirrors {@code ParseTags}: Tier.* is lifted out of {@code tags[]} into
+   * {@code tier}, but its FQN is still included in {@code classificationTags} since it's
+   * sourced from a Classification — {@code ParseTags} iterates the original list to populate
+   * {@code classificationTags}, so the painless equivalent must do the same.
+   *
+   * <p>Important: {@code ctx._source.tier} is only overwritten when a Tier.* entry is actually
+   * found in {@code tags[]}. {@code TaggableIndex.applyTagFields} already strips Tier out of
+   * {@code tags[]} into the dedicated {@code tier} field at index time, so docs touched by a
+   * tag-mutating painless almost never carry Tier in {@code tags[]}. Unconditionally assigning
+   * {@code tier = null} when no Tier was seen would wipe the live-indexed dedicated field —
+   * caught by {@code GlossaryRenameCascade.spec.ts}.
+   *
+   * <p>Every {@code def} here stays inside the guard block. A single tag change can produce both a
+   * removal and an addition script, and {@code SearchRepository.getInheritedFieldChanges} appends
+   * them into one painless program — so this snippet is concatenated with itself and a declaration
+   * at the top level would fail to compile with "Variable [newTags] is already defined".
+   */
+  String TAG_RESEPARATION_SCRIPT =
+      """
+      if (ctx._source.containsKey('tags') && ctx._source.tags != null) {
+        def newTags = new ArrayList();
+        def tier = null;
+        def classTags = new ArrayList();
+        def glossTags = new ArrayList();
+        for (def t : ctx._source.tags) {
+          if (t == null || !t.containsKey('tagFQN') || t.tagFQN == null) { continue; }
+          if (t.tagFQN.startsWith('Tier.')) {
+            tier = t;
+          } else {
+            newTags.add(t);
+          }
+          if (t.containsKey('source')) {
+            if (t.source == 'Classification') { classTags.add(t.tagFQN); }
+            else if (t.source == 'Glossary') { glossTags.add(t.tagFQN); }
+          }
+        }
+        ctx._source.tags = newTags;
+        if (tier != null) {
+          ctx._source.tier = tier;
+        }
+        ctx._source.classificationTags = classTags;
+        ctx._source.glossaryTags = glossTags;
+      }
+      """;
+
+  String REMOVE_TAGS_CHILDREN_SCRIPT =
+      "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
+
+  /**
+   * Drops references to {@code params.ids} (lowercase UUIDs) from custom-property values: {@code
+   * extension} entries (a single reference or a list), {@code customPropertiesTyped}, and the same
+   * fields on every column and nested child column. A property left without references is removed.
+   * Ids are compared in lower case, since documents written before 2.1 may hold them as sent. The
+   * ids are held in a set, so each element of a reference list costs one hash lookup.
+   */
+  String REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT =
+      """
+      boolean isDead(def id, Set dead) {
+        return id != null && dead.contains(id.toString().toLowerCase());
+      }
+      boolean dropRefs(Map holder, Set dead) {
+        boolean changed = false;
+        def ext = holder.get('extension');
+        if (ext instanceof Map) {
+          List emptied = new ArrayList();
+          for (def key : ext.keySet()) {
+            def value = ext.get(key);
+            if (value instanceof List) {
+              if (value.removeIf(r -> r instanceof Map && isDead(r.get('id'), dead))) {
+                changed = true;
+                if (value.isEmpty()) { emptied.add(key); }
+              }
+            } else if (value instanceof Map && isDead(value.get('id'), dead)) {
+              emptied.add(key);
+              changed = true;
+            }
+          }
+          for (def key : emptied) { ext.remove(key); }
+        }
+        def typed = holder.get('customPropertiesTyped');
+        if (typed instanceof List
+            && typed.removeIf(e -> e instanceof Map && isDead(e.get('refId'), dead))) {
+          changed = true;
+        }
+        for (def nestedKey : ['columns', 'children']) {
+          def nested = holder.get(nestedKey);
+          if (nested instanceof List) {
+            for (def child : nested) {
+              if (child instanceof Map && dropRefs(child, dead)) { changed = true; }
+            }
+          }
+        }
+        return changed;
+      }
+      Set dead = new HashSet(params.ids);
+      if (!dropRefs(ctx._source, dead)) { ctx.op = 'noop'; }
+      """;
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
@@ -179,19 +287,62 @@ public interface SearchClient
       }
       """;
 
+  // Cascade variant: full-object replace (handles add/update) plus removal on
+  // null params, so child docs stay in sync when a parent's cert is added,
+  // changed, or removed.
+  String CASCADE_CERTIFICATION_SCRIPT =
+      """
+      if (params.certification == null) {
+        ctx._source.remove('certification');
+      } else {
+        ctx._source.certification = params.certification;
+      }
+      """;
+
+  String CASCADE_SERVICE_STYLE_SCRIPT =
+      """
+      if (ctx._source.service != null) {
+        if (params.style == null) {
+          ctx._source.service.remove('style');
+        } else {
+          ctx._source.service.style = params.style;
+        }
+      }
+      """;
+
+  // FQN-boundary aware, idempotent rewrite of a single tagFQN. A bare
+  // startsWith + replace is NOT idempotent when the new FQN keeps the old one
+  // as a prefix (rename "a" -> "a b"): the glossary rename fires this twice
+  // (in-transaction updateAssetIndexes, then the post-commit propagation pass)
+  // and the second pass turns "a b" into "a b b", dropping the asset from the
+  // term (issue #28696). Matching only an exact FQN or a real "oldFQN." child
+  // boundary makes the second pass a no-op and never touches a sibling that
+  // merely shares a textual prefix (e.g. "a" must not rewrite "ab").
+  String UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT =
+      """
+            String currentFQN = ctx._source.tags[i].tagFQN;
+            if (currentFQN != null && currentFQN.equals(params.oldParentFQN)) {
+              ctx._source.tags[i].tagFQN = params.newParentFQN;
+            } else if (currentFQN != null && currentFQN.startsWith(params.oldParentFQN + '.')) {
+              ctx._source.tags[i].tagFQN = params.newParentFQN + currentFQN.substring(params.oldParentFQN.length());
+            }
+      """;
+
   String UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT =
       """
       if (ctx._source.containsKey('tags')) {
         for (int i = 0; i < ctx._source.tags.size(); i++) {
           if (ctx._source.tags[i].containsKey('tagFQN') &&
               ctx._source.tags[i].containsKey('source') &&
-              ctx._source.tags[i].source == 'Glossary' &&
-              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
-            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+              ctx._source.tags[i].source == 'Glossary') {
+      """
+          + UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT
+          + """
           }
         }
       }
-      """;
+      """
+          + TAG_RESEPARATION_SCRIPT;
 
   String UPDATE_CLASSIFICATION_TAG_FQN_BY_PREFIX_SCRIPT =
       """
@@ -199,13 +350,15 @@ public interface SearchClient
         for (int i = 0; i < ctx._source.tags.size(); i++) {
           if (ctx._source.tags[i].containsKey('tagFQN') &&
               ctx._source.tags[i].containsKey('source') &&
-              ctx._source.tags[i].source == 'Classification' &&
-              ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
-            ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+              ctx._source.tags[i].source == 'Classification') {
+      """
+          + UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT
+          + """
           }
         }
       }
-      """;
+      """
+          + TAG_RESEPARATION_SCRIPT;
 
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
@@ -229,39 +382,47 @@ public interface SearchClient
                   if (ctx._source.containsKey('tags')) {
                     for (int i = 0; i < ctx._source.tags.size(); i++) {
                       if (ctx._source.tags[i].containsKey('tagFQN')) {
-                        String tagFQN = ctx._source.tags[i].tagFQN;
-                        ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+                  """
+          + UPDATE_TAG_FQN_BY_PREFIX_FRAGMENT
+          + """
                       }
                     }
                   }
-                  """;
+                  """
+          + TAG_RESEPARATION_SCRIPT;
 
   String REMOVE_LINEAGE_SCRIPT =
       """
-      def removedKeys = new HashSet();
-      for (def lineage : ctx._source.upstreamLineage) {
-        if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
-          removedKeys.add(lineage.sqlQueryKey);
-        }
-      }
-      ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
-      if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
-        def sqlMap = ctx._source.lineageSqlQueries;
-        def usedKeys = new HashSet();
+      if (ctx._source.upstreamLineage != null) {
+        def removedKeys = new HashSet();
         for (def lineage : ctx._source.upstreamLineage) {
-          if (lineage.containsKey('sqlQueryKey')) {
-            usedKeys.add(lineage.sqlQueryKey);
+          if (params.docUniqueId.equals(lineage.docUniqueId) && lineage.containsKey('sqlQueryKey')) {
+            removedKeys.add(lineage.sqlQueryKey);
           }
         }
-        removedKeys.removeAll(usedKeys);
-        for (def key : removedKeys) {
-          sqlMap.remove(key);
+        ctx._source.upstreamLineage.removeIf(lineage -> params.docUniqueId.equals(lineage.docUniqueId));
+        if (!removedKeys.isEmpty() && ctx._source.containsKey('lineageSqlQueries') && ctx._source.lineageSqlQueries != null) {
+          def sqlMap = ctx._source.lineageSqlQueries;
+          def usedKeys = new HashSet();
+          for (def lineage : ctx._source.upstreamLineage) {
+            if (lineage.containsKey('sqlQueryKey')) {
+              usedKeys.add(lineage.sqlQueryKey);
+            }
+          }
+          removedKeys.removeAll(usedKeys);
+          for (def key : removedKeys) {
+            sqlMap.remove(key);
+          }
         }
       }
       """;
 
   String REMOVE_ENTITY_RELATIONSHIP =
-      "ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId)";
+      """
+      if (ctx._source.upstreamEntityRelationship != null) {
+        ctx._source.upstreamEntityRelationship.removeIf(relationship -> relationship.docId == params.docId);
+      }
+      """;
 
   String ADD_UPDATE_LINEAGE =
       """
@@ -296,7 +457,11 @@ public interface SearchClient
         edgeData.put('sqlQueryKey', sqlKey);
         edgeData.remove('sqlQuery');
       } else {
-        edgeData = params.lineageData;
+        edgeData = new HashMap();
+        edgeData.putAll(params.lineageData);
+      }
+      if (ctx._source.upstreamLineage == null) {
+        ctx._source.upstreamLineage = new ArrayList();
       }
       // Replace or add the edge, capturing the old sqlQueryKey for cleanup.
       def oldSqlQueryKey = null;
@@ -305,6 +470,21 @@ public interface SearchClient
         if (ctx._source.upstreamLineage[i].docUniqueId.equalsIgnoreCase(params.lineageData.docUniqueId)) {
           if (ctx._source.upstreamLineage[i].containsKey('sqlQueryKey')) {
             oldSqlQueryKey = ctx._source.upstreamLineage[i].sqlQueryKey;
+          }
+          def old = ctx._source.upstreamLineage[i];
+          def carryCreatedAt = old.get('createdAt');
+          def carryCreatedBy = old.get('createdBy');
+          def newCreatedAt = edgeData.get('createdAt');
+          if (carryCreatedAt != null && (newCreatedAt == null || carryCreatedAt < newCreatedAt)) {
+            edgeData.put('createdAt', carryCreatedAt);
+            if (carryCreatedBy != null) edgeData.put('createdBy', carryCreatedBy);
+          }
+          def carryUpdatedAt = old.get('updatedAt');
+          def carryUpdatedBy = old.get('updatedBy');
+          def newUpdatedAt = edgeData.get('updatedAt');
+          if (carryUpdatedAt != null && (newUpdatedAt == null || carryUpdatedAt > newUpdatedAt)) {
+            edgeData.put('updatedAt', carryUpdatedAt);
+            if (carryUpdatedBy != null) edgeData.put('updatedBy', carryUpdatedBy);
           }
           ctx._source.upstreamLineage[i] = edgeData;
           docIdExists = true;
@@ -332,8 +512,13 @@ public interface SearchClient
   // The script is used for updating the entityRelationship attribute of the entity in ES
   // It checks if any duplicate entry is present based on the docId and updates only if it is not
   // present
+  // The match query is caller-supplied, and upstreamEntityRelationship is seeded only by
+  // TableIndex, so the script cannot assume the field exists on every matched doc.
   String ADD_UPDATE_ENTITY_RELATIONSHIP =
       """
+      if (ctx._source.upstreamEntityRelationship == null) {
+        ctx._source.upstreamEntityRelationship = new ArrayList();
+      }
       boolean docIdExists = false;
       for (int i = 0; i < ctx._source.upstreamEntityRelationship.size(); i++) {
         if (ctx._source.upstreamEntityRelationship[i].docId.equalsIgnoreCase(params.entityRelationshipData.docId)) {
@@ -382,7 +567,8 @@ public interface SearchClient
 
         Collections.sort(uniqueTags, (o1, o2) -> o1.tagFQN.compareTo(o2.tagFQN));
         ctx._source.tags = uniqueTags;
-        """;
+        """
+          + TAG_RESEPARATION_SCRIPT;
 
   String REMOVE_TEST_SUITE_CHILDREN_SCRIPT =
       "ctx._source.testSuites.removeIf(suite -> suite.id == params.suiteId)";
@@ -582,6 +768,12 @@ public interface SearchClient
           }
           """;
 
+  String RECONCILE_COLUMN_LINEAGE_SCRIPT =
+      UPDATE_COLUMN_LINEAGE_SCRIPT
+          + "if (!params.deletedFQNs.isEmpty()) {\n"
+          + DELETE_COLUMN_LINEAGE_SCRIPT
+          + "}\n";
+
   String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   String ENTITY_RELATIONSHIP_DIRECTION_ENTITY = "entityRelationship.entity.fqnHash.keyword";
@@ -615,7 +807,9 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification", "metricGroup");
+
+  String FIELDS_TO_REMOVE = "fieldsToRemove";
 
   boolean isClientAvailable();
 
@@ -627,6 +821,22 @@ public interface SearchClient
 
   Object getLowLevelClient();
 
+  /** Status code + raw response body of a low-level request to the search engine. */
+  record RawSearchResponse(int statusCode, String body) {}
+
+  /**
+   * Executes a low-level request against the search engine and returns the raw response (the body
+   * may be JSON or, for {@code _cat/*}, plain text). Backs the typed {@code /v1/test-support/search}
+   * endpoints so integration tests can inspect index internals (counts, aliases, {@code
+   * _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Not part of
+   * the normal query path.
+   */
+  default RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
+      throws IOException {
+    throw new UnsupportedOperationException(
+        "rawSearchRequest is not supported by " + getClass().getSimpleName());
+  }
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
@@ -636,13 +846,33 @@ public interface SearchClient
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
-  LineagePaginationInfo getLineagePaginationInfo(
+  /**
+   * The entity search lineage roots a graph on for {@code fqn}: the indexed document with that FQN,
+   * found the way {@link #searchLineage} finds it. Empty when nothing is indexed under the FQN.
+   */
+  Optional<EntityReference> getLineageRoot(String fqn) throws IOException;
+
+  default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
       int downstreamDepth,
       String queryFilter,
       boolean includeDeleted,
       String entityType)
+      throws IOException {
+    return getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType, null, null);
+  }
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType,
+      Long startTime,
+      Long endTime)
       throws IOException;
 
   SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
@@ -655,7 +885,8 @@ public interface SearchClient
    Used for listing knowledge page hierarchy for a given parent and page type, used in Elastic/Open SearchClientExtension
   */
   @SuppressWarnings("unused")
-  default ResultList listPageHierarchy(String parent, String pageType, int offset, int limit) {
+  default ResultList listPageHierarchy(
+      String parent, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
@@ -665,9 +896,34 @@ public interface SearchClient
   */
   @SuppressWarnings("unused")
   default ResultList listPageHierarchyForActivePage(
-      String activeFqn, String pageType, int offset, int limit) {
+      String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /** As {@link #listPageHierarchy}, leaving out pages {@code caller}'s access policies deny. */
+  default ResultList listPageHierarchy(
+      String parent,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchy(parent, pageType, sortFilter, offset, limit);
+  }
+
+  /**
+   * As {@link #listPageHierarchyForActivePage}, leaving out pages {@code caller}'s access policies
+   * deny.
+   */
+  default ResultList listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit);
   }
 
   @SuppressWarnings("unused")

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -19,6 +19,7 @@ import {
   MAX_COLUMN_NAVIGATION_RETRIES,
   RDG_ACTIVE_CELL_SELECTOR,
 } from '../constant/bulkImportExport';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { CUSTOM_PROPERTIES_ENTITIES } from '../constant/customProperty';
 import {
   CUSTOM_PROPERTIES_TYPES,
@@ -26,24 +27,315 @@ import {
 } from '../constant/glossaryImportExport';
 import { GlobalSettingOptions } from '../constant/settings';
 import {
-  clickOutside,
+  EntityTypeEndpoint,
+  ENTITY_PATH,
+} from '../support/entity/Entity.interface';
+import {
   descriptionBox,
-  descriptionBoxReadOnly,
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
+  toastNotification,
   uuid,
 } from './common';
 import {
   addCustomPropertiesForEntity,
-  fillTableColumnInputDetails,
+  fillCustomPropertyEditModal,
+  getCustomPropertyWidgetRow,
+  openCustomPropertyEditModal,
 } from './customProperty';
-import { waitForAllLoadersToDisappear } from './entity';
+import { setDomain } from './domainPicker';
+import {
+  escapeESReservedCharacters,
+  waitForAllLoadersToDisappear,
+} from './entity';
+import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
+const EDITOR_OPEN_TIMEOUT = 1500;
+const IMPORT_STATUS_TIMEOUT = 90000;
+
+type CsvExportResponse = {
+  jobId: string;
+};
+
+const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
+  try {
+    await locator.waitFor({ state: 'visible', timeout });
+
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+// The background CSV jobs launcher is a fixed bottom-right overlay that can
+// pop in mid-test (e.g. an earlier export job completing) and intercept
+// clicks landing in that corner. Centering the target in the viewport first
+// keeps clicks away from that fixed region without touching the tray itself.
+const scrollIntoViewCenter = async (locator: Locator) => {
+  await locator
+    .evaluate((element) =>
+      element.scrollIntoView({ block: 'center', inline: 'center' })
+    )
+    .catch(() => undefined);
+};
+
+const CSV_JOBS_TRAY_INERT_CSS =
+  '.csv-jobs-tray-popover, .csv-jobs-tray-launcher-wrap { pointer-events: none !important; }';
+
+// Pages that already carry the suppression. addInitScript stacks, so without
+// this guard a page routed through several import helpers would grow one style
+// tag per call.
+const csvJobsTraySuppressedPages = new WeakSet<Page>();
+
+/**
+ * Make the CSV background-jobs tray click-through for the rest of this page's
+ * life.
+ *
+ * The tray is a position:fixed panel anchored at bottom:88px that auto-expands
+ * whenever a job it is watching reaches a terminal status. Because the anchor
+ * pins its lower edge just above the viewport bottom, it lands on the profiler's
+ * Manage button (measured at 1280x720: button y 596-636, tray bottom y 632), and
+ * a single job is enough — extra rows only push the top edge higher.
+ *
+ * A spec's own export therefore triggers this. Jobs from other workers make it
+ * worse rather than causing it: `/api/v1/csvAsyncJobs` is scoped per *user* and
+ * every worker shares the admin identity, so unrelated jobs both grow the panel
+ * and keep re-expanding it mid-test.
+ *
+ * addStyleTag alone is not enough — it lives on the current document and dies on
+ * the next hard navigation. addInitScript re-applies the rule to every document
+ * the page loads afterwards, so one call at the start of a flow holds for the
+ * whole flow.
+ *
+ * pointer-events (not display) so the tray stays in the DOM: specs that assert
+ * on it still see it, they just must not route through this helper.
+ */
+export const suppressCsvJobsTray = async (page: Page) => {
+  if (csvJobsTraySuppressedPages.has(page)) {
+    return;
+  }
+
+  csvJobsTraySuppressedPages.add(page);
+
+  await page.addInitScript((css: string) => {
+    const applyStyle = () => {
+      const style = document.createElement('style');
+      style.textContent = css;
+      document.head.appendChild(style);
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', applyStyle);
+    } else {
+      applyStyle();
+    }
+  }, CSV_JOBS_TRAY_INERT_CSS);
+
+  // addInitScript only reaches documents loaded from now on, so the document
+  // already on screen needs the rule injected directly.
+  await page
+    .addStyleTag({ content: CSV_JOBS_TRAY_INERT_CSS })
+    .catch(() => undefined);
+};
+
+// A single click on the already-selected cell: picker columns open their editor
+// on click, so this is the only affordance that opens them without a second
+// press landing outside the popover and closing it again. #32252 removed this
+// helper but left the call in openOwnerPickerEditor, where the resulting
+// ReferenceError was swallowed by that loop's catch.
+const clickActiveGridCell = async (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+  await expect(activeCell).toHaveCount(1);
+  await scrollIntoViewCenter(activeCell);
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.click({ force: true });
+};
+
+const doubleClickActiveGridCell = async (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+  await scrollIntoViewCenter(activeCell);
+  // eslint-disable-next-line playwright/no-force-option -- RDG can leave an overlay above the active cell editor trigger.
+  await activeCell.dblclick({ force: true });
+};
+
+const getGridColumnClass = (columnKey: string) =>
+  `rdg-cell-${columnKey.replaceAll(/[^a-zA-Z0-9-_]/g, '')}`;
+
+const scrollGridHorizontally = async (page: Page, scrollLeft: number) => {
+  const grid = page.locator('.om-rdg .rdg').first();
+
+  if (!(await waitForVisibleLocator(grid, EDITOR_OPEN_TIMEOUT))) {
+    return false;
+  }
+
+  await grid.evaluate((element, left) => {
+    element.scrollLeft = left;
+  }, scrollLeft);
+
+  await waitForAllLoadersToDisappear(page);
+
+  return true;
+};
+
+const getGridHorizontalScrollPositions = async (page: Page) => {
+  const grid = page.locator('.om-rdg .rdg').first();
+
+  if (!(await waitForVisibleLocator(grid, EDITOR_OPEN_TIMEOUT))) {
+    return [];
+  }
+
+  const { clientWidth, scrollLeft, scrollWidth } = await grid.evaluate(
+    (element) => ({
+      clientWidth: element.clientWidth,
+      scrollLeft: element.scrollLeft,
+      scrollWidth: element.scrollWidth,
+    })
+  );
+  const maxScrollLeft = Math.max(scrollWidth - clientWidth, 0);
+  const step = Math.max(Math.floor(clientWidth / 2), 240);
+  const positions = new Set([scrollLeft, 0, maxScrollLeft]);
+
+  for (let left = step; left < maxScrollLeft; left += step) {
+    positions.add(left);
+  }
+
+  return [...positions];
+};
+
+const getActiveGridRow = async (page: Page) => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+
+  if (await waitForVisibleLocator(activeCell, EDITOR_OPEN_TIMEOUT)) {
+    const row = activeCell
+      .locator(
+        'xpath=ancestor::*[contains(concat(" ", normalize-space(@class), " "), " rdg-row ")]'
+      )
+      .first();
+
+    if ((await row.count()) > 0) {
+      return row;
+    }
+  }
+
+  return page.locator('.rdg-row').last();
+};
+
+const trySelectRenderedActiveRowCellByColumn = async (
+  page: Page,
+  columnClass: string,
+  timeout = EDITOR_OPEN_TIMEOUT
+) => {
+  const row = await getActiveGridRow(page);
+  const cellByClass = row.locator(`.${columnClass}`).first();
+
+  if (await waitForVisibleLocator(cellByClass, timeout)) {
+    await scrollIntoViewCenter(cellByClass);
+    // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
+    await cellByClass.click({ force: true });
+    await expect(cellByClass).toHaveAttribute('aria-selected', 'true');
+
+    return true;
+  }
+
+  const headerCell = page.locator(`.rdg-header-row .${columnClass}`).first();
+  const columnIndex = (await waitForVisibleLocator(headerCell, timeout))
+    ? await headerCell.getAttribute('aria-colindex')
+    : undefined;
+
+  if (columnIndex) {
+    const cellByIndex = row
+      .locator(`.rdg-cell[aria-colindex="${columnIndex}"]`)
+      .first();
+
+    if (await waitForVisibleLocator(cellByIndex, timeout)) {
+      await scrollIntoViewCenter(cellByIndex);
+      // eslint-disable-next-line playwright/no-force-option -- fixed grid columns and overlays can intercept active-cell clicks.
+      await cellByIndex.click({ force: true });
+      await expect(cellByIndex).toHaveAttribute('aria-selected', 'true');
+
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const selectActiveRowCellByColumn = async (page: Page, columnKey: string) => {
+  const columnClass = getGridColumnClass(columnKey);
+
+  if (await trySelectRenderedActiveRowCellByColumn(page, columnClass)) {
+    return;
+  }
+
+  for (const scrollLeft of await getGridHorizontalScrollPositions(page)) {
+    if (!(await scrollGridHorizontally(page, scrollLeft))) {
+      break;
+    }
+
+    if (await trySelectRenderedActiveRowCellByColumn(page, columnClass, 300)) {
+      return;
+    }
+  }
+
+  throw new Error(`Unable to select grid column "${columnKey}"`);
+};
+
+const isGridEditorOpen = (cell: Locator) =>
+  cell.evaluate((element) =>
+    element.classList.contains('rdg-editor-container')
+  );
+
+const openSelectedGridEditor = async (page: Page) => {
+  const cell = page.locator('.rdg-cell[aria-selected="true"]');
+  await expect(cell).toHaveCount(1);
+
+  // Nothing to open if the editor is already up, and clicking anyway does not
+  // merely waste a step: the editor's content is not a descendant of the cell,
+  // so it intercepts the press and Playwright retries against
+  // `<p data-placeholder="Type "/" for commands...">` until the test times out.
+  if (await isGridEditorOpen(cell)) {
+    return;
+  }
+
+  await cell.click({ position: { x: 5, y: 5 } });
+  // Picker cells open on click and move focus into a portal. Text cells still
+  // need Enter; focusing the cell again would close an already open picker.
+  if (!(await isGridEditorOpen(cell))) {
+    await expect(cell).toBeFocused({ timeout: 5_000 });
+    await page.keyboard.press('Enter');
+  }
+};
+
+const fillAndCommitTextEditor = async (page: Page, text: string) => {
+  const editor = page.locator('.rdg-cell').getByRole('textbox');
+  if (!(await editor.isVisible())) await openSelectedGridEditor(page);
+  await expect(editor).toBeVisible();
+  await editor.fill(text);
+  await editor.press('Enter');
+  await expect(editor).toBeHidden();
+};
+
+const clickMarkdownEditorSave = async (page: Page) => {
+  const markdownSaveButton = page
+    .getByTestId('markdown-editor')
+    .getByTestId('save');
+
+  if (await waitForVisibleLocator(markdownSaveButton, EDITOR_OPEN_TIMEOUT)) {
+    await markdownSaveButton.click();
+  } else {
+    await page.getByTestId('save').click();
+  }
+
+  await page.getByTestId('markdown-editor').waitFor({ state: 'detached' });
+};
 
 export const waitForImportGridLoadMaskToDisappear = async (
   page: Page,
-  timeout = 30000
+  timeout = ACTION_TIMEOUT
 ) => {
   await expect(page.locator(IMPORT_GRID_LOAD_MASK_SELECTOR)).toHaveCount(0, {
     timeout,
@@ -64,126 +356,221 @@ export const createGlossaryTermRowDetails = () => {
 };
 
 export const fillTextInputDetails = async (page: Page, text: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  const textboxLocator = page
-    .locator('.ant-layout-content')
-    .getByRole('textbox');
-
-  await expect(textboxLocator).toBeVisible();
-
-  await textboxLocator.fill(text);
-  await textboxLocator.press('Enter', { delay: 100 });
+  await fillAndCommitTextEditor(page, text);
 };
 
 export const fillDescriptionDetails = async (
   page: Page,
   description: string
 ) => {
-  await page.keyboard.press('Enter');
-  await page.click(descriptionBox);
+  const editor = page
+    .locator(descriptionBox + ':visible')
+    .or(page.locator('textarea.bulk-edit-description-editor-textarea:visible'));
+  if (!(await editor.isVisible())) await openSelectedGridEditor(page);
+  await expect(editor).toBeVisible();
+  await editor.fill(description);
+  if ((await editor.evaluate((element) => element.tagName)) === 'TEXTAREA') {
+    await editor.press('Control+Enter');
+    await expect(editor).toBeHidden();
+  } else {
+    await clickMarkdownEditorSave(page);
+  }
+};
 
-  await page.fill(descriptionBox, description);
+/**
+ * Press an inline-editor save button and wait for the editor to close.
+ *
+ * `force` used to be the remedy here, for "grid cells and the fixed import
+ * footer can overlap inline editors" — but force does not resolve an overlap,
+ * it only skips the check for one. The press still lands on whatever is on
+ * top, the button below never reacts, and the detach wait then burns the whole
+ * test: 1026 polls over nine minutes on 084f07e7. A real click either lands or
+ * names the element intercepting it, and a transient overlap is what the retry
+ * is for.
+ */
+const clickGridEditorSave = async (page: Page, testId: string) => {
+  const saveButton = page.getByTestId(testId);
 
-  await page.click('[data-testid="save"]');
+  await expect(async () => {
+    await saveButton.click({ timeout: 5_000 });
+    await expect(saveButton).toHaveCount(0, { timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
+};
 
-  await page.getByTestId('markdown-editor').waitFor({ state: 'detached' });
+const clickInlineSave = async (page: Page) =>
+  clickGridEditorSave(page, 'inline-save-btn');
+
+const clickAssociatedTagSave = async (page: Page) =>
+  clickGridEditorSave(page, 'saveAssociatedTag');
+
+// The owner cell mounts a react-aria picker that is force-opened on mount
+// (popoverProps={{ open: true }} in getCsvOwnerEditor). react-aria needs a
+// mount + paint cycle to position the overlay, which races the react-data-grid
+// editor lifecycle, so entering edit mode once does not reliably show the
+// picker in CI. Two failure modes were seen: (1) a keyboard trigger no-ops
+// because focus sits on document.body (e.g. after a prior portal interaction),
+// so the grid never enters edit mode; (2) the popover opens slightly slower
+// than a short poll window and a premature Escape closes it.
+//
+// Make the open robust: each pass first CLICKS the active owner cell (which
+// focuses the grid and may itself open the force-open picker), then asks rdg
+// for edit mode via Enter and F2, waiting generously after each. Only Escape
+// and retry when nothing became visible in the whole pass.
+const OWNER_PICKER_OPEN_TIMEOUT = 4000;
+const OWNER_PICKER_OPEN_ATTEMPTS = 6;
+
+const openOwnerPickerEditor = async (page: Page) => {
+  const ownerTabs = page.getByTestId('select-owner-tabs');
+
+  for (let attempt = 0; attempt < OWNER_PICKER_OPEN_ATTEMPTS; attempt++) {
+    try {
+      await clickActiveGridCell(page);
+      if (await waitForVisibleLocator(ownerTabs, EDITOR_OPEN_TIMEOUT)) {
+        return;
+      }
+
+      await page.keyboard.press('Enter', { delay: 100 });
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
+
+      await page.keyboard.press('F2');
+      if (await waitForVisibleLocator(ownerTabs, OWNER_PICKER_OPEN_TIMEOUT)) {
+        return;
+      }
+    } catch {
+      // fall through and retry after resetting edit mode
+    }
+
+    // Reset edit mode before retrying, but never after the final attempt so the
+    // closing assertion can still catch a picker that opened just after the
+    // last poll window.
+    if (attempt < OWNER_PICKER_OPEN_ATTEMPTS - 1) {
+      await page.keyboard.press('Escape').catch(() => undefined);
+    }
+  }
+
+  await expect(ownerTabs).toBeVisible();
+};
+
+const selectOwnersOnTab = async (
+  page: Page,
+  tab: 'Users' | 'Teams',
+  searchBarTestId: string,
+  searchIndex: 'user' | 'team',
+  owners: string[]
+) => {
+  // Do NOT wait for a tab-switch list response here: the picker opens on the
+  // Teams tab by default and caches each tab's first (empty-query) fetch in a
+  // ref, so re-activating an already-visited tab returns the cache and fires no
+  // request (UserTeamSelectableList fetchTeamOptions/fetchUserOptions). Waiting
+  // for one would hang until the test times out. Each per-owner search below
+  // has a non-empty query, bypasses the cache, and awaits its own response, so
+  // that is the reliable synchronization point.
+  await page
+    .locator("[data-testid='select-owner-tabs']")
+    .getByRole('tab', { name: tab })
+    .click();
+
+  await waitForAllLoadersToDisappear(page);
+
+  await page.getByTestId(searchBarTestId).waitFor({ state: 'visible' });
+  await page.getByTestId(searchBarTestId).click();
+
+  for (const owner of owners) {
+    const searchOwner = page.waitForResponse(
+      `api/v1/search/query?q=*&index=${searchIndex}*`
+    );
+    await page.getByTestId(searchBarTestId).clear();
+    await page.getByTestId(searchBarTestId).fill(owner);
+    await searchOwner;
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="select-owner-tabs"]')
+    );
+
+    // Scope to the open tab's panel, as addOwnerWithoutValidation does: the
+    // picker keeps a visited tab's panel mounted, so after the Users pass the
+    // Teams options are still in the DOM. `hasText` is a case-insensitive
+    // substring match, so a page-wide match can resolve to an option in the
+    // other panel -- a strict-mode violation, or a click on the wrong owner
+    // when a user and a team share overlapping display text.
+    await page
+      .getByTestId(`owner-select-${tab.toLowerCase()}-panel`)
+      .locator('[data-testid="owner-option"]')
+      .filter({ hasText: owner })
+      .click();
+  }
+};
+
+const commitOwnerSelection = async (page: Page, panelTestId: string) => {
+  await page
+    .getByTestId(panelTestId)
+    .getByTestId('selectable-list-update-btn')
+    .click();
+
+  await page
+    .getByTestId('selectable-list-update-btn')
+    .waitFor({ state: 'detached' });
 };
 
 export const fillOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Teams')
-  ).toBeVisible();
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
-  const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=&index=user&*'
+  await selectOwnersOnTab(
+    page,
+    'Users',
+    'owner-select-users-search-bar',
+    'user',
+    owners
   );
-  await page.getByRole('tab', { name: 'Users' }).click();
-  await userListResponse;
 
-  await waitForAllLoadersToDisappear(page);
-
-  await page
-    .getByTestId('owner-select-users-search-bar')
-    .waitFor({ state: 'visible' });
-
-  await page.click('[data-testid="owner-select-users-search-bar"]');
-
-  for (const owner of owners) {
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=user*'
-    );
-    await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
-    await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
-
-    await page.getByRole('listitem', { name: owner }).click();
-  }
-
-  await page
-    .locator('[id^="rc-tabs-"][id$="-panel-users"]')
-    .getByTestId('selectable-list-update-btn')
-    .click();
-
-  await page
-    .getByTestId('selectable-list-update-btn')
-    .waitFor({ state: 'detached' });
+  await commitOwnerSelection(page, 'owner-select-users-panel');
 };
 
-export const fillTeamOwnerDetails = async (page: Page, owners: string[]) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
-  await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
-
-  await expect(
-    page.locator('.ant-tabs-tab-active').getByText('Users')
-  ).toBeVisible();
+// Select user AND team owners in a SINGLE picker session, then commit once.
+//
+// The grid owner cell editor force-opens the picker on mount and cannot be
+// re-opened after its first commit: committing clicks the picker's Update
+// button, which lives in a react-aria portal, so focus leaves the grid to
+// document.body; react-data-grid then keeps the cell aria-selected but has no
+// keyboard focus, so a subsequent Enter/F2/double-click never re-enters edit
+// mode. Opening the picker a second time therefore deterministically fails.
+//
+// When the cell allows both multiple users and multiple teams (the rules that
+// gate this are disabled for the bulk-edit flows that need mixed owners), the
+// picker preserves cross-tab selection in one parent state, so selecting on
+// both tabs before a single Update commits users and teams together — no
+// re-open required.
+export const fillUserAndTeamOwnerDetails = async (
+  page: Page,
+  userOwners: string[],
+  teamOwners: string[]
+) => {
+  await openOwnerPickerEditor(page);
 
   await waitForAllLoadersToDisappear(page);
+  await page.waitForLoadState('domcontentloaded');
 
-  await page
-    .locator("[data-testid='select-owner-tabs']")
-    .getByRole('tab', { name: 'Teams' })
-    .click();
+  await selectOwnersOnTab(
+    page,
+    'Users',
+    'owner-select-users-search-bar',
+    'user',
+    userOwners
+  );
 
-  await waitForAllLoadersToDisappear(page);
+  await selectOwnersOnTab(
+    page,
+    'Teams',
+    'owner-select-teams-search-bar',
+    'team',
+    teamOwners
+  );
 
-  await page
-    .getByTestId('owner-select-teams-search-bar')
-    .waitFor({ state: 'visible' });
-
-  await page.click('[data-testid="owner-select-teams-search-bar"]');
-
-  for (const owner of owners) {
-    const searchOwner = page.waitForResponse(
-      'api/v1/search/query?q=*&index=team*'
-    );
-    await page.locator('[data-testid="owner-select-teams-search-bar"]').clear();
-    await page.fill('[data-testid="owner-select-teams-search-bar"]', owner);
-    await searchOwner;
-    await expect(
-      page.locator('[data-testid="select-owner-tabs"] [data-testid="loader"]')
-    ).toHaveCount(0);
-    await page.getByRole('listitem', { name: owner }).click();
-  }
-
-  await page
-    .locator('[id^="rc-tabs-"][id$="-panel-teams"]')
-    .getByTestId('selectable-list-update-btn')
-    .click();
-
-  await page
-    .getByTestId('selectable-list-update-btn')
-    .waitFor({ state: 'detached' });
+  await commitOwnerSelection(page, 'owner-select-teams-panel');
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
@@ -191,73 +578,103 @@ export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
 
   await page.getByTestId('entity-type-select').click();
   await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await page.getByTestId('inline-save-btn').click();
-
-  await page.getByTestId('inline-save-btn').waitFor({ state: 'detached' });
+  await clickInlineSave(page);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.click('[data-testid="tag-selector"]');
-  const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(tag)}*`
-  );
-  await page.locator('[data-testid="tag-selector"] input').fill(tag);
-  await waitForQueryResponse;
-  await page.click(`[data-testid="tag-${tag}"]`);
-  await page.click('[data-testid="inline-save-btn"]');
+  const tagSelectorInput = page
+    .locator('[data-testid="tag-selector"] input')
+    .first();
+  await tagSelectorInput.waitFor({ state: 'visible' });
 
-  await page.getByTestId('inline-save-btn').waitFor({ state: 'detached' });
+  const waitForQueryResponse = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(
+      escapeESReservedCharacters(tag)
+    )}*`
+  );
+  await page.keyboard.type(tag);
+  await waitForQueryResponse;
+
+  await page.click(`[data-testid="tag-${tag}"]`);
+  await clickInlineSave(page);
 };
 
 export const fillGlossaryTermDetails = async (
   page: Page,
   glossary: { parent: string; name: string }
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
   await waitForAllLoadersToDisappear(page);
 
-  await page.click('[data-testid="tag-selector"]');
-  const searchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=**&index=glossaryTerm&**`
+  const picker = page.getByTestId('csv-glossary-terms-picker');
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, picker, undefined);
+
+  // The search box lives in the popover; clicking the trigger would close the cell.
+  await searchGlossaryPicker(page, glossary.name, picker);
+
+  const row = page.getByTestId(
+    `tree-node-"${glossary.parent}"."${glossary.name}"`
   );
-  await page.locator('[data-testid="tag-selector"] input').fill(glossary.name);
-  await searchResponse;
-  await waitForAllLoadersToDisappear(page);
-  await page.getByTestId(`tag-"${glossary.parent}"."${glossary.name}"`).click();
-  await page.click('[data-testid="saveAssociatedTag"]');
+  await expect(row).toBeVisible();
+  await row.click();
 
-  await page.getByTestId('saveAssociatedTag').waitFor({ state: 'detached' });
+  // No save button: each toggle is already on the row, so dismissing commits.
+  await page.keyboard.press('Escape');
+  await page
+    .locator('.glossary-term-picker-popover')
+    .waitFor({ state: 'detached' });
 };
 
-export const fillDomainDetails = async (
+const openActiveCellPopover = async (
   page: Page,
-  domains: { name: string; displayName: string; fullyQualifiedName?: string }
+  targetLocator: Locator,
+  responseUrlPattern: string | undefined
 ) => {
-  await page.keyboard.press('Enter');
+  // A bulk-edit click opens the editor before its options finish loading.
+  // Reopening that cell steals focus and can dismiss the pending picker.
+  const activeEditor = page.locator(
+    '.rdg-editor-container[aria-selected="true"]'
+  );
+  if ((await activeEditor.count()) === 0) {
+    const response = responseUrlPattern
+      ? page.waitForResponse(responseUrlPattern)
+      : undefined;
+    await openSelectedGridEditor(page);
+    if (response) expect((await response).status()).toBe(200);
+  }
+  await expect(targetLocator).toBeVisible();
+};
 
-  await page.click(
-    '[data-testid="domain-selectable-tree"] [data-testid="searchbar"]'
+export const fillTierDetails = async (
+  page: Page,
+  tier: string,
+  _isBulkEdit?: boolean
+) => {
+  const option = page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`);
+  await openActiveCellPopover(page, option, '/api/v1/tags?parent=Tier*');
+
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
+};
+
+export const fillCertificationDetails = async (
+  page: Page,
+  certification: string,
+  _isBulkEdit?: boolean
+) => {
+  const option = page.getByTestId('drop-down-menu').getByTestId(certification);
+  await openActiveCellPopover(
+    page,
+    option,
+    '/api/v1/search/query?*index=tag&*'
   );
 
-  const searchDomain = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(domains.name)}*`
-  );
-
-  await page
-    .getByTestId('domain-selectable-tree')
-    .getByTestId('searchbar')
-    .fill(domains.name);
-
-  await searchDomain;
-
-  await page.getByTestId(`tag-${domains.fullyQualifiedName}`).click();
-
-  await page.getByTestId('saveAssociatedTag').click();
-
-  await page.getByTestId('saveAssociatedTag').waitFor({ state: 'detached' });
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -276,94 +693,75 @@ export const fillStoredProcedureCode = async (page: Page) => {
   await page.getByTestId('schema-modal').waitFor({ state: 'detached' });
 };
 
-const editGlossaryCustomProperty = async (
+// What each bulk-edit custom property type is set to, and the one-line
+// summary the side widget row shows for it afterwards.
+const BULK_CUSTOM_PROPERTY_INPUTS: Record<
+  string,
+  {
+    propertyType: string;
+    value: string;
+    summary: string | RegExp;
+    tableColumns?: string[];
+  }
+> = {
+  [CUSTOM_PROPERTIES_TYPES.STRING]: {
+    propertyType: 'string',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.STRING,
+    summary: FIELD_VALUES_CUSTOM_PROPERTIES.STRING,
+  },
+  [CUSTOM_PROPERTIES_TYPES.MARKDOWN]: {
+    propertyType: 'markdown',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN,
+    summary: 'Overview',
+  },
+  [CUSTOM_PROPERTIES_TYPES.SQL_QUERY]: {
+    propertyType: 'sqlQuery',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY,
+    summary: /^1 line/,
+  },
+  [CUSTOM_PROPERTIES_TYPES.TABLE]: {
+    propertyType: 'table-cp',
+    value: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows,
+    summary: /^1 row/,
+    tableColumns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns,
+  },
+};
+
+/** Sets one custom property from the bulk-edit extension editor. */
+const editBulkCustomProperty = async (
   page: Page,
   propertyName: string,
   type: string
 ) => {
-  await page
-    .locator(
-      `[data-testid=${propertyName}] [data-testid='edit-icon-right-panel']`
-    )
-    .click();
+  const { summary, ...input } = BULK_CUSTOM_PROPERTY_INPUTS[type];
+  const row = getCustomPropertyWidgetRow(
+    page.getByTestId('custom-property-editor'),
+    propertyName
+  );
+  const editModal = await openCustomPropertyEditModal(page, row);
 
-  if (type === CUSTOM_PROPERTIES_TYPES.STRING) {
-    await page
-      .getByTestId('value-input')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
-    await page.getByTestId('inline-save-btn').click();
+  await fillCustomPropertyEditModal({ page, editModal, ...input });
 
-    await expect(
-      page.getByTestId(propertyName).getByTestId('value')
-    ).toHaveText(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
-
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
-
-    await clickOutside(page);
-
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
-
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
-
-    await expect(
-      page.getByTestId(propertyName).locator(descriptionBoxReadOnly)
-    ).toContainText('### Overview');
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
-    await page
-      .getByTestId('code-mirror-container')
-      .getByRole('textbox')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-
-    await page.getByTestId('inline-save-btn').click();
-
-    await expect(
-      page.getByTestId(propertyName).locator('.CodeMirror-lines')
-    ).toContainText(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
-    const columns = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns;
-    const values = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows.split(',');
-
-    await page.locator('[data-testid="add-new-row"]').click();
-
-    await fillTableColumnInputDetails(page, values[0], columns[0]);
-
-    await fillTableColumnInputDetails(page, values[1], columns[1]);
-
-    await page.locator('[data-testid="update-table-type-property"]').click();
-
-    await expect(
-      page
-        .getByTestId(propertyName)
-        .getByRole('columnheader', { name: columns[0] })
-    ).toBeVisible();
-
-    await expect(
-      page.getByTestId(propertyName).getByRole('cell', { name: values[0] })
-    ).toBeVisible();
-  }
+  await expect(row.getByTestId('property-value')).toContainText(summary);
 };
 
 export const fillCustomPropertyDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  await doubleClickActiveGridCell(page);
 
-  // Wait for the loader to disappear
-  await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
+  await page
+    .getByTestId('custom-property-editor')
+    .waitFor({ state: 'attached', timeout: IMPORT_STATUS_TIMEOUT });
+
+  await waitForAllLoadersToDisappear(page);
+
+  // Wait for skeleton loaders to disappear
+  await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
-    await editGlossaryCustomProperty(
+    await editBulkCustomProperty(
       page,
       propertyListName[propertyName],
       propertyName
@@ -381,14 +779,21 @@ export const fillExtensionDetails = async (
   page: Page,
   propertyListName: Record<string, string>
 ) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  // Pressing Enter to open this editor can race the previous cell's commit
+  // and revert earlier edits in the row, so open it via double-click instead.
+  await doubleClickActiveGridCell(page);
 
-  await page
-    .getByTestId('custom-property-editor')
-    .waitFor({ state: 'attached' });
+  const customPropertyEditor = page.getByTestId('custom-property-editor');
+
+  await customPropertyEditor.waitFor({
+    state: 'attached',
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
 
   // Verify header text
-  await expect(page.getByTestId('header')).toContainText('Edit CustomProperty');
+  await expect(customPropertyEditor.getByTestId('dialog-title')).toContainText(
+    'Edit CustomProperty'
+  );
 
   // Verify save and cancel buttons are visible
   await expect(page.getByTestId('save')).toBeVisible();
@@ -400,7 +805,7 @@ export const fillExtensionDetails = async (
   await expect(page.locator('.ant-skeleton')).toHaveCount(0);
 
   for (const propertyName of Object.values(CUSTOM_PROPERTIES_TYPES)) {
-    await editEntityCustomProperty(
+    await editBulkCustomProperty(
       page,
       propertyListName[propertyName],
       propertyName
@@ -433,8 +838,11 @@ export const fillGlossaryRowDetails = async (
   propertyListName?: Record<string, string>,
   isBulkEdit?: boolean
 ) => {
-  await moveToNextColumnWithVerification(page);
+  // csvAsyncJobs is per-user and every worker is admin, so another worker's job
+  // finishing re-expands the tray over this grid mid-fill.
+  await suppressCsvJobsTray(page);
 
+  await selectActiveRowCellByColumn(page, 'name');
   if (isBulkEdit) {
     await expect(
       page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
@@ -443,78 +851,170 @@ export const fillGlossaryRowDetails = async (
     await fillTextInputDetails(page, row.name);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'displayName');
   await fillTextInputDetails(page, row.displayName);
 
-  // Navigate to next cell and make cell editable
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'description');
   await fillDescriptionDetails(page, row.description);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'synonyms');
   await fillTextInputDetails(page, row.synonyms);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'relatedTerms');
   await fillGlossaryTermDetails(page, row.relatedTerm);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'references');
   await fillTextInputDetails(page, row.references);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'tags');
   await fillTagDetails(page, row.tag);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'reviewers');
   await fillOwnerDetails(page, row.reviewers);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'owner');
   await fillOwnerDetails(page, row.owners);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'color');
   await fillTextInputDetails(page, '#ccc');
-
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   const base64Src =
     'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
+  await selectActiveRowCellByColumn(page, 'iconURL');
   await fillTextInputDetails(page, base64Src);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
-  if (propertyListName) {
+  if (propertyListName && Object.keys(propertyListName).length > 0) {
+    await selectActiveRowCellByColumn(page, 'extension');
     await fillExtensionDetails(page, propertyListName);
   }
+};
+
+const waitForBulkImportResponse = (
+  page: Page,
+  endpoint: string,
+  dryRun: boolean
+) =>
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      const url = new URL(response.url());
+
+      return (
+        response.request().method() === 'PUT' &&
+        url.pathname.startsWith(`/api/v1/${endpoint}/name/`) &&
+        url.pathname.endsWith('/importAsync') &&
+        url.searchParams.get('dryRun') === String(dryRun)
+      );
+    },
+    200
+  );
+
+export const previewBulkImportChanges = async (
+  page: Page,
+  endpoint: string
+) => {
+  const validationResponse = waitForBulkImportResponse(page, endpoint, true);
+
+  await Promise.all([
+    validationResponse,
+    page.getByRole('button', { name: 'Next', exact: true }).click(),
+  ]);
+  // Preview counters remain visible while the edited CSV is validated. The
+  // Update step is entered only after that validation completes.
+  await expect(
+    page.getByRole('button', { name: 'Update', exact: true })
+  ).toBeVisible({
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
+};
+
+export const saveBulkImport = async (
+  page: Page,
+  endpoint: string,
+  message: string | RegExp = /details updated successfully/
+) => {
+  const updateResponse = waitForBulkImportResponse(page, endpoint, false);
+
+  // The toast can expire while navigation renders the destination page.
+  await Promise.all([
+    updateResponse,
+    toastNotification(page, message, IMPORT_STATUS_TIMEOUT),
+    page.getByRole('button', { name: 'Update', exact: true }).click(),
+  ]);
 };
 
 export const validateImportStatus = async (
   page: Page,
   status: { passed: string; failed: string; processed: string }
 ) => {
-  await page.getByTestId('processed-row').waitFor();
-  await expect(page.getByTestId('processed-row')).toHaveText(status.processed);
-  await expect(page.getByTestId('passed-row')).toHaveText(status.passed);
-  await expect(page.getByTestId('failed-row')).toHaveText(status.failed);
+  // `processed-row` is rendered from the async CSV-import job result delivered over the
+  // CSV_IMPORT websocket channel, not from the importAsync PUT response. The IMPORT_STATUS_TIMEOUT
+  // here is the ceiling for that job to complete and the socket message to land. Residual infra
+  // risk: a backend job that legitimately runs longer, or a dropped/reconnecting socket, will time
+  // out here regardless of test code — it is not a locator/selector problem.
+  await page
+    .getByTestId('processed-row')
+    .waitFor({ timeout: IMPORT_STATUS_TIMEOUT });
+  await expect(page.getByTestId('processed-row')).toHaveText(status.processed, {
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
+  await expect(page.getByTestId('passed-row')).toHaveText(status.passed, {
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
+  await expect(page.getByTestId('failed-row')).toHaveText(status.failed, {
+    timeout: IMPORT_STATUS_TIMEOUT,
+  });
 
-  await page.locator('.rdg-header-row').waitFor({ state: 'visible' });
+  await waitForVisibleLocator(page.locator('.rdg-header-row').first(), 5000);
+};
+
+export const startCsvPreview = async (page: Page, timeout = 90000) => {
+  const nextPreviewButton = page.getByRole('button', {
+    name: /Next:\s*Preview/i,
+  });
+  const nextButton = (await waitForVisibleLocator(nextPreviewButton, 1000))
+    ? nextPreviewButton
+    : page.getByRole('button', { name: /^Next$/i });
+
+  await expect(nextButton).toBeEnabled({ timeout });
+  await nextButton.click();
+};
+
+export const startCsvPreviewAndWaitForGrid = async (
+  page: Page,
+  options?: {
+    csvImportCompletedPromise?: Promise<void>;
+    timeout?: number;
+  }
+) => {
+  const timeout = options?.timeout ?? 90000;
+
+  // Disable the CSV jobs tray's click interception for the entire page session.
+  // The tray can appear at any moment (mid-fill, mid-modal, mid-drag) so a
+  // one-shot CSS injection is more robust than polling at specific steps.
+  await suppressCsvJobsTray(page);
+
+  if (
+    !(await waitForVisibleLocator(
+      page.locator('.rdg-header-row').first(),
+      1000
+    ))
+  ) {
+    await startCsvPreview(page, timeout);
+  }
+
+  if (options?.csvImportCompletedPromise) {
+    await options.csvImportCompletedPromise;
+  }
+
+  await page
+    .getByText('Import is in progress.')
+    .waitFor({ state: 'detached', timeout });
+  await page
+    .locator('.rdg-header-row')
+    .first()
+    .waitFor({ state: 'visible', timeout });
 };
 
 export const uploadCSVAndWaitForGrid = async (
@@ -526,7 +1026,17 @@ export const uploadCSVAndWaitForGrid = async (
     csvImportCompletedPromise?: Promise<void>;
   }
 ): Promise<{ rowCount: number; tempFilePath?: string }> => {
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  await waitForAllLoadersToDisappear(page);
+  if (
+    !(await waitForVisibleLocator(page.getByTestId('stepper-container'), 1000))
+  ) {
+    await page
+      .getByTestId('csv-workflow-stepper')
+      .waitFor({ state: 'visible' });
+  }
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
+
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;
@@ -541,13 +1051,9 @@ export const uploadCSVAndWaitForGrid = async (
 
   await uploadWidget.setInputFiles([actualFilePath]);
 
-  if (options?.csvImportCompletedPromise) {
-    await options.csvImportCompletedPromise;
-  }
-
-  await page
-    .locator('.rdg-header-row')
-    .waitFor({ state: 'visible', timeout: 30000 });
+  await startCsvPreviewAndWaitForGrid(page, {
+    csvImportCompletedPromise: options?.csvImportCompletedPromise,
+  });
   const rowCount = await page.locator('.rdg-row').count();
   return { rowCount, tempFilePath };
 };
@@ -639,59 +1145,6 @@ export const createStoredProcedureRowDetails = () => {
   };
 };
 
-const editEntityCustomProperty = async (
-  page: Page,
-  propertyName: string,
-  type: string
-) => {
-  await page
-    .locator(
-      `[data-testid=${propertyName}] [data-testid='edit-icon-right-panel']`
-    )
-    .click();
-
-  if (type === CUSTOM_PROPERTIES_TYPES.STRING) {
-    await page
-      .getByTestId('value-input')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.STRING);
-    await page.getByTestId('inline-save-btn').click();
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.MARKDOWN) {
-    await page.locator(descriptionBox).waitFor({ state: 'visible' });
-
-    await page
-      .locator(descriptionBox)
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.MARKDOWN);
-
-    await page.getByTestId('markdown-editor').getByTestId('save').click();
-
-    await page.locator(descriptionBox).waitFor({ state: 'detached' });
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.SQL_QUERY) {
-    await page
-      .getByTestId('code-mirror-container')
-      .getByRole('textbox')
-      .fill(FIELD_VALUES_CUSTOM_PROPERTIES.SQL_QUERY);
-
-    await page.getByTestId('inline-save-btn').click();
-  }
-
-  if (type === CUSTOM_PROPERTIES_TYPES.TABLE) {
-    const columns = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns;
-    const values = FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.rows.split(',');
-
-    await page.locator('[data-testid="add-new-row"]').click();
-
-    await fillTableColumnInputDetails(page, values[0], columns[0]);
-
-    await fillTableColumnInputDetails(page, values[1], columns[1]);
-
-    await page.locator('[data-testid="update-table-type-property"]').click();
-  }
-};
-
 export const fillRowDetails = async (
   row: {
     name: string;
@@ -723,91 +1176,70 @@ export const fillRowDetails = async (
     await page.locator('.rdg-cell-name').last().click();
   }
 
+  await selectActiveRowCellByColumn(page, 'name');
+
   if (isBulkEdit) {
     await expect(
       page.locator('.rdg-cell[aria-selected="true"][aria-readonly="true"]')
     ).toContainText(row.name);
   } else {
-    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-    const isActive = await activeCell.isVisible();
-
-    if (isActive) {
-      await fillTextInputDetails(page, row.name);
-    } else {
-      // Click the name cell again
-      await page.locator('.rdg-cell-name').last().click();
-      await fillTextInputDetails(page, row.name);
-    }
+    await fillTextInputDetails(page, row.name);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'displayName');
   await fillTextInputDetails(page, row.displayName);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'description');
   await fillDescriptionDetails(page, row.description);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
-  await fillOwnerDetails(page, row.owners);
+  await selectActiveRowCellByColumn(page, 'owner');
 
   if (row.teamOwners && row.teamOwners.length > 0) {
-    await fillTeamOwnerDetails(page, row.teamOwners);
+    // Users and teams must be selected in a single picker session: the grid
+    // owner editor force-opens on mount and cannot be re-opened after its first
+    // commit (see fillUserAndTeamOwnerDetails), so committing users and teams
+    // separately would fail on the second open.
+    await fillUserAndTeamOwnerDetails(page, row.owners, row.teamOwners);
+  } else {
+    await fillOwnerDetails(page, row.owners);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'tags');
   await fillTagDetails(page, row.tag);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'glossaryTerms');
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-  await page.keyboard.press('Enter', { delay: 100 });
+  await selectActiveRowCellByColumn(page, 'tiers');
+  await fillTierDetails(page, row.tier, isBulkEdit);
 
-  await page.click(`[data-testid="radio-btn-${row.tier}"]`);
-  await page.click(`[data-testid="update-tier-card"]`);
-
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
-  const certificationResponse = page.waitForResponse(
-    '/api/v1/tags?parent=Certification*'
-  );
-  await page.keyboard.press('Enter', { delay: 100 });
-  await certificationResponse;
-
-  const certRadioBtn = page.getByTestId(`radio-btn-${row.certification}`);
-  await certRadioBtn.waitFor({ state: 'visible' });
-  await certRadioBtn.click();
-  await page.getByTestId('update-certification').click();
-
-  await moveToNextColumnWithVerification(page);
+  await selectActiveRowCellByColumn(page, 'certification');
+  await fillCertificationDetails(page, row.certification, isBulkEdit);
 
   if (row.retentionPeriod) {
+    await selectActiveRowCellByColumn(page, 'retentionPeriod');
     await fillTextInputDetails(page, row.retentionPeriod);
-
-    await moveToNextColumnWithVerification(page);
   }
+
   if (row.sourceUrl) {
+    await selectActiveRowCellByColumn(page, 'sourceUrl');
     await fillTextInputDetails(page, row.sourceUrl);
-
-    await moveToNextColumnWithVerification(page);
   }
 
-  await fillDomainDetails(page, row.domains);
+  await selectActiveRowCellByColumn(page, 'domains');
+  // The grid cell opens its picker on Enter, and bulk edit stages the whole
+  // sheet, so there is no PATCH for this cell to wait on.
+  await setDomain(page, row.domains, {
+    trigger: async () => {
+      await page.keyboard.press('Enter');
+      await page.click('[data-testid="domain-selectable-tree-search"]');
+    },
+    awaitPatch: false,
+    verify: 'none',
+  });
 
-  await moveToNextColumnWithVerification(page);
-
-  if (customPropertyRecord) {
+  if (customPropertyRecord && Object.keys(customPropertyRecord).length > 0) {
+    await selectActiveRowCellByColumn(page, 'extension');
     await fillCustomPropertyDetails(page, customPropertyRecord);
   }
 };
@@ -877,46 +1309,23 @@ export const pressKeyXTimes = async (
   length: number,
   key: string
 ) => {
-  const maxRetries = 3;
-  const retryDelay = 1000; // 1 second delay between retries
-
   for (let i = 0; i < length; i++) {
-    let retryCount = 0;
-    let success = false;
+    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+    if (!(await activeCell.isVisible())) {
+      await page
+        .locator('.rdg-row')
+        .last()
+        .locator('.rdg-cell')
+        .first()
+        .click();
+    }
 
-    while (!success && retryCount < maxRetries) {
-      try {
-        // Wait for the active cell to be visible
-        const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-        await activeCell.waitFor({ state: 'visible', timeout: 5000 });
-
-        // Ensure the cell is focused
-        if (!(await activeCell.isVisible())) {
-          await activeCell.click({ timeout: 5000 });
-        }
-
-        // Perform the key press with a longer delay
-        await activeCell.press(key, { delay: 200 });
-
-        // Verify the key press was successful by checking if the cell is still active
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- state update settling delay
-        await page.waitForTimeout(100);
-        const isStillActive = await activeCell.isVisible();
-
-        if (isStillActive) {
-          success = true;
-        } else {
-          // If cell lost focus, try to regain it
-          await activeCell.click({ timeout: 5000 });
-          retryCount++;
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- retry backoff delay
-          await page.waitForTimeout(retryDelay);
-        }
-      } catch {
-        retryCount++;
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- retry backoff delay
-        await page.waitForTimeout(retryDelay);
-      }
+    if (key === 'ArrowLeft') {
+      await moveToPrevColumnWithVerification(page);
+    } else if (key === 'ArrowRight') {
+      await moveToNextColumnWithVerification(page);
+    } else {
+      await activeCell.press(key, { delay: 200 });
     }
   }
 };
@@ -975,19 +1384,114 @@ export const createCustomPropertiesForEntity = async (
   return propertyListName;
 };
 
+export const createCustomPropertiesForEntityViaApi = async (
+  apiContext: APIRequestContext,
+  endpoint: EntityTypeEndpoint
+): Promise<{
+  propertyListName: Record<string, string>;
+  cleanup: (apiContext: APIRequestContext) => Promise<void>;
+}> => {
+  const propertiesResponse = await apiContext.get(
+    '/api/v1/metadata/types?category=field&limit=20'
+  );
+
+  if (!propertiesResponse.ok()) {
+    throw new Error(
+      `Failed to fetch field types: ${propertiesResponse.status()} ${propertiesResponse.statusText()}`
+    );
+  }
+
+  const properties = await propertiesResponse.json();
+
+  const entityTypeName = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
+  const entitySchemaResponse = await apiContext.get(
+    `/api/v1/metadata/types/name/${entityTypeName}`
+  );
+
+  if (!entitySchemaResponse.ok()) {
+    throw new Error(
+      `Failed to fetch entity schema for "${entityTypeName}": ${entitySchemaResponse.status()} ${entitySchemaResponse.statusText()}`
+    );
+  }
+
+  const entitySchema = await entitySchemaResponse.json();
+  const entityTypeId: string = entitySchema.id;
+
+  const typeMapping: Array<
+    [string, string, Record<string, unknown> | undefined]
+  > = [
+    [CUSTOM_PROPERTIES_TYPES.STRING, 'string', undefined],
+    [CUSTOM_PROPERTIES_TYPES.MARKDOWN, 'markdown', undefined],
+    [CUSTOM_PROPERTIES_TYPES.SQL_QUERY, 'sqlQuery', undefined],
+    [
+      CUSTOM_PROPERTIES_TYPES.TABLE,
+      'table-cp',
+      {
+        customPropertyConfig: {
+          config: { columns: FIELD_VALUES_CUSTOM_PROPERTIES.TABLE.columns },
+        },
+      },
+    ],
+  ];
+
+  const propertyListName: Record<string, string> = {};
+
+  for (const [displayName, apiTypeName, extraConfig] of typeMapping) {
+    const typeInfo = properties.data.find(
+      (item: { name: string }) => item.name === apiTypeName
+    );
+
+    if (!typeInfo) {
+      continue;
+    }
+
+    const propertyName = `pwcustomproperty${entityTypeName}test${uuid()}`;
+
+    const putResponse = await apiContext.put(
+      `/api/v1/metadata/types/${entityTypeId}`,
+      {
+        data: {
+          name: propertyName,
+          description: propertyName,
+          propertyType: { id: typeInfo.id, type: 'type' },
+          ...(extraConfig ?? {}),
+        },
+      }
+    );
+
+    if (!putResponse.ok()) {
+      throw new Error(
+        `Failed to create custom property "${propertyName}" (${apiTypeName}): ${putResponse.status()} ${putResponse.statusText()}`
+      );
+    }
+
+    propertyListName[displayName] = propertyName;
+  }
+
+  const cleanup = async (cleanupApiContext: APIRequestContext) => {
+    await Promise.all(
+      Object.values(propertyListName).map((propertyName) =>
+        cleanupApiContext.delete(
+          `/api/v1/metadata/types/${entityTypeId}/customProperties/${encodeURIComponent(
+            propertyName
+          )}`
+        )
+      )
+    );
+  };
+
+  return { propertyListName, cleanup };
+};
+
 export const fillRecursiveEntityTypeFQNDetails = async (
   fullyQualifiedName: string,
   entityType: string,
   page: Page
 ) => {
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'entityType');
   await fillEntityTypeDetails(page, entityType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'fullyQualifiedName');
   await fillTextInputDetails(page, fullyQualifiedName);
 };
 
@@ -1010,7 +1514,7 @@ export const fillRecursiveColumnDetails = async (
   },
   page: Page
 ) => {
-  await page.locator('.rdg-cell-name').last().click();
+  await selectActiveRowCellByColumn(page, 'name');
 
   const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
   const isActive = await activeCell.isVisible();
@@ -1018,67 +1522,58 @@ export const fillRecursiveColumnDetails = async (
   if (isActive) {
     await fillTextInputDetails(page, row.name);
   } else {
-    // Click the name cell again
-    await page.locator('.rdg-cell-name').last().click();
+    await selectActiveRowCellByColumn(page, 'name');
     await fillTextInputDetails(page, row.name);
   }
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'displayName');
   await fillTextInputDetails(page, row.displayName);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'description');
   await fillDescriptionDetails(page, row.description);
 
-  await pressKeyXTimes(page, 2, 'ArrowRight');
-
+  await selectActiveRowCellByColumn(page, 'tags');
   await fillTagDetails(page, row.tag);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
+  await selectActiveRowCellByColumn(page, 'glossaryTerms');
   await fillGlossaryTermDetails(page, row.glossary);
 
-  await pressKeyXTimes(page, 7, 'ArrowRight');
-
+  await selectActiveRowCellByColumn(page, 'entityType');
   await fillEntityTypeDetails(page, row.entityType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'fullyQualifiedName');
   await fillTextInputDetails(page, row.fullyQualifiedName);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.dataTypeDisplay');
   await fillTextInputDetails(page, row.dataTypeDisplay);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.dataType');
   await fillTextInputDetails(page, row.dataType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.arrayDataType');
   await fillTextInputDetails(page, row.arrayDataType);
 
-  await moveToNextColumnWithVerification(page);
-  await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
-
+  await selectActiveRowCellByColumn(page, 'column.dataLength');
   await fillTextInputDetails(page, row.dataLength);
 };
 
 export const firstTimeGridAddRowAction = async (page: Page) => {
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
   if ((await firstRow.count()) > 0) {
-    const firstCell = page
-      .locator('.rdg-row')
-      .first()
+    // eslint-disable-next-line om-playwright/no-positional-locator -- react-data-grid virtualises columns, so the name column is not always rendered; the leftmost rendered cell is what the focus assertions below are about
+    const firstCell = firstRow.locator('.rdg-cell').first();
+    const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
-      .first();
+      .evaluateAll((cells) =>
+        cells.some((cell) => (cell.textContent ?? '').trim().length > 0)
+      );
+
+    if (!hasFirstRowContent) {
+      await firstCell.click();
+      await expect(firstCell).toBeFocused();
+
+      return;
+    }
 
     await expect(firstCell).toBeFocused();
 
@@ -1096,6 +1591,29 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
     .first();
 
   await expect(lastRowFirstCell).toBeFocused();
+};
+
+export const addGridRowAndSelectFirstCell = async (page: Page) => {
+  const rows = page.locator('.rdg-row');
+  const rowCount = await rows.count();
+
+  await page.click('[data-testid="add-row-btn"]');
+  await expect(rows).toHaveCount(rowCount + 1);
+
+  // The grid assigns a new row the id of the pre-add row count, so the row
+  // just created can be named instead of taken as "the last one" -- which
+  // drifts the moment the grid is sorted or another row is appended.
+  const lastRowFirstCell = page
+    .getByTestId(`rdg-row-${rowCount}`)
+    .locator('.rdg-cell')
+    .first();
+
+  await scrollIntoViewCenter(lastRowFirstCell);
+  await lastRowFirstCell.click();
+  await expect(
+    page.locator(RDG_ACTIVE_CELL_SELECTOR).filter({ visible: true })
+  ).not.toHaveCount(0);
+  await selectActiveRowCellByColumn(page, 'name');
 };
 
 /**
@@ -1118,6 +1636,30 @@ const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
     retries < MAX_COLUMN_NAVIGATION_RETRIES
   ) {
     await page.keyboard.press('ArrowRight', { delay: 100 });
+    newColIndex = await activeCell.getAttribute('aria-colindex');
+    retries++;
+  }
+};
+
+const moveToPrevColumnWithVerification = async (page: Page): Promise<void> => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+
+  const currentColIndex = await activeCell.getAttribute('aria-colindex');
+
+  if (currentColIndex === '1') {
+    return;
+  }
+
+  await page.keyboard.press('ArrowLeft', { delay: 100 });
+
+  let newColIndex = await activeCell.getAttribute('aria-colindex');
+  let retries = 0;
+
+  while (
+    currentColIndex === newColIndex &&
+    retries < MAX_COLUMN_NAVIGATION_RETRIES
+  ) {
+    await page.keyboard.press('ArrowLeft', { delay: 100 });
     newColIndex = await activeCell.getAttribute('aria-colindex');
     retries++;
   }
@@ -1180,7 +1722,8 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
     name: 'Display Name',
   });
 
-  const firstRow = page.locator('.rdg-row').first();
+  const firstRow = page.getByTestId('rdg-row-0');
+  // eslint-disable-next-line om-playwright/no-positional-locator -- see firstTimeGridAddRowAction: column virtualisation means a column class may not be rendered
   const firstCell = firstRow.locator('.rdg-cell').nth(1);
 
   await displayNameHeader.click();
@@ -1199,24 +1742,31 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
 };
 
 export const performBulkDownload = async (page: Page, fileName: string) => {
-  const downloadPromise = page.waitForEvent('download');
+  const { apiContext, afterAction } = await getApiContext(page);
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
 
-  await page.click('[data-testid="manage-button"]');
-  await page
-    .getByTestId('manage-dropdown-list-container')
-    .waitFor({ state: 'visible' });
-  await page.click('[data-testid="export-button-title"]');
+  try {
+    await page.click('[data-testid="manage-button"]');
+    await page
+      .getByTestId('manage-dropdown-list-container')
+      .waitFor({ state: 'visible' });
+    await page.click('[data-testid="export-button-title"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+    const exportResponse = await exportResponsePromise;
+    expect(exportResponse.ok()).toBeTruthy();
 
-  await page.fill('#fileName', fileName);
-  await page.click('#submit-button');
+    const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+    const csvContent = await fetchCompletedCsvAsyncJobResult(apiContext, jobId);
 
-  await page.locator('.message-banner-wrapper').waitFor({ state: 'detached' });
-  const download = await downloadPromise;
-
-  // Wait for the download process to complete and save the downloaded file somewhere.
-  await download.saveAs('downloads/' + download.suggestedFilename());
+    fs.mkdirSync('downloads', { recursive: true });
+    fs.writeFileSync(path.join('downloads', `${fileName}.csv`), csvContent);
+  } finally {
+    await afterAction();
+  }
 };
 
 /**

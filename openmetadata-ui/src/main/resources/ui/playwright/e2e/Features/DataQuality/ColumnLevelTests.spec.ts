@@ -10,18 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test } from '../../../support/fixtures/base';
 import {
   createNewPage,
-  descriptionBox,
+  fillDescriptionBox,
   redirectToHomePage,
 } from '../../../utils/common';
 import {
   clickCreateTestCaseButton,
   clickEditTestCaseButton,
   clickUpdateButton,
+  expectFormHint,
+  selectTestType,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -70,48 +72,45 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // A plain Column Level test must NOT expose the dimension fields in
+        // create mode — those belong to the dedicated "Column + Dimension" card.
+        await expect(page.getByTestId('dimensionColumns')).toBeHidden();
+        await expect(page.getByTestId('topDimensions')).toBeHidden();
+
         // Click column dropdown and wait for documentation panel to be visible
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for test definitions API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
         const columnOption = page
-          .locator('.ant-select-dropdown:visible')
-          .locator(`[title="${testCase.column}"]`);
+          .getByRole('option')
+          .filter({ hasText: testCase.column });
         await expect(columnOption).toBeVisible();
         await columnOption.click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close after selection
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name and wait for documentation panel
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type and wait for documentation panel
-        await page.fill('[id="root/testType"]', testCase.type);
-        const testTypeOption = page
-          .locator('.ant-select-dropdown:visible')
-          .getByTestId(testCase.type);
-        await expect(testTypeOption).toBeVisible();
-        await testTypeOption.click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close after test type selection
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
-        await page.locator(descriptionBox).fill(testCase.description);
+        await fillDescriptionBox(page, testCase.description);
 
         await clickCreateTestCaseButton(page, testCase.name);
       });
@@ -119,12 +118,26 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
         await expect(page.locator('[id="root/name"]')).toHaveValue(
           testCase.name
         );
+
+        // Regression: editing a column-level test must expose the dimension
+        // fields so a dimension can be added after creation (parity with the
+        // legacy edit modal). Add a dimension here to prove it round-trips.
+        await expect(page.getByTestId('dimensionColumns')).toBeVisible();
+        await expect(page.getByTestId('topDimensions')).toBeVisible();
+
+        await page.click('[id="root/dimensionColumns"]');
+        const dimensionOption = page.getByRole('option').first();
+        await expect(dimensionOption).toBeVisible();
+        await dimensionOption.click();
+        // Close the multi-select dropdown before touching other fields.
+        await page.keyboard.press('Escape');
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.locator('[id="root/displayName"]').clear();
         await page.fill('[id="root/displayName"]', testCase.displayName);
@@ -155,6 +168,7 @@ test.describe(
         displayName: 'Column Values Between Range',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeBetween',
+        label: 'Column Values To Be Between',
         minValue: '0',
         maxValue: '1000',
       };
@@ -168,36 +182,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown and wait for documentation panel
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for test definitions API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_minValue', testCase.minValue);
         await page.fill('#testCaseFormV1_params_maxValue', testCase.maxValue);
@@ -208,14 +221,14 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minValue').clear();
-        await page.locator('#tableTestForm_params_minValue').fill('10');
-        await page.locator('#tableTestForm_params_maxValue').clear();
-        await page.locator('#tableTestForm_params_maxValue').fill('2000');
+        await page.locator('#testCaseFormV1_params_minValue').clear();
+        await page.locator('#testCaseFormV1_params_minValue').fill('10');
+        await page.locator('#testCaseFormV1_params_maxValue').clear();
+        await page.locator('#testCaseFormV1_params_maxValue').fill('2000');
 
         await clickUpdateButton(page);
       });
@@ -242,6 +255,7 @@ test.describe(
         displayName: 'Column Values Should Be Unique',
         column: table.entity?.columns[0].name,
         type: 'columnValuesToBeUnique',
+        label: 'Column Values To Be Unique',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -253,36 +267,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await clickCreateTestCaseButton(page, testCase.name);
       });
@@ -290,9 +303,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('[id="root/displayName"]').clear();
         await page.fill('[id="root/displayName"]', testCase.displayName);
@@ -322,6 +335,7 @@ test.describe(
         name: 'column_values_in_set',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeInSet',
+        label: 'Column Values To Be In Set',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -333,55 +347,52 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill allowed values
         await page.fill(
           '#testCaseFormV1_params_allowedValues_0_value',
           'active'
         );
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-allowedValues').click();
         await page.fill(
           '#testCaseFormV1_params_allowedValues_1_value',
           'inactive'
         );
 
-        await page.click('#testCaseFormV1_params_matchEnum');
-        await page
-          .locator('#testCaseFormV1_params_matchEnum[aria-checked="true"]')
-          .waitFor({ state: 'attached' });
+        // The react-aria Toggle's label intercepts clicks on the hidden input.
+        await page.getByTestId('parameter-matchEnum').click();
         await expect(
           page.locator('#testCaseFormV1_params_matchEnum')
-        ).toHaveAttribute('aria-checked', 'true');
+        ).toBeChecked();
 
         await clickCreateTestCaseButton(page, testCase.name);
       });
@@ -389,25 +400,24 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.getByRole('button', { name: 'plus' }).click();
-        await page.fill('#tableTestForm_params_allowedValues_2_value', 'open');
-        await page.click('#tableTestForm_params_matchEnum');
-        await page
-          .locator('#tableTestForm_params_matchEnum[aria-checked="false"]')
-          .waitFor({ state: 'attached' });
+        await page.getByTestId('add-allowedValues').click();
+        await page.fill('#testCaseFormV1_params_allowedValues_2_value', 'open');
+        // The react-aria Toggle's label intercepts clicks on the hidden input,
+        // and the input reflects state via `checked`, not `aria-checked`.
+        await page.getByTestId('parameter-matchEnum').click();
         await expect(
-          page.locator('#tableTestForm_params_matchEnum')
-        ).toHaveAttribute('aria-checked', 'false');
+          page.locator('#testCaseFormV1_params_matchEnum')
+        ).not.toBeChecked();
         await clickUpdateButton(page);
 
         await clickEditTestCaseButton(page, testCase.name);
         await expect(
-          page.locator('#tableTestForm_params_matchEnum')
-        ).toHaveAttribute('aria-checked', 'false');
+          page.locator('#testCaseFormV1_params_matchEnum')
+        ).not.toBeChecked();
 
         await page.getByTestId('cancel-btn').click();
       });
@@ -433,6 +443,7 @@ test.describe(
         name: 'column_values_not_in_set',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeNotInSet',
+        label: 'Column Values To Be Not In Set',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -444,40 +455,39 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill forbidden values
         await page.fill('#testCaseFormV1_params_forbiddenValues_0_value', '-1');
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-forbiddenValues').click();
         await page.fill(
           '#testCaseFormV1_params_forbiddenValues_1_value',
           '-999'
@@ -489,13 +499,13 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-forbiddenValues').click();
         await page.fill(
-          '#tableTestForm_params_forbiddenValues_2_value',
+          '#testCaseFormV1_params_forbiddenValues_2_value',
           '-9999'
         );
 
@@ -523,6 +533,7 @@ test.describe(
         name: 'column_values_match_regex',
         column: table.entity?.columns[2].name,
         type: 'columnValuesToMatchRegex',
+        label: 'Column Values To Match Regex Pattern',
         regex: '^[0-9]+$',
       };
 
@@ -535,36 +546,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_regex', testCase.regex);
 
@@ -574,12 +584,12 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_regex').clear();
-        await page.locator('#tableTestForm_params_regex').fill('^[0-9]{1,5}$');
+        await page.locator('#testCaseFormV1_params_regex').clear();
+        await page.locator('#testCaseFormV1_params_regex').fill('^[0-9]{1,5}$');
 
         await clickUpdateButton(page);
       });
@@ -605,6 +615,7 @@ test.describe(
         name: 'column_values_not_match_regex',
         column: table.entity?.columns[2].name,
         type: 'columnValuesToNotMatchRegex',
+        label: 'Column Values To Not Match Regex',
         regex: '[a-zA-Z]',
       };
 
@@ -617,36 +628,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_forbiddenRegex',
@@ -659,13 +669,13 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_forbiddenRegex').clear();
+        await page.locator('#testCaseFormV1_params_forbiddenRegex').clear();
         await page
-          .locator('#tableTestForm_params_forbiddenRegex')
+          .locator('#testCaseFormV1_params_forbiddenRegex')
           .fill('[^0-9]');
 
         await clickUpdateButton(page);
@@ -694,6 +704,7 @@ test.describe(
         name: 'column_max_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMaxToBeBetween',
+        label: 'Column Value Max. To Be Between',
         minValueForMaxInCol: '0',
         maxValueForMaxInCol: '10000',
       };
@@ -707,36 +718,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMaxInCol',
@@ -753,17 +763,21 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minValueForMaxInCol').clear();
         await page
-          .locator('#tableTestForm_params_minValueForMaxInCol')
+          .locator('#testCaseFormV1_params_minValueForMaxInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_minValueForMaxInCol')
           .fill('100');
-        await page.locator('#tableTestForm_params_maxValueForMaxInCol').clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMaxInCol')
+          .locator('#testCaseFormV1_params_maxValueForMaxInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_maxValueForMaxInCol')
           .fill('20000');
 
         await clickUpdateButton(page);
@@ -790,6 +804,7 @@ test.describe(
         name: 'column_min_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMinToBeBetween',
+        label: 'Column Value Min. To Be Between',
         minValueForMinInCol: '0',
         maxValueForMinInCol: '100',
       };
@@ -803,36 +818,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMinInCol',
@@ -849,17 +863,21 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minValueForMinInCol').clear();
         await page
-          .locator('#tableTestForm_params_minValueForMinInCol')
+          .locator('#testCaseFormV1_params_minValueForMinInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_minValueForMinInCol')
           .fill('10');
-        await page.locator('#tableTestForm_params_maxValueForMinInCol').clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMinInCol')
+          .locator('#testCaseFormV1_params_maxValueForMinInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_maxValueForMinInCol')
           .fill('200');
 
         await clickUpdateButton(page);
@@ -886,6 +904,7 @@ test.describe(
         name: 'column_mean_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMeanToBeBetween',
+        label: 'Column Value Mean To Be Between',
         minValueForMeanInCol: '0',
         maxValueForMeanInCol: '500',
       };
@@ -899,36 +918,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMeanInCol',
@@ -945,21 +963,21 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
-          .locator('#tableTestForm_params_minValueForMeanInCol')
+          .locator('#testCaseFormV1_params_minValueForMeanInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_minValueForMeanInCol')
+          .locator('#testCaseFormV1_params_minValueForMeanInCol')
           .fill('50');
         await page
-          .locator('#tableTestForm_params_maxValueForMeanInCol')
+          .locator('#testCaseFormV1_params_maxValueForMeanInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMeanInCol')
+          .locator('#testCaseFormV1_params_maxValueForMeanInCol')
           .fill('1000');
 
         await clickUpdateButton(page);
@@ -986,6 +1004,7 @@ test.describe(
         name: 'column_median_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueMedianToBeBetween',
+        label: 'Column Value Median To Be Between',
         minValueForMedianInCol: '0',
         maxValueForMedianInCol: '400',
       };
@@ -999,36 +1018,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForMedianInCol',
@@ -1045,21 +1063,21 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
-          .locator('#tableTestForm_params_minValueForMedianInCol')
+          .locator('#testCaseFormV1_params_minValueForMedianInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_minValueForMedianInCol')
+          .locator('#testCaseFormV1_params_minValueForMedianInCol')
           .fill('100');
         await page
-          .locator('#tableTestForm_params_maxValueForMedianInCol')
+          .locator('#testCaseFormV1_params_maxValueForMedianInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMedianInCol')
+          .locator('#testCaseFormV1_params_maxValueForMedianInCol')
           .fill('800');
 
         await clickUpdateButton(page);
@@ -1086,6 +1104,7 @@ test.describe(
         name: 'column_stddev_between',
         column: table.entity?.columns[1].name,
         type: 'columnValueStdDevToBeBetween',
+        label: 'Column Value Std Dev To Be Between',
         minValueForStdDevInCol: '0',
         maxValueForStdDevInCol: '100',
       };
@@ -1099,36 +1118,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForStdDevInCol',
@@ -1145,21 +1163,21 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
-          .locator('#tableTestForm_params_minValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_minValueForStdDevInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_minValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_minValueForStdDevInCol')
           .fill('5');
         await page
-          .locator('#tableTestForm_params_maxValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_maxValueForStdDevInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_maxValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_maxValueForStdDevInCol')
           .fill('200');
 
         await clickUpdateButton(page);
@@ -1186,6 +1204,7 @@ test.describe(
         name: 'column_sum_between',
         column: table.entity?.columns[1].name,
         type: 'columnValuesSumToBeBetween',
+        label: 'Column Values Sum To Be Between',
         minValueForSumInCol: '0',
         maxValueForSumInCol: '100000',
       };
@@ -1200,36 +1219,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_minValueForColSum',
@@ -1246,17 +1264,17 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minValueForColSum').clear();
+        await page.locator('#testCaseFormV1_params_minValueForColSum').clear();
         await page
-          .locator('#tableTestForm_params_minValueForColSum')
+          .locator('#testCaseFormV1_params_minValueForColSum')
           .fill('1000');
-        await page.locator('#tableTestForm_params_maxValueForColSum').clear();
+        await page.locator('#testCaseFormV1_params_maxValueForColSum').clear();
         await page
-          .locator('#tableTestForm_params_maxValueForColSum')
+          .locator('#testCaseFormV1_params_maxValueForColSum')
           .fill('200000');
 
         await clickUpdateButton(page);
@@ -1283,6 +1301,7 @@ test.describe(
         name: 'column_length_between',
         column: table.entity?.columns[2].name,
         type: 'columnValueLengthsToBeBetween',
+        label: 'Column Value Lengths To Be Between',
         minLength: '1',
         maxLength: '50',
       };
@@ -1296,36 +1315,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill('#testCaseFormV1_params_minLength', testCase.minLength);
         await page.fill('#testCaseFormV1_params_maxLength', testCase.maxLength);
@@ -1336,14 +1354,14 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_minLength').clear();
-        await page.locator('#tableTestForm_params_minLength').fill('5');
-        await page.locator('#tableTestForm_params_maxLength').clear();
-        await page.locator('#tableTestForm_params_maxLength').fill('100');
+        await page.locator('#testCaseFormV1_params_minLength').clear();
+        await page.locator('#testCaseFormV1_params_minLength').fill('5');
+        await page.locator('#testCaseFormV1_params_maxLength').clear();
+        await page.locator('#testCaseFormV1_params_maxLength').fill('100');
 
         await clickUpdateButton(page);
       });
@@ -1369,6 +1387,7 @@ test.describe(
         name: 'column_missing_count_equal',
         column: table.entity?.columns[0].name,
         type: 'columnValuesMissingCount',
+        label: 'Column Values Missing Count',
         missingCountValue: '0',
       };
 
@@ -1381,36 +1400,35 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=NUMERIC&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
-        await expect(
-          page.locator(`[data-id="${testCase.type}"]`)
-        ).toBeVisible();
+        await selectTestType(page, testCase.label);
+        await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_missingCountValue',
@@ -1423,12 +1441,14 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.locator('#tableTestForm_params_missingCountValue').clear();
-        await page.locator('#tableTestForm_params_missingCountValue').fill('5');
+        await page.locator('#testCaseFormV1_params_missingCountValue').clear();
+        await page
+          .locator('#testCaseFormV1_params_missingCountValue')
+          .fill('5');
 
         await clickUpdateButton(page);
       });
@@ -1454,6 +1474,7 @@ test.describe(
         name: 'column_value_at_location',
         column: table.entity?.columns[1].name,
         type: 'columnValuesToBeAtExpectedLocation',
+        label: 'Column Values To Be At Expected Location',
       };
 
       await visitCreateTestCasePanelFromEntityPage(page, table);
@@ -1465,48 +1486,48 @@ test.describe(
       await test.step('Create', async () => {
         // Click column dropdown
         await page.click('[id="root/column"]');
-        await expect(page.locator('[data-id="column"]')).toBeVisible();
+        await expectFormHint(page, 'Select Column');
 
         // Select column and wait for API response
         const testDefinitionResponse = page.waitForResponse(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=INT&supportedService=Mysql*'
         );
-        await page.click(`[title="${testCase.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: testCase.column })
+          .click();
         await testDefinitionResponse;
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Fill test case name
         await page.getByTestId('test-case-name').click();
-        await expect(page.locator('[data-id="name"]')).toBeVisible();
-        await page.getByTestId('test-case-name').fill(testCase.name);
+        await expectFormHint(page, 'Name');
+        await page
+          .getByTestId('test-case-name')
+          .locator('input')
+          .fill(testCase.name);
 
         // Select test type
-        await page.fill('[id="root/testType"]', testCase.type);
-        await page.getByTestId(testCase.type).click();
+        await selectTestType(page, testCase.label);
         // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
-        // await expect(page.locator(`[data-id="${testCase.type}"]`)).toBeVisible();
+        // await expectFormHint(page, 'Select Test Type');
 
         // Wait for dropdown to close
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         // Select location reference type from dropdown
         await page.click('#testCaseFormV1_params_locationReferenceType');
-        const postalCodeOption = page.locator(
-          `.ant-select-dropdown:visible [title="POSTAL_CODE"]`
-        );
+        const postalCodeOption = page
+          .getByRole('option')
+          .filter({ hasText: 'POSTAL_CODE' })
+          .first();
         await expect(postalCodeOption).toBeVisible();
         await postalCodeOption.click();
 
         // Wait for dropdown to close after selection
-        await expect(
-          page.locator('.ant-select-dropdown:visible')
-        ).not.toBeVisible();
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.fill(
           '#testCaseFormV1_params_longitudeColumnName',
@@ -1524,14 +1545,14 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
-        await page.fill('#tableTestForm_params_longitudeColumnName', 'Edit');
-        await page.fill('#tableTestForm_params_latitudeColumnName', 'Edit');
-        await page.locator('#tableTestForm_params_radius').clear();
-        await page.fill('#tableTestForm_params_radius', '500');
+        await page.fill('#testCaseFormV1_params_longitudeColumnName', 'Edit');
+        await page.fill('#testCaseFormV1_params_latitudeColumnName', 'Edit');
+        await page.locator('#testCaseFormV1_params_radius').clear();
+        await page.fill('#testCaseFormV1_params_radius', '500');
         await clickUpdateButton(page);
       });
 

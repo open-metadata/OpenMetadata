@@ -10,16 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, Modal, Typography } from 'antd';
-import { FormProps, useForm } from 'antd/lib/form/Form';
+import {
+  Box,
+  Button,
+  Dialog,
+  FormField,
+  FormItemLabel,
+  HintText,
+  HookForm,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { lazy, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import Loader from '../../common/Loader/Loader';
-import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ModalWithQueryEditorProps } from './ModalWithQueryEditor.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+);
 
 export const ModalWithQueryEditor = ({
   header,
@@ -29,11 +43,11 @@ export const ModalWithQueryEditor = ({
   visible,
 }: ModalWithQueryEditorProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
+  const form = useForm<{ query: string }>({ defaultValues: { query: '' } });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const onFinish: FormProps['onFinish'] = async (value) => {
+  const onFinish = async (value: { query: string }) => {
     setIsSaving(true);
     try {
       await onSave?.(value.query ?? '');
@@ -46,65 +60,89 @@ export const ModalWithQueryEditor = ({
 
   useEffect(() => {
     if (visible) {
-      form.setFieldsValue({ query: value });
+      form.reset({ query: value ?? '' });
       setIsLoading(false);
     }
   }, [form, visible]);
 
   return (
-    <Modal
-      centered
-      destroyOnClose
-      className="description-markdown-editor"
-      closable={false}
-      data-testid="markdown-editor"
-      footer={[
-        <Button
-          data-testid="cancel"
-          disabled={isLoading}
-          key="cancelButton"
-          type="link"
-          onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>,
-        <Button
-          data-testid="save"
-          key="saveButton"
-          type="primary"
-          onClick={() => form.submit()}>
-          {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
-        </Button>,
-      ]}
-      maskClosable={false}
-      open={visible}
-      title={<Typography.Text data-testid="header">{header}</Typography.Text>}
-      width="90%"
-      onCancel={onCancel}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Form.Item
-            data-testid="sql-editor-container"
-            label={t('label.sql-uppercase-query')}
-            name="query"
-            rules={[
-              {
-                required: true,
-                message: t('label.field-required', {
-                  field: t('label.sql-uppercase-query'),
-                }),
-              },
-            ]}
-            trigger="onChange">
-            <SchemaEditor
-              className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-              mode={{ name: CSMode.SQL }}
-              showCopyButton={false}
-            />
-          </Form.Item>
-        </Form>
-      )}
-    </Modal>
+    // Opens from the lineage edge drawer (a z-999 SlideoutMenu), so the
+    // overlay has to sit above it.
+    <ModalOverlay
+      className="tw:z-1000"
+      isDismissable={false}
+      isOpen={visible}
+      onOpenChange={(isOpen) => !isOpen && onCancel?.()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="markdown-editor"
+          title={header}
+          width={1200}
+          onClose={() => onCancel?.()}>
+          <Dialog.Content>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <HookForm form={form} onSubmit={form.handleSubmit(onFinish)}>
+                <FormField
+                  control={form.control}
+                  name="query"
+                  rules={{
+                    required: t('label.field-required', {
+                      field: t('label.sql-uppercase-query'),
+                    }),
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Box
+                      data-testid="sql-editor-container"
+                      direction="col"
+                      gap={1}>
+                      <FormItemLabel
+                        required
+                        label={t('label.sql-uppercase-query')}
+                      />
+                      <SchemaEditor
+                        className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+                        mode={{ name: CSMode.SQL }}
+                        showCopyButton={false}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                      {fieldState.error && (
+                        <HintText isInvalid>
+                          {fieldState.error.message}
+                        </HintText>
+                      )}
+                    </Box>
+                  )}
+                </FormField>
+              </HookForm>
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="link-color"
+              data-testid="cancel"
+              isDisabled={isLoading}
+              key="cancelButton"
+              onClick={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="save"
+              key="saveButton"
+              onClick={form.handleSubmit(onFinish)}>
+              {isSaving ? (
+                <Loader size="small" type="white" />
+              ) : (
+                t('label.save')
+              )}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };

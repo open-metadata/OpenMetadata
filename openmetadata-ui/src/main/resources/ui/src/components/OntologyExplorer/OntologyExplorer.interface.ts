@@ -12,14 +12,17 @@
  */
 
 import { Glossary } from '../../generated/entity/data/glossary';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { EntityReference } from '../../generated/entity/type';
-import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { EntityStatus, Provenance } from '../../generated/type/termRelation';
 import {
   LayoutType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
+export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
 
 export interface OntologyExplorerProps {
   scope: OntologyScope;
@@ -27,8 +30,24 @@ export interface OntologyExplorerProps {
   glossaryId?: string;
   className?: string;
   height?: string | number;
+  isAuthoringMode?: boolean;
+  isEditMode?: boolean;
+  surface?: OntologyStudioSurface;
+  showHealth?: boolean;
+  /** Sub-bar element the concept search renders into; it floats on the canvas without one. */
+  searchSlot?: HTMLElement | null;
+  globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
+  onGlossariesChange?: (glossaries: Glossary[]) => void;
+  onGraphDataChange?: (graphData: OntologyGraphData) => void;
+  onRelationTypesChange?: (relationTypes: RelationshipType[]) => void;
+  onSelectedNodeChange?: (node: OntologyNode | null) => void;
+  conceptDraftId?: string;
+  defaultConceptGlossaryId?: string;
+  onConceptCreated?: (concept: GlossaryTerm) => void;
+  onConceptDraftClose?: () => void;
+  onRequestEdit?: () => void;
 }
 
 export interface OntologyNode {
@@ -38,25 +57,44 @@ export interface OntologyNode {
   assetCount?: number;
   loadedAssetCount?: number;
   isLoadingAssets?: boolean;
+  columnCount?: number;
+  serviceLabel?: string;
   type: string;
   fullyQualifiedName?: string;
   description?: string;
   group?: string;
   glossaryId?: string;
   entityRef?: EntityReference;
+  searchSource?: Record<string, unknown>;
   owners?: EntityReference[];
   termId?: string;
   originalGlossary?: string;
   glossaryName?: string;
   originalNode?: OntologyNode;
+  isDraft?: boolean;
+  isOptimistic?: boolean;
+  isDataModeSeed?: boolean;
 }
 
 export interface OntologyEdge {
+  id?: string;
   from: string;
   to: string;
   label: string;
   relationType: string;
+  inverseRelationType?: string;
+  edgeKind?: OntologyEdgeKind;
+  provenance?: Provenance;
+  status?: EntityStatus;
+  createdBy?: string;
+  createdAt?: number;
+  relationshipType?: EntityReference;
 }
+
+export type OntologyEdgeKind =
+  | 'ontology'
+  | 'assetBinding'
+  | 'semanticProjection';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];
@@ -116,6 +154,16 @@ export interface OntologyGraphProps {
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  isAuthoringMode?: boolean;
+  isEditMode?: boolean;
+  relationTypes?: RelationshipType[];
+  studioMode?: boolean;
+  onCreateRelation?: (
+    fromId: string,
+    toId: string,
+    relationType: string
+  ) => Promise<void>;
+  onEdgeClick?: (edge: MergedEdge | null) => void;
   onNodeClick: (
     node: OntologyNode,
     position?: { x: number; y: number },
@@ -132,7 +180,7 @@ export interface OntologyGraphProps {
 export interface FilterToolbarProps {
   filters: GraphFilters;
   glossaries: Glossary[];
-  relationTypes: GlossaryTermRelationType[];
+  relationTypes: RelationshipType[];
   onFiltersChange: (filters: GraphFilters) => void;
   onViewModeChange?: (viewMode: GraphViewMode) => void;
   onClearAll?: () => void;
@@ -159,11 +207,18 @@ export interface OntologyControlButtonsProps {
 }
 
 export interface MergedEdge {
+  id?: string;
   from: string;
   to: string;
   relationType: string;
   inverseRelationType?: string;
   isBidirectional: boolean;
+  edgeKind?: OntologyEdgeKind;
+  provenance?: Provenance;
+  status?: EntityStatus;
+  createdBy?: string;
+  createdAt?: number;
+  relationshipType?: EntityReference;
 }
 
 export interface LayoutConfig {
@@ -189,6 +244,7 @@ export interface HierarchyEdge {
   from: string;
   to: string;
   relationType: string;
+  inverseRelationType?: string;
   color?: string;
 }
 
@@ -201,7 +257,7 @@ export interface HierarchyGraphResult {
 export interface BuildHierarchyGraphsParams {
   terms: OntologyNode[];
   relations: OntologyEdge[];
-  relationSettings: { relationTypes?: GlossaryTermRelationType[] } | null;
+  relationTypes: RelationshipType[];
   relationColors: Record<string, string>;
   glossaryNames: Record<string, string>;
 }
@@ -220,4 +276,7 @@ export interface BuildGraphDataProps {
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  isEditMode?: boolean;
+  relationTypes?: RelationshipType[];
+  studioMode?: boolean;
 }

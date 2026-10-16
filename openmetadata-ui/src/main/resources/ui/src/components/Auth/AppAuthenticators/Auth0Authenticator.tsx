@@ -12,7 +12,21 @@
  */
 
 import { useAuth0 } from '@auth0/auth0-react';
-import { forwardRef, Fragment, ReactNode, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+} from 'react';
+import { authCoordinator } from '../../../utils/Auth/AuthCoordinator/AuthCoordinator';
+import {
+  getAuthErrorCode,
+  isInteractionRequiredCode,
+  ReauthRequiredError,
+} from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
+import type { Renewer } from '../../../utils/Auth/AuthCoordinator/types';
 import { setOidcToken } from '../../../utils/SwTokenStorageUtils';
 import { useAuthProvider } from '../AuthProviders/AuthProvider';
 import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
@@ -20,6 +34,25 @@ import { AuthenticatorRef } from '../AuthProviders/AuthProvider.interface';
 interface Props {
   children: ReactNode;
 }
+
+// Beyond the OIDC interaction codes: the in-memory cache loses its refresh
+// token on reload (missing_refresh_token), a refresh token can expire or be
+// rotated away (invalid_grant), and the iframe fallback times out when
+// third-party cookies are blocked. A top-level redirect recovers all of them
+// while the Auth0 session is alive.
+const AUTH0_REAUTH_ERROR_CODES = new Set([
+  'missing_refresh_token',
+  'invalid_grant',
+  'timeout',
+]);
+
+const isReauthRequired = (error: unknown): boolean => {
+  const code = getAuthErrorCode(error);
+
+  return (
+    isInteractionRequiredCode(code) || AUTH0_REAUTH_ERROR_CODES.has(code ?? '')
+  );
+};
 
 const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
   ({ children }: Props, ref) => {
@@ -30,6 +63,40 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
       getIdTokenClaims,
       logout,
     } = useAuth0();
+
+    // Bridges to the AuthCoordinator Renewer contract (auth-coordinator-refactor
+    // Task 11). Kept alongside renewIdToken until every authenticator is
+    // migrated and the old TokenService path is deleted. Reads the raw
+    // IdToken claims directly instead of going through the setOidcToken side
+    // effect renewIdToken performs — the AuthCoordinator owns storage now.
+    const getRenewer = useCallback(
+      (): Renewer => async () => {
+        try {
+          await getAccessTokenSilently();
+        } catch (error) {
+          if (isReauthRequired(error)) {
+            throw new ReauthRequiredError(
+              'Auth0 silent renewal needs an interactive visit to Auth0',
+              error
+            );
+          }
+
+          throw error;
+        }
+
+        const claims = await getIdTokenClaims();
+
+        if (!claims?.__raw) {
+          throw new Error('Auth0 renewal returned no idToken');
+        }
+
+        return {
+          idToken: claims.__raw,
+          expiresAt: (claims.exp ?? 0) * 1000,
+        };
+      },
+      [getAccessTokenSilently, getIdTokenClaims]
+    );
 
     useImperativeHandle(ref, () => ({
       invokeLogin() {
@@ -62,7 +129,25 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
 
         return idToken;
       },
+      // Auth0Callback completes it; a login_required answer signs the user
+      // out there.
+      async invokeSilentReauth() {
+        await loginWithRedirect({
+          prompt: 'none',
+          appState: {
+            returnTo: `${window.location.pathname}${window.location.search}`,
+          },
+        });
+      },
     }));
+
+    // Register the coordinator renewer directly from this authenticator's
+    // own mount effect (avoids the ref-based race in the parent).
+    useEffect(() => {
+      authCoordinator.registerRenewer(getRenewer());
+
+      return () => authCoordinator.registerRenewer(null);
+    }, [getRenewer]);
 
     return <Fragment>{children}</Fragment>;
   }

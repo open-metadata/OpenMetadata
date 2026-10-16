@@ -23,7 +23,7 @@ import {
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityTest } from '../../../common/DataQualitySection/DataQualitySection.interface';
 import DataQualityTab from './DataQualityTab';
-import { MockTabItem, TranslationOptions } from './DataQualityTab.interface';
+import { TranslationOptions } from './DataQualityTab.interface';
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
@@ -60,92 +60,25 @@ jest.mock(
   })
 );
 
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
-      <div className={className} data-testid="card" {...props}>
-        {children}
-      </div>
-    )),
-    Col: jest
-      .fn()
-      .mockImplementation(({ children, span, className, ...props }) => (
-        <div
-          className={className}
-          data-span={span}
-          data-testid="col"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Row: jest
-      .fn()
-      .mockImplementation(({ children, className, gutter, ...props }) => (
-        <div
-          className={className}
-          data-gutter={gutter}
-          data-testid="row"
-          {...props}>
-          {children}
-        </div>
-      )),
-    Tabs: jest
-      .fn()
-      .mockImplementation(({ items, activeKey, onChange, ...props }) => (
-        <div data-active-key={activeKey} data-testid="tabs" {...props}>
-          <div data-testid="tab-headers">
-            {items.map((item: MockTabItem) => (
-              <div data-testid={`tab-${item.key}`} key={item.key}>
-                {item.label}
-                <button onClick={() => onChange?.(item.key)}>change</button>
-              </div>
-            ))}
-          </div>
-          {items.find((item: MockTabItem) => item.key === activeKey)?.children}
-        </div>
-      )),
-    Typography: {
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ellipsis, ...props }) => (
-          <span
-            className={className}
-            data-ellipsis={ellipsis}
-            data-testid="typography-text"
-            {...props}>
-            {children}
-          </span>
-        )),
-      Paragraph: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <p
-            className={className}
-            data-testid="typography-paragraph"
-            {...props}>
-            {children}
-          </p>
-        )),
-    },
-  };
-});
-
 // Mock child components
-jest.mock('../../../common/DataQualitySection', () => {
+jest.mock('../../../common/DataQualitySection/DataQualitySection', () => {
   return jest
     .fn()
     .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
       <div data-testid="data-quality-section">
         <div data-testid="total-tests">{totalTests}</div>
-        {tests.map((test: DataQualityTest, index: number) => (
+        {tests.map((test: DataQualityTest) => (
           <div
             data-testid={`test-${test.type}`}
-            key={index}
+            key={test.type}
             role="button"
-            onClick={() => onFilterChange?.(test.type)}>
+            tabIndex={0}
+            onClick={() => onFilterChange?.(test.type)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                onFilterChange?.(test.type);
+              }
+            }}>
             {test.count}
           </div>
         ))}
@@ -165,8 +98,12 @@ jest.mock('../../../common/Loader/Loader', () => {
 });
 
 jest.mock('../../../common/StatusBadge/StatusBadgeV2.component', () => {
-  return jest.fn().mockImplementation(({ label, status }) => (
-    <div data-label={label} data-status={status} data-testid="status-badge">
+  return jest.fn().mockImplementation(({ className, label, status }) => (
+    <div
+      className={className}
+      data-label={label}
+      data-status={status}
+      data-testid="status-badge">
       {label}
     </div>
   ));
@@ -180,6 +117,7 @@ jest.mock('../../../common/SearchBarComponent/SearchBar.component', () => ({
     .mockImplementation(({ onSearch, placeholder, searchValue }) => (
       <div data-testid="search-bar">
         <input
+          aria-label={placeholder}
           data-testid="search-input"
           placeholder={placeholder}
           value={searchValue}
@@ -198,12 +136,18 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  default: { t: jest.fn().mockReturnValue('') },
+  t: jest.fn().mockReturnValue(''),
+  translateWithNestedKeys: jest.fn().mockReturnValue(''),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => (
       <span data-testid="trans-i18next">{i18nKey}</span>
     )),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
     if (fqn?.includes('::columns::')) {
       return fqn.split('::columns::')[0];
@@ -229,7 +173,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockImplementation((entityLink: string) => {
@@ -247,21 +191,34 @@ jest.mock('../../../../utils/RouterUtils', () => ({
   getTestCaseDetailPagePath: jest.fn().mockReturnValue('/test-case-path'),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(({ owners, placeHolder }) => {
-    if (owners && owners.length > 0) {
-      const owner = owners[0];
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest
+    .fn()
+    .mockImplementation(
+      ({
+        owners,
+        placeHolder,
+      }: {
+        owners?: Array<{ id?: string; displayName?: string; name?: string }>;
+        placeHolder?: string;
+      }) => {
+        if (owners && owners.length > 0) {
+          return (
+            <>
+              {owners.map((owner, i) => (
+                <span key={owner.id ?? i}>
+                  <div data-testid="avatar">Avatar</div>
+                  <span>{owner.displayName || owner.name}</span>
+                </span>
+              ))}
+            </>
+          );
+        }
 
-      return (
-        <div data-testid="owner-label">
-          <div data-testid="avatar">{owner.displayName?.charAt(0) || 'U'}</div>
-          <span>{owner.displayName || owner.name || 'Unknown'}</span>
-        </div>
-      );
-    }
-
-    return <span data-testid="owner-placeholder">{placeHolder || '--'}</span>;
-  }),
+        return placeHolder ? <span>{placeHolder}</span> : null;
+      }
+    ),
 }));
 
 const mockEntityFQN = 'test.entity.fqn';
@@ -602,6 +559,12 @@ describe('DataQualityTab', () => {
       expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
       expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
       expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+
+      const abortedBadge = screen
+        .getAllByTestId('status-badge')
+        .find((badge) => badge.dataset.status === 'aborted');
+
+      expect(abortedBadge).toBeInTheDocument();
     });
 
     it('should show no test cases message when filter has no results', async () => {
@@ -647,8 +610,8 @@ describe('DataQualityTab', () => {
       const failedButtons = screen.getAllByTestId('test-failed');
       const failedButtonWithZeroCount = failedButtons.find(
         (button) => button.textContent === '0'
-      );
-      fireEvent.click(failedButtonWithZeroCount!);
+      ) as HTMLElement;
+      fireEvent.click(failedButtonWithZeroCount);
 
       // Wait for the component to re-render with the filtered results
       await waitFor(() => {
@@ -677,8 +640,12 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('tab-data-quality')).toBeInTheDocument();
-      expect(screen.getByTestId('tab-incidents')).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /label.data-quality/ })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      ).toBeInTheDocument();
     });
 
     it('should switch to incidents tab', async () => {
@@ -686,13 +653,13 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
       expect(
-        screen.getByText('label.new', { selector: '.stat-label.new' })
+        screen.getByRole('button', { name: /label.new/ })
       ).toBeInTheDocument();
     });
 
@@ -701,14 +668,14 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
-      const dataQualityTab = screen
-        .getByTestId('tab-data-quality')
-        .querySelector('button') as HTMLElement;
+      const dataQualityTab = screen.getByRole('tab', {
+        name: /label.data-quality/,
+      });
       fireEvent.click(dataQualityTab);
 
       expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
@@ -734,9 +701,9 @@ describe('DataQualityTab', () => {
         screen.getByTestId('data-quality-section');
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
     });
 
@@ -747,44 +714,15 @@ describe('DataQualityTab', () => {
     });
 
     it('should render incident status counts', () => {
-      // Check for new count (should be 1 based on mock data)
-      const newCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '1' &&
-          className.includes('stat-count') &&
-          className.includes('new')
-        );
-      });
-
-      expect(newCount).toBeInTheDocument();
-
-      // Check for assigned count (should be 1 based on mock data)
-      const assignedCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '1' &&
-          className.includes('stat-count') &&
-          className.includes('assigned')
-        );
-      });
-
-      expect(assignedCount).toBeInTheDocument();
-
-      // Check for acknowledged count (should be 0 based on mock data)
-      const ackCount = screen.getByText((content, element) => {
-        const className = element?.getAttribute('class') || '';
-
-        return (
-          content === '0' &&
-          className.includes('stat-count') &&
-          className.includes('ack')
-        );
-      });
-
-      expect(ackCount).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /label.new/ })
+      ).toHaveTextContent('1');
+      expect(
+        screen.getByRole('button', { name: /label.assigned/ })
+      ).toHaveTextContent('1');
+      expect(
+        screen.getByRole('button', { name: /label.acknowledged/ })
+      ).toHaveTextContent('0');
 
       // Check for resolved count (should be 0 based on mock data)
       const resolvedCount = screen.getByText((content, element) => {
@@ -973,9 +911,9 @@ describe('DataQualityTab', () => {
       render(<DataQualityTab {...defaultProps} />);
 
       await waitFor(() => {
-        const incidentsTab = screen
-          .getByTestId('tab-incidents')
-          .querySelector('button') as HTMLElement;
+        const incidentsTab = screen.getByRole('tab', {
+          name: /label.incident-plural/,
+        });
         fireEvent.click(incidentsTab);
 
         const assignedButton = screen.getByRole('button', {
@@ -1009,9 +947,9 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const incidentsTab = screen
-        .getByTestId('tab-incidents')
-        .querySelector('button') as HTMLElement;
+      const incidentsTab = screen.getByRole('tab', {
+        name: /label.incident-plural/,
+      });
       fireEvent.click(incidentsTab);
 
       // Verify incidents tab content is displayed

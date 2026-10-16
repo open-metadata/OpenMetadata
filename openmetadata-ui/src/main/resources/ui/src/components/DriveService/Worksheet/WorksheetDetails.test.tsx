@@ -34,11 +34,18 @@ jest.mock('../../../hooks/useFqn');
 jest.mock('../../../utils/useRequiredParams');
 jest.mock('../../../rest/driveAPI');
 const mockGetFeedCounts = jest.fn();
+const mockFetchEntityTaskCountsInto = jest.fn();
+const mockFetchEntityActivityCountInto = jest.fn();
 
-jest.mock('../../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../../utils/CommonUtils'),
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(),
-  getFeedCounts: (...args: any[]) => mockGetFeedCounts(...args),
+}));
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  fetchEntityActivityCountInto: (...args: unknown[]) =>
+    mockFetchEntityActivityCountInto(...args),
+  fetchEntityTaskCountsInto: (...args: unknown[]) =>
+    mockFetchEntityTaskCountsInto(...args),
+  getFeedCounts: (...args: unknown[]) => mockGetFeedCounts(...args),
 }));
 jest.mock('../../../utils/RouterUtils');
 jest.mock('../../../utils/ToastUtils');
@@ -333,12 +340,16 @@ describe('WorksheetDetails', () => {
     expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
   });
 
-  it('should call getFeedCounts on component mount', async () => {
+  it('should fetch feed counts on component mount', async () => {
     renderWorksheetDetails();
 
     await waitFor(
       () => {
-        expect(mockGetFeedCounts).toHaveBeenCalledWith(
+        expect(mockFetchEntityTaskCountsInto).toHaveBeenCalledWith(
+          'test-service.test-spreadsheet.test-worksheet',
+          expect.any(Function)
+        );
+        expect(mockFetchEntityActivityCountInto).toHaveBeenCalledWith(
           EntityType.WORKSHEET,
           'test-service.test-spreadsheet.test-worksheet',
           expect.any(Function)

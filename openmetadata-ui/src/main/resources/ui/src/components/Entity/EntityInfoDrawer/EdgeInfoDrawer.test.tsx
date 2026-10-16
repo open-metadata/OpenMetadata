@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Edge, Node } from 'reactflow';
 import OverviewSection from '../../../components/common/OverviewSection/OverviewSection';
 import EdgeInfoDrawer from './EdgeInfoDrawer.component';
@@ -48,12 +49,19 @@ jest.mock('../../../components/common/OverviewSection/OverviewSection', () => {
   ));
 });
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  getRelativeTime: jest.fn((timestamp?: number) =>
+    timestamp ? '2 days ago' : ''
+  ),
 }));
 
 jest.mock('../../common/Loader/Loader', () =>
@@ -61,16 +69,16 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
+  return jest.fn().mockImplementation(({ value }: { value?: string }) => (
+    <div data-testid="sql-editor" data-value={value}>
+      SchemaEditor.component
+    </div>
+  ));
 });
 
 jest.mock('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor', () => {
   return jest.fn().mockImplementation(() => <div>ModalWithQueryEditor</div>);
 });
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-}));
 
 const mockOnEdgeDetailsUpdate = jest.fn();
 
@@ -166,6 +174,16 @@ describe('EdgeInfoDrawer Component', () => {
     expect(await screen.findAllByTestId('edit-button')).toHaveLength(1);
   });
 
+  it('should call onClose when the close button is pressed', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const onClose = jest.fn();
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} onClose={onClose} />);
+
+    await user.click(await screen.findByTestId('drawer-close-icon'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('should render no query if no query is present', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
 
@@ -257,5 +275,153 @@ describe('EdgeInfoDrawer Component', () => {
     });
 
     expect(props?.componentType).toBe('');
+  });
+
+  it('should resolve sqlQuery from target node lineageSqlQueries when edge only has sqlQueryKey', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = {
+      '1': 'CREATE TABLE customers AS SELECT * FROM stg_orders',
+    };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: null,
+                sqlQueryKey: '1',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(await screen.findByTestId('sql-editor')).toHaveAttribute(
+      'data-value',
+      'CREATE TABLE customers AS SELECT * FROM stg_orders'
+    );
+    expect(
+      screen.queryByText('server.no-query-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should prefer the inline sqlQuery over the target node lineageSqlQueries map', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = { '1': 'SELECT * FROM keyed_map' };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: 'SELECT * FROM inline_edge',
+                sqlQueryKey: '1',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(await screen.findByTestId('sql-editor')).toHaveAttribute(
+      'data-value',
+      'SELECT * FROM inline_edge'
+    );
+  });
+
+  it('should show no query when the sqlQueryKey is not in the target node map', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = { '1': 'SELECT * FROM keyed_map' };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: null,
+                sqlQueryKey: '99',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(
+      await screen.findByText('server.no-query-available')
+    ).toBeInTheDocument();
+  });
+
+  it('should format edge audit values from non-empty user and time parts', async () => {
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                createdBy: 'alice',
+                updatedAt: 1717000000000,
+              },
+            },
+          } as Edge
+        }
+      />
+    );
+
+    let props:
+      | {
+          entityInfoV1?: Array<{
+            name: string;
+            value?: unknown;
+          }>;
+        }
+      | undefined;
+
+    await waitFor(() => {
+      const overviewSectionCalls = (OverviewSection as jest.Mock).mock.calls;
+      const lastCall = overviewSectionCalls[overviewSectionCalls.length - 1];
+      props = lastCall?.[0];
+
+      expect(props?.entityInfoV1).toBeDefined();
+    });
+
+    const createdByInfo = props?.entityInfoV1?.find(
+      (item) => item.name === 'label.created-by'
+    );
+    const updatedByInfo = props?.entityInfoV1?.find(
+      (item) => item.name === 'label.updated-by'
+    );
+
+    expect(createdByInfo?.value).toBe('alice');
+    expect(updatedByInfo?.value).toBe('2 days ago');
   });
 });

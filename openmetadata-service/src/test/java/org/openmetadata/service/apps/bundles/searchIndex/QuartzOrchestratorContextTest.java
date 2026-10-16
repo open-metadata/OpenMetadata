@@ -68,7 +68,7 @@ class QuartzOrchestratorContextTest {
         QuartzProgressListener.class,
         context.createProgressListener(
             new EventPublisherJob().withEntities(java.util.Set.of("table"))));
-    assertInstanceOf(QuartzJobContext.class, context.createReindexingContext(true));
+    assertInstanceOf(QuartzJobContext.class, context.createReindexingContext());
   }
 
   @Test

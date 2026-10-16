@@ -34,7 +34,10 @@ interface Props {
 }
 
 const AirflowStatusProvider = ({ children }: Props) => {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  // Seeded `true` so the status reads as "unknown", not "known and unavailable", for the paint
+  // before the effect fires. Consumers gate their error/empty states on this, and a `false` seed
+  // made them flash a terminal state (the Airflow setup guide, "no agents yet") every load.
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAirflowAvailable, setIsAirflowAvailable] = useState<boolean>(false);
   const [error, setError] = useState<AxiosError>();
   const [reason, setReason] =
@@ -45,6 +48,8 @@ const AirflowStatusProvider = ({ children }: Props) => {
 
   const fetchAirflowStatus = useCallback(async () => {
     if (!currentUser?.id) {
+      // The status endpoint needs an authenticated caller, so this is "not asked yet", not
+      // "asked and got nothing" — stay loading. The effect re-runs once the user resolves.
       return;
     }
     setIsLoading(true);

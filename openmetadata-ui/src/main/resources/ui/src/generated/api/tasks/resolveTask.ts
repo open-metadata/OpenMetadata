@@ -15,6 +15,18 @@
  */
 export interface ResolveTask {
     /**
+     * Per-change decisions on the reviewed change request revision. Only selected approved
+     * changes are applied; rejected and omitted changes are discarded. The request closes
+     * without a new revision or task. Absent or empty: the resolution applies to the whole
+     * revision.
+     */
+    changeDecisions?: ChangeDecision[];
+    /**
+     * Revision number of the linked change request the resolver reviewed. Required when the
+     * task reviews a change request.
+     */
+    changeRequestRevision?: number;
+    /**
      * Comment explaining the resolution.
      */
     comment?: string;
@@ -37,6 +49,20 @@ export interface ResolveTask {
 }
 
 /**
+ * A reviewer's decision on one change of a revision.
+ */
+export interface ChangeDecision {
+    decision: Decision;
+    field:    string;
+    key?:     string;
+}
+
+export enum Decision {
+    Approve = "Approve",
+    Reject = "Reject",
+}
+
+/**
  * How the task should be resolved.
  *
  * How the task was resolved.
@@ -47,6 +73,7 @@ export enum ResolutionType {
     AutoRejected = "AutoRejected",
     Cancelled = "Cancelled",
     Completed = "Completed",
+    Expired = "Expired",
     Rejected = "Rejected",
     Revoked = "Revoked",
     TimedOut = "TimedOut",

@@ -1,20 +1,24 @@
-import type { FC, ReactNode, Ref, RefAttributes } from 'react';
-import { createContext, isValidElement } from 'react';
-import { ChevronDown } from '@untitledui/icons';
-import type { SelectProps as AriaSelectProps } from 'react-aria-components';
-import {
-  Button as AriaButton,
-  ListBox as AriaListBox,
-  Select as AriaSelect,
-  SelectValue as AriaSelectValue,
-} from 'react-aria-components';
 import { Avatar } from '@/components/base/avatar/avatar';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
+import { ChevronDown } from '../../../icons';
+import type { FC, ReactNode, RefAttributes } from 'react';
+import { createContext, forwardRef, isValidElement } from 'react';
+import type { SelectProps as AriaSelectProps } from 'react-aria-components';
+import {
+  Button as AriaButton,
+  Select as AriaSelect,
+  SelectValue as AriaSelectValue,
+} from 'react-aria-components';
 import { ComboBox } from './combobox';
+import {
+  SELECT_VIRTUALIZATION_THRESHOLD,
+  SelectListBox,
+} from './select-list-box';
 import { Popover } from './popover';
 import { SelectItem } from './select-item';
 
@@ -34,7 +38,22 @@ export interface SelectCommonProps {
   size?: 'sm' | 'md';
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   placeholder?: string;
+  emptyState?: ReactNode;
 }
+
+export const SelectEmptyState = ({
+  emptyState,
+}: {
+  emptyState?: ReactNode;
+}) => {
+  const { t } = useCoreTranslation();
+
+  return (
+    <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+      {emptyState ?? t('label.no-data-found')}
+    </div>
+  );
+};
 
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
@@ -42,7 +61,7 @@ interface SelectProps
     SelectCommonProps {
   items?: SelectItemType[];
   popoverClassName?: string;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
 }
 
@@ -53,8 +72,7 @@ interface SelectValueProps {
   isFocused: boolean;
   isDisabled: boolean;
   placeholder?: string;
-  ref?: Ref<HTMLButtonElement>;
-  placeholderIcon?: FC | ReactNode;
+  icon?: FC | ReactNode;
 }
 
 export const sizes = {
@@ -69,18 +87,20 @@ const SelectValue = ({
   size,
   fontSize,
   placeholder,
-  placeholderIcon,
-  ref,
+  icon,
 }: SelectValueProps) => {
   return (
     <AriaButton
       className={cx(
-        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:outline-hidden tw:transition tw:duration-100 tw:ease-linear tw:ring-inset',
-        (isFocused || isOpen) && 'tw:ring-2 tw:ring-brand',
+        // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
+        // a ring thins/vanishes in Safari when zoomed out. `outline-hidden` is gone — the
+        // outline IS the border and focus indicator here, as in input.tsx.
+        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+        (isFocused || isOpen) &&
+          'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
         isDisabled &&
           'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled'
-      )}
-      ref={ref}>
+      )}>
       <AriaSelectValue<SelectItemType>
         className={cx(
           'tw:flex tw:h-max tw:w-full tw:items-center tw:justify-start tw:gap-2 tw:truncate tw:text-left tw:align-middle',
@@ -91,7 +111,7 @@ const SelectValue = ({
           sizes[size].root
         )}>
         {(state) => {
-          const Icon = state.selectedItem?.icon || placeholderIcon;
+          const Icon = state.selectedItem?.icon || icon;
 
           return (
             <>
@@ -111,7 +131,7 @@ const SelectValue = ({
                 <section className="tw:flex tw:w-full tw:gap-2 tw:truncate">
                   <p
                     className={cx(
-                      'tw:truncate tw:font-medium tw:text-primary',
+                      'tw:truncate tw:text-primary',
                       fontSizeClass[fontSize]
                     )}>
                     {state.selectedItem?.label}
@@ -156,62 +176,87 @@ export const SelectContext = createContext<{
   size: 'sm' | 'md';
   fontSize: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }>({
-  fontSize: 'md',
+  fontSize: 'sm',
   size: 'sm',
 });
 
-const Select = ({
-  placeholder = 'Select',
-  placeholderIcon,
-  size = 'sm',
-  fontSize = 'md',
-  children,
-  items,
-  label,
-  hint,
-  tooltip,
-  className,
-  ...rest
-}: SelectProps) => {
-  return (
-    <SelectContext.Provider value={{ fontSize, size }}>
-      <AriaSelect
-        {...rest}
-        className={(state) =>
-          cx(
-            'tw:flex tw:flex-col tw:gap-1.5',
-            typeof className === 'function' ? className(state) : className
-          )
-        }>
-        {(state) => (
-          <>
-            {label && (
-              <Label isRequired={state.isRequired} tooltip={tooltip}>
-                {label}
-              </Label>
-            )}
+const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
+  function Select(
+    {
+      placeholder = 'Select',
+      icon,
+      size = 'sm',
+      fontSize = 'sm',
+      children,
+      items,
+      label,
+      hint,
+      tooltip,
+      emptyState,
+      className,
+      // Without this react-aria keeps an empty list closed, so `emptyState`
+      // would never render.
+      allowsEmptyCollection = true,
+      ...rest
+    },
+    ref
+  ) {
+    const isVirtualized =
+      (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
 
-            <SelectValue
-              {...state}
-              {...{ size, fontSize, placeholder }}
-              placeholderIcon={placeholderIcon}
-            />
+    return (
+      <SelectContext.Provider value={{ fontSize, size }}>
+        <AriaSelect
+          {...rest}
+          allowsEmptyCollection={allowsEmptyCollection}
+          className={(state) =>
+            cx(
+              'tw:flex tw:flex-col tw:gap-1.5',
+              typeof className === 'function' ? className(state) : className
+            )
+          }
+          ref={ref}>
+          {(state) => (
+            <>
+              {label && (
+                <Label isRequired={state.isRequired} tooltip={tooltip}>
+                  {label}
+                </Label>
+              )}
 
-            <Popover className={rest.popoverClassName} size={size}>
-              <AriaListBox
-                className="tw:size-full tw:outline-hidden"
-                items={items}>
-                {children}
-              </AriaListBox>
-            </Popover>
+              <SelectValue
+                {...state}
+                {...{ size, fontSize, placeholder }}
+                icon={icon}
+              />
 
-            {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}
-          </>
-        )}
-      </AriaSelect>
-    </SelectContext.Provider>
-  );
-};
+              <Popover
+                className={cx(
+                  isVirtualized && 'tw:overflow-hidden tw:py-0',
+                  rest.popoverClassName
+                )}
+                size={size}>
+                <SelectListBox
+                  items={items}
+                  renderEmptyState={() => (
+                    <SelectEmptyState emptyState={emptyState} />
+                  )}
+                  size={size}
+                  virtualize={isVirtualized}>
+                  {children}
+                </SelectListBox>
+              </Popover>
+
+              {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}
+            </>
+          )}
+        </AriaSelect>
+      </SelectContext.Provider>
+    );
+  }
+);
+
+Select.displayName = 'Select';
 
 const _Select = Select as typeof Select & {
   ComboBox: typeof ComboBox;

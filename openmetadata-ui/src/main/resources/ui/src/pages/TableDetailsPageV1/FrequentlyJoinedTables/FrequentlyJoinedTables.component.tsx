@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ExpandableCard from '../../../components/common/ExpandableCard/ExpandableCard';
-import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericProvider';
+import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
+import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { LIST_SIZE } from '../../../constants/constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { JoinedWith, Table } from '../../../generated/entity/data/table';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getJoinsFromTableJoins } from '../../../utils/TableUtils';
+import { getJoinsFromTableJoins } from '../../../utils/TablePureUtils';
 import './frequently-joined-tables.style.less';
 
 export type Joined = JoinedWith & {
@@ -69,11 +69,11 @@ export const FrequentlyJoinedTables = ({
         key={table.name}>
         <Link
           to={getEntityDetailsPath(EntityType.TABLE, table.fullyQualifiedName)}>
-          <Typography.Text
+          <Typography
             className="frequently-joint-name"
-            ellipsis={{ tooltip: true }}>
+            ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
             {table.name}
-          </Typography.Text>
+          </Typography>
         </Link>
         {getCountBadge(table.joinCount, '', false)}
       </div>
@@ -85,21 +85,18 @@ export const FrequentlyJoinedTables = ({
   }
 
   return renderAsExpandableCard ? (
-    <ExpandableCard
-      cardProps={{
-        title: t('label.frequently-joined-table-plural'),
-        className: 'frequently-joint-data-container',
-      }}
+    <WidgetCard
+      className="frequently-joint-data-container"
       dataTestId="frequently-joint-data-container"
-      isExpandDisabled={isEmpty(joinedTables)}>
+      isExpandDisabled={isEmpty(joinedTables)}
+      title={t('label.frequently-joined-table-plural')}>
       {content}
 
       {hasMoreElement ? (
         <Button
-          className="show-more-tags-button"
+          color="link-color"
           data-testid="read-button"
-          size="small"
-          type="link"
+          size="xs"
           onClick={handleShowMore}>
           {visibleCount === joinedTables.length
             ? t('label.less')
@@ -108,7 +105,7 @@ export const FrequentlyJoinedTables = ({
               })}
         </Button>
       ) : null}
-    </ExpandableCard>
+    </WidgetCard>
   ) : (
     <>{content}</>
   );

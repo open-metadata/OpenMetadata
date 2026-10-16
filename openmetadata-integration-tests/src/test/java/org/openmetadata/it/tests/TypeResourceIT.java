@@ -3,11 +3,14 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,25 +19,48 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.CreateType;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ReferenceRow;
+import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Integration tests for Type entity operations.
@@ -52,6 +78,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 @ExtendWith(TestNamespaceExtension.class)
 public class TypeResourceIT {
 
+  private static final Logger LOG = LoggerFactory.getLogger(TypeResourceIT.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static Type INT_TYPE;
   private static Type STRING_TYPE;
@@ -123,6 +150,20 @@ public class TypeResourceIT {
   }
 
   @Test
+  void test_teamAndUserAreEntityTypes() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    for (String entityType : List.of("team", "user")) {
+      Type type = getTypeByName(client, entityType);
+      assertNotNull(type.getId(), entityType + " must be seeded as a Type");
+      assertEquals(
+          Category.Entity,
+          type.getCategory(),
+          entityType + " must be an Entity Type so custom properties can be defined on it");
+    }
+  }
+
+  @Test
   @Disabled("Type list pagination may not include all types - needs investigation")
   void test_listTypes() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -187,6 +228,17 @@ public class TypeResourceIT {
     assertEquals(propertyName, addedProperty.getName());
     assertEquals("Custom property for integration testing", addedProperty.getDescription());
     assertEquals(INT_TYPE.getId(), addedProperty.getPropertyType().getId());
+
+    final TypeRepository repository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+    final Type batch = repository.getDao().findEntityById(topicType.getId());
+    repository.setFieldsInBulk(repository.getFields("customProperties"), List.of(batch));
+    assertNotNull(batch.getCustomProperties());
+    final CustomProperty indexedProperty =
+        batch.getCustomProperties().stream()
+            .filter(property -> propertyName.equals(property.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(INT_TYPE.getId(), indexedProperty.getPropertyType().getId());
   }
 
   @Test
@@ -835,6 +887,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_addCustomPropertyToTableColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -856,6 +911,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_addCustomPropertyToDashboardDataModelColumn(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -879,6 +937,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_columnCustomPropertiesAreIsolated(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -928,6 +989,9 @@ public class TypeResourceIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
   void test_getAllCustomPropertiesIncludesColumnTypes(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -984,6 +1048,56 @@ public class TypeResourceIT {
     assertFalse(
         dashColHasTableProp,
         "dashboardDataModelColumn should NOT contain tableColumn's property in getAllCustomProperties");
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.TABLE_COLUMN_CUSTOM_PROPERTIES,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_getAllCustomPropertiesExcludesEntitySchemaFields(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String propName = ns.prefix("schemaFieldLeakProp");
+    CustomProperty property = new CustomProperty();
+    property.setName(propName);
+    property.setDescription("Property asserting the response carries custom properties only");
+    property.setPropertyType(STRING_TYPE.getEntityReference());
+
+    addCustomProperty(client, TABLE_COLUMN_ENTITY_TYPE.getId(), property);
+
+    Map<String, List<Map<String, Object>>> allCustomProperties = getAllCustomProperties(client);
+
+    List<String> returnedNames = propertyNames(allCustomProperties.get("tableColumn"));
+    assertTrue(
+        returnedNames.contains(propName),
+        "tableColumn should contain the custom property that was just added");
+
+    Type tableColumnType = getTypeByName(client, "tableColumn", "customProperties");
+    List<String> declaredNames =
+        tableColumnType.getCustomProperties() == null
+            ? List.of()
+            : tableColumnType.getCustomProperties().stream()
+                .map(CustomProperty::getName)
+                .sorted()
+                .toList();
+    assertEquals(
+        declaredNames,
+        returnedNames,
+        "getAllCustomProperties must return exactly the declared custom properties — entity schema "
+            + "fields must not leak into the response");
+
+    List<String> tableNames = propertyNames(allCustomProperties.get("table"));
+    for (String schemaField : List.of("name", "description", "columns", "owners", "serviceType")) {
+      assertFalse(
+          tableNames.contains(schemaField),
+          "table schema field '" + schemaField + "' must not be reported as a custom property");
+    }
+  }
+
+  private static List<String> propertyNames(List<Map<String, Object>> properties) {
+    return properties == null
+        ? List.of()
+        : properties.stream().map(property -> (String) property.get("name")).sorted().toList();
   }
 
   private static Type createType(OpenMetadataClient client, CreateType createRequest)
@@ -1114,6 +1228,427 @@ public class TypeResourceIT {
 
     public void setPaging(Object paging) {
       this.paging = paging;
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // entityReference / entityReferenceList values whose target is hard-deleted (#29862)
+  // ---------------------------------------------------------------------------------------------
+
+  private static final String TEAM = "team";
+  private static final Map<String, String> HARD_DELETE =
+      Map.of("hardDelete", "true", "recursive", "true");
+
+  @Test
+  void test_referenceList_hardDeletedTargetIsRemoved(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+      assertNoReferencesTo(first.getId());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_singleReference_hardDeletedTargetUnsetsProperty(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReference");
+    try {
+      Team team = createTeam(client, ns.prefix("only"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, referenceOf(team));
+
+      client.teams().delete(team.getId().toString(), HARD_DELETE);
+
+      assertTrue(
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
+              .isEmpty());
+      assertNoReferencesTo(team.getId());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_nameOnlyReference_isStoredWithId(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReference");
+    try {
+      Team team = createTeam(client, ns.prefix("named"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(
+              client,
+              ns,
+              property,
+              Map.of("type", TEAM, "fullyQualifiedName", team.getFullyQualifiedName()));
+
+      assertEquals(
+          List.of(team.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_referenceList_editAfterHardDeleteSucceeds(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Team third = createTeam(client, ns.prefix("third"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      Domain current = client.domains().get(domain.getId().toString(), "extension");
+      current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
+      Domain updated = client.domains().update(domain.getId().toString(), current);
+
+      assertEquals(
+          List.of(second.getId().toString(), third.getId().toString()),
+          referenceIds(updated, property));
+      assertNoReferencesTo(first.getId());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_referenceList_definitionDeleteDropsReferenceRows(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team team = createTeam(client, ns.prefix("defined"), CreateTeam.TeamType.GROUP, null);
+      createDomain(client, ns, property, List.of(referenceOf(team)));
+      assertEquals(1, referenceRowsTo(team.getId()).size());
+
+      deleteDomainProperty(client, property);
+
+      assertTrue(referenceRowsTo(team.getId()).isEmpty());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_softDeletedTarget_referenceIsKept(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team team = createTeam(client, ns.prefix("soft"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(team)));
+
+      client.teams().delete(team.getId().toString());
+      assertEquals(
+          List.of(team.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+
+      client.teams().restore(team.getId().toString());
+      assertEquals(
+          List.of(team.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_referenceList_listEndpointFiltersDeletedTarget(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      Domain listed = findInDomainList(client, domain.getId());
+      assertNotNull(listed, "domain is listed");
+      assertEquals(List.of(second.getId().toString()), referenceIds(listed, property));
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  /** A reference sent as an uppercase UUID is stored in canonical form, so a delete removes it. */
+  @Test
+  void test_uppercaseReferenceIdIsStoredCanonically(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team team = createTeam(client, ns.prefix("upper"), CreateTeam.TeamType.GROUP, null);
+      Map<String, Object> upper = new HashMap<>(referenceOf(team));
+      upper.put("id", id(team).toUpperCase());
+      Domain domain = createDomain(client, ns, property, List.of(upper));
+
+      client.teams().delete(id(team), HARD_DELETE);
+      assertNoReferencesTo(team.getId());
+      assertTrue(referenceIds(client.domains().get(id(domain), "extension"), property).isEmpty());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  /** A value stored the pre-2.1 way, in entity_extension, moves to its rows on upgrade. */
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.CUSTOM_PROPERTY_REFERENCE_MIGRATION,
+      mode = ResourceAccessMode.READ_WRITE)
+  void test_migration_movesLegacyValueAndDropsDeadTarget(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(second)));
+      String key = TypeRegistry.getCustomPropertyFQN(Entity.DOMAIN, property);
+      Entity.getCollectionDAO().customPropertyReferenceDAO().deleteByHolders(List.of(id(domain)));
+      Entity.getCollectionDAO()
+          .entityExtensionDAO()
+          .insert(
+              domain.getId(),
+              key,
+              "customFieldSchema",
+              JsonUtils.pojoToJson(
+                  List.of(
+                      referenceOf(first),
+                      nameOnly(second),
+                      Map.of("type", TEAM, "fullyQualifiedName", ns.prefix("neverExisted")))));
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      runReferenceMigration();
+
+      assertEquals(
+          List.of(second.getId().toString()),
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property));
+      assertNull(Entity.getCollectionDAO().entityExtensionDAO().getExtension(domain.getId(), key));
+      assertNoReferencesTo(first.getId());
+      assertEquals(1, referenceRowsTo(second.getId()).size());
+
+      runReferenceMigration();
+      assertEquals(1, referenceRowsTo(second.getId()).size());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_referenceList_recursiveTeamDeleteRemovesChildReference(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team parent = createTeam(client, ns.prefix("parent"), CreateTeam.TeamType.DEPARTMENT, null);
+      Team child =
+          createTeam(client, ns.prefix("child"), CreateTeam.TeamType.GROUP, parent.getId());
+      Domain domain = createDomain(client, ns, property, List.of(referenceOf(child)));
+
+      client.teams().delete(parent.getId().toString(), HARD_DELETE);
+
+      assertTrue(
+          referenceIds(client.domains().get(domain.getId().toString(), "extension"), property)
+              .isEmpty());
+      assertNoReferencesTo(child.getId());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  /**
+   * A second edit by the same user inside the session window reverts to the pre-session snapshot,
+   * which still names a target hard-deleted in between; the edit must not fail on it.
+   */
+  @Test
+  void test_referenceList_sessionConsolidationAfterHardDeleteSucceeds(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = addTeamReferenceProperty(client, ns, "entityReferenceList");
+    try {
+      Team first = createTeam(client, ns.prefix("first"), CreateTeam.TeamType.GROUP, null);
+      Team second = createTeam(client, ns.prefix("second"), CreateTeam.TeamType.GROUP, null);
+      Team third = createTeam(client, ns.prefix("third"), CreateTeam.TeamType.GROUP, null);
+      Domain domain =
+          createDomain(client, ns, property, List.of(referenceOf(first), referenceOf(second)));
+      Domain described = client.domains().get(domain.getId().toString(), "extension");
+      described.setDescription("Edited once in this session");
+      client.domains().update(domain.getId().toString(), described);
+
+      client.teams().delete(first.getId().toString(), HARD_DELETE);
+
+      Domain current = client.domains().get(domain.getId().toString(), "extension");
+      current.setExtension(Map.of(property, List.of(referenceOf(second), referenceOf(third))));
+      Domain updated = client.domains().update(domain.getId().toString(), current);
+
+      assertEquals(
+          List.of(second.getId().toString(), third.getId().toString()),
+          referenceIds(updated, property));
+      assertNoReferencesTo(first.getId());
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  private static Domain findInDomainList(OpenMetadataClient client, UUID domainId) {
+    ListParams params = new ListParams().setFields("extension").withLimit(100);
+    while (true) {
+      ListResponse<Domain> page = client.domains().list(params);
+      Domain match =
+          page.getData().stream().filter(d -> d.getId().equals(domainId)).findFirst().orElse(null);
+      String after = page.getPaging() != null ? page.getPaging().getAfter() : null;
+      if (match != null || after == null) {
+        return match;
+      }
+      params = new ListParams().setFields("extension").withLimit(100).setAfter(after);
+    }
+  }
+
+  private static String addTeamReferenceProperty(
+      OpenMetadataClient client, TestNamespace ns, String propertyType) throws Exception {
+    String name = ns.prefix("teams");
+    CustomProperty property =
+        new CustomProperty()
+            .withName(name)
+            .withDescription("Teams referenced by the domain")
+            .withPropertyType(getTypeByName(client, propertyType).getEntityReference())
+            .withCustomPropertyConfig(new CustomPropertyConfig().withConfig(List.of(TEAM)));
+    addCustomProperty(client, getTypeByName(client, Entity.DOMAIN).getId(), property);
+    return name;
+  }
+
+  /**
+   * Properties are removed by patching the type. Concurrent tests add and remove properties on
+   * the same type, so the index is guarded by a {@code test} op and the patch retried on a miss.
+   */
+  private static void deleteDomainProperty(OpenMetadataClient client, String property)
+      throws Exception {
+    String typeId = getTypeByName(client, Entity.DOMAIN).getId().toString();
+    for (int attempt = 0; attempt < 5; attempt++) {
+      int index = customPropertyIndex(client, typeId, property);
+      if (index < 0) {
+        return;
+      }
+      JsonNode patch =
+          OBJECT_MAPPER.readTree(
+              String.format(
+                  "[{\"op\":\"test\",\"path\":\"/customProperties/%d/name\",\"value\":\"%s\"},"
+                      + "{\"op\":\"remove\",\"path\":\"/customProperties/%d\"}]",
+                  index, property, index));
+      try {
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PATCH, "/v1/metadata/types/" + typeId, patch, Type.class);
+        return;
+      } catch (OpenMetadataException e) {
+        LOG.debug("Custom property index moved under the patch, retrying: {}", e.getMessage());
+      }
+    }
+  }
+
+  private static int customPropertyIndex(OpenMetadataClient client, String typeId, String property)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/metadata/types/" + typeId + "?fields=customProperties", null);
+    JsonNode properties = OBJECT_MAPPER.readTree(response).path("customProperties");
+    for (int index = 0; index < properties.size(); index++) {
+      if (property.equals(properties.get(index).path("name").asText())) {
+        return index;
+      }
+    }
+    return -1;
+  }
+
+  private static Team createTeam(
+      OpenMetadataClient client, String name, CreateTeam.TeamType teamType, UUID parent) {
+    CreateTeam create = new CreateTeam().withName(name).withTeamType(teamType);
+    if (parent != null) {
+      create.withParents(List.of(parent));
+    }
+    return client.teams().create(create);
+  }
+
+  private static Domain createDomain(
+      OpenMetadataClient client, TestNamespace ns, String property, Object value) {
+    CreateDomain create =
+        new CreateDomain()
+            .withName(ns.prefix("domain"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withDescription("Domain with team references")
+            .withExtension(Map.of(property, value));
+    return client.domains().create(create);
+  }
+
+  private static Map<String, Object> referenceOf(EntityInterface entity) {
+    return Map.of(
+        "id",
+        entity.getId().toString(),
+        "type",
+        TEAM,
+        "name",
+        entity.getName(),
+        "fullyQualifiedName",
+        entity.getFullyQualifiedName());
+  }
+
+  private static List<String> referenceIds(Domain domain, String property) {
+    if (domain.getExtension() == null) {
+      return List.of();
+    }
+    JsonNode value = JsonUtils.valueToTree(domain.getExtension()).get(property);
+    if (value == null || value.isNull()) {
+      return List.of();
+    }
+    List<String> ids = new ArrayList<>();
+    if (value.isArray()) {
+      value.forEach(ref -> ids.add(ref.get("id").asText()));
+    } else {
+      ids.add(value.get("id").asText());
+    }
+    return ids;
+  }
+
+  private static void assertNoReferencesTo(UUID target) {
+    assertTrue(referenceRowsTo(target).isEmpty(), "no stored reference points at " + target);
+  }
+
+  private static List<ReferenceRow> referenceRowsTo(UUID target) {
+    return Entity.getCollectionDAO()
+        .customPropertyReferenceDAO()
+        .findByTargets(List.of(target.toString()));
+  }
+
+  private static Map<String, Object> nameOnly(EntityInterface entity) {
+    return Map.of("type", TEAM, "fullyQualifiedName", entity.getFullyQualifiedName());
+  }
+
+  private static String id(EntityInterface entity) {
+    return entity.getId().toString();
+  }
+
+  /** Runs the 2.1.0 data step the way the migrate job does, on its own handle. */
+  static void runReferenceMigration() throws Exception {
+    try (Handle handle = Entity.getJdbi().open()) {
+      ConnectionType type =
+          handle.getConnection().getMetaData().getDatabaseProductName().contains("PostgreSQL")
+              ? ConnectionType.POSTGRES
+              : ConnectionType.MYSQL;
+      CustomPropertyReferenceMigration.migrate(handle, handle.attach(CollectionDAO.class), type);
     }
   }
 }

@@ -14,7 +14,6 @@ Utils module to parse the OpenSearch mapping json schema.
 """
 
 import traceback
-from typing import List, Optional  # noqa: UP035
 
 from metadata.generated.schema.entity.data.searchIndex import DataType, SearchIndexField
 from metadata.utils.logger import ingestion_logger
@@ -32,18 +31,21 @@ def _missing_(cls, value):
 DataType._missing_ = _missing_
 
 
-def parse_os_index_mapping(mapping: dict) -> Optional[List[SearchIndexField]]:  # noqa: UP006, UP045
+def parse_os_index_mapping(mapping: dict | None) -> list[SearchIndexField]:
     """
     Recursively convert the OpenSearch mapping into the required models.
 
     Args:
-        mapping (dict): The OpenSearch mapping dictionary.
+        mapping (dict | None): The OpenSearch mapping dictionary, or None when the index
+            or template declares no mappings.
 
     Returns:
-        Optional[List[SearchIndexField]]: A list of SearchIndexField objects if parsing is successful,
-        otherwise None.
+        list[SearchIndexField]: The parsed fields; empty when there is nothing to parse.
     """
     field_models = []
+    if not mapping:
+        logger.debug("No mappings to parse: the index or template declares none")
+        return field_models
     try:
         properties = mapping.get("properties", {})
         for key, value in properties.items():

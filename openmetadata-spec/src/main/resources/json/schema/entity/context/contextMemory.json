@@ -1,0 +1,454 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/context/contextMemory.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ContextMemory",
+  "$comment": "@om-entity-type",
+  "description": "Reusable context memory for Context Center and AI-assisted retrieval.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.context.ContextMemory",
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.entity.context.ContextMemoryStatus>"],
+  "definitions": {
+    "memoryType": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryType",
+      "description": "High-level type of reusable memory. Learning is something the agent had to discover in a conversation, e.g. a failed query and its fix.",
+      "type": "string",
+      "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq", "Learning"],
+      "javaEnums": [
+        { "name": "PREFERENCE" },
+        { "name": "USE_CASE" },
+        { "name": "NOTE" },
+        { "name": "RUNBOOK" },
+        { "name": "FAQ" },
+        { "name": "LEARNING" }
+      ],
+      "default": "Note"
+    },
+    "memoryScope": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryScope",
+      "description": "Scope where the memory should be applied.",
+      "type": "string",
+      "enum": ["UserGlobal", "EntityScoped"],
+      "javaEnums": [
+        { "name": "USER_GLOBAL" },
+        { "name": "ENTITY_SCOPED" }
+      ],
+      "default": "EntityScoped"
+    },
+    "sourceType": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
+      "description": "How the memory was created. ConversationExtraction is captured automatically at the end of a chat turn; it is ground truth, not regenerable like a file or page pill.",
+      "type": "string",
+      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction", "ConversationExtraction"],
+      "javaEnums": [
+        { "name": "MANUAL" },
+        { "name": "CHAT_PROMOTION" },
+        { "name": "REMEMBER_REQUEST" },
+        { "name": "FILE_EXTRACTION" },
+        { "name": "PAGE_EXTRACTION" },
+        { "name": "CONVERSATION_EXTRACTION" }
+      ],
+      "default": "Manual"
+    },
+    "shareVisibility": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryVisibility",
+      "description": "Visibility level for the memory.",
+      "type": "string",
+      "enum": ["Private", "Entity", "Shared", "Public"],
+      "javaEnums": [
+        { "name": "PRIVATE" },
+        { "name": "ENTITY" },
+        { "name": "SHARED" },
+        { "name": "PUBLIC" }
+      ],
+      "default": "Private"
+    },
+    "shareRole": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryShareRole",
+      "description": "Role granted to a shared principal.",
+      "type": "string",
+      "enum": ["Viewer", "Editor"],
+      "javaEnums": [
+        { "name": "VIEWER" },
+        { "name": "EDITOR" }
+      ],
+      "default": "Viewer"
+    },
+    "sharedPrincipal": {
+      "javaType": "org.openmetadata.schema.entity.context.MemorySharedPrincipal",
+      "description": "A principal granted access to the memory.",
+      "type": "object",
+      "properties": {
+        "principal": {
+          "description": "Principal receiving access. Supported principal types are user, team, and domain.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "role": {
+          "description": "Role granted to the principal.",
+          "$ref": "#/definitions/shareRole"
+        }
+      },
+      "additionalProperties": false
+    },
+    "shareConfig": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryShareConfig",
+      "description": "Visibility and sharing configuration for the memory.",
+      "type": "object",
+      "properties": {
+        "visibility": {
+          "$ref": "#/definitions/shareVisibility"
+        },
+        "sharedWith": {
+          "description": "Explicit principals the memory is shared with.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/sharedPrincipal"
+          },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    },
+    "machineRepresentationStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.MachineRepresentationStatus",
+      "description": "Availability state of the machine-oriented representation.",
+      "type": "string",
+      "enum": ["Pending", "Ready", "Stale", "Failed"],
+      "javaEnums": [
+        { "name": "PENDING" },
+        { "name": "READY" },
+        { "name": "STALE" },
+        { "name": "FAILED" }
+      ],
+      "default": "Pending"
+    },
+    "machineRepresentation": {
+      "javaType": "org.openmetadata.schema.entity.context.ContextMemoryRepresentation",
+      "description": "Optional machine-oriented representation used for prompt packing.",
+      "type": "object",
+      "properties": {
+        "format": {
+          "description": "Representation format identifier.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Version of the representation format.",
+          "type": "string"
+        },
+        "content": {
+          "description": "Compressed or transformed memory content.",
+          "type": "string"
+        },
+        "generatedFromHash": {
+          "description": "Hash of the canonical source content used to generate this representation.",
+          "type": "string"
+        },
+        "generatedAt": {
+          "description": "Timestamp when the representation was generated.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "status": {
+          "$ref": "#/definitions/machineRepresentationStatus"
+        }
+      },
+      "additionalProperties": false
+    },
+    "memoryProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryProcessingStatus",
+      "description": "Lifecycle status of the asynchronous Memory Agent derivation for a memory.",
+      "type": "string",
+      "enum": ["Queued", "Processing", "Processed", "Failed"],
+      "javaEnums": [
+        { "name": "Queued" },
+        { "name": "Processing" },
+        { "name": "Processed" },
+        { "name": "Failed" }
+      ]
+    },
+    "memoryStats": {
+      "type": "object",
+      "description": "Telemetry + hash-gate for the Memory Agent derivation of this memory.",
+      "javaType": "org.openmetadata.schema.entity.context.MemoryStats",
+      "properties": {
+        "status": {
+          "description": "Status of the most recent Memory Agent derivation run on this memory.",
+          "$ref": "#/definitions/memoryProcessingStatus"
+        },
+        "error": {
+          "description": "Error message from the most recent failed Memory Agent derivation run, if any.",
+          "type": "string"
+        },
+        "sourceHash": { "type": "string", "description": "Hash of the ontology-relevant content last processed." },
+        "derivedTermCount": { "type": "integer", "default": 0 },
+        "derivedMetricCount": { "type": "integer", "default": 0 },
+        "reusedCount": { "type": "integer", "default": 0 },
+        "lastRunAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
+      },
+      "additionalProperties": false
+    },
+    "memoryDispute": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryDispute",
+      "description": "An Approved memory whose claim contradicts the Draft memory that records the dispute.",
+      "type": "object",
+      "properties": {
+        "memory": {
+          "description": "The contradicting context memory.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "reason": {
+          "description": "Why the two memories contradict each other.",
+          "type": "string"
+        },
+        "detectedAt": {
+          "description": "When the contradiction was detected. Defaults to the time of the write that records the dispute.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["memory", "reason"],
+      "additionalProperties": false
+    },
+    "memoryOutcomes": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryOutcomes",
+      "description": "What happened to the answers this memory was applied to, recounted from their outcomes by the service that records them. Server telemetry: only the outcome write sets it, metadata writes preserve it, and it never changes the version.",
+      "type": "object",
+      "properties": {
+        "appliedCount": {
+          "description": "Saved answers this memory was applied to.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "positiveCount": {
+          "description": "Answers it was applied to whose voters' latest vote is helpful, one per voter and answer.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "negativeCount": {
+          "description": "Answers it was applied to whose voters' latest vote is unhelpful, one per voter and answer.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "correctedCount": {
+          "description": "Memories captured from answers it was applied to that correct it.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "lastAppliedAt": {
+          "description": "When it was last applied to a saved answer.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "lastCorrectedAt": {
+          "description": "When a captured memory last corrected it.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "countedAt": {
+          "description": "When these counts were computed.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Stable system name for the memory.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "fullyQualifiedName": {
+      "description": "Fully qualified name of the memory.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "displayName": {
+      "description": "Display name of the memory.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Optional markdown description for the memory.",
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "title": {
+      "description": "Short title shown in Context Center.",
+      "type": "string"
+    },
+    "summary": {
+      "description": "Optional summary of the memory.",
+      "type": "string"
+    },
+    "question": {
+      "description": "Canonical question or instruction represented by this memory.",
+      "type": "string"
+    },
+    "answer": {
+      "description": "Canonical answer or retained guidance represented by this memory.",
+      "type": "string"
+    },
+    "memoryType": {
+      "$ref": "#/definitions/memoryType"
+    },
+    "memoryScope": {
+      "$ref": "#/definitions/memoryScope"
+    },
+    "entityStatus": {
+      "description": "Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and Rejected remain supported legacy retirement stages. Superseded and Deprecated memories require supersededBy. When omitted at creation, the memory starts Unprocessed. Only Approved memories ground new memories and agent responses.",
+      "$ref": "./contextMemoryStatus.json"
+    },
+    "statusReason": {
+      "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",
+      "type": "string"
+    },
+    "lastReviewedAt": {
+      "description": "When this memory was last confirmed to hold: set whenever it becomes Approved, and each time Memory Reconciliation revalidates it. An Approved memory with no value predates the field.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastContentUpdatedAt": {
+      "description": "Server-owned timestamp of the latest change to memory content or its subject. Review, lifecycle, pin, tag, share, usage and outcome writes preserve it. Legacy memories fall back to updatedAt until their next write. Used for knowledge recency independently of the audit timestamp.",
+      "$ref": "../../type/basic.json#/definitions/timestamp",
+      "readOnly": true
+    },
+    "supersededBy": {
+      "description": "The memory that replaced this one. Set if and only if entityStatus is Superseded or the legacy Deprecated stage.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "disputes": {
+      "description": "Unresolved conflicts that hold this Draft memory in review, one per contradicting memory. Only a Draft memory records disputes, and leaving Draft clears them; version history keeps them. A memory that enters Draft with disputes opens a memory conflict review task.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/memoryDispute"
+      },
+      "default": null
+    },
+    "pinned": {
+      "description": "Whether this memory is globally pinned in Context Center.",
+      "type": "boolean",
+      "default": false
+    },
+    "shareConfig": {
+      "$ref": "#/definitions/shareConfig"
+    },
+    "primaryEntity": {
+      "description": "Primary entity this memory should attach to for reuse.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "relatedEntities": {
+      "description": "Additional related entities this memory applies to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "sourceType": {
+      "$ref": "#/definitions/sourceType"
+    },
+    "sourceConversation": {
+      "description": "Conversation identifier that produced this memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceHumanMessage": {
+      "description": "Human message identifier used to produce this memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceAssistantMessage": {
+      "description": "Assistant message identifier used to produce this memory.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "sourceFile": {
+      "description": "Deprecated: use sourceEntity. The Context Center file this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "sourceEntity": {
+      "description": "The Context Center entity (file or page) this memory was extracted from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "rootMemory": {
+      "description": "Root memory in an append-style memory thread.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "parentMemory": {
+      "description": "Immediate parent memory in an append-style thread.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "machineRepresentation": {
+      "$ref": "#/definitions/machineRepresentation"
+    },
+    "memoryStats": {
+      "$ref": "#/definitions/memoryStats"
+    },
+    "derivedEntities": {
+      "description": "Derived: glossary terms and metrics created by the Memory Agent from this memory (DERIVED_FROM edges, agent-owned).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "reusedEntities": {
+      "description": "Derived: glossary terms and metrics reused (not created) by the Memory Agent from this memory (RELATED_TO edges).",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "usageCount": {
+      "description": "How many times this memory has been used in AI-assisted retrieval.",
+      "type": "integer",
+      "default": 0
+    },
+    "lastUsedAt": {
+      "description": "Last time the memory was used by AI-assisted retrieval.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "outcomes": {
+      "description": "Outcome counters of the answers this memory was applied to. Only the outcome write sets them; metadata writes keep the stored values.",
+      "$ref": "#/definitions/memoryOutcomes",
+      "readOnly": true
+    },
+    "owners": {
+      "description": "Owners of this memory.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
+    "tags": {
+      "description": "Tags associated with this memory.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/tagLabel.json"
+      },
+      "default": null
+    },
+    "domains": {
+      "description": "Domains this memory belongs to.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
+    "href": {
+      "description": "Link to this resource.",
+      "$ref": "../../type/basic.json#/definitions/href"
+    },
+    "changeDescription": {
+      "description": "Change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "incrementalChangeDescription": {
+      "description": "Incremental change that led to this version.",
+      "$ref": "../../type/entityHistory.json#/definitions/changeDescription"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}

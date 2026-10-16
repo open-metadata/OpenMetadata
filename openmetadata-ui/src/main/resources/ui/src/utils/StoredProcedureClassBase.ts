@@ -28,7 +28,7 @@ import { EntityReference } from '../generated/entity/type';
 import { Tab } from '../generated/system/ui/uiCustomization';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getStoredProcedureDetailsPageTabs,
@@ -228,6 +228,7 @@ class StoredProcedureClassBase {
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.TABLE_CONSTRAINTS:
+      case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;

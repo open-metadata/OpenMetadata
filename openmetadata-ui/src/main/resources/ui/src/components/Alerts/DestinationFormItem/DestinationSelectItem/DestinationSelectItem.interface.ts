@@ -16,8 +16,10 @@ import { Destination } from '../../../../generated/events/eventSubscription';
 export interface DestinationSelectItemProps {
   selectorKey: number;
   id: number;
-  remove: (index: number | number[]) => void;
-  destinationsWithStatus?: Destination[];
+  remove: (index: number) => void;
+  destinationsWithStatus?: Array<Destination | undefined>;
+  isConfigExpanded?: boolean;
   isDestinationStatusLoading: boolean;
   isViewMode?: boolean;
+  onConfigExpandedChange?: (isExpanded: boolean) => void;
 }

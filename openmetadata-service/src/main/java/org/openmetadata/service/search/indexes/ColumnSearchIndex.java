@@ -13,7 +13,9 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.SearchFieldLimits;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -118,8 +120,14 @@ public class ColumnSearchIndex implements SearchIndex {
                 parentTable.getVotes().getUpVotes() - parentTable.getVotes().getDownVotes(), 0);
     doc.put("totalVotes", totalVotes);
 
-    List<TagLabel> columnTags = column.getTags();
-    if (columnTags != null && !columnTags.isEmpty()) {
+    // A column inherits its table's glossary terms. Merged here rather than trusted from the
+    // column,
+    // so every rebuild of the doc -- a reindex, or a column change -- keeps them however the table
+    // was loaded.
+    List<TagLabel> columnTags =
+        EntityRepository.mergeInheritedTags(
+            column.getTags(), Entity.inheritedParentTerms(parentTable.getTags()));
+    if (!columnTags.isEmpty()) {
       ParseTags parseTags = new ParseTags(columnTags);
       doc.put("tags", parseTags.getTags());
       doc.put("tier", parseTags.getTierTag());
@@ -133,6 +141,10 @@ public class ColumnSearchIndex implements SearchIndex {
       if (tableParseTags.getTierTag() != null) {
         doc.put("tier", tableParseTags.getTierTag());
       }
+    }
+
+    if (parentTable.getCertification() != null) {
+      doc.put("certification", parentTable.getCertification());
     }
 
     if (column.getExtension() != null) {
@@ -166,15 +178,39 @@ public class ColumnSearchIndex implements SearchIndex {
 
   public static List<Column> flattenColumns(List<Column> columns) {
     List<Column> result = new ArrayList<>();
-    if (columns == null) {
-      return result;
+    flattenColumns(columns, result, 1, SearchFieldLimits.active());
+    return result;
+  }
+
+  private static void flattenColumns(
+      List<Column> columns, List<Column> result, int depth, SearchFieldLimits limits) {
+    if (columns != null && depth > limits.getDepthLimit()) {
+      SearchIndex.LOG.warn(
+          "Dropping columns beyond mapping depth limit {} during column index flatten",
+          limits.getDepthLimit());
+    } else if (columns != null) {
+      addFlattenedColumns(columns, result, depth, limits);
     }
-    for (Column col : columns) {
-      result.add(col);
-      if (col.getChildren() != null && !col.getChildren().isEmpty()) {
-        result.addAll(flattenColumns(col.getChildren()));
+  }
+
+  private static void addFlattenedColumns(
+      List<Column> columns, List<Column> result, int depth, SearchFieldLimits limits) {
+    int index = 0;
+    boolean capReached = false;
+    while (index < columns.size() && !capReached) {
+      if (result.size() >= limits.getMaxColumns()) {
+        SearchIndex.LOG.warn(
+            "Reached max indexed columns {}; dropping remaining during column index flatten",
+            limits.getMaxColumns());
+        capReached = true;
+      } else {
+        Column col = columns.get(index);
+        result.add(col);
+        if (col.getChildren() != null && !col.getChildren().isEmpty()) {
+          flattenColumns(col.getChildren(), result, depth + 1, limits);
+        }
+        index++;
       }
     }
-    return result;
   }
 }

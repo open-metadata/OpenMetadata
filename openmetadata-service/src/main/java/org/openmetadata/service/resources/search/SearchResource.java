@@ -20,12 +20,15 @@ import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectCont
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -44,6 +47,7 @@ import jakarta.ws.rs.core.StreamingOutput;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,11 +66,16 @@ import org.openmetadata.schema.search.PreviewSearchRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.OrphanedIndexCleaner;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CachedSearchLayer;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -79,8 +88,13 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.AsyncService.DatabaseOperation;
+import org.openmetadata.service.util.CSVExportResponse;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
 import org.quartz.SchedulerException;
@@ -93,6 +107,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Collection(name = "search")
 @LatencyPhase
 public class SearchResource {
+  private static final String MUST_BE_NON_NEGATIVE = "must be greater than or equal to 0";
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
 
@@ -152,17 +167,21 @@ public class SearchResource {
           Boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
               description =
-                  "When paginating, specify the search_after values. Use it ass search_after=<val1>,<val2>,...")
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2. Each value carried as its own "
+                      + "parameter so values containing ',' (e.g. a glossary term FQN) are safe.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(
               description =
                   "Sort the search results by field, available fields to "
@@ -254,7 +273,84 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
-    return searchRepository.search(request, subjectContext);
+
+    return cachedSearch(request, subjectContext);
+  }
+
+  private Response cachedSearch(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.QUERY);
+  }
+
+  private Response cachedSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
+    // Auth-aware response cache (Item 1). Bots bypass — they do bulk indexing reads with
+    // cardinalities that would pollute the user-keyed cache. Uses the layer's loadOrCompute
+    // to get single-flight semantics: 100 concurrent users hitting the same uncached query
+    // collapse to one ES call instead of 100 (P2.3).
+    org.openmetadata.service.cache.CachedSearchLayer searchCache =
+        org.openmetadata.service.cache.CacheBundle.getCachedSearchLayer();
+    String principal = subjectContext.user() != null ? subjectContext.user().getName() : null;
+    boolean cacheable = searchCache != null && searchCache.enabled() && !subjectContext.isBot();
+    if (!cacheable) {
+      return executeSearch(request, subjectContext, operation);
+    }
+
+    // Buffer the upstream response body once so the cache stores exactly what we return. The
+    // single-flight wrapper holds the stripe lock around the supplier; we keep the supplier
+    // tight to minimize lock-hold time.
+    //
+    // The supplier captures the Response object into `capturedResponse[0]` so a non-cacheable
+    // outcome (non-200 or non-String body) can be returned directly without a SECOND call to
+    // searchRepository.search() — the previous implementation re-called search() on the error
+    // path, doubling backend load for every error / non-200 response.
+    final Response[] capturedResponse = new Response[1];
+    final java.io.IOException[] thrown = new java.io.IOException[1];
+    String body =
+        searchCache.loadOrCompute(
+            request,
+            principal,
+            operation,
+            () -> {
+              try {
+                Response upstream = executeSearch(request, subjectContext, operation);
+                capturedResponse[0] = upstream;
+                if (upstream.getStatus() != 200) {
+                  return null; // don't cache non-200; loadOrCompute treats null as "no cache write"
+                }
+                Object entity = upstream.getEntity();
+                return entity instanceof String s ? s : null;
+              } catch (java.io.IOException ioe) {
+                thrown[0] = ioe;
+                return null;
+              }
+            });
+    if (thrown[0] != null) {
+      throw thrown[0];
+    }
+    if (body != null) {
+      // Cache hit OR fresh write succeeded — return the cached/just-computed body.
+      return Response.ok(body, MediaType.APPLICATION_JSON_TYPE).build();
+    }
+    if (capturedResponse[0] != null) {
+      // The supplier ran for this caller and produced a non-cacheable response (non-200 or
+      // non-String entity). Return it directly — no second backend call.
+      return capturedResponse[0];
+    }
+    // Edge case: single-flight wait — another caller ran the supplier for our key and its
+    // response was non-cacheable, so the cache stayed empty and we received body=null. Fall
+    // through to a live call (this is rare and only affects the second+ caller of a query
+    // that's currently returning errors).
+    return executeSearch(request, subjectContext, operation);
+  }
+
+  private Response executeSearch(
+      SearchRequest request, SubjectContext subjectContext, CachedSearchLayer.Operation operation)
+      throws IOException {
+    return operation == CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS
+        ? searchRepository.getEntityTypeCounts(request, request.getIndex(), subjectContext)
+        : searchRepository.search(request, subjectContext);
   }
 
   @GET
@@ -359,24 +455,77 @@ public class SearchResource {
       String postFilter,
       String sortFieldParam,
       String sortOrder) {
-    String resolvedQuery = nullOrEmpty(query) ? "*" : query;
+    return SearchResultCsvExporter.buildExportSearchRequest(
+        subjectContext, query, index, deleted, queryFilter, postFilter, sortFieldParam, sortOrder);
+  }
 
-    List<EntityReference> domains = new ArrayList<>();
-    if (!subjectContext.isAdmin()) {
-      domains = subjectContext.getUserDomains();
-    }
-
-    return new SearchRequest()
-        .withQuery(resolvedQuery)
-        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
-        .withQueryFilter(queryFilter)
-        .withPostFilter(postFilter)
-        .withDeleted(deleted)
-        .withSortFieldParam(sortFieldParam)
-        .withSortOrder(sortOrder)
-        .withDomains(domains)
-        .withApplyDomainFilter(
-            !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+  @GET
+  @Path("/export/async")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "exportSearchResultsAsync",
+      summary = "Export search results as a background CSV job",
+      description =
+          "Queues a background job that exports the matching search results to CSV. "
+              + "Track it via /v1/csvAsyncJobs and download the file from "
+              + "/v1/csvAsyncJobs/{jobId}/result once completed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "202",
+            description = "Export job accepted",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportResponse.class)))
+      })
+  public Response exportSearchResultsAsync(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search Query Text") @DefaultValue("*") @QueryParam("q")
+          String query,
+      @Parameter(description = "ElasticSearch Index name, defaults to table")
+          @DefaultValue("table")
+          @QueryParam("index")
+          String index,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("deleted")
+          Boolean deleted,
+      @Parameter(description = "Elasticsearch query appended to the query string generator")
+          @QueryParam("query_filter")
+          String queryFilter,
+      @Parameter(description = "Elasticsearch query that will be used as a post_filter")
+          @QueryParam("post_filter")
+          String postFilter,
+      @Parameter(description = "Sort the search results by field")
+          @DefaultValue("_score")
+          @QueryParam("sort_field")
+          String sortFieldParam,
+      @Parameter(description = "Sort order asc or desc, defaults to desc")
+          @DefaultValue("desc")
+          @QueryParam("sort_order")
+          String sortOrder,
+      @Parameter(description = "Maximum number of rows to export") @QueryParam("size") Integer size,
+      @Parameter(description = "Starting offset for the export")
+          @DefaultValue("0")
+          @QueryParam("from")
+          int from) {
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    CsvAsyncJobArgs.SearchExportArgs searchExport =
+        new CsvAsyncJobArgs.SearchExportArgs()
+            .setQuery(query)
+            .setIndex(index)
+            .setDeleted(deleted)
+            .setQueryFilter(queryFilter)
+            .setPostFilter(postFilter)
+            .setSortField(sortFieldParam)
+            .setSortOrder(sortOrder)
+            .setSize(size)
+            .setFrom(from);
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createSearchExportJob(index, subjectContext.user().getName(), searchExport);
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   @POST
@@ -402,6 +551,8 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    requireNonNegative("from", previewRequest.getFrom());
+    requireNonNegative("size", previewRequest.getSize());
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
@@ -413,6 +564,7 @@ public class SearchResource {
             .withFrom(previewRequest.getFrom())
             .withQueryFilter(previewRequest.getQueryFilter())
             .withPostFilter(previewRequest.getPostFilter())
+            .withDeleted(previewRequest.getDeleted())
             .withFetchSource(previewRequest.getFetchSource())
             .withTrackTotalHits(previewRequest.getTrackTotalHits())
             .withSortFieldParam(previewRequest.getSortField())
@@ -422,6 +574,12 @@ public class SearchResource {
 
     return searchRepository.previewSearch(
         searchRequest, subjectContext, previewRequest.getSearchSettings());
+  }
+
+  private static void requireNonNegative(String fieldName, Integer value) {
+    if (value != null && value < 0) {
+      throw new BadRequestException(String.format("%s %s", fieldName, MUST_BE_NON_NEGATIVE));
+    }
   }
 
   @GET
@@ -455,15 +613,20 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
-      @Parameter(description = "When paginating, specify the search_after values")
+      @Parameter(
+              description =
+                  "Pagination cursor. Repeat once per sort value: "
+                      + "?search_after=v1&search_after=v2.")
           @QueryParam("search_after")
-          String searchAfter,
+          List<String> searchAfter,
       @Parameter(description = "Sort the search results by field")
           @DefaultValue("_score")
           @QueryParam("sort_field")
@@ -555,6 +718,8 @@ public class SearchResource {
       @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
           String indexName)
       throws IOException {
+    // A raw document from any index, read by id with no policy filter; for admins and bots only.
+    authorizer.authorizeAdminOrBot(securityContext);
     return searchRepository.getDocument(indexName, id);
   }
 
@@ -587,15 +752,18 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchRepository.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext));
   }
 
   @GET
@@ -618,7 +786,7 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchRepository.searchBySourceUrl(sourceUrl);
+    return searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext));
   }
 
   @GET
@@ -686,7 +854,8 @@ public class SearchResource {
             .withDeleted(deleted)
             .withQueryText(queryText);
 
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return searchRepository.aggregate(aggregationRequest, subjectContext);
   }
 
   @POST
@@ -709,7 +878,42 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return searchRepository.aggregate(aggregationRequest, subjectContext);
+  }
+
+  @GET
+  @Path("/entityTypes")
+  @Operation(
+      operationId = "getIndexedEntityTypes",
+      summary = "List the entity types that have a search index",
+      description =
+          "Entity types registered in the index mapping for this deployment, sorted. Includes "
+              + "distribution-specific indexes (e.g. Collate-only entity types) because the "
+              + "registry is merged from the classpath at startup. This is the same set that "
+              + "reindexing expands \"all\" into, so clients can offer an entity picker without "
+              + "hardcoding a list that goes stale.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Sorted list of entity types",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "No view permission on Application")
+      })
+  public List<String> getIndexedEntityTypes(@Context SecurityContext securityContext) {
+    // Gate on Application view, not admin: SettingsRouter renders the app details page for
+    // `isAdminUser || hasViewPermissions(APPLICATION)` and that page fetches the config schema on
+    // every mount, so an admin-only check here would 403 a legitimate viewer on a request they
+    // never triggered.
+    OperationContext operationContext =
+        new OperationContext(Entity.APPLICATION, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(
+        securityContext, operationContext, new ResourceContext<>(Entity.APPLICATION));
+
+    return List.copyOf(searchRepository.getIndexedEntityTypes());
   }
 
   @GET
@@ -746,7 +950,11 @@ public class SearchResource {
           String queryFilter,
       @Parameter(description = "Elasticsearch query that will be used as a post_filter")
           @QueryParam("post_filter")
-          String postFilter)
+          String postFilter,
+      @Parameter(description = "Include the global top hit as an Explore tab-selection hint")
+          @DefaultValue("false")
+          @QueryParam("include_top_hit")
+          boolean includeTopHit)
       throws IOException {
 
     if (nullOrEmpty(query)) {
@@ -762,16 +970,20 @@ public class SearchResource {
     SearchRequest request =
         new SearchRequest()
             .withQuery(query)
-            .withSize(0)
+            .withSize(includeTopHit ? 1 : 0)
             .withFrom(0)
             .withDeleted(deleted)
             .withFetchSource(false)
             .withTrackTotalHits(true)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
-            .withDomains(domains);
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withIncludeAggregations(false);
 
-    return searchRepository.getEntityTypeCounts(request, index);
+    request.setIndex(index);
+    return cachedSearch(request, subjectContext, CachedSearchLayer.Operation.ENTITY_TYPE_COUNTS);
   }
 
   @POST
@@ -796,12 +1008,6 @@ public class SearchResource {
   public Response reindexEntities(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(
-              description =
-                  "Recreate flag: if true, remove existing entity from ES first then add updated one")
-          @DefaultValue("false")
-          @QueryParam("recreate")
-          boolean recreate,
       @Parameter(description = "Job timeout in minutes (default: 30, max: 60)")
           @DefaultValue("5")
           @QueryParam("timeoutMinutes")
@@ -837,8 +1043,9 @@ public class SearchResource {
 
     Future<?> future =
         AsyncService.getInstance()
-            .getExecutorService()
-            .submit(
+            .submitCancellableDatabaseTask(
+                DatabaseOperation.SEARCH_OPERATION,
+                "entities:" + entities.size(),
                 () -> {
                   int totalEntities = entities.size();
                   int successCount = 0;
@@ -848,17 +1055,14 @@ public class SearchResource {
                   long startTime = System.currentTimeMillis();
 
                   LOG.info(
-                      "Starting reindex job for {} entities. Recreate mode: {}, Timeout: {} minutes",
+                      "Starting reindex job for {} entities. Timeout: {} minutes",
                       totalEntities,
-                      recreate,
                       timeoutMinutes);
 
                   for (EntityReference ref : entities) {
                     try {
-                      EntityInterface entity = Entity.getEntity(ref, "*", Include.ALL);
-
-                      String entityId = entity.getId().toString();
-                      String entityType = entity.getEntityReference().getType();
+                      String entityId = ref.getId().toString();
+                      String entityType = ref.getType();
                       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
 
                       if (indexMapping == null) {
@@ -870,6 +1074,10 @@ public class SearchResource {
                         skippedCount++;
                         continue;
                       }
+
+                      String fields =
+                          String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
+                      EntityInterface<?> entity = Entity.getEntity(ref, fields, Include.ALL);
 
                       String indexName =
                           indexMapping.getIndexName(searchRepository.getClusterAlias());
@@ -888,7 +1096,7 @@ public class SearchResource {
                             docSizeBytes,
                             maxContentLength);
 
-                        EntityInterface reducedEntity =
+                        EntityInterface<?> reducedEntity =
                             Entity.getEntity(
                                 ref,
                                 "id,name,fullyQualifiedName,displayName,description,owners,tags,deleted",
@@ -919,27 +1127,18 @@ public class SearchResource {
                             reducedSize);
                       }
 
-                      if (recreate) {
-                        searchRepository.getSearchClient().deleteEntity(indexName, entityId);
-                        LOG.debug(
-                            "Deleted entity {} ({}) from index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                        searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
-                        LOG.debug(
-                            "Recreated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      } else {
-                        searchRepository.updateEntityIndex(entity);
-                        LOG.debug(
-                            "Updated entity {} ({}) in index {}",
-                            ref.getFullyQualifiedName(),
-                            entityId,
-                            indexName);
-                      }
+                      searchRepository.getSearchClient().deleteEntity(indexName, entityId);
+                      LOG.debug(
+                          "Deleted entity {} ({}) from index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
+                      searchRepository.getSearchClient().createEntity(indexName, entityId, doc);
+                      LOG.debug(
+                          "Recreated entity {} ({}) in index {}",
+                          ref.getFullyQualifiedName(),
+                          entityId,
+                          indexName);
 
                       successCount++;
 
@@ -981,6 +1180,7 @@ public class SearchResource {
                   if (!failures.isEmpty()) {
                     LOG.warn("Failed entities: {}", String.join("; ", failures));
                   }
+                  return null;
                 });
 
     AsyncService.getInstance()
@@ -1050,10 +1250,10 @@ public class SearchResource {
 
       SearchStatsResponse$IndexStats indexStat = new SearchStatsResponse$IndexStats();
       indexStat.setName(stats.name());
-      indexStat.setDocuments((int) stats.documents());
+      indexStat.setDocuments(stats.documents());
       indexStat.setPrimaryShards(stats.primaryShards());
       indexStat.setReplicaShards(stats.replicaShards());
-      indexStat.setSizeInBytes((int) stats.sizeInBytes());
+      indexStat.setSizeInBytes(stats.sizeInBytes());
       indexStat.setSizeFormatted(formatBytes(stats.sizeInBytes()));
       indexStat.setHealth(stats.health());
       indexStat.setAliases(new java.util.ArrayList<>(stats.aliases()));
@@ -1076,7 +1276,7 @@ public class SearchResource {
                           .findFirst()
                           .map(IndexStats::sizeInBytes)
                           .orElse(0L);
-                  orphan.setSizeInBytes((int) size);
+                  orphan.setSizeInBytes(size);
                   orphan.setSizeFormatted(formatBytes(size));
                   return orphan;
                 })
@@ -1085,8 +1285,8 @@ public class SearchResource {
     SearchStatsResponse response = new SearchStatsResponse();
     response.setClusterHealth(clusterHealth);
     response.setTotalIndexes(allIndexStats.size());
-    response.setTotalDocuments((int) totalDocs);
-    response.setTotalSizeInBytes((int) totalSize);
+    response.setTotalDocuments(totalDocs);
+    response.setTotalSizeInBytes(totalSize);
     response.setTotalSizeFormatted(formatBytes(totalSize));
     response.setTotalPrimaryShards(totalPrimaryShards);
     response.setTotalReplicaShards(totalReplicaShards);
@@ -1095,7 +1295,8 @@ public class SearchResource {
     response.setIsSearchIndexingRunning(isSearchIndexingRunning());
 
     Map<String, org.openmetadata.search.IndexMapping> indexMap =
-        searchRepository.getEntityIndexMap();
+        new HashMap<>(searchRepository.getEntityIndexMap());
+    indexMap.keySet().removeIf(searchRepository::isIndexDisabled);
     List<String> missingIndexes = new java.util.ArrayList<>();
     for (Map.Entry<String, org.openmetadata.search.IndexMapping> entry : indexMap.entrySet()) {
       if (!searchRepository.indexExists(entry.getValue())) {

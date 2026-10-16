@@ -38,8 +38,8 @@ jest.mock('../../common/CustomPropertyTable/CustomPropertyTable', () => ({
     .mockImplementation(() => <div>CustomPropertyTable</div>),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () =>
-  jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
+jest.mock('../../common/EntityDescription/Description', () =>
+  jest.fn().mockImplementation(() => <div>Description</div>)
 );
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
@@ -86,7 +86,7 @@ describe('TopicVersion tests', () => {
     });
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
-    const description = screen.getByText('DescriptionV1');
+    const description = screen.getByText('Description');
     const schemaTabLabel = screen.getByText('label.schema');
     const customPropertyTabLabel = screen.getByText(
       'label.custom-property-plural'

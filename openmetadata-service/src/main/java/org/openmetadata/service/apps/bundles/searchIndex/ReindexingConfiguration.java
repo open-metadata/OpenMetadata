@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.apps.bundles.searchIndex.promotion.RatioPromotionPolicy;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.slf4j.Logger;
@@ -25,9 +26,7 @@ public record ReindexingConfiguration(
     int fieldFetchThreads,
     int docBuildThreads,
     long statsIntervalMs,
-    boolean recreateIndex,
     boolean autoTune,
-    boolean useDistributedIndexing,
     boolean force,
     int maxRetries,
     int initialBackoff,
@@ -37,7 +36,8 @@ public record ReindexingConfiguration(
     String slackBotToken,
     String slackChannel,
     int timeSeriesMaxDays,
-    Map<String, Integer> timeSeriesEntityDays) {
+    Map<String, Integer> timeSeriesEntityDays,
+    double minSuccessRatio) {
 
   private static final Logger LOG = LoggerFactory.getLogger(ReindexingConfiguration.class);
 
@@ -55,6 +55,8 @@ public record ReindexingConfiguration(
   private static final int DEFAULT_INITIAL_BACKOFF = 1000;
   private static final int DEFAULT_MAX_BACKOFF = 10000;
   private static final int DEFAULT_TIME_SERIES_MAX_DAYS = 0;
+  private static final double DEFAULT_MIN_SUCCESS_RATIO =
+      RatioPromotionPolicy.DEFAULT_MIN_SUCCESS_RATIO;
 
   public static ReindexingConfiguration applyAutoTuning(
       ReindexingConfiguration config, SearchRepository searchRepository, long totalEntities) {
@@ -77,9 +79,7 @@ public record ReindexingConfiguration(
         .fieldFetchThreads(metrics.getRecommendedFieldFetchThreads())
         .docBuildThreads(metrics.getRecommendedDocBuildThreads())
         .statsIntervalMs(metrics.getRecommendedStatsIntervalMs())
-        .recreateIndex(config.recreateIndex())
         .autoTune(true)
-        .useDistributedIndexing(config.useDistributedIndexing())
         .force(config.force())
         .maxRetries(config.maxRetries())
         .initialBackoff(config.initialBackoff())
@@ -90,6 +90,7 @@ public record ReindexingConfiguration(
         .slackChannel(config.slackChannel())
         .timeSeriesMaxDays(config.timeSeriesMaxDays())
         .timeSeriesEntityDays(config.timeSeriesEntityDays())
+        .minSuccessRatio(config.minSuccessRatio())
         .build();
   }
 
@@ -128,9 +129,7 @@ public record ReindexingConfiguration(
         DEFAULT_FIELD_FETCH_THREADS,
         DEFAULT_DOC_BUILD_THREADS,
         DEFAULT_STATS_INTERVAL_MS,
-        Boolean.TRUE.equals(jobData.getRecreateIndex()),
         Boolean.TRUE.equals(jobData.getAutoTune()),
-        Boolean.TRUE.equals(jobData.getUseDistributedIndexing()),
         Boolean.TRUE.equals(jobData.getForce()),
         jobData.getMaxRetries() != null ? jobData.getMaxRetries() : DEFAULT_MAX_RETRIES,
         jobData.getInitialBackoff() != null ? jobData.getInitialBackoff() : DEFAULT_INITIAL_BACKOFF,
@@ -144,7 +143,10 @@ public record ReindexingConfiguration(
             : DEFAULT_TIME_SERIES_MAX_DAYS,
         jobData.getTimeSeriesEntityDays() != null
             ? jobData.getTimeSeriesEntityDays()
-            : Collections.emptyMap());
+            : Collections.emptyMap(),
+        jobData.getMinSuccessRatio() != null
+            ? jobData.getMinSuccessRatio()
+            : DEFAULT_MIN_SUCCESS_RATIO);
   }
 
   /**
@@ -187,7 +189,9 @@ public record ReindexingConfiguration(
 
   /** Check if this is a subset (smart) reindexing */
   public boolean isSmartReindexing() {
-    return entities != null && !entities.contains("all") && entities.size() < 20 && recreateIndex;
+    return entities != null
+        && !entities.contains(SearchIndexEntityTypes.ALL)
+        && entities.size() < 20;
   }
 
   /** Creates a builder for more flexible configuration creation */
@@ -206,9 +210,7 @@ public record ReindexingConfiguration(
     private int fieldFetchThreads = DEFAULT_FIELD_FETCH_THREADS;
     private int docBuildThreads = DEFAULT_DOC_BUILD_THREADS;
     private long statsIntervalMs = DEFAULT_STATS_INTERVAL_MS;
-    private boolean recreateIndex = false;
     private boolean autoTune = false;
-    private boolean useDistributedIndexing = false;
     private boolean force = false;
     private int maxRetries = DEFAULT_MAX_RETRIES;
     private int initialBackoff = DEFAULT_INITIAL_BACKOFF;
@@ -219,6 +221,7 @@ public record ReindexingConfiguration(
     private String slackChannel;
     private int timeSeriesMaxDays = DEFAULT_TIME_SERIES_MAX_DAYS;
     private Map<String, Integer> timeSeriesEntityDays = Collections.emptyMap();
+    private double minSuccessRatio = DEFAULT_MIN_SUCCESS_RATIO;
 
     public Builder entities(Set<String> entities) {
       this.entities = entities;
@@ -270,18 +273,8 @@ public record ReindexingConfiguration(
       return this;
     }
 
-    public Builder recreateIndex(boolean recreateIndex) {
-      this.recreateIndex = recreateIndex;
-      return this;
-    }
-
     public Builder autoTune(boolean autoTune) {
       this.autoTune = autoTune;
-      return this;
-    }
-
-    public Builder useDistributedIndexing(boolean useDistributedIndexing) {
-      this.useDistributedIndexing = useDistributedIndexing;
       return this;
     }
 
@@ -335,6 +328,11 @@ public record ReindexingConfiguration(
       return this;
     }
 
+    public Builder minSuccessRatio(double minSuccessRatio) {
+      this.minSuccessRatio = minSuccessRatio;
+      return this;
+    }
+
     public ReindexingConfiguration build() {
       return new ReindexingConfiguration(
           entities,
@@ -347,9 +345,7 @@ public record ReindexingConfiguration(
           fieldFetchThreads,
           docBuildThreads,
           statsIntervalMs,
-          recreateIndex,
           autoTune,
-          useDistributedIndexing,
           force,
           maxRetries,
           initialBackoff,
@@ -359,7 +355,8 @@ public record ReindexingConfiguration(
           slackBotToken,
           slackChannel,
           timeSeriesMaxDays,
-          timeSeriesEntityDays);
+          timeSeriesEntityDays,
+          minSuccessRatio);
     }
   }
 }

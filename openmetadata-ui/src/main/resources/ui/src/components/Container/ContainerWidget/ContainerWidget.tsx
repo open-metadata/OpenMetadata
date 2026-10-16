@@ -11,12 +11,20 @@
  *  limitations under the License.
  */
 import { isEmpty } from 'lodash';
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { Container } from '../../../generated/entity/data/container';
 import { useFqn } from '../../../hooks/useFqn';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import ContainerChildren from '../ContainerChildren/ContainerChildren';
-import ContainerDataModel from '../ContainerDataModel/ContainerDataModel';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+
+const ContainerChildren = withSuspenseFallback(
+  lazy(() => import('../ContainerChildren/ContainerChildren'))
+);
+
+const ContainerDataModel = withSuspenseFallback(
+  lazy(() => import('../ContainerDataModel/ContainerDataModel'))
+);
 
 export const ContainerWidget = () => {
   const {
@@ -26,24 +34,16 @@ export const ContainerWidget = () => {
   } = useGenericContext<Container>();
   const { fqn: decodedContainerName } = useFqn();
 
-  const {
-    editDescriptionPermission,
-    editGlossaryTermsPermission,
-    editTagsPermission,
-    deleted,
-  } = useMemo(() => {
-    const isDeleted = containerData?.deleted;
+  const deleted = containerData?.deleted;
 
-    return {
-      editDescriptionPermission:
-        (permissions.EditAll || permissions.EditDescription) && !isDeleted,
-      editGlossaryTermsPermission:
-        (permissions.EditAll || permissions.EditGlossaryTerms) && !isDeleted,
-      editTagsPermission:
-        (permissions.EditAll || permissions.EditTags) && !isDeleted,
-      deleted: isDeleted,
-    };
-  }, [permissions, containerData]);
+  const {
+    canEditDescription: editDescriptionPermission,
+    canEditGlossaryTerms: editGlossaryTermsPermission,
+    canEditTags: editTagsPermission,
+  } = useMemo(
+    () => getDerivedPermissionFlags(permissions, Boolean(deleted)),
+    [permissions, deleted]
+  );
 
   const isDataModelEmpty = useMemo(
     () => isEmpty(containerData?.dataModel),

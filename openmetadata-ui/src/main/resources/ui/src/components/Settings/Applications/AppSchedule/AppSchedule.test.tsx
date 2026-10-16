@@ -14,15 +14,17 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import {
   AppType,
+  ScheduleTimeline,
   ScheduleType,
 } from '../../../../generated/entity/applications/app';
 import { EntityReference } from '../../../../generated/tests/testSuite';
 import { mockApplicationData } from '../../../../mocks/rests/applicationAPI.mock';
-import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import { getScheduleOptionsFromSchedules } from '../../../../utils/CronExpressionUtils';
 import AppSchedule from './AppSchedule.component';
 
 const mockGetIngestionPipelineByFqn = jest.fn().mockResolvedValue({
@@ -39,11 +41,10 @@ jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
 }));
 
 jest.mock('../../Services/AddIngestion/Steps/ScheduleInterval', () =>
-  jest.fn().mockImplementation(({ onDeploy, onBack }) => (
+  jest.fn().mockImplementation(({ onChange }) => (
     <div>
       ScheduleInterval
-      <button onClick={onDeploy}>Submit ScheduleInterval</button>
-      <button onClick={onBack}>Cancel ScheduleInterval</button>
+      <button onClick={() => onChange('0 12 * * *')}>Change schedule</button>
     </div>
   ))
 );
@@ -55,16 +56,6 @@ jest.mock('../../../common/Loader/Loader', () => {
 jest.mock('../AppRunsHistory/AppRunsHistory.component', () =>
   jest.fn().mockImplementation(() => <div>AppRunsHistory</div>)
 );
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Modal: jest.fn().mockImplementation(({ open, children }) => (
-    <div>
-      {open ? 'Modal is open' : 'Modal is close'}
-      {children}
-    </div>
-  )),
-}));
 
 const mockProps1 = {
   appData: {
@@ -115,27 +106,44 @@ jest.mock('../../../../context/LimitsProvider/useLimitsStore', () => ({
   }),
 }));
 
-jest.mock('../../../../utils/SchedularUtils', () => ({
+jest.mock('../../../../utils/CronExpressionUtils', () => ({
   getCronDefaultValue: jest.fn().mockReturnValue('0 0 * * *'),
   getScheduleOptionsFromSchedules: jest.fn().mockReturnValue([]),
 }));
 
 describe('AppSchedule component', () => {
-  it('should render necessary elements for mockProps1', () => {
+  it('should render necessary elements for mockProps1', async () => {
     render(<AppSchedule {...mockProps1} />);
 
     expect(screen.getByText('label.schedule-type')).toBeInTheDocument();
-    expect(screen.getByText('label.schedule-interval')).toBeInTheDocument();
-    expect(screen.getByTestId('cron-string')).toBeInTheDocument();
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    // label.schedule-interval is gated on cronString being non-empty, which
+    // now resolves async after cronstrue lazy-loads (PR-7 of bundle-size
+    // follow-up). findBy* awaits the async render.
+    expect(
+      await screen.findByText('label.schedule-interval')
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId('cron-string')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
-    expect(screen.getByText('Modal is open')).toBeInTheDocument();
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.run-now' }));
 
     expect(mockOnDemandTrigger).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
+
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
   });
 
   it('should render necessary elements based on mockProps2', async () => {
@@ -160,26 +168,27 @@ describe('AppSchedule component', () => {
     expect(mockOnDeployTrigger).toHaveBeenCalled();
   });
 
-  it('check methods in AppSchedule component', () => {
+  it('check methods in AppSchedule component', async () => {
     render(<AppSchedule {...mockProps1} />);
 
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('update-schedule-modal')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.edit' }));
 
-    expect(screen.getByText('Modal is open')).toBeInTheDocument();
+    expect(screen.getByTestId('update-schedule-modal')).toBeInTheDocument();
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Submit ScheduleInterval' })
+    fireEvent.click(screen.getByRole('button', { name: 'Change schedule' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    expect(mockOnSave).toHaveBeenCalledWith('0 12 * * *');
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('update-schedule-modal')
+      ).not.toBeInTheDocument()
     );
-
-    expect(mockOnSave).toHaveBeenCalled();
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Cancel ScheduleInterval' })
-    );
-
-    expect(screen.getByText('Modal is close')).toBeInTheDocument();
   });
 
   it('should show application disable message if appData.deleted is true', () => {
@@ -229,5 +238,40 @@ describe('AppSchedule component', () => {
       'daily',
       'weekly',
     ]);
+  });
+
+  it('hides actions the user has no permission for', () => {
+    render(
+      <AppSchedule
+        {...mockProps1}
+        canDeploy={false}
+        canEdit={false}
+        canTrigger={false}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'label.edit' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'label.run-now' })).toBeNull();
+  });
+
+  it('does not refetch the pipeline when only the schedule changes', async () => {
+    mockGetIngestionPipelineByFqn.mockClear();
+    const { rerender } = render(<AppSchedule {...mockProps2} />);
+    await waitForElementToBeRemoved(() => screen.getByText('Loader'));
+
+    expect(mockGetIngestionPipelineByFqn).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <AppSchedule
+        {...mockProps2}
+        appData={{
+          ...mockProps2.appData,
+          appSchedule: { scheduleTimeline: ScheduleTimeline.None },
+        }}
+      />
+    );
+
+    expect(screen.queryByText('Loader')).not.toBeInTheDocument();
+    expect(mockGetIngestionPipelineByFqn).toHaveBeenCalledTimes(1);
   });
 });

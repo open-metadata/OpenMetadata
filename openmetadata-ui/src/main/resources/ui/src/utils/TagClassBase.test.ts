@@ -23,7 +23,7 @@ jest.mock('../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockReturnValue('test'),
   escapeESReservedCharacters: jest.fn().mockReturnValue('test'),
 }));
@@ -40,20 +40,17 @@ jest.mock('./SearchUtils', () => ({
   })),
 }));
 
-jest.mock('./CustomizePage/CustomizePageUtils', () => ({
-  getTabLabelFromId: jest.fn().mockReturnValue('Tab Label'),
-}));
-
 jest.mock('../components/DataAssets/CommonWidgets/CommonWidgets', () => ({
   CommonWidgets: 'CommonWidgets',
 }));
 
-jest.mock('../components/DataAssets/DomainLabelV2/DomainLabelV2', () => ({
-  DomainLabelV2: 'DomainLabelV2',
+jest.mock('../components/common/DomainLabel/DomainLabel.component', () => ({
+  DomainLabel: 'DomainLabel',
 }));
 
-jest.mock('../components/DataAssets/OwnerLabelV2/OwnerLabelV2', () => ({
-  OwnerLabelV2: 'OwnerLabelV2',
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('./i18next/LocalUtil', () => ({
@@ -339,14 +336,14 @@ describe('TagClassBase', () => {
       expect(React.isValidElement(element)).toBe(true);
     });
 
-    it('passes editDomainPermission to DomainLabelV2', () => {
+    it('passes editDomainPermission to DomainLabel', () => {
       const element = tagClassBase.getRightPanelForOverviewTab({
         editOwnerPermission: false,
         editDomainPermission: true,
       });
 
-      const domainChild = (element.props as { children: React.ReactElement[] })
-        .children[0];
+      const divChildren = element.props.children as React.ReactElement[];
+      const domainChild = divChildren[0];
 
       expect(domainChild.props.hasPermission).toBe(true);
     });
@@ -357,8 +354,8 @@ describe('TagClassBase', () => {
         editDomainPermission: false,
       });
 
-      const ownerChild = (element.props as { children: React.ReactElement[] })
-        .children[1];
+      const divChildren = element.props.children as React.ReactElement[];
+      const ownerChild = divChildren[1];
 
       expect(ownerChild.props.hasPermission).toBe(true);
     });
@@ -377,6 +374,7 @@ describe('TagClassBase', () => {
       const element = tagClassBase.getWidgetsFromKey(widgetConfig);
 
       expect(React.isValidElement(element)).toBe(true);
+
       expect(element.props).toMatchObject({
         entityType: EntityType.TAG,
         showTaskHandler: false,

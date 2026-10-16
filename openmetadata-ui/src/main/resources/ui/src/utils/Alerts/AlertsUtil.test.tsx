@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
 import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
 import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
@@ -20,7 +20,6 @@ import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
 import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
-import { DESTINATION_DROPDOWN_TABS } from '../../constants/Alerts.constants';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EventType, Status } from '../../generated/events/api/typedEvent';
@@ -29,57 +28,46 @@ import {
   SubscriptionType,
 } from '../../generated/events/eventSubscription';
 import {
-  mockExternalDestinationOptions,
   mockTypedEvent1,
   mockTypedEvent2,
   mockTypedEvent3,
   mockTypedEvent4,
+  mockTypedEventEmptyDataFailed,
+  mockTypedEventEmptyDataSuccessful,
+  mockTypedEventEmptyDataUnprocessed,
 } from '../../mocks/AlertUtil.mock';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../rest/searchAPI';
-import { getTermQuery } from '../SearchUtils';
 import {
-  getAlertActionTypeDisplayName,
-  getAlertEventsFilterLabels,
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
+  getFqnSearchIndexes,
+  searchEntity,
+} from './AlertsUtil';
+import {
+  getAlertActionTypeDisplayName,
+  getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
-  getConnectionTimeoutField,
-  getDestinationConfigField,
   getDisplayNameForEntities,
-  getFieldByArgumentType,
-  getFilteredDestinationOptions,
   getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
   listLengthValidator,
   normalizeDestinationConfig,
-  searchEntity,
-} from './AlertsUtil';
-
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <div>Skeleton.Button</div>),
-  },
-}));
-
-jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: jest
-    .fn()
-    .mockImplementation(({ api }: { api: () => void }) => (
-      <button onClick={() => api()}>AsyncSelect</button>
-    )),
-}));
+} from './AlertsUtilPure';
 
 jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../rest/contractAPI', () => ({
+  searchContracts: jest.fn(),
 }));
 
 jest.mock('../ToastUtils', () => ({
@@ -204,421 +192,6 @@ describe('AlertsUtil tests', () => {
     expect(getDisplayNameForEntities('mlmodel')).toBe('label.ml-model');
 
     expect(getDisplayNameForEntities('unknown')).toBe('Unknown');
-  });
-
-  it('getFilteredDestinationOptions should return all options for external tab key', () => {
-    const resultTask = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.external,
-      'task'
-    );
-
-    const resultTable = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.external,
-      'table'
-    );
-
-    [resultTask, resultTable].forEach((results) => {
-      expect(results).toHaveLength(5);
-
-      results.forEach((result) =>
-        expect(
-          mockExternalDestinationOptions.includes(
-            result.value as Exclude<
-              SubscriptionType,
-              SubscriptionType.ActivityFeed
-            >
-          )
-        ).toBeTruthy()
-      );
-    });
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for "task" source', () => {
-    const resultTask = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'task'
-    );
-
-    expect(resultTask).toHaveLength(3);
-
-    const taskCategories = resultTask.map(
-      (result) => result.value as SubscriptionCategory
-    );
-
-    expect(taskCategories).toContain(SubscriptionCategory.Owners);
-    expect(taskCategories).toContain(SubscriptionCategory.Assignees);
-    expect(taskCategories).toContain(SubscriptionCategory.Mentions);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Followers);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Admins);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Users);
-    expect(taskCategories).not.toContain(SubscriptionCategory.Teams);
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for "conversation" source', () => {
-    const resultConversation = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'conversation'
-    );
-
-    expect(resultConversation).toHaveLength(2);
-
-    const conversationCategories = resultConversation.map(
-      (result) => result.value as SubscriptionCategory
-    );
-
-    expect(conversationCategories).toContain(SubscriptionCategory.Owners);
-    expect(conversationCategories).toContain(SubscriptionCategory.Mentions);
-    expect(conversationCategories).not.toContain(
-      SubscriptionCategory.Followers
-    );
-    expect(conversationCategories).not.toContain(SubscriptionCategory.Admins);
-    expect(conversationCategories).not.toContain(SubscriptionCategory.Users);
-    expect(conversationCategories).not.toContain(SubscriptionCategory.Teams);
-    expect(conversationCategories).not.toContain(
-      SubscriptionCategory.Assignees
-    );
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for "announcement" source', () => {
-    const resultAnnouncement = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'announcement'
-    );
-
-    expect(resultAnnouncement).toHaveLength(6);
-
-    const announcementCategories = resultAnnouncement.map(
-      (result) => result.value as SubscriptionCategory
-    );
-
-    expect(announcementCategories).toContain(SubscriptionCategory.Owners);
-    expect(announcementCategories).toContain(SubscriptionCategory.Followers);
-    expect(announcementCategories).toContain(SubscriptionCategory.Admins);
-    expect(announcementCategories).toContain(SubscriptionCategory.Users);
-    expect(announcementCategories).toContain(SubscriptionCategory.Teams);
-    expect(announcementCategories).toContain(SubscriptionCategory.Mentions);
-    expect(announcementCategories).not.toContain(
-      SubscriptionCategory.Assignees
-    );
-  });
-
-  it('getFilteredDestinationOptions should return correct internal options for default/other sources', () => {
-    const resultContainer = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'container'
-    );
-    const resultTestSuite = getFilteredDestinationOptions(
-      DESTINATION_DROPDOWN_TABS.internal,
-      'testSuite'
-    );
-
-    [resultContainer, resultTestSuite].forEach((results) => {
-      expect(results).toHaveLength(5);
-
-      const defaultCategories = results.map(
-        (result) => result.value as SubscriptionCategory
-      );
-
-      expect(defaultCategories).toContain(SubscriptionCategory.Owners);
-      expect(defaultCategories).toContain(SubscriptionCategory.Followers);
-      expect(defaultCategories).toContain(SubscriptionCategory.Admins);
-      expect(defaultCategories).toContain(SubscriptionCategory.Users);
-      expect(defaultCategories).toContain(SubscriptionCategory.Teams);
-      expect(defaultCategories).not.toContain(SubscriptionCategory.Assignees);
-      expect(defaultCategories).not.toContain(SubscriptionCategory.Mentions);
-    });
-  });
-});
-
-describe('getFieldByArgumentType tests', () => {
-  it('should return correct fields for argumentType fqnList', async () => {
-    const field = getFieldByArgumentType(0, 'fqnList', 0, 'table');
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.TABLE,
-    });
-  });
-
-  it('should return correct fields for argumentType domainList', async () => {
-    const field = getFieldByArgumentType(0, 'domainList', 0, 'container');
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.DOMAIN,
-    });
-  });
-
-  it('should return correct fields for argumentType tableNameList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'tableNameList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.TABLE,
-    });
-  });
-
-  it('should return correct fields for argumentType ownerNameList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'ownerNameList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    });
-  });
-
-  it('should return correct fields for argumentType updateByUserList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'updateByUserList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.USER,
-    });
-  });
-
-  it('should return correct fields for argumentType userList', async () => {
-    const field = getFieldByArgumentType(0, 'userList', 0, 'selectedTrigger');
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: getTermQuery({ isBot: 'false' }),
-      searchIndex: SearchIndex.USER,
-    });
-  });
-
-  it('should return correct fields for argumentType eventTypeList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'eventTypeList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('event-type-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType entityIdList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'entityIdList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('entity-id-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType pipelineStateList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'pipelineStateList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('pipeline-status-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType ingestionPipelineStateList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'ingestionPipelineStateList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('pipeline-status-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType testStatusList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'testStatusList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('test-status-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType testResultList', () => {
-    const field = getFieldByArgumentType(
-      0,
-      'testResultList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByTestId('test-result-select');
-
-    expect(selectDiv).toBeInTheDocument();
-  });
-
-  it('should return correct fields for argumentType testSuiteList', async () => {
-    const field = getFieldByArgumentType(
-      0,
-      'testSuiteList',
-      0,
-      'selectedTrigger'
-    );
-
-    render(field);
-
-    const selectDiv = screen.getByText('AsyncSelect');
-
-    fireEvent.click(selectDiv);
-
-    expect(searchQuery).toHaveBeenCalledWith({
-      query: undefined,
-      pageNumber: 1,
-      pageSize: 50,
-      queryFilter: undefined,
-      searchIndex: SearchIndex.TEST_SUITE,
-    });
-  });
-
-  it('should not return select component for random argumentType', () => {
-    const field = getFieldByArgumentType(0, 'unknown', 0, 'selectedTrigger');
-
-    render(field);
-
-    const selectDiv = screen.queryByText('AsyncSelect');
-
-    expect(selectDiv).toBeNull();
-  });
-
-  it('getDestinationConfigField should return advanced configurations for webhook type', async () => {
-    const field = getDestinationConfigField(SubscriptionType.Webhook, 4) ?? (
-      <></>
-    );
-
-    render(field);
-
-    const secretKeyInput = screen.getByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeInTheDocument();
-
-    fireEvent.click(secretKeyInput);
-
-    expect(
-      await screen.findByTestId('webhook-4-headers-list')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('webhook-4-query-params-list')
-    ).toBeInTheDocument();
-    expect(await screen.findByTestId('http-method-4')).toBeInTheDocument();
-  });
-
-  it('getDestinationConfigField should not return advanced configurations for other type', () => {
-    const field = getDestinationConfigField(SubscriptionType.Email, 4) ?? <></>;
-
-    render(field);
-
-    const secretKeyInput = screen.queryByText('label.advanced-configuration');
-
-    expect(secretKeyInput).toBeNull();
-  });
-
-  it('getConnectionTimeoutField should return the connection timeout field', () => {
-    const field = getConnectionTimeoutField();
-
-    render(field);
-
-    expect(screen.getByTestId('connection-timeout')).toBeInTheDocument();
-
-    const input = screen.getByTestId('connection-timeout-input');
-
-    expect(input).toHaveValue(10);
   });
 });
 
@@ -797,17 +370,99 @@ describe('getChangeEventDataFromTypedEvent', () => {
       failingSubscriptionId: undefined,
     });
   });
+
+  it('should not throw and return a degraded row for a successful event with empty data', () => {
+    const result = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataSuccessful
+    );
+
+    expect(result.changeEventData).toStrictEqual({
+      id: `unreadable-${mockTypedEventEmptyDataSuccessful.status}-${mockTypedEventEmptyDataSuccessful.timestamp}`,
+      timestamp: mockTypedEventEmptyDataSuccessful.timestamp,
+    });
+    expect(result.changeEventDataToDisplay).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should not throw and return a degraded row for a failed event with empty data', () => {
+    const result = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataFailed
+    );
+
+    expect(result.changeEventData).toStrictEqual({
+      id: `unreadable-${mockTypedEventEmptyDataFailed.status}-${mockTypedEventEmptyDataFailed.timestamp}`,
+      timestamp: mockTypedEventEmptyDataFailed.timestamp,
+    });
+    expect(result.changeEventDataToDisplay).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should not throw and return a degraded row for an unprocessed event with empty data', () => {
+    const result = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataUnprocessed
+    );
+
+    expect(result.changeEventData).toStrictEqual({
+      id: `unreadable-${mockTypedEventEmptyDataUnprocessed.status}-${mockTypedEventEmptyDataUnprocessed.timestamp}`,
+      timestamp: mockTypedEventEmptyDataUnprocessed.timestamp,
+    });
+    expect(result.changeEventDataToDisplay).toStrictEqual({
+      eventType: undefined,
+      entityId: undefined,
+      userName: undefined,
+      previousVersion: undefined,
+      currentVersion: undefined,
+      reason: undefined,
+      source: undefined,
+      failingSubscriptionId: undefined,
+    });
+  });
+
+  it('should produce a unique fallback id per empty-data row so React keys do not collide', () => {
+    const failedRow = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataFailed
+    );
+    const successfulRow = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataSuccessful
+    );
+    const unprocessedRow = getChangeEventDataFromTypedEvent(
+      mockTypedEventEmptyDataUnprocessed
+    );
+
+    const failedKey = `${failedRow.changeEventData.id}-${failedRow.changeEventData.timestamp}`;
+    const successfulKey = `${successfulRow.changeEventData.id}-${successfulRow.changeEventData.timestamp}`;
+    const unprocessedKey = `${unprocessedRow.changeEventData.id}-${unprocessedRow.changeEventData.timestamp}`;
+
+    expect(new Set([failedKey, successfulKey, unprocessedKey]).size).toBe(3);
+  });
 });
 
 describe('getAlertExtraInfo', () => {
   it('should return skeletons when alertEventCountsLoading is true', () => {
     const alertExtraInfo = getAlertExtraInfo(true);
 
-    render(alertExtraInfo);
+    const { container } = render(alertExtraInfo);
 
-    const skeletons = screen.getAllByText('Skeleton.Button');
-
-    expect(skeletons).toHaveLength(3);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
+    expect(container.querySelectorAll('span[aria-hidden="true"]')).toHaveLength(
+      3
+    );
   });
 
   it('should return correct extra info when alertEventCountsLoading is false', () => {
@@ -1373,6 +1028,19 @@ describe('handleAlertSave - downstream notification fields', () => {
 });
 
 describe('normalizeDestinationConfig', () => {
+  it('should preserve form-style header and query parameter arrays', () => {
+    const config = {
+      endpoint: 'https://hooks.slack.com/services/xxx',
+      headers: [{ key: 'header1', value: 'value1' }],
+      queryParams: [{ key: 'param1', value: 'value1' }],
+      httpMethod: 'POST',
+    };
+
+    const result = normalizeDestinationConfig(config);
+
+    expect(result).toEqual(config);
+  });
+
   it('should normalize config with headers and queryParams as objects to arrays', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
@@ -1417,7 +1085,7 @@ describe('normalizeDestinationConfig', () => {
     });
   });
 
-  it('should handle config with empty headers and queryParams objects', () => {
+  it('should omit empty headers and queryParams from normalized config', () => {
     const config = {
       endpoint: 'https://example.com/webhook',
       headers: {},
@@ -1429,8 +1097,6 @@ describe('normalizeDestinationConfig', () => {
 
     expect(result).toEqual({
       endpoint: 'https://example.com/webhook',
-      headers: [],
-      queryParams: [],
       timeout: 30,
     });
   });
@@ -1764,5 +1430,33 @@ describe('getFormattedDestinations', () => {
     ]);
     expect(result?.[0]?.config).not.toHaveProperty('timeout');
     expect(result?.[0]?.config).not.toHaveProperty('readTimeout');
+  });
+});
+
+describe('getFqnSearchIndexes', () => {
+  it('includes the source index plus the descriptor-provided ancestor indexes', () => {
+    expect(
+      getFqnSearchIndexes('databaseSchema', ['databaseService', 'database'])
+    ).toEqual([
+      SearchIndex.DATABASE_SCHEMA,
+      SearchIndex.DATABASE_SERVICE,
+      SearchIndex.DATABASE,
+    ]);
+    expect(getFqnSearchIndexes('glossaryTerm', ['glossary'])).toEqual([
+      SearchIndex.GLOSSARY_TERM,
+      SearchIndex.GLOSSARY,
+    ]);
+  });
+
+  it('returns only the source index when there are no ancestors', () => {
+    expect(getFqnSearchIndexes('databaseService')).toEqual([
+      SearchIndex.DATABASE_SERVICE,
+    ]);
+  });
+
+  it('returns only the ALL index for the "all" source, ignoring container types', () => {
+    expect(getFqnSearchIndexes('all', ['databaseService', 'database'])).toEqual(
+      [SearchIndex.ALL]
+    );
   });
 });

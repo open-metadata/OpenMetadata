@@ -13,26 +13,42 @@
 Source connection handler
 """
 
-from functools import partial
-from typing import Optional
+from __future__ import annotations
+
+import threading
+from datetime import datetime, timedelta, timezone
+from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.event import listen
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.sql import text
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
 )
+from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
+    DatabaseStep,
+    list_schemas,
+    ping,
+    run_sql,
+)
+from metadata.core.connections.test_connection.checks.summary import count
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
 )
 from metadata.generated.schema.entity.services.connections.database.redshiftConnection import (
-    RedshiftConnection,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
+    RedshiftConnection as RedshiftConnectionConfig,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -40,23 +56,27 @@ from metadata.ingestion.connections.builders import (
     get_connection_options_dict,
     get_connection_url_common,
 )
-from metadata.ingestion.connections.test_connections import (
-    SourceConnectionException,
-    execute_inspector_func,
-    test_connection_engine_step,
-    test_connection_steps,
-    test_query,
+from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.connections.test_connections import SourceConnectionException
+from metadata.ingestion.source.database.redshift.models import (
+    RedshiftIamCredential,
+    RedshiftInstanceType,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections_utils import kill_active_connections
-from metadata.ingestion.source.database.redshift.models import RedshiftInstanceType
 from metadata.ingestion.source.database.redshift.queries import (
     REDSHIFT_GET_ALL_RELATIONS,
     REDSHIFT_GET_DATABASE_NAMES,
     REDSHIFT_TEST_GET_QUERIES_MAP,
 )
-from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from sqlalchemy.engine import Row
+
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
 
 logger = ingestion_logger()
 
@@ -81,23 +101,45 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
     return host.split(".")[0]  # noqa: PLC0207
 
 
-def _get_serverless_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
-    workgroup = _get_serverless_workgroup(host)
+def _non_standard_host_hint(host: str) -> str:
+    """
+    Actionable guidance when the identifier was parsed from a hostname that
+    does not look like a standard Redshift endpoint, e.g. a PrivateLink/VPC
+    endpoint or a custom DNS name.
+    """
+    hint = ""
+    if not host.endswith(".redshift.amazonaws.com") and not host.endswith(".redshift-serverless.amazonaws.com"):
+        hint = (
+            " [Hint: the identifier was derived from your hostname, which does not look"
+            " like a standard Redshift endpoint. If you connect via a PrivateLink/VPC"
+            " endpoint or a custom DNS name, set 'clusterIdentifier', or 'workgroupName'"
+            " for Serverless, in the connection settings.]"
+        )
+    return hint
+
+
+def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> RedshiftIamCredential:
+    workgroup = connection.workgroupName or _get_serverless_workgroup(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_serverless_client()
 
         kwargs = {"workgroupName": workgroup, "dbName": connection.database or "dev"}
 
         response = aws_client.get_credentials(**kwargs)
-        return response["dbUser"], response["dbPassword"]
+        return RedshiftIamCredential(
+            user=response["dbUser"],
+            password=response["dbPassword"],
+            expiration=response.get("expiration"),
+        )
     except Exception as exc:
+        hint = "" if connection.workgroupName else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}{hint}"
         ) from exc
 
 
-def _get_provisioned_iam_credentials(connection: RedshiftConnection, host: str) -> tuple:
-    cluster_identifier = _get_provisioned_cluster_identifier(host)
+def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> RedshiftIamCredential:
+    cluster_identifier = connection.clusterIdentifier or _get_provisioned_cluster_identifier(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
 
@@ -110,39 +152,148 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnection, host: str) 
             kwargs["DbName"] = connection.database
 
         response = aws_client.get_cluster_credentials(**kwargs)
-        return response["DbUser"], response["DbPassword"]
+        return RedshiftIamCredential(
+            user=response["DbUser"],
+            password=response["DbPassword"],
+            expiration=response.get("Expiration"),
+        )
     except Exception as exc:
+        hint = "" if connection.clusterIdentifier else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}{hint}"
         ) from exc
 
 
-def _get_redshift_iam_credentials(connection: RedshiftConnection) -> tuple:
+def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> RedshiftIamCredential:
     """
     Get temporary credentials for Redshift using IAM authentication.
-    Detects Serverless vs Provisioned from the host and uses the appropriate API.
+    An explicit clusterIdentifier or workgroupName on the connection takes
+    precedence over hostname parsing, which cannot work for PrivateLink/VPC
+    endpoint or custom DNS hostnames. Otherwise detects Serverless vs
+    Provisioned from the host and uses the appropriate API.
     """
     host = connection.hostPort.split(":")[0]
 
+    if connection.clusterIdentifier and connection.workgroupName:
+        raise SourceConnectionException(
+            "Both 'clusterIdentifier' and 'workgroupName' are set on the connection."
+            " Set only one: 'clusterIdentifier' for a provisioned cluster or"
+            " 'workgroupName' for Redshift Serverless."
+        )
+    if connection.workgroupName:
+        return _get_serverless_iam_credentials(connection, host)
+    if connection.clusterIdentifier:
+        return _get_provisioned_iam_credentials(connection, host)
     if _is_serverless_host(host):
         return _get_serverless_iam_credentials(connection, host)
     return _get_provisioned_iam_credentials(connection, host)
 
 
-def get_redshift_connection_url(connection: RedshiftConnection) -> str:
+def _is_iam_auth(connection: RedshiftConnectionConfig) -> bool:
+    return (
+        hasattr(connection, "authType")
+        and connection.authType is not None
+        and isinstance(connection.authType, IamAuthConfigurationSource)
+    )
+
+
+REDSHIFT_IAM_CREDENTIAL_DEFAULT_TTL = timedelta(minutes=15)
+REDSHIFT_IAM_CREDENTIAL_REFRESH_THRESHOLD = timedelta(minutes=5)
+
+
+class RedshiftIamCredentialManager:
+    """
+    Caches a Redshift IAM temporary credential and regenerates it before expiry.
+
+    Redshift temporary credentials are short-lived (default ~15 minutes). A long
+    ingestion that opens new pooled connections after the credential expires would
+    otherwise authenticate with a stale credential and fail. The engine shares one
+    manager across all worker threads (each ``do_connect`` calls ``get_credentials``),
+    so the check-and-refresh is serialized to avoid pairing a credential with a
+    stale expiry.
+    """
+
+    def __init__(
+        self,
+        connection: RedshiftConnectionConfig,
+        refresh_threshold: timedelta = REDSHIFT_IAM_CREDENTIAL_REFRESH_THRESHOLD,
+    ):
+        self._connection = connection
+        self._refresh_threshold = refresh_threshold
+        self._credential: RedshiftIamCredential | None = None
+        self._expires_at: datetime | None = None
+        self._lock = threading.Lock()
+
+    def get_credentials(self) -> RedshiftIamCredential:
+        with self._lock:
+            if self._needs_refresh():
+                self._refresh()
+            if self._credential is None:
+                raise SourceConnectionException("Failed to generate Redshift IAM credentials")
+            return self._credential
+
+    def _needs_refresh(self) -> bool:
+        needs_refresh = True
+        if self._credential is not None and self._expires_at is not None:
+            time_left = self._expires_at - datetime.now(timezone.utc)
+            needs_refresh = time_left <= self._refresh_threshold
+        return needs_refresh
+
+    def _refresh(self) -> None:
+        try:
+            credential = _get_redshift_iam_credentials(self._connection)
+        except Exception as exc:
+            # A proactive refresh (fired within the threshold) that fails must not fail
+            # a connection while the current credential is still valid; keep serving it
+            # and retry on the next connection.
+            if self._credential is not None and not self._is_expired():
+                logger.warning(f"Redshift IAM credential refresh failed ({exc}); reusing cached credential")
+                return
+            raise
+        expiration = credential.expiration
+        if expiration is not None and expiration.tzinfo is None:
+            expiration = expiration.replace(tzinfo=timezone.utc)
+        self._credential = credential
+        self._expires_at = expiration or (datetime.now(timezone.utc) + REDSHIFT_IAM_CREDENTIAL_DEFAULT_TTL)
+
+    def _is_expired(self) -> bool:
+        return self._expires_at is None or self._expires_at <= datetime.now(timezone.utc)
+
+
+def _build_iam_engine(connection: RedshiftConnectionConfig) -> Engine:
+    """
+    Build a Redshift engine for IAM auth with no credential baked into the URL.
+
+    A ``do_connect`` listener injects a fresh credential from the manager on every
+    connection, so connections opened later in a long ingestion never authenticate
+    with an expired credential.
+    """
+    engine = create_generic_db_connection(
+        connection=connection,
+        get_connection_url_fn=get_redshift_connection_url,
+        get_connection_args_fn=get_connection_args_common,
+    )
+    manager = RedshiftIamCredentialManager(connection)
+
+    def _inject_iam_credentials(_dialect, _conn_rec, _cargs, cparams: dict) -> None:
+        credential = manager.get_credentials()
+        cparams["user"] = credential.user
+        cparams["password"] = credential.password
+
+    listen(engine, "do_connect", _inject_iam_credentials)
+    return engine
+
+
+def get_redshift_connection_url(connection: RedshiftConnectionConfig) -> str:
     """
     Build the Redshift connection URL.
-    Handles both basic auth and IAM auth.
-    """
-    if (
-        hasattr(connection, "authType")
-        and connection.authType
-        and isinstance(connection.authType, IamAuthConfigurationSource)
-    ):
-        username, password = _get_redshift_iam_credentials(connection)
 
+    For IAM auth the URL carries no credential; a ``do_connect`` listener injects a
+    fresh credential per connection (see ``_build_iam_engine``).
+    """
+    if _is_iam_auth(connection):
         url = f"{connection.scheme.value}://"
-        url += f"{quote_plus(username)}:{quote_plus(password)}@"
+        url += f"{quote_plus(connection.username)}@"
         url += connection.hostPort
         url += f"/{connection.database}" if connection.database else ""
 
@@ -156,17 +307,6 @@ def get_redshift_connection_url(connection: RedshiftConnection) -> str:
         return url
 
     return get_connection_url_common(connection)
-
-
-def get_connection(connection: RedshiftConnection) -> Engine:
-    """
-    Create connection
-    """
-    return create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_redshift_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
 
 
 def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
@@ -200,49 +340,171 @@ def get_redshift_instance_type(engine: Engine) -> RedshiftInstanceType:
         return RedshiftInstanceType.SERVERLESS
 
 
-def test_connection(
-    metadata: OpenMetadata,
-    engine: Engine,
-    service_connection: RedshiftConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
+def _pgcode(error: BaseException) -> str | None:
+    """The PostgreSQL SQLSTATE on the error or anywhere in its cause chain.
+
+    The Redshift dialect rides on the psycopg2 driver, which exposes the SQLSTATE
+    on ``.pgcode``; SQLAlchemy preserves the original DBAPI error at ``.orig``, so
+    we check both across the chain. SQLSTATE is only populated for *query-execution*
+    errors - a failed connection (bad password, missing database) raises before a
+    session exists, so those carry no code and must be matched on message text.
     """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
+    for current in exception_chain(error):
+        code = getattr(current, "pgcode", None)
+        if code is None:
+            code = getattr(getattr(current, "orig", None), "pgcode", None)
+        if code is not None:
+            return code
+    return None
+
+
+def _sqlstate(*codes: str) -> Matcher:
+    """Match a PostgreSQL SQLSTATE - the stable signal for query-execution errors,
+    where the message text varies by locale."""
+    wanted = frozenset(codes)
+    return lambda error: _pgcode(error) in wanted
+
+
+def _database_not_found(error: BaseException) -> bool:
+    """Redshift reports a missing database at connect time as
+    ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
+    ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
+    a missing relation) is not misread as a missing database."""
+    text_ = chain_text(error)
+    return 'database "' in text_ and "does not exist" in text_
+
+
+# The GetQueries check raises a message carrying this token when the privilege
+# probe reports a missing grant; the error pack matches on it. Shared here so the
+# producer and the matcher cannot drift apart.
+_QUERY_HISTORY_PRIVILEGE_TOKEN = "query-history views"
+
+
+# Connect-phase failures (auth, missing database) carry no SQLSTATE, so they are
+# matched on message text; query-phase failures are matched on the stable SQLSTATE
+# psycopg2 surfaces on ``.pgcode``. Bad host / port raise before the driver and are
+# caught by the TCP preflight in ``ping`` via NETWORK_ERRORS.
+REDSHIFT_ERRORS = ErrorPack(
+    when(Matchers.contains("password authentication failed")).diagnose(
+        "Authentication failed",
+        fix="Check the username and password, and that the user is allowed to connect.",
+    ),
+    # No _sqlstate("28000", "28P01") rule: those are connect-phase codes, and libpq
+    # reports a failed connection with no PGresult, so .pgcode is None (verified on
+    # PostgreSQL 15). The message rule above is what catches auth failures.
+    when(_database_not_found).diagnose(
+        "Database not found",
+        fix="Verify the configured database exists and the user is allowed to connect to it.",
+    ),
+    # Raised by the GetQueries check when has_table_privilege reports the user lacks
+    # SELECT on the query-history views; config-agnostic so it never names a view.
+    when(Matchers.contains(_QUERY_HISTORY_PRIVILEGE_TOKEN)).diagnose(
+        "Query history not accessible",
+        fix="Grant the user SELECT on the Redshift query-history views (stl_* for Provisioned, "
+        "sys_* for Serverless), or usage and lineage won't be collected.",
+    ),
+    when(_sqlstate("42501")).diagnose(  # insufficient_privilege
+        "Insufficient privileges",
+        fix="Grant the user SELECT on the objects the failing step reads.",
+    ),
+    # 42P01 (undefined_table) across the test steps can only come from the GetQueries
+    # source probe - every other step reads catalogs that always exist - so it means
+    # the query-history source view is missing, whatever it is named.
+    when(_sqlstate("42P01")).diagnose(  # undefined_table
+        "Query history source not found",
+        fix="The Redshift query-history views are not available on this deployment. Verify the "
+        "cluster type (Provisioned vs Serverless), or usage and lineage won't be collected.",
+    ),
+).including(NETWORK_ERRORS)
+
+
+def _summarize_queries(instance_type: RedshiftInstanceType, rows: Sequence[Row]) -> str:
+    """Confirm the privilege probe row reports SELECT on every query-history view.
+
+    ``has_table_privilege`` returns a boolean per view rather than raising, so a
+    missing grant surfaces as a ``False`` in the row, not an exception - raise here
+    so the step fails and the error pack maps it to a privilege diagnosis.
     """
-    table_and_view_query = REDSHIFT_GET_ALL_RELATIONS.format(schema_clause="", table_clause="", limit_clause="LIMIT 1")
+    row = rows[0] if rows else None
+    if row is None or not all(row):
+        family = "sys" if instance_type == RedshiftInstanceType.SERVERLESS else "stl"
+        raise SourceConnectionException(
+            f"Missing SELECT privilege on the Redshift {family} {_QUERY_HISTORY_PRIVILEGE_TOKEN} - {row}"
+        )
+    return "query history accessible"
 
-    def test_get_queries_permissions(engine_: Engine):
-        """Check if we have the right permissions to list queries"""
-        redshift_instance_type = get_redshift_instance_type(engine_)
 
-        with engine_.connect() as conn:
-            res = conn.execute(text(REDSHIFT_TEST_GET_QUERIES_MAP[redshift_instance_type])).fetchone()
-            if not all(res):
-                raise SourceConnectionException(
-                    f"We don't have the right permissions to list queries from sys views (Redshift Serverless) - {res}"
-                    if redshift_instance_type == RedshiftInstanceType.SERVERLESS
-                    else f"We don't have the right permissions to list queries from stl views (Redshift Provisioned) - {res}"  # noqa: E501, RUF100
-                )
+def _summarize_databases(rows: Sequence[Row]) -> str:
+    """``N databases reachable`` - ``N+`` when the row sample is capped, so a cluster
+    with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an exact
+    total (``run_sql`` only fetches up to that many rows).
 
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, engine),
-        "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-        "GetTables": partial(test_query, statement=table_and_view_query, engine=engine),
-        "GetViews": partial(test_query, statement=table_and_view_query, engine=engine),
-        "GetQueries": partial(test_get_queries_permissions, engine),
-        "GetDatabases": partial(test_query, statement=REDSHIFT_GET_DATABASE_NAMES, engine=engine),
-    }
+    Redshift says "reachable" rather than "enumerated": the probe proves the
+    cluster answers for each database, which is the thing in doubt here."""
+    return f"{count(len(rows), 'database', DEFAULT_SAMPLE_ROWS)} reachable"
 
-    result = test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
 
-    kill_active_connections(engine)
+class RedshiftChecks:
+    """Test-connection checks for Amazon Redshift."""
 
-    return result
+    errors = REDSHIFT_ERRORS
+
+    # The relations probe lists tables and views from any non-system schema; LIMIT 1
+    # keeps it cheap since the step only proves the read is permitted.
+    _RELATIONS_PROBE = REDSHIFT_GET_ALL_RELATIONS.format(schema_clause="", table_clause="", limit_clause="LIMIT 1")
+
+    def __init__(self, db: Borrowed[Engine]) -> None:
+        self._db = db
+
+    @check(DatabaseStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        return ping(self._db.client)
+
+    @check(DatabaseStep.GetDatabases)
+    def get_databases(self) -> Evidence:
+        return run_sql(self._db.client, REDSHIFT_GET_DATABASE_NAMES, _summarize_databases)
+
+    @check(DatabaseStep.GetSchemas)
+    def get_schemas(self) -> Evidence:
+        return list_schemas(self._db.client)
+
+    @check(DatabaseStep.GetTables)
+    def get_tables(self) -> Evidence:
+        return run_sql(self._db.client, self._RELATIONS_PROBE, lambda rows: f"{len(rows)} relations accessible")
+
+    @check(DatabaseStep.GetViews)
+    def get_views(self) -> Evidence:
+        return run_sql(self._db.client, self._RELATIONS_PROBE, lambda rows: f"{len(rows)} relations accessible")
+
+    @check(DatabaseStep.GetQueries)
+    def get_queries(self) -> Evidence:
+        # Resolved here, not at construction, so the instance-type probe and the
+        # privilege query run only after CheckAccess - never ahead of the gate.
+        instance_type = get_redshift_instance_type(self._db.client)
+        statement = REDSHIFT_TEST_GET_QUERIES_MAP[instance_type]
+        try:
+            evidence = run_sql(self._db.client, statement, lambda rows: _summarize_queries(instance_type, rows))
+        except SourceConnectionException as missing_privilege:
+            # The privilege probe raises from the summary callback, outside run_sql's
+            # own CheckError wrapping - re-raise with the statement so the failed step
+            # still reports the command it ran, like every other step.
+            raise CheckError(missing_privilege, Evidence(command=statement)) from missing_privilege
+        return evidence
+
+
+class RedshiftConnection(BaseConnection[RedshiftConnectionConfig, Engine]):
+    def _get_client(self) -> Engine:
+        connection = self.service_connection
+        if _is_iam_auth(connection):
+            engine = _build_iam_engine(connection)
+        else:
+            engine = create_generic_db_connection(
+                connection=connection,
+                get_connection_url_fn=get_redshift_connection_url,
+                get_connection_args_fn=get_connection_args_common,
+            )
+        self._on_close(engine.dispose)
+        return engine
+
+    def checks(self) -> ChecksProvider:
+        return RedshiftChecks(db=self.borrow())

@@ -10,37 +10,44 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
-import { Button, Col, Row, Space, Typography } from 'antd';
-import classNames from 'classnames';
-import { diffWordsWithSpace } from 'diff';
-import { isEmpty, map, toString } from 'lodash';
-import { FC, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { toString } from 'lodash';
+import { useMemo, type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import Loader from '../../../components/common/Loader/Loader';
-import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TagsContainerV2 from '../../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { LayoutType } from '../../../components/Tag/TagsViewer/TagsViewer.interface';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
-import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import type { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { formatDate } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
-  getCommonExtraInfoForVersionDetails,
   getDiffByFieldName,
+} from '../../../utils/EntityDiffPureUtils';
+import { getRichTextDiff } from '../../../utils/EntityDiffUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
+import type { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
+import {
+  getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
-import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface';
-import { getFrontEndFormat } from '../../../utils/FeedUtils';
+} from '../../../utils/EntityVersionUtilsPure';
+import { getFrontEndFormat } from '../../../utils/FeedUtilsPure';
 import i18n from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
-import { stringToHTML } from '../../../utils/StringsUtils';
+import { toOwnerRefs } from '../../../utils/Owner/ownerConversionUtils';
 
 interface KnowledgePageVersionProps {
   knowledgePage: KnowledgePage;
@@ -62,14 +69,10 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   );
 
   const descriptionDiff = useMemo(() => {
-    const changeDescription = knowledgePage.changeDescription ?? {};
-    const currentDescription = knowledgePage.description;
-
     const fieldDiff = getDiffByFieldName(
       EntityField.DESCRIPTION,
-      changeDescription
+      knowledgePage.changeDescription ?? {}
     );
-
     const oldField = getFrontEndFormat(
       toString(getChangedEntityOldValue(fieldDiff))
     );
@@ -77,30 +80,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
       toString(getChangedEntityNewValue(fieldDiff))
     );
 
-    if (isEmpty(newField) && isEmpty(oldField)) {
-      return currentDescription;
-    }
-
-    const diffArr = diffWordsWithSpace(oldField, newField);
-
-    const result = map(diffArr, (diff) => {
-      const value = diff.value.trim().replaceAll('\n', '<br>');
-
-      if (diff.added && value) {
-        return `<diff-view class="diff-added">${value}</diff-view>`;
-      }
-      if (diff.removed && value) {
-        return `<diff-view class="diff-removed">${value}</diff-view>`;
-      }
-
-      if (value) {
-        return `<diff-view>${value}</diff-view>`;
-      }
-
-      return '';
-    });
-
-    return result.join('');
+    return getRichTextDiff(oldField, newField, knowledgePage.description);
   }, [knowledgePage]);
 
   const tags = useMemo(() => {
@@ -128,7 +108,9 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   );
 
   const handleVersionClick = () => {
-    navigate(getKnowledgePagePath(knowledgePage.fullyQualifiedName));
+    navigate(
+      contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName)
+    );
   };
 
   if (loading) {
@@ -136,57 +118,94 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
   }
 
   return (
-    <Row className="knowledge-version-page-container" gutter={[0, 32]}>
-      <Col span={18}>
-        <Space direction="vertical" size={32}>
-          <Typography.Text
-            className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
-            data-testid="entity-header-display-name"
-            ellipsis={{ tooltip: true }}>
-            {stringToHTML(displayName || knowledgePage.name)}
-          </Typography.Text>
-          <Row align="middle" gutter={[16, 16]}>
-            <Col>
-              <Space size={4}>
-                <Space direction="vertical" size={0}>
-                  <OwnerLabel
-                    ownerDisplayName={ownerDisplayName}
-                    owners={knowledgePage?.owners ?? ownerRef}
-                  />
-                  <span
-                    className="self-center text-grey-muted"
-                    data-testid="updated-at">
-                    {formatDate(knowledgePage.updatedAt)}
-                  </span>
-                </Space>
-              </Space>
-            </Col>
-          </Row>
-        </Space>
-      </Col>
-      <Col offset={2} span={2}>
-        <Button
-          className={classNames('', {
-            'text-primary border-primary': version,
-          })}
-          data-testid="version-button"
-          icon={<Icon component={VersionIcon} />}
-          onClick={handleVersionClick}>
-          <Typography.Text
-            className={classNames('', {
-              'text-primary': version,
-            })}>
-            {toString(version)}
-          </Typography.Text>
-        </Button>
-      </Col>
-      <Col span={24}>
-        <Row gutter={[0, 16]}>
-          <Col span={24}>
-            <Space align="center" className="w-full knowledge-page-tags">
-              <Typography.Text className="text-grey-muted">
+    <Grid
+      className="layout-row layout-grid knowledge-version-page-container"
+      style={{ ...getLayoutGutter(0, 32) }}>
+      <Grid.Item className="layout-column" span={24}>
+        <Box
+          className="layout-row"
+          justify="between"
+          style={{ ...getLayoutGutter(16, 16) }}
+          wrap="nowrap">
+          <Box
+            className="layout-column tw:block m-r-md knowledge-version-title-col"
+            style={{ flex: 'auto' }}>
+            <Box
+              inline
+              align="stretch"
+              className="layout-space w-full"
+              direction="col"
+              gap={8}
+              itemClassName="layout-space-item">
+              <Typography
+                className="m-b-0 d-block entity-header-display-name text-lg font-semibold"
+                data-testid="entity-header-display-name">
+                {renderHighlightedText(displayName || knowledgePage.name)}
+              </Typography>
+              <Box
+                align="center"
+                className="layout-row"
+                style={{ ...getLayoutGutter(16, 16) }}
+                wrap="wrap">
+                <Box className="layout-column tw:block">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={1}
+                    itemClassName="layout-space-item">
+                    <Box
+                      inline
+                      align="stretch"
+                      className="layout-space"
+                      direction="col"
+                      gap={0}
+                      itemClassName="layout-space-item">
+                      <Owner
+                        isCompactView={false}
+                        ownerDisplayName={ownerDisplayName}
+                        owners={toOwnerRefs(
+                          knowledgePage?.owners ?? ownerRef ?? []
+                        )}
+                        showLabel={false}
+                      />
+                      <Typography
+                        className="self-center"
+                        color="secondary"
+                        data-testid="updated-at">
+                        {formatDate(knowledgePage.updatedAt)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+          <Box className="layout-column tw:block" style={{ flex: 'none' }}>
+            <Button
+              color={version ? 'secondary-brand' : 'secondary'}
+              data-testid="version-button"
+              iconLeading={<VersionIcon className="tw:size-3.5 tw:shrink-0" />}
+              onClick={handleVersionClick}>
+              {toString(version)}
+            </Button>
+          </Box>
+        </Box>
+      </Grid.Item>
+      <Grid.Item className="layout-column" span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(0, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full knowledge-page-tags"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Typography color="secondary">
                 {`${t('label.tag-plural')}:`}
-              </Typography.Text>
+              </Typography>
               <TagsContainerV2
                 layoutType={LayoutType.HORIZONTAL}
                 permission={false}
@@ -194,13 +213,18 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 showTaskHandler={false}
                 tagType={TagSource.Classification}
               />
-            </Space>
-          </Col>
-          <Col span={24}>
-            <Space align="center" className="w-full knowledge-page-tags">
-              <Typography.Text className="text-grey-muted">
+            </Box>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full knowledge-page-tags"
+              gap={2}
+              itemClassName="layout-space-item">
+              <Typography color="secondary">
                 {`${t('label.glossary-term-plural')}:`}
-              </Typography.Text>
+              </Typography>
               <TagsContainerV2
                 layoutType={LayoutType.HORIZONTAL}
                 permission={false}
@@ -208,14 +232,14 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
                 showTaskHandler={false}
                 tagType={TagSource.Glossary}
               />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
-      <Col className="m-b-md" span={24}>
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
+      <Grid.Item className="layout-column m-b-md" span={24}>
         <BlockEditor content={descriptionDiff} editable={false} />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import {
   createNewPage,
   getApiContext,
   redirectToHomePage,
+  toastNotification,
   uuid,
 } from '../../utils/common';
 import {
@@ -29,6 +30,7 @@ import {
   checkAssetsCount,
   selectDataProduct,
 } from '../../utils/domain';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -55,11 +57,13 @@ test.describe('Data Product Rename', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: {
-              id: domain.responseData.id,
-              type: 'domain',
-            },
+            path: '/domains',
+            value: [
+              {
+                id: domain.responseData.id,
+                type: 'domain',
+              },
+            ],
           },
         ],
       });
@@ -128,12 +132,14 @@ test.describe('Data Product Rename', () => {
     await patchResponse;
 
     // Wait for navigation to new URL (URL should change to new name)
-    await page.waitForURL(`**/dataProduct/${newName}/**`);
+    await page.waitForURL(`**/dataProduct/${newName}/**`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     // Verify the data product header shows the new name (use first() as there may be multiple elements)
     await expect(
-      page.getByTestId('entity-header-display-name').first()
-    ).toBeVisible();
+      page.getByTestId('entity-header-display-name').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Update the data product response data for cleanup
     dataProduct.responseData.name = newName;
@@ -145,15 +151,18 @@ test.describe('Data Product Rename', () => {
 
     const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
 
-    // Click on the asset to navigate to the table page
-    await page
-      .locator(
-        `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-      )
-      .click();
+    // Navigate to the table page directly instead of clicking the card
+    // entity-link — the card body re-renders as tags/owners/counts
+    // stream in, so .click() flakes "element is not stable" under
+    // SharedInfra load.
+    await visitEntityPageByFqn({
+      page,
+      endpoint: table.endpoint,
+      fqn: tableFqn ?? '',
+    });
 
     // Navigate back to data product and verify assets tab still shows the asset
-    await page.goBack();
+    await page.goBack({ waitUntil: 'domcontentloaded' });
 
     await page.getByTestId('assets').click();
     await checkAssetsCount(page, 1);
@@ -242,11 +251,13 @@ test.describe('Data Product Rename', () => {
       patchData: [
         {
           op: 'add',
-          path: '/domains/0',
-          value: {
-            id: domain.responseData.id,
-            type: 'domain',
-          },
+          path: '/domains',
+          value: [
+            {
+              id: domain.responseData.id,
+              type: 'domain',
+            },
+          ],
         },
       ],
     });
@@ -299,7 +310,9 @@ test.describe('Data Product Rename', () => {
         await patchResponse;
 
         // Wait for navigation to new URL
-        await page.waitForURL(`**/dataProduct/${newName}/**`);
+        await page.waitForURL(`**/dataProduct/${newName}/**`, {
+          waitUntil: 'domcontentloaded',
+        });
 
         // Update current name for cleanup
         currentName = newName;
@@ -319,16 +332,18 @@ test.describe('Data Product Rename', () => {
         ).toBeVisible();
       }
 
-      // Final verification: navigate to asset and back
+      // Final verification: navigate to asset and back (direct
+      // navigation instead of card entity-link click — see sibling
+      // replacements for why).
       const tableFqn = get(testTable, 'entityResponseData.fullyQualifiedName');
-      await page
-        .locator(
-          `[data-testid="table-data-card_${tableFqn}"] a[data-testid="entity-link"]`
-        )
-        .click();
+      await visitEntityPageByFqn({
+        page,
+        endpoint: testTable.endpoint,
+        fqn: tableFqn ?? '',
+      });
 
       // Navigate back and verify assets still there
-      await page.goBack();
+      await page.goBack({ waitUntil: 'domcontentloaded' });
       await page.getByTestId('assets').click();
       await checkAssetsCount(page, 1);
     } finally {
@@ -396,13 +411,7 @@ test.describe('Data Product Rename', () => {
       // Verify the response status is 400 (Bad Request)
       expect(response.status()).toBe(400);
 
-      // Verify an error alert is shown
-      await expect(page.getByTestId('alert-bar')).toBeVisible();
-
-      // Verify the error message contains information about the duplicate name
-      await expect(page.getByTestId('alert-message')).toContainText(
-        'already exists'
-      );
+      await toastNotification(page, /already exists/i);
     } finally {
       await dataProduct1.delete(apiContext);
       await dataProduct2.delete(apiContext);

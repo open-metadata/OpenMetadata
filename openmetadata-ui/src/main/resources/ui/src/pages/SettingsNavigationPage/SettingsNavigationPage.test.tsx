@@ -12,9 +12,10 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { TreeDataNode } from 'antd';
 import { HelmetProvider } from 'react-helmet-async';
+import { Persona } from '../../generated/entity/teams/persona';
 import { NavigationItem } from '../../generated/system/ui/uiCustomization';
+import { NavigationTreeNode } from '../../interface/sidebar.interface';
 import { SettingsNavigationPage } from './SettingsNavigationPage';
 
 const mockNavigationItems: NavigationItem[] = [
@@ -46,26 +47,26 @@ const mockNavigationItems: NavigationItem[] = [
   },
 ];
 
-const mockTreeData: TreeDataNode[] = [
+const mockTreeData: NavigationTreeNode[] = [
   {
     key: 'explore',
     title: 'label.explore',
-    icon: <div>icon</div>,
+    icon: () => <svg />,
   },
   {
     key: 'observability',
     title: 'label.observability',
-    icon: <div>icon</div>,
+    icon: () => <svg />,
     children: [
       {
         key: 'incidents',
         title: 'label.incident-plural',
-        icon: <div>icon</div>,
+        icon: () => <svg />,
       },
       {
         key: 'data-quality',
         title: 'label.data-quality',
-        icon: <div>icon</div>,
+        icon: () => <svg />,
       },
     ],
   },
@@ -102,8 +103,9 @@ jest.mock(
   () => ({
     CustomizablePageHeader: jest
       .fn()
-      .mockImplementation(({ onReset, onSave }) => (
+      .mockImplementation(({ onReset, onSave, personaName }) => (
         <div data-testid="customizable-page-header">
+          <span data-testid="persona-name-prop">{personaName}</span>
           <button data-testid="save-button" onClick={onSave}>
             Save
           </button>
@@ -147,10 +149,17 @@ jest.mock('react-router-dom', () => ({
 describe('SettingsNavigationPage', () => {
   const mockOnSave = jest.fn().mockResolvedValue(undefined);
 
-  const renderComponent = () => {
+  const mockPersona: Persona = {
+    id: 'persona-1',
+    name: 'data-scientist',
+    displayName: 'Data Scientist',
+    fullyQualifiedName: 'data-scientist',
+  };
+
+  const renderComponent = (persona: Persona = mockPersona) => {
     return render(
       <HelmetProvider>
-        <SettingsNavigationPage onSave={mockOnSave} />
+        <SettingsNavigationPage persona={persona} onSave={mockOnSave} />
       </HelmetProvider>
     );
   };
@@ -165,7 +174,7 @@ describe('SettingsNavigationPage', () => {
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
     expect(screen.getByTestId('reset-button')).toBeInTheDocument();
-    expect(screen.getByText('Navigation Menus')).toBeInTheDocument();
+    expect(screen.getAllByText('label.navigation')[0]).toBeInTheDocument();
   });
 
   it('should have save button enabled by default when state matches current navigation', () => {
@@ -187,13 +196,13 @@ describe('SettingsNavigationPage', () => {
       {
         key: 'observability',
         title: 'label.observability',
-        icon: <div>icon</div>,
+        icon: () => <svg />,
         children: [],
       },
       {
         key: 'explore',
         title: 'label.explore',
-        icon: <div>icon</div>,
+        icon: () => <svg />,
       },
     ];
 
@@ -251,15 +260,15 @@ describe('SettingsNavigationPage', () => {
   it('should render tree with draggable items', () => {
     renderComponent();
 
-    const tree = screen.getByRole('tree');
+    const tree = screen.getByRole('treegrid');
 
     expect(tree).toBeInTheDocument();
   });
 
   it('should show NavigationBlocker when there are unsaved changes', () => {
-    const { container } = renderComponent();
+    renderComponent();
 
-    expect(container.querySelector('.ant-tree')).toBeInTheDocument();
+    expect(screen.getByRole('treegrid')).toBeInTheDocument();
   });
 
   it('should render switches for all tree items', () => {
@@ -278,5 +287,23 @@ describe('SettingsNavigationPage', () => {
     switches.forEach((switchElement) => {
       expect(switchElement).toBeInTheDocument();
     });
+  });
+
+  it('should forward persona displayName to CustomizablePageHeader as personaName', () => {
+    renderComponent();
+
+    expect(screen.getByTestId('persona-name-prop')).toHaveTextContent(
+      'Data Scientist'
+    );
+  });
+
+  it('should fall back to persona name when displayName is missing', () => {
+    renderComponent({
+      id: 'persona-2',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+    } as Persona);
+
+    expect(screen.getByTestId('persona-name-prop')).toHaveTextContent('admin');
   });
 });

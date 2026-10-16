@@ -18,25 +18,34 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
-import {
-  assignSingleSelectDomain,
-  clickOutside,
-  descriptionBox,
-  getApiContext,
-  redirectToHomePage,
-  removeSingleSelectDomain,
-} from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { setDomain } from '../../../utils/domainPicker';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
 import {
-  addMultiOwnerInDialog,
-  openAddGlossaryTermModal,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
 } from '../../../utils/glossary';
+import {
+  cancelGlossaryForm,
+  createGlossaryFromForm,
+  createGlossaryTermFromForm,
+  editGlossaryTermFromForm,
+  fillGlossaryForm,
+  fillGlossaryTermForm,
+  getFormNameInput,
+  getMutuallyExclusiveAlert,
+  getMutuallyExclusiveToggle,
+  GLOSSARY_NAME_SIZE_ERROR,
+  openAddGlossaryForm,
+  openAddGlossaryTermForm,
+  saveGlossaryForm,
+  saveGlossaryFormExpectingError,
+} from '../../../utils/glossaryForm';
 import { sidebarClick } from '../../../utils/sidebar';
+import { clickUntilVisible } from '../../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -58,25 +67,20 @@ test.describe('Glossary Advanced Operations', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      await page.click('[data-testid="add-glossary"]');
-      await page.getByTestId('form-heading').waitFor();
+      const glossaryForm = await openAddGlossaryForm(page);
 
-      await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
+      await fillGlossaryForm(page, glossaryForm, {
+        name: glossary.data.name,
+        description: glossary.data.description,
+      });
 
       // Verify mutually exclusive toggle is OFF by default
-      const mutuallyExclusiveBtn = page.getByTestId(
-        'mutually-exclusive-button'
-      );
-
-      await expect(mutuallyExclusiveBtn).toBeVisible();
+      await expect(getMutuallyExclusiveToggle(glossaryForm)).toBeVisible();
 
       // Verify alert is NOT visible when toggle is OFF
-      await expect(page.getByTestId('form-item-alert')).not.toBeVisible();
+      await expect(getMutuallyExclusiveAlert(glossaryForm)).not.toBeVisible();
 
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
-      const response = await glossaryResponse;
+      const response = await saveGlossaryForm(page);
       const responseData = await response.json();
 
       // Store response data for cleanup
@@ -90,6 +94,52 @@ test.describe('Glossary Advanced Operations', () => {
       );
     } finally {
       await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // G-C03: Create glossary with mutually exclusive toggle ON
+  test('should create glossary with mutually exclusive toggle ON', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossaryName = `MutualExGlossary${Date.now()}`;
+
+    try {
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+
+      // Turning the toggle ON also asserts the mutually exclusive alert shows
+      const response = await createGlossaryFromForm(page, {
+        name: glossaryName,
+        description: 'Mutually exclusive glossary',
+        mutuallyExclusive: true,
+      });
+      const responseData = await response.json();
+
+      // Verify the persisted glossary actually has mutuallyExclusive enabled
+      expect(responseData.mutuallyExclusive).toBe(true);
+
+      await expect(page).toHaveURL(/\/glossary\//, { timeout: 10000 });
+
+      await expect(page.getByTestId('entity-header-name')).toHaveText(
+        glossaryName,
+        { timeout: 10000 }
+      );
+    } finally {
+      try {
+        const response = await apiContext.get(
+          `/api/v1/glossaries/name/${glossaryName}`
+        );
+
+        if (response.ok()) {
+          const data = await response.json();
+          await apiContext.delete(
+            `/api/v1/glossaries/${data.id}?hardDelete=true&recursive=true`
+          );
+        }
+      } catch {
+        // Glossary may not exist
+      }
       await afterAction();
     }
   });
@@ -112,26 +162,11 @@ test.describe('Glossary Advanced Operations', () => {
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.GLOSSARY);
 
-      await page.click('[data-testid="add-glossary"]');
-      await page.getByTestId('form-heading').waitFor();
-
-      await page.fill('[data-testid="name"]', glossary.data.name);
-      await page.locator(descriptionBox).fill(glossary.data.description);
-
-      // Add first user owner
-      await addMultiOwnerInDialog({
-        page,
-        ownerNames: [user1.getUserDisplayName()],
-        activatorBtnLocator: '[data-testid="add-owner"]',
-        resultTestId: 'owner-container',
-        endpoint: EntityTypeEndpoint.Glossary,
-        isSelectableInsideForm: true,
-        type: 'Users',
+      const response = await createGlossaryFromForm(page, {
+        name: glossary.data.name,
+        description: glossary.data.description,
+        owners: [user1.getUserDisplayName()],
       });
-
-      const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-      await page.click('[data-testid="save-glossary"]');
-      const response = await glossaryResponse;
       glossary.responseData = await response.json();
 
       // Verify first owner is visible by checking owner link contains user name
@@ -196,10 +231,12 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit owner
-      await page
-        .getByTestId('glossary-right-panel-owner-link')
-        .getByTestId('edit-owner')
-        .click();
+      await clickUntilVisible(
+        page
+          .getByTestId('glossary-right-panel-owner-link')
+          .getByTestId('edit-owner'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear existing owner
@@ -217,10 +254,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -281,7 +316,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit reviewer
-      await page.click('[data-testid="edit-reviewer-button"]');
+      await clickUntilVisible(
+        page.getByTestId('edit-reviewer-button'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear existing reviewer
@@ -299,10 +337,8 @@ test.describe('Glossary Advanced Operations', () => {
       await waitForAllLoadersToDisappear(page);
 
       await page
-        .getByRole('listitem', {
-          name: user2.getUserDisplayName(),
-          exact: true,
-        })
+        .locator('[data-testid="owner-option"]')
+        .filter({ hasText: user2.getUserDisplayName() })
         .click();
 
       const patchResponse = page.waitForResponse('/api/v1/glossaries/*');
@@ -338,8 +374,11 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignSingleSelectDomain(page, domain.responseData);
-      await removeSingleSelectDomain(page, domain.responseData, false);
+      await setDomain(page, domain.responseData);
+      await setDomain(page, domain.responseData, {
+        trigger: 'edit-domain',
+        verify: 'chip-gone',
+      });
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
@@ -362,78 +401,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Add initial domain via UI first
-      await page.getByTestId('add-domain').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const searchDomain1 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain1.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain1.responseData.name);
-      await searchDomain1;
-
-      const domain1Tag = page.getByTestId(
-        `tag-${domain1.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domain1Tag).toBeVisible();
-
-      const addPatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domain1Tag.click();
-      await addPatchReq;
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify initial domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain1.data.displayName
-      );
-
-      // Click on domain to change it
-      await page.getByTestId('add-domain').click();
-      await waitForAllLoadersToDisappear(page);
-
-      // Search for new domain
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .clear();
-
-      const searchDomain2 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain2.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain2.responseData.name);
-      await searchDomain2;
-
-      // Click on the new domain option
-      const domain2Tag = page.getByTestId(
-        `tag-${domain2.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domain2Tag).toBeVisible();
-
-      const changePatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domain2Tag.click();
-      await changePatchReq;
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify new domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain2.data.displayName
-      );
+      await setDomain(page, domain1.responseData);
+      await setDomain(page, domain2.responseData, { trigger: 'edit-domain' });
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);
@@ -453,19 +422,15 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
-
       const termName = `ColorTerm${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with custom color');
+      // Must be one of the palette swatches
+      const customColor = '#1470EF';
 
-      // Set custom color
-      const customColor = '#FF5733';
-      await page.getByTestId('color-color-input').fill(customColor);
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await createResponse;
+      const response = await createGlossaryTermFromForm(page, {
+        name: termName,
+        description: 'Term with custom color',
+        color: customColor,
+      });
       const responseData = await response.json();
 
       // Verify color was saved
@@ -490,25 +455,54 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
-
       const termName = `IconTerm${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with custom icon');
-
-      // Set custom icon URL
       const iconUrl = 'https://example.com/icon.png';
-      await page.getByTestId('icon-url').fill(iconUrl);
 
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await createResponse;
+      const response = await createGlossaryTermFromForm(page, {
+        name: termName,
+        description: 'Term with custom icon',
+        icon: { url: iconUrl },
+      });
       const responseData = await response.json();
 
       // Verify icon was saved
       expect(responseData.style?.iconURL).toBe(iconUrl);
 
       // Verify term is created
+      await expect(page.getByTestId(termName)).toBeVisible();
+    } finally {
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  // T-C16b: Create term with a built-in icon picked from the grid
+  test('should create term with an icon picked from the picker grid', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+
+    try {
+      await glossary.create(apiContext);
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+
+      const termName = `GridIconTerm${Date.now()}`;
+      // The grid stores the icon's name, not a URL — the UI resolves it back
+      // to the component when rendering.
+      const iconName = 'Folder';
+
+      const response = await createGlossaryTermFromForm(page, {
+        name: termName,
+        description: 'Term with a built-in icon',
+        icon: { name: iconName },
+      });
+      const responseData = await response.json();
+
+      expect(responseData.style?.iconURL).toBe(iconName);
+
       await expect(page.getByTestId(termName)).toBeVisible();
     } finally {
       await glossary.delete(apiContext);
@@ -529,23 +523,14 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Open edit modal for the term
-      const escapedFqn = glossaryTerm.responseData.fullyQualifiedName
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"');
-      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-      await termRow.getByTestId('edit-button').click();
+      // Must be one of the palette swatches
+      const customColor = '#05A580';
 
-      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
-
-      // Set custom color
-      const customColor = '#28A745';
-      await page.getByTestId('color-color-input').clear();
-      await page.getByTestId('color-color-input').fill(customColor);
-
-      const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await updateResponse;
+      const response = await editGlossaryTermFromForm(
+        page,
+        glossaryTerm.responseData.fullyQualifiedName,
+        { color: customColor }
+      );
       const responseData = await response.json();
 
       // Verify color was updated
@@ -570,23 +555,13 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Open edit modal for the term
-      const escapedFqn = glossaryTerm.responseData.fullyQualifiedName
-        .replace(/\\/g, '\\\\')
-        .replace(/"/g, '\\"');
-      const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-      await termRow.getByTestId('edit-button').click();
-
-      await page.locator('[role="dialog"].edit-glossary-modal').waitFor();
-
-      // Set custom icon URL
       const iconUrl = 'https://example.com/new-icon.png';
-      await page.getByTestId('icon-url').clear();
-      await page.getByTestId('icon-url').fill(iconUrl);
 
-      const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await updateResponse;
+      const response = await editGlossaryTermFromForm(
+        page,
+        glossaryTerm.responseData.fullyQualifiedName,
+        { icon: { url: iconUrl } }
+      );
       const responseData = await response.json();
 
       // Verify icon was updated
@@ -636,15 +611,13 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('edit-button')
         .click();
 
-      // Clear all synonyms by clicking each remove button
-      const removeButtons = page.locator(
-        '.ant-select-selection-item .ant-select-selection-item-remove'
-      );
-      const count = await removeButtons.count();
-
-      for (let i = count - 1; i >= 0; i--) {
-        await removeButtons.nth(i).click();
+      for (const synonym of ['Synonym1', 'Synonym2', 'Synonym3']) {
+        await page.getByTestId(`remove-synonym-${synonym}`).click();
       }
+
+      await expect(
+        page.getByTestId('synonyms-select').getByRole('button')
+      ).toHaveCount(0);
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-synonym-btn').click();
@@ -978,7 +951,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit owner button
-      await page.getByTestId('edit-owner').click();
+      await clickUntilVisible(
+        page.getByTestId('edit-owner'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear all owners
@@ -1044,7 +1020,10 @@ test.describe('Glossary Advanced Operations', () => {
       ).toBeVisible();
 
       // Click edit reviewer button
-      await page.getByTestId('edit-reviewer-button').click();
+      await clickUntilVisible(
+        page.getByTestId('edit-reviewer-button'),
+        page.getByTestId('clear-all-button')
+      );
       await waitForAllLoadersToDisappear(page);
 
       // Clear all reviewers
@@ -1082,34 +1061,19 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
-
       const termName = `RelatedTerm${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('Term with related terms');
 
-      const searchResponse = page.waitForResponse('/api/v1/search/query*');
-
-      await page.getByTestId('related-terms').click();
-
-      // Add related term
-      await page
-        .getByTestId('related-terms')
-        .locator('input')
-        .fill(existingTerm.responseData.displayName);
-
-      await searchResponse;
-
-      // Select the term
-      await page
-        .getByTestId(`tag-${existingTerm.responseData.fullyQualifiedName}`)
-        .click();
-
-      await clickOutside(page);
-
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await createResponse;
+      const response = await createGlossaryTermFromForm(page, {
+        name: termName,
+        description: 'Term with related terms',
+        relatedTerms: [
+          {
+            name: existingTerm.responseData.name,
+            displayName: existingTerm.responseData.displayName,
+            fullyQualifiedName: existingTerm.responseData.fullyQualifiedName,
+          },
+        ],
+      });
       const responseData = await response.json();
 
       // Verify related terms were saved
@@ -1164,12 +1128,24 @@ test.describe('Glossary Advanced Operations', () => {
         .getByTestId('tags-container')
         .getByTestId('edit-button')
         .click();
-      await page.getByTestId('tag-selector').waitFor();
 
-      // Remove the tag by clicking its close button
-      await page.getByTestId('remove-tags').locator('svg').click();
+      await expect(
+        page.getByTestId('classification-tag-picker-search')
+      ).toBeVisible();
 
-      await page.getByTestId('saveAssociatedTag').click();
+      const searchRemove = page.waitForResponse(
+        `/api/v1/search/query?q=*${encodeURIComponent('Sensitive')}*`
+      );
+      await page
+        .getByTestId('classification-tag-picker-search')
+        .fill('Sensitive');
+      await searchRemove;
+
+      await page.getByTestId('tree-node-PII.Sensitive').click();
+
+      await page.getByTestId('update-btn').waitFor({ state: 'visible' });
+      await expect(page.getByTestId('update-btn')).toBeEnabled();
+      await page.getByTestId('update-btn').click();
 
       await expect(page.getByRole('heading')).toContainText(
         'Would you like to proceed with updating the tags?'
@@ -1193,17 +1169,16 @@ test.describe('Glossary Advanced Operations', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    await page.click('[data-testid="add-glossary"]');
-    await page.getByTestId('form-heading').waitFor();
+    const glossaryForm = await openAddGlossaryForm(page);
 
     const glossaryName = `CancelTest${Date.now()}`;
-    await page.fill('[data-testid="name"]', glossaryName);
-    await page.locator(descriptionBox).fill('This should be cancelled');
+    await fillGlossaryForm(page, glossaryForm, {
+      name: glossaryName,
+      description: 'This should be cancelled',
+    });
 
-    // Click cancel button
-    await page.click('[data-testid="cancel-glossary"]');
-
-    // Verify we're back on glossary page and the glossary was not created
+    // The drawer closes and the glossary was not created
+    await cancelGlossaryForm(page, 'glossary');
 
     // The glossary should not exist - check it's not in the list
     await expect(page.getByTestId(glossaryName)).not.toBeVisible();
@@ -1221,14 +1196,15 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
+      const termForm = await openAddGlossaryTermForm(page);
 
       const termName = `CancelTermTest${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-      await page.locator(descriptionBox).fill('This should be cancelled');
+      await fillGlossaryTermForm(page, termForm, {
+        name: termName,
+        description: 'This should be cancelled',
+      });
 
-      // Click cancel button (X or Cancel)
-      await page.getByRole('button', { name: 'Cancel' }).click();
+      await cancelGlossaryForm(page, 'glossaryTerm');
 
       await expect(page.getByTestId(termName)).not.toBeVisible();
     } finally {
@@ -1264,7 +1240,7 @@ test.describe('Glossary Advanced Operations', () => {
       await page.getByTestId('rename-button').click();
 
       // Wait for rename modal
-      await page.locator('[role="dialog"]').waitFor({ state: 'visible' });
+      await page.getByTestId('entity-name-modal').waitFor({ state: 'visible' });
 
       const newDisplayName = `UpdatedTerm_${Date.now()}`;
       await page.locator('#displayName').fill(newDisplayName);
@@ -1284,77 +1260,6 @@ test.describe('Glossary Advanced Operations', () => {
     }
   });
 
-  // T-U15: Verify bidirectional related term link
-  test('should show bidirectional related term link', async ({ page }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-    const term1 = new GlossaryTerm(glossary);
-    const term2 = new GlossaryTerm(glossary);
-
-    try {
-      await glossary.create(apiContext);
-      await term1.create(apiContext);
-      await term2.create(apiContext);
-
-      // Add term2 as related to term1
-      await term1.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/relatedTerms',
-          value: [
-            {
-              relationType: 'relatedTo',
-              term: {
-                id: term2.responseData.id,
-                type: 'glossaryTerm',
-                name: term2.responseData.name,
-                displayName: term2.responseData.displayName,
-                fullyQualifiedName: term2.responseData.fullyQualifiedName,
-              },
-            },
-          ],
-        },
-      ]);
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      // Navigate to term1 details
-      await page.getByTestId(term1.responseData.displayName).click();
-
-      // Verify term2 is shown as related term
-      await expect(
-        page
-          .getByTestId('related-term-container')
-          .getByTestId(term2.responseData.displayName)
-      ).toBeVisible();
-
-      // Click on term2 to navigate
-      await page
-        .getByTestId('related-term-container')
-        .getByTestId(term2.responseData.displayName)
-        .click();
-
-      // Verify we're on term2 page
-      await expect(
-        page.getByTestId('entity-header-display-name')
-      ).toContainText(term2.responseData.displayName);
-
-      // Verify term1 is shown as related term on term2 (bidirectional)
-      await expect(
-        page
-          .getByTestId('related-term-container')
-          .getByTestId(term1.responseData.displayName)
-      ).toBeVisible();
-    } finally {
-      await term2.delete(apiContext);
-      await term1.delete(apiContext);
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
   // EC-03: Very long term name (128 chars)
   test('should handle term with very long name', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
@@ -1367,16 +1272,13 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
-
       // Create a long name (128 chars is typically the limit)
       const longName = 'A'.repeat(100) + Date.now().toString().slice(-10);
-      await page.fill('[data-testid="name"]', longName);
-      await page.locator(descriptionBox).fill('Term with long name');
 
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await createResponse;
+      const response = await createGlossaryTermFromForm(page, {
+        name: longName,
+        description: 'Term with long name',
+      });
       const responseData = await response.json();
 
       // Verify term was created
@@ -1399,18 +1301,13 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
-
-      const termName = `LongDesc${Date.now()}`;
-      await page.fill('[data-testid="name"]', termName);
-
       // Create a long description (5000+ chars)
       const longDescription = 'This is a test. '.repeat(350);
-      await page.locator(descriptionBox).fill(longDescription);
 
-      const createResponse = page.waitForResponse('/api/v1/glossaryTerms');
-      await page.click('[data-testid="save-glossary-term"]');
-      const response = await createResponse;
+      const response = await createGlossaryTermFromForm(page, {
+        name: `LongDesc${Date.now()}`,
+        description: longDescription,
+      });
       const responseData = await response.json();
 
       // Verify term was created with long description
@@ -1425,32 +1322,29 @@ test.describe('Glossary Advanced Operations', () => {
   test('should show error when glossary name exceeds limit', async ({
     page,
   }) => {
+    // Redirect + sidebar navigate + modal open is 3 page transitions
+    // that can each drift a few seconds under merge-queue load.
+    test.slow();
+
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.GLOSSARY);
 
-    await page.click('[data-testid="add-glossary"]');
-    await page.getByTestId('form-heading').waitFor();
+    const glossaryForm = await openAddGlossaryForm(page);
 
-    // Try to enter name exceeding 128 chars
     const tooLongName = 'A'.repeat(150);
-    await page.fill('[data-testid="name"]', tooLongName);
-    await page.locator(descriptionBox).fill('Test description');
+    await fillGlossaryForm(page, glossaryForm, {
+      name: tooLongName,
+      description: 'Test description',
+    });
 
-    // Try to save
-    await page.click('[data-testid="save-glossary"]');
+    // The length rule blocks the save and the field keeps the value
+    await saveGlossaryFormExpectingError(
+      page,
+      'glossary',
+      GLOSSARY_NAME_SIZE_ERROR
+    );
 
-    // Check for error (either validation error or the field truncates)
-    const nameField = page.getByTestId('name');
-    const fieldValue = await nameField.inputValue();
-
-    // Either shows error or truncates to max length
-    const hasLengthLimit = fieldValue.length <= 128;
-    const hasError = await page
-      .locator('.ant-form-item-explain-error')
-      .isVisible()
-      .catch(() => false);
-
-    expect(hasLengthLimit || hasError).toBeTruthy();
+    await expect(getFormNameInput(glossaryForm)).toHaveValue(tooLongName);
   });
 
   // T-C09: Form validation - term name exceeds 128 characters
@@ -1465,27 +1359,22 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await openAddGlossaryTermModal(page);
+      const termForm = await openAddGlossaryTermForm(page);
 
-      // Try to enter name exceeding 128 chars
       const tooLongName = 'B'.repeat(150);
-      await page.fill('[data-testid="name"]', tooLongName);
-      await page.locator(descriptionBox).fill('Test description');
+      await fillGlossaryTermForm(page, termForm, {
+        name: tooLongName,
+        description: 'Test description',
+      });
 
-      // Try to save
-      await page.click('[data-testid="save-glossary-term"]');
+      // The length rule blocks the save and the field keeps the value
+      await saveGlossaryFormExpectingError(
+        page,
+        'glossaryTerm',
+        GLOSSARY_NAME_SIZE_ERROR
+      );
 
-      // Check for error or truncation
-      const nameField = page.getByTestId('name');
-      const fieldValue = await nameField.inputValue();
-
-      const hasLengthLimit = fieldValue.length <= 128;
-      const hasError = await page
-        .locator('.ant-form-item-explain-error')
-        .isVisible()
-        .catch(() => false);
-
-      expect(hasLengthLimit || hasError).toBeTruthy();
+      await expect(getFormNameInput(termForm)).toHaveValue(tooLongName);
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

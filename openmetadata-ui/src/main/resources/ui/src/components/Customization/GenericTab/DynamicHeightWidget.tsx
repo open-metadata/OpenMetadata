@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import React, { useEffect, useRef, useState } from 'react';
+import {
+  GRID_ROW_HEIGHT,
+  GRID_VERTICAL_MARGIN,
+} from '../../../constants/CustomizeWidgets.constants';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import './generic-tab.less';
 
@@ -28,10 +32,25 @@ export const DynamicHeightWidget = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(widget.h);
 
+  // Sync local height state when the layout is reset externally (e.g. persona switch).
+  // This causes the ResizeObserver effect to re-run and re-measure actual content height.
+  useEffect(() => {
+    setHeight(widget.h);
+  }, [widget.h]);
+
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const newHeight = entry.contentRect.height / 100; // Convert to grid units (100px per unit)
+        // A 0x0 rect means the widget is not rendered (e.g. an inactive tab pane
+        // under display:none that still reads the shared layout). Its height is
+        // unknown, not zero — reporting it collapses the visible pane's widget
+        // and ping-pongs with the visible observer.
+        if (entry.contentRect.width === 0 && entry.contentRect.height === 0) {
+          continue;
+        }
+        const newHeight =
+          (entry.contentRect.height + GRID_VERTICAL_MARGIN) /
+          (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN);
         if (newHeight !== height) {
           setHeight(newHeight);
           onHeightChange?.(widget.i, newHeight);

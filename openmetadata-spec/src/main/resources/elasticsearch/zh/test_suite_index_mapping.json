@@ -1,12 +1,14 @@
 {
   "settings": {
+    "index": {},
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -15,15 +17,26 @@
           "tokenizer": "letter",
           "filter": [
             "lowercase",
-            "om_stemmer"
+            "asciifolding",
+            "om_stemmer",
+            "om_plural_stemmer"
           ]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
           "filter": [
-            "lowercase",
             "compound_word_delimiter_graph",
+            "lowercase",
+            "asciifolding",
             "flatten_graph"
+          ]
+        },
+        "om_substring": {
+          "type": "custom",
+          "tokenizer": "substring_ngram_tokenizer",
+          "filter": [
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -43,12 +56,47 @@
           "catenate_all": false,
           "preserve_original": true,
           "stem_english_possessive": true
+        },
+        "om_plural_stemmer": {
+          "type": "stemmer",
+          "name": "minimal_english"
+        }
+      },
+      "tokenizer": {
+        "substring_ngram_tokenizer": {
+          "type": "ngram",
+          "min_gram": 3,
+          "max_gram": 4,
+          "token_chars": [
+            "letter",
+            "digit",
+            "custom"
+          ],
+          "custom_token_chars": "_"
         }
       }
     }
   },
   "mappings": {
     "properties": {
+      "fingerprint": {
+        "type": "keyword"
+      },
+      "textToLLMContext": {
+        "type": "text"
+      },
+      "textToEmbed": {
+        "type": "text"
+      },
+      "chunkIndex": {
+        "type": "integer"
+      },
+      "chunkCount": {
+        "type": "integer"
+      },
+      "parentId": {
+        "type": "keyword"
+      },
       "changeDescription": {
         "enabled": false
       },
@@ -77,6 +125,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -101,6 +153,10 @@
           "compound": {
             "type": "text",
             "analyzer": "om_compound_analyzer"
+          },
+          "substring": {
+            "type": "text",
+            "analyzer": "om_substring"
           }
         }
       },
@@ -115,6 +171,9 @@
         }
       },
       "lastResultTimestamp": {
+        "type": "long"
+      },
+      "testsRevision": {
         "type": "long"
       },
       "owners": {
@@ -207,7 +266,8 @@
                 "type": "text",
                 "analyzer": "om_analyzer"
               }
-            }
+            },
+            "normalizer": "lowercase_normalizer"
           },
           "labelType": {
             "type": "keyword"
@@ -220,6 +280,46 @@
           },
           "state": {
             "type": "keyword"
+          }
+        }
+      },
+      "certification": {
+        "type": "object",
+        "properties": {
+          "tagLabel": {
+            "type": "object",
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
+          },
+          "appliedDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
+          },
+          "expiryDate": {
+            "type": "date",
+            "format": "strict_date_optional_time||epoch_millis"
           }
         }
       },

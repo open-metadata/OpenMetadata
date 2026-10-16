@@ -38,17 +38,19 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Slf4j
 public class JsonPatchUtils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String FROM_MEMBER = "from";
 
   private JsonPatchUtils() {}
 
   public static Set<MetadataOperation> getMetadataOperations(
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
-    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    EntityInterface<?> originalEntity = resourceContextInterface.getEntity();
+    String resourceType = resourceContextInterface.getResource();
     boolean tagsAffected = false;
 
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
-      MetadataOperation metadataOperation = getMetadataOperation(jsonValue);
+      MetadataOperation metadataOperation = getMetadataOperation(jsonValue, resourceType);
       if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
         return Collections.singleton(MetadataOperation.EDIT_ALL);
       }
@@ -84,6 +86,18 @@ public class JsonPatchUtils {
     }
 
     return uniqueOperations;
+  }
+
+  /**
+   * Whether an operation of {@code jsonPatch} reads a value from another location of the document,
+   * as {@code copy} and {@code move} do through their {@code from} member.
+   */
+  public static boolean readsFromAnotherPath(JsonPatch jsonPatch) {
+    // jakarta JsonPatch exposes its operations as untyped JsonValues; each operation is a JSON
+    // object.
+    return jsonPatch.toJsonArray().stream()
+        .anyMatch(
+            operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
   }
 
   private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)
@@ -158,6 +172,11 @@ public class JsonPatchUtils {
   }
 
   public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
+    return getMetadataOperation(jsonPatchObject, null);
+  }
+
+  public static MetadataOperation getMetadataOperation(
+      Object jsonPatchObject, String resourceType) {
     String path;
 
     // Handle jakarta JSON patch objects efficiently
@@ -174,14 +193,19 @@ public class JsonPatchUtils {
       path = jsonPatchMap.get("path").toString();
     }
 
-    return getMetadataOperation(path);
+    return getMetadataOperation(path, resourceType);
   }
 
   public static MetadataOperation getMetadataOperation(String path) {
+    return getMetadataOperation(path, null);
+  }
+
+  public static MetadataOperation getMetadataOperation(String path, String resourceType) {
     String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
     for (String p : paths) {
-      if (ResourceRegistry.hasEditOperation(p)) {
-        return ResourceRegistry.getEditOperation(p);
+      MetadataOperation perEntity = ResourceRegistry.getEntityEditOperation(resourceType, p);
+      if (perEntity != null) {
+        return perEntity;
       }
     }
     LOG.warn("Failed to find specific operation for patch path {}", path);

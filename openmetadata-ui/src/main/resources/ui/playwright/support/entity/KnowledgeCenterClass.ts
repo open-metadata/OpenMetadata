@@ -12,6 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { navigateToArticle } from '../../utils/KnowledgeCenter';
 import {
   KnowledgeCenterData,
@@ -78,11 +83,11 @@ export class KnowledgeCenterClass {
         }),
       };
 
-      const response = await apiContext.post('/api/v1/knowledgeCenter', {
+      const response = await apiContext.post('/api/v1/contextCenter/pages', {
         data: apiData,
       });
 
-      const pageData = await response.json();
+      const pageData = await okJson(response, 'KnowledgeCenterClass.create');
       this.knowledgePages.push(pageData);
 
       if (i === 0) {
@@ -103,13 +108,14 @@ export class KnowledgeCenterClass {
       throw new Error('Cannot patch: KnowledgeCenter has not been created');
     }
 
-    const response = await apiContext.patch(`/api/v1/knowledgeCenter/${id}`, {
-      data,
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
-
+    const response = await withNotFoundRetry(() =>
+      apiContext.patch(`/api/v1/contextCenter/pages/${id}`, {
+        data,
+        headers: {
+          'Content-Type': 'application/json-patch+json',
+        },
+      })
+    );
     if (!response.ok()) {
       const errorText = await response.text();
       throw new Error(
@@ -200,8 +206,9 @@ export class KnowledgeCenterClass {
     if (deletePages) {
       for (const page of this.knowledgePages) {
         if (page.id) {
-          await apiContext.delete(
-            `/api/v1/knowledgeCenter/${page.id}?hardDelete=true&recursive=true`
+          await deleteFixtureEntity(
+            apiContext,
+            `/api/v1/contextCenter/pages/${page.id}?hardDelete=true&recursive=true`
           );
         }
       }

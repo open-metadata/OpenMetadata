@@ -1,11 +1,19 @@
-import { type ReactNode, type Ref, createContext, useContext } from 'react';
+import {
+  createContext,
+  forwardRef,
+  type ReactNode,
+  type Ref,
+  useContext,
+} from 'react';
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
   type RadioGroupProps as AriaRadioGroupProps,
   type RadioProps as AriaRadioProps,
 } from 'react-aria-components';
+import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
+import { borderAfter } from '@/utils/tailwindClasses';
 
 export interface RadioGroupContextType {
   size?: 'sm' | 'md';
@@ -31,9 +39,13 @@ export const RadioButtonBase = ({
   return (
     <div
       className={cx(
-        'tw:flex tw:size-4 tw:min-h-4 tw:min-w-4 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded-full tw:bg-primary tw:ring-1 tw:ring-primary tw:ring-inset',
+        // Border on ::after — the element's own outline is reserved for the focus ring below.
+        'tw:relative tw:flex tw:size-4 tw:min-h-4 tw:min-w-4 tw:cursor-pointer tw:appearance-none tw:items-center tw:justify-center tw:rounded-full tw:bg-primary',
+        `${borderAfter} tw:after:outline-primary`,
         size === 'md' && 'tw:size-5 tw:min-h-5 tw:min-w-5',
-        isSelected && !isDisabled && 'tw:bg-brand-solid tw:ring-bg-brand-solid',
+        isSelected &&
+          !isDisabled &&
+          'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
           'tw:cursor-not-allowed tw:border-disabled tw:bg-disabled_subtle',
         isFocusVisible &&
@@ -58,15 +70,24 @@ interface RadioButtonProps extends AriaRadioProps {
   label?: ReactNode;
   hint?: ReactNode;
   ref?: Ref<HTMLLabelElement>;
+  /** Extra classes for the circular indicator (e.g. a brand-coloured ring). */
+  indicatorClassName?: string;
 }
 
-export const RadioButton = ({
-  label,
-  hint,
-  className,
-  size = 'sm',
-  ...ariaRadioProps
-}: RadioButtonProps) => {
+export const RadioButton = forwardRef<
+  HTMLLabelElement,
+  Omit<RadioButtonProps, 'ref'>
+>(function RadioButton(
+  {
+    label,
+    hint,
+    className,
+    indicatorClassName,
+    size = 'sm',
+    ...ariaRadioProps
+  },
+  ref
+) {
   const context = useContext(RadioGroupContext);
 
   size = context?.size ?? size;
@@ -96,11 +117,12 @@ export const RadioButton = ({
           sizes[size].root,
           typeof className === 'function' ? className(renderProps) : className
         )
-      }>
+      }
+      ref={ref}>
       {({ isSelected, isDisabled, isFocusVisible }) => (
         <>
           <RadioButtonBase
-            className={label || hint ? 'tw:mt-0.5' : ''}
+            className={cx((label || hint) && 'tw:mt-0.5', indicatorClassName)}
             isDisabled={isDisabled}
             isFocusVisible={isFocusVisible}
             isSelected={isSelected}
@@ -134,17 +156,19 @@ export const RadioButton = ({
       )}
     </AriaRadio>
   );
-};
+});
 RadioButton.displayName = 'RadioButton';
 
 interface RadioGroupProps extends RadioGroupContextType, AriaRadioGroupProps {
   children: ReactNode;
   className?: string;
+  label?: ReactNode;
 }
 
 export const RadioGroup = ({
   children,
   className,
+  label,
   size = 'sm',
   ...props
 }: RadioGroupProps) => {
@@ -153,6 +177,7 @@ export const RadioGroup = ({
       <AriaRadioGroup
         {...props}
         className={cx('tw:flex tw:flex-col tw:gap-4', className)}>
+        {label && <Label>{label}</Label>}
         {children}
       </AriaRadioGroup>
     </RadioGroupContext.Provider>

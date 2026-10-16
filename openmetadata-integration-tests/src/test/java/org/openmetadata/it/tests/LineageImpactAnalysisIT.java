@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,6 +28,9 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.lineage.LineageBand;
+import org.openmetadata.schema.api.lineage.LineageLens;
+import org.openmetadata.schema.api.lineage.LineageScene;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -38,6 +42,9 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Impact Analysis lineage filters.
@@ -63,6 +70,7 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 public class LineageImpactAnalysisIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String LINEAGE_SCENE_PATH = "/v1/lineage/scene";
   private OpenMetadataClient client;
   private TestNamespace namespace;
 
@@ -308,6 +316,18 @@ public class LineageImpactAnalysisIT {
   void testDownstream_noFilter() throws Exception {
     Set<String> nodes = getTableViewNodes(stgA, "Downstream", null);
     assertContainsExactly(nodes, intA, rptA, rptB);
+  }
+
+  @Test
+  void testLineageSceneTagAndTierFilters() {
+    LineageScene tagScene =
+        getFilteredLineageSceneWithRetry(tagFilter("PersonalData.Personal"), stgA);
+    LineageScene tierScene = getFilteredLineageSceneWithRetry(tierFilter("Tier.Tier2"), stgA);
+
+    assertTrue(hasSceneNode(tagScene, stgA));
+    assertTrue(hasSceneNode(tierScene, stgA));
+    assertFalse(hasSceneNode(tagScene, intA));
+    assertFalse(hasSceneNode(tierScene, intA));
   }
 
   @Test
@@ -619,17 +639,21 @@ public class LineageImpactAnalysisIT {
 
   @Test
   void testColumnView_malformedSingleFilter_noMatch() throws Exception {
-    // Single malformed filter like "bad" should match nothing
-    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "bad");
+    // A bare token (no "type:") is treated as an "any" substring match over the column FQN.
+    // The token must contain non-hex letters so it can never coincide with the random hex
+    // RUN_ID baked into every test FQN (TestNamespace) — "bad" is all hex digits and made
+    // this assertion flaky whenever the hash happened to contain the substring "bad".
+    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "zzznomatchzzz");
     assertNotNull(result);
     assertEquals(0, getColumnCount(result));
   }
 
   @Test
   void testColumnView_malformedMultiFilter_noMatch() throws Exception {
-    // Multiple malformed filters like "bad,worse" should also match nothing
-    // (consistent with single malformed filter)
-    JsonNode result = getColumnViewResult(stgA, "Downstream", 3, null, "bad,worse");
+    // Multiple non-matching tokens should also match nothing (consistent with single token).
+    // See testColumnView_malformedSingleFilter_noMatch for why the tokens avoid hex digits.
+    JsonNode result =
+        getColumnViewResult(stgA, "Downstream", 3, null, "zzznomatchzzz,qqqmissingqqq");
     assertNotNull(result);
     assertEquals(0, getColumnCount(result));
   }
@@ -709,6 +733,43 @@ public class LineageImpactAnalysisIT {
   }
 
   // ── Helper methods ────────────────────────────────────────────────────
+
+  private LineageScene getFilteredLineageSceneWithRetry(String queryFilter, Table expectedTable) {
+    LineageScene[] holder = {null};
+    Awaitility.await("Filtered lineage scene")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              holder[0] = getFilteredLineageScene(queryFilter);
+              return hasSceneNode(holder[0], expectedTable);
+            });
+    return holder[0];
+  }
+
+  private LineageScene getFilteredLineageScene(String queryFilter) throws Exception {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("focusFqn", rawA.getFullyQualifiedName())
+            .queryParam("entityType", Entity.TABLE)
+            .queryParam("lens", LineageLens.SERVICE.value())
+            .queryParam("band", LineageBand.ASSET.value())
+            .queryParam("upstreamDepth", "0")
+            .queryParam("downstreamDepth", "3")
+            .queryParam("query_filter", queryFilter)
+            .queryParam("includeDeleted", "false")
+            .queryParam("size", "100")
+            .build();
+    String response =
+        client.getHttpClient().executeForString(HttpMethod.GET, LINEAGE_SCENE_PATH, null, options);
+    return MAPPER.readValue(response, LineageScene.class);
+  }
+
+  private boolean hasSceneNode(LineageScene scene, Table table) {
+    return scene.getNodes().stream()
+        .anyMatch(node -> table.getFullyQualifiedName().equals(node.getFullyQualifiedName()));
+  }
 
   private Map<String, Integer> getTableViewNodesWithDepth(
       Table entity, String direction, int nodeDepth, String queryFilter) throws Exception {

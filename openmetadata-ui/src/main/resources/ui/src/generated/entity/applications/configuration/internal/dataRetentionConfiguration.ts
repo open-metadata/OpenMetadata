@@ -12,6 +12,11 @@
  */
 export interface DataRetentionConfigurationClass {
     /**
+     * Enter the retention period for comments on Activity Events in days. Use 0 to retain
+     * activity comments forever.
+     */
+    activityCommentsRetentionPeriod: number;
+    /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
      */
@@ -26,6 +31,12 @@ export interface DataRetentionConfigurationClass {
      */
     changeEventRetentionPeriod: number;
     /**
+     * Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed
+     * by the extension's name. OpenMetadata never reads these values; it hands them to the
+     * registered DataRetentionExtension, which decides what a missing key means.
+     */
+    extensions?: any;
+    /**
      * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
      * months).
      */
@@ -35,4 +46,10 @@ export interface DataRetentionConfigurationClass {
      * two months).
      */
     testCaseResultsRetentionPeriod: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
 }

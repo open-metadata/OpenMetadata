@@ -12,10 +12,10 @@
 Databricks source models.
 
 Pydantic shapes for the ``DESCRIBE TABLE EXTENDED ... AS JSON`` payload
-(Databricks Runtime 16.4+).
+(Databricks Runtime 16.2+).
 """
 
-from typing import List, Optional  # noqa: UP035
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -24,33 +24,49 @@ class DescribeJsonType(BaseModel):
     """A type node from the AS JSON payload.
 
     Polymorphic on ``name``: ``struct`` populates ``fields``, ``array``
-    populates ``element_type``, primitives leave both empty.
+    populates ``element_type``, ``map`` populates ``key_type``/``value_type``,
+    ``decimal``/``varchar``/``char`` populate ``precision``/``scale``/``length``.
     """
 
-    name: Optional[str] = None  # noqa: UP045
-    fields: Optional[List["DescribeJsonField"]] = None  # noqa: UP006, UP045
+    name: str | None = None
+    fields: list["DescribeJsonField"] | None = None
     element_type: Optional["DescribeJsonType"] = None
+    key_type: Optional["DescribeJsonType"] = None
+    value_type: Optional["DescribeJsonType"] = None
+    precision: int | None = None
+    scale: int | None = None
+    length: int | None = None
 
 
 class DescribeJsonField(BaseModel):
     """A struct field, with optional ``COMMENT '...'``."""
 
-    name: Optional[str] = None  # noqa: UP045
-    type: Optional[DescribeJsonType] = None  # noqa: UP045
-    comment: Optional[str] = None  # noqa: UP045
+    name: str | None = None
+    type: DescribeJsonType | None = None
+    comment: str | None = None
 
 
 class DescribeJsonColumn(BaseModel):
     """A top-level column from the AS JSON payload."""
 
-    name: Optional[str] = None  # noqa: UP045
-    type: Optional[DescribeJsonType] = None  # noqa: UP045
+    name: str | None = None
+    type: DescribeJsonType | None = None
+    comment: str | None = None
 
 
 class DescribeJsonPayload(BaseModel):
-    """The full AS JSON payload. Only ``columns`` is consumed."""
+    """The full ``DESCRIBE TABLE EXTENDED ... AS JSON`` payload (Databricks
+    Runtime 16.2+). Unmodeled keys are ignored; an older runtime that does not
+    support ``AS JSON`` makes the query error out and callers fall back to the
+    legacy per-statement ``DESCRIBE`` path."""
 
-    columns: List[DescribeJsonColumn] = []  # noqa: UP006
+    columns: list[DescribeJsonColumn] = []
+    type: str | None = None
+    comment: str | None = None
+    owner: str | None = None
+    location: str | None = None
+    view_text: str | None = None
+    view_original_text: str | None = None
 
 
 # Resolve forward references in ``DescribeJsonType``.

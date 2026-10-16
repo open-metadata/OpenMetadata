@@ -1,0 +1,920 @@
+package org.openmetadata.it.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.context.CreateContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.fluent.Users;
+import org.openmetadata.sdk.models.ListParams;
+import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.context.ContextMemoryService;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+
+/**
+ * Integration tests for ContextMemory entity operations.
+ *
+ * <p>Tests ContextMemory CRUD operations, status lifecycle transitions, scope/visibility handling,
+ * and context-memory-specific validations.
+ *
+ * <p>Modeled on LearningResourceIT, the reference entity for the ContextMemory OSS implementation.
+ */
+@Execution(ExecutionMode.CONCURRENT)
+public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMemory> {
+
+  public ContextMemoryIT() {
+    supportsPatch = true;
+    supportsFollowers = false;
+    supportsTags = true;
+    supportsOwners = true;
+    supportsDomains = true;
+    supportsDataProducts = false;
+    supportsCustomExtension = true;
+    supportsSearchIndex = true;
+  }
+
+  // ===================================================================
+  // ABSTRACT METHOD IMPLEMENTATIONS (Required by BaseEntityIT)
+  // ===================================================================
+
+  // Without shareConfig these fixtures use PRIVATE visibility.
+  @Override
+  protected CreateContextMemory createMinimalRequest(TestNamespace ns) {
+    return new CreateContextMemory()
+        .withName(ns.prefix("context-memory"))
+        .withDescription("Test context memory")
+        .withQuestion("How do I find certified tables?")
+        .withAnswer("Filter the Explore page by the Certification tag.");
+  }
+
+  @Override
+  protected CreateContextMemory createRequest(String name, TestNamespace ns) {
+    return new CreateContextMemory()
+        .withName(name)
+        .withDescription("Test context memory")
+        .withQuestion("What is the data quality SLA?")
+        .withAnswer("Critical tables must pass tests every 24 hours.");
+  }
+
+  @Override
+  protected ContextMemory createEntity(CreateContextMemory createRequest) {
+    return getContextMemoryService().create(createRequest);
+  }
+
+  @Override
+  protected ContextMemory getEntity(String id) {
+    return getContextMemoryService().get(id);
+  }
+
+  @Override
+  protected ContextMemory getEntityByName(String fqn) {
+    return getContextMemoryService().getByName(fqn);
+  }
+
+  @Override
+  protected ContextMemory patchEntity(String id, ContextMemory entity) {
+    return getContextMemoryService().update(id, entity);
+  }
+
+  @Override
+  protected void deleteEntity(String id) {
+    getContextMemoryService().delete(id);
+  }
+
+  @Override
+  protected void restoreEntity(String id) {
+    getContextMemoryService().restore(id);
+  }
+
+  @Override
+  protected void hardDeleteEntity(String id) {
+    Map<String, String> params = new HashMap<>();
+    params.put("hardDelete", "true");
+    getContextMemoryService().delete(id, params);
+  }
+
+  @Override
+  protected String getEntityType() {
+    return "contextMemory";
+  }
+
+  @Override
+  protected ContextMemoryStatus expectedInitialEntityStatus() {
+    return ContextMemoryStatus.UNPROCESSED;
+  }
+
+  // Ordinary search returns trusted memories. Keep search fixtures explicitly approved while
+  // creation and lifecycle tests continue to exercise requests that omit the stage.
+  @Override
+  protected CreateContextMemory createSearchRequest(TestNamespace ns) {
+    return createMinimalRequest(ns).withEntityStatus(ContextMemoryStatus.APPROVED);
+  }
+
+  /** A memory can never go back to Draft, so its path moves between in use and archived. */
+  @Override
+  protected List<ContextMemoryStatus> entityStatusPath() {
+    return List.of(
+        ContextMemoryStatus.ARCHIVED, ContextMemoryStatus.APPROVED, ContextMemoryStatus.ARCHIVED);
+  }
+
+  @Override
+  protected void validateCreatedEntity(ContextMemory entity, CreateContextMemory createRequest) {
+    assertEquals(createRequest.getName(), entity.getName());
+
+    if (createRequest.getDescription() != null) {
+      assertEquals(createRequest.getDescription(), entity.getDescription());
+    }
+
+    if (createRequest.getDisplayName() != null) {
+      assertEquals(createRequest.getDisplayName(), entity.getDisplayName());
+    }
+
+    assertEquals(createRequest.getQuestion(), entity.getQuestion());
+    assertEquals(createRequest.getAnswer(), entity.getAnswer());
+
+    assertTrue(
+        entity.getFullyQualifiedName().contains(entity.getName()),
+        "FQN should contain memory name");
+  }
+
+  @Override
+  protected ListResponse<ContextMemory> listEntities(ListParams params) {
+    return getContextMemoryService().list(params);
+  }
+
+  @Override
+  protected ContextMemory getEntityWithFields(String id, String fields) {
+    return getContextMemoryService().get(id, fields);
+  }
+
+  @Override
+  protected ContextMemory getEntityByNameWithFields(String fqn, String fields) {
+    return getContextMemoryService().getByName(fqn, fields);
+  }
+
+  @Override
+  protected ContextMemory getEntityIncludeDeleted(String id) {
+    return getContextMemoryService().get(id, null, "deleted");
+  }
+
+  @Override
+  protected EntityHistory getVersionHistory(UUID id) {
+    return getContextMemoryService().getVersionList(id);
+  }
+
+  @Override
+  protected ContextMemory getVersion(UUID id, Double version) {
+    return getContextMemoryService().getVersion(id.toString(), version);
+  }
+
+  // ===================================================================
+  // CRUD TESTS
+  // ===================================================================
+
+  @Test
+  void post_contextMemory_200_OK(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("crud-memory"))
+            .withDescription("CRUD happy path")
+            .withQuestion("Where are the gold datasets?")
+            .withAnswer("Under the Sales domain tagged Tier.Gold.");
+
+    ContextMemory memory = createEntity(request);
+    assertNotNull(memory.getId());
+    assertEquals(request.getName(), memory.getName());
+    assertEquals("Where are the gold datasets?", memory.getQuestion());
+    assertEquals("Under the Sales domain tagged Tier.Gold.", memory.getAnswer());
+    assertEquals(0.1, memory.getVersion(), 0.001);
+
+    ContextMemory fetched = getEntity(memory.getId().toString());
+    assertEquals(memory.getId(), fetched.getId());
+    assertEquals(memory.getName(), fetched.getName());
+  }
+
+  @Test
+  void post_contextMemoryWithQuestionAnswerSummaryTitle_200_OK(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("rich-memory"))
+            .withDisplayName("Certification Lookup")
+            .withDescription("Full content memory")
+            .withTitle("How to find certified data")
+            .withSummary("Use the Certification tag filter on Explore.")
+            .withQuestion("How do I find certified tables?")
+            .withAnswer("Filter the Explore page by Certification = Certified.");
+
+    ContextMemory memory = createEntity(request);
+    assertEquals("Certification Lookup", memory.getDisplayName());
+    assertEquals("How to find certified data", memory.getTitle());
+    assertEquals("Use the Certification tag filter on Explore.", memory.getSummary());
+    assertEquals("How do I find certified tables?", memory.getQuestion());
+    assertEquals("Filter the Explore page by Certification = Certified.", memory.getAnswer());
+  }
+
+  @Test
+  void post_contextMemoryWithoutRequiredFields_400(TestNamespace ns) {
+    assertThrows(
+        Exception.class,
+        () -> createEntity(new CreateContextMemory().withName(null)),
+        "Creating memory without name should fail");
+
+    assertThrows(
+        Exception.class,
+        () ->
+            createEntity(
+                new CreateContextMemory()
+                    .withName(ns.prefix("no-question"))
+                    .withAnswer("An answer without a question.")),
+        "Creating memory without question should fail");
+
+    assertThrows(
+        Exception.class,
+        () ->
+            createEntity(
+                new CreateContextMemory()
+                    .withName(ns.prefix("no-answer"))
+                    .withQuestion("A question without an answer?")),
+        "Creating memory without answer should fail");
+  }
+
+  @Test
+  void post_contextMemoryDuplicateName_409(TestNamespace ns) {
+    String memoryName = ns.prefix("duplicate-memory");
+
+    createEntity(
+        new CreateContextMemory()
+            .withName(memoryName)
+            .withDescription("First memory")
+            .withQuestion("First question?")
+            .withAnswer("First answer."));
+
+    CreateContextMemory duplicate =
+        new CreateContextMemory()
+            .withName(memoryName)
+            .withDescription("Duplicate memory")
+            .withQuestion("Duplicate question?")
+            .withAnswer("Duplicate answer.");
+
+    assertThrows(Exception.class, () -> createEntity(duplicate), "Duplicate name should fail");
+  }
+
+  @Test
+  void get_contextMemoryByFqn_200_OK(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("fqn-memory"))
+            .withDescription("FQN lookup test")
+            .withQuestion("What is the FQN of this memory?")
+            .withAnswer("The FQN equals the name for context memories.");
+
+    ContextMemory memory = createEntity(request);
+
+    // FQN == name for ContextMemory (ContextMemoryRepository.setFullyQualifiedName).
+    assertEquals(memory.getName(), memory.getFullyQualifiedName());
+
+    ContextMemory byFqn = getEntityByName(memory.getFullyQualifiedName());
+    assertEquals(memory.getId(), byFqn.getId());
+    assertEquals(memory.getName(), byFqn.getName());
+  }
+
+  // ===================================================================
+  // STATUS LIFECYCLE TESTS
+  // ===================================================================
+
+  @Test
+  void put_contextMemoryStatusTransitions_valid_200_OK(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("status-valid"))
+            .withDescription("Valid status transitions")
+            .withQuestion("What is the status flow?")
+            .withAnswer("Draft to Approved to Archived and back to Approved.")
+            .withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    ContextMemory memory = createEntity(request);
+    assertEquals(ContextMemoryStatus.DRAFT, memory.getEntityStatus());
+
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
+    ContextMemory active = getContextMemoryService().put(request);
+    assertEquals(ContextMemoryStatus.APPROVED, active.getEntityStatus());
+
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
+    ContextMemory archived = getContextMemoryService().put(request);
+    assertEquals(ContextMemoryStatus.ARCHIVED, archived.getEntityStatus());
+
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
+    ContextMemory reactivated = getContextMemoryService().put(request);
+    assertEquals(ContextMemoryStatus.APPROVED, reactivated.getEntityStatus());
+  }
+
+  @Test
+  void put_contextMemoryStatusTransition_invalid_fails(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("status-invalid"))
+            .withDescription("Invalid status transition")
+            .withQuestion("Can an Archived memory go back to Draft?")
+            .withAnswer("No, only an Approved one can return to review.")
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
+
+    ContextMemory memory = createEntity(request);
+    assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
+    getContextMemoryService().put(request);
+
+    request.withEntityStatus(ContextMemoryStatus.DRAFT);
+    assertThrows(
+        Exception.class,
+        () -> getContextMemoryService().put(request),
+        "Transition from Archived to Draft should be rejected");
+  }
+
+  @Test
+  void post_contextMemoryInStageOutsideItsLifecycle_400(TestNamespace ns) {
+    Map<String, Object> request =
+        Map.of(
+            "name", ns.prefix("status-outside-lifecycle"),
+            "question", "Can a memory be In Review?",
+            "answer", "A memory uses its own status vocabulary.",
+            "entityStatus", "In Review");
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.POST, "/v1/contextCenter/memories", request));
+  }
+
+  @Test
+  void put_statusOnlyChange_persistsAfterGet(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("status-persist"))
+            .withDescription("Status-only update persistence test")
+            .withQuestion("Does the status persist?")
+            .withAnswer("Yes, after a status-only PUT.")
+            .withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    ContextMemory memory = createEntity(request);
+    assertEquals(ContextMemoryStatus.DRAFT, memory.getEntityStatus());
+
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
+    ContextMemory putResponse = getContextMemoryService().put(request);
+    assertEquals(ContextMemoryStatus.APPROVED, putResponse.getEntityStatus());
+
+    ContextMemory fetched = getEntity(memory.getId().toString());
+    assertEquals(
+        ContextMemoryStatus.APPROVED,
+        fetched.getEntityStatus(),
+        "Status should persist after a status-only PUT update");
+    assertTrue(
+        fetched.getVersion() > memory.getVersion(),
+        "Version should be incremented after status change");
+  }
+
+  @Test
+  void put_statusChanges_recordVersionHistory(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("status-history"))
+            .withDescription("Status change history test")
+            .withQuestion("Are status changes versioned?")
+            .withAnswer("Yes, each transition bumps the version.")
+            .withEntityStatus(ContextMemoryStatus.DRAFT);
+
+    ContextMemory memory = createEntity(request);
+
+    request.withEntityStatus(ContextMemoryStatus.APPROVED);
+    getContextMemoryService().put(request);
+
+    request.withEntityStatus(ContextMemoryStatus.ARCHIVED);
+    getContextMemoryService().put(request);
+
+    EntityHistory history = getVersionHistory(memory.getId());
+    assertTrue(
+        history.getVersions().size() >= 3,
+        "Should have at least 3 versions: create + 2 status updates");
+  }
+
+  // ===================================================================
+  // SCOPE / TYPE / VISIBILITY TESTS
+  // ===================================================================
+
+  @Test
+  void post_contextMemoryWithScopeAndType_200_OK(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("scope-type"))
+            .withDescription("Scope and type test")
+            .withQuestion("What is my reporting preference?")
+            .withAnswer("Always include row counts in summaries.")
+            .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
+            .withMemoryType(ContextMemoryType.PREFERENCE);
+
+    ContextMemory memory = createEntity(request);
+    assertEquals(ContextMemoryScope.USER_GLOBAL, memory.getMemoryScope());
+    assertEquals(ContextMemoryType.PREFERENCE, memory.getMemoryType());
+  }
+
+  @Test
+  void post_contextMemoryWithShareConfigVisibility_200_OK(TestNamespace ns) {
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("visibility"))
+            .withDescription("Visibility test")
+            .withQuestion("Who can see this memory?")
+            .withAnswer("Only the owner while visibility is Private.")
+            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+
+    ContextMemory memory = createEntity(request);
+    assertNotNull(memory.getShareConfig());
+    assertEquals(MemoryVisibility.PRIVATE, memory.getShareConfig().getVisibility());
+  }
+
+  @Test
+  void get_privateContextMemoryByOwnerWithoutFields_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "owner-direct-read", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService ownerService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    ContextMemory fetched = ownerService.get(memory.getId().toString());
+
+    assertEquals(memory.getId(), fetched.getId());
+  }
+
+  @Test
+  void getByName_privateContextMemoryByOwnerWithoutFields_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "owner-name-read", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService ownerService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    ContextMemory fetched = ownerService.getByName(memory.getFullyQualifiedName());
+
+    assertEquals(memory.getId(), fetched.getId());
+  }
+
+  @Test
+  void get_publicContextMemoryWithoutAssetByAnotherUser_200_OK(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(memoryWithVisibility(ns, "public-direct-read", MemoryVisibility.PUBLIC));
+    ContextMemoryService otherUserService =
+        new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+
+    assertEquals(memory.getId(), otherUserService.get(memory.getId().toString()).getId());
+  }
+
+  @Test
+  void versions_ofAnotherUsersPrivateMemory_areForbidden(TestNamespace ns) {
+    ContextMemory memory =
+        createEntity(
+            memoryWithVisibility(ns, "private-history", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemoryService owner = new ContextMemoryService(SdkClients.user1Client().getHttpClient());
+    ContextMemoryService other = new ContextMemoryService(SdkClients.user2Client().getHttpClient());
+    String id = memory.getId().toString();
+
+    assertFalse(owner.getVersionList(memory.getId()).getVersions().isEmpty());
+    assertEquals(memory.getId(), owner.getVersion(id, memory.getVersion()).getId());
+    assertThrows(ForbiddenException.class, () -> other.getVersionList(memory.getId()));
+    assertThrows(ForbiddenException.class, () -> other.getVersion(id, memory.getVersion()));
+  }
+
+  /**
+   * The ContextCenter serves its listing from search whenever it passes a query, filter, sort or
+   * offset — which it always does. Restricted memories must therefore reach the search index and be
+   * filtered per subject at query time: an owner and a shared principal see their own restricted
+   * memories, everyone else sees only the org-wide ones.
+   */
+  @Test
+  void restrictedMemoriesAreSearchableByOwnerAndSharedPrincipalOnly(TestNamespace ns) {
+    ContextMemory ownedByUser1 =
+        createEntity(
+            memoryWithVisibility(ns, "owned-private", MemoryVisibility.PRIVATE)
+                .withOwners(List.of(testUser1Ref())));
+    ContextMemory sharedWithUser1 =
+        createEntity(
+            memoryWithVisibility(ns, "shared-with-user1", MemoryVisibility.SHARED)
+                .withShareConfig(
+                    new MemoryShareConfig()
+                        .withVisibility(MemoryVisibility.SHARED)
+                        .withSharedWith(
+                            List.of(new MemorySharedPrincipal().withPrincipal(testUser1Ref())))));
+    ContextMemory ownedByAdmin =
+        createEntity(memoryWithVisibility(ns, "admin-private", MemoryVisibility.PRIVATE));
+    ContextMemory orgWide =
+        createEntity(memoryWithVisibility(ns, "org-wide", MemoryVisibility.ENTITY));
+    ContextMemory publicMemory =
+        createEntity(memoryWithVisibility(ns, "public-no-asset", MemoryVisibility.PUBLIC));
+
+    // Admin bypasses the visibility filter, so an admin-visible listing containing all four is the
+    // barrier proving every document — restricted ones included — reached the index.
+    awaitSearchBackedListContains(
+        SdkClients.adminClient(),
+        List.of(ownedByUser1, sharedWithUser1, ownedByAdmin, orgWide, publicMemory),
+        "every memory must be indexed regardless of visibility");
+
+    Set<String> visibleToUser1 = searchBackedListIds(SdkClients.user1Client());
+
+    assertTrue(
+        visibleToUser1.contains(ownedByUser1.getId().toString()),
+        "an owner must find their own PRIVATE memory through the search-backed listing");
+    assertTrue(
+        visibleToUser1.contains(sharedWithUser1.getId().toString()),
+        "a shared principal must find the SHARED memory through the search-backed listing");
+    assertTrue(
+        visibleToUser1.contains(orgWide.getId().toString()),
+        "org-wide memories stay visible to everyone");
+    assertTrue(
+        visibleToUser1.contains(publicMemory.getId().toString()),
+        "a Public memory without an asset is visible to everyone");
+    assertFalse(
+        visibleToUser1.contains(ownedByAdmin.getId().toString()),
+        "another user's PRIVATE memory must never surface");
+  }
+
+  @Test
+  void memoryStaysInSearchIndexAcrossVisibilityFlips(TestNamespace ns) throws Exception {
+    ContextMemory memory = createEntity(memoryWithVisibility(ns, "flip", MemoryVisibility.ENTITY));
+    String id = memory.getId().toString();
+    awaitSearchPresence(id, "ENTITY-visibility memory must be searchable");
+
+    ContextMemory toPrivate = getEntity(id);
+    toPrivate.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    patchEntity(id, toPrivate);
+    awaitSearchPresence(id, "a memory flipped to PRIVATE stays indexed for its owner");
+
+    ContextMemory toEntity = getEntity(id);
+    toEntity.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+    patchEntity(id, toEntity);
+    awaitSearchPresence(id, "a memory flipped back to ENTITY stays searchable");
+  }
+
+  /**
+   * "Most used" sorts on the applied count, which only memories a recount reached carry. Memories no
+   * recount reached must still rank by the usage they recorded, not tie in arbitrary order.
+   */
+  @Test
+  void mostUsedRanksUncountedMemoriesByTheirRecordedUsage(TestNamespace ns) {
+    ContextMemory unused =
+        createEntity(memoryWithVisibility(ns, "usage-none", MemoryVisibility.PUBLIC));
+    ContextMemory usedFive =
+        createEntity(memoryWithVisibility(ns, "usage-five", MemoryVisibility.PUBLIC));
+    ContextMemory usedNine =
+        createEntity(memoryWithVisibility(ns, "usage-nine", MemoryVisibility.PUBLIC));
+    recordUsage(usedFive, 5);
+    recordUsage(usedNine, 9);
+    List<String> expected =
+        Stream.of(usedNine, usedFive, unused).map(memory -> memory.getId().toString()).toList();
+
+    Awaitility.await("uncounted memories rank by their recorded usage under Most used")
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals(expected, mostUsedOrderOf(expected)));
+  }
+
+  /** Records usage as retrieval did, then writes the memory so its search document holds it. */
+  private void recordUsage(ContextMemory memory, int times) {
+    CollectionDAO collection = Entity.getDao();
+    var dao = collection.contextMemoryDAO();
+    for (int i = 0; i < times; i++) {
+      dao.recordUsage(memory.getId(), System.currentTimeMillis());
+    }
+    ContextMemory toReindex = getEntity(memory.getId().toString());
+    toReindex.setDescription("Recorded " + times + " uses");
+    patchEntity(memory.getId().toString(), toReindex);
+  }
+
+  private List<String> mostUsedOrderOf(List<String> ids) {
+    ListParams params = new ListParams().addFilter("sortBy", "appliedCount");
+    params.addFilter("sortOrder", "desc");
+    params.setLimit(1000);
+    params.setOffset(0);
+    return new ContextMemoryService(SdkClients.adminClient().getHttpClient())
+        .list(params).getData().stream()
+            .map(memory -> memory.getId().toString())
+            .filter(ids::contains)
+            .toList();
+  }
+
+  private void awaitSearchPresence(String id, String message) {
+    Awaitility.await(message)
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(searchForEntity(id).contains(id), message));
+  }
+
+  private void awaitSearchBackedListContains(
+      OpenMetadataClient client, List<ContextMemory> memories, String message) {
+    Awaitility.await(message)
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(180))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Set<String> listed = searchBackedListIds(client);
+              for (ContextMemory memory : memories) {
+                assertTrue(listed.contains(memory.getId().toString()), message);
+              }
+            });
+  }
+
+  /** Lists memories through the search-backed branch of the endpoint (offset forces it). */
+  private Set<String> searchBackedListIds(OpenMetadataClient client) {
+    ListParams params = new ListParams();
+    params.setLimit(1000);
+    params.setOffset(0);
+    return new ContextMemoryService(client.getHttpClient())
+        .list(params).getData().stream()
+            .map(memory -> memory.getId().toString())
+            .collect(Collectors.toSet());
+  }
+
+  private CreateContextMemory memoryWithVisibility(
+      TestNamespace ns, String name, MemoryVisibility visibility) {
+    return new CreateContextMemory()
+        .withName(ns.prefix(name))
+        .withDescription("Visibility indexing test")
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
+        .withQuestion("Is this memory searchable?")
+        .withAnswer("Visibility is enforced at query time, not at index time.")
+        .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
+  }
+
+  // ===================================================================
+  // VALIDATION TESTS
+  // ===================================================================
+
+  @Test
+  void patch_contextMemorySelfParentReference_4xx(TestNamespace ns) {
+    ContextMemory memory = createEntity(createMinimalRequest(ns));
+
+    ContextMemory selfParent = getEntity(memory.getId().toString());
+    selfParent.setParentMemory(memory.getEntityReference());
+
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(memory.getId().toString(), selfParent),
+        "A memory must not reference itself as parentMemory");
+  }
+
+  @Test
+  void post_contextMemoryInvalidSharedPrincipalType_4xx(TestNamespace ns) {
+    ContextMemory principalMemory = createEntity(createMinimalRequest(ns));
+
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("bad-principal"))
+            .withDescription("Invalid shared principal type")
+            .withQuestion("Can a memory be a shared principal?")
+            .withAnswer("No - only user, team, or domain principals are allowed.")
+            .withShareConfig(
+                new MemoryShareConfig()
+                    .withVisibility(MemoryVisibility.SHARED)
+                    .withSharedWith(
+                        List.of(
+                            new MemorySharedPrincipal()
+                                .withPrincipal(principalMemory.getEntityReference()))));
+
+    assertThrows(
+        Exception.class,
+        () -> createEntity(request),
+        "Sharing with a non-user/team/domain principal must be rejected");
+  }
+
+  @Test
+  void post_contextMemoryAllTypes_200_OK(TestNamespace ns) {
+    for (ContextMemoryType type : ContextMemoryType.values()) {
+      CreateContextMemory request =
+          new CreateContextMemory()
+              .withName(ns.prefix("type-" + type.value().toLowerCase()))
+              .withDescription("Memory of type " + type.value())
+              .withQuestion("Question for " + type.value() + "?")
+              .withAnswer("Answer for " + type.value() + ".")
+              .withMemoryType(type);
+
+      ContextMemory memory = createEntity(request);
+      assertEquals(type, memory.getMemoryType());
+    }
+  }
+
+  // ===================================================================
+  // LIST TESTS
+  // ===================================================================
+
+  @Test
+  void list_contextMemoryRelationshipFields_populated(TestNamespace ns) {
+    EntityReference primaryRef =
+        new EntityReference()
+            .withId(testUser1().getId())
+            .withType("user")
+            .withName(testUser1().getName());
+    EntityReference relatedRef =
+        new EntityReference()
+            .withId(testUser2().getId())
+            .withType("user")
+            .withName(testUser2().getName());
+
+    CreateContextMemory request =
+        new CreateContextMemory()
+            .withName(ns.prefix("rel-fields"))
+            .withDescription("Relationship fields populate on list")
+            .withQuestion("Which entity does this memory apply to?")
+            .withAnswer("The primaryEntity, plus the relatedEntities.")
+            .withPrimaryEntity(primaryRef)
+            .withRelatedEntities(List.of(relatedRef));
+
+    ContextMemory created = createEntity(request);
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.setFields("primaryEntity,relatedEntities");
+
+    ContextMemory listed = findListed(params, created.getId());
+
+    assertNotNull(
+        listed.getPrimaryEntity(), "primaryEntity must populate on the list path (bulk fetch)");
+    assertEquals(testUser1().getId(), listed.getPrimaryEntity().getId());
+
+    assertNotNull(
+        listed.getRelatedEntities(), "relatedEntities must populate on the list path (bulk fetch)");
+    assertFalse(listed.getRelatedEntities().isEmpty(), "relatedEntities must not be empty");
+    assertTrue(
+        listed.getRelatedEntities().stream()
+            .anyMatch(ref -> ref.getId().equals(testUser2().getId())),
+        "relatedEntities must contain the related user reference");
+  }
+
+  /** Pages through the list: memories other tests create concurrently can sort ahead of it. */
+  private ContextMemory findListed(ListParams params, UUID id) {
+    ListResponse<ContextMemory> page = listEntities(params);
+    ContextMemory listed = findById(page, id);
+    while (listed == null && page.getPaging().getAfter() != null) {
+      params.setAfter(page.getPaging().getAfter());
+      page = listEntities(params);
+      listed = findById(page, id);
+    }
+    assertNotNull(listed, "Created memory not found in list response");
+    return listed;
+  }
+
+  private static ContextMemory findById(ListResponse<ContextMemory> page, UUID id) {
+    return page.getData().stream()
+        .filter(memory -> memory.getId().equals(id))
+        .findFirst()
+        .orElse(null);
+  }
+
+  @Test
+  void test_listContextMemories(TestNamespace ns) {
+    CreateContextMemory request1 =
+        new CreateContextMemory()
+            .withName(ns.prefix("list-1"))
+            .withDescription("First memory")
+            .withQuestion("First list question?")
+            .withAnswer("First list answer.");
+
+    CreateContextMemory request2 =
+        new CreateContextMemory()
+            .withName(ns.prefix("list-2"))
+            .withDescription("Second memory")
+            .withQuestion("Second list question?")
+            .withAnswer("Second list answer.");
+
+    createEntity(request1);
+    createEntity(request2);
+
+    ListParams params = new ListParams();
+    params.setLimit(10);
+    ListResponse<ContextMemory> response = listEntities(params);
+
+    assertNotNull(response);
+    assertFalse(response.getData().isEmpty());
+    assertTrue(response.getData().size() >= 2);
+  }
+
+  // ===================================================================
+  // OWNERSHIP TEST OVERRIDES
+  // ===================================================================
+
+  /**
+   * ContextMemory auto-assigns the creating user as owner when the create request omits owners
+   * (see {@code ContextMemoryRepository#setCreatorAsDefaultOwner}), so it deliberately diverges
+   * from the generic BaseEntityIT precondition that a freshly created entity has no owner. The
+   * PATCH contract is unchanged: setting an explicit owner replaces the creator.
+   */
+  @Test
+  @Override
+  void patch_entityUpdateOwner_200(TestNamespace ns) {
+    ContextMemory created = createEntity(createMinimalRequest(ns));
+
+    ContextMemory fetched = getEntityWithFields(created.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners(), "ContextMemory should be owned by its creator initially");
+    assertEquals(
+        1, fetched.getOwners().size(), "ContextMemory creator should be the sole initial owner");
+
+    User botUser = Users.getByName("ingestion-bot");
+    EntityReference ownerRef =
+        new EntityReference()
+            .withId(botUser.getId())
+            .withType("user")
+            .withName(botUser.getName())
+            .withFullyQualifiedName(botUser.getFullyQualifiedName());
+
+    fetched.setOwners(List.of(ownerRef));
+    ContextMemory updated = patchEntity(fetched.getId().toString(), fetched);
+
+    ContextMemory updatedFetched = getEntityWithFields(updated.getId().toString(), "owners");
+    assertNotNull(updatedFetched.getOwners(), "Entity should have owners");
+    assertEquals(1, updatedFetched.getOwners().size(), "Entity should have 1 owner");
+    assertEquals(
+        botUser.getId(),
+        updatedFetched.getOwners().get(0).getId(),
+        "Owner should be ingestion-bot user");
+  }
+
+  /**
+   * ContextMemory already has the creating user as its sole owner before this PATCH (see {@code
+   * ContextMemoryRepository#setCreatorAsDefaultOwner}); the original "from null" precondition does
+   * not hold. Setting an explicit owners list still replaces it wholesale.
+   */
+  @Test
+  @Override
+  void patch_entityUpdateOwnerFromNull_200(TestNamespace ns) {
+    ContextMemory entity = createEntity(createMinimalRequest(ns));
+
+    ContextMemory fetched = getEntityWithFields(entity.getId().toString(), "owners");
+    assertNotNull(fetched.getOwners(), "ContextMemory should be owned by its creator initially");
+    assertEquals(
+        1, fetched.getOwners().size(), "ContextMemory creator should be the sole initial owner");
+
+    EntityReference owner1 =
+        new EntityReference()
+            .withId(testUser1().getId())
+            .withType("user")
+            .withName(testUser1().getName());
+    EntityReference owner2 =
+        new EntityReference()
+            .withId(testUser2().getId())
+            .withType("user")
+            .withName(testUser2().getName());
+
+    fetched.setOwners(List.of(owner1, owner2));
+    ContextMemory updated = patchEntity(fetched.getId().toString(), fetched);
+
+    ContextMemory verify = getEntityWithFields(updated.getId().toString(), "owners");
+    assertNotNull(verify.getOwners(), "Entity should have owners");
+    assertEquals(2, verify.getOwners().size(), "Entity should have 2 owners");
+  }
+
+  // ===================================================================
+  // HELPER METHODS
+  // ===================================================================
+
+  private ContextMemoryService getContextMemoryService() {
+    return new ContextMemoryService(SdkClients.adminClient().getHttpClient());
+  }
+}

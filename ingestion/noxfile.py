@@ -53,6 +53,7 @@ def lint(session):
     # Mirrors `make py_format_check` so local nox and Makefile stay in sync.
     install(session, ".[dev]")
     session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
+    session.run("python", "scripts/check_ruff_suppressions.py", "--check")
     session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
 
 
@@ -171,6 +172,9 @@ def unit_tests(session):
         "auto",
         "--dist",
         "loadfile",
+        "--timeout=300",
+        "--timeout-method=signal",
+        "--durations=20",
     ]
 
     pytest_args.extend(test_paths or ["tests/unit/"])
@@ -251,10 +255,6 @@ def combine_coverage(session):
     Used in CI to merge coverage artifacts from separate unit and
     integration jobs. Expects .coverage files under coverage-data/.
 
-    NOTE: The ``sed -i`` step uses GNU sed syntax and only works on Linux
-    (CI runners).  On macOS, BSD sed requires a backup-extension argument
-    (``sed -i ''``), so running this session locally will fail at that step.
-
     Example:
         nox -s combine-coverage
     """
@@ -273,12 +273,5 @@ def combine_coverage(session):
         "-o",
         "coverage.xml",
         success_codes=[0, 1],
-    )
-    session.run(
-        "sed",
-        r's|filename="[^"]*\(/metadata/[^"]*"\)|filename="src\1|g',
-        "coverage.xml",
-        "-i",
-        external=True,
     )
     session.run("mv", "coverage.xml", "ci-coverage.xml", external=True)

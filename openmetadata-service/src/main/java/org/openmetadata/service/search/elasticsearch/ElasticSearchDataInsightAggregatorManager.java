@@ -21,8 +21,10 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.text.WordUtils;
@@ -190,11 +192,36 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     return QueryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
   }
 
-  private void getFieldNames(
+  /**
+   * Collects the leaf field names of one entity type's index mapping into {@code fieldList}.
+   *
+   * <p>The seen-set is seeded from {@code fieldList} rather than built fresh, because a datastream
+   * resolves to backing indices and this runs once per index: a per-call set would stop
+   * deduplicating across them. Seeding costs one pass over the accumulated list per call, where
+   * scanning it per field cost a pass per leaf.
+   */
+  static void getFieldNames(
       Map<String, Property> properties,
       String prefix,
       List<Map<String, String>> fieldList,
       String entityType) {
+    Set<String> seen = new HashSet<>();
+    for (Map<String, String> field : fieldList) {
+      seen.add(seenKey(field.get("entityType"), field.get("name")));
+    }
+    collectFieldNames(properties, prefix, fieldList, entityType, seen);
+  }
+
+  private static String seenKey(String entityType, String name) {
+    return entityType + ' ' + name;
+  }
+
+  private static void collectFieldNames(
+      Map<String, Property> properties,
+      String prefix,
+      List<Map<String, String>> fieldList,
+      String entityType,
+      Set<String> seen) {
 
     if (properties == null) {
       return;
@@ -226,7 +253,11 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
 
       // Only add non-object/nested leaf fields
       if (!"object".equals(type) && !"nested".equals(type)) {
-        if (fieldList.stream().noneMatch(e -> e.get("name").equals(finalFieldName))) {
+        // Deduplicate per entity type, not globally. A global dedup credits a shared field name
+        // to whichever type is iterated first, and the iteration source is a Set.of whose order is
+        // salted per JVM start: a type whose every field name was already claimed contributes
+        // nothing, and which types those are changes on restart.
+        if (seen.add(seenKey(entityType, finalFieldName))) {
           Map<String, String> fieldMap = new HashMap<>();
           fieldMap.put("name", finalFieldName);
           fieldMap.put("displayName", displayName);
@@ -236,11 +267,13 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
         }
       }
 
-      // Recursively process nested or object fields
+      // Recurse into object fields only. A `nested` mapping stores its children as separate hidden
+      // Lucene documents, so neither a terms aggregation nor the root-level query_string a chart
+      // formula's q= compiles to can reach them: every descendant of a nested field is unusable in
+      // a custom chart and must not be advertised.
       if (property.isObject() && property.object().properties() != null) {
-        getFieldNames(property.object().properties(), baseFieldName, fieldList, entityType);
-      } else if (property.isNested() && property.nested().properties() != null) {
-        getFieldNames(property.nested().properties(), baseFieldName, fieldList, entityType);
+        collectFieldNames(
+            property.object().properties(), baseFieldName, fieldList, entityType, seen);
       }
     }
   }

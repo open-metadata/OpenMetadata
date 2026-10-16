@@ -12,52 +12,28 @@
  */
 
 import {
+  ButtonUtility,
   Toggle,
   Tooltip as UTTooltip,
   TooltipTrigger,
+  Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Space, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Icon } from '@openmetadata/ui-core-components/icon';
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
+import { TagUsageCount } from '../components/Classifications/TagUsageCount/TagUsageCount.component';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
-import { EntityField } from '../constants/Feeds.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
-import { ProviderType } from '../generated/entity/bot';
-import { Classification } from '../generated/entity/classification/classification';
 import { Tag } from '../generated/entity/classification/tag';
-import { ChangeDescription } from '../generated/entity/type';
 import { DeleteTagsType } from '../pages/TagsPage/TagsPage.interface';
-import { getEntityVersionByField } from './EntityVersionUtils';
+import { getDeleteButtonData } from './ClassificationPureUtils';
 import { t } from './i18next/LocalUtil';
-import { renderIcon } from './IconUtils';
 import { getClassificationTagPath } from './RouterUtils';
 import { descriptionTableObject } from './TableColumn.util';
 import { getDeleteIcon } from './TagsUtils';
-
-export const getDeleteButtonData = (
-  record: Tag,
-  isClassificationDisabled: boolean,
-  classificationPermissions: OperationPermission
-) => {
-  let disabledDeleteMessage: string = t('message.no-permission-for-action');
-  const disableDeleteButton =
-    record.provider === ProviderType.System ||
-    !classificationPermissions.EditAll ||
-    isClassificationDisabled;
-
-  if (isClassificationDisabled) {
-    disabledDeleteMessage = t(
-      'message.disabled-classification-actions-message'
-    );
-  } else if (record.provider === ProviderType.System) {
-    disabledDeleteMessage = t('message.system-tag-delete-disable-message');
-  }
-
-  return { disableDeleteButton, disabledDeleteMessage };
-};
 
 export const getCommonColumns = (options?: {
   handleToggleDisable?: (tag: Tag) => void;
@@ -113,11 +89,11 @@ export const getCommonColumns = (options?: {
       width: 200,
       render: (_, record) => (
         <div className="d-flex items-center gap-2">
-          {record.style?.iconURL &&
-            renderIcon(record.style.iconURL, {
-              size: 18,
-              className: 'flex-shrink-0',
-            })}
+          <Icon
+            className="tw:shrink-0"
+            iconValue={record.style?.iconURL}
+            size={18}
+          />
           <Link
             className="m-b-0"
             data-testid={record.name}
@@ -134,7 +110,7 @@ export const getCommonColumns = (options?: {
       key: 'displayName',
       width: 200,
       render: (text) => (
-        <Typography.Text>{text || NO_DATA_PLACEHOLDER}</Typography.Text>
+        <Typography as="span">{text || NO_DATA_PLACEHOLDER}</Typography>
       ),
     },
     ...descriptionTableObject<Tag>({ width: 300 })
@@ -152,6 +128,8 @@ export const getTagsTableColumn = ({
   isVersionView,
   disableEditButton,
   handleToggleDisable,
+  usageCounts,
+  isUsageCountsLoading,
 }: {
   classificationPermissions: OperationPermission;
   isClassificationDisabled: boolean;
@@ -161,6 +139,8 @@ export const getTagsTableColumn = ({
   handleActionDeleteTag?: (record: Tag) => void;
   disableEditButton?: boolean;
   handleToggleDisable?: (tag: Tag) => void;
+  usageCounts?: Record<string, number>;
+  isUsageCountsLoading?: boolean;
 }): ColumnsType<Tag> => {
   const columns: ColumnsType<Tag> = getCommonColumns({
     handleToggleDisable,
@@ -169,12 +149,34 @@ export const getTagsTableColumn = ({
   });
 
   if (!isVersionView) {
+    // Sits right after the display name, ahead of the much wider description
+    const displayNameIndex = columns.findIndex(
+      ({ key }) => key === 'displayName'
+    );
+    const usageIndex =
+      displayNameIndex === -1 ? columns.length : displayNameIndex + 1;
+
+    columns.splice(usageIndex, 0, {
+      title: t('label.usage'),
+      key: 'usageCount',
+      width: 120,
+      align: 'center',
+      render: (_, record: Tag) => (
+        <TagUsageCount
+          isLoading={isUsageCountsLoading}
+          record={record}
+          usageCounts={usageCounts}
+        />
+      ),
+    });
+
     columns.push({
       title: t('label.action-plural'),
       dataIndex: 'actions',
       key: 'actions',
       width: 120,
       align: 'center',
+      fixed: 'right',
       render: (_, record: Tag) => {
         const { disableDeleteButton, disabledDeleteMessage } =
           getDeleteButtonData(
@@ -182,21 +184,23 @@ export const getTagsTableColumn = ({
             isClassificationDisabled,
             classificationPermissions
           );
+        let editDisabledMessage = '';
+        if (disableEditButton) {
+          editDisabledMessage = isClassificationDisabled
+            ? t('message.disabled-classification-actions-message')
+            : t('message.no-permission-for-action');
+        }
 
         return (
-          <Space align="center" size={8}>
-            <Tooltip
-              placement="topRight"
-              title={
-                disableEditButton &&
-                (isClassificationDisabled
-                  ? t('message.disabled-classification-actions-message')
-                  : t('message.no-permission-for-action'))
-              }>
-              <Button
-                className="p-0 flex-center"
+          <div className="tw:flex tw:items-center tw:justify-center tw:gap-2">
+            {/* The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled. */}
+            <UTTooltip
+              isDisabled={!editDisabledMessage}
+              placement="top right"
+              title={editDisabledMessage}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="edit-button"
-                disabled={disableEditButton}
                 icon={
                   <EditIcon
                     data-testid="editTagDescription"
@@ -205,34 +209,30 @@ export const getTagsTableColumn = ({
                     width={14}
                   />
                 }
-                size="small"
-                type="text"
-                onClick={() =>
-                  handleEditTagClick ? handleEditTagClick(record) : null
-                }
+                isDisabled={disableEditButton}
+                size="xs"
+                onClick={() => handleEditTagClick?.(record)}
               />
-            </Tooltip>
+            </UTTooltip>
 
-            <Tooltip
-              placement="topRight"
-              title={disableDeleteButton && disabledDeleteMessage}>
-              <Button
-                className="p-0 flex-center"
+            <UTTooltip
+              isDisabled={!disableDeleteButton}
+              placement="top right"
+              title={disabledDeleteMessage}>
+              <ButtonUtility
+                color="tertiary"
                 data-testid="delete-tag"
-                disabled={disableDeleteButton}
                 icon={getDeleteIcon({
                   deleteTagId: deleteTags?.data?.id,
                   status: deleteTags?.data?.status,
                   id: record.id ?? '',
                 })}
-                size="small"
-                type="text"
-                onClick={() =>
-                  handleActionDeleteTag ? handleActionDeleteTag(record) : null
-                }
+                isDisabled={disableDeleteButton}
+                size="xs"
+                onClick={() => handleActionDeleteTag?.(record)}
               />
-            </Tooltip>
-          </Space>
+            </UTTooltip>
+          </div>
         );
       },
     });
@@ -244,8 +244,28 @@ export const getTagsTableColumn = ({
 export const getClassificationExtraDropdownContent = (
   showDisableOption: boolean,
   isClassificationDisabled: boolean,
-  handleEnableDisableClassificationClick: () => void
+  handleEnableDisableClassificationClick: () => void,
+  showEditOption = false,
+  handleEditClassificationClick: () => void = () => undefined
 ) => [
+  ...(showEditOption
+    ? [
+        {
+          label: (
+            <ManageButtonItemLabel
+              description={t('label.update-entity', {
+                entity: t('label.classification'),
+              })}
+              icon={EditIcon}
+              id="edit-classification"
+              name={t('label.edit')}
+            />
+          ),
+          key: 'edit-classification-button',
+          onClick: handleEditClassificationClick,
+        },
+      ]
+    : []),
   ...(showDisableOption
     ? [
         {
@@ -271,38 +291,3 @@ export const getClassificationExtraDropdownContent = (
       ]
     : []),
 ];
-
-export const getClassificationInfo = (
-  currentClassification?: Classification,
-  isVersionView = false
-) => {
-  return {
-    currentVersion: currentClassification?.version ?? '0.1',
-    isClassificationDisabled: currentClassification?.disabled ?? false,
-    isClassificationDeleted: currentClassification?.deleted ?? false,
-    isTier: currentClassification?.name === 'Tier',
-    isSystemClassification:
-      currentClassification?.provider === ProviderType.System,
-    name: isVersionView
-      ? getEntityVersionByField(
-          currentClassification?.changeDescription ?? ({} as ChangeDescription),
-          EntityField.NAME,
-          currentClassification?.name
-        )
-      : currentClassification?.name,
-    displayName: isVersionView
-      ? getEntityVersionByField(
-          currentClassification?.changeDescription ?? ({} as ChangeDescription),
-          EntityField.DISPLAYNAME,
-          currentClassification?.displayName
-        )
-      : currentClassification?.displayName,
-    description: isVersionView
-      ? getEntityVersionByField(
-          currentClassification?.changeDescription ?? ({} as ChangeDescription),
-          EntityField.DESCRIPTION,
-          currentClassification?.description
-        )
-      : currentClassification?.description,
-  };
-};

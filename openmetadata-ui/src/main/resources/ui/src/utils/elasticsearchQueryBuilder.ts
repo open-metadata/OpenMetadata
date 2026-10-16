@@ -97,6 +97,30 @@ interface TermFilter {
  * @param returnAsString - If true, returns stringified JSON; otherwise returns object
  * @returns Elasticsearch query filter as object or JSON string
  */
+const buildBoolQuery = (
+  must: Record<string, unknown>[],
+  mustNot: Record<string, unknown>[]
+): Record<string, unknown> => {
+  const boolQuery: Record<string, unknown> = {};
+
+  if (must.length === 1 && mustNot.length === 0) {
+    boolQuery.must = must[0];
+
+    return boolQuery;
+  }
+
+  if (must.length > 1 || mustNot.length > 0) {
+    if (must.length > 0) {
+      boolQuery.must = must.length === 1 ? must[0] : must;
+    }
+    if (mustNot.length > 0) {
+      boolQuery.must_not = mustNot.length === 1 ? mustNot[0] : mustNot;
+    }
+  }
+
+  return boolQuery;
+};
+
 export const buildTermQuery = (
   filters: TermFilter | TermFilter[],
   returnAsString = true
@@ -111,22 +135,9 @@ export const buildTermQuery = (
     .filter((f) => f.negate)
     .map((f) => ({ term: { [f.field]: f.value } }));
 
-  const boolQuery: Record<string, unknown> = {};
-
-  if (must.length === 1 && mustNot.length === 0) {
-    boolQuery.must = must[0];
-  } else if (must.length > 1 || mustNot.length > 0) {
-    if (must.length > 0) {
-      boolQuery.must = must.length === 1 ? must[0] : must;
-    }
-    if (mustNot.length > 0) {
-      boolQuery.must_not = mustNot.length === 1 ? mustNot[0] : mustNot;
-    }
-  }
-
   const queryObject = {
     query: {
-      bool: boolQuery,
+      bool: buildBoolQuery(must, mustNot),
     },
   };
 

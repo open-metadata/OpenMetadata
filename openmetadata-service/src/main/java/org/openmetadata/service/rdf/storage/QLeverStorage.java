@@ -46,6 +46,12 @@ public class QLeverStorage implements RdfStorageInterface {
   }
 
   @Override
+  public void bulkStoreRelationships(
+      List<RelationshipData> relationships, java.util.Set<String> sourcesToReconcile) {
+    throw new UnsupportedOperationException("QLever storage not yet implemented");
+  }
+
+  @Override
   public Model getEntity(String entityType, UUID entityId) {
     throw new UnsupportedOperationException("QLever storage not yet implemented");
   }
@@ -77,6 +83,11 @@ public class QLeverStorage implements RdfStorageInterface {
 
   @Override
   public long getTripleCount() {
+    throw new UnsupportedOperationException("QLever storage not yet implemented");
+  }
+
+  @Override
+  public long getTripleCount(String graphUri) {
     throw new UnsupportedOperationException("QLever storage not yet implemented");
   }
 

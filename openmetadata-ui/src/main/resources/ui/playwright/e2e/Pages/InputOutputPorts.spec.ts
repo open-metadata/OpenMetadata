@@ -11,15 +11,16 @@
  *  limitations under the License.
  */
 
-import base, { expect, Page } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
-import { AssetReference, DataProduct } from '../../support/domain/DataProduct';
+import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
+import { runDrawerQuickFilterMatrix } from '../../utils/assetDrawerQuickFilter';
 import {
   getApiContext,
   redirectToHomePage,
@@ -32,33 +33,26 @@ import {
   navigateToPortsTab,
   selectDataProduct,
   verifyPortCounts,
+  waitForLineageGraph,
+  waitForPortRow,
 } from '../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  buildPortDrawerContext,
+  cleanupDrawerFilterAssets,
+  confirmPortRemoval,
+  createAssetRef,
+  seedDrawerFilterAssets,
+} from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
+import {
+  waitForAntOverlayToOpen,
+  waitForResponseWithStatus,
+} from '../../utils/waitHelpers';
 
-const createAssetRef = (
-  entity: TableClass | TopicClass | DashboardClass,
-  type: string
-): AssetReference => ({
-  id: entity.entityResponseData.id,
-  type,
-  name: entity.entityResponseData.name,
-  displayName: entity.entityResponseData.displayName,
-  fullyQualifiedName: entity.entityResponseData.fullyQualifiedName,
-  description: entity.entityResponseData.description,
-});
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const domain = new Domain();
-
-const test = base.extend<{
-  page: Page;
-}>({
-  page: async ({ browser }, setPage) => {
-    const { page } = await performAdminLogin(browser);
-    await setPage(page);
-    await page.close();
-  },
-});
 
 test.describe('Input Output Ports', () => {
   const tables: TableClass[] = [];
@@ -66,6 +60,9 @@ test.describe('Input Output Ports', () => {
   const dashboards: DashboardClass[] = [];
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    tables.length = 0;
+    topics.length = 0;
+    dashboards.length = 0;
     const { apiContext } = await performAdminLogin(browser);
 
     await domain.create(apiContext);
@@ -78,8 +75,8 @@ test.describe('Input Output Ports', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -94,8 +91,8 @@ test.describe('Input Output Ports', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -110,8 +107,8 @@ test.describe('Input Output Ports', () => {
         patchData: [
           {
             op: 'add',
-            path: '/domains/0',
-            value: { id: domain.responseData.id, type: 'domain' },
+            path: '/domains',
+            value: [{ id: domain.responseData.id, type: 'domain' }],
           },
         ],
       });
@@ -204,8 +201,12 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify lineage section shows zero counts', async () => {
-        await expect(page.locator('text=0 input').first()).toBeVisible();
-        await expect(page.locator('text=0 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=0 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=0 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -258,11 +259,19 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port counts', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
-        await expect(page.locator('text=(3)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=(3)').filter({ visible: true })
+        ).not.toHaveCount(0);
 
-        await expect(page.locator('text=2 input').first()).toBeVisible();
-        await expect(page.locator('text=3 output').first()).toBeVisible();
+        await expect(
+          page.locator('text=2 input').filter({ visible: true })
+        ).not.toHaveCount(0);
+        await expect(
+          page.locator('text=3 output').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -311,7 +320,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -395,8 +406,9 @@ test.describe('Input Output Ports', () => {
         await searchRes1;
 
         await page
-          .locator(`[data-testid="table-data-card_${table1Fqn}"] input`)
-          .check();
+          .locator(`[data-testid="table-data-card_${table1Fqn}"]`)
+          .getByTestId('asset-checkbox')
+          .click();
 
         const searchRes2 = page.waitForResponse(
           (res) =>
@@ -407,8 +419,9 @@ test.describe('Input Output Ports', () => {
         await searchRes2;
 
         await page
-          .locator(`[data-testid="table-data-card_${table2Fqn}"] input`)
-          .check();
+          .locator(`[data-testid="table-data-card_${table2Fqn}"]`)
+          .getByTestId('asset-checkbox')
+          .click();
 
         const addRes = page.waitForResponse(
           (res) =>
@@ -420,7 +433,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify both ports were added', async () => {
-        await expect(page.locator('text=(2)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(2)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -569,7 +584,9 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Verify port was added', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -599,13 +616,14 @@ test.describe('Input Output Ports', () => {
           state: 'visible',
         });
 
-        // Verify info banner is visible with correct message
-        await expect(page.locator('.ant-alert-info')).toBeVisible();
-        await expect(
-          page.locator(
-            'text=Output ports can only be added from assets that belong to this Data Product'
-          )
-        ).toBeVisible();
+        const infoBanner = page
+          .getByTestId('asset-selection-modal')
+          .getByTestId('asset-selection-info-banner');
+
+        await expect(infoBanner).toBeVisible();
+        await expect(infoBanner).toContainText(
+          'Output ports can only be added from assets that belong to this Data Product'
+        );
       });
     });
 
@@ -629,55 +647,72 @@ test.describe('Input Output Ports', () => {
           state: 'visible',
         });
 
-        // Info banner should NOT be visible for input ports
-        await expect(page.locator('.ant-alert-info')).not.toBeVisible();
+        // Wait for the drawer body so the absence check is not vacuous.
+        await expect(
+          page.getByTestId('asset-selection-modal').getByTestId('asset-filters')
+        ).toBeVisible();
+        await expect(
+          page
+            .getByTestId('asset-selection-modal')
+            .getByTestId('asset-selection-info-banner')
+        ).toHaveCount(0);
       });
     });
 
-    test('Port drawers show Entity Type quick filter', async ({ page }) => {
-      const dataProduct = new DataProduct([domain]);
+    test('Input port drawer quick filter - behaviour matrix', async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const { apiContext } = await getApiContext(page);
+      const seeded = await seedDrawerFilterAssets(apiContext, domain, false);
 
-      await test.step('Create data product with assets', async () => {
-        const { apiContext } = await getApiContext(page);
-        await dataProduct.create(apiContext);
-        await dataProduct.addAssets(apiContext, [
-          createAssetRef(tables[0], 'table'),
-        ]);
-      });
-
-      await test.step('Navigate to ports tab', async () => {
-        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-        await selectDataProduct(page, dataProduct.data);
-        await navigateToPortsTab(page);
-      });
-
-      await test.step('Verify Entity Type filter in input port drawer', async () => {
-        await page.getByTestId('add-input-port-button').click();
-        await page.getByTestId('asset-selection-modal').waitFor({
-          state: 'visible',
+      try {
+        await test.step('Navigate to ports tab', async () => {
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, seeded.dataProduct.data);
+          await navigateToPortsTab(page);
         });
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
+        await runDrawerQuickFilterMatrix(
+          page,
+          buildPortDrawerContext(
+            page,
+            'input port',
+            'add-input-port-button',
+            seeded
+          )
+        );
+      } finally {
+        await cleanupDrawerFilterAssets(apiContext, seeded);
+      }
+    });
 
-        await page.getByTestId('cancel-btn').click();
-      });
+    test('Output port drawer quick filter - behaviour matrix', async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const { apiContext } = await getApiContext(page);
+      const seeded = await seedDrawerFilterAssets(apiContext, domain, true);
 
-      await test.step('Verify Entity Type filter in output port drawer', async () => {
-        await page.getByTestId('add-output-port-button').click();
-        await page.getByTestId('asset-selection-modal').waitFor({
-          state: 'visible',
+      try {
+        await test.step('Navigate to ports tab', async () => {
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, seeded.dataProduct.data);
+          await navigateToPortsTab(page);
         });
-        await waitForAllLoadersToDisappear(page);
 
-        await expect(
-          page.getByTestId('search-dropdown-Entity Type')
-        ).toBeVisible();
-
-        await page.getByTestId('cancel-btn').click();
-      });
+        await runDrawerQuickFilterMatrix(
+          page,
+          buildPortDrawerContext(
+            page,
+            'output port',
+            'add-output-port-button',
+            seeded
+          )
+        );
+      } finally {
+        await cleanupDrawerFilterAssets(apiContext, seeded);
+      }
     });
 
     test('Output port drawer only shows data product assets', async ({
@@ -764,13 +799,31 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify input ports list', async () => {
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
 
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
-        const table3Name = get(tables[2], 'entityResponseData.name');
+        const table1Name = get(
+          tables[0],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table2Name = get(
+          tables[1],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
+        const table3Name = get(
+          tables[2],
+          'entityResponseData.fullyQualifiedName',
+          ''
+        );
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table3Name}`).first()).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table1Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table2Name}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`table-data-card_${table3Name}`)
+        ).toBeVisible();
       });
     });
 
@@ -801,20 +854,15 @@ test.describe('Input Output Ports', () => {
       await test.step('Verify output ports list', async () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
 
-        const dashboard1Name = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        const dashboard2Name = get(
-          dashboards[1],
-          'entityResponseData.displayName'
-        );
-
         await expect(
-          page.locator(`text=${dashboard1Name}`).first()
+          page.getByTestId(
+            `table-data-card_${dashboards[0].entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
         await expect(
-          page.locator(`text=${dashboard2Name}`).first()
+          page.getByTestId(
+            `table-data-card_${dashboards[1].entityResponseData.fullyQualifiedName}`
+          )
         ).toBeVisible();
       });
     });
@@ -847,6 +895,7 @@ test.describe('Input Output Ports', () => {
         const portId = tables[0].entityResponseData.id;
         await expect(page.getByTestId(`port-actions-${portId}`)).toBeVisible();
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await expect(
           page.getByRole('menuitem', { name: 'Remove' })
@@ -886,22 +935,24 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(
+          page.getByRole('dialog').filter({ hasNot: page.getByRole('menu') })
+        ).toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
 
-        const removeRes = page.waitForResponse(
-          (res) =>
-            res.url().includes('/inputPorts/remove') &&
-            res.request().method() === 'PUT'
-        );
-        await page.getByRole('button', { name: 'Remove' }).click();
-        await removeRes;
+        await confirmPortRemoval(page, dataProduct.getFqn(), 'input');
+        await expect(page.getByTestId(`port-actions-${portId}`)).toBeHidden();
+        await expect(
+          page.getByTestId(`port-actions-${tables[1].entityResponseData.id}`)
+        ).toBeVisible();
       });
 
       await test.step('Verify port was removed', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
 
@@ -932,16 +983,17 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove first output port', async () => {
         const portId = dashboards[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        const removeRes = page.waitForResponse(
-          (res) =>
-            res.url().includes('/outputPorts/remove') &&
-            res.request().method() === 'PUT'
-        );
-        await page.getByRole('button', { name: 'Remove' }).click();
-        await removeRes;
+        await confirmPortRemoval(page, dataProduct.getFqn(), 'output');
+        await expect(page.getByTestId(`port-actions-${portId}`)).toBeHidden();
+        await expect(
+          page.getByTestId(
+            `port-actions-${dashboards[1].entityResponseData.id}`
+          )
+        ).toBeVisible();
       });
 
       await test.step('Verify port was removed', async () => {
@@ -977,15 +1029,22 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        await expect(page.getByRole('dialog')).toBeVisible();
-
-        await page.getByRole('button', { name: 'Cancel' }).click();
+        const dialog = page.getByRole('dialog', {
+          name: 'Remove Port',
+          exact: true,
+        });
+        await waitForAntOverlayToOpen(dialog);
+        await dialog
+          .getByRole('button', { name: 'Cancel', exact: true })
+          .click();
 
         await expect(page.getByRole('dialog')).not.toBeVisible();
       });
 
       await test.step('Verify port still exists', async () => {
-        await expect(page.locator('text=(1)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(1)').filter({ visible: true })
+        ).not.toHaveCount(0);
         await expect(page.getByTestId('input-ports-list')).toBeVisible();
       });
     });
@@ -1015,16 +1074,11 @@ test.describe('Input Output Ports', () => {
       await test.step('Remove the only input port', async () => {
         const portId = tables[0].entityResponseData.id;
 
+        await waitForPortRow(page, portId);
         await page.getByTestId(`port-actions-${portId}`).click();
         await page.getByRole('menuitem', { name: 'Remove' }).click();
 
-        const removeRes = page.waitForResponse(
-          (res) =>
-            res.url().includes('/inputPorts/remove') &&
-            res.request().method() === 'PUT'
-        );
-        await page.getByRole('button', { name: 'Remove' }).click();
-        await removeRes;
+        await confirmPortRemoval(page, dataProduct.getFqn(), 'input');
       });
 
       await test.step('Verify empty state appears', async () => {
@@ -1032,7 +1086,9 @@ test.describe('Input Output Ports', () => {
         await expect(
           page.getByTestId('no-input-ports-placeholder')
         ).toBeVisible();
-        await expect(page.locator('text=(0)').first()).toBeVisible();
+        await expect(
+          page.locator('text=(0)').filter({ visible: true })
+        ).not.toHaveCount(0);
       });
     });
   });
@@ -1065,7 +1121,7 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Expand lineage section', async () => {
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify lineage view is visible', async () => {
@@ -1093,7 +1149,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify data product node is visible', async () => {
@@ -1134,32 +1190,31 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify input port nodes are visible', async () => {
-        const table1Name = get(tables[0], 'entityResponseData.name');
-        const table2Name = get(tables[1], 'entityResponseData.name');
+        const table1Name =
+          tables[0].entityResponseData.fullyQualifiedName ?? '';
+        const table2Name =
+          tables[1].entityResponseData.fullyQualifiedName ?? '';
 
-        await expect(page.locator(`text=${table1Name}`).first()).toBeVisible();
-        await expect(page.locator(`text=${table2Name}`).first()).toBeVisible();
+        await expect(page.getByTestId(`port-node-${table1Name}`)).toBeVisible();
+        await expect(page.getByTestId(`port-node-${table2Name}`)).toBeVisible();
       });
 
       await test.step('Verify output port nodes are visible', async () => {
-        const dashboard1Name = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
-        const dashboard2Name = get(
-          dashboards[1],
-          'entityResponseData.displayName'
-        );
+        const dashboard1Name =
+          dashboards[0].entityResponseData.fullyQualifiedName ?? '';
+
+        const dashboard2Name =
+          dashboards[1].entityResponseData.fullyQualifiedName ?? '';
 
         await expect(
-          page.locator(`text=${dashboard1Name}`).first()
+          page.getByTestId(`port-node-${dashboard1Name}`)
         ).toBeVisible();
         await expect(
-          page.locator(`text=${dashboard2Name}`).first()
+          page.getByTestId(`port-node-${dashboard2Name}`)
         ).toBeVisible();
       });
     });
@@ -1184,13 +1239,13 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify only input port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
-        const tableName = get(tables[0], 'entityResponseData.name');
-        await expect(page.locator(`text=${tableName}`).first()).toBeVisible();
+        const tableName = tables[0].entityResponseData.fullyQualifiedName ?? '';
+        await expect(page.getByTestId(`port-node-${tableName}`)).toBeVisible();
       });
     });
 
@@ -1214,17 +1269,15 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify only output port is shown', async () => {
         await expect(page.getByTestId('ports-lineage-view')).toBeVisible();
-        const dashboardName = get(
-          dashboards[0],
-          'entityResponseData.displayName'
-        );
+        const dashboardName =
+          dashboards[0].entityResponseData.fullyQualifiedName ?? '';
         await expect(
-          page.locator(`text=${dashboardName}`).first()
+          page.getByTestId(`port-node-${dashboardName}`)
         ).toBeVisible();
       });
     });
@@ -1249,7 +1302,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Verify ReactFlow controls are visible', async () => {
@@ -1444,7 +1497,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter fullscreen mode', async () => {
@@ -1475,7 +1528,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter and exit fullscreen mode', async () => {
@@ -1509,7 +1562,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter fullscreen and exit with Escape', async () => {
@@ -1543,7 +1596,7 @@ test.describe('Input Output Ports', () => {
         await sidebarClick(page, SidebarItem.DATA_PRODUCT);
         await selectDataProduct(page, dataProduct.data);
         await navigateToPortsTab(page);
-        await expandLineageSection(page);
+        await waitForLineageGraph(page);
       });
 
       await test.step('Enter fullscreen and verify controls', async () => {
@@ -1617,9 +1670,13 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await page.locator('.ant-alert-warning').waitFor({ state: 'visible' });
+        await page
+          .getByTestId('output-port-removal-warning')
+          .waitFor({ state: 'visible' });
 
-        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
         await expect(
           page.locator('text=This asset is also configured as an Output Port')
         ).toBeVisible();
@@ -1658,10 +1715,16 @@ test.describe('Input Output Ports', () => {
           tables[0],
           'entityResponseData.fullyQualifiedName'
         );
+        // The asset card body streams tags/owners/counts async — wait
+        // for loaders so the manage-button click doesn't retry
+        // "element is not stable" through the reflow.
+        await waitForAllLoadersToDisappear(page);
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).not.toBeVisible();
         await expect(
           page.getByText('Are you sure you want to remove')
         ).toBeVisible();
@@ -1698,11 +1761,14 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Select all assets and click bulk delete', async () => {
-        await page.getByRole('checkbox', { name: 'Select All' }).click();
+        // The core checkbox's <input> is visually hidden; the label takes the click.
+        await page.getByTestId('select-all-assets').click();
 
         await page.getByTestId('delete-all-button').click();
 
-        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
         await expect(
           page.locator(
             'text=The following asset(s) are also configured as Output Ports'
@@ -1713,7 +1779,7 @@ test.describe('Input Output Ports', () => {
         const table2Name = get(tables[1], 'entityResponseData.displayName');
         const table3Name = get(tables[2], 'entityResponseData.displayName');
 
-        const warningAlert = page.locator('.ant-alert-warning');
+        const warningAlert = page.getByTestId('output-port-removal-warning');
 
         await expect(
           warningAlert.locator(`li:has-text("${table1Name}")`)
@@ -1755,7 +1821,9 @@ test.describe('Input Output Ports', () => {
         await page.getByTestId(`manage-button-${tableFqn}`).click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('.ant-alert-warning')).not.toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).not.toBeVisible();
       });
     });
 
@@ -1804,20 +1872,27 @@ test.describe('Input Output Ports', () => {
           'entityResponseData.fullyQualifiedName'
         );
         await page
-          .locator(`[data-testid="table-data-card_${tableFqn}"] input`)
-          .check();
+          .locator(`[data-testid="table-data-card_${tableFqn}"]`)
+          .getByTestId('asset-checkbox')
+          .click();
 
         await page.getByTestId('delete-all-button').click();
 
         // Confirmation modal with output port warning should appear
-        await expect(page.locator('.ant-alert-warning')).toBeVisible();
+        await expect(
+          page.getByTestId('output-port-removal-warning')
+        ).toBeVisible();
 
-        const removeRes = page.waitForResponse(
+        const dialog = page.getByRole('dialog');
+        await waitForAntOverlayToOpen(dialog);
+        const removeRes = waitForResponseWithStatus(
+          page,
           (res) =>
             res.url().includes('/assets/remove') &&
-            res.request().method() === 'PUT'
+            res.request().method() === 'PUT',
+          200
         );
-        await page.getByTestId('save-button').click();
+        await dialog.getByTestId('save-button').click();
         await removeRes;
 
         await expect

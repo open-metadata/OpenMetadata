@@ -14,7 +14,7 @@
 @import (reference) '../../../../styles/variables.less';
 
 .edge-option-container {
-  margin-top: 6px;
+  margin-top: var(--om-space-6);
   width: 100%;
   height: 310px;
   overflow: scroll;
@@ -22,26 +22,26 @@
   .edge-option-item {
     display: flex;
     align-items: center;
-    margin: 8px 0;
-    padding: 8px;
-    border-radius: 4px;
+    margin: var(--om-space-8) 0;
+    padding: var(--om-space-8);
+    border-radius: var(--om-radius-sm);
     cursor: pointer;
 
     &.active {
-      background: @primary-1;
+      background: var(--tw-color-bg-brand-primary);
 
       &:hover {
-        background: @primary-1;
+        background: var(--tw-color-bg-brand-primary);
       }
     }
 
     &:hover {
-      background: @body-dark-bg-color;
+      background: var(--tw-color-bg-secondary);
     }
 
     .breadcrumb {
       color: @text-grey-muted;
-      font-size: 10px;
+      font-size: var(--om-font-size-10);
     }
   }
 }

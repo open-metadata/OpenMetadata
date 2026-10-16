@@ -10,13 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
+import { expect, test } from '../../support/fixtures/base';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
-import { selectSortOrder, verifyEntitiesAreSorted } from '../../utils/explore';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  clickUpdateButtonIfVisible,
+  selectSortOrder,
+  verifyEntitiesAreSorted,
+} from '../../utils/explore';
+import { waitForAggregation } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.describe(
@@ -27,37 +33,39 @@ test.describe(
       test(`${name}`, async ({ browser }) => {
         test.slow(true);
 
-        const { page, afterAction } = await performAdminLogin(browser);
+        const { page, afterAction } = await performAdminLogin(browser, {
+          navigate: true,
+        });
 
         await redirectToHomePage(page);
         await sidebarClick(page, SidebarItem.EXPLORE);
 
         await page.getByTestId('search-dropdown-Data Assets').click();
-        await page
-          .getByTestId('drop-down-menu')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+        await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-        const dataAssetDropdownRequest = page.waitForResponse(
-          '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-        );
+        const dataAssetDropdownRequest = waitForAggregation(page, {
+          field: 'entityType.keyword',
+          value: filter.toLowerCase(),
+        });
         await page
           .getByTestId('drop-down-menu')
           .getByTestId('search-input')
           .fill(filter.toLowerCase());
         await dataAssetDropdownRequest;
-        await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-        await page
-          .getByTestId(`${filter.toLowerCase()}-checkbox`)
-          .waitFor({ state: 'visible' });
-
-        await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
-        await page.getByTestId('update-btn').click();
+        const filterRow = page
+          .getByTestId('drop-down-menu')
+          .getByTestId(filter.toLowerCase());
+        await filterRow.waitFor({ state: 'visible' });
+        if ((await filterRow.getAttribute('aria-checked')) !== 'true') {
+          await filterRow.click();
+        }
+        await clickUpdateButtonIfVisible(page);
+        await page.keyboard.press('Escape');
 
         await selectSortOrder(page, 'Name');
         await verifyEntitiesAreSorted(page);
 
-        const clearFilters = page.getByTestId('clear-filters');
+        const clearFilters = page.getByTestId('clear-all-chips');
 
         await expect(clearFilters).toBeVisible();
 
