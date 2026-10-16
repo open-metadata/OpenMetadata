@@ -15,19 +15,20 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { getSeriesColor } from '@openmetadata/ui-core-components/charts';
 import {
   Calendar,
-  Database01,
   LayersThree01,
 } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   TOTAL_DATA_ASSETS_WINDOW_DAYS,
   TOTAL_DATA_ASSETS_WINDOW_OPTIONS,
   useTotalDataAssets,
 } from '../../../../hooks/useTotalDataAssets';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import ShareBar, { ShareSegment } from '../Common/TopicWidget/ShareBar';
 import TopicCard from '../Common/TopicWidget/TopicCard';
@@ -66,6 +67,9 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
     refetch,
     windowDays: measuredWindowDays,
   } = useTotalDataAssets({ windowDays });
+  const { addService, canAddService } = useAddServiceAction(
+    ServiceCategory.DATABASE_SERVICES
+  );
 
   // Intl rather than a hardcoded format so separators and the percent sign
   // follow the reader's locale.
@@ -135,11 +139,21 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
   const emptyState: TopicEmptyStateConfig | undefined =
     totalAssets === 0
       ? {
-          description: t('message.data-estate-empty-description'),
-          icon: Database01,
-          needsSetup: true,
-          summary: t('message.total-data-assets-topic-description'),
-          title: t('message.no-assets-yet'),
+          description: t('message.total-data-assets-empty-description'),
+          footer: {
+            action: canAddService
+              ? {
+                  label: t('label.add-entity', {
+                    entity: t('label.database-service'),
+                  }),
+                  onPress: addService,
+                }
+              : undefined,
+            meta: t('label.count-asset', { count: 0 }),
+          },
+          icon: TONE.icon,
+          summary: t('message.no-assets-ingested-yet'),
+          title: t('message.no-data-assets-yet'),
         }
       : undefined;
 

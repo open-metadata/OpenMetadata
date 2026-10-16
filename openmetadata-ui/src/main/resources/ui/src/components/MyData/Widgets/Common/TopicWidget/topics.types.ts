@@ -65,6 +65,19 @@ export interface TopicEmptyStateConfig {
   needsSetup?: boolean;
   /** Absent when the viewer may not create what the card is waiting for. */
   action?: TopicAction;
+  /**
+   * Keeps the card's footer while it is empty: a line of context ("0 assets")
+   * and the link that fills the card. When set, `action` is ignored — the step
+   * to take is the footer link, as on the populated card — and the body shows
+   * only the icon, title and description.
+   */
+  footer?: TopicEmptyStateFooter;
+}
+
+export interface TopicEmptyStateFooter {
+  meta: string;
+  /** Absent when the viewer may not take the step the card is waiting for. */
+  action?: TopicAction;
 }
 
 export interface TopicIconTone {

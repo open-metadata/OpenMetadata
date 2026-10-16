@@ -17,6 +17,7 @@ import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ExplorePageTabs } from '../../../../enums/Explore.enum';
+import { ServiceCategory } from '../../../../enums/service.enum';
 import { LastRunStatus } from '../../../../generated/type/pipelineSummary';
 import {
   ALL_PIPELINES,
@@ -30,6 +31,7 @@ import { WidgetCommonProps } from '../../../../interface/customization.interface
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getExplorePath } from '../../../../utils/RouterUtils';
+import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import {
@@ -70,6 +72,9 @@ const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
     [visibleRows]
   );
   const runsByFqn = usePipelineRunHistory(fqns);
+  const { addService, canAddService } = useAddServiceAction(
+    ServiceCategory.PIPELINE_SERVICES
+  );
 
   const total = counts[ALL_PIPELINES];
   const failedCount = counts[LastRunStatus.Failed];
@@ -107,10 +112,20 @@ const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
     total === 0
       ? {
           description: t('message.pipeline-status-empty-description'),
-          icon: Dataflow03,
-          needsSetup: true,
-          summary: t('message.pipeline-status-widget-description'),
-          title: t('message.no-pipelines-yet'),
+          footer: {
+            action: canAddService
+              ? {
+                  label: t('label.add-entity', {
+                    entity: t('label.pipeline-service'),
+                  }),
+                  onPress: addService,
+                }
+              : undefined,
+            meta: t('message.no-runs-recorded'),
+          },
+          icon: TONE.icon,
+          summary: t('message.no-pipelines-connected-yet'),
+          title: t('message.no-pipeline-runs-yet'),
         }
       : undefined;
 

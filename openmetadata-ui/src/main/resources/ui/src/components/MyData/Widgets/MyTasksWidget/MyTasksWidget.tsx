@@ -121,10 +121,17 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
   const emptyState: TopicEmptyStateConfig | undefined =
     total === 0
       ? {
-          description: t('message.tasks-open-empty-description'),
+          description: t('message.my-tasks-empty-description'),
+          footer: {
+            action: {
+              label: t('label.open-task-plural'),
+              onPress: () => navigate(tasksPath),
+            },
+            meta: t('label.count-open', { count: 0 }),
+          },
           icon: ClipboardCheck,
-          summary: t('message.my-tasks-widget-description'),
-          title: t('label.no-tasks-right-now'),
+          summary: t('message.no-open-tasks-assigned-to-you'),
+          title: t('message.you-are-all-caught-up'),
         }
       : undefined;
 

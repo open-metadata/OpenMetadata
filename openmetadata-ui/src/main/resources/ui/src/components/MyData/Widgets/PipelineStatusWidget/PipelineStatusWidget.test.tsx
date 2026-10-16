@@ -45,6 +45,15 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
+const mockAddService = jest.fn();
+const mockCanAddService = true;
+jest.mock('../../../integration/ConnectionsPage/useAddServiceAction', () => ({
+  useAddServiceAction: () => ({
+    addService: mockAddService,
+    canAddService: mockCanAddService,
+  }),
+}));
+
 jest.mock('../../../../hooks/usePipelineStatus', () => ({
   ...jest.requireActual('../../../../hooks/usePipelineStatus'),
   usePipelineRunHistory: jest.fn(),
@@ -278,10 +287,21 @@ describe('PipelineStatusWidget', () => {
       },
     });
 
+    expect(screen.getByTestId('topic-empty-pipelineStatus')).toHaveTextContent(
+      'message.no-pipeline-runs-yet'
+    );
     expect(
-      screen.getByTestId('topic-empty-pipelineStatus')
-    ).toBeInTheDocument();
+      screen.getByText('message.no-pipelines-connected-yet')
+    ).toBeVisible();
+    expect(screen.getByText('message.no-runs-recorded')).toBeInTheDocument();
     expect(screen.queryByTestId('pipeline-status-rows')).toBeNull();
+    expect(screen.queryByTestId('topic-status-pipelineStatus')).toBeNull();
+
+    // The footer link adds a pipeline service rather than opening an empty list.
+    fireEvent.click(screen.getByTestId('topic-action-pipelineStatus'));
+
+    expect(mockAddService).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('shows an error body when the fetch fails', () => {

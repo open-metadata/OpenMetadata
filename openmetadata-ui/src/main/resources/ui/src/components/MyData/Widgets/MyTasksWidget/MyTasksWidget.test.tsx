@@ -301,8 +301,21 @@ describe('MyTasksWidget', () => {
       total: 0,
     });
 
-    expect(screen.getByTestId('topic-empty-myTasks')).toBeInTheDocument();
+    expect(screen.getByTestId('topic-empty-myTasks')).toHaveTextContent(
+      'message.you-are-all-caught-up'
+    );
+    expect(
+      screen.getByText('message.no-open-tasks-assigned-to-you')
+    ).toBeVisible();
+    expect(
+      screen.getByText('label.count-open {"count":0}')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('my-task-rows')).toBeNull();
+
+    // Even with nothing open, the footer still leads to the full task list.
+    fireEvent.click(screen.getByTestId('topic-action-myTasks'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/users/dale/task');
   });
 
   it('shows an error body when the fetch fails', () => {

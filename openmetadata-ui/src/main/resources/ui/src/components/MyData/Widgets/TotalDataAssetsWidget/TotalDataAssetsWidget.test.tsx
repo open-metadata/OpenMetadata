@@ -37,6 +37,15 @@ jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
 
+const mockAddService = jest.fn();
+let mockCanAddService = true;
+jest.mock('../../../integration/ConnectionsPage/useAddServiceAction', () => ({
+  useAddServiceAction: () => ({
+    addService: mockAddService,
+    canAddService: mockCanAddService,
+  }),
+}));
+
 // Spread the real module: the widget also reads its exported window constants,
 // and a bare factory would blank them out.
 jest.mock('../../../../hooks/useTotalDataAssets', () => ({
@@ -202,10 +211,37 @@ describe('TotalDataAssetsWidget', () => {
   it('shows the empty state, not a zero total, before anything is counted', () => {
     renderWidget({ assetTypes: [], totalAssets: 0, totalDelta: null } as never);
 
-    expect(
-      screen.getByTestId('topic-empty-totalDataAssets')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('topic-empty-totalDataAssets')).toHaveTextContent(
+      'message.no-data-assets-yet'
+    );
+    expect(screen.getByText('message.no-assets-ingested-yet')).toBeVisible();
     expect(screen.queryByTestId('total-data-assets-total')).toBeNull();
+    // An empty estate is no failure: the header carries no "Not set up" chip.
+    expect(screen.queryByTestId('topic-status-totalDataAssets')).toBeNull();
+  });
+
+  // The empty card keeps its footer: "0 assets", and the step that fills it.
+  it('offers to add a database service from the empty footer', () => {
+    mockCanAddService = true;
+    renderWidget({ assetTypes: [], totalAssets: 0, totalDelta: null } as never);
+
+    expect(
+      screen.getByText('label.count-asset {"count":0}')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('topic-action-totalDataAssets'));
+
+    expect(mockAddService).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('offers no add link to a viewer who may not create a service', () => {
+    mockCanAddService = false;
+    renderWidget({ assetTypes: [], totalAssets: 0, totalDelta: null } as never);
+
+    expect(screen.queryByTestId('topic-action-totalDataAssets')).toBeNull();
+
+    mockCanAddService = true;
   });
 
   it('shows an error body, not an empty estate, when the fetch fails', () => {
