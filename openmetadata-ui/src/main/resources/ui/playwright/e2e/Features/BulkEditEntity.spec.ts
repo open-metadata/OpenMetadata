@@ -592,8 +592,10 @@ test.describe('Bulk Edit Entity', { tag: '@quarantine' }, () => {
         page.getByTestId('certification-Certification.Gold')
       ).toBeVisible();
 
+      // Columns inherit the table's glossary terms as DERIVED labels (#31834),
+      // so the schema grid repeats the term on every column row.
       await expect(
-        page.getByRole('link', {
+        page.getByTestId('KnowledgePanel.GlossaryTerms').getByRole('link', {
           name: glossaryTerm.data.displayName,
         })
       ).toBeVisible();
@@ -810,8 +812,11 @@ test.describe('Bulk Edit Entity', { tag: '@quarantine' }, () => {
       }
     });
 
-    await glossary.delete(apiContext);
     await afterAction();
+    // Fresh context: the setup one idled past the server keep-alive and its DELETE hangs up.
+    const cleanup = await getApiContext(page);
+    await glossary.delete(cleanup.apiContext);
+    await cleanup.afterAction();
   });
 
   test('Glossary Term (Nested)', async ({ page }) => {

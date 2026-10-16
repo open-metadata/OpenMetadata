@@ -19,17 +19,19 @@ import {
   Input,
   PageLayout,
   PaginationCardMinimal,
-  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Assets,
   Check,
   ChevronDown,
   ChevronRight,
   FilePlus02,
+  FilterFunnel01,
   Plus,
   Search,
   Share05,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -37,9 +39,7 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
-import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/database.svg';
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
-import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
@@ -57,7 +57,6 @@ import MemoryConflictReviews from '../../../components/discovery/context-center/
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
   DEFAULT_MEMORY_LIST_STATUSES,
-  FILTER_TABS,
   MEMORY_FIELDS,
   MEMORY_STATUS_LABEL_KEYS,
 } from '../../../constants/ContextCenter.constants';
@@ -83,10 +82,7 @@ import {
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import {
-  getFilterTabClassName,
-  getSortConfig,
-} from '../../../utils/ContextCenterPureUtils';
+import { getSortConfig } from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
   CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
@@ -199,7 +195,7 @@ const getMemoriesViewFlags = ({
   );
   const isMemoriesFiltered = isMemoriesSearching || isMemoriesFilteredOnly;
   // Open reviews keep the count cards up: the empty state would hide the
-  // Needs review tab, the only way to reach them.
+  // Needs review card, the only way to reach them.
   const showMemoriesEmptyState =
     !isMemoriesFiltered &&
     isEmptyOnceLoaded(isMemoriesLoading, memoriesLength) &&
@@ -603,7 +599,7 @@ const ContextCenterMemoriesPage: FC = () => {
   }, [fetchPermission]);
 
   useEffect(() => {
-    fetchMemoryCounts();
+    void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
   const totalPages = Math.max(1, Math.ceil(totalMemories / memoriesPerPage));
@@ -697,14 +693,14 @@ const ContextCenterMemoriesPage: FC = () => {
     setIsDeletingMemory(true);
     try {
       await deleteContextMemory(memoryToDelete.id);
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
       });
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
-      refreshMemoryReviews();
+      void refreshMemoryReviews();
       await fetchMemories();
       await fetchMemoryCounts();
     } catch (err) {
@@ -748,14 +744,14 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const handleReviewResolved = useCallback(() => {
-    refreshMemoryReviews();
-    queryClient.invalidateQueries({
+    void refreshMemoryReviews();
+    void queryClient.invalidateQueries({
       queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
     });
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
-    fetchMemoryCounts();
+    void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
   const handleModalClose = useCallback(() => {
@@ -809,9 +805,9 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
-    refreshMemoryReviews();
-    fetchMemories();
-    fetchMemoryCounts();
+    void refreshMemoryReviews();
+    void fetchMemories();
+    void fetchMemoryCounts();
   }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
 
   const countCards = useMemo(
@@ -942,9 +938,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
                   return (
                     <Card
+                      aria-pressed={isActive}
                       className={classNames(
                         'tw:group tw:relative tw:p-4 tw:flex tw:flex-col tw:gap-1',
                         'tw:cursor-pointer tw:transition-all tw:duration-150 tw:ease-out tw:hover:-translate-y-px',
+                        'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
                         {
                           'tw:bg-brand-primary tw:border-utility-brand-200':
                             isActive,
@@ -952,13 +950,21 @@ const ContextCenterMemoriesPage: FC = () => {
                       )}
                       data-testid={`memory-count-card-${filterKey}`}
                       key={filterKey}
-                      onClick={() => handleFilterChange(filterKey)}>
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleFilterChange(filterKey)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleFilterChange(filterKey);
+                        }
+                      }}>
                       <ChevronRight
                         className={classNames(
                           'tw:absolute tw:top-3 tw:right-3 tw:text-fg-brand-secondary tw:transition-opacity tw:duration-150',
                           {
                             'tw:opacity-100': isActive,
-                            'tw:opacity-0 tw:group-hover:opacity-100':
+                            'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-visible:opacity-100':
                               !isActive,
                           }
                         )}
@@ -980,27 +986,6 @@ const ContextCenterMemoriesPage: FC = () => {
               </div>
 
               <Box align="center" className="tw:py-5" gap={3} wrap="wrap">
-                <Tabs
-                  className="tw:w-max"
-                  selectedKey={activeFilter}
-                  onSelectionChange={(key) =>
-                    handleFilterChange(key as MemoryFilterTab)
-                  }>
-                  <Tabs.List
-                    className="tw:gap-2"
-                    items={FILTER_TABS.map((tab) => ({
-                      id: tab.id,
-                      label: (
-                        <div className="tw:leading-4.5">{t(tab.label)}</div>
-                      ),
-                    }))}
-                    type="button-brand">
-                    {(tab) => (
-                      <Tabs.Item {...tab} className={getFilterTabClassName} />
-                    )}
-                  </Tabs.List>
-                </Tabs>
-
                 <Box
                   align="center"
                   className={classNames({ 'tw:hidden': isReviewing })}
@@ -1009,7 +994,9 @@ const ContextCenterMemoriesPage: FC = () => {
                     <Button
                       color="secondary"
                       data-testid="memory-status-filter"
-                      iconLeading={FunnelIcon}
+                      iconLeading={
+                        <FilterFunnel01 className="tw:shrink-0" size={14} />
+                      }
                       iconTrailing={ChevronDown}
                       size="md">
                       {t('label.status')}:{' '}
@@ -1050,7 +1037,9 @@ const ContextCenterMemoriesPage: FC = () => {
                         className="tw:max-w-64"
                         color="secondary"
                         data-testid="asset-filter-button"
-                        iconLeading={DatabaseIcon}
+                        iconLeading={
+                          <Assets className="tw:shrink-0" size={14} />
+                        }
                         iconTrailing={ChevronDown}
                         size="md"
                         onPress={open}>
@@ -1080,7 +1069,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       className="tw:max-w-64"
                       color="secondary"
                       data-testid="author-filter-button"
-                      iconLeading={UserIcon}
+                      iconLeading={<User01 className="tw:shrink-0" size={14} />}
                       iconTrailing={ChevronDown}
                       size="md">
                       {selectedAuthor?.label ?? allAuthorsLabel}

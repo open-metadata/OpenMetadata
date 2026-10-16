@@ -182,7 +182,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>4.4.0</version>
+      <version>${java-jwt.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Playwright Java for UI integration tests (*UIIT.java) -->

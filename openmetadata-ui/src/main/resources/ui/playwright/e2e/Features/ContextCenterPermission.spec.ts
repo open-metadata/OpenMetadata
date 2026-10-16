@@ -1748,7 +1748,7 @@ test.describe('Context Center Permissions', () => {
             res.url().includes(MEMORIES_API) && res.request().method() === 'GET'
         );
         await createAllPage
-          .getByRole('tab', { name: /created by me/i })
+          .getByTestId('memory-count-card-created-by-me')
           .click();
         await listResPromise;
         await waitForAllLoadersToDisappear(createAllPage);
