@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { Card, Tabs } from '@openmetadata/ui-core-components';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation } from 'fast-json-patch';
+import { get } from 'lodash';
 import React, {
   useCallback,
   useEffect,
@@ -48,6 +49,8 @@ import {
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
+import { ApprovalMode } from '../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
+import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { useWorkflowActions } from '../../../hooks/useWorkflowActions';
@@ -68,12 +71,23 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
+import { isGitSinkNode } from '../../../utils/WorkflowConfigUtils';
 import { applyFlowchartLayout } from '../../../utils/WorkflowLayout';
 import { getWorkflowDefinitionsListPath } from '../../../utils/WorkflowRouterUtils';
 
 interface WorkflowBuilderInternalProps {
   workflowLogic: UseWorkflowLogicReturn;
 }
+
+// The approval mode chosen on the start node in this session, else the one the workflow was saved
+// with.
+const isEnforceApproval = (
+  startNode: Node | null,
+  workflowDefinition?: WorkflowDefinition | null
+) =>
+  (startNode?.data?.approvalMode ??
+    get(workflowDefinition, 'trigger.config.approvalMode')) ===
+  ApprovalMode.Enforce;
 
 const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
@@ -156,9 +170,13 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     return startEventNode?.data?.dataAssets || [];
   }, [startEventNode]);
 
+  const isEnforceMode = isEnforceApproval(startEventNode, workflowDefinition);
+
   const startEventTriggerType = useMemo(() => {
     return startEventNode?.data?.triggerType || '';
   }, [startEventNode]);
+
+  const hasGitSinkNode = useMemo(() => nodes.some(isGitSinkNode), [nodes]);
 
   const [isUndoRedoInProgress, setIsUndoRedoInProgress] = useState(false);
   const [isRunLoading, setIsRunLoading] = useState(false);
@@ -547,6 +565,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
           dataAssets: startEventDataAssets,
           triggerType: startEventTriggerType,
         }}
+        hasGitSinkNode={hasGitSinkNode}
+        isEnforceMode={isEnforceMode}
         isOpen={isConfigSidebarOpen}
         node={selectedNode}
         setEdges={setEdges}
@@ -628,25 +648,25 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
             onUpdateDisplayName={handleUpdateDisplayName}
           />
         </div>
-        <Card className="tw:mt-3">
-          <Tabs
-            className="tw:w-full tw:mt-3 tw:shrink-0 tw:pl-5"
-            data-testid="workflow-execution-tabs"
-            selectedKey={activeTab}
-            onSelectionChange={(key) =>
-              setActiveTab(key as WorkflowBuilderTab)
-            }>
-            <Tabs.List items={workflowBuilderTabs} type="underline">
-              {(tab) => (
-                <Tabs.Item
-                  data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
-                  id={tab.id}
-                  label={tab.label}
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </Card>
+        <Tabs
+          className="tw:mt-3"
+          data-testid="workflow-execution-tabs"
+          selectedKey={activeTab}
+          onSelectionChange={(key) => setActiveTab(key as WorkflowBuilderTab)}>
+          <Tabs.List
+            items={workflowBuilderTabs}
+            size="sm"
+            type="underline"
+            variant="card">
+            {(tab) => (
+              <Tabs.Item
+                data-testid={tabTestIds[tab.id as WorkflowBuilderTab]}
+                id={tab.id}
+                label={tab.label}
+              />
+            )}
+          </Tabs.List>
+        </Tabs>
         <div className="tw:relative tw:flex tw:flex-1 tw:min-h-0 tw:flex-col tw:pt-4">
           {renderTabPanel()}
           {renderSidebar()}

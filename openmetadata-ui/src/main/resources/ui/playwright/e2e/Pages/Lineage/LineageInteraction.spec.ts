@@ -438,12 +438,9 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         // middle crumbs fold into a "..." menu. The visible items remain
         // a contiguous prefix and suffix of the FQN path, so they must
         // appear in the original order.
-        const visibleTexts: Array<string> = [];
-        for (let i = 0; i < breadcrumbCount; i++) {
-          visibleTexts.push(
-            (await breadcrumbItems.nth(i).textContent())?.trim() ?? ''
-          );
-        }
+        const visibleTexts = (await breadcrumbItems.allTextContents()).map(
+          (text) => text.trim()
+        );
 
         let fqnCursor = 0;
         for (const text of visibleTexts) {

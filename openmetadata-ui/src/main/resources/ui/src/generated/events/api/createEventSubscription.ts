@@ -23,7 +23,9 @@ export interface CreateEventSubscription {
      */
     batchSize?: number;
     /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     * Id of the registered consumer that runs this Event Subscription. Will use `alert`, the
+     * consumer that sends its notifications, if not provided. A Java class name a consumer was
+     * once stored under is accepted and saved as its id; any other name is rejected.
      */
     className?: string;
     config?:    { [key: string]: any };
@@ -98,6 +100,12 @@ export enum AlertType {
  */
 export interface Destination {
     category: SubscriptionCategory;
+    /**
+     * Id of the registered channel that serves this destination, when it is not the one
+     * registered for its type. A save that names a channel not registered on the server is
+     * rejected.
+     */
+    channel?: string;
     config?:  Webhook;
     /**
      * Maximum depth for downstream stakeholder notification traversal. If null, traverses

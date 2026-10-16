@@ -13,13 +13,16 @@
 
 import type { ECElementEvent } from 'echarts';
 import type { ReactNode } from 'react';
+import type { ChartTooltipRenderProps } from './tooltip-render';
 import type {
   CartesianBuildInput,
   ChartOption,
+  ChartPixel,
   GeoJson,
   GeoMapBuildInput,
   GeoMapDatum,
   PieBuildInput,
+  PieDatum,
 } from './types';
 
 /** Props every chart component shares, on top of its build input. */
@@ -48,20 +51,46 @@ export interface ChartCommonProps {
 export interface CartesianChartProps<T extends object>
   extends Omit<
       CartesianBuildInput<T>,
-      'layout' | 'getBarColor' | 'showValueLabels' | 'radius'
+      | 'layout'
+      | 'getBarStatus'
+      | 'showValueLabels'
+      | 'radius'
+      | 'categoryClickable'
+      | 'tooltip'
     >,
     ChartCommonProps {
-  onPointClick?: (datum: T, seriesKey: string, event: ECElementEvent) => void;
+  /** `render` gives React content; see `ChartTooltipRenderProps`. */
+  tooltip?: ChartTooltipRenderProps<T>;
+  /** The pointer is over a point. `position` is the point's centre. */
+  onPointHover?: (datum: T, seriesKey: string, position: ChartPixel) => void;
+  /** The pointer left the point (or keyboard focus left the chart). */
+  onPointLeave?: () => void;
+  onPointClick?: (datum: T, seriesKey: string, event?: ECElementEvent) => void;
+  /**
+   * The chart takes keyboard focus (one Tab stop). Left / Right move to the
+   * previous / next point, Home / End to the first / last, each reported
+   * through `onPointHover`; Enter / Space through `onPointClick`; Escape and
+   * blur through `onPointLeave`. Focus starts on the last point.
+   */
+  keyboardNavigation?: boolean;
+  /** Announced (aria-live) for the point keyboard navigation moves to. */
+  pointAriaLabel?: (datum: T, seriesKey: string) => string;
+  /** A click on a category-axis label. Receives the category value. */
+  onCategoryClick?: (category: string, event: ECElementEvent) => void;
 }
 
 export interface BarChartProps<T extends object>
   extends CartesianChartProps<T>,
     Pick<
       CartesianBuildInput<T>,
-      'layout' | 'getBarColor' | 'showValueLabels' | 'radius'
+      'layout' | 'getBarStatus' | 'showValueLabels' | 'radius'
     > {}
 
-export interface PieChartProps extends PieBuildInput, ChartCommonProps {
+export interface PieChartProps
+  extends Omit<PieBuildInput, 'tooltip'>,
+    ChartCommonProps {
+  /** `render` gives React content; see `ChartTooltipRenderProps`. */
+  tooltip?: ChartTooltipRenderProps<PieDatum>;
   /** Rendered in the middle of the chart, typically for a donut total. */
   centerLabel?: ReactNode;
   onSliceClick?: (

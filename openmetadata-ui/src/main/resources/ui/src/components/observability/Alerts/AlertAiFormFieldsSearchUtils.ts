@@ -16,14 +16,12 @@ import { AxiosError } from 'axios';
 import { isEmpty, uniqBy } from 'lodash';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { UUID_REGEX } from '../../../constants/regex.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
-import {
-  getDataContractSuggestions,
-  searchEntity,
-} from '../../../utils/Alerts/AlertsUtil';
+import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
+import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
+import alertsClassBase from '../../../utils/AlertsClassBase';
 import { EntityIconSize } from '../../../utils/EntityIconUtils';
 import {
   getEntityName,
@@ -241,24 +239,69 @@ const ALERT_AI_ARGUMENT_CONFIG_BUILDERS: Record<
   testSuiteList: () => ({ searchIndex: SearchIndex.TEST_SUITE }),
 };
 
+const SOURCE_ARGUMENT_SEARCHERS: Record<
+  string,
+  (search: AlertSourceSearch, text: string) => Promise<SelectItemType[]>
+> = {
+  fqnList: async (search, text) =>
+    (await search.byName(text)).map(({ value, label }) => ({
+      id: value,
+      label,
+    })),
+  entityIdList: async (search, text) =>
+    (await search.byId(text)).map(({ id, fullyQualifiedName }) => ({
+      id,
+      label: id,
+      supportingText: fullyQualifiedName,
+    })),
+};
+const getSourceArgumentOptions = (
+  argument: string,
+  text: string,
+  search?: AlertSourceSearch
+) => {
+  if (!search) {
+    return undefined;
+  }
+
+  return SOURCE_ARGUMENT_SEARCHERS[argument]?.(search, text).catch((error) => {
+    showErrorToast(error as AxiosError);
+
+    return [];
+  });
+};
+
 export const searchAlertAiArgumentOptions = async ({
   argument,
   containerEntities = [],
   searchText,
   selectedSource,
+  sourceSearch,
 }: {
   argument: string;
   containerEntities?: string[];
   searchText: string;
   selectedSource?: string;
+  sourceSearch?: AlertSourceSearch;
 }): Promise<SelectItemType[]> => {
   const trimmedSearchText = searchText.trim();
+  const sourceOptions = getSourceArgumentOptions(
+    argument,
+    trimmedSearchText,
+    sourceSearch
+  );
+  if (sourceOptions) {
+    return sourceOptions;
+  }
 
-  // Data contracts are not in the search-index mapping; classic lists them via the contracts API.
-  if (argument === 'fqnList' && selectedSource === EntityType.DATA_CONTRACT) {
-    const contracts = await getDataContractSuggestions(trimmedSearchText);
+  // A source whose names are not in the search indexes, such as a data contract, has a search of its own.
+  const ownSearch = selectedSource
+    ? alertsClassBase.getSourceNameSearch()[selectedSource]
+    : undefined;
+  if (argument === 'fqnList' && ownSearch) {
+    const names = await ownSearch(trimmedSearchText);
 
-    return contracts.map(({ value }) => ({ id: value, label: value }));
+    return names.map(({ value }) => ({ id: value, label: value }));
   }
 
   const buildConfig = ALERT_AI_ARGUMENT_CONFIG_BUILDERS[argument];

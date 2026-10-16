@@ -48,7 +48,7 @@ class EntityLifecyclePostCommitTest {
 
   @Test
   void synchronousLifecycleHandlerRunsOnlyAfterCommit() {
-    final EntityInterface entity = mock(EntityInterface.class);
+    final EntityInterface<?> entity = mock(EntityInterface.class);
     final EntityReference reference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY_TERM);
     when(entity.getId()).thenReturn(reference.getId());
@@ -66,7 +66,8 @@ class EntityLifecyclePostCommitTest {
     private boolean created;
 
     @Override
-    public void onEntityCreated(final EntityInterface entity, final SubjectContext subjectContext) {
+    public void onEntityCreated(
+        final EntityInterface<?> entity, final SubjectContext subjectContext) {
       created = true;
     }
 

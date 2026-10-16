@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   fireEvent,
   getByText,
   render,
@@ -717,6 +718,43 @@ describe('Test GlossaryTermTab component', () => {
         undefined
       );
     });
+
+    it('should not let a first-level page in flight overwrite the expanded tree', async () => {
+      let resolveFirstLevel!: (value: unknown) => void;
+      mockGetFirstLevelGlossaryTermsPaginated.mockReturnValue(
+        new Promise((resolve) => {
+          resolveFirstLevel = resolve;
+        })
+      );
+      const staleFirstLevelPage = [mockedGlossaryTerms[1]];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() =>
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled()
+      );
+
+      fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+      await waitFor(() =>
+        expect(mockSetGlossaryChildTerms).toHaveBeenLastCalledWith(
+          mockedGlossaryTerms
+        )
+      );
+
+      await act(async () => {
+        resolveFirstLevel({ data: staleFirstLevelPage, paging: {} });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalledWith(
+        staleFirstLevelPage
+      );
+      expect(
+        screen.getByTestId('expand-collapse-all-button')
+      ).toHaveTextContent('label.collapse-all');
+    });
   });
 
   describe('Actions', () => {
@@ -1199,14 +1237,19 @@ describe('Test GlossaryTermTab component', () => {
       expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
     });
 
-    it('should select every status when "all" is checked', async () => {
+    it('should select every general status when "all" is checked', async () => {
       await openStatusFilter();
+
+      expect(screen.queryByText('Superseded')).not.toBeInTheDocument();
+      expect(screen.queryByText('Invalidated')).not.toBeInTheDocument();
 
       fireEvent.click(getStatusCheckbox('all'));
 
-      Object.values(EntityStatus).forEach((status) => {
-        expect(getStatusCheckbox(status)).toBeChecked();
-      });
+      Object.values(EntityStatus)
+        .filter((status) => !['Superseded', 'Invalidated'].includes(status))
+        .forEach((status) => {
+          expect(getStatusCheckbox(status)).toBeChecked();
+        });
     });
   });
 

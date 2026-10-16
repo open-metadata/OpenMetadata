@@ -11,11 +11,17 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Checkbox, Col, Divider, Row, Select, Space } from 'antd';
-
+import {
+  Box,
+  Checkbox,
+  Divider,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Select } from 'antd';
 import { capitalize } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { FilterPatternProps } from './filterPattern.interface';
 
 const FilterPattern = ({
@@ -34,31 +40,40 @@ const FilterPattern = ({
 
   return (
     <div data-testid="filter-pattern-container">
-      <Row>
-        <Col span={8}>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={8}>
           {/* eslint-disable-next-line jsx-a11y/label-has-for -- htmlFor-linked to checkbox (sibling column) */}
           <label htmlFor={`root/${type}FilterPattern`}>{`${capitalize(
             type
           )} ${t('label.filter-pattern')}`}</label>
-        </Col>
-        <Col span={16}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={16}>
           <Checkbox
-            checked={checked}
+            aria-label={`${type} ${t('label.filter-pattern')}`}
             className="filter-pattern-checkbox"
             data-testid={`${type}-filter-pattern-checkbox`}
-            disabled={isDisabled}
             id={`root/${type}FilterPattern`}
+            isDisabled={isDisabled}
+            isSelected={checked}
             name={`root/${type}FilterPattern`}
-            onChange={(e) => handleChecked(e.target.checked)}
+            onChange={(e) => handleChecked(e)}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
       {checked && (
-        <Row className="m-t-xs" data-testid="field-container" gutter={[0, 16]}>
-          <Col span={24}>
-            <Space size={2}>
+        <Grid
+          className="layout-row layout-grid m-t-xs"
+          data-testid="field-container"
+          style={{ ...getLayoutGutter(0, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              itemClassName="layout-space-item"
+              style={{ gap: 'var(--om-space-2)' }}>
               <span className="d-flex flex-col">{t('label.include')}:</span>
-            </Space>
+            </Box>
 
             <Select
               className="m-t-xss"
@@ -79,11 +94,16 @@ const FilterPattern = ({
                 {includePatternExtraInfo}
               </Typography>
             )}
-          </Col>
-          <Col span={24}>
-            <Space size={2}>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              itemClassName="layout-space-item"
+              style={{ gap: 'var(--om-space-2)' }}>
               <span className="d-flex flex-col">{t('label.exclude')}:</span>
-            </Space>
+            </Box>
             <Select
               className="m-t-xss"
               data-testid={`filter-pattern-excludes-${type}`}
@@ -95,9 +115,9 @@ const FilterPattern = ({
               onChange={(value) => getExcludeValue(value, type)}
             />
 
-            {showSeparator && <Divider />}
-          </Col>
-        </Row>
+            {showSeparator && <Divider className="tw:my-6" />}
+          </Grid.Item>
+        </Grid>
       )}
     </div>
   );

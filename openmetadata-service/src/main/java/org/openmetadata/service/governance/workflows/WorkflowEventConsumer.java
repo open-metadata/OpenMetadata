@@ -1,6 +1,5 @@
 package org.openmetadata.service.governance.workflows;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
@@ -22,6 +21,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -29,12 +29,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.Destination;
-import org.openmetadata.service.events.errors.EventPublisherException;
+import org.openmetadata.service.alerting.audience.Recipient;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
-import org.openmetadata.service.notifications.recipients.context.Recipient;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.Registry;
 
@@ -74,6 +74,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.SEARCH_INDEX,
           Entity.API_ENDPOINT,
           Entity.API_COLLECTION,
+          Entity.FILE,
+          Entity.DIRECTORY,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET,
           Entity.DATABASE_SERVICE,
           Entity.DASHBOARD_SERVICE,
           Entity.MESSAGING_SERVICE,
@@ -83,6 +87,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.SEARCH_SERVICE,
           Entity.API_SERVICE,
           Entity.METADATA_SERVICE,
+          Entity.DRIVE_SERVICE,
+          Entity.LLM_SERVICE,
+          Entity.MCP_SERVICE,
+          Entity.SECURITY_SERVICE,
           Entity.DOMAIN,
           Entity.DATA_PRODUCT,
           Entity.GLOSSARY,
@@ -104,7 +112,11 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
           Entity.PAGE,
           Entity.AI_APPLICATION,
           Entity.LLM_MODEL,
-          Entity.MCP_SERVER);
+          Entity.MCP_SERVER,
+          Entity.PROMPT_TEMPLATE,
+          Entity.AI_GOVERNANCE_POLICY,
+          Entity.AI_GOVERNANCE_FRAMEWORK,
+          Entity.AI_FRAMEWORK_CONTROL);
 
   private static final Registry<Function<ChangeEvent, Map<String, Object>>> handlerRegistry =
       new Registry<>(WorkflowEventConsumer::defaultHandler);
@@ -116,16 +128,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
   public WorkflowEventConsumer(
       EventSubscription eventSubscription, SubscriptionDestination subscriptionDestination) {
-    if (subscriptionDestination.getType()
-        == SubscriptionDestination.SubscriptionType.GOVERNANCE_WORKFLOW_CHANGE_EVENT) {
-
-      this.eventSubscription = eventSubscription;
-      this.subscriptionDestination = subscriptionDestination;
-    } else {
-      throw new IllegalArgumentException(
-          String.format(
-              "WorkflowEventConsumer does not work with %s.", subscriptionDestination.getType()));
-    }
+    this.eventSubscription = eventSubscription;
+    this.subscriptionDestination = subscriptionDestination;
   }
 
   private static boolean isTransientDatabaseError(Throwable e) {
@@ -158,13 +162,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       return;
     }
 
-    // Skip events from governance-bot to prevent infinite loops
-    // These are system-initiated workflow changes that shouldn't trigger new workflows
-    if (GOVERNANCE_BOT.equals(event.getUserName())
-        || (event.getImpersonatedBy() != null
-            && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
+    if (isBotChange(event.getUserName(), event.getImpersonatedBy())) {
       LOG.debug(
-          "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+          "Skipping bot change by {} for entity {} of type: {}",
+          event.getUserName(),
           event.getEntityFullyQualifiedName(),
           event.getEntityType());
       return;
@@ -199,13 +200,27 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       LOG.error("WorkflowEventConsumer - Error processing event", exc);
       String message =
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, event, exc.getMessage());
+              subscriptionDestination.getType(), event, exc.getMessage());
       LOG.error(message);
       throw new EventPublisherException(
           CatalogExceptionMessage.eventPublisherFailedToPublish(
-              GOVERNANCE_WORKFLOW_CHANGE_EVENT, exc.getMessage()),
+              subscriptionDestination.getType(), exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  /**
+   * Bot changes are excluded from governance workflows: any change whose updatedBy user is a bot,
+   * and workflow automation, which writes as the acting user with governance-bot as impersonator. A
+   * bot impersonating a user records that user as updatedBy, so the change is the user's.
+   */
+  public static boolean isBotChange(String userName, String impersonatedBy) {
+    boolean botChange = GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
+    if (!botChange && userName != null) {
+      User actor = Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
+      botChange = actor != null && Boolean.TRUE.equals(actor.getIsBot());
+    }
+    return botChange;
   }
 
   public static Map<String, Object> defaultHandler(ChangeEvent event) {

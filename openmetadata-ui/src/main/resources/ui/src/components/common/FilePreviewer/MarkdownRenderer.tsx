@@ -40,7 +40,7 @@ const MarkdownRenderer = ({ content }: PreviewRendererProps) => {
   }, [content]);
 
   return (
-    <div className="tw:prose tw:max-w-none tw:p-4">
+    <div className="prose tw:max-w-none tw:p-4">
       <ReactMarkdown components={getCustomMarkdownComponents()}>
         {text}
       </ReactMarkdown>

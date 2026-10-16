@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, RedoOutlined, SaveOutlined } from '@ant-design/icons';
 import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
@@ -21,7 +20,12 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsGrid } from '@openmetadata/ui-core-components/icons';
+import {
+  DotsGrid,
+  RefreshCw01,
+  Save,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEqual } from 'lodash';
@@ -56,7 +60,6 @@ import {
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import '../SettingsNavigationPage/settings-navigation-page.less';
 import {
   getSidebarHiddenKeys,
   getSidebarNavigationItems,
@@ -297,8 +300,9 @@ const CustomizeAppModeSidebarPage = () => {
             <Box align="center" direction="row" gap={2}>
               <DotsGrid
                 aria-hidden
-                className="tw:size-4 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
+                className="tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary"
                 data-testid="ask-sidebar-drag-handle"
+                size={16}
               />
               {Icon && (
                 <Icon className="tw:text-fg-tertiary" height={20} width={20} />
@@ -360,7 +364,9 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="secondary"
                     data-testid="reset-button"
-                    iconLeading={<RedoOutlined />}
+                    iconLeading={
+                      <RefreshCw01 className="tw:shrink-0" size={14} />
+                    }
                     isDisabled={isSaving}
                     onPress={handleReset}>
                     {t('label.reset')}
@@ -368,7 +374,7 @@ const CustomizeAppModeSidebarPage = () => {
                   <Button
                     color="primary"
                     data-testid="save-button"
-                    iconLeading={<SaveOutlined />}
+                    iconLeading={<Save className="tw:shrink-0" size={14} />}
                     isDisabled={disableSave}
                     isLoading={isSaving}
                     onPress={handleSave}>
@@ -378,7 +384,7 @@ const CustomizeAppModeSidebarPage = () => {
                     aria-label={t('label.cancel')}
                     color="secondary"
                     data-testid="cancel-button"
-                    iconLeading={<CloseOutlined />}
+                    iconLeading={<XClose className="tw:shrink-0" size={14} />}
                     isDisabled={isSaving}
                     onPress={handleCancel}
                   />

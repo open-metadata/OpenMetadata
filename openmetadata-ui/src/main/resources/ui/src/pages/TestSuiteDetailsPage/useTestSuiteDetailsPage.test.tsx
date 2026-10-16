@@ -16,6 +16,7 @@ import { ReactNode } from 'react';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCasesToLogicalTestSuiteBulk,
@@ -236,6 +237,35 @@ describe('useTestSuiteDetailsPage', () => {
       expect.objectContaining({ signal: expect.anything() })
     );
     expect(getIngestionPipelines).not.toHaveBeenCalled();
+  });
+
+  it('should open Bulk Edit with the suite list filters', async () => {
+    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+      '../../utils/TestCaseUtils'
+    );
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    await act(async () => {
+      await result.current.fetchTestCases({
+        testCaseStatus: TestCaseStatus.Failed,
+        offset: 20,
+      });
+      await result.current.handleTestCaseSearch(' tc_9 ');
+    });
+
+    expect(ExtraTestCaseDropdownOptions).toHaveBeenLastCalledWith(
+      mockTestSuite.fullyQualifiedName,
+      expect.anything(),
+      false,
+      expect.anything(),
+      expect.anything(),
+      'testSuite',
+      { testCaseStatus: TestCaseStatus.Failed, q: 'tc_9' }
+    );
   });
 
   it('should preserve search input whitespace while normalizing the request', async () => {
@@ -909,6 +939,105 @@ describe('useTestSuiteDetailsPage', () => {
     expect(result.current.testSuite?.fullyQualifiedName).toBe(
       'another_suite_fqn'
     );
+  });
+
+  it('should keep refreshing after a removal until the index drops the removed rows', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    (getTestSuiteByName as jest.Mock).mockResolvedValue({
+      ...mockTestSuite,
+      tests: [],
+    });
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+    (getListTestCaseBySearch as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [{ id: 'tc-1', name: 'tc_1' }],
+        paging: { total: 1 },
+      })
+      .mockResolvedValue({ data: [], paging: { total: 0 } });
+
+    const setTimeoutSpy = runTimeoutsImmediately();
+
+    try {
+      await act(async () => {
+        await result.current.handleTestCasesRemoved();
+      });
+
+      expect(
+        setTimeoutSpy.mock.calls.filter(([, delay]) => delay === 500)
+      ).toHaveLength(1);
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+
+    expect(result.current.testCaseResult).toEqual([]);
+    expect(result.current.pagingData.paging.total).toBe(0);
+    expect(result.current.isTestCaseLoading).toBe(false);
+  });
+
+  it('should report a failure to reload the suite after a removal', async () => {
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    const error = new Error('suite fetch failed');
+    (getTestSuiteByName as jest.Mock).mockRejectedValueOnce(error);
+
+    await act(async () => {
+      await result.current.handleTestCasesRemoved();
+    });
+
+    expect(showErrorToast).toHaveBeenCalledWith(error);
+  });
+
+  it('should step back a page when the current page past the first comes back empty', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockImplementation(
+      async ({ offset }: { offset?: number }) =>
+        offset
+          ? { data: [], paging: { total: 1 } }
+          : { data: [{ id: 'tc-1', name: 'tc_1' }], paging: { total: 1 } }
+    );
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.pagingData.pagingHandler({ currentPage: 2 });
+    });
+
+    await waitFor(() => {
+      expect(result.current.pagingData.currentPage).toBe(1);
+      expect(result.current.testCaseResult).toHaveLength(1);
+    });
+
+    expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: 0 }),
+      expect.any(Object)
+    );
+  });
+
+  it('should stay on the first page when it comes back empty', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
+    });
+
+    expect(result.current.pagingData.currentPage).toBe(1);
+    expect(result.current.testCaseResult).toEqual([]);
   });
 
   it('should surface suite fetch errors via toast', async () => {

@@ -43,6 +43,12 @@ export const RESULT_METRIC_BY_DEFINITION: Record<string, ResultMetric> = {
     labelKey: 'label.result-metric-null-count',
     impliedExpected: 0,
   },
+  // It checks every value, and its two series are the column's min and max,
+  // so the caption names the column rather than either series.
+  columnValuesToBeBetween: {
+    labelKey: 'label.result-metric-column-values',
+    namesColumn: true,
+  },
   columnValueMaxToBeBetween: {
     labelKey: 'label.result-metric-column-max',
     namesColumn: true,

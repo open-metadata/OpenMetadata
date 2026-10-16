@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DARK_CHART_PALETTE, LIGHT_CHART_PALETTE } from './palette';
 import type { ChartTheme } from './types';
 
 // Values moved unchanged from chart-core's LIGHT/DARK_THEME_COLORS so the
@@ -27,20 +28,23 @@ export const LIGHT_CHART_THEME: ChartTheme = {
   tooltipBg: '#ffffff',
   tooltipText: '#374151',
   tooltipBorder: '#e5e7eb',
+  palette: LIGHT_CHART_PALETTE,
 };
 
 export const DARK_CHART_THEME: ChartTheme = {
   isDark: true,
-  axisText: '#94979c',
-  axisTick: '#94979c',
+  axisText: '#a8aeb9',
+  axisTick: '#a8aeb9',
   axisTitle: '#cecfd2',
   xAxisTitle: '#cecfd2',
   grid: '#373a41',
-  emptyFill: '#22262f',
+  // Not the dark surface colour, or empty pie tracks and map regions vanish.
+  emptyFill: '#373a41',
   segmentBorder: '#0c0e12',
   tooltipBg: '#22262f',
-  tooltipText: '#f7f7f7',
+  tooltipText: '#eef0f4',
   tooltipBorder: '#373a41',
+  palette: DARK_CHART_PALETTE,
 };
 
 export const buildChartTheme = ({

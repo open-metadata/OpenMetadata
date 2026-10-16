@@ -313,7 +313,7 @@ describe('QueryCardExtraOption component test', () => {
     const menuOptions = await screen.findAllByRole('menuitem');
     const editBtn = menuOptions[0];
 
-    expect(editBtn).toHaveClass('ant-dropdown-menu-item-disabled');
+    expect(editBtn).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('If there is no permission, Delete option should be disabled', async () => {
@@ -330,6 +330,6 @@ describe('QueryCardExtraOption component test', () => {
     const menuOptions = await screen.findAllByRole('menuitem');
     const deleteBtn = menuOptions[1];
 
-    expect(deleteBtn).toHaveClass('ant-dropdown-menu-item-disabled');
+    expect(deleteBtn).toHaveAttribute('aria-disabled', 'true');
   });
 });

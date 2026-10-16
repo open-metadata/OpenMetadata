@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type {
   BarSeriesOption,
   ECElementEvent,
   LineSeriesOption,
   PieSeriesOption,
+  TooltipComponentOption,
 } from 'echarts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AreaChart } from './area-chart';
@@ -30,7 +31,7 @@ const hostProps = vi.hoisted(() => ({
   calls: [] as Array<Record<string, unknown>>,
 }));
 
-vi.mock('echarts-for-react/lib/core', () => ({
+vi.mock('echarts-for-react/esm/core', () => ({
   default: (props: Record<string, unknown>) => {
     hostProps.calls.push(props);
 
@@ -144,6 +145,28 @@ describe('LineChart', () => {
     );
   });
 
+  it('turns tooltip.render into a bare string formatter', () => {
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        tooltip={{ render: (_items, datum) => <b>{datum?.day}</b> }}
+        xKey="day"
+      />
+    );
+    const tooltip = (lastHost().option as ChartOption)
+      .tooltip as TooltipComponentOption;
+    const formatter = tooltip.formatter as (params: unknown) => string;
+
+    expect(tooltip.padding).toBe(0);
+    expect(
+      formatter([
+        { seriesId: 'passed', seriesName: 'Passed', value: 3, dataIndex: 1 },
+      ])
+    ).toBe('<b>Tue</b>');
+  });
+
   it('binds no click handler when onPointClick is not given', () => {
     render(
       <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
@@ -152,6 +175,171 @@ describe('LineChart', () => {
     expect(
       (lastHost().onEvents as Record<string, unknown>).click
     ).toBeUndefined();
+  });
+
+  it('keeps the user zoom across a loading flicker that leaves the data unchanged', () => {
+    const zoomRows: Row[] = Array.from({ length: 20 }, (_, i) => ({
+      day: `d${i}`,
+      passed: i,
+      failed: i * 2,
+    }));
+    const { rerender } = render(
+      <LineChart
+        ariaLabel="Runs"
+        data={zoomRows}
+        series={series}
+        xKey="day"
+        zoom="auto"
+      />
+    );
+    act(() => {
+      (lastHost().onEvents as Record<string, (e: unknown) => void>).datazoom({
+        batch: [{ start: 40, end: 70 }],
+      });
+    });
+    rerender(
+      <LineChart
+        loading
+        ariaLabel="Runs"
+        data={zoomRows}
+        series={series}
+        xKey="day"
+        zoom="auto"
+      />
+    );
+    rerender(
+      <LineChart
+        ariaLabel="Runs"
+        data={zoomRows}
+        series={series}
+        xKey="day"
+        zoom="auto"
+      />
+    );
+
+    const zoom = (lastHost().option as ChartOption).dataZoom as Array<{
+      start: number;
+      end: number;
+    }>;
+    expect(zoom).toEqual([
+      expect.objectContaining({ start: 40, end: 70 }),
+      expect.objectContaining({ start: 40, end: 70 }),
+    ]);
+  });
+});
+
+describe('point hover', () => {
+  const fakeChart = {
+    convertToPixel: vi.fn(() => [50, 60]),
+    dispatchAction: vi.fn(),
+  };
+  const fire = (name: string, event: Partial<ECElementEvent>) =>
+    (lastHost().onEvents as Record<string, (e: ECElementEvent) => void>)[name](
+      event as ECElementEvent
+    );
+
+  it('reports the hovered row, series and pixel centre', () => {
+    const onPointHover = vi.fn();
+    const onPointLeave = vi.fn();
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={onPointHover}
+        onPointLeave={onPointLeave}
+      />
+    );
+    (lastHost().onChartReady as (c: unknown) => void)(fakeChart);
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: 'failed',
+      dataIndex: 1,
+    });
+    fire('mouseout', {
+      componentType: 'series',
+      seriesId: 'failed',
+      dataIndex: 1,
+    });
+
+    expect(onPointHover).toHaveBeenCalledWith(rows[1], 'failed', {
+      x: 50,
+      y: 60,
+    });
+    expect(onPointLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores helper series such as reference lines and bands', () => {
+    const onPointHover = vi.fn();
+    const onPointLeave = vi.fn();
+    render(
+      <LineChart
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+        onPointHover={onPointHover}
+        onPointLeave={onPointLeave}
+      />
+    );
+    (lastHost().onChartReady as (c: unknown) => void)(fakeChart);
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: '__reference-lines',
+      dataIndex: 0,
+    });
+    fire('mouseover', {
+      componentType: 'series',
+      seriesId: 'passed__band',
+      dataIndex: 0,
+    });
+    fire('mouseout', {
+      componentType: 'series',
+      seriesId: 'passed__band',
+      dataIndex: 0,
+    });
+
+    expect(onPointHover).not.toHaveBeenCalled();
+    expect(onPointLeave).not.toHaveBeenCalled();
+  });
+
+  it('binds no hover handler when no hover callback is given', () => {
+    render(
+      <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
+    );
+    const events = lastHost().onEvents as Record<string, unknown>;
+
+    expect(events.mouseover).toBeUndefined();
+    expect(events.mouseout).toBeUndefined();
+  });
+});
+
+describe('keyboard navigation', () => {
+  it('wraps the chart in one focusable group with a live region', () => {
+    render(
+      <LineChart
+        keyboardNavigation
+        ariaLabel="Runs"
+        data={rows}
+        series={series}
+        xKey="day"
+      />
+    );
+    const group = screen.getByRole('group', { name: 'Runs' });
+
+    expect(group).toHaveAttribute('tabindex', '0');
+    expect(group.querySelector('[aria-live="polite"]')).not.toBeNull();
+  });
+
+  it('adds neither the wrapper nor the live region by default', () => {
+    const { container } = render(
+      <LineChart ariaLabel="Runs" data={rows} series={series} xKey="day" />
+    );
+
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(container.querySelector('[aria-live]')).toBeNull();
+    expect(container.querySelector('[tabindex]')).toBeNull();
   });
 });
 
@@ -194,6 +382,55 @@ describe('BarChart', () => {
       'passed',
       expect.anything()
     );
+  });
+  it('ignores a click on the axis title', () => {
+    const onCategoryClick = vi.fn();
+    render(
+      <BarChart
+        ariaLabel="Runs"
+        data={rows}
+        layout="horizontal"
+        series={series}
+        xKey="day"
+        onCategoryClick={onCategoryClick}
+      />
+    );
+    clickHost({
+      componentType: 'yAxis',
+      targetType: 'axisName',
+    } as unknown as Partial<ECElementEvent>);
+
+    expect(onCategoryClick).not.toHaveBeenCalled();
+  });
+
+  it('reports a category label click, and still maps bar clicks to rows', () => {
+    const onCategoryClick = vi.fn();
+    const onPointClick = vi.fn();
+    render(
+      <BarChart
+        ariaLabel="Runs"
+        data={rows}
+        layout="horizontal"
+        series={series}
+        xKey="day"
+        onCategoryClick={onCategoryClick}
+        onPointClick={onPointClick}
+      />
+    );
+    clickHost({
+      componentType: 'yAxis',
+      targetType: 'axisLabel',
+      value: 'Tue',
+    } as unknown as Partial<ECElementEvent>);
+    clickHost({ componentType: 'series', dataIndex: 0, seriesId: 'passed' });
+
+    expect(onCategoryClick).toHaveBeenCalledWith('Tue', expect.anything());
+    expect(onPointClick).toHaveBeenCalledWith(
+      rows[0],
+      'passed',
+      expect.anything()
+    );
+    expect(onPointClick).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -246,6 +483,18 @@ describe('PieChart', () => {
     expect(screen.getByText('8 tests')).toBeInTheDocument();
   });
 
+  it('shows a pointer cursor only when slices are clickable', () => {
+    const { rerender } = render(<PieChart ariaLabel="Status" data={slices} />);
+
+    expect(pie().cursor).toBe('default');
+
+    rerender(
+      <PieChart ariaLabel="Status" data={slices} onSliceClick={vi.fn()} />
+    );
+
+    expect(pie().cursor).toBe('pointer');
+  });
+
   it('maps a clicked slice back to its datum', () => {
     const onSliceClick = vi.fn();
     render(
@@ -269,5 +518,43 @@ describe('PieChart', () => {
 
     expect(screen.getByRole('status')).toBeInTheDocument();
     expect(screen.queryByTestId('echarts-host')).not.toBeInTheDocument();
+  });
+
+  it('shows the track ring, not the empty state, when all slices are zero', () => {
+    render(
+      <PieChart
+        track
+        ariaLabel="Status"
+        centerLabel={<span>0 tests</span>}
+        data={[
+          { name: 'Success', value: 0 },
+          { name: 'Failed', value: 0 },
+        ]}
+        innerRadius="75%"
+      />
+    );
+
+    expect(screen.getByTestId('echarts-host')).toBeInTheDocument();
+    expect(screen.getByText('0 tests')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('forwards outerRadius, minAngle and padAngle to the option', () => {
+    render(
+      <PieChart
+        ariaLabel="Status"
+        data={slices}
+        innerRadius="60%"
+        minAngle={3}
+        outerRadius="80%"
+        padAngle={1}
+      />
+    );
+
+    expect(pie()).toMatchObject({
+      radius: ['60%', '80%'],
+      minAngle: 3,
+      padAngle: 1,
+    });
   });
 });

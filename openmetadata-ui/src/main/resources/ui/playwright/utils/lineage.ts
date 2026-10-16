@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isEmpty } from 'lodash';
 import type { LineageScene } from '../../src/generated/api/lineage/lineageScene';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { ApiEndpointClass } from '../support/entity/ApiEndpointClass';
 import { ChartClass } from '../support/entity/ChartClass';
@@ -398,7 +399,9 @@ export const deleteEdge = async (
 
   await addPipeline.dispatchEvent('click');
 
-  await expect(page.getByRole('dialog').first()).toBeVisible();
+  await expect(
+    page.getByRole('dialog').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await page
     .locator(
@@ -406,7 +409,9 @@ export const deleteEdge = async (
     )
     .dispatchEvent('click');
 
-  await expect(page.locator('[role="dialog"]').first()).toBeVisible();
+  await expect(
+    page.locator('[role="dialog"]').filter({ visible: true })
+  ).not.toHaveCount(0);
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   const sceneRes = page.waitForResponse('**/api/v1/lineage/scene?*');
@@ -792,9 +797,12 @@ export const editPipelineEdgeDescription = async (
   await page.locator('.edge-info-drawer').isVisible();
 
   await page.click('.edge-info-drawer [data-testid="edit-description"]');
-  await page.locator('.ProseMirror').first().click();
-  await page.locator('.ProseMirror').first().clear();
-  await page.locator('.ProseMirror').first().fill(description);
+  // The drawer opened two lines up owns the only editor in play; scoping to it
+  // beats indexing into every ProseMirror instance on the page.
+  const descriptionEditor = page.locator('.edge-info-drawer .ProseMirror');
+  await descriptionEditor.click();
+  await descriptionEditor.clear();
+  await descriptionEditor.fill(description);
   const descRes = page.waitForResponse('/api/v1/lineage');
   await page.getByTestId('save').click();
   await descRes;
@@ -871,7 +879,7 @@ export const applyPipelineFromModal = async (
   await page.click(`[data-testid="pipeline-entry-${pipelineFqn}"]`);
 
   const saveButton = page.getByTestId('save-button');
-  await expect(saveButton).not.toHaveClass(/ant-btn-loading/);
+  await expect(saveButton).not.toHaveAttribute('data-loading');
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await saveButton.click();
@@ -1109,8 +1117,10 @@ export const fillLineageConfigForm = async (
   await page
     .getByTestId('field-downstream')
     .fill(config.downstreamDepth.toString());
-  await page.getByTestId('field-lineage-layer').click();
-  await page.locator(`.ant-select-item[title="${config.layer}"]`).click();
+  await selectOptionWithRetry(
+    page.getByTestId('field-lineage-layer').getByRole('button'),
+    page.getByRole('option', { name: config.layer, exact: true })
+  );
 
   const saveRes = page.waitForResponse('/api/v1/system/settings');
   await page.getByTestId('save-button').click();
@@ -1255,7 +1265,7 @@ export const verifyExportLineagePNG = async (
     const [download] = await Promise.all([
       // Platform lineage renders up to 500 nodes at pixelRatio:3 — give the PNG
       // render enough headroom before the download event fires.
-      page.waitForEvent('download', { timeout: 120_000 }),
+      page.waitForEvent('download', { timeout: LONG_ACTION_TIMEOUT }),
       page.click(
         '[data-testid="export-entity-modal"] [data-testid="submit-button"]:visible'
       ),
@@ -1459,10 +1469,8 @@ export const verifyPlatformLineageForEntity = async (
 
   await page
     .getByTestId('search-entity-select')
-    .locator('div')
-    .filter({ hasText: /^Search entity to view lineage$/ })
-    .click();
-  await page.getByTestId('search-entity-select').locator('input').fill(fromFqn);
+    .getByRole('combobox')
+    .fill(fromFqn);
 
   const focusSceneResponse = page.waitForResponse(
     (response) =>

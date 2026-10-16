@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface.getStringWithClusterAlias;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -138,6 +140,66 @@ public final class SearchIndexUtils {
       return mapping.getIndexName(clusterAlias);
     }
     return clusterPrefix == null ? token : clusterPrefix + token;
+  }
+
+  /**
+   * Every name, without cluster prefix, that resolves to an index or alias OpenMetadata manages:
+   * entity types, canonical index names and their aliases.
+   */
+  public static Set<String> knownIndexNames(Map<String, IndexMapping> entityIndexMap) {
+    if (entityIndexMap == null) {
+      return Set.of();
+    }
+    Set<String> names = new HashSet<>(entityIndexMap.keySet());
+    entityIndexMap.values().forEach(mapping -> addMappingNames(names, mapping));
+    names.remove(null);
+    return Set.copyOf(names);
+  }
+
+  private static void addMappingNames(Set<String> names, IndexMapping mapping) {
+    names.add(mapping.getIndexName());
+    names.add(mapping.getAlias());
+    names.addAll(listOrEmpty(mapping.getParentAliases()));
+    names.addAll(listOrEmpty(mapping.getChildAliases()));
+    names.addAll(listOrEmpty(mapping.getDataInsightAliases()));
+  }
+
+  /**
+   * Names in an index expression, already resolved by {@link #getIndexOrAliasName}, that
+   * OpenMetadata does not manage, as the caller typed them. Wildcards, exclusions and Data Insights
+   * names never count as unknown. An empty result means every name is managed, so a missing index
+   * is a server fault rather than the caller's mistake.
+   */
+  public static List<String> unknownIndexNames(
+      String resolvedIndex, Set<String> knownIndexNames, String clusterAlias) {
+    if (nullOrEmpty(resolvedIndex) || nullOrEmpty(knownIndexNames)) {
+      return List.of();
+    }
+    return Arrays.stream(resolvedIndex.split(","))
+        .map(String::trim)
+        .filter(token -> isPlainIndexName(token, clusterAlias))
+        .map(token -> withoutClusterPrefix(token, clusterAlias))
+        .filter(name -> !knownIndexNames.contains(name))
+        .distinct()
+        .toList();
+  }
+
+  private static boolean isPlainIndexName(String token, String clusterAlias) {
+    return !token.isEmpty()
+        && !token.contains("*")
+        && !token.startsWith("-")
+        && !token.startsWith(DI_SEARCH_INDEX_PREFIX)
+        && !token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX));
+  }
+
+  private static String withoutClusterPrefix(String token, String clusterAlias) {
+    if (nullOrEmpty(clusterAlias)) {
+      return token;
+    }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
+    return token.startsWith(prefix) && token.length() > prefix.length()
+        ? token.substring(prefix.length())
+        : token;
   }
 
   /**
@@ -721,7 +783,7 @@ public final class SearchIndexUtils {
   }
 
   private static void processEntityTagSources(
-      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+      EntityInterface<?> entity, TagAndTierSources tagAndTierSources) {
     processTagAndTierSources(entity.getTags(), tagAndTierSources);
   }
 
@@ -732,7 +794,7 @@ public final class SearchIndexUtils {
     }
   }
 
-  public static TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+  public static TagAndTierSources processTagAndTierSources(EntityInterface<?> entity) {
     TagAndTierSources tagAndTierSources = new TagAndTierSources();
     processEntityTagSources(entity, tagAndTierSources);
     if (SearchIndexUtils.hasColumns(entity)) {
@@ -742,7 +804,7 @@ public final class SearchIndexUtils {
   }
 
   public static void processDescriptionSource(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Map<String, ChangeSummary> changeSummaryMap,
       Map<String, Integer> descriptionSources) {
     Optional.ofNullable(
@@ -768,12 +830,12 @@ public final class SearchIndexUtils {
     }
   }
 
-  public static boolean hasColumns(EntityInterface entity) {
+  public static boolean hasColumns(EntityInterface<?> entity) {
     return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
   }
 
   public static Map<String, Integer> processDescriptionSources(
-      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
+      EntityInterface<?> entity, Map<String, ChangeSummary> changeSummaryMap) {
     Map<String, Integer> descriptionSources = new HashMap<>();
     processDescriptionSource(entity, changeSummaryMap, descriptionSources);
     if (hasColumns(entity)) {
@@ -783,7 +845,7 @@ public final class SearchIndexUtils {
     return descriptionSources;
   }
 
-  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface entity) {
+  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface<?> entity) {
     return Optional.ofNullable(entity.getChangeDescription())
         .map(ChangeDescription::getChangeSummary)
         .map(ChangeSummaryMap::getAdditionalProperties)

@@ -53,15 +53,23 @@ import {
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
+import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
+  DEFAULT_MEMORY_LIST_STATUSES,
   FILTER_TABS,
   MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
+  MEMORY_STATUS_LABEL_KEYS,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
+import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
@@ -79,7 +87,10 @@ import {
   getFilterTabClassName,
   getSortConfig,
 } from '../../../utils/ContextCenterPureUtils';
-import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import {
+  CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+  CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -95,29 +106,104 @@ const getSortLabel = (
   sortBy: MemorySortBy
 ): string => options.find((option) => option.id === sortBy)?.label ?? '';
 
+const MEMORY_STATUSES = [
+  ...DEFAULT_MEMORY_LIST_STATUSES,
+  ...Object.values(ContextMemoryStatus).filter(
+    (status) => !DEFAULT_MEMORY_LIST_STATUSES.includes(status)
+  ),
+];
+const CREATED_BY_ME_FILTER = 'created-by-me' as const;
+const NEEDS_REVIEW_FILTER = 'needs-review' as const;
+
+const refreshMemoryReviews = () =>
+  queryClient.invalidateQueries({
+    queryKey: CONTEXT_CENTER_MEMORY_REVIEWS_QUERY_KEY,
+  });
+
+const getMemoryEmptyActions = (
+  canCreate: boolean,
+  newMemoryLabel: string,
+  allStatusesLabel: string,
+  onNewMemory: () => void,
+  onAllStatuses: () => void
+) => {
+  const actions: Array<{
+    color: 'primary' | 'secondary';
+    iconLeading?: typeof Plus;
+    key: string;
+    label: string;
+    onClick: () => void;
+  }> = [
+    {
+      color: 'secondary',
+      key: 'all-memory-statuses',
+      label: allStatusesLabel,
+      onClick: onAllStatuses,
+    },
+  ];
+
+  if (canCreate) {
+    actions.unshift({
+      color: 'primary',
+      iconLeading: Plus,
+      key: 'new-memory',
+      label: newMemoryLabel,
+      onClick: onNewMemory,
+    });
+  }
+
+  return actions;
+};
+
+/** A review names its memories by reference only, so memory search cannot find it. */
+const searchOutsideReview = (
+  isReviewing: boolean,
+  onSearch: (value: string) => void
+) => (isReviewing ? undefined : onSearch);
+
+const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
+  !isLoading && count === 0;
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
   activeFilter,
+  selectedStatuses,
   debouncedSearch,
   isMemoriesLoading,
   memoriesLength,
+  isReviewsLoading,
+  reviewCount,
 }: {
   selectedAsset?: DataAssetOption;
   selectedAuthor?: MemoryFilterOption;
   activeFilter: MemoryFilterTab;
+  selectedStatuses: ContextMemoryStatus[];
   debouncedSearch: string;
   isMemoriesLoading: boolean;
   memoriesLength: number;
+  isReviewsLoading: boolean;
+  reviewCount: number;
 }) => {
-  const hasActiveFilters = Boolean(selectedAsset || selectedAuthor);
+  const hasActiveFilters = Boolean(
+    selectedAsset ||
+      selectedAuthor ||
+      selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
+      DEFAULT_MEMORY_LIST_STATUSES.some(
+        (status) => !selectedStatuses.includes(status)
+      )
+  );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
-    selectedAsset || selectedAuthor || (activeFilter && activeFilter !== 'all')
+    hasActiveFilters || (activeFilter && activeFilter !== 'all')
   );
   const isMemoriesFiltered = isMemoriesSearching || isMemoriesFilteredOnly;
+  // Open reviews keep the count cards up: the empty state would hide the
+  // Needs review tab, the only way to reach them.
   const showMemoriesEmptyState =
-    !isMemoriesLoading && !isMemoriesFiltered && memoriesLength === 0;
+    !isMemoriesFiltered &&
+    isEmptyOnceLoaded(isMemoriesLoading, memoriesLength) &&
+    isEmptyOnceLoaded(isReviewsLoading, reviewCount);
 
   return {
     hasActiveFilters,
@@ -224,6 +310,7 @@ const ContextCenterMemoriesPage: FC = () => {
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const [searchParams, setSearchParams] = useSearchParams();
+  const memoryName = searchParams.get('memory');
   const { getResourcePermission } = usePermissionProvider();
 
   const [memories, setMemories] = useState<ContextMemory[]>([]);
@@ -237,6 +324,8 @@ const ContextCenterMemoriesPage: FC = () => {
     DEFAULT_ENTITY_PERMISSION
   );
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
+  const memoryListRequestId = useRef(0);
+  const memoryCountRequestId = useRef(0);
   const [isDeletingMemory, setIsDeletingMemory] = useState(false);
   const [isPinningMemoryId, setIsPinningMemoryId] = useState<string>();
   const [memoryToDelete, setMemoryToDelete] = useState<ContextMemory>();
@@ -246,6 +335,9 @@ const ContextCenterMemoriesPage: FC = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [activeFilter, setActiveFilter] = useState<MemoryFilterTab>('all');
+  const [selectedStatuses, setSelectedStatuses] = useState<
+    ContextMemoryStatus[]
+  >(DEFAULT_MEMORY_LIST_STATUSES);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
@@ -256,6 +348,19 @@ const ContextCenterMemoriesPage: FC = () => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [debouncedAuthorSearch, setDebouncedAuthorSearch] = useState('');
   const isAuthorSearchMounted = useRef(false);
+  const latestAuthorRequest = useRef(0);
+  const isReviewing = activeFilter === NEEDS_REVIEW_FILTER;
+  const {
+    reviews,
+    total: reviewTotal,
+    isCountLoading: isReviewCountLoading,
+    isLoading: isReviewsLoading,
+    isError: isReviewsError,
+    hasMore: hasMoreReviews,
+    isLoadingMore: isLoadingMoreReviews,
+    loadMore: loadMoreReviews,
+    retry: retryReviews,
+  } = useMemoryConflictReviews(Boolean(currentUser?.isAdmin), isReviewing);
 
   const SORT_OPTIONS = useMemo(
     () => [
@@ -303,15 +408,32 @@ const ContextCenterMemoriesPage: FC = () => {
     currentUser?.isAdmin,
   ]);
 
+  const applyMemoryListResponse = useCallback(
+    (
+      requestId: number,
+      response: Awaited<ReturnType<typeof getListContextMemories>>
+    ) => {
+      if (requestId === memoryListRequestId.current) {
+        setMemories(response.data ?? []);
+        setTotalMemories(response.paging?.total ?? 0);
+      }
+    },
+    []
+  );
+
   const fetchMemories = useCallback(
     async (showLoader = true) => {
+      if (isReviewing) {
+        return;
+      }
+      const requestId = ++memoryListRequestId.current;
       if (showLoader) {
         setIsMemoriesLoading(true);
       }
       try {
         const sortConfig = getSortConfig(sortBy);
         const authorFilter =
-          activeFilter === 'created-by-me'
+          activeFilter === CREATED_BY_ME_FILTER
             ? currentUser?.id ?? currentUser?.name
             : selectedAuthor?.id;
         const response = await getListContextMemories({
@@ -324,23 +446,30 @@ const ContextCenterMemoriesPage: FC = () => {
           pinned: activeFilter === 'pinned' ? true : undefined,
           sortBy: sortConfig.sortBy,
           sortOrder: sortConfig.sortOrder,
+          statuses: selectedStatuses.join(','),
         });
-        setMemories(response.data ?? []);
-        setTotalMemories(response.paging?.total ?? 0);
+        applyMemoryListResponse(requestId, response);
       } catch (err) {
-        showErrorToast(err as AxiosError);
+        if (requestId === memoryListRequestId.current) {
+          showErrorToast(err as AxiosError);
+        }
       } finally {
-        setIsMemoriesLoading(false);
+        if (requestId === memoryListRequestId.current) {
+          setIsMemoriesLoading(false);
+        }
       }
     },
     [
       activeFilter,
+      applyMemoryListResponse,
       currentPage,
       currentUser?.id,
       currentUser?.name,
       debouncedSearch,
+      isReviewing,
       selectedAsset?.id,
       selectedAuthor?.id,
+      selectedStatuses,
       sortBy,
     ]
   );
@@ -359,28 +488,45 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const fetchMemoryCounts = useCallback(async () => {
+    const requestId = ++memoryCountRequestId.current;
     try {
       const authorFilter = currentUser?.id ?? currentUser?.name;
+      const statusFilter = { statuses: selectedStatuses.join(',') };
       const [totalVisible, pinnedVisible, createdByMeVisible] =
         await Promise.all([
-          getVisibleMemoryCount(),
+          getVisibleMemoryCount(statusFilter),
           // TODO: Unhide when pin feature releases in post-2.0
           // getVisibleMemoryCount({ pinned: true }),
           Promise.resolve(0),
           authorFilter
-            ? getVisibleMemoryCount({ author: authorFilter })
+            ? getVisibleMemoryCount({ ...statusFilter, author: authorFilter })
             : Promise.resolve(0),
         ]);
-      setMemoryCounts({ totalVisible, pinnedVisible, createdByMeVisible });
+      if (requestId === memoryCountRequestId.current) {
+        setMemoryCounts({ totalVisible, pinnedVisible, createdByMeVisible });
+      }
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      if (requestId === memoryCountRequestId.current) {
+        showErrorToast(err as AxiosError);
+      }
     }
-  }, [currentUser?.id, currentUser?.name, getVisibleMemoryCount]);
+  }, [
+    currentUser?.id,
+    currentUser?.name,
+    getVisibleMemoryCount,
+    selectedStatuses,
+  ]);
 
   const fetchAuthorOptions = useCallback(async (query: string) => {
+    // Opening the menu searches '' and typing searches the text, so both can be in flight;
+    // only the latest may write, or a slow '' response replaces the typed results.
+    const request = ++latestAuthorRequest.current;
     setIsAuthorOptionsLoading(true);
     try {
       const response = await getUserAndTeamSearch(query, true, 25);
+      if (request !== latestAuthorRequest.current) {
+        return;
+      }
       const options = response.data.hits.hits
         .map((hit): MemoryFilterOption | undefined => {
           const source = hit._source as SearchOptionSource;
@@ -400,9 +546,13 @@ const ContextCenterMemoriesPage: FC = () => {
         .filter((option): option is MemoryFilterOption => Boolean(option));
       setAuthorOptions(options);
     } catch (err) {
-      showErrorToast(err as AxiosError);
+      if (request === latestAuthorRequest.current) {
+        showErrorToast(err as AxiosError);
+      }
     } finally {
-      setIsAuthorOptionsLoading(false);
+      if (request === latestAuthorRequest.current) {
+        setIsAuthorOptionsLoading(false);
+      }
     }
   }, []);
 
@@ -448,8 +598,11 @@ const ContextCenterMemoriesPage: FC = () => {
 
   useEffect(() => {
     fetchPermission();
+  }, [fetchPermission]);
+
+  useEffect(() => {
     fetchMemoryCounts();
-  }, [fetchPermission, fetchMemoryCounts]);
+  }, [fetchMemoryCounts]);
 
   const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
 
@@ -462,14 +615,18 @@ const ContextCenterMemoriesPage: FC = () => {
     selectedAsset,
     selectedAuthor,
     activeFilter,
+    selectedStatuses,
     debouncedSearch,
     isMemoriesLoading,
     memoriesLength: memories.length,
+    isReviewsLoading: isReviewCountLoading,
+    reviewCount: reviewTotal,
   });
 
   const handleClearFilters = useCallback(() => {
     setSelectedAsset(undefined);
     setSelectedAuthor(undefined);
+    setSelectedStatuses(DEFAULT_MEMORY_LIST_STATUSES);
     setActiveFilter('all');
     setCurrentPage(1);
   }, []);
@@ -485,6 +642,21 @@ const ContextCenterMemoriesPage: FC = () => {
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchValue(value);
+    setCurrentPage(1);
+  }, []);
+
+  const handleStatusChange = useCallback((status: ContextMemoryStatus) => {
+    setSelectedStatuses((current) => {
+      if (current.includes(status)) {
+        return current.length > 1
+          ? current.filter((selected) => selected !== status)
+          : current;
+      }
+
+      return MEMORY_STATUSES.filter(
+        (candidate) => candidate === status || current.includes(candidate)
+      );
+    });
     setCurrentPage(1);
   }, []);
 
@@ -530,6 +702,7 @@ const ContextCenterMemoriesPage: FC = () => {
         t('server.entity-deleted-success', { entity: t('label.memory') })
       );
       setMemoryToDelete(undefined);
+      refreshMemoryReviews();
       await fetchMemories();
       await fetchMemoryCounts();
     } catch (err) {
@@ -561,57 +734,80 @@ const ContextCenterMemoriesPage: FC = () => {
   );
 
   const handleViewMemory = useCallback(
-    async (memory: ContextMemory) => {
-      const completeMemory = await fetchCompleteMemory(memory);
-      setMemoryToView(completeMemory);
-      setIsViewModalOpen(true);
+    (memory: ContextMemory) => {
       setSearchParams((prev) => {
-        if (completeMemory.name) {
-          prev.set('memory', completeMemory.name);
-        }
+        const next = new URLSearchParams(prev);
+        next.set('memory', memory.name);
 
-        return prev;
+        return next;
       });
     },
-    [fetchCompleteMemory, setSearchParams]
+    [setSearchParams]
   );
+
+  const handleReviewResolved = useCallback(() => {
+    refreshMemoryReviews();
+    queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    queryClient.invalidateQueries({
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+    });
+    fetchMemoryCounts();
+  }, [fetchMemoryCounts]);
 
   const handleModalClose = useCallback(() => {
     setIsCreateModalOpen(false);
     setMemoryToEdit(undefined);
-  }, []);
-
-  const handleViewModalClose = useCallback(() => {
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
-    setSearchParams((prev) => {
-      prev.delete('memory');
+    if (memoryName !== null) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('memory');
 
-      return prev;
-    });
-  }, [setSearchParams]);
+        return next;
+      });
+    }
+  }, [memoryName, setSearchParams]);
 
   useEffect(() => {
-    const memoryName = searchParams.get('memory');
-    if (!memoryName || isViewModalOpen) {
+    if (!memoryName) {
+      setIsViewModalOpen(false);
+      setMemoryToView(undefined);
+
       return;
     }
 
+    let isCurrentSelection = true;
     getContextMemoryByName(memoryName, MEMORY_FIELDS)
-      .then((memory) => handleViewMemory(memory))
+      .then((memory) => {
+        if (isCurrentSelection) {
+          setMemoryToView(memory);
+          setIsViewModalOpen(true);
+        }
+      })
       .catch((err: AxiosError) => {
+        if (!isCurrentSelection) {
+          return;
+        }
         showErrorToast(err);
         setSearchParams((prev) => {
-          prev.delete('memory');
+          const next = new URLSearchParams(prev);
+          next.delete('memory');
 
-          return prev;
+          return next;
         });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams, handleViewMemory, setSearchParams]);
+
+    return () => {
+      isCurrentSelection = false;
+    };
+  }, [memoryName, setSearchParams]);
 
   const handleModalSuccess = useCallback(() => {
     handleModalClose();
+    refreshMemoryReviews();
     fetchMemories();
     fetchMemoryCounts();
   }, [handleModalClose, fetchMemories, fetchMemoryCounts]);
@@ -625,19 +821,29 @@ const ContextCenterMemoriesPage: FC = () => {
         icon: null,
       },
       {
-        filterKey: 'created-by-me' as const,
+        filterKey: CREATED_BY_ME_FILTER,
         label: t('label.created-by-me'),
         value: memoryCounts.createdByMeVisible,
         icon: null,
       },
+      {
+        filterKey: NEEDS_REVIEW_FILTER,
+        label: t('label.needs-review'),
+        value: reviewTotal,
+        icon: null,
+      },
     ],
-    [memoryCounts, t]
+    [memoryCounts, reviewTotal, t]
   );
 
   const allAssetsLabel = t('label.all-entity', {
     entity: t('label.asset-plural'),
   });
   const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
+  const selectedStatusLabelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
+  const selectedStatusLabel = selectedStatusLabelKey
+    ? t(selectedStatusLabelKey)
+    : selectedStatuses[0];
 
   const headerActions = (
     <Button
@@ -652,7 +858,7 @@ const ContextCenterMemoriesPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:bg-secondary tw:overflow-scroll ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:overflow-scroll ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-memories-page"
       direction="col">
       <DocumentTitle title={t('label.memory-plural')} />
@@ -672,7 +878,7 @@ const ContextCenterMemoriesPage: FC = () => {
             searchQuery={searchValue}
             subtitle={t('message.context-center-memories-subtitle')}
             title={t('label.memory-plural')}
-            onSearch={handleSearchChange}
+            onSearch={searchOutsideReview(isReviewing, handleSearchChange)}
           />
         </PageLayout.Header>
         <PageLayout.Content
@@ -683,19 +889,16 @@ const ContextCenterMemoriesPage: FC = () => {
           {showMemoriesEmptyState ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
               <EmptyPlaceholder
-                actions={
-                  hasCreatePermission
-                    ? [
-                        {
-                          color: 'primary',
-                          iconLeading: Plus,
-                          key: 'new-memory',
-                          label: t('label.new-memory'),
-                          onClick: () => setIsCreateModalOpen(true),
-                        },
-                      ]
-                    : []
-                }
+                actions={getMemoryEmptyActions(
+                  hasCreatePermission,
+                  t('label.new-memory'),
+                  t('label.all-entity', { entity: t('label.status-plural') }),
+                  () => setIsCreateModalOpen(true),
+                  () => {
+                    setCurrentPage(1);
+                    setSelectedStatuses(MEMORY_STATUSES);
+                  }
+                )}
                 description={t(
                   'message.context-center-memories-empty-subtitle'
                 )}
@@ -796,7 +999,45 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Tabs.List>
                 </Tabs>
 
-                <Box align="center" gap={2}>
+                <Box
+                  align="center"
+                  className={classNames({ 'tw:hidden': isReviewing })}
+                  gap={2}>
+                  <Dropdown.Root>
+                    <Button
+                      color="secondary"
+                      data-testid="memory-status-filter"
+                      iconLeading={FunnelIcon}
+                      iconTrailing={ChevronDown}
+                      size="md">
+                      {t('label.status')}:{' '}
+                      {selectedStatuses.length === 1
+                        ? selectedStatusLabel
+                        : `${selectedStatuses.length} ${t(
+                            'label.status-plural'
+                          )}`}
+                    </Button>
+                    <Dropdown.Popover className="tw:w-56">
+                      <Dropdown.Menu
+                        selectedKeys={selectedStatuses}
+                        selectionMode="multiple"
+                        onAction={(key) =>
+                          handleStatusChange(key as ContextMemoryStatus)
+                        }>
+                        {MEMORY_STATUSES.map((status) => (
+                          <Dropdown.Item
+                            id={status}
+                            key={status}
+                            label={
+                              MEMORY_STATUS_LABEL_KEYS[status]
+                                ? t(MEMORY_STATUS_LABEL_KEYS[status])
+                                : status
+                            }
+                          />
+                        ))}
+                      </Dropdown.Menu>
+                    </Dropdown.Popover>
+                  </Dropdown.Root>
                   <DataAssetSelectList
                     allowAllOption
                     placeholder={t('label.search-assets-by-name-or-path')}
@@ -836,6 +1077,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       ellipsis
                       className="tw:max-w-64"
                       color="secondary"
+                      data-testid="author-filter-button"
                       iconLeading={UserIcon}
                       iconTrailing={ChevronDown}
                       size="md">
@@ -873,7 +1115,10 @@ const ContextCenterMemoriesPage: FC = () => {
                               next === selectedAuthor?.id ? undefined : option
                             );
                           }
-                          if (activeFilter === 'all') {
+                          if (
+                            activeFilter === 'all' ||
+                            activeFilter === CREATED_BY_ME_FILTER
+                          ) {
                             setActiveFilter('');
                           }
                           setCurrentPage(1);
@@ -928,7 +1173,12 @@ const ContextCenterMemoriesPage: FC = () => {
                   </Dropdown.Root>
                 </Box>
 
-                <Box align="center" className="tw:ml-auto" gap={4}>
+                <Box
+                  align="center"
+                  className={classNames('tw:ml-auto', {
+                    'tw:hidden': isReviewing,
+                  })}
+                  gap={4}>
                   {hasActiveFilters && (
                     <Button
                       color="link-color"
@@ -969,7 +1219,7 @@ const ContextCenterMemoriesPage: FC = () => {
               <Card
                 className="tw:flex tw:flex-col tw:h-auto"
                 style={{ overflow: 'unset' }}>
-                <div>
+                <div className={classNames({ 'tw:hidden': isReviewing })}>
                   <MemoriesView
                     canDelete={hasDeletePermission}
                     canEdit={hasEditPermission}
@@ -988,11 +1238,24 @@ const ContextCenterMemoriesPage: FC = () => {
                   />
                 </div>
 
-                <PaginationCardMinimal
-                  page={currentPage}
-                  total={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+                {isReviewing ? (
+                  <MemoryConflictReviews
+                    hasMore={hasMoreReviews}
+                    isError={isReviewsError}
+                    isLoading={isReviewsLoading}
+                    isLoadingMore={isLoadingMoreReviews}
+                    reviews={reviews}
+                    onLoadMore={loadMoreReviews}
+                    onResolved={handleReviewResolved}
+                    onRetry={retryReviews}
+                  />
+                ) : (
+                  <PaginationCardMinimal
+                    page={currentPage}
+                    total={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
+                )}
               </Card>
             </>
           )}
@@ -1016,7 +1279,7 @@ const ContextCenterMemoriesPage: FC = () => {
         onEditMemory={handleEditMemory}
         onModalClose={handleModalClose}
         onModalSuccess={handleModalSuccess}
-        onViewModalClose={handleViewModalClose}
+        onViewModalClose={handleModalClose}
       />
     </Box>
   );

@@ -156,6 +156,22 @@ const setColumnsInCurrentPagesMock = jest.fn((updater) => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Input: ({
+    inputDataTestId,
+    value,
+    onChange,
+  }: {
+    inputDataTestId?: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => (
+    <input
+      aria-label="search"
+      data-testid={inputDataTestId}
+      value={value}
+      onChange={(e) => onChange?.(e.target.value)}
+    />
+  ),
   ButtonUtility: jest
     .fn()
     .mockImplementation(
@@ -214,6 +230,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       );
     }),
   Button: jest.requireActual('@openmetadata/ui-core-components').Button,
+  Skeleton: jest.requireActual('@openmetadata/ui-core-components').Skeleton,
   Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
   Typography: jest
     .fn()

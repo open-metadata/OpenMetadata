@@ -10,11 +10,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -25,7 +29,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorCause;
+import es.co.elastic.clients.elasticsearch._types.ErrorResponse;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -39,6 +47,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +56,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -55,12 +65,14 @@ import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig.Provider;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
@@ -76,6 +88,8 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
@@ -595,7 +609,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void createEntityIndexBuildsAndWritesSearchDocument() throws IOException {
     UUID entityId = UUID.randomUUID();
-    EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, entityId, "orders");
     when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
         .thenReturn(new MapBackedSearchIndex(entity, Map.of("name", "orders")));
 
@@ -641,7 +655,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
     UUID entityId = UUID.randomUUID();
-    EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, entityId, "orders");
     when(searchClient.isClientAvailable()).thenReturn(false);
 
     try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
@@ -661,8 +675,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexBulkWritesDocumentsOfTheSameType() throws IOException {
-    EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
-    EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    EntityInterface<?> first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, first))
         .thenReturn(new MapBackedSearchIndex(first, Map.of("name", "orders")));
     when(searchIndexFactory.buildIndex(Entity.TABLE, second))
@@ -679,8 +693,8 @@ class SearchRepositoryBehaviorTest {
   @Test
   void createEntitiesIndexDoesNotRetryNonIndexableEntitiesWhenSearchIsUnavailable()
       throws IOException {
-    EntityInterface hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
-    EntityInterface visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> hidden = mockEntity(Entity.TABLE, UUID.randomUUID(), "private-memory");
+    EntityInterface<?> visible = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityRepository<?> tableRepository = Entity.getEntityRepository(Entity.TABLE);
     doReturn(false).when(tableRepository).isSearchIndexable(hidden);
     when(searchClient.isClientAvailable()).thenReturn(false);
@@ -708,8 +722,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexSkipsFailedDocumentsAndContinuesBulkCreate() throws IOException {
-    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
-    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    EntityInterface<?> broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface<?> valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(searchIndexFactory.buildIndex(Entity.TABLE, broken))
         .thenThrow(new IllegalStateException("cannot index broken entity"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
@@ -727,8 +741,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexSkipsEntityWhenIndexabilityCheckFails() throws IOException {
-    EntityInterface broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
-    EntityInterface valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
+    EntityInterface<?> broken = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken");
+    EntityInterface<?> valid = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");
     when(broken.getEntityReference())
         .thenThrow(new IllegalStateException("cannot resolve entity reference"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, valid))
@@ -746,8 +760,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void createEntitiesIndexSkipsBulkCreateWhenNoDocumentCanBeBuilt() throws IOException {
-    EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_1");
-    EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_2");
+    EntityInterface<?> first = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_1");
+    EntityInterface<?> second = mockEntity(Entity.TABLE, UUID.randomUUID(), "broken_2");
     when(searchIndexFactory.buildIndex(Entity.TABLE, first))
         .thenThrow(new IllegalStateException("cannot index first"));
     when(searchIndexFactory.buildIndex(Entity.TABLE, second))
@@ -945,7 +959,8 @@ class SearchRepositoryBehaviorTest {
   @Test
   void propagateInheritedFieldsToChildrenUsesServiceParentFieldForServiceDisplayNameChanges()
       throws IOException {
-    EntityInterface serviceEntity = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
     ChangeDescription changeDescription =
         changeDescription(
             List.of(),
@@ -979,7 +994,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
-    EntityInterface domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
     ChangeDescription changeDescription =
         changeDescription(
             List.of(),
@@ -1002,7 +1017,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateInheritedFieldsToChildrenSkipsAllChangesForTimeSeriesChildren() throws IOException {
+  void propagateInheritedFieldsToChildrenSkipsNonTagChangesForTimeSeriesChildren()
+      throws IOException {
     IndexMapping timeSeriesOnlyMapping =
         IndexMapping.builder()
             .indexName("test_case_search_index")
@@ -1010,7 +1026,7 @@ class SearchRepositoryBehaviorTest {
             .childAliases(List.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT))
             .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
             .build();
-    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     when(testCase.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(testCase.getDomains())
@@ -1039,8 +1055,400 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void propagateInheritedFieldsToChildrenRoutesTagsIntoEmbeddedTimeSeriesTestCase()
+      throws IOException {
+    IndexMapping tableWithTimeSeriesChildren =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(
+                List.of(
+                    Entity.TEST_CASE_RESOLUTION_STATUS,
+                    Entity.TEST_CASE_RESULT,
+                    Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel oldTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Old")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel newTag =
+        new TagLabel()
+            .withTagFQN("Glossary.New")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(newTag)))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(JsonUtils.pojoToJson(List.of(oldTag)))));
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TABLE,
+        table.getId().toString(),
+        changeDescription,
+        tableWithTimeSeriesChildren,
+        table);
+
+    verify(searchClient)
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+    ArgumentCaptor<Pair<String, String>> parentMatchCaptor = ArgumentCaptor.forClass(Pair.class);
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_testCaseResolutionStatus", "cluster_testCaseResult")),
+            parentMatchCaptor.capture(),
+            updatesCaptor.capture());
+
+    assertEquals("table.id", parentMatchCaptor.getValue().getKey());
+    assertEquals(table.getId().toString(), parentMatchCaptor.getValue().getValue());
+    String script = updatesCaptor.getValue().getKey();
+    assertTrue(script.contains("ctx._source.testCase.tags"));
+    assertTrue(script.contains("params.tagAdded"));
+    assertTrue(script.contains("params.tagDeleted"));
+    assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains(TagLabel.LabelType.PROPAGATED.value()),
+        "a lineage-propagated label belongs to the child and must not be removed");
+    assertFalse(
+        script.contains("ctx._source.classificationTags"),
+        "the root-tag re-separation script is invalid for time-series mappings");
+
+    Map<String, Object> params = updatesCaptor.getValue().getValue();
+    assertEquals(Set.of("tagAdded", "tagDeleted"), params.keySet());
+    assertTrue(
+        ((List<TagLabel>) params.get("tagAdded"))
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED));
+    assertTrue(
+        ((List<TagLabel>) params.get("tagDeleted"))
+            .stream().allMatch(tag -> tag.getLabelType() == TagLabel.LabelType.DERIVED));
+  }
+
+  /**
+   * A tags-only change must leave the column documents to the tag cascade alone. Running the
+   * inherited-field update as well put two update-by-query operations on the same documents
+   * milliseconds apart; both are submitted with {@code conflicts=proceed}, so whichever lost the
+   * version race was skipped silently, and the tag write was usually the loser.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void tableTagOnlyChangeLeavesColumnDocsToTheTagCascade() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    Table table = mock(Table.class);
+    UUID tableId = UUID.randomUUID();
+    EntityReference tableRef =
+        new EntityReference().withId(tableId).withType(Entity.TABLE).withName("orders");
+    when(table.getEntityReference()).thenReturn(tableRef);
+    when(table.getId()).thenReturn(tableId);
+    when(table.getName()).thenReturn("orders");
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.orders");
+
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    ChangeDescription tagChange =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(tag)))),
+            List.of(),
+            List.of());
+
+    invokePrivateMethod(
+        repo,
+        "syncTableColumns",
+        new Class<?>[] {Table.class, ChangeDescription.class},
+        table,
+        tagChange);
+    repo.propagateInheritedFieldsToChildren(
+        Entity.TABLE, tableId.toString(), tagChange, TABLE_MAPPING, table);
+
+    verify(searchClient, never()).deleteEntityByFields(anyList(), anyList());
+    verify(searchClient, never()).createEntities(anyString(), anyList());
+    verify(searchClient, never())
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            eq(new ImmutablePair<>("table.id", tableId.toString())),
+            argThat(update -> SearchClient.DEFAULT_UPDATE_SCRIPT.equals(update.getKey())));
+
+    ArgumentCaptor<Pair<String, Map<String, Object>>> tagUpdateCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")),
+            eq(new ImmutablePair<>("table.id", tableId.toString())),
+            tagUpdateCaptor.capture());
+    assertTrue(tagUpdateCaptor.getValue().getKey().contains("ctx._source.tags"));
+    List<TagLabel> inheritedTags =
+        (List<TagLabel>) tagUpdateCaptor.getValue().getValue().get("tagAdded");
+    assertEquals(1, inheritedTags.size());
+    assertEquals(TagLabel.LabelType.DERIVED, inheritedTags.getFirst().getLabelType());
+  }
+
+  /**
+   * A tags change made together with another field rebuilds the column documents rather than
+   * running the inherited-field update next to the tag cascade: those two would write different
+   * fields of the same documents at once, and conflicts=proceed drops whichever loses. The rebuilt
+   * documents carry the table's term already.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void tableTagChangeMixedWithAnotherFieldRebuildsTheColumnDocs() throws Exception {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    UUID tableId = UUID.randomUUID();
+    TagLabel term =
+        new TagLabel()
+            .withTagFQN("Glossary.Revenue")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    Table table =
+        new Table()
+            .withId(tableId)
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withTags(List.of(term))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withFullyQualifiedName("svc.db.schema.orders.amount")));
+    ChangeDescription tagAndDescriptionChange =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(term)))),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DESCRIPTION)
+                    .withOldValue("old")
+                    .withNewValue("new")),
+            List.of());
+
+    invokePrivateMethod(
+        repo,
+        "syncTableColumns",
+        new Class<?>[] {Table.class, ChangeDescription.class},
+        table,
+        tagAndDescriptionChange);
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            eq(List.of("cluster_column_search_index")),
+            eq(List.of(new ImmutablePair<>("table.id", tableId.toString()))));
+    verify(searchClient, never())
+        .updateChildren(
+            eq(List.of("cluster_column_search_index")),
+            any(Pair.class),
+            argThat(update -> SearchClient.DEFAULT_UPDATE_SCRIPT.equals(update.getKey())));
+    ArgumentCaptor<List<Map<String, String>>> docsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), docsCaptor.capture());
+    JsonNode columnDoc =
+        JsonUtils.readTree(docsCaptor.getValue().getFirst().values().iterator().next());
+    assertEquals("Glossary.Revenue", columnDoc.path("tags").path(0).path("tagFQN").asText());
+    assertEquals(
+        TagLabel.LabelType.DERIVED.value(),
+        columnDoc.path("tags").path(0).path("labelType").asText());
+  }
+
+  @Test
+  void propagateTagChangeToChildrenQueuesTheSynthesizedDeltaForRetry() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("Glossary.Term")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    IOException failure = new IOException("search unavailable");
+    doThrow(failure)
+        .when(searchClient)
+        .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.propagateTagChangeToChildren(table, List.of(tag), List.of());
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(table),
+                  argThat(
+                      (ChangeDescription change) ->
+                          change.getFieldsAdded().size() == 1
+                              && Entity.FIELD_TAGS.equals(
+                                  change.getFieldsAdded().getFirst().getName())),
+                  eq("propagateTagChangeToChildren"),
+                  eq(failure)));
+    }
+  }
+
+  /**
+   * A server-side search failure is queued, not thrown: the bulk asset API has already committed
+   * tag_usage, so failing the request would leave the term applied with no search update pending.
+   */
+  @Test
+  void propagateTagChangeToChildrenQueuesASearchServerFailureForRetry() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    ElasticsearchException unavailable =
+        new ElasticsearchException(
+            "es/update_by_query",
+            ErrorResponse.of(
+                response ->
+                    response
+                        .status(503)
+                        .error(
+                            ErrorCause.of(
+                                cause ->
+                                    cause
+                                        .type("unavailable_shards_exception")
+                                        .reason("primary shard is not active")))));
+    doThrow(unavailable)
+        .when(searchClient)
+        .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.propagateTagChangeToChildren(table, List.of(glossaryTermLabel()), List.of());
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(table),
+                  any(ChangeDescription.class),
+                  eq("propagateTagChangeToChildren"),
+                  eq(unavailable)));
+    }
+  }
+
+  /**
+   * A failure that does not come from the search engine is a bug in building the update. Queueing
+   * it would only repeat the same failure up to the retry ceiling, so it surfaces instead.
+   */
+  @Test
+  void propagateTagChangeToChildrenSurfacesAFailureThatIsNotTheSearchEngines() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    IllegalStateException bug = new IllegalStateException("malformed tag delta");
+    doThrow(bug)
+        .when(searchClient)
+        .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      IllegalStateException thrown =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  repository.propagateTagChangeToChildren(
+                      table, List.of(glossaryTermLabel()), List.of()));
+
+      assertSame(bug, thrown);
+      retryQueue.verifyNoInteractions();
+    }
+  }
+
+  private static TagLabel glossaryTermLabel() {
+    return new TagLabel()
+        .withTagFQN("Glossary.Term")
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL);
+  }
+
+  @Test
+  void retryPropagationDropsTagDeltaThatNoLongerMatchesTheParent() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel removedAfterQueuedAdd =
+        new TagLabel()
+            .withTagFQN("Glossary.Removed")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel readdedAfterQueuedDelete =
+        new TagLabel()
+            .withTagFQN("Glossary.Readded")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    when(table.getTags()).thenReturn(List.of(readdedAfterQueuedDelete));
+    ChangeDescription staleDelta =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(List.of(removedAfterQueuedAdd))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(List.of(readdedAfterQueuedDelete))));
+
+    repository.propagateEntityAfterRetry(table, staleDelta);
+
+    verify(searchClient, never()).updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void retryPropagationKeepsOnlyTagDeltaConsistentWithTheParent() throws IOException {
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    TagLabel currentTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Current")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel removedTag =
+        new TagLabel()
+            .withTagFQN("Glossary.Removed")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel staleAdd =
+        new TagLabel()
+            .withTagFQN("Glossary.StaleAdd")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    when(table.getTags()).thenReturn(List.of(currentTag));
+    ChangeDescription queuedDelta =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(List.of(currentTag, staleAdd))),
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withOldValue(List.of(removedTag, currentTag))));
+
+    repository.propagateEntityAfterRetry(table, queuedDelta);
+
+    ArgumentCaptor<Pair<String, Map<String, Object>>> updatesCaptor =
+        ArgumentCaptor.forClass(Pair.class);
+    verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_tableColumn")), any(Pair.class), updatesCaptor.capture());
+    Map<String, Object> params = updatesCaptor.getValue().getValue();
+    assertEquals(
+        List.of("Glossary.Current"),
+        ((List<TagLabel>) params.get("tagAdded")).stream().map(TagLabel::getTagFQN).toList());
+    assertEquals(
+        List.of("Glossary.Removed"),
+        ((List<TagLabel>) params.get("tagDeleted")).stream().map(TagLabel::getTagFQN).toList());
+  }
+
+  @Test
   void propagateInheritedFieldsToChildrenOnlyTargetsNonTimeSeriesChildren() throws IOException {
-    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     when(testCase.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(testCase.getDomains())
@@ -1089,7 +1497,7 @@ class SearchRepositoryBehaviorTest {
             .childAliases(List.of("unregisteredChild", Entity.TABLE_COLUMN))
             .indexMappingFile("/elasticsearch/%s/test_case_index_mapping.json")
             .build();
-    EntityInterface testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
     ChangeDescription changeDescription =
         changeDescription(
             List.of(),
@@ -1117,7 +1525,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityByFqnPrefixUsesEntityIndex() throws IOException {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     repository.deleteEntityByFQNPrefix(entity);
 
@@ -1133,6 +1541,22 @@ class SearchRepositoryBehaviorTest {
     repository.deleteTimeSeriesEntityById(entity);
 
     verify(searchClient).deleteEntity("cluster_table_search_index", entity.getId().toString());
+  }
+
+  @Test
+  void disabledGlossaryTagPropagationDoesNotWriteToSearch() {
+    ChangeDescription changes =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withNewValue("[]")),
+            List.of(),
+            List.of(new FieldChange().withName(Entity.FIELD_TAGS).withOldValue("[]")));
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class)) {
+      settings.when(SettingsCache::isGlossaryTagPropagationEnabled).thenReturn(false);
+
+      repository.propagateGlossaryTags(Entity.GLOSSARY_TERM, "Glossary.Term", changes);
+
+      verify(searchClient, never()).updateChildren(anyString(), any(Pair.class), any(Pair.class));
+    }
   }
 
   @Test
@@ -1428,7 +1852,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void deleteAndSoftDeleteOperationsSkipUnsupportedTypesButHandleMappedEntities()
       throws IOException {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     SearchRepository spyRepository = spy(repository);
     doNothing().when(spyRepository).deleteOrUpdateChildren(any(), any());
     doNothing().when(spyRepository).softDeleteOrRestoredChildren(any(), any(), anyBoolean());
@@ -1448,7 +1872,7 @@ class SearchRepositoryBehaviorTest {
     verify(queryRepository)
         .forEachQueryBatchForDomainSource(eq(Entity.TABLE), eq(entityId), eq(entityFqn), any());
 
-    EntityInterface unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
+    EntityInterface<?> unsupported = mockEntity("unsupported", UUID.randomUUID(), "skip-me");
     spyRepository.deleteEntityIndex(unsupported);
     verify(searchClient, never())
         .deleteEntity("cluster_unsupported_search_index", unsupported.getId().toString());
@@ -1456,7 +1880,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexRemovesTagReferencesFromChildren() {
-    EntityInterface tag = mockEntity(Entity.TAG, UUID.randomUUID(), "revenue");
+    EntityInterface<?> tag = mockEntity(Entity.TAG, UUID.randomUUID(), "revenue");
     when(tag.getFullyQualifiedName()).thenReturn("Glossary.Revenue");
 
     repository.deleteEntityIndex(tag);
@@ -1471,7 +1895,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexDeletesServiceChildrenByServiceId() throws Exception {
-    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "warehouse");
+    EntityInterface<?> service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "warehouse");
 
     repository.deleteEntityIndex(service);
 
@@ -1485,7 +1910,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexDeletesGenericChildrenByEntityTypeId() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     repository.deleteEntityIndex(table);
 
@@ -1515,9 +1940,9 @@ class SearchRepositoryBehaviorTest {
                 Entity.DATABASE_SCHEMA, DATABASE_SCHEMA_MAPPING,
                 Entity.TABLE_COLUMN, COLUMN_MAPPING),
             "cluster");
-    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
-    EntityInterface database = mockEntity(Entity.DATABASE, UUID.randomUUID(), "db");
-    EntityInterface schema = mockEntity(Entity.DATABASE_SCHEMA, UUID.randomUUID(), "schema");
+    EntityInterface<?> service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> database = mockEntity(Entity.DATABASE, UUID.randomUUID(), "db");
+    EntityInterface<?> schema = mockEntity(Entity.DATABASE_SCHEMA, UUID.randomUUID(), "schema");
 
     repo.deleteEntityIndex(service);
     repo.deleteEntityIndex(database);
@@ -1544,8 +1969,216 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void tableWritesIndexColumnsOnlyWhileColumnIndexingIsOn() throws IOException {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    Table table = tableWithOneColumn();
+    String tableId = table.getId().toString();
+    when(searchIndexFactory.buildIndex(Entity.TABLE, table))
+        .thenReturn(new MapBackedSearchIndex(table, Map.of("name", "orders")));
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.createEntityIndex(table);
+      repo.deleteEntityIndex(table);
+    }
+
+    verify(searchClient).createEntity(eq("cluster_table_search_index"), eq(tableId), anyString());
+    verify(searchClient, never()).createEntities(eq("cluster_column_search_index"), anyList());
+    verify(searchClient, never())
+        .deleteEntityByFields(eq(List.of("cluster_column_search_index")), anyList());
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.createEntityIndex(table);
+    }
+
+    verify(searchClient).createEntities(eq("cluster_column_search_index"), anyList());
+  }
+
+  @Test
+  void tableChildUpdatesSkipTheColumnAliasWhileColumnIndexingIsOff() throws Exception {
+    IndexMapping tableWithChildren =
+        IndexMapping.builder()
+            .indexName("table_search_index")
+            .alias("table")
+            .childAliases(List.of(Entity.TEST_CASE, Entity.TABLE_COLUMN))
+            .indexMappingFile("/elasticsearch/%s/table_index_mapping.json")
+            .build();
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, tableWithChildren, Entity.TABLE_COLUMN, COLUMN_MAPPING),
+            "cluster");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.deleteEntityIndex(table);
+    }
+
+    verify(searchClient)
+        .deleteEntityByFields(
+            List.of("cluster_testCase"),
+            List.of(
+                new org.apache.commons.lang3.tuple.ImmutablePair<>(
+                    "table.id", table.getId().toString())));
+  }
+
+  @Test
+  void onlyTheColumnIndexIsDisabledAndOnlyWhileColumnIndexingIsOff() {
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      assertTrue(repository.isIndexDisabled(Entity.TABLE_COLUMN));
+      assertFalse(repository.isIndexDisabled(Entity.TABLE));
+    }
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      assertFalse(repository.isIndexDisabled(Entity.TABLE_COLUMN));
+    }
+  }
+
+  @Test
+  void indexListsLeaveOutTheColumnIndexWhileColumnIndexingIsOff() {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      assertEquals(List.of("table"), repo.getEntityTypesForIndex("table,tableColumn"));
+      assertEquals(Set.of("table"), repo.getIndexedEntityTypes());
+    }
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      assertEquals(
+          List.of("table", "tableColumn"), repo.getEntityTypesForIndex("table,tableColumn"));
+      assertEquals(Set.of("table", "tableColumn"), repo.getIndexedEntityTypes());
+    }
+  }
+
+  @Test
+  void columnOnlySearchesGetNoHitsWhileColumnIndexingIsOff() throws IOException {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    AggregationRequest aggregation = new AggregationRequest().withIndex("column_search_index");
+
+    Response search;
+    Response aggregate;
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      search = repo.search(new SearchRequest().withIndex(Entity.TABLE_COLUMN), null);
+      aggregate = repo.aggregate(aggregation, null);
+      repo.search(new SearchRequest().withIndex(Entity.TABLE), null);
+    }
+
+    for (Response response : List.of(search, aggregate)) {
+      JsonNode body = JsonUtils.readTree((String) response.getEntity());
+      assertEquals(0, body.at("/hits/total/value").asInt());
+      assertTrue(body.at("/hits/hits").isEmpty());
+      assertTrue(body.get("aggregations").isObject());
+    }
+    verify(searchClient, never())
+        .search(eq(new SearchRequest().withIndex(Entity.TABLE_COLUMN)), any());
+    verify(searchClient, never()).aggregate(aggregation, null);
+    verify(searchClient).search(eq(new SearchRequest().withIndex(Entity.TABLE)), any());
+  }
+
+  @Test
+  void deleteIndexDeletesTheRebuiltIndexBehindAnAliasedCanonicalName() {
+    // Elasticsearch reports an alias name as existing, but refuses to delete an index through it.
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(true);
+    when(searchClient.getIndicesByAlias("cluster_column_search_index"))
+        .thenReturn(Set.of("cluster_column_search_index_rebuild_1"));
+
+    repository.deleteIndex(COLUMN_MAPPING);
+
+    verify(searchClient).deleteIndex("cluster_column_search_index_rebuild_1");
+    verify(searchClient, never()).deleteIndex(COLUMN_MAPPING);
+  }
+
+  @Test
+  void reconcileDeletesTheColumnIndexWhileColumnIndexingIsOff() {
+    SearchRepository repo = newRepository(Map.of(Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(true);
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.reconcileColumnIndex();
+    }
+
+    verify(searchClient).deleteIndex(COLUMN_MAPPING);
+    verify(searchClient, never()).createIndex(any(IndexMapping.class), any());
+  }
+
+  @Test
+  void reconcileCreatesAMissingColumnIndexWithItsAliasesWhileColumnIndexingIsOn() {
+    SearchRepository repo = newRepository(Map.of(Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(false);
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.reconcileColumnIndex();
+    }
+
+    verify(searchClient).createIndex(eq(COLUMN_MAPPING), any(String.class));
+    verify(searchClient).createAliases(COLUMN_MAPPING);
+    verify(searchClient, never()).deleteIndex(COLUMN_MAPPING);
+  }
+
+  @Test
+  void reconcileLeavesAnExistingColumnIndexAloneWhileColumnIndexingIsOn() {
+    SearchRepository repo = newRepository(Map.of(Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+    when(searchClient.indexExists("cluster_column_search_index")).thenReturn(true);
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.reconcileColumnIndex();
+    }
+
+    verify(searchClient, never()).createIndex(any(IndexMapping.class), any());
+    verify(searchClient, never()).deleteIndex(COLUMN_MAPPING);
+  }
+
+  @Test
+  void startupCreatesTheColumnIndexOnlyWhileColumnIndexingIsOn() {
+    SearchRepository repo =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING, Entity.TABLE_COLUMN, COLUMN_MAPPING), "cluster");
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(false)) {
+      repo.createMissingIndexes();
+    }
+
+    verify(searchClient).createIndex(eq(TABLE_MAPPING), any(String.class));
+    verify(searchClient, never()).createIndex(eq(COLUMN_MAPPING), any(String.class));
+
+    try (MockedStatic<SettingsCache> settingsCache = columnIndexing(true)) {
+      repo.createMissingIndexes();
+    }
+
+    verify(searchClient).createIndex(eq(COLUMN_MAPPING), any(String.class));
+  }
+
+  private static MockedStatic<SettingsCache> columnIndexing(boolean enabled) {
+    MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class);
+    settingsCache.when(() -> SettingsCache.isColumnIndexingEnabled()).thenReturn(enabled);
+    return settingsCache;
+  }
+
+  private static Table tableWithOneColumn() {
+    UUID tableId = UUID.randomUUID();
+    Table table = mock(Table.class);
+    when(table.getId()).thenReturn(tableId);
+    when(table.getName()).thenReturn("orders");
+    when(table.getFullyQualifiedName()).thenReturn("svc.db.schema.orders");
+    when(table.getEntityReference())
+        .thenReturn(
+            new EntityReference().withId(tableId).withType(Entity.TABLE).withName("orders"));
+    when(table.getColumns())
+        .thenReturn(
+            List.of(
+                new Column()
+                    .withName("id")
+                    .withFullyQualifiedName("svc.db.schema.orders.id")
+                    .withDataType(ColumnDataType.INT)));
+    return table;
+  }
+
+  @Test
   void inheritedFieldChangesMarkAddedOwnersDomainsFollowersAndNestedDisplayName() throws Exception {
-    EntityInterface serviceEntity = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
     when(serviceEntity.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(serviceEntity.getDomains())
@@ -1591,7 +2224,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void inheritedFieldChangesHandleUpdatedTestSuitesAndDeletedInheritedReferences()
       throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(tableEntity.getOwners())
         .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
     when(tableEntity.getDomains())
@@ -1630,7 +2263,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesSimpleValueBindsValueAsParamAndTerminatesStatements() throws Exception {
-    EntityInterface tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
+    EntityInterface<?> tagEntity = mockEntity(Entity.TAG, UUID.randomUUID(), "PII.Sensitive");
 
     String renamedTag = "O'Brien's Tag";
     String certification = "Gold's";
@@ -1663,7 +2296,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesAddTagsMarksThemAsDerived() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag1 =
         new TagLabel()
@@ -1699,10 +2332,44 @@ class SearchRepositoryBehaviorTest {
     assertEquals("Tier.Tier1", addedTags.get(1).getTagFQN());
   }
 
+  /**
+   * The bulk asset APIs have no real ChangeDescription, so SearchRepository.propagateTagChangeToChildren
+   * synthesises one carrying TagLabel objects rather than the JSON string a PATCH records. This pins
+   * that shape down: the script and params must come out the same either way.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void inheritedFieldChangesAcceptTagLabelObjectsNotJustJsonStrings() throws Exception {
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("g.term")
+            .withSource(TagLabel.TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.DERIVED);
+
+    ChangeDescription changeDescription =
+        changeDescription(
+            List.of(),
+            List.of(),
+            List.of(new FieldChange().withName("tags").withOldValue(List.of(tag))));
+
+    Pair<String, Map<String, Object>> updates =
+        invokeGetInheritedFieldChanges(changeDescription, tableEntity);
+
+    assertTrue(
+        updates.getLeft().contains("params.tagDeleted"),
+        () -> "delete script not generated: " + updates.getLeft());
+    List<TagLabel> deletedTags = (List<TagLabel>) updates.getRight().get("tagDeleted");
+    assertNotNull(deletedTags, "tagDeleted params missing");
+    assertEquals(1, deletedTags.size(), "the label list must survive conversion");
+    assertEquals("g.term", deletedTags.getFirst().getTagFQN());
+  }
+
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesDeleteTagsMarksThemAsDerived() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
         new TagLabel()
@@ -1735,7 +2402,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesUpdateTagsPopulatesBothAddedAndDeleted() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel oldTag =
         new TagLabel()
@@ -1779,7 +2446,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesIgnoreTagsForEntityWithoutTagDescriptor() throws Exception {
-    EntityInterface domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "engineering");
+    EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "engineering");
 
     TagLabel tag =
         new TagLabel()
@@ -1803,7 +2470,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesTagAddScriptContainsDedupAndSortLogic() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
         new TagLabel()
@@ -1828,7 +2495,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesTagDeleteScriptRemovesByFqn() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     TagLabel tag =
         new TagLabel()
@@ -1848,6 +2515,13 @@ class SearchRepositoryBehaviorTest {
 
     String script = updates.getLeft();
     assertTrue(script.contains("equalsIgnoreCase"), "Delete script should match by tagFQN");
+    assertTrue(
+        script.contains("existingTag.labelType"),
+        "Delete script should only remove the cascade's DERIVED copies");
+    assertTrue(script.contains(TagLabel.LabelType.DERIVED.value()));
+    assertFalse(
+        script.contains(TagLabel.LabelType.PROPAGATED.value()),
+        "a lineage-propagated label belongs to the child and must not be removed");
     assertTrue(script.contains("ctx._source.tags.remove(i)"), "Script should remove matched tags");
     assertFalse(
         script.contains("Collections.sort"), "Delete-only script should not sort (no additions)");
@@ -1856,7 +2530,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesTagAddWithEmptyListProducesEmptyData() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     String emptyTagsJson = JsonUtils.pojoToJson(List.of());
 
@@ -1877,7 +2551,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesAddDataProductsOnTableMarksInherited() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID dpId = UUID.randomUUID();
     when(tableEntity.getDataProducts())
         .thenReturn(
@@ -1907,7 +2581,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesDeleteDataProductsOnTable() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID dpId = UUID.randomUUID();
     when(tableEntity.getDataProducts())
         .thenReturn(
@@ -1936,7 +2610,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   @SuppressWarnings("unchecked")
   void inheritedFieldChangesUpdateDataProductsOnTable() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID dpId = UUID.randomUUID();
     when(tableEntity.getDataProducts())
         .thenReturn(
@@ -1964,7 +2638,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesAddRawReplaceTestSuites() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -1984,7 +2658,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesDeleteRawReplaceTestSuites() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2004,7 +2678,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesDeleteNestedFieldDisplayName() throws Exception {
-    EntityInterface serviceEntity = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -2023,7 +2698,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesEntityReferenceListUpdateMarksInherited() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     UUID ownerId = UUID.randomUUID();
     when(tableEntity.getOwners())
         .thenReturn(
@@ -2048,7 +2723,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void inheritedFieldChangesUnknownFieldReturnsEmptyRefList() throws Exception {
-    EntityInterface tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> tableEntity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(tableEntity.getDataProducts()).thenReturn(null);
 
     ChangeDescription changeDescription =
@@ -2070,7 +2745,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void getScriptWithParamsBuildsFollowerDescriptionAndReducedQueryDomainUpdates() {
-    EntityInterface queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
+    EntityInterface<?> queryEntity = mockEntity(Entity.QUERY, UUID.randomUUID(), "daily_query");
     EntityReference queryDomain =
         new EntityReference()
             .withId(UUID.randomUUID())
@@ -2135,9 +2810,10 @@ class SearchRepositoryBehaviorTest {
   @Test
   void requiresPropagationRecognizesGlossaryTagCertificationPageAndRelationshipChanges()
       throws Exception {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
-    EntityInterface page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     Tag certificationTag = mock(Tag.class);
     EntityReference tagReference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TAG).withName("Gold");
@@ -2192,7 +2868,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForInheritableFieldAdded() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2205,7 +2881,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForInheritableFieldUpdated() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2219,7 +2895,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForInheritableFieldDeleted() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2232,7 +2908,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsFalseForNonInheritableField() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2249,7 +2925,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsFalseForGlossaryTermNameChangeNotInDescriptors() throws Exception {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2266,7 +2943,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForGlossaryTermTagDeleted() throws Exception {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2332,7 +3010,7 @@ class SearchRepositoryBehaviorTest {
     // Regression for issue #28229: a cert-only PATCH on a Table must open the propagation gate
     // so cascadeCertificationToChildren can push the new cert onto every denormalized child doc
     // (test_case, test_case_result, test_case_resolution_status, test_suite, column).
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2349,7 +3027,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForTableCertificationAdded() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2362,7 +3040,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsTrueForTableCertificationRemoved() throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertTrue(
         invokeRequiresPropagation(
             changeDescription(
@@ -2376,7 +3054,7 @@ class SearchRepositoryBehaviorTest {
   @Test
   void requiresPropagationReturnsFalseForUpstreamEntityRelationshipNotInDescriptors()
       throws Exception {
-    EntityInterface table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> table = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2417,7 +3095,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void requiresPropagationReturnsFalseForPageParentNotInDescriptors() throws Exception {
-    EntityInterface page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
+    EntityInterface<?> page = mockEntity(Entity.PAGE, UUID.randomUUID(), "docs");
     assertFalse(
         invokeRequiresPropagation(
             changeDescription(
@@ -2430,7 +3108,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void propagateToRelatedEntitiesUsesClusteredPageIndexForParentChanges() {
-    EntityInterface page = mockEntity(Entity.PAGE, UUID.randomUUID(), "child");
+    EntityInterface<?> page = mockEntity(Entity.PAGE, UUID.randomUUID(), "child");
     when(page.getFullyQualifiedName()).thenReturn("docs.parent.child");
 
     ChangeDescription changeDescription =
@@ -2479,7 +3157,8 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void propagateToRelatedEntitiesUpdatesGlossaryTagFqnsAndDisplayNames() {
-    EntityInterface glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+    EntityInterface<?> glossaryTerm =
+        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
     when(glossaryTerm.getFullyQualifiedName()).thenReturn("BusinessGlossary.Income");
 
     ChangeDescription changeDescription =
@@ -2552,16 +3231,17 @@ class SearchRepositoryBehaviorTest {
     EntityReference entityReference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
     @SuppressWarnings("unchecked")
-    org.openmetadata.service.jdbi3.EntityRepository<EntityInterface> entityRepository =
+    org.openmetadata.service.jdbi3.EntityRepository<EntityInterface<?>> entityRepository =
         mock(org.openmetadata.service.jdbi3.EntityRepository.class);
-    EntityInterface entity = mockEntity(Entity.TABLE, entityReference.getId(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, entityReference.getId(), "orders");
 
     doNothing().when(spyRepository).updateEntityIndex(entity);
 
     try (var entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
       when(entityRepository.getFields("*")).thenReturn(null);
-      when(entityRepository.get(null, entityReference.getId(), null)).thenReturn(entity);
+      Mockito.<EntityInterface<?>>when(entityRepository.get(null, entityReference.getId(), null))
+          .thenReturn(entity);
 
       spyRepository.updateEntity(entityReference);
     }
@@ -2633,7 +3313,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexRemovesDomainReferencesAndChildren() throws Exception {
-    EntityInterface domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
 
     repository.deleteEntityIndex(domain);
 
@@ -2656,7 +3336,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void deleteEntityIndexRemovesDataProductReferences() throws Exception {
-    EntityInterface dataProduct = mockEntity(Entity.DATA_PRODUCT, UUID.randomUUID(), "revenue");
+    EntityInterface<?> dataProduct = mockEntity(Entity.DATA_PRODUCT, UUID.randomUUID(), "revenue");
 
     repository.deleteEntityIndex(dataProduct);
 
@@ -2725,7 +3405,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void softDeleteOrRestoreEntityIndexPropagatesServiceDeletionToChildren() throws Exception {
-    EntityInterface service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
+    EntityInterface<?> service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
     String scriptTxt =
         new org.openmetadata.service.search.scripts.SoftDeleteScript(true).painless();
 
@@ -2813,7 +3493,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void getScriptWithParamsBuildsExtensionAndDescriptionUpdates() {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     when(entity.getUpdatedAt()).thenReturn(99L);
     when(entity.getDescription()).thenReturn("new description");
     when(entity.getExtension()).thenReturn(Map.of("reviewer", "alice"));
@@ -2841,7 +3521,7 @@ class SearchRepositoryBehaviorTest {
 
   @Test
   void getScriptWithParamsRemovesFollowersAndDescriptions() {
-    EntityInterface entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityReference removedFollower = new EntityReference().withId(UUID.randomUUID());
     Map<String, Object> params = new HashMap<>();
     ChangeDescription changeDescription =
@@ -3155,6 +3835,34 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void checkHybridSearchPipelineChecksTheWeightsSearchWillSend() throws Exception {
+    SearchRepository openSearchRepository =
+        newRepository(
+            Map.of(Entity.TABLE, TABLE_MAPPING),
+            "cluster",
+            ElasticSearchConfiguration.SearchType.OPENSEARCH,
+            new NaturalLanguageSearchConfiguration().withSemanticSearchEnabled(true));
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.checkHybridSearchPipeline(0.7, 0.7)).thenReturn(Optional.of("rejected"));
+    setPrivateField(openSearchRepository, "vectorIndexService", vectorService);
+    SearchSettings adminWeights =
+        new SearchSettings()
+            .withGlobalSettings(
+                new GlobalSettings().withKeywordWeight(0.7).withSemanticWeight(0.7));
+
+    try (MockedStatic<SettingsCache> settingsCacheMock = mockStatic(SettingsCache.class)) {
+      settingsCacheMock
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(adminWeights);
+
+      assertEquals(Optional.of("rejected"), openSearchRepository.checkHybridSearchPipeline());
+    }
+
+    setPrivateField(openSearchRepository, "vectorIndexService", mock(VectorIndexService.class));
+    assertEquals(Optional.empty(), openSearchRepository.checkHybridSearchPipeline());
+  }
+
+  @Test
   void requestAndAggregationWrappersDelegateToSearchClient() throws IOException {
     SearchRequest request = new SearchRequest().withQuery("orders");
     SubjectContext subjectContext = mock(SubjectContext.class);
@@ -3167,8 +3875,9 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.searchWithDirectQuery(request, subjectContext)).thenReturn(response);
     when(searchClient.getDocByID("idx", "00000000-0000-0000-0000-000000000123"))
         .thenReturn(response);
-    when(searchClient.searchBySourceUrl("https://src")).thenReturn(response);
+    when(searchClient.searchBySourceUrl("https://src", null)).thenReturn(response);
     when(searchClient.aggregate(aggregationRequest)).thenReturn(response);
+    when(searchClient.aggregate(aggregationRequest, subjectContext)).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global")).thenReturn(response);
     when(searchClient.getEntityTypeCounts(request, "global", subjectContext)).thenReturn(response);
     when(searchClient.getQueryCostRecords("service")).thenReturn(queryCostResult);
@@ -3179,8 +3888,11 @@ class SearchRepositoryBehaviorTest {
     assertSame(
         response,
         repository.getDocument("idx", UUID.fromString("00000000-0000-0000-0000-000000000123")));
-    assertSame(response, repository.searchBySourceUrl("https://src"));
+    assertSame(response, repository.searchBySourceUrl("https://src", null));
     assertSame(response, repository.aggregate(aggregationRequest));
+    // The subject-aware overload is what SearchResource.aggregate calls, so the aggregation
+    // buckets are computed only over documents the caller is permitted to see.
+    assertSame(response, repository.aggregate(aggregationRequest, subjectContext));
     assertSame(response, repository.getEntityTypeCounts(request, "global"));
     // The subject-aware overload is what SearchResource calls, so a ContextMemory count matches
     // what the same caller sees in the listing instead of being capped at org-wide memories.
@@ -3196,6 +3908,7 @@ class SearchRepositoryBehaviorTest {
     SubjectContext subjectContext = mock(SubjectContext.class);
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("status = 'Active'");
+    when(filter.getMemoryStatuses()).thenReturn(List.of(ContextMemoryStatus.DEPRECATED));
     when(searchClient.listWithOffset(
             "status = 'Active'", 25, 10, "cluster_table_search_index", sortFilter, "orders", null))
         .thenReturn(listMapper);
@@ -3207,7 +3920,8 @@ class SearchRepositoryBehaviorTest {
             sortFilter,
             "orders",
             "query",
-            subjectContext))
+            subjectContext,
+            List.of(ContextMemoryStatus.DEPRECATED)))
         .thenReturn(listMapper);
     when(searchClient.listWithDeepPagination(
             "cluster_table_search_index",
@@ -3304,7 +4018,7 @@ class SearchRepositoryBehaviorTest {
   void bulkTimeoutCompletedDuringClosePropagatesWithoutReplayOrRetry() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface service =
+    EntityInterface<?> service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
     String serviceId = service.getId().toString();
     when(service.getChangeDescription())
@@ -3344,7 +4058,7 @@ class SearchRepositoryBehaviorTest {
   void bulkFailureDoesNotPropagateAnUnconfirmedRoot() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface service =
+    EntityInterface<?> service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
     ChangeDescription displayNameChange =
         changeDescription(
@@ -3386,7 +4100,7 @@ class SearchRepositoryBehaviorTest {
   void nonQuiescentBulkDefersPropagationUntilRetryCompletes() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface service =
+    EntityInterface<?> service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
     ChangeDescription displayNameChange =
         changeDescription(
@@ -3428,9 +4142,9 @@ class SearchRepositoryBehaviorTest {
   void partiallyFailedBulkPropagatesOnlyConfirmedRoots() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
-    EntityInterface failedService =
+    EntityInterface<?> failedService =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "failed-service");
-    EntityInterface successfulService =
+    EntityInterface<?> successfulService =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "successful-service");
     ChangeDescription displayNameChange =
         changeDescription(
@@ -3524,7 +4238,8 @@ class SearchRepositoryBehaviorTest {
                 .SearchSchemaEntityRelationshipResult();
 
     when(filter.getCondition(Entity.TABLE)).thenReturn("deleted = false");
-    when(searchClient.searchByField("name", "orders", "table", false, 0, 10)).thenReturn(response);
+    when(searchClient.searchByField("name", "orders", "table", false, 0, 10, null))
+        .thenReturn(response);
     when(searchClient.aggregate("query", Entity.TABLE, searchAggregation, "deleted = false"))
         .thenReturn(aggregationResult);
     when(searchClient.genericAggregation("query", "table", searchAggregation)).thenReturn(report);
@@ -3544,7 +4259,7 @@ class SearchRepositoryBehaviorTest {
     when(searchClient.getSchemaEntityRelationship("svc.db.schema", "{}", "*", 1, 2, 3, 4, false))
         .thenReturn(schemaResult);
 
-    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10));
+    assertSame(response, repository.searchByField("name", "orders", "table", false, 0, 10, null));
     assertSame(
         aggregationResult, repository.aggregate("query", Entity.TABLE, searchAggregation, filter));
     assertSame(report, repository.genericAggregation("query", "table", searchAggregation));
@@ -3650,8 +4365,8 @@ class SearchRepositoryBehaviorTest {
     }
   }
 
-  private EntityInterface mockEntity(String entityType, UUID id, String name) {
-    EntityInterface entity = mock(EntityInterface.class);
+  private EntityInterface<?> mockEntity(String entityType, UUID id, String name) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
     EntityReference entityReference =
         new EntityReference().withId(id).withType(entityType).withName(name);
     when(entity.getEntityReference()).thenReturn(entityReference);
@@ -3683,7 +4398,7 @@ class SearchRepositoryBehaviorTest {
 
   @SuppressWarnings("unchecked")
   private Pair<String, Map<String, Object>> invokeGetInheritedFieldChanges(
-      ChangeDescription changeDescription, EntityInterface entity) throws Exception {
+      ChangeDescription changeDescription, EntityInterface<?> entity) throws Exception {
     Method method =
         SearchRepository.class.getDeclaredMethod(
             "getInheritedFieldChanges",
@@ -3696,7 +4411,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   private boolean invokeRequiresPropagation(
-      ChangeDescription changeDescription, String entityType, EntityInterface entity)
+      ChangeDescription changeDescription, String entityType, EntityInterface<?> entity)
       throws Exception {
     return (Boolean)
         invokePrivateMethod(

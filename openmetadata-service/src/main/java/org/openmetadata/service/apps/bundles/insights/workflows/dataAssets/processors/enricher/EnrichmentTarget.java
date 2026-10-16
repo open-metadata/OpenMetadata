@@ -23,7 +23,7 @@ import org.openmetadata.schema.type.change.ChangeSummary;
  * (only {@code id} / {@code type}).
  */
 public record EnrichmentTarget(
-    EntityInterface entity,
+    EntityInterface<?> entity,
     Map<String, Object> entityMap,
     Map<String, ChangeSummary> changeSummary,
     long windowStartTimestamp,

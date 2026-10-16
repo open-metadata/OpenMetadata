@@ -14,17 +14,85 @@ Unit tests for Presidio utilities
 
 from unittest.mock import Mock, patch
 
-from presidio_analyzer import AnalyzerEngine, RecognizerRegistry
-from presidio_analyzer.nlp_engine import SpacyNlpEngine
+import pytest
+from presidio_analyzer import AnalyzerEngine, RecognizerRegistry, RecognizerResult
+from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
 )
+from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.presidio_utils import (
+    ContextAwareUsBankRecognizer,
+    _load_spacy_model,
     build_analyzer_engine,
+    context_matches,
     load_nlp_engine,
 )
 from metadata.pii.constants import SPACY_EN_MODEL, SUPPORTED_LANG
+
+
+@pytest.mark.parametrize(
+    ("configured_context", "column_name", "expected"),
+    [
+        ("first name", "first_name", True),
+        ("first name", "firstName", True),
+        ("first name", "customer_first_name_text", True),
+        ("account number", "bank_account_number", True),
+        ("first name", "first_namespace", False),
+        ("first name", "prefirst_name", False),
+        ("first name", "first_nameplate", False),
+        ("first name", "first_middle_name", False),
+        ("first name", "name_first", False),
+        ("cid", "acid_level", False),
+        ("firstname", "firstname", True),
+        ("first name", "firstname", False),
+        ("prénom usuel", "prénom_usuel", True),
+        (" first name ", "user_first_name_value", True),
+        ("(first name)", "user(first_name)value", True),
+    ],
+)
+def test_context_matches_complete_column_terms(configured_context: str, column_name: str, expected: bool) -> None:
+    assert context_matches([configured_context], split_column_name(column_name)) is expected
+
+
+@pytest.mark.parametrize(
+    ("configured_context", "column_context", "expected"),
+    [
+        ("", ["ordinary", "column"], True),
+        ("()", ["user()value"], True),
+        ("()", ["user", "value"], False),
+    ],
+)
+def test_context_matches_existing_literal_edge_cases(
+    configured_context: str, column_context: list[str], expected: bool
+) -> None:
+    assert context_matches([configured_context], column_context) is expected
+
+
+@pytest.mark.parametrize(
+    ("column_name", "expected_score"),
+    [("customer_account_number", 1.0), ("customer_account_numbering", 0.05)],
+)
+def test_bank_context_enhancement_requires_complete_phrase(column_name: str, expected_score: float) -> None:
+    recognizer = ContextAwareUsBankRecognizer(context=["account number"])
+    result = RecognizerResult(
+        entity_type="US_BANK_NUMBER",
+        start=0,
+        end=10,
+        score=0.05,
+        recognition_metadata={},
+    )
+
+    enhanced = recognizer.enhance_using_context(
+        text="1234567890",
+        raw_recognizer_results=[result],
+        other_raw_recognizer_results=[],
+        nlp_artifacts=Mock(spec=NlpArtifacts),
+        context=split_column_name(column_name),
+    )
+
+    assert enhanced[0].score == expected_score
 
 
 class TestSpacyModelLoading:
@@ -39,11 +107,40 @@ class TestSpacyModelLoading:
 
         result = load_nlp_engine(SPACY_EN_MODEL, SUPPORTED_LANG)
 
-        mock_load_spacy.assert_called_once_with(SPACY_EN_MODEL)
+        mock_load_spacy.assert_called_once_with(SPACY_EN_MODEL, None)
         mock_nlp_engine_cls.assert_called_once_with(
             models=[{"lang_code": SUPPORTED_LANG, "model_name": SPACY_EN_MODEL}]
         )
         assert result == mock_engine
+
+    @patch("metadata.pii.algorithms.presidio_utils.download")
+    @patch("metadata.pii.algorithms.presidio_utils.spacy.load")
+    def test_missing_model_warns_with_language_provisioning_command(self, mock_spacy_load, mock_download, caplog):
+        mock_spacy_load.side_effect = [OSError("not installed"), Mock()]
+
+        _load_spacy_model("es_core_news_md", ClassificationLanguage.es)
+
+        mock_download.assert_called_once_with("es_core_news_md")
+        assert "metadata install-classification-models --languages es" in caplog.text
+
+    @patch("metadata.pii.algorithms.presidio_utils.download")
+    @patch("metadata.pii.algorithms.presidio_utils.spacy.load")
+    def test_available_model_does_not_download_or_warn(self, mock_spacy_load, mock_download, caplog):
+        _load_spacy_model("en_core_web_md", ClassificationLanguage.en)
+
+        mock_download.assert_not_called()
+        assert "install-classification-models" not in caplog.text
+
+    @patch("metadata.pii.algorithms.presidio_utils.download")
+    @patch("metadata.pii.algorithms.presidio_utils.spacy.load")
+    def test_unknown_model_warns_with_manual_install_guidance(self, mock_spacy_load, mock_download, caplog):
+        mock_spacy_load.side_effect = [OSError("not installed"), Mock()]
+
+        _load_spacy_model("en_core_web_sm")
+
+        mock_download.assert_called_once_with("en_core_web_sm")
+        assert "Install this model manually" in caplog.text
+        assert "--languages <language>" not in caplog.text
 
 
 class TestAnalyzerEngine:
@@ -74,7 +171,11 @@ class TestAnalyzerEngine:
         result = build_analyzer_engine(ClassificationLanguage.en)
 
         # Verify NLP engine was loaded
-        mock_load_nlp.assert_called_once_with(model_name="en_core_web_md", supported_language=SUPPORTED_LANG)
+        mock_load_nlp.assert_called_once_with(
+            model_name="en_core_web_md",
+            supported_language=SUPPORTED_LANG,
+            classification_language=ClassificationLanguage.en,
+        )
 
         # Verify analyzer engine was created
         mock_engine_cls.assert_called_once_with(
@@ -100,4 +201,8 @@ class TestAnalyzerEngine:
 
             result = build_analyzer_engine()  # noqa: F841
 
-            mock_load_nlp.assert_called_once_with(model_name=SPACY_EN_MODEL, supported_language=SUPPORTED_LANG)
+            mock_load_nlp.assert_called_once_with(
+                model_name=SPACY_EN_MODEL,
+                supported_language=SUPPORTED_LANG,
+                classification_language=ClassificationLanguage.en,
+            )

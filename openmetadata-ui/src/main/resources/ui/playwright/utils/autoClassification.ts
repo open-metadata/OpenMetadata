@@ -43,13 +43,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
 
   await page.click('[data-testid="add-new-ingestion-button"]');
 
-  await page
-    .locator('.ant-dropdown:visible [data-menu-id*="autoClassification"]')
-    .waitFor();
-
-  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
-
-  await page.click('[data-menu-id*="autoClassification"]');
+  await page.getByTestId('agent-item-autoClassification').click();
 
   await waitForAllLoadersToDisappear(page);
 
@@ -69,10 +63,7 @@ export const addAndTriggerAutoClassificationPipeline = async (
   if (await metadataTab2.isVisible()) {
     await metadataTab2.click();
   }
-  await page
-    .getByLabel('agents')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
   const response = await apiContext
     .get(

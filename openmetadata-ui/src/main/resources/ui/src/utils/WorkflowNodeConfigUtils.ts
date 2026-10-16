@@ -224,7 +224,13 @@ const AUTOMATED_TASK_OUTPUT_MAP: Record<
     ],
   },
   [NodeSubType.SinkTask]: {
-    output: ['syncResult', 'syncedCount', 'failedCount', 'result'],
+    output: [
+      'syncResult',
+      'syncedCount',
+      'failedCount',
+      'skippedCount',
+      'result',
+    ],
     branches: ['success', 'failure'],
   },
 };
@@ -264,7 +270,9 @@ const applyUserApprovalConfig = (
         }>;
       }
     | undefined;
-  config.config = {};
+  // Start from the step's stored config so settings this builder does not edit (partial
+  // decisions, transition metadata, task status) survive a save.
+  config.config = { ...nodeData.config };
   config.config.assignees = {
     addReviewers: assigneesFromNode?.addReviewers ?? true,
     addOwners: assigneesFromNode?.addOwners ?? false,
