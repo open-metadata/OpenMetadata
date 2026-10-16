@@ -31,7 +31,7 @@ export interface CriticalAnnouncementBannerProps {
 // FeaturedIcon's light theme fills solid red under `dark-mode`; the design
 // tints the circle instead, the way the Critical surface reads elsewhere.
 const BANNER_CLASS =
-  'dark-mode tw:relative tw:flex tw:items-start tw:gap-4 tw:rounded-xl tw:bg-secondary tw:py-4 tw:pr-12 tw:pl-5 ' +
+  'dark-mode tw:relative tw:flex tw:items-center tw:gap-4 tw:rounded-xl tw:bg-secondary tw:py-4 tw:pr-12 tw:pl-5 ' +
   'tw:[.dark-mode_&]:border tw:[.dark-mode_&]:border-secondary tw:[.dark-mode_&]:bg-primary tw:[.dark-mode_&]:shadow-xs';
 
 const ICON_CLASS = 'tw:dark:bg-utility-error-50 tw:dark:text-utility-error-500';
