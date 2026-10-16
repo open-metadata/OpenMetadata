@@ -44,7 +44,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=5.3",
+    "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic>=2.12.5,<3",
@@ -332,15 +332,8 @@ plugins: dict[str, set[str]] = {
         VERSIONS["aiobotocore"],
         *COMMONS["datalake"],
     },
-    "deltalake": {
-        "delta-spark>=3.0.0,<4.0.0",
-        "deltalake>=0.19.0,<0.20",
-        "pyspark==3.5.9",
-    },  # TODO: remove pinning to under 0.20 after https://github.com/open-metadata/OpenMetadata/issues/17909
     "s3": {*COMMONS["storage-archive"]},
     "gcs": {VERSIONS["google-cloud-storage"], *COMMONS["storage-archive"]},
-    "deltalake-storage": {"deltalake>=0.19.0,<0.20"},
-    "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.9"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {VERSIONS["pydoris"]},
     "starrocks": {VERSIONS["pymysql"]},
@@ -426,6 +419,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
+    "neo4j": {VERSIONS["neo4j"]},
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
@@ -588,7 +582,6 @@ test = {
     *plugins["pii-processor"],
     "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",
-    *plugins["deltalake"],
     *plugins["datalake-gcs"],
     *plugins["pgspider"],
     *plugins["clickhouse"],
@@ -673,8 +666,6 @@ setup(
                 "airflow",
                 "db2",
                 "great-expectations",
-                "deltalake",
-                "deltalake-spark",
                 "sklearn",
             }
         ),
