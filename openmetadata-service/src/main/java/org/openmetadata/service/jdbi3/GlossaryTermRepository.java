@@ -208,6 +208,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public ResultList<EntityReference> getGlossaryTermAssets(
       UUID glossaryTermId, int limit, int offset) {
+    return getGlossaryTermAssets(glossaryTermId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getGlossaryTermAssets(
+      UUID glossaryTermId, int limit, int offset, SubjectContext caller) {
     GlossaryTerm term = get(null, glossaryTermId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -216,7 +222,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     String fqn = term.getFullyQualifiedName();
-    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -231,8 +238,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public ResultList<EntityReference> getGlossaryTermAssetsByName(
       String termName, int limit, int offset) {
+    return getGlossaryTermAssetsByName(termName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getGlossaryTermAssetsByName(
+      String termName, int limit, int offset, SubjectContext caller) {
     GlossaryTerm term = getByName(null, termName, getFields("id,fullyQualifiedName"));
-    return getGlossaryTermAssets(term.getId(), limit, offset);
+    return getGlossaryTermAssets(term.getId(), limit, offset, caller);
   }
 
   public int getGlossaryTermAssetCount(String fullyQualifiedName) {
