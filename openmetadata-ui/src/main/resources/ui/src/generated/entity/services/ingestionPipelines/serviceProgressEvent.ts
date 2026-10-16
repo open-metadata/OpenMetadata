@@ -1452,9 +1452,11 @@ export interface Pipeline {
      */
     enableAutoClassification?: boolean;
     /**
-     * No. of messages to fetch during sample data ingestion.
+     * No. of messages to fetch during sample data ingestion. Values above 1000 are capped at
+     * 1000.
      *
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled. Values above 1000
+     * are capped at 1000.
      */
     sampleDataCount?: number;
     /**
