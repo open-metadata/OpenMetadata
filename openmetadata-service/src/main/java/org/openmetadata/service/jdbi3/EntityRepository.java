@@ -276,6 +276,8 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -588,7 +590,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomains;
-  protected final boolean supportsDataProducts;
+  @Getter protected final boolean supportsDataProducts;
   protected final boolean supportsDataContract;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
@@ -4930,11 +4932,39 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * PATCH of an entity the caller has already loaded with the patch fields: the same steps as the
+   * PATCH endpoint, without the load. Bulk edits load their entities in groups and save each one
+   * through here ({@link EntityPatchBatch}), so a single edit and a bulk one run the same code,
+   * approval gating included.
+   */
+  final PatchResponse<T> patch(T original, JsonPatch patch, ChangeActor actor) {
+    return patchCommonWithOptimisticLocking(
+        original,
+        patch,
+        JsonUtils.extractPatchedFields(patch),
+        actor.userName(),
+        null,
+        null,
+        false,
+        actor.impersonatedBy(),
+        null);
+  }
+
+  /**
    * What approval gating would decide for a PATCH by {@code user}, computed on the same prepared
    * entity a real PATCH admits, without storing anything.
    */
   public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
+    return previewPatch(original, patch, user);
+  }
+
+  /**
+   * {@link #previewPatch(UUID, String, JsonPatch)} of an entity the caller has already loaded with
+   * the patch fields. It runs every check {@link #patch(EntityInterface, JsonPatch, ChangeActor)}
+   * runs, and saves nothing.
+   */
+  final Optional<StagedChange> previewPatch(T original, JsonPatch patch, String user) {
     return ApprovalGate.preview(
         original,
         preparePatched(original, patch, user),
@@ -5061,11 +5091,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    if (entityUpdater.fieldsChanged()) {
-      try (var ignored = phase("patchSetInheritedFields")) {
-        setInheritedFields(updated, patchFields);
-      }
-    }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     return new PatchResponse<>(
         Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
@@ -9449,7 +9474,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate — schema marks assets optional, so a request without it is valid
       return result.withSuccessRequest(
-          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+          List.of(new BulkResponse().withMessage(AssetEditService.NOTHING_TO_VALIDATE)));
     }
 
     // Validate Assets
@@ -9490,17 +9515,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // Create a Change Event on successful addition/removal of assets (skip when dryRun)
     if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
-      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
-      ChangeDescription change =
-          addBulkAddRemoveChangeDescription(
-              entityInterface.getVersion(), isAdd, request.getAssets(), null);
-      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
-      ChangeEvent changeEvent =
-          getChangeEvent(
-              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      recordBulkAssetsChange(fromEntity, entityId, isAdd, request.getAssets(), userName);
     }
 
+    return result;
+  }
+
+  /** Records assets added to or removed from an entity as one change event on that entity. */
+  protected void recordBulkAssetsChange(
+      String fromEntity,
+      UUID entityId,
+      boolean isAdd,
+      List<EntityReference> assets,
+      String userName) {
+    EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+    ChangeDescription change =
+        addBulkAddRemoveChangeDescription(entityInterface.getVersion(), isAdd, assets, null);
+    String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
+    ChangeEvent changeEvent =
+        getChangeEvent(
+            entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  /**
+   * Applies an edit made on this entity's Assets tab to each selected asset, as that asset's own
+   * PATCH, then records the assets it changed as one "assets" change on this entity.
+   */
+  protected final BulkOperationResult applyAssetEdit(
+      UUID entityId,
+      BulkAssets request,
+      boolean isAdd,
+      AssetEditService.AssetEdit edit,
+      PatchRequester requester) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+    BulkOperationResult result =
+        AssetEditService.apply(
+            new AssetEditService.Request(request.getAssets(), dryRun, requester), edit);
+    List<EntityReference> changed = AssetEditService.succeededAssets(result);
+    if (!dryRun && !changed.isEmpty()) {
+      recordBulkAssetsChange(entityType, entityId, isAdd, changed, requester.actor().userName());
+    }
     return result;
   }
 
@@ -9845,12 +9900,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public BulkOperationResult bulkAddAndValidateTagsToAssets(
-      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+      UUID entityId, BulkAssetsRequestInterface request, PatchRequester requester) {
     throw new UnsupportedOperationException("Bulk Add tags to Asset operation not supported");
   }
 
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
-      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+      UUID entityId, BulkAssetsRequestInterface request, PatchRequester requester) {
     throw new UnsupportedOperationException("Bulk Remove tags to Asset operation not supported");
   }
 
@@ -10315,6 +10370,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // needs to be reconciled in ES even when the consolidated version doesn't change.
       if (!versionChanged && !entityChanged && !incrementalFieldsChanged()) {
         return;
+      }
+      // A PATCH's post-update work, search included, sees the entity as a read returns it: one
+      // that drops its own domain is indexed, and hands down to its children, the domain it now
+      // inherits. A PUT fills inherited fields once it returns, as before.
+      if (operation.isPatch()) {
+        try (var ignored = phase("patchSetInheritedFields")) {
+          setInheritedFields(updated, patchFields);
+        }
       }
       try (var ignored = phase("entityUpdatePostUpdate")) {
         postUpdate(original, updated);

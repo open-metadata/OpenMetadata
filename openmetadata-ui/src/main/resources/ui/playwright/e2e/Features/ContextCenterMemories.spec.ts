@@ -39,6 +39,11 @@ import { waitForSearchIndexed } from '../../utils/polling';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test as base } from '../fixtures/pages';
 
+// The asset search escapes Elasticsearch-reserved characters, so a name like
+// `pw-table-…` is sent as `pw\-table\-…`.
+const unescapeSearchQuery = (query: string | null) =>
+  (query ?? '').replace(/\\(.)/g, '$1');
+
 const test = base;
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -1826,7 +1831,8 @@ test.describe(
             return (
               res.request().method() === 'GET' &&
               url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('q') === `*${table.name}*`
+              unescapeSearchQuery(url.searchParams.get('q')) ===
+                `*${table.name}*`
             );
           },
           200
@@ -1874,7 +1880,8 @@ test.describe(
             return (
               res.request().method() === 'GET' &&
               url.pathname === '/api/v1/search/query' &&
-              url.searchParams.get('q') === `*${table.name}*`
+              unescapeSearchQuery(url.searchParams.get('q')) ===
+                `*${table.name}*`
             );
           },
           200
@@ -2025,7 +2032,8 @@ test.describe(
               return (
                 res.request().method() === 'GET' &&
                 url.pathname === '/api/v1/search/query' &&
-                url.searchParams.get('q') === `*${table.name}*`
+                unescapeSearchQuery(url.searchParams.get('q')) ===
+                  `*${table.name}*`
               );
             },
             200,

@@ -69,6 +69,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityHierarchyList;
 import org.openmetadata.service.util.EntityUtil;
@@ -482,7 +483,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_DOMAINS);
     return ApprovalGate.bulkResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkAddAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -514,7 +516,8 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_DOMAINS);
     return ApprovalGate.bulkResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkRemoveAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 

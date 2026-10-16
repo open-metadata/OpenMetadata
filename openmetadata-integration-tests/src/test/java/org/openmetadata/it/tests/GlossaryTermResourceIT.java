@@ -3880,10 +3880,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_pbf");
-    // Pass-first ordering: the lone passing asset is iterated first, so the
-    // apply-while-no-failures gate writes the term's tag to it before any
-    // failure closes the gate. The status must still surface PARTIAL_SUCCESS
-    // (the bug previously reported FAILURE, hiding the real write).
+    // Each asset is saved on its own, so the lone passing asset gets the term
+    // whatever its position. The status must surface PARTIAL_SUCCESS (the bug
+    // previously reported FAILURE, hiding the real write).
     List<EntityReference> assets = new ArrayList<>();
     assets.add(setup.passTable.getEntityReference());
     assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
@@ -3905,33 +3904,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
           tableHasTag(client, t.getId(), setup.term.getFullyQualifiedName()),
           "failing assets must not be tagged");
     }
-  }
-
-  @Test
-  void test_bulkAddGlossaryToAssets_nonDryRun_failBeforePass_appliesNoTagsAndReportsPartialSuccess(
-      TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_fbp");
-    // Fail-first ordering: failures are iterated first, so the apply gate is
-    // already closed when the lone passing asset is reached — no tags are
-    // written. The status is a *validation* summary, so it must still be
-    // PARTIAL_SUCCESS (one validation pass), not FAILURE.
-    List<EntityReference> assets = new ArrayList<>();
-    assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
-    assets.add(setup.passTable.getEntityReference());
-
-    AddGlossaryToAssetsRequest add =
-        new AddGlossaryToAssetsRequest().withDryRun(false).withAssets(assets);
-    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
-    BulkOperationResult result =
-        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
-
-    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
-    assertEquals(1, result.getNumberOfRowsPassed());
-    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
-    assertFalse(
-        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
-        "fail-before-pass must not apply any tag (gate already closed)");
   }
 
   private static final class MutualExclusiveGlossarySetup {
@@ -4071,10 +4043,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // each target asset. Before the fix they called the repository with no
   // authorizer, so any authenticated caller could apply/strip a glossary
   // term on arbitrary assets (GHSA-jmw6-578h-gw4r).
+  //
+  // Each asset is authorized as its own PATCH: an asset the caller may not
+  // edit is reported as a failed row and keeps its labels, while the
+  // request itself is answered.
   // ===================================================================
 
   @Test
-  void test_bulkRemoveGlossaryFromAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+  void test_bulkRemoveGlossaryFromAssets_deniedUser_isRefused(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_rm_deny");
     Table table = createTableTaggedWithTerm(ns, term, "authz_rm_deny");
@@ -4082,17 +4058,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     HttpResponse<String> response = putAssets(term.getId(), "remove", assetsBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not remove the glossary term: " + response.body());
+    assertRefusedAsset(response);
     assertTrue(
         tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
         "Glossary term must remain on the asset when removal is rejected");
   }
 
   @Test
-  void test_bulkAddGlossaryToAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+  void test_bulkAddGlossaryToAssets_deniedUser_isRefused(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_add_deny");
     Table table = createBareTable(ns, "authz_add_deny");
@@ -4100,10 +4073,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     HttpResponse<String> response = putAssets(term.getId(), "add", assetsBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not apply the glossary term: " + response.body());
+    assertRefusedAsset(response);
     assertFalse(
         tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
         "Glossary term must not be applied to the asset when the add is rejected");
@@ -4155,7 +4125,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
-  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isForbidden(TestNamespace ns)
+  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isRefused(TestNamespace ns)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_deny");
@@ -4165,10 +4135,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     HttpResponse<String> response =
         putAssets(term.getId(), "remove", columnAssetBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not remove a column's term: " + response.body());
+    assertRefusedAsset(response);
     assertTrue(
         columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
         "Glossary term must remain on the column when the caller is denied");
@@ -4257,6 +4224,18 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertTrue(
         result.getFailedRequest() == null || result.getFailedRequest().isEmpty(),
         "No asset must fail for an authorized caller: " + response.body());
+  }
+
+  /** The only asset of the request is reported as refused: a failed row naming the operation. */
+  private void assertRefusedAsset(HttpResponse<String> response) {
+    assertEquals(200, response.statusCode(), response.body());
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, result.getStatus(), response.body());
+    assertEquals(0, result.getNumberOfRowsPassed(), response.body());
+    assertEquals(1, result.getFailedRequest().size(), response.body());
+    assertTrue(
+        result.getFailedRequest().getFirst().getMessage().contains("EditGlossaryTerms"),
+        response.body());
   }
 
   /**

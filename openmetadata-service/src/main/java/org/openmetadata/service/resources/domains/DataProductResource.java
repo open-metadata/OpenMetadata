@@ -75,6 +75,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ODPSConverter;
 
@@ -419,7 +420,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_ALL);
     return buildBulkAssetsResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkAddAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -458,7 +460,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     authorizeAssetsOperation(securityContext, request.getAssets(), MetadataOperation.EDIT_ALL);
     return buildBulkAssetsResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkRemoveAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
