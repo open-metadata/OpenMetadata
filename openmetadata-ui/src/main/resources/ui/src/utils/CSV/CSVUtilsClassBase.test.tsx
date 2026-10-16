@@ -403,10 +403,64 @@ describe('CSV utils ClassBase', () => {
         target: { value: 'PII.Sensitive' },
       });
       fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pageSize: 50,
+          searchIndex: SearchIndex.TAG,
+        })
+      );
+
       fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
 
       expect(onRowChange).not.toHaveBeenCalled();
       expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it('should keep bulk tag actions available when a search has no matches', async () => {
+      mockGetTags.mockResolvedValue({
+        data: [{ name: 'Sensitive', fullyQualifiedName: 'PII.Sensitive' }],
+        paging: { total: 1 },
+      });
+      mockSearchQuery.mockResolvedValue({
+        hits: { hits: [], total: { value: 0 } },
+      });
+      const editor = csvUtils.getEditor(
+        'tags',
+        EntityType.DATABASE,
+        multipleOwner,
+        {
+          usePlainTextEditor: true,
+        }
+      );
+      const TagEditor = editor as FC<
+        RenderEditCellProps<Record<string, unknown>, unknown>
+      >;
+      const onRowChange = jest.fn();
+      const row = { name: 'asset', tags: '' };
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose: jest.fn(),
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+      fireEvent.click(await screen.findByRole('button', { name: 'Sensitive' }));
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'missing' },
+      });
+      await screen.findByText('message.bulk-edit-no-tags-yet');
+      fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { ...row, tags: 'PII.Sensitive' },
+        true
+      );
     });
 
     it('should commit clearing bulk tags without dropping other row fields', async () => {

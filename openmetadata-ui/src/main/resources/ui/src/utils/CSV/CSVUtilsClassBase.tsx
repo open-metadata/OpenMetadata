@@ -79,6 +79,7 @@ import {
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import {
+  PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
@@ -107,8 +108,11 @@ import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchPureUtils';
-import { removeOuterEscapes } from '../StringUtils';
-import tagClassBase from '../TagClassBase';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+  removeOuterEscapes,
+} from '../StringUtils';
 import { isSystemClassificationTagFqn } from './CSV.utils';
 import {
   convertCustomPropertyStringToEntityExtension,
@@ -805,8 +809,16 @@ const loadBulkEditDataProductOptions = async (searchText: string) => {
 const loadBulkEditTagOptions = async (searchText: string) => {
   // Search the catalog rather than filtering only the first page of tags.
   const tags = searchText.trim()
-    ? (await tagClassBase.getTags(searchText, 1)).data.map(({ data }) => data)
-    : (await getTags({ disabled: false, limit: 50 })).data;
+    ? (
+        await searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          query: `*${getEncodedFqn(escapeESReservedCharacters(searchText))}*`,
+          queryFilter: getTermQuery({ disabled: 'false' }),
+          searchIndex: SearchIndex.TAG,
+        })
+      ).hits.hits.map(({ _source }) => _source)
+    : (await getTags({ disabled: false, limit: PAGE_SIZE_LARGE })).data;
 
   return tags
     .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
@@ -1133,6 +1145,8 @@ const InlineBulkEditReferencePickerEditor = ({
 
   const selectedSet = useMemo(() => new Set(draft), [draft]);
   const hasOptions = options.length > 0;
+  // A draft can outlive a search with no matches; keep Update reachable.
+  const showFooter = options.length + draft.length > 0;
 
   const handleToggleOption = (option: BulkEditPickerOption) => {
     setDraft((previous) =>
@@ -1244,7 +1258,7 @@ const InlineBulkEditReferencePickerEditor = ({
               optionsOrEmptyContent
             )}
           </div>
-          {hasOptions && (
+          {showFooter && (
             <div className="bulk-edit-picker-footer">
               <button
                 className="bulk-edit-picker-clear"
