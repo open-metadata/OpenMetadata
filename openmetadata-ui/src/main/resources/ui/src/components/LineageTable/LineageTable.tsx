@@ -647,6 +647,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     timeFilter?.endTime,
   ]);
 
+  useEffect(() => {
+    handlePageChange(1);
+  }, [handlePageChange, timeFilter?.startTime, timeFilter?.endTime]);
+
   // Table-level lineage: fetch on all dependencies
   useEffect(() => {
     void fetchNodes();
