@@ -92,12 +92,18 @@
     }
   }
 
+  // The format bar shows only while the formatting toggle beside send is on.
+  &.inbox-comment-composer__editor--collapsed .ql-toolbar.ql-snow {
+    display: none;
+  }
+
   // `.editor-container` matches the FeedEditor's own 100px minimum, which
   // otherwise wins once the editor holds any text.
   .editor-container .ql-editor,
   .ql-editor.ql-blank {
     min-height: 44px;
-    padding: 12px 48px 12px 14px;
+    // Clear of the formatting toggle and send button on the right.
+    padding: 12px 100px 12px 14px;
     background-color: transparent;
     border-radius: 10px;
   }

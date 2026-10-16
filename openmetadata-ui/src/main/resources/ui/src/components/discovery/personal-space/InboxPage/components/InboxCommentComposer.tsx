@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ArrowRight,
   TextEditorBlockquote,
@@ -25,7 +30,9 @@ import {
   TextEditorMention,
   TextEditorNumberedList,
   TextEditorStrikethrough,
+  Type01,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React, {
   FC,
   RefObject,
@@ -152,7 +159,9 @@ export interface InboxCommentEditorProps {
  * so mention (@), hashtag (#), markdown and Enter-to-send all keep working —
  * restyled through the scoped `inbox-comment-composer__editor` class, with the
  * design's format-bar icons and its arrow send button, disabled until there is
- * something to send. A new comment and an edited one use the same box.
+ * something to send. The format bar starts hidden, one line of text; the
+ * formatting toggle beside send shows it, and stays highlighted while it shows.
+ * A new comment and an edited one use the same box.
  */
 export const InboxCommentEditor: React.FC<InboxCommentEditorProps> = ({
   onSave,
@@ -165,6 +174,7 @@ export const InboxCommentEditor: React.FC<InboxCommentEditorProps> = ({
   const editorRef = useRef<EditorContentRef>(null);
   const editorHostRef = useRef<HTMLDivElement>(null);
   const [hasText, setHasText] = useState(Boolean(defaultValue));
+  const [isFormatting, setIsFormatting] = useState(false);
   const formatBarButtons = useFormatBar(editorHostRef);
 
   // The editor reports its markdown on every change; whitespace alone is not a
@@ -209,19 +219,43 @@ export const InboxCommentEditor: React.FC<InboxCommentEditorProps> = ({
         } as React.CSSProperties
       }>
       <ActivityFeedEditorNew
-        className="inbox-comment-composer__editor tw:w-full"
+        className={classNames(
+          'inbox-comment-composer__editor tw:w-full',
+          !isFormatting && 'inbox-comment-composer__editor--collapsed'
+        )}
         defaultValue={defaultValue}
         editAction={
-          <Button
-            aria-label={t('label.send')}
+          <Box
+            align="center"
             className="tw:absolute tw:right-2 tw:bottom-1.5"
-            color="primary"
-            data-testid="send-button"
-            iconLeading={<ArrowRight className="tw:size-4" />}
-            isDisabled={!hasText}
-            size="sm"
-            onClick={handleSend}
-          />
+            gap={2}>
+            <ButtonUtility
+              className={classNames(
+                isFormatting &&
+                  'tw:bg-brand-primary tw:text-brand-secondary tw:hover:bg-brand-primary tw:hover:text-brand-secondary'
+              )}
+              color="tertiary"
+              data-testid="formatting-toggle"
+              icon={Type01}
+              tooltip={t(
+                isFormatting ? 'label.hide-formatting' : 'label.show-formatting'
+              )}
+              onClick={() => setIsFormatting((open) => !open)}
+            />
+            <span
+              aria-hidden
+              className="tw:h-5 tw:w-px tw:bg-border-secondary"
+            />
+            <Button
+              aria-label={t('label.send')}
+              color="primary"
+              data-testid="send-button"
+              iconLeading={<ArrowRight className="tw:size-4" />}
+              isDisabled={!hasText}
+              size="sm"
+              onClick={handleSend}
+            />
+          </Box>
         }
         emptyMentionText={t('message.no-match-found')}
         focused={focused}

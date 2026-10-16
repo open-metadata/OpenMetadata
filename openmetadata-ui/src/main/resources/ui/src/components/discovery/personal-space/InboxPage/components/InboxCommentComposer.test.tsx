@@ -60,12 +60,14 @@ jest.mock(
             placeHolder,
             editAction,
             defaultValue,
+            className,
           }: {
             onSave?: (m: string) => void;
             onTextChange?: (m: string) => void;
             placeHolder?: string;
             editAction?: React.ReactNode;
             defaultValue?: string;
+            className?: string;
           },
           ref: React.Ref<unknown>
         ) => {
@@ -76,7 +78,7 @@ jest.mock(
           }));
 
           return (
-            <>
+            <div className={className} data-testid="editor-root">
               {/* quill's format bar, where quill-emoji adds its button. */}
               <div className="ql-toolbar" data-testid="format-bar">
                 <span className="ql-formats">
@@ -113,7 +115,7 @@ jest.mock(
                 onChange={(event) => onTextChange?.(event.target.value)}
               />
               {editAction}
-            </>
+            </div>
           );
         }
       ),
@@ -154,6 +156,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick={onClick ?? onPress}>
       {children}
     </button>
+  ),
+  ButtonUtility: ({
+    onClick,
+    tooltip,
+    ...rest
+  }: {
+    onClick?: () => void;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-label={tooltip}
+      data-testid={rest['data-testid']}
+      onClick={onClick}
+    />
   ),
   Typography: ({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
@@ -298,6 +315,43 @@ describe('InboxCommentComposer', () => {
 
     expect(holder).not.toBeNull();
     expect(holder?.getAttribute('style')).toContain('Reply here');
+  });
+
+  // The format bar starts hidden; the toggle beside send shows and hides it.
+  describe('formatting toggle', () => {
+    const editorRoot = () => screen.getByTestId('editor-root');
+
+    it('starts with the format bar hidden', () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+
+      expect(editorRoot()).toHaveClass(
+        'inbox-comment-composer__editor--collapsed'
+      );
+      expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
+        'aria-label',
+        'label.show-formatting'
+      );
+    });
+
+    it('shows the format bar, then hides it again', () => {
+      render(<InboxCommentComposer onSave={jest.fn()} />);
+
+      fireEvent.click(screen.getByTestId('formatting-toggle'));
+
+      expect(editorRoot()).not.toHaveClass(
+        'inbox-comment-composer__editor--collapsed'
+      );
+      expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
+        'aria-label',
+        'label.hide-formatting'
+      );
+
+      fireEvent.click(screen.getByTestId('formatting-toggle'));
+
+      expect(editorRoot()).toHaveClass(
+        'inbox-comment-composer__editor--collapsed'
+      );
+    });
   });
 
   // Quill draws its icons from one app-wide registry; the composer draws the
