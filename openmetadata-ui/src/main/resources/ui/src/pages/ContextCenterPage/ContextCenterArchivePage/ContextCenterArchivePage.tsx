@@ -26,11 +26,13 @@ import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
+  getContextFileById,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
@@ -39,6 +41,7 @@ import { getFilterTabClassName } from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
+  reconcileCountAfterAsyncDelete,
 } from '../../../utils/ContextCenterQueryKeys';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -212,9 +215,6 @@ const ContextCenterArchivePage: FC = () => {
     try {
       setIsDeleting(true);
       await deleteDriveFile(itemToDelete.id, true);
-      queryClient.invalidateQueries({
-        queryKey: CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
-      });
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
@@ -223,7 +223,25 @@ const ContextCenterArchivePage: FC = () => {
         ...prev,
         total: Math.max(0, prev.total - 1),
       }));
+      const deletedId = itemToDelete.id;
       setItemToDelete(undefined);
+      // A 202 finishes on a background thread, so the count is converged once
+      // the row is actually gone, not invalidated on the response. Not awaited
+      // — holding `isDeleting` through the poll would spin the modal button, so
+      // `void` marks the float as deliberate.
+      void reconcileCountAfterAsyncDelete(
+        queryClient,
+        CONTEXT_CENTER_ARCHIVE_COUNT_QUERY_KEY,
+        () =>
+          // `Include.All` because every archive row is already soft-deleted —
+          // the endpoint's `non-deleted` default would 404 at once and make an
+          // un-purged file look gone. Only a 404 counts as landed; a transient
+          // error leaves it to the next attempt.
+          getContextFileById(deletedId, Include.All).then(
+            () => false,
+            (err) => (err as AxiosError).response?.status === 404
+          )
+      );
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
