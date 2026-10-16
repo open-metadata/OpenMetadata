@@ -871,7 +871,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.7.2-jre</version>
+      <version>${guava.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
