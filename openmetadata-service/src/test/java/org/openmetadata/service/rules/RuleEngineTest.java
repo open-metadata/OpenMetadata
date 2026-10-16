@@ -1,6 +1,7 @@
 package org.openmetadata.service.rules;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -98,6 +99,33 @@ class RuleEngineTest {
           .thenReturn(null);
 
       assertEquals(List.of(), RuleEngine.getInstance().evaluateAndReturn(table, null, true, false));
+    }
+  }
+
+  @Test
+  void isOperationEnabledMatchesRuleLogicNotItsName() {
+    String domainMatch = "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"}]}";
+    SemanticsRule renamed =
+        new SemanticsRule().withName("Renamed by admin").withRule(domainMatch).withEnabled(true);
+    SemanticsRule other =
+        new SemanticsRule()
+            .withName("Data Product Domain Validation")
+            .withRule("{\"<=\":[{\"length\":{\"var\":\"domains\"}},1]}")
+            .withEnabled(true);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SettingsCache> settingsCache = mockStatic(SettingsCache.class)) {
+      entity.when(Entity::getSystemRepository).thenReturn(mock(SystemRepository.class));
+      settingsCache
+          .when(
+              () ->
+                  SettingsCache.getSetting(
+                      SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class))
+          .thenReturn(new EntityRulesSettings().withEntitySemantics(List.of(renamed, other)));
+      assertTrue(RuleEngine.getInstance().isOperationEnabled("validateDataProductDomainMatch"));
+
+      renamed.setEnabled(false);
+      assertFalse(RuleEngine.getInstance().isOperationEnabled("validateDataProductDomainMatch"));
     }
   }
 
