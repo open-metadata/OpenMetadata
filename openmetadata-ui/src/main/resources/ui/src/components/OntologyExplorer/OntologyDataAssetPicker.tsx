@@ -1,0 +1,266 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Checkbox,
+  Input,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
+import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { EntityReference } from '../../generated/entity/type';
+import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import Fqn from '../../utils/Fqn';
+import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryPureUtils';
+import { showErrorToast } from '../../utils/ToastUtils';
+
+type AssetScope = 'all' | 'tables' | 'columns';
+
+const SCOPE_INDEXES: Record<
+  AssetScope,
+  Array<SearchIndex.TABLE | SearchIndex.COLUMN>
+> = {
+  all: [SearchIndex.TABLE, SearchIndex.COLUMN],
+  columns: [SearchIndex.COLUMN],
+  tables: [SearchIndex.TABLE],
+};
+const PAGE_SIZE = 25;
+const SEARCH_DEBOUNCE_MS = 250;
+
+interface OntologyDataAssetPickerProps {
+  readonly term: GlossaryTerm;
+  readonly onCancel: () => void;
+  readonly onSave: () => void;
+}
+
+const SearchIcon = ({ className }: { className?: string }) => (
+  <Search aria-hidden className={className} />
+);
+
+// The containers above the asset, e.g. "service / database / schema".
+const getAssetPath = (asset: EntityReference): string =>
+  asset.fullyQualifiedName
+    ? Fqn.split(asset.fullyQualifiedName).slice(0, -1).join(' / ')
+    : '';
+
+/** Tables and columns to tag with the concept, picked from one inline search. */
+const OntologyDataAssetPicker = ({
+  term,
+  onCancel,
+  onSave,
+}: OntologyDataAssetPickerProps) => {
+  const { t } = useTranslation();
+  const [query, setQuery] = useState('');
+  const [scope, setScope] = useState<AssetScope>('all');
+  const [results, setResults] = useState<EntityReference[]>([]);
+  const [selected, setSelected] = useState<Map<string, EntityReference>>(
+    () => new Map()
+  );
+  const [isSaving, setIsSaving] = useState(false);
+  const termFqn = term.fullyQualifiedName ?? term.name;
+
+  useEffect(() => {
+    let isCurrent = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE,
+          query: query.trim() ? `*${query.trim()}*` : '',
+          queryFilter: getQueryFilterToExcludeTerm(termFqn),
+          searchIndex: SCOPE_INDEXES[scope],
+        });
+        if (isCurrent) {
+          setResults(
+            // The same reference the Add Assets modal builds from a search hit.
+            response.hits.hits.map(({ _source }) =>
+              getEntityReferenceFromEntity(
+                _source as Omit<EntityReference, 'type'>,
+                _source.entityType as EntityType
+              )
+            )
+          );
+        }
+      } catch (error) {
+        if (isCurrent) {
+          showErrorToast(error as AxiosError);
+        }
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      isCurrent = false;
+      window.clearTimeout(timer);
+    };
+  }, [query, scope, termFqn]);
+
+  const toggle = (asset: EntityReference, isSelected: boolean) =>
+    setSelected((current) => {
+      const next = new Map(current);
+      if (isSelected) {
+        next.set(asset.id, asset);
+      } else {
+        next.delete(asset.id);
+      }
+
+      return next;
+    });
+
+  const isAllSelected =
+    results.length > 0 && results.every((asset) => selected.has(asset.id));
+
+  const toggleAll = (isSelected: boolean) =>
+    setSelected((current) => {
+      const next = new Map(current);
+      results.forEach((asset) =>
+        isSelected ? next.set(asset.id, asset) : next.delete(asset.id)
+      );
+
+      return next;
+    });
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await addAssetsToGlossaryTerm(
+        term,
+        [...selected.values()].map(({ id, type }) => ({ id, type }))
+      );
+      onSave();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Card
+      className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
+      data-testid="ontology-data-asset-picker">
+      <Box align="center" justify="between">
+        <Typography as="span" size="text-sm" weight="semibold">
+          {t('label.add-entity', { entity: t('label.data-asset-plural') })}
+        </Typography>
+        <ButtonUtility
+          color="tertiary"
+          data-testid="ontology-data-asset-picker-close"
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.close')}
+          onClick={onCancel}
+        />
+      </Box>
+      <Input
+        aria-label={t('message.search-tables-and-columns')}
+        data-testid="ontology-data-asset-search"
+        icon={SearchIcon}
+        placeholder={t('message.search-tables-and-columns')}
+        value={query}
+        onChange={setQuery}
+      />
+      <Card className="tw:flex tw:flex-col tw:overflow-hidden tw:p-0">
+        <Box className="tw:border-b tw:border-secondary tw:p-3">
+          <Tabs
+            selectedKey={scope}
+            onSelectionChange={(key) => setScope(key as AssetScope)}>
+            <Tabs.List size="sm" type="button-border">
+              <Tabs.Item id="all" label={t('label.all')} />
+              <Tabs.Item id="tables" label={t('label.table-plural')} />
+              <Tabs.Item id="columns" label={t('label.column-plural')} />
+            </Tabs.List>
+            <Tabs.Panel className="tw:hidden" id="all" />
+            <Tabs.Panel className="tw:hidden" id="tables" />
+            <Tabs.Panel className="tw:hidden" id="columns" />
+          </Tabs>
+        </Box>
+        <Box className="tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5">
+          <Checkbox
+            data-testid="ontology-data-asset-select-all"
+            isDisabled={results.length === 0}
+            isSelected={isAllSelected}
+            label={t('label.select-all')}
+            onChange={toggleAll}
+          />
+        </Box>
+        <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
+          {results.map((asset) => (
+            <li className="tw:px-3 tw:py-2.5" key={asset.id}>
+              <Checkbox
+                aria-label={asset.displayName ?? asset.name}
+                data-testid={`ontology-data-asset-option-${asset.id}`}
+                isSelected={selected.has(asset.id)}
+                label={
+                  <span className="tw:flex tw:min-w-0 tw:flex-col">
+                    <Typography
+                      ellipsis
+                      as="span"
+                      className="tw:text-tertiary"
+                      size="text-xs">
+                      {getAssetPath(asset)}
+                    </Typography>
+                    <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
+                      <Typography
+                        ellipsis
+                        as="span"
+                        size="text-sm"
+                        weight="medium">
+                        {asset.displayName ?? asset.name}
+                      </Typography>
+                      <Typography
+                        as="span"
+                        className="tw:shrink-0 tw:text-tertiary"
+                        size="text-xs">
+                        {entityUtilClassBase.getFormattedEntityType(asset.type)}
+                      </Typography>
+                    </span>
+                  </span>
+                }
+                onChange={(isSelected) => toggle(asset, isSelected)}
+              />
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <Box gap={2} justify="end">
+        <Button color="secondary" size="sm" onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="ontology-data-asset-save"
+          isDisabled={selected.size === 0 || isSaving}
+          isLoading={isSaving}
+          size="sm"
+          onPress={() => void handleSave()}>
+          {t('label.save')}
+        </Button>
+      </Box>
+    </Card>
+  );
+};
+
+export default OntologyDataAssetPicker;

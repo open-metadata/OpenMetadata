@@ -11,26 +11,52 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+    act,
+    fireEvent,
+    render,
+    screen,
+    waitFor
+} from '@testing-library/react';
 import { useState } from 'react';
+import { Glossary } from '../../generated/entity/data/glossary';
+import {
+    OntologyChangeOperation,
+    OntologyChangeSet,
+    OntologyChangeSetState,
+    OperationState,
+    OperationType
+} from '../../generated/entity/data/ontologyChangeSet';
 import { PaletteKey } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
+import { addTermRelation } from '../../rest/glossaryAPI';
+import {
+    applyOntologyChangeSet,
+    getOntologyChangeSet,
+    listOntologyChangeSets
+} from '../../rest/ontologyAPI';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyExplorer from './OntologyExplorer';
 import { LayoutType } from './OntologyExplorer.constants';
 import {
-  MergedEdge,
-  OntologyGraphData,
-  OntologyGraphHandle,
-  OntologyNode,
+    MergedEdge,
+    OntologyGraphData,
+    OntologyGraphHandle,
+    OntologyNode
 } from './OntologyExplorer.interface';
 import {
-  ASSET_BINDING_EDGE_KIND,
-  SEMANTIC_PROJECTION_EDGE_KIND,
+    ASSET_BINDING_EDGE_KIND,
+    SEMANTIC_PROJECTION_EDGE_KIND
 } from './utils/graphBuilders';
 
 interface OntologyGraphMockProps {
   nodes: OntologyNode[];
+  onCreateRelation: (
+    fromId: string,
+    toId: string,
+    relationType: string
+  ) => Promise<void>;
+  onNodeClick: (node: OntologyNode) => void;
 }
 
 const mockOntologyGraph = jest.fn<void, [OntologyGraphMockProps]>();
@@ -38,6 +64,25 @@ const mockRelationPanelMount = jest.fn();
 
 jest.mock('./hooks/useOntologyExplorer', () => ({
   useOntologyExplorer: jest.fn(),
+}));
+
+jest.mock('../../rest/ontologyAPI', () => ({
+  ...jest.requireActual('../../rest/ontologyAPI'),
+  acquireOntologyEditLock: jest.fn().mockResolvedValue({ version: 1 }),
+  applyOntologyChangeSet: jest.fn(),
+  getOntologyChangeSet: jest.fn(),
+  listOntologyChangeSets: jest.fn(),
+  releaseOntologyEditLock: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock('../../rest/glossaryAPI', () => ({
+  ...jest.requireActual('../../rest/glossaryAPI'),
+  addTermRelation: jest.fn(),
 }));
 
 jest.mock('./OntologyGraphG6', () => {
@@ -102,6 +147,9 @@ jest.mock('./OntologyRelationDetailsPanel', () => {
 
 const mockUseOntologyExplorer = useOntologyExplorer as jest.MockedFunction<
   typeof useOntologyExplorer
+>;
+const mockListChangeSets = listOntologyChangeSets as jest.MockedFunction<
+  typeof listOntologyChangeSets
 >;
 const termNode = {
   assetCount: 101,
@@ -214,6 +262,7 @@ function useStatefulExplorerMock(): ReturnType<typeof useOntologyExplorer> {
 describe('OntologyExplorer Studio data controls', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListChangeSets.mockRejectedValue(new Error('no drafts'));
   });
 
   it('renders a hydrated display name instead of an isolated term UUID', () => {
@@ -738,5 +787,256 @@ describe('OntologyExplorer Studio data controls', () => {
       screen.getByTestId('ontology-relation-details-panel')
     ).toHaveTextContent('edge-b');
     expect(mockRelationPanelMount).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('OntologyExplorer AI term proposals', () => {
+  const finance = { id: 'finance-id', name: 'Finance' } as Glossary;
+  const memoryDraft = {
+    description: 'From memories',
+    displayName: 'Memory terms',
+    fullyQualifiedName: 'memory-glossary-1',
+    glossaries: [],
+    id: 'cs-1',
+    name: 'memory-glossary-1',
+    operations: [
+      {
+        id: 'op-revenue',
+        operationType: OperationType.CreateTerm,
+        rationale: 'Named in three memories',
+        sourceMemoryIds: ['memory-1'],
+        state: OperationState.Active,
+        term: {
+          fullyQualifiedName: 'Finance.Revenue',
+          glossary: { id: 'finance-id', name: 'Finance', type: 'glossary' },
+          name: 'Revenue',
+        },
+      } as OntologyChangeOperation,
+    ],
+    state: OntologyChangeSetState.Draft,
+    undoCursor: 1,
+  } as OntologyChangeSet;
+
+  function useSelectableExplorerMock(): ReturnType<typeof useOntologyExplorer> {
+    const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(null);
+
+    return createExplorerState({
+      glossaries: [finance],
+      handleGraphNodeClick: (node: OntologyNode) => setSelectedNode(node),
+      selectedNode,
+      setSelectedNode,
+    });
+  }
+
+  const lastGraphNodes = () =>
+    mockOntologyGraph.mock.calls[mockOntologyGraph.mock.calls.length - 1][0]
+      .nodes;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockListChangeSets.mockResolvedValue({
+      data: [memoryDraft],
+      paging: { total: 1 },
+    });
+    mockUseOntologyExplorer.mockImplementation(useSelectableExplorerMock);
+  });
+
+  it('draws an AI-proposed term and opens its review from the canvas', async () => {
+    render(
+      <OntologyExplorer
+        proposalPermissions={{ canApprove: true, canReject: true }}
+        scope="global"
+      />
+    );
+
+    expect(
+      await screen.findByTestId('ontology-ai-proposal-bar')
+    ).toHaveTextContent('message.count-new-term-proposed');
+
+    const proposed = lastGraphNodes().find((node) => node.proposal);
+
+    expect(proposed).toMatchObject({
+      id: 'proposed-op-revenue',
+      label: 'Revenue',
+      proposal: { changeSetId: 'cs-1', operationId: 'op-revenue' },
+    });
+
+    act(() => {
+      mockOntologyGraph.mock.calls[
+        mockOntologyGraph.mock.calls.length - 1
+      ][0].onNodeClick(proposed as OntologyNode);
+    });
+
+    expect(screen.getByTestId('ontology-ai-proposal-reason')).toHaveTextContent(
+      'Named in three memories'
+    );
+    expect(screen.getByTestId('ontology-ai-proposal-add')).toBeEnabled();
+  });
+
+  it('lists proposals from View and parks them in health once the bar is closed', async () => {
+    render(<OntologyExplorer showHealth scope="global" />);
+
+    fireEvent.click(await screen.findByTestId('ontology-ai-proposal-view'));
+
+    expect(
+      screen.getByTestId('ontology-ai-term-card-op-revenue')
+    ).toHaveTextContent('Revenue');
+
+    fireEvent.click(screen.getByTestId('ontology-ai-proposal-bar-close'));
+
+    expect(
+      screen.queryByTestId('ontology-ai-proposal-bar')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-health-ai-proposals')
+    ).toHaveTextContent('message.count-ai-proposal');
+  });
+
+  describe('in edit mode', () => {
+    const revenueTerm: OntologyNode = {
+      fullyQualifiedName: 'Finance.Revenue',
+      glossaryId: 'finance-id',
+      id: 'revenue-id',
+      label: 'Revenue',
+      type: 'glossaryTerm',
+    };
+
+    // The explorer refreshes after an apply; the refreshed graph holds the
+    // concept the proposal created.
+    function useRefreshingExplorerMock(): ReturnType<
+      typeof useOntologyExplorer
+    > {
+      const [selectedNode, setSelectedNode] = useState<OntologyNode | null>(
+        null
+      );
+      const [nodes, setNodes] = useState<OntologyNode[]>([termNode]);
+      const graphData = { edges: [], nodes };
+
+      return createExplorerState({
+        combinedGraphData: graphData,
+        filteredGraphData: graphData,
+        glossaries: [finance],
+        graphDataToShow: graphData,
+        handleGraphNodeClick: (node: OntologyNode) => setSelectedNode(node),
+        handleRefresh: () => setNodes([termNode, revenueTerm]),
+        selectedNode,
+        setSelectedNode,
+      });
+    }
+
+    const renderEditing = (onRequestEdit = jest.fn()) => {
+      render(
+        <OntologyExplorer
+          isAuthoringMode
+          isEditMode
+          proposalPermissions={{ canApprove: true, canReject: true }}
+          scope="global"
+          onRequestEdit={onRequestEdit}
+        />
+      );
+
+      return onRequestEdit;
+    };
+
+    const lastGraphProps = () =>
+      mockOntologyGraph.mock.calls[mockOntologyGraph.mock.calls.length - 1][0];
+
+    beforeEach(() => {
+      mockUseOntologyExplorer.mockImplementation(useRefreshingExplorerMock);
+      (
+        getOntologyChangeSet as jest.MockedFunction<typeof getOntologyChangeSet>
+      ).mockResolvedValue(memoryDraft);
+      (
+        applyOntologyChangeSet as jest.MockedFunction<
+          typeof applyOntologyChangeSet
+        >
+      ).mockResolvedValue({
+        ...memoryDraft,
+        state: OntologyChangeSetState.Applied,
+      });
+    });
+
+    it('opens the proposal review, not the concept inspector, for a proposed term', async () => {
+      renderEditing();
+      await screen.findByTestId('ontology-ai-proposal-bar');
+      const proposed = lastGraphNodes().find((node) => node.proposal);
+
+      act(() => lastGraphProps().onNodeClick(proposed as OntologyNode));
+
+      expect(
+        screen.getByTestId('ontology-ai-proposal-add-and-edit')
+      ).toBeEnabled();
+      expect(
+        screen.queryByTestId('ontology-authoring-inspector')
+      ).not.toBeInTheDocument();
+    });
+
+    it('adds the term and opens it in the concept inspector on "Add & edit"', async () => {
+      const onRequestEdit = renderEditing();
+      await screen.findByTestId('ontology-ai-proposal-bar');
+      act(() =>
+        lastGraphProps().onNodeClick(
+          lastGraphNodes().find((node) => node.proposal) as OntologyNode
+        )
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-ai-proposal-add-and-edit'));
+
+      expect(
+        await screen.findByTestId('ontology-authoring-inspector')
+      ).toBeInTheDocument();
+      expect(applyOntologyChangeSet).toHaveBeenCalledWith(
+        'cs-1',
+        expect.anything()
+      );
+      expect(onRequestEdit).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByTestId('ontology-ai-proposal-add-and-edit')
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not save a relationship drawn to a proposed term', async () => {
+      renderEditing();
+      await screen.findByTestId('ontology-ai-proposal-bar');
+
+      await act(() =>
+        lastGraphProps().onCreateRelation(
+          termNode.id,
+          'proposed-op-revenue',
+          'relatedTo'
+        )
+      );
+
+      expect(addTermRelation).not.toHaveBeenCalled();
+    });
+
+    it('still saves a relationship drawn between two concepts', async () => {
+      (
+        addTermRelation as jest.MockedFunction<typeof addTermRelation>
+      ).mockResolvedValue({} as never);
+      renderEditing();
+      await screen.findByTestId('ontology-ai-proposal-bar');
+
+      await act(() =>
+        lastGraphProps().onCreateRelation(
+          termNode.id,
+          'DataStudio.SecondaryCluster',
+          'relatedTo'
+        )
+      );
+
+      await waitFor(() =>
+        expect(addTermRelation).toHaveBeenCalledWith(termNode.id, {
+          relationType: 'relatedTo',
+          term: { id: 'DataStudio.SecondaryCluster', type: 'glossaryTerm' },
+        })
+      );
+    });
+  });
+
+  it('does not load proposals outside the Studio canvas', () => {
+    render(<OntologyExplorer scope="glossary" />);
+
+    expect(mockListChangeSets).not.toHaveBeenCalled();
   });
 });

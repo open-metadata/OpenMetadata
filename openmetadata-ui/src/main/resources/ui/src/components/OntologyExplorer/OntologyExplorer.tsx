@@ -57,7 +57,10 @@ import { useGenericContext } from '../Customization/GenericProvider/GenericConte
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
 import GraphSettingsPanel from './GraphSettingsPanel';
+import { useOntologyAiProposalReview } from './hooks/useOntologyAiProposalReview';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
+import OntologyAiProposalBar from './OntologyAiProposalBar';
+import OntologyAiProposalsPanel from './OntologyAiProposalsPanel';
 import OntologyAuthoringInspector from './OntologyAuthoringInspector';
 import OntologyConceptDraftInspector from './OntologyConceptDraftInspector';
 import OntologyControlButtons from './OntologyControlButtons';
@@ -69,8 +72,11 @@ import {
 } from './OntologyExplorer.constants';
 import {
   MergedEdge,
+  OntologyEdge,
   OntologyExplorerProps,
+  OntologyGraphData,
   OntologyNode,
+  OntologyProposalPermissions,
 } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
 import OntologyHealthPanel from './OntologyHealthPanel';
@@ -90,6 +96,10 @@ import {
   isDataAssetLikeNode,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
+import {
+  getProposalGlossaryIds,
+  showsOntologyProposals,
+} from './utils/ontologyProposals';
 
 const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
@@ -305,6 +315,40 @@ function NoTermsGraphEmptyState() {
   );
 }
 
+// Adds nodes the server has not drawn (a concept being authored, AI proposals)
+// and the proposal edges whose two ends are both on the canvas.
+function withExtraGraphItems(
+  graphData: OntologyGraphData | null,
+  extraNodes: OntologyNode[],
+  extraEdges: OntologyEdge[]
+): OntologyGraphData | null {
+  if (extraNodes.length === 0 && (!graphData || extraEdges.length === 0)) {
+    return graphData;
+  }
+  const current = graphData ?? { edges: [], nodes: [] };
+  const nodeIds = new Set(current.nodes.map((node) => node.id));
+  const nodes = [
+    ...current.nodes,
+    ...extraNodes.filter((node) => !nodeIds.has(node.id)),
+  ];
+  const visibleIds = new Set(nodes.map((node) => node.id));
+
+  return {
+    edges: [
+      ...current.edges,
+      ...extraEdges.filter(
+        (edge) => visibleIds.has(edge.from) && visibleIds.has(edge.to)
+      ),
+    ],
+    nodes,
+  };
+}
+
+const NO_PROPOSAL_PERMISSIONS: OntologyProposalPermissions = {
+  canApprove: false,
+  canReject: false,
+};
+
 const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   scope,
   entityId: propEntityId,
@@ -328,6 +372,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   onRelationTypesChange,
   onSelectedNodeChange,
   onRequestEdit,
+  proposalPermissions = NO_PROPOSAL_PERMISSIONS,
 }) => {
   const { t } = useTranslation();
   const contextData = useGenericContext<GlossaryTerm>();
@@ -492,23 +537,59 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     t,
   ]);
 
-  const graphDataWithLocalConcept = useMemo(() => {
-    if (!localConceptNode) {
-      return graphDataToShow;
-    }
+  const [pendingEditFqn, setPendingEditFqn] = useState<string>();
+  const proposalGlossaryIds = useMemo(
+    () => getProposalGlossaryIds(globalGlossaryIds, glossaries),
+    [globalGlossaryIds, glossaries]
+  );
+  const aiReview = useOntologyAiProposalReview({
+    glossaryIds: proposalGlossaryIds,
+    graphNodes: combinedGraphData?.nodes,
+    isEnabled: showsOntologyProposals(
+      scope,
+      surface,
+      explorationMode,
+      isHierarchyView
+    ),
+    onApplied: handleRefresh,
+    onEditTerm: (fullyQualifiedName) => {
+      setPendingEditFqn(fullyQualifiedName);
+      onRequestEdit?.();
+    },
+  });
 
-    const currentGraphData = graphDataToShow ?? { edges: [], nodes: [] };
-    if (
-      currentGraphData.nodes.some((node) => node.id === localConceptNode.id)
-    ) {
-      return currentGraphData;
-    }
+  const { openProposal: openAiProposal, view: aiView } = aiReview;
 
-    return {
-      ...currentGraphData,
-      nodes: [...currentGraphData.nodes, localConceptNode],
-    };
-  }, [graphDataToShow, localConceptNode]);
+  const graphDataWithLocalConcept = useMemo(
+    () =>
+      withExtraGraphItems(
+        graphDataToShow,
+        [
+          ...(localConceptNode ? [localConceptNode] : []),
+          ...(graphDataToShow ? aiReview.proposedNodes : []),
+        ],
+        aiReview.proposedEdges
+      ),
+    [
+      aiReview.proposedEdges,
+      aiReview.proposedNodes,
+      graphDataToShow,
+      localConceptNode,
+    ]
+  );
+
+  // "Add & edit" selects the new concept once the refreshed graph includes it.
+  useEffect(() => {
+    const created =
+      pendingEditFqn &&
+      graphDataToShow?.nodes.find(
+        (node) => node.fullyQualifiedName === pendingEditFqn
+      );
+    if (created) {
+      setPendingEditFqn(undefined);
+      setSelectedNode(created);
+    }
+  }, [graphDataToShow, pendingEditFqn, setSelectedNode]);
 
   useEffect(() => {
     if (!localConceptNode?.isOptimistic) {
@@ -714,6 +795,13 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const handleCreateRelation = useCallback(
     async (fromId: string, toId: string, relationType: string) => {
+      if (
+        aiReview.proposedNodes.some(
+          (node) => node.id === fromId || node.id === toId
+        )
+      ) {
+        return;
+      }
       try {
         await addTermRelation(fromId, {
           relationType,
@@ -729,7 +817,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         showErrorToast(error as AxiosError);
       }
     },
-    [handleRefresh, t]
+    [aiReview.proposedNodes, handleRefresh, t]
   );
 
   const handleExplorationModeSelection = useCallback(
@@ -750,12 +838,19 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
   const handleGraphEdgeClick = useCallback(
     (edge: MergedEdge | null) => {
+      if (edge?.proposal) {
+        openAiProposal(edge.proposal);
+        setSelectedEdge(null);
+        setSelectedNode(null);
+
+        return;
+      }
       setSelectedEdge(edge);
       if (edge) {
         setSelectedNode(null);
       }
     },
-    [setSelectedNode]
+    [openAiProposal, setSelectedNode]
   );
 
   const handleRelationUpdate = useCallback(
@@ -955,7 +1050,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       selectedNodeIdForGraph:
         explorationMode === 'data' && expandedTermIds.size > 1
           ? null
-          : selectedNode?.id,
+          : aiReview.focusNodeId ?? selectedNode?.id,
       expandedTermIdsForGraph:
         explorationMode === 'data' ? expandedTermIds : undefined,
     });
@@ -1028,9 +1123,19 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 onEdgeClick={handleGraphEdgeClick}
                 onNodeClick={(node, position, meta) => {
                   setSelectedEdge(null);
+                  if (node.proposal) {
+                    aiReview.openProposal(node.proposal);
+                    handleGraphPaneClick();
+
+                    return;
+                  }
                   handleGraphNodeClick(node, position, meta);
                 }}
-                onNodeDoubleClick={handleGraphNodeDoubleClick}
+                onNodeDoubleClick={(node) => {
+                  if (!node.proposal) {
+                    handleGraphNodeDoubleClick(node);
+                  }
+                }}
                 onPaneClick={() => {
                   setSelectedEdge(null);
                   handleGraphPaneClick();
@@ -1039,6 +1144,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               />
             )}
           </ErrorBoundary>
+          {aiReview.queue.length > 0 && !aiReview.isBarClosed ? (
+            <OntologyAiProposalBar
+              relationshipCount={aiReview.proposals.relationships.length}
+              termCount={aiReview.proposals.terms.length}
+              onClose={aiReview.closeBar}
+              onView={aiReview.openList}
+            />
+          ) : null}
           {isLoadingMore && (
             <>
               <div className="tw:absolute tw:inset-0 tw:z-1 tw:cursor-wait" />
@@ -1219,7 +1332,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const renderGraphControls = () => (
     <Card
       className={classNames(
-        'tw:absolute tw:bottom-4 tw:z-6 tw:flex tw:items-center',
+        'tw:absolute tw:bottom-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg',
         scope === 'global' ? 'tw:left-4' : 'tw:right-4'
       )}
       data-testid="ontology-graph-controls"
@@ -1412,6 +1525,39 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     );
   };
 
+  const renderAiProposalsPanel = () =>
+    aiView ? (
+      <OntologyAiProposalsPanel
+        isSaving={aiReview.isSaving}
+        permissions={proposalPermissions}
+        proposals={aiReview.proposals}
+        relationTypes={relationTypes}
+        view={aiView}
+        onApplyAllRelationships={() => void aiReview.applyAllRelationships()}
+        onApplyAllTerms={() => void aiReview.applyAllTerms()}
+        onApplyRelationship={(relationship, type) =>
+          void aiReview.applyRelationship(relationship, type)
+        }
+        onApplyTerm={(term, checked, andEdit) =>
+          void aiReview.applyTerm(term, checked, andEdit)
+        }
+        onClose={aiReview.closeDrawer}
+        onRejectRelationship={(relationship) =>
+          void aiReview.rejectRelationship(relationship)
+        }
+        onRejectTerm={(term) => void aiReview.rejectTerm(term)}
+        onSelectTerm={(nodeId) => {
+          aiReview.closeDrawer();
+          setSelectedNode(
+            graphDataWithLocalConcept?.nodes.find(
+              (node) => node.id === nodeId
+            ) ?? null
+          );
+        }}
+        onViewChange={aiReview.setView}
+      />
+    ) : null;
+
   const handleConnectTerm = (node: OntologyNode) => {
     setSelectedNode(node);
     onRequestEdit?.();
@@ -1432,7 +1578,24 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           surface === 'tree'
         }>
         <OntologyHealthPanel
+          aiProposals={
+            aiReview.isBarClosed && aiReview.queue.length > 0
+              ? {
+                  onReview: aiReview.openList,
+                  summary: [
+                    t('message.count-new-term', {
+                      count: aiReview.proposals.terms.length,
+                    }),
+                    t('label.count-relationship', {
+                      count: aiReview.proposals.relationships.length,
+                    }),
+                  ].join(' · '),
+                  total: aiReview.queue.length,
+                }
+              : undefined
+          }
           health={healthSummary}
+          isRaised={!aiReview.isBarClosed && aiReview.queue.length > 0}
           isolatedTermCount={isolatedTermCount}
           onConnect={handleConnectTerm}
         />
@@ -1501,6 +1664,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         </div>
         {renderRelationDetailsPanel()}
         {renderConceptInspector()}
+        {renderAiProposalsPanel()}
       </div>
     </div>
   );

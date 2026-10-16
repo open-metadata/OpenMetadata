@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   AssetRealization,
   RealizationRole,
@@ -87,12 +81,13 @@ describe('OntologyConceptRealization', () => {
     ).toHaveTextContent('Customer Dimension');
   });
 
-  it('explains when no asset realizes the concept', () => {
+  it('shows no placeholder when no asset realizes the concept', () => {
     render(<OntologyConceptRealization realizations={[]} />);
 
     expect(screen.getByTestId('ontology-realizations')).toHaveTextContent(
-      'message.no-concept-realization'
+      'label.realized-in'
     );
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
   });
 
   it('treats a realization with no explicit role as the primary store', () => {
@@ -121,6 +116,46 @@ describe('OntologyConceptRealization', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('lists tables as soon as the form opens, before anything is typed', async () => {
+    mockSearchQuery.mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              id: 'asset-1',
+              name: 'customers',
+              fullyQualifiedName: 'svc.db.sch.customers',
+            },
+          },
+        ],
+      },
+    } as never);
+
+    render(
+      <OntologyConceptRealization
+        isEditMode
+        realizations={[]}
+        termId={TERM_ID}
+        onTermUpdate={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('add-realization'));
+
+    await waitFor(() =>
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ query: '' })
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('realization-asset-input'));
+
+    expect(await screen.findByText('customers')).toBeInTheDocument();
+    expect(
+      screen.getByText('svc / db / sch · label.table')
+    ).toBeInTheDocument();
+  });
+
   it('adds a searched asset with the chosen role', async () => {
     mockSearchQuery.mockResolvedValue({
       hits: {
@@ -146,20 +181,23 @@ describe('OntologyConceptRealization', () => {
     );
 
     fireEvent.click(screen.getByTestId('add-realization'));
-    fireEvent.change(
-      within(screen.getByTestId('realization-asset-input')).getByRole(
-        'textbox'
-      ),
-      { target: { value: 'fact' } }
-    );
+    fireEvent.click(screen.getByTestId('realization-asset-input'));
+    fireEvent.change(await screen.findByPlaceholderText('label.search'), {
+      target: { value: 'fact' },
+    });
 
     await waitFor(() =>
-      expect(
-        screen.getByTestId('realization-candidate-fact_orders')
-      ).toBeInTheDocument()
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: '*fact*' })
+      )
     );
 
-    fireEvent.click(screen.getByTestId('realization-candidate-fact_orders'));
+    fireEvent.click(await screen.findByText('fact_orders'));
+
+    expect(screen.getByTestId('realization-asset-input')).toHaveTextContent(
+      'fact_orders'
+    );
+
     fireEvent.click(
       screen.getByTestId(`realization-role-${RealizationRole.Derived}`)
     );
@@ -187,6 +225,53 @@ describe('OntologyConceptRealization', () => {
         role: RealizationRole.Derived,
       },
     ]);
+  });
+
+  it('keeps the chosen asset as a full row after searching for another', async () => {
+    mockSearchQuery.mockImplementation(
+      async (request) =>
+        ({
+          hits: {
+            hits: [
+              {
+                _source:
+                  request.query === '*work*'
+                    ? {
+                        id: 'asset-2',
+                        name: 'work',
+                        fullyQualifiedName: 'svc.db.sch.work',
+                      }
+                    : {
+                        id: 'asset-1',
+                        name: 'categories',
+                        fullyQualifiedName: 'svc.db.sch.categories',
+                      },
+              },
+            ],
+          },
+        } as never)
+    );
+
+    render(
+      <OntologyConceptRealization
+        isEditMode
+        realizations={[]}
+        termId={TERM_ID}
+        onTermUpdate={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('add-realization'));
+    fireEvent.click(screen.getByTestId('realization-asset-input'));
+    fireEvent.click(await screen.findByText('categories'));
+
+    fireEvent.click(screen.getByTestId('realization-asset-input'));
+    fireEvent.change(await screen.findByPlaceholderText('label.search'), {
+      target: { value: 'work' },
+    });
+
+    expect(await screen.findByText('work')).toBeInTheDocument();
+    expect(screen.getAllByText('svc / db / sch · label.table')).toHaveLength(2);
   });
 
   it('removes a realization by patching the remaining list', async () => {

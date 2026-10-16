@@ -14,6 +14,7 @@
 import {
   Badge,
   BadgeWithDot,
+  BadgeWithIcon,
   Button,
   ButtonUtility,
   Card,
@@ -22,6 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  AskCollateSparkle,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -29,12 +31,22 @@ import {
   Link01,
   Minus,
 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { OntologyHealthSummary } from './OntologyStudio.utils';
 
+/** AI proposals parked here once the canvas proposal bar is closed. */
+export interface OntologyHealthAiProposals {
+  readonly total: number;
+  readonly summary: string;
+  readonly onReview: () => void;
+}
+
 interface OntologyHealthPanelProps {
+  readonly aiProposals?: OntologyHealthAiProposals;
+  readonly isRaised?: boolean;
   readonly health: OntologyHealthSummary;
   readonly isolatedTermCount?: number;
   readonly onConnect: (node: OntologyNode) => void;
@@ -43,14 +55,22 @@ interface OntologyHealthPanelProps {
 type HealthPanelView = 'minimized' | 'summary' | 'open';
 
 const PANEL_POSITION_CLASS = 'tw:absolute tw:bottom-4 tw:right-4 tw:z-6';
+// Clears the AI proposal bar centred along the canvas bottom on narrower screens.
+const RAISED_PANEL_CLASS = 'tw:max-2xl:bottom-18';
 
 const OntologyHealthPanel = ({
+  aiProposals,
+  isRaised = false,
   health,
   isolatedTermCount,
   onConnect,
 }: OntologyHealthPanelProps) => {
   const { t } = useTranslation();
   const [view, setView] = useState<HealthPanelView>('summary');
+  const positionClass = classNames(
+    PANEL_POSITION_CLASS,
+    isRaised && RAISED_PANEL_CLASS
+  );
   const isolatedCount = isolatedTermCount ?? health.isolatedTerms.length;
   const hasIsolated = isolatedCount > 0;
   const isOpen = view === 'open';
@@ -68,7 +88,7 @@ const OntologyHealthPanel = ({
 
   const renderMinimized = () => (
     <Card
-      className={PANEL_POSITION_CLASS}
+      className={classNames(positionClass, 'tw:rounded-lg')}
       data-testid="ontology-health-panel"
       variant="elevated">
       <Button
@@ -84,6 +104,15 @@ const OntologyHealthPanel = ({
           <span className="tw:font-semibold tw:text-primary">
             {health.connectedPercent}%
           </span>
+          {aiProposals ? (
+            <BadgeWithIcon
+              color="purple"
+              iconLeading={AskCollateSparkle}
+              size="sm"
+              type="pill-color">
+              {aiProposals.total}
+            </BadgeWithIcon>
+          ) : null}
           {hasIsolated ? (
             <BadgeWithDot color="warning" size="sm" type="pill-color">
               {isolatedLabel}
@@ -212,7 +241,7 @@ const OntologyHealthPanel = ({
 
   return (
     <Card
-      className={`${PANEL_POSITION_CLASS} tw:flex tw:max-h-[calc(100%-2rem)] tw:w-75 tw:max-w-[calc(100%-2rem)] tw:flex-col tw:overflow-hidden`}
+      className={`${positionClass} tw:flex tw:max-h-[calc(100%-2rem)] tw:w-75 tw:max-w-[calc(100%-2rem)] tw:flex-col tw:overflow-hidden`}
       data-testid="ontology-health-panel"
       variant="elevated">
       <div className="tw:flex tw:shrink-0 tw:flex-col tw:gap-3 tw:p-4">
@@ -229,6 +258,37 @@ const OntologyHealthPanel = ({
           </Typography>
         </div>
         {connectedBar('tw:h-1.5')}
+        {aiProposals ? (
+          <Button
+            noTextPadding
+            className={classNames(
+              'tw:w-full tw:justify-start tw:rounded-lg tw:border tw:border-utility-purple-200',
+              'tw:bg-utility-purple-50 tw:px-2.5 tw:py-2 tw:text-left tw:*:data-text:w-full tw:*:data-text:min-w-0'
+            )}
+            color="tertiary"
+            data-testid="ontology-health-ai-proposals"
+            onPress={aiProposals.onReview}>
+            <span className="tw:flex tw:w-full tw:items-center tw:gap-2">
+              <AskCollateSparkle
+                aria-hidden
+                className="tw:size-3.5 tw:shrink-0"
+              />
+              <Typography
+                as="span"
+                className="tw:min-w-0 tw:flex-1 tw:whitespace-normal"
+                size="text-xs">
+                <span className="tw:font-medium tw:text-primary">
+                  {t('message.count-ai-proposal', { count: aiProposals.total })}
+                </span>{' '}
+                <span className="tw:text-secondary">{aiProposals.summary}</span>
+              </Typography>
+              <span className="tw:flex tw:items-center tw:text-xs tw:font-medium tw:text-utility-purple-700">
+                {t('label.review')}
+                <ChevronRight aria-hidden className="tw:size-3.5" />
+              </span>
+            </span>
+          </Button>
+        ) : null}
         {isOpen ? null : renderIsolatedSummary()}
       </div>
       {isOpen ? renderIsolatedList() : null}

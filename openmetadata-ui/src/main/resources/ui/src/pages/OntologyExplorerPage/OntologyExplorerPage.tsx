@@ -62,7 +62,9 @@ import { useAuth } from '../../hooks/authHooks';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
+import { showInfoToast } from '../../utils/ToastUtils';
 
+// 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.
 type StudioMode = 'view' | 'edit' | 'query' | 'ai' | 'review';
 type ViewSurface = 'graph' | 'tree';
 type EditSurface = 'graph' | 'model';
@@ -194,9 +196,6 @@ function computeModeTabs(
   const editModeTabs: StudioModeTab[] = canEditOntology
     ? [{ id: 'edit', label: t('label.edit') }]
     : [];
-  const reviewModeTabs: StudioModeTab[] = canEditOntology
-    ? [{ id: 'review', label: t('label.needs-review') }]
-    : [];
   const aiModeTabs: StudioModeTab[] = isOntologyAiEnabled
     ? [{ id: 'ai', label: t('label.ai') }]
     : [];
@@ -204,7 +203,6 @@ function computeModeTabs(
   return [
     { id: 'view', label: t('label.view') },
     ...editModeTabs,
-    ...reviewModeTabs,
     { id: 'query', label: t('label.query') },
     ...aiModeTabs,
   ];
@@ -492,6 +490,27 @@ const OntologyExplorerPage: React.FC = () => {
     isLeaseForCurrentGlossary,
     editLease.state
   );
+  // Already in Edit without the lease (another session holds it): asking to
+  // edit again retries the lease and says who is holding it.
+  const handleRequestEdit = () => {
+    setEditSurface('graph');
+    setMode('edit');
+    if (mode !== 'edit' || isLeaseOwned) {
+      return;
+    }
+    editLease.retry();
+    if (editLease.state === 'contended') {
+      showInfoToast(
+        t('message.ontology-edit-held-by', {
+          holder:
+            editLease.lock?.holder.displayName ??
+            editLease.lock?.holder.name ??
+            t('label.user'),
+        })
+      );
+    }
+  };
+
   const selectedGlossaryIds = useMemo(
     () => (selectedGlossaryId ? [selectedGlossaryId] : []),
     [selectedGlossaryId]
@@ -508,6 +527,13 @@ const OntologyExplorerPage: React.FC = () => {
   const changeSetPermissions = computeChangeSetPermissions(
     isAdminUser,
     permissions
+  );
+  const proposalPermissions = useMemo(
+    () => ({
+      canApprove: changeSetPermissions.canApply,
+      canReject: changeSetPermissions.canDiscard,
+    }),
+    [changeSetPermissions.canApply, changeSetPermissions.canDiscard]
   );
   const canCreateConcept = computeCanCreateConcept(
     isAdminUser,
@@ -599,6 +625,7 @@ const OntologyExplorerPage: React.FC = () => {
       isAuthoringMode={mode === 'edit'}
       isEditMode={mode === 'edit' && isLeaseOwned}
       key={explorerRevision}
+      proposalPermissions={proposalPermissions}
       scope="global"
       searchSlot={searchSlot}
       showHealth={showHealth}
@@ -613,10 +640,7 @@ const OntologyExplorerPage: React.FC = () => {
       onGlossariesChange={handleGlossariesChange}
       onGraphDataChange={handleGraphDataChange}
       onRelationTypesChange={handleRelationTypesChange}
-      onRequestEdit={() => {
-        setEditSurface('graph');
-        setMode('edit');
-      }}
+      onRequestEdit={handleRequestEdit}
       onSelectedNodeChange={(node) => setAuthoringGlossaryId(node?.glossaryId)}
       onStatsChange={handleStatsChange}
     />
