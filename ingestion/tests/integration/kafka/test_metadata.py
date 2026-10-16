@@ -46,11 +46,14 @@ def test_ingest_protobuf_schema_when_message_name_differs_from_topic(
 def test_ingest_protobuf_sample_data(
     patch_passwords_for_db_services,
     run_workflow,
+    ingestion_config,
     sample_data_ingestion_config,
     metadata,
     db_service,
     protobuf_topic,
 ):
+    # Sample data is only stored for a topic the server already has, so create it first.
+    run_workflow(MetadataWorkflow, ingestion_config)
     run_workflow(MetadataWorkflow, sample_data_ingestion_config)
 
     topic: Topic = metadata.get_by_name(

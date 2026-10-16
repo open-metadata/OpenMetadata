@@ -32,6 +32,18 @@ PROTOBUF_SCHEMA_TYPE = "PROTOBUF"
 CONFLUENT_MAGIC_BYTES = (0, 1)
 
 
+def read_writer_schema_id(record: bytes) -> int | str | None:
+    """
+    The registry id (magic byte 0) or guid (magic byte 1) of the schema a Confluent-framed
+    record was written with, or None for an unframed record.
+    """
+    if not record or record[0] not in CONFLUENT_MAGIC_BYTES:
+        return None
+    schema_id = SchemaId(PROTOBUF_SCHEMA_TYPE)
+    schema_id.from_bytes(io.BytesIO(record))
+    return schema_id.id if schema_id.guid is None else str(schema_id.guid)
+
+
 class ProtobufMessageDecoder:
     """
     Decode the messages of a topic whose value schema is Protobuf.
