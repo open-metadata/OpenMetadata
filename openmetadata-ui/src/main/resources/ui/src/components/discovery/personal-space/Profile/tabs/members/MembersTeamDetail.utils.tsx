@@ -184,8 +184,11 @@ export const getChildTeamColumns = (
     title: t('label.asset-plural'),
     dataIndex: 'fullyQualifiedName',
     key: 'assets',
-    render: (fullyQualifiedName: string) =>
-      teamAssetCounts[fullyQualifiedName] ?? 0,
+    render: (fullyQualifiedName: string, record: Team) => (
+      <Typography data-testid={`team-asset-count-${record.name}`}>
+        {teamAssetCounts[fullyQualifiedName] ?? 0}
+      </Typography>
+    ),
   },
   {
     title: t('label.description'),

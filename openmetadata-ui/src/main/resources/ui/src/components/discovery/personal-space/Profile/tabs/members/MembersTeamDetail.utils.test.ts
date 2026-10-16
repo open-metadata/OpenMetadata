@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { render, screen } from '@testing-library/react';
+import { ReactElement } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import {
   getAvailableTabs,
@@ -98,17 +100,23 @@ describe('getChildTeamColumns', () => {
   ) => {
     const column = getChildTeamColumns(t, jest.fn(), teamAssetCounts).find(
       (col) => col.key === 'assets'
-    ) as { render: (value: unknown, record: Team, index: number) => unknown };
+    ) as {
+      render: (value: unknown, record: Team, index: number) => ReactElement;
+    };
 
     // Antd hands render the dataIndex value first, then the row.
-    return column.render(record.fullyQualifiedName, record, 0);
+    render(column.render(record.fullyQualifiedName, record, 0));
+
+    return screen.getByTestId(`team-asset-count-${record.name}`);
   };
 
   it('shows a sub-team asset count from the team asset counts', () => {
-    expect(renderAssetCount(team('org.eng'), { 'org.eng': 7 })).toBe(7);
+    expect(
+      renderAssetCount(team('org.eng'), { 'org.eng': 7 })
+    ).toHaveTextContent('7');
   });
 
   it('shows zero for a sub-team missing from the team asset counts', () => {
-    expect(renderAssetCount(team('org.eng'), {})).toBe(0);
+    expect(renderAssetCount(team('org.eng'), {})).toHaveTextContent('0');
   });
 });
