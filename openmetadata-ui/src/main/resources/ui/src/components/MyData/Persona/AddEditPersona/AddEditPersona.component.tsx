@@ -12,7 +12,7 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   FormField,
   FormItemLabel,
   HookForm,
@@ -164,14 +164,12 @@ export const AddEditPersonaForm = ({
                     multiSelect
                     selectedUsers={field.value}
                     onUpdate={async (users) => field.onChange(users ?? [])}>
-                    <Button
+                    <ButtonUtility
                       aria-label={t('label.add-entity', {
                         entity: t('label.user-plural'),
                       })}
-                      color="primary"
                       data-testid="add-users"
-                      iconLeading={Plus}
-                      size="xs"
+                      icon={Plus}
                     />
                   </UserSelectableList>
                 </Box>

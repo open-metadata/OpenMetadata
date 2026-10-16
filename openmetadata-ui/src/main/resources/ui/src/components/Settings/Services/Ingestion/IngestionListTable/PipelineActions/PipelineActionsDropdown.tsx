@@ -12,14 +12,13 @@
  */
 
 import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as KillIcon } from '../../../../../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as DeployIcon } from '../../../../../../assets/svg/deploy.svg';
-import { ReactComponent as EditIcon } from '../../../../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as MoreIcon } from '../../../../../../assets/svg/menu.svg';
 import { ReactComponent as ReloadIcon } from '../../../../../../assets/svg/reload.svg';
 import { ReactComponent as RunIcon } from '../../../../../../assets/svg/run.svg';
@@ -217,7 +216,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.edit'),
         hidden: !editPermission,
-        icon: <EditIcon height={12} width={12} />,
+        icon: <Edit01 size={18} />,
         onClick: () => {
           handleUpdate(ingestion);
           setIsOpen(false);
@@ -240,7 +239,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.delete'),
         hidden: !deletePermission,
-        icon: <DeleteIcon height={12} width={12} />,
+        icon: <Trash01 size={18} />,
         onClick: () => {
           handleConfirmDelete(id, name, displayName);
           setIsOpen(false);
@@ -270,11 +269,10 @@ function PipelineActionsDropdown({
         onOpenChange={setIsOpen}>
         <ButtonUtility
           aria-label={t('label.more-action-plural')}
-          color="tertiary"
           data-testid="more-actions"
           icon={MoreIcon}
           isDisabled={moreActionButtonProps?.disabled}
-          size="sm"
+          size="lg"
         />
         <Dropdown.Popover className="tw:w-30">
           <Dropdown.Menu

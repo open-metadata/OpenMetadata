@@ -14,10 +14,11 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useState } from 'react';
@@ -25,7 +26,6 @@ import { useTranslation } from 'react-i18next';
 import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
 import { TYPE_ICON_TILE_CLASS } from './CustomPropertyCard.constants';
 import { CustomPropertyCardProps } from './CustomPropertyCard.interface';
 import {
@@ -204,9 +204,10 @@ export const CustomPropertyCard = ({
             )}
           </Box>
           {hasEditPermissions && !isEmptyValue && (
-            <WidgetEditButton
+            <ButtonUtility
               data-testid="edit-icon"
-              title={t('label.edit-entity', { entity: propertyLabel })}
+              icon={Edit01}
+              tooltip={t('label.edit-entity', { entity: propertyLabel })}
               onClick={startEditing}
             />
           )}

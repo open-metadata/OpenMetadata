@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  ButtonUtility,
   FieldProp,
   FieldTypes,
   FormItemLabel,
@@ -160,12 +160,11 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
           required={data.required}
           tooltip={data.description}
         />
-        <Button
-          aria-label={t('label.add-entity', { entity: label })}
+        <ButtonUtility
           data-testid={`add-${data.name}`}
-          disabled={disabled}
-          iconLeading={Plus}
-          size="xs"
+          icon={Plus}
+          isDisabled={disabled}
+          tooltip={t('label.add-entity', { entity: label })}
           onClick={() => append({ value: undefined } as never)}
         />
       </div>
@@ -198,12 +197,13 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
               },
             } as FieldProp)}
           </div>
-          <Button
+          <ButtonUtility
             color="tertiary-destructive"
             data-testid={`remove-${data.name}-${index}`}
-            disabled={disabled}
-            iconLeading={Trash01}
-            size="xs"
+            icon={Trash01}
+            isDisabled={disabled}
+            size="sm"
+            tooltip={t('label.remove')}
             onClick={() => remove(index)}
           />
         </div>

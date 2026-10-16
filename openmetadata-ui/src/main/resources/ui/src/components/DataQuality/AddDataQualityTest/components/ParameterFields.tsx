@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Button,
+  ButtonUtility,
   FieldProp,
   FieldTypes,
   FormField,
@@ -109,11 +109,10 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
           required={data.required}
           tooltip={data.description}
         />
-        <Button
-          aria-label={t('label.add-entity', { entity: label })}
+        <ButtonUtility
           data-testid={`add-${data.name}`}
-          iconLeading={Plus}
-          size="xs"
+          icon={Plus}
+          tooltip={t('label.add-entity', { entity: label })}
           onClick={() => append({ value: undefined } as never)}
         />
       </div>
@@ -139,11 +138,12 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
               },
             } as FieldProp)}
           </div>
-          <Button
+          <ButtonUtility
             color="tertiary-destructive"
             data-testid={`remove-${data.name}-${index}`}
-            iconLeading={Trash01}
-            size="xs"
+            icon={Trash01}
+            size="sm"
+            tooltip={t('label.remove')}
             onClick={() => remove(index)}
           />
         </div>

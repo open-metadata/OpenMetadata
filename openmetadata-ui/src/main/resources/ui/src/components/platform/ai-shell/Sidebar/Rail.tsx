@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
@@ -161,14 +165,15 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           ) : (
             <SidebarBrand variant="rail" />
           )}
-          <button
-            aria-label={t('label.expand')}
+          <ButtonUtility
             className="ask-rail__expand-btn"
             data-testid="ask-rail-expand-btn"
-            type="button"
-            onClick={onToggle}>
-            <ExpandPanelIcon height={20} width={20} />
-          </button>
+            icon={ExpandPanelIcon}
+            size="lg"
+            tooltip={t('label.expand')}
+            tooltipPlacement="right"
+            onClick={onToggle}
+          />
         </div>
       </div>
 

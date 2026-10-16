@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import React, {
   RefObject,
@@ -168,14 +168,13 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
         <ActivityFeedEditorNew
           className="inbox-comment-composer__editor tw:w-full"
           editAction={
-            <Button
-              aria-label={t('label.send')}
+            <ButtonUtility
               className="tw:absolute tw:right-2 tw:bottom-1.5"
-              color="primary"
               data-testid="send-button"
-              iconLeading={<ArrowRight className="tw:size-4" />}
+              icon={ArrowRight}
               isDisabled={!hasText}
-              size="sm"
+              size="lg"
+              tooltip={t('label.send')}
               onClick={handleSend}
             />
           }

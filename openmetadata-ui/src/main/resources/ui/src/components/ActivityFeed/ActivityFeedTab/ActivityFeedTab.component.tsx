@@ -18,6 +18,7 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -35,7 +36,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
@@ -240,12 +240,12 @@ const ActivityFeedTabLeftPanel = ({
                 aria-current={isSelected ? 'page' : undefined}
                 className={classNames(
                   'tw:relative tw:flex tw:h-10 tw:w-full tw:cursor-pointer tw:items-center tw:justify-between tw:overflow-hidden',
-                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-fg-brand-primary',
+                  'tw:border-0 tw:px-4 tw:text-left tw:text-sm tw:transition-colors tw:hover:text-utility-brand-600',
                   'tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
                   isSelected
                     ? [
                         // antd inline Menu's selected look: brand tint + 3px left bar.
-                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-fg-brand-primary tw:dark:bg-brand-primary',
+                        'tw:bg-utility-brand-100 tw:font-semibold tw:text-utility-brand-600 tw:dark:bg-brand-primary',
                         'tw:after:absolute tw:after:inset-y-0 tw:after:left-0 tw:after:w-0.75 tw:after:bg-fg-brand-primary',
                       ]
                     : 'tw:bg-transparent tw:text-primary'
@@ -292,7 +292,7 @@ const TaskFilterBar = ({
         <Button
           color="secondary"
           data-testid="user-profile-page-task-filter-icon"
-          iconLeading={<FilterIcon aria-hidden height={16} width={16} />}
+          iconLeading={FilterLines}
           isDisabled={isMentionTabSelected}
           size="sm">
           {filterLabel}

@@ -223,6 +223,7 @@ const PlatformLineage = () => {
           <ButtonUtility
             data-testid="export-button"
             icon={DownloadIcon}
+            size="lg"
             tooltip={t('label.export-as-type', {
               type: t('label.png-uppercase'),
             })}
@@ -232,11 +233,14 @@ const PlatformLineage = () => {
           <ButtonUtility
             data-testid="lineage-config"
             icon={SettingsOutlined}
+            size="lg"
+            tooltip={t('label.lineage-config')}
             onClick={handleSettingsClick}
           />
 
           <ButtonUtility
             icon={isFullScreen ? Minimize02 : Expand05}
+            size="lg"
             tooltip={
               isFullScreen
                 ? t('label.exit-full-screen')

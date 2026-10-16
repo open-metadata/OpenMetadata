@@ -12,7 +12,7 @@
  */
 
 import {
-  Button,
+  ButtonUtility,
   Card,
   Divider,
   Typography,
@@ -190,10 +190,10 @@ const SectionHeader = ({
     {collapsible && (
       <ChevronDown
         className={classNames(
-          'tw:flex-shrink-0 tw:text-fg-quaternary tw:transition-transform',
+          'tw:flex-shrink-0 tw:text-utility-gray-500 tw:transition-transform',
           open && 'tw:rotate-180'
         )}
-        size={18}
+        size={20}
       />
     )}
   </button>
@@ -404,15 +404,11 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
             weight="semibold">
             {getMapFieldTitle(schema, t('label.additional-property-plural'))}
           </Typography>
-          <Button
-            aria-label={t('label.add-entity', { entity: t('label.property') })}
-            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
-            color="primary"
-            size="sm"
-            type="button"
-            onClick={() => onAddClick(schema)()}>
-            <Plus data-icon size={14} />
-          </Button>
+          <ButtonUtility
+            icon={Plus}
+            tooltip={t('label.add-entity', { entity: t('label.property') })}
+            onClick={() => onAddClick(schema)()}
+          />
         </div>
         {visibleProperties.length === 0 ? (
           <Typography as="span" className="tw:text-tertiary" size="text-xs">

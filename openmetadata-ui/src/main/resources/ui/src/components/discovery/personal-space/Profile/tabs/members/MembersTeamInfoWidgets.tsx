@@ -95,10 +95,8 @@ const EditPencil: FC<{
   return (
     <ButtonUtility
       aria-label={t('label.edit-entity', { entity })}
-      color="tertiary"
       data-testid={dataTestId}
-      icon={<Edit01 className="tw:size-3.5 tw:text-brand-secondary" />}
-      size="xs"
+      icon={Edit01}
     />
   );
 };

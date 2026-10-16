@@ -73,20 +73,18 @@ const LineageControlButtons: FC<{
                 ? 'tw:text-link tw:hover:text-link tw:hover:bg-primary_hover'
                 : ''
             }
-            color="tertiary"
             data-testid="toggle-mind-map"
             icon={MapIcon as IconComponent}
-            size="xs"
+            size="lg"
             tooltip={t('label.mind-map')}
             onClick={onToggleMiniMap}
           />
           <Divider orientation="vertical" />
           <ButtonUtility
             aria-label={t('label.zoom-in')}
-            color="tertiary"
             data-testid="zoom-in"
             icon={ZoomInIcon as IconComponent}
-            size="xs"
+            size="lg"
             tooltip={t('label.zoom-in')}
             onClick={handleZoomIn}
           />
@@ -99,20 +97,18 @@ const LineageControlButtons: FC<{
           </Typography>
           <ButtonUtility
             aria-label={t('label.zoom-out')}
-            color="tertiary"
             data-testid="zoom-out"
             icon={ZoomOutIcon as IconComponent}
-            size="xs"
+            size="lg"
             tooltip={t('label.zoom-out')}
             onClick={handleZoomOut}
           />
           <Divider orientation="vertical" />
           <ButtonUtility
             aria-label={t('label.fit-to-screen')}
-            color="tertiary"
             data-testid="fit-screen"
             icon={FitScreenIcon as IconComponent}
-            size="xs"
+            size="lg"
             tooltip={t('label.fit-to-screen')}
             onClick={handleFitView}
           />

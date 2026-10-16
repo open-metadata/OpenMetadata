@@ -631,9 +631,9 @@ export function ConnectionGateCard(
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5 tw:text-quaternary">
           <span className={gatePillClass}>{t('label.gate')}</span>
           {isGateExpanded ? (
-            <ChevronDown size={18} />
+            <ChevronDown size={16} />
           ) : (
-            <ChevronRight size={18} />
+            <ChevronRight size={16} />
           )}
         </div>
       </button>
@@ -1035,7 +1035,7 @@ export function ConnectionFooterActions(
       <Button
         className="test-connection-footer-try-again"
         color="primary"
-        iconLeading={<RefreshCcw01 size={16} />}
+        iconLeading={RefreshCcw01}
         size="sm"
         onClick={onTestConnection}>
         {t('label.try-again')}
@@ -1065,7 +1065,7 @@ export function ConnectionFooterActions(
         className="tw:mr-auto"
         color="secondary"
         data-testid="copy-log-button"
-        iconLeading={<Copy01 size={16} />}
+        iconLeading={Copy01}
         isDisabled={!rawLog}
         size="sm"
         onClick={() => onCopyToClipBoard()}>

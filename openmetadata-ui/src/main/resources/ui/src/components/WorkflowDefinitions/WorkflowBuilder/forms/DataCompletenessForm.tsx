@@ -14,6 +14,7 @@
 import {
   Autocomplete,
   Button,
+  ButtonUtility,
   Input,
   SelectItemType,
   Typography,
@@ -327,12 +328,13 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
 
               <div className="tw:w-1/10 tw:flex tw:justify-center">
                 {scoringLevels.length > 1 && (
-                  <Button
+                  <ButtonUtility
                     color="tertiary-destructive"
-                    iconLeading={Trash01}
+                    icon={Trash01}
                     isDisabled={isFormDisabled}
-                    size="sm"
-                    onPress={() => removeScoringLevel(index)}
+                    size="lg"
+                    tooltip={t('label.remove')}
+                    onClick={() => removeScoringLevel(index)}
                   />
                 )}
               </div>

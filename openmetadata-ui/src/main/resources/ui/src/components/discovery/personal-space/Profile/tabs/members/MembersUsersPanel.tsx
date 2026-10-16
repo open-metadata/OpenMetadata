@@ -340,11 +340,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
           {showDeleted && (
             <ButtonUtility
               aria-label={t('label.restore')}
-              color="tertiary"
               data-testid={`restore-user-btn-${record.name}`}
-              icon={<RefreshCcw01 className="tw:size-4" />}
+              icon={RefreshCcw01}
               isDisabled={!isAdminUser}
-              size="sm"
+              size="lg"
               tooltip={
                 isAdminUser
                   ? t('label.restore-entity', {
@@ -361,11 +360,10 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
 
           <ButtonUtility
             aria-label={t('label.delete')}
-            color="tertiary"
             data-testid={`delete-user-btn-${record.name}`}
-            icon={<Trash01 className="tw:size-4" />}
+            icon={Trash01}
             isDisabled={!isAdminUser}
-            size="sm"
+            size="lg"
             tooltip={
               isAdminUser
                 ? t('label.delete-entity', {

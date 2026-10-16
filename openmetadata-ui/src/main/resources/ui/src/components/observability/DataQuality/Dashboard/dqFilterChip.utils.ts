@@ -33,7 +33,7 @@ export const chipTriggerClassName = (hasSelection: boolean) =>
     borderAfter,
     'tw:hover:bg-primary_hover tw:dark:hover:bg-raised',
     hasSelection
-      ? 'tw:text-fg-brand-primary tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
+      ? 'tw:text-utility-brand-600 tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
       : 'tw:text-secondary tw:hover:text-secondary_hover tw:after:outline-primary'
   );
 
@@ -41,7 +41,7 @@ export const chipTriggerClassName = (hasSelection: boolean) =>
 export const chipChevronClassName = (hasSelection: boolean) =>
   classNames(
     'tw:size-5 tw:shrink-0',
-    hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
+    hasSelection ? 'tw:text-utility-brand-600' : 'tw:text-fg-quaternary'
   );
 
 /** Matches the count badge `FilterSelect` renders on its own trigger. */

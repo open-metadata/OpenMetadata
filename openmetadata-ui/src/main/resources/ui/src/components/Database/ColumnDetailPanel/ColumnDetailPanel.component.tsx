@@ -13,7 +13,7 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   SlideoutMenu,
   Tooltip,
@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Edit01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useId } from 'react';
@@ -65,7 +66,6 @@ import DataQualitySection from '../../common/DataQualitySection/DataQualitySecti
 import { DataQualityTest } from '../../common/DataQualitySection/DataQualitySection.interface';
 import DescriptionSection from '../../common/DescriptionSection/DescriptionSection';
 import GlossaryTermsSection from '../../common/GlossaryTermsSection/GlossaryTermsSection';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import TagsSection from '../../common/TagsSection/TagsSection';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -841,13 +841,11 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     }
 
     return (
-      <EditIconButton
-        newLook
+      <ButtonUtility
         className="tw:ml-2"
         data-testid="edit-displayName-button"
-        disabled={false}
-        size="small"
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
           entity: t('label.display-name'),
         })}
         onClick={() => setIsDisplayNameEditing(true)}
@@ -956,13 +954,12 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
                 {renderDisplayNameSubtitle()}
               </div>
             </div>
-            <div className="tw:shrink-0">
-              <Button
-                aria-label={t('label.close')}
-                color="secondary"
+            <div className="tw:flex tw:shrink-0">
+              <ButtonUtility
                 data-testid="close-button"
-                iconLeading={XClose}
-                size="sm"
+                icon={XClose}
+                size="lg"
+                tooltip={t('label.close')}
                 onClick={onClose}
               />
             </div>
@@ -1047,20 +1044,18 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   const navFooter = (
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
-        <Button
-          aria-label={t('label.previous')}
-          color="secondary"
-          iconLeading={ChevronUp}
+        <ButtonUtility
+          icon={ChevronUp}
           isDisabled={isPreviousDisabled}
           size="sm"
+          tooltip={t('label.previous')}
           onClick={handlePreviousColumn}
         />
-        <Button
-          aria-label={t('label.next')}
-          color="secondary"
-          iconLeading={ChevronDown}
+        <ButtonUtility
+          icon={ChevronDown}
           isDisabled={isNextDisabled}
           size="sm"
+          tooltip={t('label.next')}
           onClick={handleNextColumn}
         />
         {renderColumnCountLabel()}

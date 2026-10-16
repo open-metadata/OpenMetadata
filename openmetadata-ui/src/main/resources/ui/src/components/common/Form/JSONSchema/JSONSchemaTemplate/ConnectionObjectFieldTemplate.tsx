@@ -194,10 +194,9 @@ const SectionHeader = ({
     {collapsible && (
       <ChevronDown
         className={classNames(
-          'tw:flex-shrink-0 tw:text-fg-quaternary tw:transition-transform',
+          'tw:size-5 tw:flex-shrink-0 tw:text-utility-gray-500 tw:transition-transform',
           open && 'tw:rotate-180'
         )}
-        size={18}
       />
     )}
   </button>

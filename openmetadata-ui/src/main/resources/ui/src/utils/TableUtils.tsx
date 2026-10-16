@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -269,14 +274,17 @@ export function getTableExpandableConfig<T>(
       return expandable ? (
         <>
           {isDraggable && <DragIcon className="drag-icon" />}
-          <ExpandIcon
+          <ButtonUtility
+            aria-label={expanded ? t('label.collapse') : t('label.expand')}
             className={classNames(
-              'table-expand-icon vertical-baseline tw:size-3 tw:shrink-0',
+              'table-expand-icon vertical-baseline',
               expandIconClass
             )}
             data-testid="expand-icon"
-            onClick={(e: React.MouseEvent<SVGSVGElement>) =>
-              onExpand(record, e as unknown as React.MouseEvent<HTMLElement>)
+            icon={ExpandIcon}
+            size="xs"
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) =>
+              onExpand(record, e)
             }
           />
         </>

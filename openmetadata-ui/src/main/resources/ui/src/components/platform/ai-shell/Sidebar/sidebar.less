@@ -947,26 +947,8 @@
   &__expand-btn {
     position: absolute;
     inset: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: @ask-rail-item-size;
-    height: @ask-rail-item-size;
-    background: transparent;
-    border: 0;
-    border-radius: @ask-nav-item-radius;
-    padding: 0;
-    cursor: pointer;
-    // Same rest weight as the nav icons it sits above, so the rail header does
-    // not read a shade paler than the list below it.
-    color: @ask-icon-rest;
     opacity: 0;
-    transition: opacity 150ms @ask-transition-ease,
-      background-color 150ms @ask-transition-ease;
-
-    &:hover {
-      background: @ask-bg-hover;
-    }
+    transition: opacity 150ms @ask-transition-ease;
   }
 
   &:hover &__logo-btn {
@@ -1388,26 +1370,6 @@
     flex-direction: column;
     align-items: center;
     flex-shrink: 0;
-  }
-
-  &__expand-btn {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: @ask-rail-item-size;
-    height: @ask-rail-item-size;
-    background: transparent;
-    border: 0;
-    border-radius: @ask-nav-item-radius;
-    padding: 0;
-    cursor: pointer;
-    color: @ask-icon-rest;
-    transition: background-color 150ms @ask-transition-ease;
-
-    &:hover {
-      background: @ask-bg-hover;
-    }
   }
 
   &__nav {

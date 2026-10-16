@@ -1148,9 +1148,8 @@ const ContextCenterMemoriesPage: FC = () => {
                               <span className="tw:flex-1">{opt.label}</span>
                               {selectedAuthor?.id === opt.id && (
                                 <Check
-                                  className="tw:shrink-0 tw:text-fg-brand-secondary"
-                                  size={14}
-                                  strokeWidth={2.5}
+                                  className="tw:shrink-0 tw:text-utility-brand-600"
+                                  size={18}
                                 />
                               )}
                             </Box>

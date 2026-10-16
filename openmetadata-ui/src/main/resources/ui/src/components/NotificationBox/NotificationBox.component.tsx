@@ -249,8 +249,10 @@ const NotificationBox = ({
       <span className="tw:relative tw:inline-flex tw:items-center">
         <NotificationIcon
           aria-label="notification-icon"
-          className="tw:align-middle tw:mr-2 tw:size-4 tw:shrink-0"
+          className="tw:align-middle tw:mr-2 tw:shrink-0"
+          height={18}
           role="img"
+          width={18}
         />
         {name}
         {(key === NotificationTabsKey.TASK

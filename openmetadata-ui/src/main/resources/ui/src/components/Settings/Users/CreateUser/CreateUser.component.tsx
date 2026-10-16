@@ -542,14 +542,12 @@ const CreateUser = ({
                         : ([] as EntityReference[]).concat(domains)
                     )
                   }>
-                  <Button
-                    aria-label={t('label.add-entity', {
+                  <ButtonUtility
+                    data-testid="add-domain"
+                    icon={Plus}
+                    tooltip={t('label.add-entity', {
                       entity: t('label.domain'),
                     })}
-                    color="primary"
-                    data-testid="add-domain"
-                    iconLeading={Plus}
-                    size="xs"
                   />
                 </DomainSelectableList>
               </Box>

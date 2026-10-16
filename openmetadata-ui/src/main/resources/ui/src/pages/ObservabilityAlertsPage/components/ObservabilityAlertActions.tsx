@@ -13,12 +13,12 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Skeleton,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { MouseEvent } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -52,9 +52,8 @@ function ObservabilityAlertActions({
   }
 
   const editButton = (
-    <Button
+    <ButtonUtility
       aria-label={t('label.edit')}
-      color="tertiary"
       data-testid={`alert-edit-${record.name}`}
       href={
         onEditAlert
@@ -63,8 +62,8 @@ function ObservabilityAlertActions({
               record.fullyQualifiedName ?? ''
             )
       }
-      iconLeading={Edit05}
-      size="xs"
+      icon={Edit01}
+      size="lg"
       onClick={
         onEditAlert
           ? (event: MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
@@ -86,13 +85,12 @@ function ObservabilityAlertActions({
       )}
       {alertPermission.delete && (
         <Tooltip arrow placement="bottom" title={t('label.delete')}>
-          <Button
+          <ButtonUtility
             aria-label={t('label.delete')}
-            color="tertiary"
             data-testid={`alert-delete-${record.name}`}
-            iconLeading={Trash01}
+            icon={Trash01}
             isDisabled={record.provider === ProviderType.System}
-            size="xs"
+            size="lg"
             onPress={() => onSelectAlert(record)}
           />
         </Tooltip>

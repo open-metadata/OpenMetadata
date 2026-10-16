@@ -75,7 +75,6 @@ describe('Custom Node Utils', () => {
       );
 
       expect(getByTestId('plus-icon')).toBeInTheDocument();
-      expect(getByTestId('plus-icon')).toHaveClass('lineage-expand-icon');
     });
 
     it('calls the onClickHandler when clicked', () => {

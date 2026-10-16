@@ -12,7 +12,7 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Divider,
   FormField,
   HookForm,
@@ -23,6 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Check,
+  Edit01,
   InfoCircle,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -47,7 +48,6 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
-import { EditIconButton } from '../../../../common/IconButtons/EditIconButton';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
 import { UserTeamSelectableList } from '../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { PersonaSelectableList } from '../../../../MyData/Persona/PersonaSelectableList/PersonaSelectableList.component';
@@ -194,14 +194,13 @@ const TeamsInfo = ({
             'label.email'
           )}`}</Typography>
           {hasEditPermission && (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-email"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.email'),
               })}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
                 emailForm.reset({ email: email ?? '' });
@@ -246,22 +245,20 @@ const TeamsInfo = ({
                   )}
                 </FormField>
                 <Box align="center" gap={1}>
-                  <Button
-                    color="primary"
+                  <ButtonUtility
                     data-testid="cancel-edit-email"
+                    icon={XClose}
                     isDisabled={isLoading}
-                    size="xs"
-                    onClick={() => setIsEmailEdit(false)}>
-                    <XClose size={14} />
-                  </Button>
-                  <Button
-                    color="primary"
+                    tooltip={t('label.cancel')}
+                    onClick={() => setIsEmailEdit(false)}
+                  />
+                  <ButtonUtility
                     data-testid="save-edit-email"
-                    isLoading={isLoading}
-                    size="xs"
-                    type="submit">
-                    <Check size={14} />
-                  </Button>
+                    icon={Check}
+                    isDisabled={isLoading}
+                    tooltip={t('label.save')}
+                    type="submit"
+                  />
                 </Box>
               </Box>
             </HookForm>
@@ -312,11 +309,10 @@ const TeamsInfo = ({
               {`${t('label.type')}`}
             </Typography>
             {hasEditPermission && !showTypeSelector && !isGroupType && (
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-team-type-icon"
-                size="small"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                tooltip={t('label.edit-entity', {
                   entity: t('label.team-type'),
                 })}
                 onClick={(e: MouseEvent) => {

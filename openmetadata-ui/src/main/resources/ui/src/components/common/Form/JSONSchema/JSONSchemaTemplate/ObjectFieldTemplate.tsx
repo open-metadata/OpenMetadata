@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
+  ButtonUtility,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
@@ -107,13 +107,11 @@ export const ObjectFieldTemplate: FunctionComponent<
             {t('label.additional-property-plural')}
           </label>
 
-          <Button
-            aria-label={t('label.add')}
-            color="primary"
+          <ButtonUtility
             data-testid={`add-item-${title}`}
-            iconLeading={Plus}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="xs"
+            tooltip={t('label.add')}
             onClick={() => {
               onAddClick(schema)();
             }}

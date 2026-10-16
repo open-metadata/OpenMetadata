@@ -13,16 +13,15 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   Owner,
   Skeleton,
   Tabs,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit05,
-  RefreshCw01,
+  Edit01,
+  RefreshCcw02,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useState } from 'react';
@@ -141,60 +140,39 @@ function AlertDetailsContent({
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <Tooltip
-                    arrow
-                    title={t('label.sync-alert-offset', {
+                  <ButtonUtility
+                    data-testid="sync-button"
+                    icon={RefreshCcw02}
+                    isDisabled={isSyncing}
+                    size="lg"
+                    tooltip={t('label.sync-alert-offset', {
                       entity: t('label.alert'),
-                    })}>
-                    <Button
-                      aria-label={t('label.sync-alert-offset', {
-                        entity: t('label.alert'),
-                      })}
-                      color="secondary"
-                      data-testid="sync-button"
-                      iconLeading={RefreshCw01}
-                      isLoading={isSyncing}
-                      size="md"
-                      onPress={handleAlertSync}
-                    />
-                  </Tooltip>
+                    })}
+                    onClick={handleAlertSync}
+                  />
                   {editPermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip
-                        arrow
-                        title={t('label.edit-entity', {
+                      <ButtonUtility
+                        data-testid="edit-button"
+                        icon={Edit01}
+                        size="lg"
+                        tooltip={t('label.edit-entity', {
                           entity: t('label.alert'),
-                        })}>
-                        <Button
-                          aria-label={t('label.edit-entity', {
-                            entity: t('label.alert'),
-                          })}
-                          color="secondary"
-                          data-testid="edit-button"
-                          iconLeading={Edit05}
-                          size="md"
-                          onPress={handleAlertEdit}
-                        />
-                      </Tooltip>
+                        })}
+                        onClick={handleAlertEdit}
+                      />
                     )}
                   {deletePermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip
-                        arrow
-                        title={t('label.delete-entity', {
+                      <ButtonUtility
+                        data-testid="delete-button"
+                        icon={Trash01}
+                        size="lg"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.alert'),
-                        })}>
-                        <Button
-                          aria-label={t('label.delete-entity', {
-                            entity: t('label.alert'),
-                          })}
-                          color="secondary"
-                          data-testid="delete-button"
-                          iconLeading={Trash01}
-                          size="md"
-                          onPress={() => setShowDeleteModal(true)}
-                        />
-                      </Tooltip>
+                        })}
+                        onClick={() => setShowDeleteModal(true)}
+                      />
                     )}
                 </Box>
               </div>

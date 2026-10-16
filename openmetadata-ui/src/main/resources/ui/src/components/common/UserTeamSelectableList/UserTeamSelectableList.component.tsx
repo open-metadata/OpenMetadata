@@ -12,6 +12,7 @@
  */
 import {
   Avatar,
+  ButtonUtility,
   Popover,
   Tabs,
   Tag,
@@ -19,7 +20,7 @@ import {
   TagList,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Users01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import React, {
@@ -45,7 +46,6 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
 
@@ -381,12 +381,11 @@ export const UserTeamSelectableList = ({
   };
 
   const defaultTrigger = hasPermission ? (
-    <span ref={triggerRef}>
-      <EditIconButton
-        newLook
+    <span className="tw:inline-flex" ref={triggerRef}>
+      <ButtonUtility
         data-testid={triggerDataTestId}
-        size="small"
-        title={getEditTriggerTitle()}
+        icon={Edit01}
+        tooltip={getEditTriggerTitle()}
         onClick={handleTriggerClick}
       />
     </span>
@@ -406,6 +405,7 @@ export const UserTeamSelectableList = ({
   // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
     <span
+      className="tw:inline-flex"
       ref={triggerRef}
       onClickCapture={handleTriggerClick}
       onKeyDownCapture={handleTriggerKeyDown}>

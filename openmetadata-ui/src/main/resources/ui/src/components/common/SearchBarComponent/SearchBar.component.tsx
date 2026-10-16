@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import { LoadingState } from 'Models';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
+import { useTranslation } from 'react-i18next';
 import Loader from '../Loader/Loader';
 import './search-bar.less';
 
@@ -48,6 +48,7 @@ const Searchbar = ({
   showClearSearch = true,
   searchBarDataTestId,
 }: SearchBarProps) => {
+  const { t } = useTranslation();
   const [userSearch, setUserSearch] = useState(searchValue ?? '');
   const [loadingState, setLoadingState] = useState<LoadingState>('initial');
   const searchTextRef = useRef(searchValue ?? '');
@@ -88,13 +89,12 @@ const Searchbar = ({
   const trailingSlot =
     showClearSearch && userSearch ? (
       <span className="tw:absolute tw:right-3 tw:inset-y-0 tw:flex tw:items-center">
-        <button
-          aria-label="Clear search"
-          className="tw:flex tw:items-center tw:justify-center tw:text-tertiary hover:tw:text-primary"
-          type="button"
-          onClick={handleClear}>
-          <CloseOutlined aria-hidden className="tw:size-3" />
-        </button>
+        <ButtonUtility
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.clear-entity', { entity: t('label.search') })}
+          onClick={handleClear}
+        />
       </span>
     ) : (
       loadingSlot

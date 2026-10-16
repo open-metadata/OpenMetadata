@@ -292,6 +292,7 @@ test.describe('Glossary Bulk Import Export', { tag: '@import-export' }, () => {
 
       await page
         .getByRole('dialog')
+        .filter({ has: page.getByTestId('bulk-import-details-modal') })
         .getByRole('button', { name: 'Close' })
         .click();
 

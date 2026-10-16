@@ -57,7 +57,7 @@ export const RUN_DETAILS_STATUS_STYLE: Record<
     color: 'brand',
     note: {
       icon: Clock,
-      iconClassName: 'tw:text-fg-brand-primary',
+      iconClassName: 'tw:text-utility-brand-600',
       messageKey: 'message.run-details-queued-note',
     },
     valueClassName: 'tw:text-tertiary',

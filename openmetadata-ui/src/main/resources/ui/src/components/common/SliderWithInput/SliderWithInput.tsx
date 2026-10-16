@@ -13,10 +13,9 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   NumberInput,
   Slider,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { isNumber } from 'lodash';
@@ -59,16 +58,13 @@ const SliderWithInput = ({
             value={value ?? Number.NaN}
             onChange={(next) => onChange(Number.isNaN(next) ? null : next)}
           />
-          <Tooltip arrow title={t('label.clear')}>
-            <Button
-              aria-label={t('label.clear')}
-              color="tertiary"
-              data-testid="clear-slider-input"
-              iconLeading={XClose}
-              size="xs"
-              onPress={() => onChange(null)}
-            />
-          </Tooltip>
+          <ButtonUtility
+            data-testid="clear-slider-input"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.clear')}
+            onClick={() => onChange(null)}
+          />
         </Box>
       </Box>
     </Box>

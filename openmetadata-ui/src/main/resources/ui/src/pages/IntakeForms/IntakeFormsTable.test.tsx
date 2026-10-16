@@ -135,18 +135,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: React.PropsWithChildren<Record<string, unknown>>) => (
       <div {...props}>{children}</div>
     ),
-    Button: ({
-      children,
+    ButtonUtility: ({
       onClick,
+      tooltip,
       'data-testid': testId,
     }: {
-      children?: React.ReactNode;
       onClick?: React.MouseEventHandler;
+      tooltip?: string;
       'data-testid'?: string;
     }) => (
-      <button data-testid={testId} onClick={onClick}>
-        {children}
-      </button>
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick} />
     ),
     Table,
     TableCard: {
@@ -170,9 +168,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
         type="checkbox"
         onChange={(e) => onChange?.(e.target.checked)}
       />
-    ),
-    Tooltip: ({ children }: { children?: React.ReactNode }) => (
-      <div>{children}</div>
     ),
     Typography: ({ children }: { children?: React.ReactNode }) => (
       <span>{children}</span>

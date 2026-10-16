@@ -28,6 +28,7 @@ import {
 import {
   ArrowRight,
   ChevronRight,
+  Edit01,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
@@ -50,7 +51,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import AsyncSelectList from '../../../components/common/AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../../../components/common/AsyncSelectList/AsyncSelectList.interface';
 import { useFormDrawerWithRef } from '../../../components/common/atoms/drawer/useFormDrawer';
@@ -108,7 +108,7 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
-const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ICON_TRANSITION_CLASS = 'tw:transition-transform';
 const ROTATE_90_CLASS = 'tw:rotate-90';
 
 interface BulkAssetsSocketMessage {
@@ -570,20 +570,19 @@ const ColumnGridSelectionActions = ({
           className="tw:ml-2.5"
           color="primary"
           data-testid="edit-button"
-          iconLeading={<EditIcon height={14} width={14} />}
+          iconLeading={Edit01}
           isDisabled={isUpdating}
           size="sm"
           onPress={onOpenDrawer}>
           {t('label.edit')}
         </Button>
-        <Button
-          className="tw:text-fg-secondary"
-          color="tertiary"
+        <ButtonUtility
           data-testid="cancel-selection-button"
-          size="sm"
-          onPress={onCancelSelection}>
-          <XClose height={16} width={16} />
-        </Button>
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.cancel')}
+          onClick={onCancelSelection}
+        />
       </>
     ) : (
       <Button
@@ -591,7 +590,7 @@ const ColumnGridSelectionActions = ({
         className="tw:text-tertiary"
         color="tertiary"
         data-testid="edit-button-disabled"
-        iconLeading={<EditIcon height={14} width={14} />}
+        iconLeading={Edit01}
         size="sm"
         onPress={onOpenDrawer}>
         {t('label.edit')}
@@ -1367,16 +1366,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       <div className={COLUMN_NAME_CELL_GRID}>
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           <ButtonUtility
-            color="tertiary"
+            aria-label={
+              isGroupExpanded ? t('label.collapse') : t('label.expand')
+            }
             icon={
               <ChevronRight
+                data-icon
                 className={classNames(
                   ICON_TRANSITION_CLASS,
                   isGroupExpanded && ROTATE_90_CLASS
                 )}
               />
             }
-            size="sm"
+            size="xs"
             onClick={expandHandler}
           />
         </div>
@@ -1433,16 +1435,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isStructExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isStructExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -1480,16 +1485,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasStructChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isOccurrenceExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isOccurrenceExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}

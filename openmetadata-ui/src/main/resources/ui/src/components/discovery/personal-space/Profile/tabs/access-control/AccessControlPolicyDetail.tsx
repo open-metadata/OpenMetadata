@@ -132,10 +132,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       </Typography>
       {canEdit && !isEditing && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-description-btn"
           icon={Edit}
-          size="xs"
           tooltip={t('label.edit-entity', { entity: t('label.description') })}
           onPress={onStartEdit}
         />
@@ -272,11 +270,10 @@ const RuleCard: FC<RuleCardProps> = ({
           </Typography>
           <Box direction="row" gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-rule-${rule.name}`}
               icon={Edit}
               isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-              size="xs"
+              size="lg"
               tooltip={getPermissionTooltipTitle(
                 canEditAll,
                 t('label.edit'),
@@ -286,11 +283,10 @@ const RuleCard: FC<RuleCardProps> = ({
               onPress={() => onEdit(rule)}
             />
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-rule-${rule.name}`}
               icon={Delete}
               isDisabled={!canEditAll || isLoadingOnSave || isActionsDisabled}
-              size="xs"
+              size="lg"
               tooltip={getPermissionTooltipTitle(
                 canEditAll,
                 t('label.delete'),
@@ -406,11 +402,10 @@ const renderRoleOrTeamCell = (
   if (colId === 'actions' && canEditAll) {
     return (
       <ButtonUtility
-        color="tertiary"
         data-testid={`remove-${getEntityName(item)}`}
         icon={Delete}
         isDisabled={isLoadingOnSave}
-        size="xs"
+        size="lg"
         tooltip={t('label.remove')}
         tooltipPlacement="left"
         onPress={() => onRemove(item, kind)}
@@ -854,11 +849,9 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
     const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-policy-btn"
           icon={Edit}
           isDisabled={!canEditAll}
-          size="xs"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -872,18 +865,17 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
           testId="copy-link-btn"
           tooltip={String(t('label.copy'))}
           url={window.location.href}>
-          <Copy01 className="tw:size-3" />
+          <Copy01 data-icon />
         </CopyLinkButton>
       </Box>
     );
 
     const deleteButtonNode: React.ReactNode = isRenameOpen ? undefined : (
       <ButtonUtility
-        color="tertiary"
         data-testid="delete-policy-btn"
         icon={Delete}
         isDisabled={!canDelete}
-        size="xs"
+        size="lg"
         tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
         )}

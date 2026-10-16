@@ -96,10 +96,10 @@ const GlossaryLeftPanel = ({
           {createGlossaryPermission && (
             <div className="tw:px-3">
               <Button
-                className="tw:w-full"
+                className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                 color="secondary"
                 data-testid="add-glossary"
-                iconLeading={<Plus className="tw:text-fg-brand-primary" />}
+                iconLeading={Plus}
                 size="sm"
                 onPress={onAddGlossary}>
                 <Typography className="tw:text-brand-tertiary" weight="regular">

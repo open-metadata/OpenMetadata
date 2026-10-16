@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -545,12 +546,11 @@ const KnowledgeGraphOverlays = ({
                 {inspectorSubtitle}
               </Typography>
             </Box>
-            <Button
-              aria-label={t('label.close')}
-              color="tertiary"
-              iconLeading={XClose}
-              size="sm"
-              onPress={closeInspector}
+            <ButtonUtility
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.close')}
+              onClick={closeInspector}
             />
           </Box>
           {selectedEdge && (

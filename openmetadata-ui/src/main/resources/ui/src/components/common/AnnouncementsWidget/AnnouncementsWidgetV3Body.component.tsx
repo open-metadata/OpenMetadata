@@ -26,8 +26,6 @@ import { AnnouncementsWidgetV3BodyProps } from './AnnouncementsWidgetV3Body.inte
 // carries the white fill and the border, but that border is painted on ::after,
 // so the radius has to be set there too or the button rounds and its edge stays
 // square.
-const ARROW_CLASS = 'tw:size-6 tw:rounded-full tw:after:rounded-full';
-
 const AnnouncementsWidgetV3Body = ({
   announcements,
   onItemClick,
@@ -97,13 +95,11 @@ const AnnouncementsWidgetV3Body = ({
       data-testid={testId}>
       {total > 1 && (
         <ButtonUtility
-          aria-label={t('label.previous')}
-          className={ARROW_CLASS}
-          color="secondary"
           data-testid="announcement-prev-btn"
           icon={ChevronLeft}
           isDisabled={index === 0}
           size="xs"
+          tooltip={t('label.previous')}
           onClick={() => handleStep(-1)}
         />
       )}
@@ -120,13 +116,11 @@ const AnnouncementsWidgetV3Body = ({
 
       {total > 1 && (
         <ButtonUtility
-          aria-label={t('label.next')}
-          className={ARROW_CLASS}
-          color="secondary"
           data-testid="announcement-next-btn"
           icon={ChevronRight}
           isDisabled={index === total - 1}
           size="xs"
+          tooltip={t('label.next')}
           onClick={() => handleStep(1)}
         />
       )}

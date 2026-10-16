@@ -180,10 +180,9 @@ export const CustomizablePageHeader = ({
             />
             <ButtonUtility
               aria-label={t('label.close')}
-              color="tertiary"
               data-testid="customize-minimize-button"
               icon={Minimize01}
-              size="sm"
+              size="lg"
               onPress={handleClose}
             />
           </Box>
@@ -214,7 +213,7 @@ export const CustomizablePageHeader = ({
                 <Button
                   color="primary"
                   data-testid="add-widget-button"
-                  iconLeading={<Plus />}
+                  iconLeading={Plus}
                   onPress={onAddWidget}>
                   {t('label.add-widget-plural')}
                 </Button>
@@ -222,7 +221,7 @@ export const CustomizablePageHeader = ({
               <Button
                 color="secondary"
                 data-testid="reset-button"
-                iconLeading={<RefreshCcw01 />}
+                iconLeading={RefreshCcw01}
                 isDisabled={saving}
                 onPress={() => setResetModalOpen(true)}>
                 {t('label.reset')}
@@ -237,10 +236,10 @@ export const CustomizablePageHeader = ({
               </Button>
               <ButtonUtility
                 aria-label={t('label.cancel')}
-                color="tertiary"
                 data-testid="cancel-button"
                 icon={XClose}
                 isDisabled={saving}
+                size="lg"
                 onPress={handleClose}
               />
             </Box>

@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Edit05, XCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, XCircle } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSuccessBadge } from '../../../assets/svg/success-badge.svg';
@@ -56,17 +60,18 @@ const AppliedFilterText: FC<AppliedFilterTextProps> = ({
           </Typography>
         </Box>
         <Box>
-          <Button
-            color="tertiary"
+          <ButtonUtility
             data-testid="advance-search-filter-btn"
-            iconLeading={<Edit05 size={16} />}
+            icon={Edit01}
             size="sm"
+            tooltip={t('label.edit')}
             onClick={onEdit}
           />
-          <Button
-            color="tertiary"
+          <ButtonUtility
             data-testid="advance-search-clear-btn"
-            iconLeading={<XCircle size={16} />}
+            icon={XCircle}
+            size="sm"
+            tooltip={t('label.clear')}
             onClick={onClear}
           />
         </Box>

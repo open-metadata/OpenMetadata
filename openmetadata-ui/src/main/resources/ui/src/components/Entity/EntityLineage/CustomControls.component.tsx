@@ -409,6 +409,7 @@ const CustomControls: FC<{
       <ButtonUtility
         data-testid="lineage-config"
         icon={Settings01}
+        size="lg"
         onClick={handleSettingsClick}
       />
     );
@@ -458,7 +459,10 @@ const CustomControls: FC<{
           <div className="tw:flex tw:items-baseline">
             {activeTab === 'impact_analysis' && (
               <Dropdown.Root>
-                <Button className="tw:px-3.5 tw:py-2.5" color="tertiary">
+                <Button
+                  className="tw:px-3.5 tw:py-2.5"
+                  color="tertiary"
+                  iconTrailing={ChevronDown}>
                   <div className="tw:flex tw:items-center tw:gap-1">
                     <Typography as="span" className="tw:font-normal">
                       {`${t('label.node-depth')}:`}{' '}
@@ -468,7 +472,6 @@ const CustomControls: FC<{
                       className="tw:text-utility-brand-600 tw:font-normal">
                       {nodeDepth}
                     </Typography>
-                    <ChevronDown height={12} width={12} />
                   </div>
                 </Button>
                 <Dropdown.Popover className="tw:max-w-32">
@@ -528,15 +531,16 @@ const CustomControls: FC<{
     <div>
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
         <div className="tw:flex tw:items-center tw:gap-4">
-          <Button
-            aria-label={t('label.filter-plural')}
-            color={filterSelectionActive ? 'primary' : 'secondary'}
+          <ButtonUtility
+            className={classNames({
+              'tw:*:data-icon:text-utility-brand-600': filterSelectionActive,
+            })}
             data-testid="filters-button"
-            iconLeading={FilterLines}
+            icon={FilterLines}
+            size="lg"
             tooltip={t('label.filter-plural')}
             onClick={toggleFilterSelection}
           />
-
           {searchBarComponent}
         </div>
         <div className="tw:flex tw:gap-4 tw:items-center">
@@ -552,6 +556,7 @@ const CustomControls: FC<{
             aria-label={exportButtonLabel}
             data-testid="export-button"
             icon={Download01}
+            size="lg"
             tooltip={exportButtonLabel}
             onClick={handleExportClick}
           />
@@ -561,6 +566,7 @@ const CustomControls: FC<{
           <ButtonUtility
             aria-label={fullScreenLabel}
             icon={fullScreenIcon}
+            size="lg"
             tooltip={fullScreenLabel}
             onClick={() =>
               updateURLParams({

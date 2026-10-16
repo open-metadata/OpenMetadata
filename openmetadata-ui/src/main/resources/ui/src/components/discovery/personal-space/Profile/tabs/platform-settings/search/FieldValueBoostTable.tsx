@@ -87,18 +87,16 @@ const FieldValueBoostTable = ({
         return (
           <Box direction="row" gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid="edit-field-value-boost-btn"
               icon={Edit01}
-              size="xs"
+              size="lg"
               tooltip={t('label.edit')}
               onPress={() => onEdit(boost)}
             />
             <ButtonUtility
-              color="tertiary"
               data-testid="delete-field-value-boost-btn"
               icon={Trash01}
-              size="xs"
+              size="lg"
               tooltip={t('label.delete')}
               onPress={() => onDelete(boost.field)}
             />

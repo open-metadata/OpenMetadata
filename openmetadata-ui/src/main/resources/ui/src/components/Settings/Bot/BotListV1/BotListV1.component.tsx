@@ -20,6 +20,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 
 import { AxiosError } from 'axios';
@@ -27,7 +28,6 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { BOTS_DOCS } from '../../../../constants/docs.constants';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
@@ -331,16 +331,15 @@ const BotListV1 = ({
           const isDisabled = !isAdminUser || isSystemBot;
 
           return (
-            <Tooltip arrow placement="top right" title={title}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`bot-delete-${record.name}`}
-                icon={IconDelete}
-                isDisabled={isDisabled}
-                size="sm"
-                onClick={() => setSelectedUser(record)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid={`bot-delete-${record.name}`}
+              icon={Trash01}
+              isDisabled={isDisabled}
+              size="lg"
+              tooltip={title}
+              tooltipPlacement="top right"
+              onClick={() => setSelectedUser(record)}
+            />
           );
         },
       },

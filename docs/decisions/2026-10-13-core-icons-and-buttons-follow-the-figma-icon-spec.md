@@ -1,7 +1,7 @@
 # Core icons and buttons follow the Figma icon sizing spec
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-15 (1.8 stroke for Plus/Minus glyphs; link button gap)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx`; `normalizeToGrid` in `scripts/generate-icons.mjs` throws on 24-grid sources it cannot rescale
 - **Related:** open-metadata/OpenMetadata#35348
@@ -39,3 +39,11 @@ that must keep a height move up one name.
 Icons rendered without a size are 20px instead of 24px. A new 24-grid icon is converted on
 `yarn icons:generate`; one that uses shapes other than `<path>` or transforms fails generation
 until it is converted to paths.
+
+## Amendment: designer stroke and link button gap (v2, 2026-10-15)
+- `Plus`, `Minus`, `PlusCircle` and `MinusCircle` use a 1.8 stroke, as drawn by the designer:
+  at 1.3 these sparse glyphs read lighter than the icons beside them. Every other outline icon keeps
+  the 1.3 stroke. The circles are centred at (10, 10) like the rest of the 20 grid.
+- Unboxed link buttons (`link-gray`, `link-color`, `link-destructive`) drop the label's `px-0.5`,
+  so their `gap` is one 2px step wider (2px at `xs`, 4px at `sm` and `md`, 6px at `lg` and `xl`).
+  The visible icon-to-label gap then matches boxed buttons.

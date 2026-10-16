@@ -13,13 +13,13 @@
 
 import {
   Badge,
-  Button,
+  ButtonUtility,
   Card,
   Grid,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Check, Edit01, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -37,7 +37,6 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Description from '../../../common/EntityDescription/Description';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
 import TitleBreadcrumb from '../../../common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -152,23 +151,19 @@ const BotDetails: FC<BotsDetailProps> = ({
                           onChange={setDisplayName}
                         />
                         <div className="flex justify-end" data-testid="buttons">
-                          <Button
-                            aria-label={t('label.cancel')}
+                          <ButtonUtility
                             className="tw:mr-1"
-                            color="primary"
                             data-testid="cancel-displayName"
-                            iconLeading={XClose}
-                            size="xs"
+                            icon={XClose}
+                            tooltip={t('label.cancel')}
                             onMouseDown={() => setIsDisplayNameEdit(false)}
                           />
 
-                          <Button
-                            aria-label={t('label.save')}
+                          <ButtonUtility
                             className="tw:mr-1"
-                            color="primary"
                             data-testid="save-displayName"
-                            iconLeading={Check}
-                            size="xs"
+                            icon={Check}
+                            tooltip={t('label.save')}
                             onClick={handleDisplayNameChange}
                           />
                         </div>
@@ -192,12 +187,11 @@ const BotDetails: FC<BotsDetailProps> = ({
                           </Typography>
                         )}
                         {canEditDisplayName && (
-                          <div>
-                            <EditIconButton
-                              newLook
+                          <div className="tw:flex">
+                            <ButtonUtility
                               data-testid="edit-displayName"
-                              size="small"
-                              title={t('label.edit-entity', {
+                              icon={Edit01}
+                              tooltip={t('label.edit-entity', {
                                 entity: t('label.display-name'),
                               })}
                               onClick={() => setIsDisplayNameEdit(true)}

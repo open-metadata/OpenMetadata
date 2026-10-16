@@ -19,6 +19,7 @@ import {
   Dropdown,
   Owner,
 } from '@openmetadata/ui-core-components';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -29,7 +30,6 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
@@ -456,18 +456,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <div>{streamButtonGroup}</div>
 
         <Dropdown.Root>
-          <Button color="tertiary" data-testid="impact-on-dropdown" size="sm">
-            <div className="tw:flex tw:items-center tw:gap-1">
-              <TrendDownIcon className="tw:size-4" />
-              <Transi18next
-                i18nKey="label.impact-on-area"
-                renderElement={
-                  <span className="tw:ml-1 tw:text-brand-secondary" />
-                }
-                values={{ area: t(`label.${impactLevel}`) }}
-              />
-              <DropdownIcon className="tw:size-3" />
-            </div>
+          <Button
+            color="tertiary"
+            data-testid="impact-on-dropdown"
+            iconLeading={TrendDownIcon}
+            iconTrailing={ChevronDown}
+            size="sm">
+            <Transi18next
+              i18nKey="label.impact-on-area"
+              renderElement={
+                <span className="tw:ml-1 tw:text-brand-secondary" />
+              }
+              values={{ area: t(`label.${impactLevel}`) }}
+            />
           </Button>
           <Dropdown.Popover>
             <Dropdown.Menu

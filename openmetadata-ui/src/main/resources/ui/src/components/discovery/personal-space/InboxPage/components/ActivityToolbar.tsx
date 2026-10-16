@@ -103,7 +103,7 @@ const ActivityToolbar = ({
         return {
           value,
           label: t(value),
-          icon: <Icon className={classNames('tw:size-4', iconClassName)} />,
+          icon: <Icon className={classNames('tw:size-4.5', iconClassName)} />,
         };
       }),
     [t]

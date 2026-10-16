@@ -12,6 +12,7 @@
  */
 
 import { Grid, SkeletonParagraph } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -24,7 +25,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { usePaging } from '../../../../hooks/paging/usePaging';
@@ -236,7 +236,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                                 description={t('label.remove-entity', {
                                   entity: t('label.port'),
                                 })}
-                                icon={DeleteIcon}
+                                icon={Trash01}
                                 id="delete-port"
                                 name={t('label.remove')}
                               />
@@ -247,6 +247,7 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                         label={t('label.manage-entity', {
                           entity: t('label.port'),
                         })}
+                        triggerSize="md"
                       />
                     ) : undefined
                   }

@@ -132,26 +132,6 @@ describe('ExploreSearchInput', () => {
     window.removeEventListener('keydown', globalShortcutHandler);
   });
 
-  it('uses a compact clear icon without an added stroke', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<SearchInputHarness />);
-
-    await user.type(screen.getByRole('textbox'), 'orders');
-
-    const clearIcon = screen
-      .getByTestId('explore-clear-search-button')
-      .querySelector('svg-mock');
-
-    expect(clearIcon).toHaveAttribute(
-      'classname',
-      expect.stringContaining('tw:size-3.5')
-    );
-    expect(clearIcon).not.toHaveAttribute(
-      'classname',
-      expect.stringContaining('tw:[&_path]:stroke-current')
-    );
-  });
-
   it('uses the prefixed placeholder color utility only once', () => {
     render(<SearchInputHarness />);
 

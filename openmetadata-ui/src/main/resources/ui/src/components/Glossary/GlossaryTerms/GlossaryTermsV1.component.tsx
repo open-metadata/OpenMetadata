@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +57,6 @@ import {
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -311,9 +311,11 @@ const GlossaryTermsV1 = ({
             <Tabs.List
               actions={
                 isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
+                  <ButtonUtility
+                    data-testid="tab-expand-button"
+                    icon={isTabExpanded ? Collapse : Expand}
+                    size="lg"
+                    tooltip={
                       isTabExpanded ? t('label.collapse') : t('label.expand')
                     }
                     onClick={toggleTabExpanded}

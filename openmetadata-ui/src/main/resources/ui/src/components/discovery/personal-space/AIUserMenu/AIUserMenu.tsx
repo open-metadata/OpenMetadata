@@ -74,13 +74,13 @@ const POPOVER_CLASS = 'tw:rounded-xl tw:outline-secondary';
 // The core item paints its row on its first child, so `*:` reshapes that row.
 const ROW_CLASS = 'tw:*:rounded-xl';
 
-const ICON_CLASS = 'tw:size-4 tw:shrink-0';
+const ICON_CLASS = 'tw:shrink-0';
 
 const MUTED_ICON_CLASS = `${ICON_CLASS} tw:text-fg-quaternary`;
 
 const ROW_ICON_CLASS = 'tw:size-4.5 tw:shrink-0';
 
-const CHEVRON_CLASS = 'tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary';
+const CHEVRON_CLASS = 'tw:shrink-0 tw:text-fg-quaternary';
 
 // Light ring in the avatar's own hue, set off from it by a 2px gap.
 const AVATAR_RING_CLASS =
@@ -407,7 +407,11 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
                   </Typography>
                 )}
               </Box>
-              <ArrowUpRight aria-hidden className={MUTED_ICON_CLASS} />
+              <ArrowUpRight
+                aria-hidden
+                className={MUTED_ICON_CLASS}
+                size={16}
+              />
             </Box>
           </Dropdown.Item>
 

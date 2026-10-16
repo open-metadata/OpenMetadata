@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { ReactComponent as CloseOutlined } from '../../../assets/svg/close.svg';
+import { t } from '../../../utils/i18next/LocalUtil';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import './user-tag.less';
 import { UserTags, UserTagSize } from './UserTag.interface';
@@ -64,15 +66,13 @@ export const UserTag = ({
       />
       <span className={fontSizes[size]}>{name}</span>
       {closable && (
-        <button
-          aria-label="Remove"
-          className="tw:flex tw:items-center tw:justify-center tw:bg-transparent tw:border-0 tw:p-0 tw:cursor-pointer tw:text-tertiary hover:tw:text-primary"
+        <ButtonUtility
           data-testid="close-icon"
-          style={{ fontSize: width[size] }}
-          type="button"
-          onClick={onRemove}>
-          <CloseOutlined aria-hidden className="tw:size-3" />
-        </button>
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.remove')}
+          onClick={onRemove}
+        />
       )}
     </div>
   );

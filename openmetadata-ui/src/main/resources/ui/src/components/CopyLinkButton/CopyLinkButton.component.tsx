@@ -12,6 +12,7 @@
  */
 import {
   ButtonUtility,
+  ButtonUtilityProps,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
@@ -26,7 +27,7 @@ interface CopyLinkButtonProps {
   url: string;
   tooltip?: string;
   className?: string;
-  color?: 'secondary' | 'tertiary';
+  size?: ButtonUtilityProps['size'];
   testId?: string;
 }
 
@@ -35,7 +36,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   className,
   url,
   tooltip,
-  color = 'tertiary',
+  size = 'lg',
   testId = 'copy-link-btn',
 }) => {
   const { t } = useTranslation();
@@ -53,7 +54,6 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
               'tw:bg-success-solid tw:text-fg-white tw:after:outline-0 tw:shadow-none tw:hover:bg-success-solid tw:hover:text-fg-white',
             className
           )}
-          color={color}
           data-testid={testId}
           icon={
             hasCopied ? (
@@ -62,17 +62,13 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
                   aria-hidden="true"
                   className="copy-link-ring-pulse tw:absolute tw:-inset-0.5 tw:rounded-full tw:border-2 tw:border-utility-success-500 tw:pointer-events-none"
                 />
-                <Check
-                  aria-hidden="true"
-                  className="tw:size-3"
-                  strokeWidth={2.6}
-                />
+                <Check data-icon aria-hidden="true" />
               </>
             ) : (
               children
             )
           }
-          size="sm"
+          size={size}
           onClick={() => onCopyToClipBoard()}
         />
       </TooltipTrigger>

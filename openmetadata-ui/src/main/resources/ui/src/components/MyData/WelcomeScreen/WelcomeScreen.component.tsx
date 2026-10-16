@@ -12,17 +12,17 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   Divider,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { split } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow-right.svg';
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -52,11 +52,11 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   return (
     <Card className="welcome-screen-container" data-testid="welcome-screen">
       <div className="tw:flex tw:justify-end tw:px-4 tw:pt-4">
-        <Button
-          aria-label={t('label.close')}
-          color="tertiary"
+        <ButtonUtility
           data-testid="welcome-screen-close-btn"
-          iconLeading={<CloseIcon height={12} width={12} />}
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.close')}
           onClick={onClose}
         />
       </div>

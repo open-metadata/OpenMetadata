@@ -104,6 +104,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Button,
+    ButtonUtility: ({
+      icon: _icon,
+      size: _size,
+      ...props
+    }: HTMLAttributes<HTMLButtonElement> & {
+      icon?: unknown;
+      size?: string;
+    }) => <button {...props} />,
     Dropdown: {
       Root: ({ children }: { children: ReactNode }) => <>{children}</>,
       Popover: ({ children }: { children: ReactNode }) => <>{children}</>,

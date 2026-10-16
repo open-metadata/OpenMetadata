@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
+import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
 import type { NavigateFunction } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../assets/svg/ic-import.svg';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportTypes } from '../constants/Export.constants';
@@ -43,7 +42,7 @@ export const ExtraTableDropdownOptions = (
                   description={t('message.import-entity-help', {
                     entity: t('label.table'),
                   })}
-                  icon={ImportIcon}
+                  icon={Upload01}
                   id="import-button"
                   name={t('label.import')}
                 />
@@ -63,7 +62,7 @@ export const ExtraTableDropdownOptions = (
                 description={t('message.export-entity-help', {
                   entity: t('label.table'),
                 })}
-                icon={ExportIcon}
+                icon={Download01}
                 id="export-button"
                 name={t('label.export')}
               />

@@ -435,11 +435,10 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
         return (
           <ButtonUtility
-            color="tertiary"
             data-testid={`bot-delete-${bot.name}`}
             icon={Trash01}
             isDisabled={isDisabled}
-            size="xs"
+            size="lg"
             tooltip={tooltipContent}
             onPress={() => setSelectedBot(bot)}
           />

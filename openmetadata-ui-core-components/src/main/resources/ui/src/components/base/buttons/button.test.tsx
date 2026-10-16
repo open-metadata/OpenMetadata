@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
+import { Dialog, DialogTrigger, Popover } from 'react-aria-components';
 import { describe, expect, it, vi } from 'vitest';
 import { Edit01 } from '@/icons';
 import { Button } from './button';
@@ -208,6 +209,16 @@ describe('Button — icon size and color', () => {
   });
 });
 
+describe('Button — numeric label', () => {
+  it('treats a count of 0 as a label', () => {
+    render(<Button iconLeading={Edit01}>{0}</Button>);
+    const button = screen.getByRole('button');
+
+    expect(button).not.toHaveAttribute('data-icon-only');
+    expect(button.querySelector('[data-text]')).toHaveTextContent('0');
+  });
+});
+
 describe('ButtonUtility — icon size and color', () => {
   it.each([
     ['xs', 'tw:p-0.5', 'tw:*:data-icon:size-4', 'tw:*:data-icon:p-[0.5px]'],
@@ -307,5 +318,99 @@ describe('ButtonUtility — icon size and color', () => {
       'tw:text-error-primary',
       'tw:*:data-icon:text-fg-error-secondary'
     );
+  });
+
+  it('defaults to the borderless tertiary color', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveClass(
+      'tw:after:outline-primary'
+    );
+  });
+
+  it('forwards its ref to the button', () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<ButtonUtility icon={Edit01} ref={ref} tooltip="Edit" />);
+
+    expect(ref.current).toBe(screen.getByRole('button', { name: 'Edit' }));
+  });
+
+  it('keeps a disabled button with a tooltip focusable but inert', async () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isDisabled
+        icon={Edit01}
+        tooltip="Edit"
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button).not.toBeDisabled();
+
+    await userEvent.tab();
+
+    expect(button).toHaveFocus();
+
+    await userEvent.click(button);
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('does not open a parent trigger while disabled with a tooltip', async () => {
+    render(
+      <DialogTrigger>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Edit" />
+        <Popover>
+          <Dialog>Menu body</Dialog>
+        </Popover>
+      </DialogTrigger>
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(screen.queryByText('Menu body')).not.toBeInTheDocument();
+  });
+
+  it('does not submit its form while disabled with a tooltip', async () => {
+    const onSubmit = vi.fn((event: SubmitEvent) => event.preventDefault());
+    render(
+      <form onSubmit={(event) => onSubmit(event.nativeEvent as SubmitEvent)}>
+        <ButtonUtility isDisabled icon={Edit01} tooltip="Save" type="submit" />
+      </form>
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    await userEvent.click(button);
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    await userEvent.keyboard(' ');
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('keeps the same focused button when it becomes disabled with a tooltip', () => {
+    const { rerender } = render(
+      <ButtonUtility icon={Edit01} tooltip="Refresh" />
+    );
+    const button = screen.getByRole('button', { name: 'Refresh' });
+    button.focus();
+
+    rerender(<ButtonUtility isDisabled icon={Edit01} tooltip="Refresh" />);
+
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBe(button);
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('disables a button without a tooltip natively', () => {
+    render(<ButtonUtility isDisabled aria-label="Edit" icon={Edit01} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
   });
 });

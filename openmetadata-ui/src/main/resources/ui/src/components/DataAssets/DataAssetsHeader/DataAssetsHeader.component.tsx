@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   ClassificationTag,
   Owner,
   Tooltip,
@@ -21,6 +22,7 @@ import {
 import {
   Activity,
   Copy01,
+  Edit01,
   File02,
   RefreshCcw01,
   ThumbsDown,
@@ -108,7 +110,6 @@ import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -880,12 +881,10 @@ export const DataAssetsHeader = ({
           )}
         </div>
         {editStylePermission && (
-          <EditIconButton
-            newLook
-            className="tw:size-6 tw:p-0"
+          <ButtonUtility
             data-testid="edit-service-style"
-            size="small"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: t('label.style'),
             })}
             onClick={() => setIsStyleEditing(true)}
@@ -951,21 +950,13 @@ export const DataAssetsHeader = ({
               {t('label.deleted')}
             </span>
           )}
-          <Tooltip placement="top" title={copyTooltipTitle}>
-            <TooltipTrigger className="tw:flex tw:items-center">
-              <Button
-                aria-label={t('label.copy-item', {
-                  item: t('label.url-uppercase'),
-                })}
-                color="tertiary"
-                data-testid="entity-header-copy-button"
-                iconLeading={Copy01}
-                size="xs"
-                type="button"
-                onClick={handleCopyEntityUrl}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="lg"
+            tooltip={copyTooltipTitle}
+            onClick={handleCopyEntityUrl}
+          />
           <LearningIcon pageId={entityType} />
         </div>
       </div>
@@ -978,7 +969,6 @@ export const DataAssetsHeader = ({
       afterDeleteAction={afterDeleteAction}
       allowRename={allowRename}
       allowSoftDelete={!dataAsset.deleted && allowSoftDelete}
-      buttonClassName="data-assets-header-manage-button"
       canDelete={flags.canDelete}
       canRestore={ungatedFlags.canEditAll}
       deleted={dataAsset.deleted}
@@ -1057,11 +1047,10 @@ export const DataAssetsHeader = ({
             {editTierPermission && (
               <TierCard currentTier={tier?.tagFQN} updateTier={onTierUpdate}>
                 <Pressable>
-                  <EditIconButton
-                    newLook
+                  <ButtonUtility
                     data-testid="edit-tier"
-                    size="small"
-                    title={t('label.edit-entity', {
+                    icon={Edit01}
+                    tooltip={t('label.edit-entity', {
                       entity: t('label.tier'),
                     })}
                   />
@@ -1149,11 +1138,10 @@ export const DataAssetsHeader = ({
                 }
                 permission={editCertificationPermission}
                 onCertificationUpdate={onCertificationUpdate}>
-                <EditIconButton
-                  newLook
+                <ButtonUtility
                   data-testid="edit-certification"
-                  size="small"
-                  title={t('label.edit-entity', {
+                  icon={Edit01}
+                  tooltip={t('label.edit-entity', {
                     entity: t('label.certification'),
                   })}
                 />

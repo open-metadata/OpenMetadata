@@ -13,16 +13,15 @@
 
 import {
   Box,
-  Button,
   ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
@@ -109,10 +108,9 @@ const UserProfileTeams = ({
           {isAdminUser && !isDeletedUser && (
             <PopoverTrigger isOpen={isTeamsEdit} onOpenChange={setIsTeamsEdit}>
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-teams-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
+                icon={Edit01}
+                size="sm"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.team-plural'),
                 })}
@@ -150,21 +148,19 @@ const UserProfileTeams = ({
                   </div>
 
                   <Box className="tw:mt-auto" gap={2} justify="end">
-                    <Button
-                      aria-label={t('label.cancel')}
-                      color="primary"
+                    <ButtonUtility
                       data-testid="teams-edit-close-btn"
-                      iconLeading={<ClosePopoverIcon height={24} />}
-                      size="xs"
+                      icon={ClosePopoverIcon}
+                      size="sm"
+                      tooltip={t('label.cancel')}
                       onClick={handleCloseEditTeam}
                     />
-                    <Button
-                      aria-label={t('label.save')}
-                      color="primary"
+                    <ButtonUtility
                       data-testid="teams-edit-save-btn"
-                      iconLeading={<SavePopoverIcon height={24} />}
-                      isLoading={isLoading}
-                      size="xs"
+                      icon={SavePopoverIcon}
+                      isDisabled={isLoading}
+                      size="sm"
+                      tooltip={t('label.save')}
                       onClick={handleTeamsSave}
                     />
                   </Box>

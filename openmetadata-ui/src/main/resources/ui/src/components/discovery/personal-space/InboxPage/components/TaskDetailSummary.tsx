@@ -154,11 +154,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
 
           return (
             <Box align="center" gap={2} key={row.key}>
-              <Icon
-                className="tw:shrink-0 tw:text-quaternary"
-                height={16}
-                width={16}
-              />
+              <Icon className="tw:shrink-0 tw:text-quaternary" size={18} />
               <Typography
                 className="tw:w-28 tw:shrink-0 tw:text-tertiary"
                 size="text-sm">

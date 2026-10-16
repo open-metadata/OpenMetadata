@@ -388,10 +388,9 @@ const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
       <Box align="start" className="tw:px-3 tw:py-2.5" gap={2}>
         <Icon
           aria-hidden
-          className={classNames(
-            'tw:mt-0.5 tw:size-4 tw:shrink-0',
-            iconClassName
-          )}
+          className={classNames('tw:mt-0.5 tw:shrink-0', iconClassName)}
+          height={18}
+          width={18}
         />
         <Typography className="tw:text-secondary" size="text-sm">
           {t(messageKey)}

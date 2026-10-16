@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as Delete } from '../../../assets/svg/delete-colored.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import {
   fieldValueBoostAdditionalColumns,
   fieldValueBoostBaseColumns,
@@ -94,22 +93,22 @@ const FieldValueBoostList: React.FC<FieldValueBoostListProps> = ({
         width: 100,
         render: (_: unknown, record: FieldValueBoost) => (
           <div className="d-flex items-center gap-2">
-            <Button
-              aria-label={t('label.edit-entity', {
+            <ButtonUtility
+              data-testid="edit-field-value-boost-btn"
+              icon={Edit01}
+              size="lg"
+              tooltip={t('label.edit-entity', {
                 entity: t('label.field-value-boost'),
               })}
-              color="tertiary"
-              data-testid="edit-field-value-boost-btn"
-              iconLeading={<EditIcon className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => handleEditFieldValueBoost(record)}
             />
-            <Button
-              aria-label={t('label.delete-entity', {
+            <ButtonUtility
+              data-testid="delete-field-value-boost-btn"
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.delete-entity', {
                 entity: t('label.field-value-boost'),
               })}
-              color="tertiary"
-              data-testid="delete-field-value-boost-btn"
-              iconLeading={<Delete className="tw:size-3.5 tw:shrink-0" />}
               onClick={() => handleDeleteFieldValueBoost(record.field)}
             />
           </div>

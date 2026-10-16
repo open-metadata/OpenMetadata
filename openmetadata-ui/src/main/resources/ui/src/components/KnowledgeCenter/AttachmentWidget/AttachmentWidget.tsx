@@ -134,10 +134,9 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
             </div>
             <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
               <ButtonUtility
-                color="tertiary"
                 data-testid={`download-attachment-${item.id}`}
-                icon={<Download01 size={14} />}
-                size="sm"
+                icon={Download01}
+                size="lg"
                 tooltip={t('label.download')}
                 onClick={() => handleDownload(item)}
               />

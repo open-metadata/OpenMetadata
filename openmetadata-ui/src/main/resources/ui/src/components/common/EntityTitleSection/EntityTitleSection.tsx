@@ -12,10 +12,11 @@
  */
 
 import {
-  Button,
+  ButtonUtility,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
@@ -23,8 +24,6 @@ import { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
@@ -171,18 +170,13 @@ export const EntityTitleSection = ({
           </TooltipTrigger>
         </Tooltip>
         {hasEditPermission && entityType && entityDetails.id && (
-          <Tooltip placement="top" title={t('label.edit')}>
-            <TooltipTrigger>
-              <Button
-                color="tertiary"
-                data-testid="edit-displayName-button"
-                iconLeading={
-                  <IconEdit color={DE_ACTIVE_COLOR} height={16} width={16} />
-                }
-                onClick={() => setIsEditModalOpen(true)}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <ButtonUtility
+            data-testid="edit-displayName-button"
+            icon={Edit01}
+            size="sm"
+            tooltip={t('label.edit')}
+            onClick={() => setIsEditModalOpen(true)}
+          />
         )}
       </div>
       {isEditModalOpen && (

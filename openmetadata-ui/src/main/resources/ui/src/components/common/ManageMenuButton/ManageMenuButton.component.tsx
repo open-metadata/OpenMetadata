@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  borderAfter,
-  Dropdown,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Dropdown, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, Key, ReactElement, ReactNode } from 'react';
@@ -73,14 +69,9 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
   return (
     <Dropdown.Root>
       <Dropdown.DotsButton
-        // Border on ::after: DotsButton's own outline is reserved for its focus ring.
-        className={classNames(
-          'tw:relative tw:flex tw:items-center tw:justify-center tw:rounded-lg tw:bg-primary tw:p-2 tw:shadow-xs-skeuomorphic',
-          borderAfter,
-          'tw:after:outline-primary',
-          triggerClassName
-        )}
+        className={triggerClassName}
         data-testid="manage-button"
+        size="lg"
       />
       <Dropdown.Popover
         className={classNames('tw:w-87.5 tw:p-1.5', popoverClassName)}>
@@ -92,7 +83,7 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
           {items.map((item) => {
             const content = (
               <div className="tw:flex tw:items-start tw:gap-3 tw:px-2.5 tw:py-2">
-                <item.icon className="tw:mt-0.5 tw:size-5 tw:shrink-0 tw:text-fg-secondary" />
+                <item.icon className="tw:mt-0.5 tw:size-5 tw:shrink-0 tw:text-quaternary" />
                 <div className="tw:flex tw:flex-col tw:gap-0.5">
                   <Typography size="text-sm" weight="medium">
                     {item.title}

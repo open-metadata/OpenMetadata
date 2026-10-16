@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -43,30 +43,25 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
   );
 
   return (
-    <Tooltip
-      arrow
-      placement="top"
-      title={
+    <ButtonUtility
+      className="hover-cell-icon"
+      data-testid={testId}
+      icon={Copy01}
+      isDisabled={!fieldFqn}
+      size="lg"
+      tooltip={
         hasCopied
           ? t('message.link-copy-to-clipboard')
           : t('label.copy-item', { item: t('label.url-uppercase') })
-      }>
-      <ButtonUtility
-        className="hover-cell-icon"
-        color="tertiary"
-        data-testid={testId}
-        icon={ShareIcon}
-        isDisabled={!fieldFqn}
-        size="xs"
-        onClick={(e) => {
-          // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
-          e.stopPropagation();
-          if (fieldFqn) {
-            handleCopyFieldLink(fieldFqn);
-          }
-        }}
-      />
-    </Tooltip>
+      }
+      onClick={(e) => {
+        // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
+        e.stopPropagation();
+        if (fieldFqn) {
+          handleCopyFieldLink(fieldFqn);
+        }
+      }}
+    />
   );
 };
 

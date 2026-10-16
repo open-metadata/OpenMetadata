@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { capitalize, startCase } from 'lodash';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   BaseEdge,
   Edge,
@@ -154,6 +155,7 @@ export const StraightEdge = (props: EdgeProps) => {
     labelBgStyle,
   } = props;
 
+  const { t } = useTranslation();
   const [isHovered, setIsHovered] = useState(false);
 
   const { allowStructuralGraphEdits } = useWorkflowModeContext();
@@ -242,11 +244,12 @@ export const StraightEdge = (props: EdgeProps) => {
                 stackedLabelY
               ),
             }}>
-            <Button
+            <ButtonUtility
               className="tw:rounded-full tw:bg-surface tw:shadow-sm"
               color="tertiary-destructive"
-              iconLeading={XClose}
-              size="sm"
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.delete')}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation();
                 onEdgeDelete(id);

@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   getField,
   HookForm,
   SlideoutMenu,
@@ -89,7 +90,13 @@ export const LearningResourceForm: React.FC<LearningResourceFormProps> = ({
       <Typography className="drawer-title">
         {resource ? t('label.edit-resource') : t('label.add-resource')}
       </Typography>
-      <XClose className="drawer-close" onClick={onClose} />
+      <ButtonUtility
+        data-testid="drawer-close-icon"
+        icon={XClose}
+        size="lg"
+        tooltip={t('label.close')}
+        onClick={onClose}
+      />
     </div>
   );
 

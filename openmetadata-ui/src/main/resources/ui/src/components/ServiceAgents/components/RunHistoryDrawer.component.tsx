@@ -358,7 +358,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
         onClose={onClose}>
         <Box align="center" className="tw:flex-1 tw:gap-3 tw:mr-8">
           <span className="tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-tertiary tw:text-fg-secondary">
-            <Icon height={18} width={18} />
+            <Icon height={20} width={20} />
           </span>
           <div className="tw:flex-1 tw:min-w-0">
             {/* The ellipsis tooltip already surfaces the full name on hover, so a
@@ -379,7 +379,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               color="link-color"
               data-testid="agent-link-button"
               href={agentLinkProps.href}
-              iconTrailing={<LinkExternal02 size={12} />}
+              iconTrailing={LinkExternal02}
               target="_blank">
               {agentLinkProps.label}
             </Button>
@@ -392,7 +392,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               agent.status === 'failed' ? 'secondary-destructive' : 'secondary'
             }
             data-testid="raw-logs-button"
-            iconLeading={<AlignLeft size={15} />}
+            iconLeading={AlignLeft}
             isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
@@ -403,7 +403,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
               className="tw:font-semibold"
               color="primary"
               data-testid="drawer-run-now-button"
-              iconLeading={<PlayIcon height={14} width={14} />}
+              iconLeading={PlayIcon}
               isDisabled={isPending || isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>

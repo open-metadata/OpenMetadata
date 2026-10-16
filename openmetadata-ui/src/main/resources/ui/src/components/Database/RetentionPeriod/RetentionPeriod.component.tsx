@@ -13,11 +13,13 @@
 import {
   Alert,
   Button,
+  ButtonUtility,
   Dialog,
   Input,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Duration } from 'luxon';
@@ -25,7 +27,6 @@ import { FormEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import './retention-period.less';
 import { RetentionPeriodProps } from './RetentionPeriod.interface';
 // Pluralize a duration component, e.g. pluralizeDurationUnit(2, 'year') => '2 years'
@@ -113,11 +114,11 @@ const RetentionPeriod = ({
               {t('label.retention-period')}
             </span>
             {hasPermission && (
-              <EditIconButton
-                newLook
+              <ButtonUtility
                 data-testid="edit-retention-period-button"
-                size="small"
-                title={editTitle}
+                icon={Edit01}
+                size="sm"
+                tooltip={editTitle}
                 onClick={onEdit}
               />
             )}

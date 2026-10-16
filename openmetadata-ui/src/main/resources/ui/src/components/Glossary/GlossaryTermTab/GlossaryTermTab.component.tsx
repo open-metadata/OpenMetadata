@@ -33,6 +33,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  Edit01,
+  Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -59,10 +61,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDrag } from '../../../assets/svg/drag.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
-import { ReactComponent as PlusOutlinedIcon } from '../../../assets/svg/plus-outlined.svg';
 import StatusBadge from '../../../components/common/StatusBadge/StatusBadge.component';
 import {
   NO_DATA_PLACEHOLDER,
@@ -342,8 +342,7 @@ const renderGlossaryExpandIcon = (
         <ButtonUtility
           aria-expanded={expanded}
           aria-label={t(expanded ? 'label.collapse' : 'label.expand')}
-          className="tw:mr-1 tw:p-0.5"
-          color="tertiary"
+          className="tw:mr-1"
           data-testid="expand-icon"
           icon={expanded ? ChevronDown : ChevronRight}
           size="xs"
@@ -1387,10 +1386,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             <div className="tw:flex tw:items-center tw:gap-1">
               {allowAddTerm && (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid="add-classification"
-                  icon={PlusOutlinedIcon}
-                  size="xs"
+                  icon={Plus}
+                  size="lg"
                   tooltip={t('label.add-entity', {
                     entity: t('label.glossary-term'),
                   })}
@@ -1399,10 +1397,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               )}
 
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-button"
-                icon={EditIcon}
-                size="xs"
+                icon={Edit01}
+                size="lg"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.glossary-term'),
                 })}

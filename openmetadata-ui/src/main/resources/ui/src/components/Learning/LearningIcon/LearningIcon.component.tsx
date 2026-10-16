@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Popover,
   PopoverTrigger,
   Typography,
@@ -120,19 +121,17 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
       <PopoverTrigger
         isOpen={popoverOpen}
         onOpenChange={handlePopoverOpenChange}>
-        <Button
+        <ButtonUtility
           aria-label={t('label.learn-how-this-feature-works')}
           className={classNames(
-            'tw:align-middle tw:*:data-icon:text-brand-600',
+            'tw:align-middle tw:*:data-icon:text-utility-brand-600',
             className
           )}
-          color="tertiary"
           data-testid="learning-icon"
-          iconLeading={Lightbulb01}
-          size="xs"
+          icon={Lightbulb01}
+          onClick={handleClick}
           onMouseEnter={openPopover}
           onMouseLeave={closePopover}
-          onPress={handleClick}
         />
         <Popover
           isNonModal

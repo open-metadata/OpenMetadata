@@ -115,6 +115,30 @@ jest.mock('@openmetadata/ui-core-components', () => {
         </button>
       )
     ),
+    ButtonUtility: jest.fn(
+      ({
+        icon: _icon,
+        isDisabled,
+        onClick,
+        size: _size,
+        tooltip,
+        ...props
+      }: {
+        icon?: unknown;
+        isDisabled?: boolean;
+        onClick?: () => void;
+        size?: string;
+        tooltip?: string;
+      }) => (
+        <button
+          aria-label={tooltip}
+          disabled={isDisabled}
+          type="button"
+          onClick={onClick}
+          {...props}
+        />
+      )
+    ),
     Input: jest.fn(
       ({
         id,

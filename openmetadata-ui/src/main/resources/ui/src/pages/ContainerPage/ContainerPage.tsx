@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { ContainerChildrenCountContext } from '../../components/Container/ContainerChildren/ContainerChildrenCountContext';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
@@ -840,9 +840,11 @@ const ContainerPage = () => {
 
   const renderTabBarExtraContent = () =>
     isExpandViewSupported && (
-      <AlignRightIconButton
-        className={isTabExpanded ? 'rotate-180' : ''}
-        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      <ButtonUtility
+        data-testid="tab-expand-button"
+        icon={isTabExpanded ? Collapse : Expand}
+        size="lg"
+        tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
         onClick={toggleTabExpanded}
       />
     );

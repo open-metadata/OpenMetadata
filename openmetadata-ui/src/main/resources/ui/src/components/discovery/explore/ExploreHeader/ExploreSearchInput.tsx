@@ -17,7 +17,6 @@ import {
   Divider,
   Input,
   SelectPopover,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { isAppleDevice } from '@react-aria/utils';
@@ -80,14 +79,6 @@ const INPUT_CONTAINER_CLASS = classNames(
   'tw:py-[3px] tw:pr-1 tw:pl-2 tw:shadow-xs'
 );
 
-const NLP_TOGGLE_BASE_CLASS =
-  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-lg tw:text-utility-brand-600 tw:transition-none';
-
-const NLP_TOGGLE_INACTIVE_CLASS =
-  'tw:border tw:border-utility-blue-light-200 tw:bg-utility-brand-50 tw:p-1 tw:hover:bg-utility-brand-100';
-
-const NLP_TOGGLE_ACTIVE_CLASS = 'tw:border-0 tw:bg-transparent tw:p-0';
-
 const SUGGESTIONS_CONTAINER_CLASS =
   'tw:max-h-[calc(24rem-2rem)] tw:w-full tw:overflow-y-auto tw:[&>.ant-typography]:px-6!';
 
@@ -104,14 +95,6 @@ const NLP_SUGGESTION_ITEM_CLASS = classNames(
   "tw:[&_[data-testid='nlp-suggestions-button']]:w-full!",
   "tw:[&_[data-testid='nlp-suggestions-button']]:px-6!"
 );
-
-const CLEAR_BUTTON_CLASS = classNames(
-  'tw:flex tw:size-6 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center',
-  'tw:rounded-full tw:bg-transparent tw:text-fg-brand-primary',
-  'tw:transition-colors tw:hover:text-fg-brand-primary'
-);
-
-const CLEAR_ICON_CLASS = classNames('tw:size-3.5 tw:overflow-visible');
 
 const SEARCH_SHORTCUT_CLASS = classNames(
   'tw:mr-1 tw:flex tw:h-6 tw:min-w-8 tw:shrink-0 tw:items-center',
@@ -212,29 +195,18 @@ export const ExploreSearchInput = ({
         <div className={INPUT_CONTAINER_CLASS}>
           {isNLPEnabled && (
             <>
-              <Tooltip
-                title={
+              <ButtonUtility
+                data-testid="explore-nlp-toggle"
+                icon={isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue}
+                isDisabled={isDisabled}
+                size="lg"
+                tooltip={
                   isNLPActive
                     ? t('message.natural-language-search-active')
                     : t('label.use-natural-language-search')
-                }>
-                <button
-                  className={`${NLP_TOGGLE_BASE_CLASS} ${
-                    isNLPActive
-                      ? NLP_TOGGLE_ACTIVE_CLASS
-                      : NLP_TOGGLE_INACTIVE_CLASS
-                  }`}
-                  data-testid="explore-nlp-toggle"
-                  disabled={isDisabled}
-                  type="button"
-                  onClick={onNLPToggle}>
-                  {isNLPActive ? (
-                    <IconSuggestionsActive className="tw:size-6" />
-                  ) : (
-                    <IconSuggestionsBlue className="tw:size-3.5" />
-                  )}
-                </button>
-              </Tooltip>
+                }
+                onClick={onNLPToggle}
+              />
               <Divider
                 className="tw:h-5 tw:self-center"
                 orientation="vertical"
@@ -247,7 +219,7 @@ export const ExploreSearchInput = ({
             data-testid="explore-search-input"
             fontSize="xs"
             icon={Search}
-            iconClassName="tw:size-4 tw:text-utility-brand-600"
+            iconClassName="tw:text-utility-brand-600"
             inputClassName={INPUT_CLASS}
             isDisabled={isDisabled}
             placeholder={placeholderText}
@@ -265,11 +237,8 @@ export const ExploreSearchInput = ({
           />
           {searchValue && (
             <ButtonUtility
-              aria-label={t('label.clear')}
-              className={CLEAR_BUTTON_CLASS}
-              color="tertiary"
               data-testid="explore-clear-search-button"
-              icon={<IconCloseCircleOutlined className={CLEAR_ICON_CLASS} />}
+              icon={IconCloseCircleOutlined}
               size="xs"
               tooltip={t('label.clear')}
               onClick={onClearSearch}

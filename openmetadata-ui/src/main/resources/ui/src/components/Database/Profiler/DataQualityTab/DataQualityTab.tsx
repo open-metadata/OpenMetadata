@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   EmptyPlaceholder,
   Skeleton,
@@ -763,13 +764,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onOpenChange={(isOpen) =>
             setActiveRecordId(isOpen ? record.id ?? null : null)
           }>
-          <Button
-            className="tw:h-6 tw:w-6 tw:p-0!"
-            color="secondary"
+          <ButtonUtility
+            aria-label={t('label.more-action-plural')}
             data-testid={`action-dropdown-${record.name}`}
-            iconLeading={DotsVertical}
+            icon={DotsVertical}
             isDisabled={!hasAnyPermission}
-            size="sm"
+            size="lg"
           />
           <Dropdown.Popover className="tw:w-max">
             <Dropdown.Menu items={menuItems}>

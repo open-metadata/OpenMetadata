@@ -17,7 +17,7 @@ import {
   Input,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit03,
+  Edit01,
   Lock01,
   Plus,
   RefreshCcw01,
@@ -410,7 +410,7 @@ const BulkEditEntity = ({
               data-testid="bulk-edit-remove-row"
               type="button"
               onClick={() => handleRemoveRow(row.id ?? '')}>
-              <Trash01 size={12} />
+              <Trash01 size={18} />
               {t('label.remove')}
             </button>
           )}
@@ -644,7 +644,7 @@ const BulkEditEntity = ({
     <BadgeWithIcon
       className="bulk-edit-edited-pill"
       color="blue"
-      iconLeading={Edit03}
+      iconLeading={Edit01}
       size="sm"
       type="pill-color">
       {`${changedCellCount} ${t('label.edited').toLowerCase()}`}

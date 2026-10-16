@@ -747,7 +747,7 @@ const OntologyAuthoringInspector = ({
           color="tertiary"
           data-testid="ontology-concept-full-details"
           icon={LinkExternal01}
-          size="xs"
+          size="lg"
           tooltip={t('label.view-detail-plural')}
           onClick={onShowFullDetails}
         />
@@ -757,7 +757,7 @@ const OntologyAuthoringInspector = ({
           color="tertiary"
           data-testid="ontology-concept-inspector-close"
           icon={XClose}
-          size="xs"
+          size="lg"
           tooltip={t('label.close')}
           onClick={onClose}
         />

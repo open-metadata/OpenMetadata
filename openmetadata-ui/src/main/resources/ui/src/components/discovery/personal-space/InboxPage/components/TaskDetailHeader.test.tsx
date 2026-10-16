@@ -61,6 +61,9 @@ describe('TaskDetailHeader', () => {
   it('disables the overflow menu while a transition runs', () => {
     renderHeader('approve');
 
-    expect(screen.getByTestId('task-actions-menu')).toBeDisabled();
+    expect(screen.getByTestId('task-actions-menu')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 });

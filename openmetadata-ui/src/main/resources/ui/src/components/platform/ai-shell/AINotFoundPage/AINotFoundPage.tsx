@@ -182,7 +182,7 @@ const AINotFoundPage: FC = () => {
         <Box className="tw:items-center tw:gap-3 tw:mt-6">
           <Button
             data-testid="ai-not-found-home-button"
-            iconLeading={<Home01 className="tw:w-5 tw:h-5 tw:text-fg-white" />}
+            iconLeading={Home01}
             size="md"
             onPress={() => navigate(ROUTES.HOME)}>
             {t('label.back-to-home')}
@@ -190,7 +190,7 @@ const AINotFoundPage: FC = () => {
           <Button
             color="secondary"
             data-testid="ai-not-found-explore-button"
-            iconLeading={<Search className="tw:w-5 tw:h-5" />}
+            iconLeading={Search}
             size="md"
             onPress={() => navigate(ROUTES.EXPLORE)}>
             {t('label.explore')}

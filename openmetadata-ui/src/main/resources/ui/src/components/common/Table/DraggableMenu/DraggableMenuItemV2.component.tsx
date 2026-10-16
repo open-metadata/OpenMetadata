@@ -95,7 +95,7 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
             aria-hidden
             className="tw:text-fg-quaternary"
             data-testid="draggable-menu-item-drag-icon"
-            size={16}
+            size={18}
           />
         </span>
 
@@ -106,11 +106,12 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
           <Typography>{label}</Typography>
 
           {isItemSelected ? (
-            <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
+            <Eye aria-label="eye" className="tw:ml-auto" size={18} />
           ) : (
             <EyeOff
               aria-label="eye-invisible"
-              className="tw:ml-auto tw:size-4"
+              className="tw:ml-auto"
+              size={18}
             />
           )}
         </button>

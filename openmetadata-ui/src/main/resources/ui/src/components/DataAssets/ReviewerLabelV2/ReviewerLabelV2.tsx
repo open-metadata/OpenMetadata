@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
@@ -19,10 +21,6 @@ import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
@@ -98,16 +96,18 @@ export const ReviewerLabelV2 = <
           popoverProps={{ placement: 'topLeft' }}
           onUpdate={handleReviewerSave}>
           {hasReviewers ? (
-            <WidgetEditButton
+            <ButtonUtility
               data-testid="edit-reviewer-button"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.reviewer-plural'),
               })}
             />
           ) : (
-            <WidgetPlusButton
+            <ButtonUtility
               data-testid="Add"
-              title={t('label.add-entity', {
+              icon={Plus}
+              tooltip={t('label.add-entity', {
                 entity: t('label.reviewer-plural'),
               })}
             />

@@ -100,7 +100,7 @@ const CriticalAnnouncementBanner = ({
         color="tertiary"
         data-testid="critical-announcement-dismiss"
         icon={XClose}
-        size="sm"
+        size="lg"
         tooltip={t('label.dismiss')}
         onClick={onDismiss}
       />

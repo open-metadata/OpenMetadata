@@ -77,7 +77,7 @@ const TaskTypeIcon: React.FC<TaskTypeIconProps> = ({ badge }) => {
         TINT_CLASS[badge.color] ?? TINT_CLASS.gray
       )}
       data-testid="task-type-icon">
-      <Icon height={14} width={14} />
+      <Icon size={18} />
     </span>
   );
 };

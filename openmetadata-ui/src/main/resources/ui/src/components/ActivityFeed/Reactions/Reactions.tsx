@@ -13,7 +13,7 @@
 
 import '@github/g-emoji-element';
 import {
-  Button,
+  ButtonUtility,
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
@@ -118,26 +118,12 @@ const Reactions: FC<ReactionsProps> = ({
       data-testid="feed-reaction-container">
       {emojis}
       <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
-        <Button
-          aria-label={t('label.add-entity', {
-            entity: t('label.reaction-lowercase-plural'),
-          })}
-          className={
-            isPill(variant)
-              ? 'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover'
-              : 'tw:size-[22px] tw:rounded-md! tw:p-[3px]!'
-          }
-          color="tertiary"
+        <ButtonUtility
+          className={classNames({ 'tw:rounded-full': isPill(variant) })}
           data-testid="add-reactions"
-          iconLeading={
-            isPill(variant) ? (
-              <FaceSmile data-icon size={16} />
-            ) : (
-              <AddReactionIcon data-icon height={16} width={16} />
-            )
-          }
-          size="xs"
-          title={t('label.add-entity', {
+          icon={isPill(variant) ? FaceSmile : AddReactionIcon}
+          size="lg"
+          tooltip={t('label.add-entity', {
             entity: t('label.reaction-lowercase-plural'),
           })}
           onClick={(e: MouseEvent) => e.stopPropagation()}

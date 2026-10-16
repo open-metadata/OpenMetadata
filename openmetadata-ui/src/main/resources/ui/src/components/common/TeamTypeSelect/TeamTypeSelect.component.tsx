@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Select } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Select } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -72,20 +72,18 @@ function TeamTypeSelect({
         className="layout-space layout-space-horizontal m-l-xs"
         gap={1}
         itemClassName="layout-space-item">
-        <Button
-          aria-label={t('label.cancel')}
-          color="primary"
+        <ButtonUtility
           data-testid="cancel-btn"
-          iconLeading={XClose}
-          size="xs"
+          icon={XClose}
+          size="sm"
+          tooltip={t('label.cancel')}
           onClick={handleCancel}
         />
-        <Button
-          aria-label={t('label.save')}
-          color="primary"
+        <ButtonUtility
           data-testid="save-btn"
-          iconLeading={Check}
-          size="xs"
+          icon={Check}
+          size="sm"
+          tooltip={t('label.save')}
           onClick={handleSubmit}
         />
       </Box>

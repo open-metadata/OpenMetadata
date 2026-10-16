@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Dialog,
   Modal,
   ModalOverlay,
@@ -190,14 +191,12 @@ export const VersionHistoryDrawer = ({
                   )}
                 </Box>
                 {canEdit && !entry.isCurrent && (
-                  <Button
-                    aria-label={t('label.restore')}
-                    color="secondary"
+                  <ButtonUtility
                     data-testid={`restore-version-${entry.version}`}
-                    iconLeading={RefreshCcw01}
-                    isLoading={restoringVersion === entry.version}
-                    size="sm"
-                    title={t('label.restore')}
+                    icon={RefreshCcw01}
+                    isDisabled={restoringVersion === entry.version}
+                    size="lg"
+                    tooltip={t('label.restore')}
                     onClick={() => setRestoreTarget(entry)}
                   />
                 )}

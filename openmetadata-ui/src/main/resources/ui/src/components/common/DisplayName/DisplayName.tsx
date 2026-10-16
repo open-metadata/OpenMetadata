@@ -15,13 +15,13 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
 import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -104,10 +104,9 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
             <Tooltip arrow placement="top" title={t('label.edit')}>
               <ButtonUtility
                 className="hover-cell-icon"
-                color="tertiary"
                 data-testid="edit-displayName-button"
-                icon={IconEdit}
-                size="xs"
+                icon={Edit01}
+                size="lg"
                 onClick={() => setIsDisplayNameEditing(true)}
               />
             </Tooltip>

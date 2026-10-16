@@ -13,7 +13,7 @@
 import {
   BadgeWithButton,
   Box,
-  Button,
+  ButtonUtility,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -97,22 +97,18 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             className="layout-space layout-space-horizontal"
             gap={2}
             itemClassName="layout-space-item">
-            <Button
-              aria-label={t('label.cancel')}
-              color="secondary"
+            <ButtonUtility
               data-testid="cancelDataAssets"
-              iconLeading={<XClose size={12} />}
+              icon={XClose}
               isDisabled={isSubmitLoading}
-              size="xs"
+              tooltip={t('label.cancel')}
               onClick={onCancel}
             />
-            <Button
-              aria-label={t('label.save')}
-              color="primary"
+            <ButtonUtility
               data-testid="saveDataAssets"
-              iconLeading={<Check size={12} />}
-              isLoading={isSubmitLoading}
-              size="xs"
+              icon={Check}
+              isDisabled={isSubmitLoading}
+              tooltip={t('label.save')}
               onClick={handleSubmit}
             />
           </Box>

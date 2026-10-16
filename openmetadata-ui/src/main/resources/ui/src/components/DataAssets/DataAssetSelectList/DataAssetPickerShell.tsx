@@ -241,7 +241,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           }}>
           <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
             <span className="tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90 tw:bg-utility-gray-blue-50">
-              <SlashDivider className="tw:text-utility-gray-500" size={14} />
+              <SlashDivider className="tw:text-utility-gray-500" size={18} />
             </span>
 
             <Box
@@ -270,7 +270,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           </Box>
 
           {selectedIds.size === 0 && (
-            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
+            <Check className="tw:shrink-0" size={18} />
           )}
         </button>
         <Divider className="tw:my-1" />
@@ -344,7 +344,6 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
                 autoFocus
                 className="tw:w-full"
                 icon={Search}
-                iconClassName="tw:size-3.5"
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??

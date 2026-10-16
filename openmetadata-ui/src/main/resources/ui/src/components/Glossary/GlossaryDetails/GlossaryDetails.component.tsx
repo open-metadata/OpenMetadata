@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import { isEmpty, noop } from 'lodash';
-import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +38,6 @@ import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { useGlossaryStore } from '../useGlossary.store';
 import './glossary-details.less';
@@ -71,14 +70,6 @@ const GenericTab = withSuspenseFallback(
 const OntologyExplorer = withSuspenseFallback(
   lazy(() => import('../../OntologyExplorer/OntologyExplorer'))
 );
-
-const AlignRightIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.AlignRightIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
 
 const GlossaryDetails = ({
   updateVote,
@@ -251,9 +242,11 @@ const GlossaryDetails = ({
           <Tabs.List
             actions={
               isExpandViewSupported && (
-                <AlignRightIconButton
-                  className={isTabExpanded ? 'rotate-180' : ''}
-                  title={
+                <ButtonUtility
+                  data-testid="tab-expand-button"
+                  icon={isTabExpanded ? Collapse : Expand}
+                  size="lg"
+                  tooltip={
                     isTabExpanded ? t('label.collapse') : t('label.expand')
                   }
                   onClick={toggleTabExpanded}

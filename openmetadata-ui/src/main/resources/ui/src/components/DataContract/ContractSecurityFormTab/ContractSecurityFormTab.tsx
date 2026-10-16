@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   Divider,
   FieldProp,
   FieldTypes,
@@ -21,7 +22,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Edit01,
   Plus as PlusIcon,
+  Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -36,7 +39,6 @@ import {
   useWatch,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { SUPPORTED_ROW_FILTER_ENTITIES } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -48,7 +50,6 @@ import { Table } from '../../../generated/entity/data/table';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 import './contract-security-form-tab.less';
@@ -208,13 +209,12 @@ const ContractPolicyCard = ({
             {isDisabled ? (
               <span />
             ) : (
-              <Button
-                aria-label={t('label.remove')}
-                className="contract-consumer-security-card-rule-delete-button tw:mt-6.5"
-                color="secondary"
-                iconLeading={XClose}
-                size="sm"
-                onPress={() => removeRowFilter(rowFilterIndex)}
+              <ButtonUtility
+                className="tw:mt-6.5"
+                icon={XClose}
+                size="lg"
+                tooltip={t('label.remove')}
+                onClick={() => removeRowFilter(rowFilterIndex)}
               />
             )}
           </div>
@@ -250,21 +250,19 @@ const ContractPolicyCard = ({
               {accessPolicy || t('label.untitled')}
             </Typography>
             <div className="tw:flex tw:items-center tw:gap-2">
-              <EditIconButton
-                newLook
-                className="edit-expand-button"
+              <ButtonUtility
                 data-testid={`edit-policy-${policyIndex}`}
-                size="middle"
+                icon={Edit01}
+                size="lg"
                 onClick={() => onEdit(policyIndex)}
               />
-              <Button
-                aria-label={t('label.delete')}
-                className="delete-expand-button"
-                color="secondary-destructive"
+              <ButtonUtility
+                color="tertiary-destructive"
                 data-testid={`delete-policy-${policyIndex}`}
-                iconLeading={DeleteIcon}
-                size="sm"
-                onPress={() => onDelete(policyIndex)}
+                icon={Trash01}
+                size="lg"
+                tooltip={t('label.delete')}
+                onClick={() => onDelete(policyIndex)}
               />
             </div>
           </div>

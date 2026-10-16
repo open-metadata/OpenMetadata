@@ -156,7 +156,7 @@ describe('ExpandableCard', () => {
 
       const expandButton = screen.getByRole('button');
 
-      expect(expandButton).toBeDisabled();
+      expect(expandButton).toHaveAttribute('aria-disabled', 'true');
     });
 
     it('maintains expansion state when disabled', async () => {

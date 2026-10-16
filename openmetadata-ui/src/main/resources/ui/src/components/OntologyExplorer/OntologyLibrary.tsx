@@ -307,10 +307,9 @@ const OntologyLibrary = ({
                 {installedCount} {t('label.installed-lowercase')}
               </Badge>
               <ButtonUtility
-                color="tertiary"
                 data-testid="ontology-library-close"
                 icon={XClose}
-                size="sm"
+                size="lg"
                 tooltip={t('label.close')}
                 onClick={onClose}
               />

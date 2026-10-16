@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Edit01,
+  MessageChatSquare,
+  MessagePlusSquare,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  WidgetCommentButton,
-  WidgetEditButton,
-  WidgetPlusButton,
-  WidgetRequestButton,
-} from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { LIST_SIZE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType } from '../../../generated/entity/data/table';
@@ -37,7 +37,6 @@ import {
 } from '../../../utils/TaskNavigationUtils';
 import ClassificationTagPicker from '../../common/ClassificationTagPicker/ClassificationTagPicker';
 import GlossaryTermPicker from '../../common/GlossaryTermPicker/GlossaryTermPicker';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
@@ -263,9 +262,10 @@ const TagsContainerV2 = ({
   const addTagButton = useMemo(
     () =>
       showAddTagButton ? (
-        <WidgetPlusButton
+        <ButtonUtility
           data-testid="add-tag"
-          title={t('label.add-entity', {
+          icon={Plus}
+          tooltip={t('label.add-entity', {
             entity: isGlossaryType
               ? t('label.glossary-term')
               : t('label.tag-plural'),
@@ -311,9 +311,10 @@ const TagsContainerV2 = ({
     const hasTags = !isEmpty(tags?.[tagType]);
 
     return (
-      <WidgetRequestButton
+      <ButtonUtility
         data-testid="request-entity-tags"
-        title={
+        icon={MessagePlusSquare}
+        tooltip={
           hasTags
             ? t('label.update-request-tag-plural')
             : t('label.request-tag-plural')
@@ -325,9 +326,10 @@ const TagsContainerV2 = ({
 
   const conversationThreadElement = useMemo(
     () => (
-      <WidgetCommentButton
+      <ButtonUtility
         data-testid="tag-thread"
-        title={t('label.list-entity', {
+        icon={MessageChatSquare}
+        tooltip={t('label.list-entity', {
           entity: t('label.conversation'),
         })}
         onClick={() =>
@@ -347,9 +349,10 @@ const TagsContainerV2 = ({
       <Box align="center" gap={2}>
         {withSelectorPopover(
           addTagButton ?? (
-            <WidgetEditButton
+            <ButtonUtility
               data-testid="edit-button"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity:
                   tagType === TagSource.Classification
                     ? t('label.tag-plural')
@@ -383,12 +386,12 @@ const TagsContainerV2 = ({
   const editTagButton = useMemo(
     () =>
       permission && !isEmpty(tags?.[tagType]) ? (
-        <EditIconButton
+        <ButtonUtility
           className="hover-cell-icon"
           data-testid="edit-button"
-          newLook={newLook}
-          size="small"
-          title={t('label.edit-entity', {
+          icon={Edit01}
+          size="sm"
+          tooltip={t('label.edit-entity', {
             entity:
               tagType === TagSource.Classification
                 ? t('label.tag-plural')
@@ -397,7 +400,7 @@ const TagsContainerV2 = ({
           onClick={handleAddClick}
         />
       ) : null,
-    [permission, tags, tagType, handleAddClick, newLook]
+    [permission, tags, tagType, handleAddClick]
   );
 
   const horizontalLayout = useMemo(() => {

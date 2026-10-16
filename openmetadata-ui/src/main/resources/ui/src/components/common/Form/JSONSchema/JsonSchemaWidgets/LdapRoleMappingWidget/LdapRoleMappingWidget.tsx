@@ -15,12 +15,13 @@ import {
   Autocomplete,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Grid,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { WidgetProps } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
@@ -34,7 +35,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../../../../assets/svg/ic-delete.svg';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
@@ -389,15 +389,14 @@ const LdapRoleMappingWidget: FC<WidgetProps> = (props) => {
               </Grid.Item>
 
               <Grid.Item className="tw:flex tw:items-center" span={1}>
-                <Button
-                  aria-label={t('label.remove-entity', {
+                <ButtonUtility
+                  data-testid={`remove-mapping-btn-${mapping.id}`}
+                  icon={Trash01}
+                  isDisabled={disabled || readonly}
+                  size="lg"
+                  tooltip={t('label.remove-entity', {
                     entity: t('label.mapping'),
                   })}
-                  color="tertiary"
-                  data-testid={`remove-mapping-btn-${mapping.id}`}
-                  iconLeading={<DeleteIcon height={20} width={20} />}
-                  isDisabled={disabled || readonly}
-                  size="md"
                   onClick={() => handleRemoveMapping(mapping.id)}
                 />
               </Grid.Item>

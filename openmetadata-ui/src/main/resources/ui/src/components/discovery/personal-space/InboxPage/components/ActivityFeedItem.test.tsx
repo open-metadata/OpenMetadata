@@ -263,7 +263,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ),
   ChevronDown: () => <span />,
   ChevronUp: () => <span />,
-  Edit05: () => <span />,
+  Edit01: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
   MessageDotsCircle: () => <span />,

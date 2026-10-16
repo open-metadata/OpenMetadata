@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   Check,
@@ -442,12 +442,12 @@ export const CsvJobsTray = () => {
     }
 
     return (
-      <Button
+      <ButtonUtility
         className="csv-jobs-tray-dismiss"
-        color="link-gray"
-        iconLeading={XClose}
-        size="xs"
-        onPress={() => handleDismiss(job.jobId)}
+        icon={XClose}
+        size="sm"
+        tooltip={t('label.dismiss')}
+        onClick={() => handleDismiss(job.jobId)}
       />
     );
   };
@@ -481,11 +481,13 @@ export const CsvJobsTray = () => {
                 {t('label.clear-completed')}
               </Button>
             )}
-            <Button
-              className="csv-jobs-tray-close tw:-mr-1.5"
-              color="link-gray"
-              iconLeading={Minus}
-              onPress={() => setOpen(false)}
+            <ButtonUtility
+              className="tw:-mr-1.5"
+              data-testid="csv-jobs-tray-close"
+              icon={Minus}
+              size="lg"
+              tooltip={t('label.collapse')}
+              onClick={() => setOpen(false)}
             />
           </div>
           <div className="csv-jobs-tray-list">
