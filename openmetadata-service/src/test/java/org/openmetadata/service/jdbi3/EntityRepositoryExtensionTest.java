@@ -14,9 +14,14 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.Category;
+import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -240,5 +245,51 @@ class EntityRepositoryExtensionTest {
     invokeUpdateExtension(updater(original, updated, false));
 
     assertEquals("new", extensionValue(updated, "owner_team"));
+  }
+
+  private static void seedStringCustomProperties(String... propertyNames) {
+    TypeRegistry.instance()
+        .addType(new Type().withName("string").withSchema("{\"type\":\"string\"}"));
+    TypeRegistry.instance()
+        .addType(
+            new Type()
+                .withName(Entity.PIPELINE)
+                .withCategory(Category.Entity)
+                .withCustomProperties(
+                    java.util.Arrays.stream(propertyNames)
+                        .map(
+                            n ->
+                                new CustomProperty()
+                                    .withName(n)
+                                    .withPropertyType(new EntityReference().withName("string")))
+                        .toList()));
+  }
+
+  private static void invokeUpdateExtensionOnRealPath(
+      EntityRepository<Pipeline>.EntityUpdater updater) throws Exception {
+    Method method =
+        EntityRepository.EntityUpdater.class.getDeclaredMethod("updateExtension", boolean.class);
+    method.setAccessible(true);
+    method.invoke(updater, false);
+  }
+
+  @Test
+  void forceSyncOnTheRealUpdatePathKeepsTheCuratedPropertyAndRefreshesTheConnectorOne()
+      throws Exception {
+    // consolidatingChanges=false is the path bulk ingestion takes: it re-derives the extension,
+    // runs validateAndTransformExtension over each changed property against the registered
+    // definitions, and applies deletions. The merge must survive all of it.
+    registerBotUser();
+    seedStringCustomProperties("owner_team", "curated_note");
+
+    Map<String, Object> stored = extension("owner_team", "stale");
+    stored.put("curated_note", "set by a human in the UI");
+    Pipeline original = pipelineWithExtension(BOT_NAME, stored);
+    Pipeline updated = pipelineWithExtension(BOT_NAME, extension("owner_team", "refreshed"));
+
+    invokeUpdateExtensionOnRealPath(updater(original, updated, true));
+
+    assertEquals("refreshed", extensionValue(updated, "owner_team"));
+    assertEquals("set by a human in the UI", extensionValue(updated, "curated_note"));
   }
 }
