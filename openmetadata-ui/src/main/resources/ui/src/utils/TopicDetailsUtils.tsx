@@ -26,6 +26,13 @@ import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.in
 import i18n from './i18next/LocalUtil';
 import type { TopicDetailPageTabProps } from './TopicClassBase';
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
+
 const ErrorPlaceHolder = withSuspenseFallback(
   lazy(
     () => import('../components/common/ErrorWithPlaceholder/ErrorPlaceHolder')
@@ -91,8 +98,9 @@ export const getTopicDetailsPageTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.TOPIC}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={i18n.t('label.activity-feed-and-task-plural')}

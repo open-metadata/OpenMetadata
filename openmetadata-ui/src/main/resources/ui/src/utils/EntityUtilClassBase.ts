@@ -277,7 +277,6 @@ const FQN_PARENT_LEVEL_BY_TYPE: Record<string, number> = {
   [EntityType.TOPIC]: 2,
   [EntityType.SEARCH_INDEX]: 2,
   [EntityType.METRIC]: 2,
-  [EntityType.WORKSHEET]: 2,
   [EntityType.PIPELINE]: 2,
   [EntityType.DASHBOARD]: 2,
   [EntityType.MLMODEL]: 2,

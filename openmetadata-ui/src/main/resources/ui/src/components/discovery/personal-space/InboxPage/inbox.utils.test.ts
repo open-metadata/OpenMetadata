@@ -59,6 +59,7 @@ import {
   getActivityChange,
   getActivityEventLabel,
   getActivityKindType,
+  getActivityLookbackDays,
   getFeedSortTimestamp,
   getInboxTabBadge,
   isSameLocalDay,
@@ -568,6 +569,27 @@ describe('inbox.utils', () => {
       const created = change('c', { fieldName: undefined, newValue: 'x' });
 
       expect(pairFieldChanges([created])).toEqual([created]);
+    });
+  });
+
+  // `getCurrentMillis` is mocked to 0 here, so a start is that far in the past.
+  describe('getActivityLookbackDays', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+
+    // A 30-day window starts at midnight 30 days ago: a 30-day look-back from
+    // mid-afternoon stops short of it.
+    it("reaches back to the window's first midnight", () => {
+      expect(getActivityLookbackDays(-(30 * DAY + 15 * 60 * 60 * 1000))).toBe(
+        31
+      );
+    });
+
+    it('asks for at least a day', () => {
+      expect(getActivityLookbackDays(0)).toBe(1);
+    });
+
+    it("holds to the endpoints' 90-day cap", () => {
+      expect(getActivityLookbackDays(-365 * DAY)).toBe(90);
     });
   });
 });

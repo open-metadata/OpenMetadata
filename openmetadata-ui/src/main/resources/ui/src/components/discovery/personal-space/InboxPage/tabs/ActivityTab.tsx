@@ -23,13 +23,19 @@ import {
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { countBy, groupBy } from 'lodash';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
+import {
+  ActivityScope,
+  getActivityScopeKey,
+  INBOX_SCOPE,
+  SCOPE_FILTERS,
+} from '../activityScope';
 import ActivityFeedItem from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
@@ -112,45 +118,101 @@ const GROUPING: Record<
   },
 };
 
+// Looking at the Inbox list is what clears the sidebar's unread badge; feeds
+// have no server-side read state to update.
+const useMarkInboxSeen = (isInbox: boolean) => {
+  const markInboxActivitySeen = usePersonalSpaceStore(
+    (s) => s.markInboxActivitySeen
+  );
+
+  useEffect(() => {
+    if (isInbox) {
+      markInboxActivitySeen();
+    }
+  }, [isInbox, markInboxActivitySeen]);
+};
+
+// The Mentions feed (already read for its count) marks the cards that name the
+// viewer, whichever feed they appear under. A scope without one reads its
+// showing feed instead, the same query, so nothing extra is fetched.
+const useMentionedIds = (
+  scope: ActivityScope,
+  filter: ActivityFilter,
+  dateRange?: InboxDateRange
+) => {
+  const hasMentions = SCOPE_FILTERS[scope.type].includes(
+    ActivityFilter.Mentions
+  );
+  const { items } = useInboxActivity(
+    hasMentions ? ActivityFilter.Mentions : filter,
+    dateRange,
+    scope
+  );
+
+  return useMemo(
+    () => new Set(hasMentions ? items.map(getInboxItemId) : undefined),
+    [hasMentions, items]
+  );
+};
+
+// Lifts with a shadow once the feed scrolls under it. The negative margin
+// cancels the panel's gutter so the shadow spans edge to edge, and shadow-md's
+// negative spread keeps it under the bar only. Beside a host's control the bar
+// spans the tab; alone it lines up with the feed column.
+const ActivityTabHeader = ({
+  isScrolled,
+  leading,
+  children,
+}: {
+  isScrolled: boolean;
+  leading?: ReactNode;
+  children: ReactNode;
+}) => (
+  <div
+    className={classNames(
+      'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
+      isScrolled && 'tw:shadow-md'
+    )}>
+    <div
+      className={classNames(
+        'tw:w-full',
+        !leading && 'tw:mx-auto tw:max-w-230'
+      )}>
+      {children}
+    </div>
+  </div>
+);
+
 export interface ActivityTabProps {
   dateRange?: InboxDateRange;
   onDatePresetChange?: (key: string) => void;
   // Narrowed window → empty reads as "no activity in period" vs first-run state.
   isFiltered?: boolean;
+  // Whose activity; the viewer's Inbox when omitted.
+  scope?: ActivityScope;
+  // The host's control for the toolbar's left side (an entity's Activity /
+  // Tasks switch); the feeds then move into a Show menu.
+  leading?: ReactNode;
 }
 
 const ActivityTab: React.FC<ActivityTabProps> = ({
   dateRange,
   onDatePresetChange,
   isFiltered = false,
+  scope = INBOX_SCOPE,
+  leading,
 }) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState(ActivityFilter.All);
   const [grouping, setGrouping] = useState(ActivityGrouping.Day);
   const [typeKeys, setTypeKeys] = useState<string[]>([]);
-  const markInboxActivitySeen = usePersonalSpaceStore(
-    (s) => s.markInboxActivitySeen
-  );
-
-  // Looking at the list is what clears the sidebar's unread badge; feeds have no
-  // server-side read state to update.
-  useEffect(() => {
-    markInboxActivitySeen();
-  }, [markInboxActivitySeen]);
+  const isInbox = scope.type === 'inbox';
+  useMarkInboxSeen(isInbox);
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isLoading } = useInboxActivity(filter, dateRange);
-  const counts = useInboxActivityCounts(dateRange);
-  // The Mentions feed (already read for its count) marks the cards that name
-  // the viewer, whichever tab they appear under.
-  const { items: mentionItems } = useInboxActivity(
-    ActivityFilter.Mentions,
-    dateRange
-  );
-  const mentionedIds = useMemo(
-    () => new Set(mentionItems.map(getInboxItemId)),
-    [mentionItems]
-  );
+  const { items, isLoading } = useInboxActivity(filter, dateRange, scope);
+  const counts = useInboxActivityCounts(dateRange, scope);
+  const mentionedIds = useMentionedIds(scope, filter, dateRange);
   // ponytail: types filter the loaded page only; the server has no type filter.
   const filteredItems = useMemo(
     () =>
@@ -172,7 +234,9 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     useIncrementalRender(
       filteredItems,
       grouping === ActivityGrouping.Day ? ACTIVITY_RENDER_BATCH : Infinity,
-      `${filter}:${typeKeys}:${dateRange?.startTs}:${dateRange?.endTs}`
+      `${getActivityScopeKey(scope)}:${filter}:${typeKeys}:${
+        dateRange?.startTs
+      }:${dateRange?.endTs}`
     );
 
   // Groups keep the feed's newest-first order, as does each group's cards. Only
@@ -277,28 +341,21 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   return (
     <Box className="tw:flex tw:h-full tw:min-h-0" direction="col">
-      {/* Lifts with a shadow once the feed scrolls under it. The negative
-          margin cancels the panel's gutter so the shadow spans edge to edge,
-          and shadow-md's negative spread keeps it under the bar only. */}
-      <div
-        className={classNames(
-          'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
-          isScrolled && 'tw:shadow-md'
-        )}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-230">
-          <ActivityToolbar
-            counts={counts}
-            datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
-            filter={filter}
-            grouping={grouping}
-            typeKeys={typeKeys}
-            onDatePresetChange={onDatePresetChange}
-            onFilterChange={setFilter}
-            onGroupingChange={setGrouping}
-            onTypeKeysChange={setTypeKeys}
-          />
-        </div>
-      </div>
+      <ActivityTabHeader isScrolled={isScrolled} leading={leading}>
+        <ActivityToolbar
+          counts={counts}
+          datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
+          filter={filter}
+          filters={SCOPE_FILTERS[scope.type]}
+          grouping={grouping}
+          leading={leading}
+          typeKeys={typeKeys}
+          onDatePresetChange={onDatePresetChange}
+          onFilterChange={setFilter}
+          onGroupingChange={isInbox ? setGrouping : undefined}
+          onTypeKeysChange={setTypeKeys}
+        />
+      </ActivityTabHeader>
       {/* A gutter on both edges keeps the feed centred under the toolbar while
           the scrollbar shows. */}
       <div

@@ -3645,6 +3645,7 @@
     "value-boost": "Impulso de valor",
     "value-count": "Reconto de valores",
     "value-plural": "Valores",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Variante",
     "variant-plural": "Variantes",
     "vector-avg": "Media de vector",

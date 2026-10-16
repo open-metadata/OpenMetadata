@@ -19,6 +19,7 @@ import ActivityToolbar from './ActivityToolbar';
 interface MockOption {
   value: string;
   label: ReactNode;
+  count?: string;
 }
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -94,8 +95,8 @@ jest.mock('./ActivityToolbarMenu', () => ({
       <span data-testid={`${props['data-testid']}-trigger`}>
         {triggerLabel}
       </span>
-      {options.map(({ value, label }) => (
-        <button key={value} onClick={() => onChange(value)}>
+      {options.map(({ value, label, count }) => (
+        <button data-count={count} key={value} onClick={() => onChange(value)}>
           {label}
         </button>
       ))}
@@ -116,6 +117,7 @@ const renderToolbar = (
     counts,
     datePreset: 'last30days',
     filter: ActivityFilter.All,
+    filters: Object.values(ActivityFilter),
     grouping: ActivityGrouping.Day,
     typeKeys: [],
     onDatePresetChange: jest.fn(),
@@ -204,5 +206,44 @@ describe('ActivityToolbar', () => {
     fireEvent.click(screen.getByText('label.yesterday'));
 
     expect(onDatePresetChange).toHaveBeenCalledWith('yesterday');
+  });
+
+  // An entity's feed puts its Activity / Tasks switch on the left, so its two
+  // feeds move into a Show menu, and it has no grouping.
+  it('moves the feeds into a Show menu beside a host control', () => {
+    const onFilterChange = jest.fn();
+    render(
+      <ActivityToolbar
+        counts={{
+          [ActivityFilter.All]: exact(5),
+          [ActivityFilter.Mentions]: exact(1),
+        }}
+        datePreset="last30days"
+        filter={ActivityFilter.All}
+        filters={[ActivityFilter.All, ActivityFilter.Mentions]}
+        leading={<span data-testid="host-switch" />}
+        typeKeys={[]}
+        onFilterChange={onFilterChange}
+        onTypeKeysChange={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('host-switch')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-all')).not.toBeInTheDocument();
+    expect(screen.getByText('label.all-activity')).toHaveAttribute(
+      'data-count',
+      '5'
+    );
+    expect(screen.getByText('label.mention-plural')).toHaveAttribute(
+      'data-count',
+      '1'
+    );
+    expect(
+      screen.queryByTestId('activity-group-filter')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.mention-plural'));
+
+    expect(onFilterChange).toHaveBeenCalledWith(ActivityFilter.Mentions);
   });
 });

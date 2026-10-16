@@ -118,17 +118,19 @@ describe('WorksheetDetailsUtils', () => {
       expect(screen.getByText('label.schema - Active')).toBeInTheDocument();
     });
 
-    it('should render activity feed tab with correct count', () => {
+    it('should render activity feed tab with correct count', async () => {
       const tabs = getWorksheetDetailsPageTabs(mockProps);
       const activityTab = tabs[1];
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByTestId('tab-label-label.activity-feed-and-task-plural')
+        await screen.findByTestId(
+          'tab-label-label.activity-feed-and-task-plural'
+        )
       ).toBeInTheDocument();
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (12)')
+        await screen.findByText('label.activity-feed-and-task-plural (12)')
       ).toBeInTheDocument();
     });
 
@@ -205,7 +207,7 @@ describe('WorksheetDetailsUtils', () => {
       expect(screen.getByTestId('custom-properties')).toBeInTheDocument();
     });
 
-    it('should handle different active tab', () => {
+    it('should handle different active tab', async () => {
       const propsWithDifferentActiveTab = {
         ...mockProps,
         activeTab: EntityTabs.ACTIVITY_FEED,
@@ -217,11 +219,13 @@ describe('WorksheetDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (12) - Active')
+        await screen.findByText(
+          'label.activity-feed-and-task-plural (12) - Active'
+        )
       ).toBeInTheDocument();
     });
 
-    it('should handle zero feed count', () => {
+    it('should handle zero feed count', async () => {
       const propsWithZeroCount = {
         ...mockProps,
         feedCount: { totalCount: 0 },
@@ -233,11 +237,11 @@ describe('WorksheetDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (0)')
+        await screen.findByText('label.activity-feed-and-task-plural (0)')
       ).toBeInTheDocument();
     });
 
-    it('should handle large feed count', () => {
+    it('should handle large feed count', async () => {
       const propsWithLargeCount = {
         ...mockProps,
         feedCount: { totalCount: 2500 },
@@ -249,7 +253,7 @@ describe('WorksheetDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (2500)')
+        await screen.findByText('label.activity-feed-and-task-plural (2500)')
       ).toBeInTheDocument();
     });
 
@@ -495,7 +499,7 @@ describe('WorksheetDetailsUtils', () => {
       ).toBeInTheDocument();
     });
 
-    it('should use custom label for activity feed tab from labelMap', () => {
+    it('should use custom label for activity feed tab from labelMap', async () => {
       const propsWithLabelMap = {
         ...mockProps,
         labelMap: {
@@ -508,7 +512,9 @@ describe('WorksheetDetailsUtils', () => {
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('Custom Activity (12)')).toBeInTheDocument();
+      expect(
+        await screen.findByText('Custom Activity (12)')
+      ).toBeInTheDocument();
     });
 
     it('should use custom label for lineage tab from labelMap', () => {
@@ -646,7 +652,7 @@ describe('WorksheetDetailsUtils', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle missing feedCount gracefully', () => {
+    it('should handle missing feedCount gracefully', async () => {
       const propsWithoutFeedCount = {
         ...mockProps,
         feedCount: { totalCount: 0 },
@@ -658,7 +664,7 @@ describe('WorksheetDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (0)')
+        await screen.findByText('label.activity-feed-and-task-plural (0)')
       ).toBeInTheDocument();
     });
 
@@ -739,7 +745,7 @@ describe('WorksheetDetailsUtils', () => {
       expect(screen.getByTestId('common-widgets')).toBeInTheDocument();
     });
 
-    it('should handle negative feed count edge case', () => {
+    it('should handle negative feed count edge case', async () => {
       const propsWithNegativeCount = {
         ...mockProps,
         feedCount: { totalCount: -1 },
@@ -751,7 +757,7 @@ describe('WorksheetDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (-1)')
+        await screen.findByText('label.activity-feed-and-task-plural (-1)')
       ).toBeInTheDocument();
     });
 

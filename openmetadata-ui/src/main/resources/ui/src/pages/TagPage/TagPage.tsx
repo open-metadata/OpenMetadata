@@ -126,6 +126,13 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './tag-page.less';
+
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const EntitySummaryPanel = withSuspenseFallback(
   lazy(
     () =>
@@ -684,8 +691,9 @@ const TagPage = () => {
       },
       {
         label: (
-          <TabsLabel
+          <ActivityFeedTabLabel
             count={feedCount.totalCount}
+            entityType={EntityType.TAG}
             id={EntityTabs.ACTIVITY_FEED}
             isActive={activeTab === EntityTabs.ACTIVITY_FEED}
             name={t('label.activity-feed-and-task-plural')}

@@ -12,6 +12,7 @@
  */
 
 import { QueryClient, useQueries, useQuery } from '@tanstack/react-query';
+import { PagingResponse } from 'Models';
 import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
@@ -19,16 +20,26 @@ import { ConversationFilterType } from '../../../../generated/type/conversationF
 import { Reaction } from '../../../../generated/type/reaction';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import {
+  getActivityByEntityLink,
   getActivityEvents,
   getFollowingActivityFeed,
   getMentionsActivityFeed,
   getMyActivityFeed,
+  getUserActivity,
 } from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
+import { getUserByName } from '../../../../rest/userAPI';
+import {
+  ActivityScope,
+  getActivityScopeKey,
+  INBOX_SCOPE,
+  SCOPE_FILTERS,
+} from './activityScope';
 import {
   ActivityFilter,
   ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,
+  getActivityLookbackDays,
   getActivityWindowDays,
   getFeedSortTimestamp,
   InboxCount,
@@ -97,12 +108,121 @@ const clipToWindow = (
         isWithinInboxRange(timestamp, dateRange)
       );
 
-/** The selected sub-tab's activity events plus its conversations. */
+interface FeedWindow {
+  days: number;
+  startTs?: number;
+  endTs?: number;
+}
+
+// A `days`-only endpoint reaches back to the window's start, not just `days`.
+const getLookbackDays = (days: number, startTs?: number) =>
+  startTs ? getActivityLookbackDays(startTs) : days;
+
+interface FeedRequests {
+  activity: Promise<PagingResponse<ActivityEvent[]>>;
+  conversations: Promise<PagingResponse<Conversation[]>>;
+}
+
+// A user's own activity has no conversation counterpart: conversations are
+// filtered by asset, not by who started them.
+const NO_CONVERSATIONS: Promise<PagingResponse<Conversation[]>> =
+  Promise.resolve({ data: [], paging: { total: 0 } });
+
+const getInboxRequests = (
+  filter: ActivityFilter,
+  viewerId: string,
+  { days, startTs, endTs }: FeedWindow
+): FeedRequests => {
+  const filterType = CONVERSATION_FILTER[filter];
+
+  return {
+    activity: ACTIVITY_REQUEST[filter]({
+      days,
+      startTs,
+      limit: ACTIVITY_LIMIT,
+    }),
+    conversations: listConversations({
+      filterType,
+      userId: filterType ? viewerId : undefined,
+      limit: CONVERSATION_LIMIT,
+      startTs,
+      endTs,
+    }),
+  };
+};
+
+// Everything about one entity, or only what mentions the viewer there.
+const getEntityRequests = (
+  entityLink: string,
+  filter: ActivityFilter,
+  viewerId: string,
+  { days, startTs, endTs }: FeedWindow
+): FeedRequests => {
+  const isMentions = filter === ActivityFilter.Mentions;
+
+  return {
+    activity: isMentions
+      ? getMentionsActivityFeed({
+          days,
+          startTs,
+          limit: ACTIVITY_LIMIT,
+          entityLink,
+        })
+      : // `/about` takes a `days` look-back only; clipToWindow trims it.
+        getActivityByEntityLink(entityLink, {
+          days: getLookbackDays(days, startTs),
+          limit: ACTIVITY_LIMIT,
+        }),
+    // Its columns' conversations too, as its activity includes their changes.
+    conversations: listConversations({
+      entityLink,
+      includeFields: true,
+      filterType: isMentions ? ConversationFilterType.Mentions : undefined,
+      userId: isMentions ? viewerId : undefined,
+      limit: CONVERSATION_LIMIT,
+      startTs,
+      endTs,
+    }),
+  };
+};
+
+// The activity API reads a user by id; the link names them.
+const getUserRequests = (
+  userName: string,
+  { days, startTs }: FeedWindow
+): FeedRequests => ({
+  activity: getUserByName(userName).then((user) =>
+    getUserActivity(user.id, {
+      days: getLookbackDays(days, startTs),
+      limit: ACTIVITY_LIMIT,
+    })
+  ),
+  conversations: NO_CONVERSATIONS,
+});
+
+const getScopeRequests = (
+  scope: ActivityScope,
+  filter: ActivityFilter,
+  viewerId: string,
+  window: FeedWindow
+): FeedRequests => {
+  switch (scope.type) {
+    case 'entity':
+      return getEntityRequests(scope.entityLink, filter, viewerId, window);
+    case 'user':
+      return getUserRequests(scope.userName, window);
+    default:
+      return getInboxRequests(filter, viewerId, window);
+  }
+};
+
+/** The selected feed's activity events plus its conversations. */
 export const fetchInboxActivity = async (
   filter: ActivityFilter,
   userId: string | undefined,
   startTs?: number,
-  endTs?: number
+  endTs?: number,
+  scope: ActivityScope = INBOX_SCOPE
 ): Promise<InboxActivityResult> => {
   if (!userId) {
     return { activities: [], threads: [], isCapped: false };
@@ -110,20 +230,8 @@ export const fetchInboxActivity = async (
   // startTs gives activity the same lower bound as the conversations: `days` is
   // capped at 30, which falls short of a window starting at the start of a day.
   const days = getActivityWindowDays({ startTs, endTs });
-  const activityRequest = ACTIVITY_REQUEST[filter]({
-    days,
-    startTs,
-    limit: ACTIVITY_LIMIT,
-  });
-  const filterType = CONVERSATION_FILTER[filter];
-
-  const conversationRequest = listConversations({
-    filterType,
-    userId: filterType ? userId : undefined,
-    limit: CONVERSATION_LIMIT,
-    startTs,
-    endTs,
-  });
+  const { activity: activityRequest, conversations: conversationRequest } =
+    getScopeRequests(scope, filter, userId, { days, startTs, endTs });
 
   // allSettled, not all: these two feed independent halves of the tab, and the
   // conversation list is only the fallback shown when there is no activity.
@@ -179,11 +287,13 @@ export const writeInboxReactions = (
       }
   );
 
-// One query per sub-tab and window, so the list and every count share a fetch.
+// One query per scope, feed and window, so the list and every count share a
+// fetch.
 const inboxActivityQuery = (
   filter: ActivityFilter,
   userId: string | undefined,
-  dateRange?: InboxDateRange
+  dateRange?: InboxDateRange,
+  scope: ActivityScope = INBOX_SCOPE
 ) => ({
   queryKey: [
     INBOX_ACTIVITY_QUERY_KEY,
@@ -191,9 +301,16 @@ const inboxActivityQuery = (
     dateRange?.startTs,
     dateRange?.endTs,
     userId,
+    getActivityScopeKey(scope),
   ],
   queryFn: () =>
-    fetchInboxActivity(filter, userId, dateRange?.startTs, dateRange?.endTs),
+    fetchInboxActivity(
+      filter,
+      userId,
+      dateRange?.startTs,
+      dateRange?.endTs,
+      scope
+    ),
   enabled: Boolean(userId),
   staleTime: INBOX_ACTIVITY_STALE_TIME,
 });
@@ -210,13 +327,14 @@ export interface UseInboxActivity extends InboxCount {
  */
 export const useInboxActivity = (
   filter: ActivityFilter,
-  dateRange?: InboxDateRange
+  dateRange?: InboxDateRange,
+  scope: ActivityScope = INBOX_SCOPE
 ): UseInboxActivity => {
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
 
   const { data, isLoading } = useQuery(
-    inboxActivityQuery(filter, userId, dateRange)
+    inboxActivityQuery(filter, userId, dateRange, scope)
   );
 
   const items: InboxActivityItem[] = useMemo(() => {
@@ -256,13 +374,14 @@ export const useInboxActivity = (
  * for a count endpoint (or unread counts, as the design shows) once one exists.
  */
 export const useInboxActivityCounts = (
-  dateRange?: InboxDateRange
+  dateRange?: InboxDateRange,
+  scope: ActivityScope = INBOX_SCOPE
 ): Partial<Record<ActivityFilter, InboxCount>> => {
   const { currentUser } = useApplicationStore();
-  const filters = Object.values(ActivityFilter);
+  const filters = SCOPE_FILTERS[scope.type];
   const results = useQueries({
     queries: filters.map((filter) =>
-      inboxActivityQuery(filter, currentUser?.id, dateRange)
+      inboxActivityQuery(filter, currentUser?.id, dateRange, scope)
     ),
   });
 
