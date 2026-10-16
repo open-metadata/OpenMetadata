@@ -1034,9 +1034,6 @@
       "d27504e6976da850f3db07937978cd7e2ddfaa9296455493d8c8d756ada02522": 1,
       "ff7a916bde08e5440eb178cf565f113352444c8f45e789347215e2160dc935e7": 1
     },
-    "ingestion/src/metadata/ingestion/source/database/athena/query_parser.py": {
-      "2104fab91c5d9c47d447c2f5656e456582eb23ef1cfb07861b9619bbcc68581a": 1
-    },
     "ingestion/src/metadata/ingestion/source/database/athena/utils.py": {
       "228fdd22d97c9d9ef36c3b2662bf575548c3e8cbd79d4899a64df235428c7f2e": 1
     },

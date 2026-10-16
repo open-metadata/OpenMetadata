@@ -26,13 +26,13 @@ VERSIONS = {
     # every Dag with no per-Dag authorization filter (both need 3.3.2)
     "airflow": "apache-airflow==3.3.2",
     "adlfs": "adlfs>=2023.1.0",
-    "aiobotocore": "aiobotocore~=2.26.0",
+    "aiobotocore": "aiobotocore~=3.9.2",
     # authlib >=1.6.9 required for: CVE-2026-27962 (critical, JWS JWK header injection),
     # CVE-2026-28490 (RSA1_5 Bleichenbacher), CVE-2026-28498 (OIDC hash fail-open),
     # CVE-2026-28802 (alg:none bypass).
     "authlib": "authlib>=1.6.9",
     "avro": "avro>=1.11.4,<1.12",
-    "boto3": "boto3~=1.41.5",
+    "boto3": "boto3>=1.43.101,<2",
     "cloud-sql-python-connector-pymysql": "cloud-sql-python-connector[pymysql]>=1.0.0,<2.0.0",
     "geoalchemy2": "GeoAlchemy2~=0.12",
     "google-cloud-monitoring": "google-cloud-monitoring>=2.0.0",
@@ -44,7 +44,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "ijson": "ijson~=3.4",
     "msal": "msal~=1.2",
-    "neo4j": "neo4j~=5.3",
+    "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic>=2.12.5,<3",
@@ -75,7 +75,7 @@ VERSIONS = {
     "mongo": "pymongo~=4.3",
     "simple-salesforce": "simple_salesforce~=1.11",
     "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
-    "elasticsearch8": "elasticsearch8~=8.9.0",
+    "elasticsearch": "elasticsearch>=8.19.3,<9",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
     "teradata": "teradatasqlalchemy==20.0.0.2",
@@ -340,7 +340,7 @@ plugins: dict[str, set[str]] = {
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
-        VERSIONS["elasticsearch8"],
+        VERSIONS["elasticsearch"],
     },  # also requires requests-aws4auth which is in base
     "opensearch": {VERSIONS["opensearch"]},
     "exasol": {
@@ -419,6 +419,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["cloud-sql-python-connector-pymysql"],
         DATA_DIFF["mysql"],
     },
+    "neo4j": {VERSIONS["neo4j"]},
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
@@ -561,7 +562,7 @@ test = {
     VERSIONS["mongo"],
     VERSIONS["cassandra"],
     VERSIONS["snowflake"],
-    VERSIONS["elasticsearch8"],
+    VERSIONS["elasticsearch"],
     VERSIONS["giturlparse"],
     VERSIONS["avro"],  # Sample Data
     VERSIONS["grpc-tools"],

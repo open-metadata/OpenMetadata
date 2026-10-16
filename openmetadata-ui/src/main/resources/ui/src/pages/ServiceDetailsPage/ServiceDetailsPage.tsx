@@ -356,13 +356,11 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => serviceUtilClassBase.getAgentsTabWidgets(),
     []
   );
-  const isDBService = useMemo(
-    () => serviceCategory === ServiceCategory.DATABASE_SERVICES,
-    [serviceCategory]
-  );
+  // AutoPilot creates AI Automations for services of every type, so the widget is not limited
+  // to database services.
   const isCollateAIWidgetSupported = useMemo(
-    () => !isUndefined(CollateAIAgentsWidget) && isDBService,
-    [CollateAIAgentsWidget, isDBService]
+    () => !isUndefined(CollateAIAgentsWidget),
+    [CollateAIAgentsWidget]
   );
 
   const { searchValue, fileSearchValue, spreadSheetSearchValue } =
@@ -592,7 +590,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(true);
         // AutoPilot creates at most one automation per template, so the list is
         // bounded and served in a single unpaginated fetch.
-        const { data } = await getAiAutomationsByService(decodedServiceFQN);
+        const { data } = await getAiAutomationsByService(
+          decodedServiceFQN,
+          getEntityTypeFromServiceCategory(serviceCategory)
+        );
 
         setCollateAgentsList(data);
         handleCollateAgentPagingChange({ total: data.length });
@@ -602,7 +603,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
         setIsCollateAgentLoading(false);
       }
     },
-    [decodedServiceFQN, handleCollateAgentPagingChange, deleted]
+    [
+      decodedServiceFQN,
+      serviceCategory,
+      handleCollateAgentPagingChange,
+      deleted,
+    ]
   );
 
   const getAllIngestionWorkflows = useCallback(
