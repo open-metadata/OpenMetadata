@@ -2786,27 +2786,31 @@ public class SystemResourceIT {
 
   /**
    * The SSO page's self-signup switch sends exactly this one-operation patch (#28379). Like a
-   * configuration seeded from the environment before field validation existed, the test server's
-   * stored configuration fails full validation; no check reads enableSelfSignup, so the patch must
-   * still be saved.
+   * configuration seeded from the environment before field validation existed, the stored
+   * configuration fails full validation, here on an empty callback URL the test server's provider
+   * never uses. No check reads enableSelfSignup, so the patch must still be saved.
    */
   @Test
   void test_patchSecurityConfig_savesSelfSignupDespiteErrorsTheStoredConfigAlreadyHas()
       throws Exception {
-    SecurityConfiguration stored = getSecurityConfig();
-    assertEquals(
-        SecurityValidationResponse.Status.FAILED,
-        validateSecurityConfig(stored).getStatus(),
-        "The stored configuration must already fail validation for this test to mean anything");
-    boolean selfSignup = stored.getAuthenticationConfiguration().getEnableSelfSignup();
+    SecurityConfiguration original = getSecurityConfig();
+    SecurityConfiguration failing = getSecurityConfig();
+    failing.getAuthenticationConfiguration().setCallbackUrl("");
+    boolean selfSignup = failing.getAuthenticationConfiguration().getEnableSelfSignup();
 
     try {
+      putSecurityConfig(MAPPER.writeValueAsString(failing));
+      assertEquals(
+          SecurityValidationResponse.Status.FAILED,
+          validateSecurityConfig(getSecurityConfig()).getStatus(),
+          "The stored configuration must fail validation for this test to mean anything");
+
       patchSecurityConfig("/authenticationConfiguration/enableSelfSignup", !selfSignup);
 
       assertEquals(
           !selfSignup, getSecurityConfig().getAuthenticationConfiguration().getEnableSelfSignup());
     } finally {
-      putSecurityConfig(MAPPER.writeValueAsString(stored));
+      putSecurityConfig(MAPPER.writeValueAsString(original));
     }
   }
 
