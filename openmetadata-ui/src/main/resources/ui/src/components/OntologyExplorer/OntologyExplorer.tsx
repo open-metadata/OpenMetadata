@@ -851,6 +851,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         openAiProposal(edge.proposal);
         setSelectedEdge(null);
         setSelectedNode(null);
+        // The graph reports its clicked edge again whenever its edges or this
+        // handler change; a proposal opens once per click, so let it go.
+        graphRef.current?.clearEdgeSelection();
 
         return;
       }
@@ -859,7 +862,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
         setSelectedNode(null);
       }
     },
-    [openAiProposal, setSelectedNode]
+    [graphRef, openAiProposal, setSelectedNode]
   );
 
   const handleRelationUpdate = useCallback(

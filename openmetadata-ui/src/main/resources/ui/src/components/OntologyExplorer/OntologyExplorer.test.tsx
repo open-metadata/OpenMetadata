@@ -48,6 +48,7 @@ interface OntologyGraphMockProps {
     toId: string,
     relationType: string
   ) => Promise<void>;
+  onEdgeClick: (edge: MergedEdge | null) => void;
   onNodeClick: (node: OntologyNode) => void;
 }
 
@@ -69,12 +70,18 @@ jest.mock('../../rest/glossaryAPI', () => ({
   getGlossaryTermByFQN: jest.fn(),
 }));
 
+const mockClearEdgeSelection = jest.fn();
+
 jest.mock('./OntologyGraphG6', () => {
-  const { forwardRef } = jest.requireActual<typeof import('react')>('react');
+  const { forwardRef, useImperativeHandle } =
+    jest.requireActual<typeof import('react')>('react');
 
   return {
     __esModule: true,
-    default: forwardRef((props: OntologyGraphMockProps, _ref) => {
+    default: forwardRef((props: OntologyGraphMockProps, ref) => {
+      useImperativeHandle(ref, () => ({
+        clearEdgeSelection: mockClearEdgeSelection,
+      }));
       mockOntologyGraph(props);
 
       return <div data-testid="ontology-graph" />;
@@ -915,6 +922,24 @@ describe('OntologyExplorer AI proposals extension', () => {
         id: '7d3c1a52-8a52-4f2c-9a3c-3b3c3e4f5a6b',
       })
     );
+  });
+
+  it('opens a proposed relationship once per click, so later graph updates do not reopen it', () => {
+    renderStudio();
+    const proposedEdge = {
+      from: proposedNode.id,
+      proposal: { changeSetId: 'cs-1', operationId: 'op-link' },
+      relationType: 'relatedTo',
+      to: termNode.id,
+    } as MergedEdge;
+
+    act(() => lastGraphProps().onEdgeClick(proposedEdge));
+
+    expect(openProposal).toHaveBeenCalledWith(proposedEdge.proposal);
+    expect(mockClearEdgeSelection).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByTestId('ontology-relation-details-panel')
+    ).not.toBeInTheDocument();
   });
 
   it('does not save a relationship drawn to a proposed concept', async () => {

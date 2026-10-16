@@ -144,6 +144,8 @@ export interface OntologyGraphHandle {
   getNodePositions: () => Record<string, { x: number; y: number }>;
   exportAsPng: () => Promise<void>;
   exportAsSvg: () => Promise<void>;
+  /** Forget the clicked edge, so the next click on it is reported again. */
+  clearEdgeSelection: () => void;
 }
 
 export interface HierarchyComboInfo {
