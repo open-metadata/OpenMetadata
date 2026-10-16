@@ -32,6 +32,7 @@ import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAdd
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import ShareBar, { ShareSegment } from '../Common/TopicWidget/ShareBar';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -40,7 +41,7 @@ import AssetTypeRows from './AssetTypeRows';
 
 const TONE = {
   icon: LayersThree01,
-  tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
+  tile: TOPIC_BLUE_TILE_CLASSES,
 };
 
 export type TotalDataAssetsWidgetProps = WidgetCommonProps;

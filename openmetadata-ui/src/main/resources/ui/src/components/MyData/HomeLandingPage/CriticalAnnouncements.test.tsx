@@ -82,14 +82,14 @@ const respondWith = (announcements: AnnouncementEntity[]) =>
     paging: { total: announcements.length },
   });
 
-const renderBanner = () => {
+const renderBanner = (fallback?: React.ReactNode) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
 
   return render(
     <QueryClientProvider client={client}>
-      <CriticalAnnouncements />
+      <CriticalAnnouncements fallback={fallback} />
     </QueryClientProvider>
   );
 };
@@ -157,6 +157,25 @@ describe('CriticalAnnouncements', () => {
     expect(
       screen.queryByTestId('critical-announcements')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows its fallback in the slot while no critical announcement is live', async () => {
+    respondWith([]);
+
+    renderBanner(<div data-testid="greeting" />);
+
+    expect(await screen.findByTestId('greeting')).toBeInTheDocument();
+  });
+
+  it('takes the slot from its fallback while one is live', async () => {
+    respondWith([makeCritical('c1', 1)]);
+
+    renderBanner(<div data-testid="greeting" />);
+
+    expect(
+      await screen.findByTestId('critical-announcements')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('greeting')).not.toBeInTheDocument();
   });
 
   it('shows a single announcement without a carousel', async () => {

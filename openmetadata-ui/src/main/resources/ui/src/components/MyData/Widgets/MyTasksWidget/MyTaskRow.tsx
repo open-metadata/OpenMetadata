@@ -34,6 +34,7 @@ import { getShortRelativeTime } from '../../../../utils/date-time/DateTimeUtils'
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getMyTaskBucket, MyTaskBucket } from '../../../../utils/myTaskBuckets';
 import { getTaskDetailPath } from '../../../../utils/TaskUtils';
+import { TOPIC_ROW_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 
 interface KindStyle {
   icon: FC<IconProps>;
@@ -90,8 +91,10 @@ const MyTaskRow: React.FC<MyTaskRowProps> = ({
   return (
     <li
       className={classNames(
-        'tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:rounded-xl tw:px-2 tw:py-3',
-        isSelected && 'tw:bg-utility-brand-50'
+        'tw:group tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:rounded-xl tw:px-2 tw:py-3 tw:transition-colors',
+        isSelected
+          ? 'tw:bg-utility-brand-50'
+          : 'tw:hover:bg-utility-gray-blue-50'
       )}
       data-testid={`my-task-row-${task.id}`}>
       <Checkbox
@@ -104,13 +107,16 @@ const MyTaskRow: React.FC<MyTaskRowProps> = ({
       <span
         className={classNames(
           'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
-          kind.tile
+          kind.tile,
+          TOPIC_ROW_TILE_CLASSES
         )}>
         <KindIcon aria-hidden size={16} />
         <span className="tw:sr-only">{t(kind.labelKey)}</span>
       </span>
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
-        <Link className="tw:min-w-0" to={getTaskDetailPath(task)}>
+        <Link
+          className="tw:min-w-0 tw:no-underline!"
+          to={getTaskDetailPath(task)}>
           <Typography
             className="tw:text-text-primary!"
             data-testid="my-task-title"

@@ -84,12 +84,14 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
       {description}
     </Typography>
     {action && (
+      // The regular page-action size, not the card's compact xs: an empty
+      // state's one call to action should read as a primary page button.
       <Button
         className="tw:mt-5"
         color="primary"
         data-testid={`topic-empty-action-${topicKey}`}
         iconLeading={Plus}
-        size="xs"
+        size="md"
         onPress={action.onPress}>
         {action.label}
       </Button>

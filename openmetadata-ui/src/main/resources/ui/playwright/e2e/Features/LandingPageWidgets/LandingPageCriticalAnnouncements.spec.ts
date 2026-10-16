@@ -70,6 +70,8 @@ const openHome = async (page: Page) => {
   await redirectToHomePage(page);
   await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
   await expect(banner(page)).toBeVisible();
+  // A live critical takes the greeting's slot rather than stacking under it.
+  await expect(page.getByTestId('home-landing-page-header')).toHaveCount(0);
 };
 
 test.describe('Landing page critical announcements', () => {

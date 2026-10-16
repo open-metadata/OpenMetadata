@@ -34,6 +34,7 @@ import { getExplorePath } from '../../../../utils/RouterUtils';
 import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -43,7 +44,7 @@ import { PIPELINE_STATUS_STYLES } from './PipelineStatusWidget.constants';
 
 const TONE = {
   icon: Dataflow03,
-  tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
+  tile: TOPIC_BLUE_TILE_CLASSES,
 };
 
 export type PipelineStatusWidgetProps = WidgetCommonProps;

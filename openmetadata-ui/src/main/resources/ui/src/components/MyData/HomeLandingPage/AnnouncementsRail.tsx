@@ -22,6 +22,7 @@ import {
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import classNames from 'classnames';
 import React, {
   useCallback,
   useEffect,
@@ -312,15 +313,22 @@ const AnnouncementsRail: React.FC = () => {
         {/* Container query, not a viewport breakpoint — the rail should size off
         the section's own width, which the sidebar and page padding shape. */}
         <div className="tw:@container tw:mt-3 tw:min-w-0">
+          {/* overflow-x-auto clips vertically too, so -my-2/py-2 gives a
+          card's hover shadow room without moving the cards. */}
           <ul
             aria-label={t('label.announcement-plural')}
-            className="tw:flex tw:snap-x tw:snap-mandatory tw:items-stretch tw:gap-3.5 tw:overflow-x-auto tw:overscroll-x-contain tw:scrollbar-hide"
+            className="tw:-my-2 tw:flex tw:snap-x tw:snap-mandatory tw:items-stretch tw:gap-3.5 tw:overflow-x-auto tw:overscroll-x-contain tw:py-2 tw:scrollbar-hide"
             data-testid="announcement-rail"
             ref={railRef}
             onScroll={syncScrollState}>
             {activeAnnouncements.map((announcement) => (
+              // A lone announcement takes the full width rather than half the
+              // rail beside an empty column.
               <li
-                className="tw:flex tw:shrink-0 tw:snap-start tw:basis-full tw:@2xl:basis-[calc(50%-0.4375rem)]"
+                className={classNames(
+                  'tw:flex tw:shrink-0 tw:snap-start tw:basis-full',
+                  count > 1 && 'tw:@2xl:basis-[calc(50%-0.4375rem)]'
+                )}
                 key={announcement.id}>
                 <AnnouncementCard
                   announcement={announcement}

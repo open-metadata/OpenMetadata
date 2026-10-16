@@ -36,6 +36,7 @@ import {
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { TOPIC_ROW_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   NOT_RUN_STYLE,
   PIPELINE_STATUS_STYLES,
@@ -120,7 +121,10 @@ const PipelineStatusRow: React.FC<PipelineStatusRowProps> = ({
 
   return (
     <li
-      className="tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:py-3"
+      className={classNames(
+        'tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:py-3',
+        TOPIC_ROW_CLASSES
+      )}
       data-testid={`pipeline-status-row-${summary.pipelineId}`}>
       <span
         className={classNames(
@@ -132,7 +136,7 @@ const PipelineStatusRow: React.FC<PipelineStatusRowProps> = ({
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
         <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
           <Link
-            className="tw:min-w-0 tw:flex-1"
+            className="tw:min-w-0 tw:flex-1 tw:no-underline!"
             to={getEntityDetailsPath(EntityType.PIPELINE, summary.pipelineFqn)}>
             <Typography
               className="tw:text-text-primary!"

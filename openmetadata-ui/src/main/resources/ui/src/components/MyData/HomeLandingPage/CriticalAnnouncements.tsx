@@ -16,6 +16,7 @@ import {
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
@@ -69,6 +70,11 @@ const getCriticalAnnouncementsQueryOptions = () => ({
   staleTime: CRITICAL_ANNOUNCEMENTS_TTL_MS,
 });
 
+export interface CriticalAnnouncementsProps {
+  /** What holds the top slot while no critical announcement is live. */
+  fallback?: ReactNode;
+}
+
 /**
  * The Home page's top banner: the live critical system announcements, one at
  * a time. Several make a carousel in the same slot rather than a stack, moved
@@ -78,8 +84,13 @@ const getCriticalAnnouncementsQueryOptions = () => ({
  *
  * This is the only place users see system announcements; the rail below lists
  * asset announcements alone.
+ *
+ * The banner takes the page's top slot, so whatever normally sits there is
+ * passed as `fallback` and shown whenever no critical announcement is live.
  */
-const CriticalAnnouncements = () => {
+const CriticalAnnouncements = ({
+  fallback = null,
+}: CriticalAnnouncementsProps) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { currentUser } = useApplicationStore();
@@ -119,7 +130,7 @@ const CriticalAnnouncements = () => {
   );
 
   if (visible.length === 0) {
-    return null;
+    return <>{fallback}</>;
   }
 
   // Clamped rather than reset: dismissing the current banner shows the next

@@ -12,6 +12,7 @@
  */
 
 import { Badge, Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
@@ -21,6 +22,7 @@ import {
   getPipelineTypeLabel,
 } from '../../PlatformHealthWidget/PlatformHealthWidget.utils';
 import { FailingService } from '../../PlatformHealthWidget/useIngestionPipelineStats';
+import { TOPIC_ROW_CLASSES } from './topicRowStyles';
 
 export interface FailingServiceRowProps {
   service: FailingService;
@@ -37,7 +39,10 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
   return (
     <li>
       <button
-        className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-3 tw:py-3 tw:text-left"
+        className={classNames(
+          'tw:flex tw:w-[calc(100%+1rem)] tw:cursor-pointer tw:items-center tw:gap-3 tw:py-3 tw:text-left',
+          TOPIC_ROW_CLASSES
+        )}
         data-testid={`failing-service-${service.id}`}
         type="button"
         onClick={() => onOpen(service)}>
@@ -48,7 +53,7 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
           src={serviceUtilClassBase.getServiceLogo(service.serviceType)}
           width={32}
         />
-        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
           {/* `!` on the colours: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}

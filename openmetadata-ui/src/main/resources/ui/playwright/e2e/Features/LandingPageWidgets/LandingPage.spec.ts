@@ -49,16 +49,20 @@ test.describe('Landing page', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
   });
 
-  // The page opens on the announcements and topics; the greeting header that
-  // used to sit above them was removed, so its copy must not come back.
-  test('renders the page shell without a greeting header', async ({ page }) => {
+  // The page opens on the greeting, which a live critical system announcement
+  // replaces. Other specs publish those against the same server, so either may
+  // hold the slot — but never both, and never neither.
+  test('opens on the greeting or the critical banner in its place', async ({
+    page,
+  }) => {
+    const root = page.getByTestId(LANDING_PAGE_ROOT);
+    const topSlot = root
+      .getByTestId('home-landing-page-header')
+      .or(root.getByTestId('critical-announcements'));
+
     await expect(page.getByTestId('topics-to-catch-up-on')).toBeVisible();
-    await expect(
-      page.getByTestId(LANDING_PAGE_ROOT).getByTestId('page-header')
-    ).toHaveCount(0);
-    await expect(
-      page.getByText("Here's what needs your attention across your data.")
-    ).toHaveCount(0);
+    await expect(topSlot).toHaveCount(1);
+    await expect(topSlot).toBeVisible();
   });
 
   // The persona layout decides what is on the page; this account's persona has

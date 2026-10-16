@@ -487,6 +487,32 @@ describe('AnnouncementsRail rail', () => {
     expect(screen.getByTestId(VIEW_ALL_BTN)).toBeInTheDocument();
   });
 
+  it('gives a lone announcement the full width, and two-up otherwise', async () => {
+    const halfWidth = 'tw:@2xl:basis-[calc(50%-0.4375rem)]';
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('solo')],
+    } as never);
+
+    const { unmount } = renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(await screen.findByTestId(cardId('solo'))).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('solo')).closest('li')).not.toHaveClass(
+      halfWidth
+    );
+
+    unmount();
+    queryClient.clear();
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
+    } as never);
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(await screen.findByTestId(cardId('a1'))).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('a1')).closest('li')).toHaveClass(
+      halfWidth
+    );
+  });
+
   it('hides the whole section when nothing is active', async () => {
     mockGetActiveAnnouncements.mockResolvedValue({ data: [] } as never);
 
