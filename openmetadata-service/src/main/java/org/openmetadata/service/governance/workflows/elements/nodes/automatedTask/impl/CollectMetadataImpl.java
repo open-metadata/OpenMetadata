@@ -31,7 +31,9 @@ public class CollectMetadataImpl implements JavaDelegate {
     final var variables = new WorkflowVariableHandler(execution);
     try {
       collect(execution, variables);
-    } catch (Exception failure) {
+    } catch (RuntimeException failure) {
+      // Any failure collecting becomes the workflow's runtime error, so the stage's error boundary
+      // handles it; collect() declares no checked exceptions.
       LOG.error("Metadata collection failed for {}", execution.getCurrentActivityId(), failure);
       variables.setGlobalVariable(EXCEPTION_VARIABLE, failure.toString());
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, failure.getMessage());

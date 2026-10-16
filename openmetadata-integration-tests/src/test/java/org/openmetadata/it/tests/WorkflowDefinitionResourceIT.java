@@ -6460,7 +6460,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             awaitRequestTask(requestId, glossary).getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
+            new ResolveTask()
                 .withResolutionType(TaskResolutionType.Rejected)
                 .withComment("not this wording"));
 
@@ -6481,8 +6481,7 @@ public class WorkflowDefinitionResourceIT {
                 .tasks()
                 .resolve(
                     task.getId().toString(),
-                    new org.openmetadata.schema.api.tasks.ResolveTask()
-                        .withResolutionType(TaskResolutionType.Approved)));
+                    new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
     assertEquals("Pending", changeRequest(requestId).get("status").asText());
     assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
   }
@@ -7264,8 +7263,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
     awaitRequestStatus(requestId, "Applied");
     await("glossary marked Approved after the reviewer list changed")
@@ -7450,8 +7448,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
     awaitRequestStatus(requestId, "Applied");
     assertEquals("reviewed by an admin", descriptionOf(glossary));
   }
@@ -7833,7 +7830,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
+            new ResolveTask()
                 .withResolutionType(resolution)
                 .withComment("partial review")
                 .withChangeDecisions(List.of(changes)));
@@ -8001,8 +7998,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
   }
 
   private Glossary glossaryById(Glossary glossary) {
@@ -10195,9 +10191,8 @@ public class WorkflowDefinitionResourceIT {
         (entityFqn, entityType) -> {
           try {
             LOG.info("Waiting for approval task for {}...", entityType);
-            org.openmetadata.schema.api.tasks.ResolveTask resolveTask =
-                new org.openmetadata.schema.api.tasks.ResolveTask()
-                    .withResolutionType(TaskResolutionType.Approved);
+            ResolveTask resolveTask =
+                new ResolveTask().withResolutionType(TaskResolutionType.Approved);
             // A follow-up update (e.g. adding data product assets) starts a new run that supersedes
             // the open task, so resolution retries against whichever task is current.
             await("approval task for " + entityType + " resolved")
@@ -10835,9 +10830,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("Created port trigger workflow: {}", portWorkflowName);
     waitForWorkflowDeployment(client, portWorkflowName);
 
-    org.openmetadata.schema.api.tasks.ResolveTask resolveApproved =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproved = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     // inputPorts add — ChangeEvent fieldsAdded[inputPorts] must trigger the workflow
     org.openmetadata.schema.type.api.BulkAssets inputPortAssets =
@@ -12229,9 +12222,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 9: Resolve the approval task to test workflow progression
     LOG.info("Resolving the approval task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolveTaskV2 =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveTaskV2 = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     OpenMetadataClient ownerClient =
         SdkClients.createClient(ownerUser.getName(), ownerUser.getEmail(), new String[] {});
@@ -12475,9 +12466,7 @@ public class WorkflowDefinitionResourceIT {
 
     OpenMetadataClient candidate1Client =
         SdkClients.createClient(candidate1.getName(), candidate1.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveApproval =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproval = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     Task intermediateTask =
         candidate1Client.tasks().resolve(approvalTask.getId().toString(), resolveApproval);
@@ -12766,9 +12755,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 10: Resolve the approval task to test workflow progression
     LOG.info("Resolving the approval task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolveTaskV2 =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveTaskV2 = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     OpenMetadataClient ownerClient =
         SdkClients.createClient(ownerUser.getName(), ownerUser.getEmail(), new String[] {});
@@ -14256,9 +14243,8 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("Approving Finance domain task");
     OpenMetadataClient owner1Client =
         SdkClients.createClient(owner1.getName(), owner1.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveFinanceTask =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveFinanceTask =
+        new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     owner1Client.tasks().resolve(financeTask.getId().toString(), resolveFinanceTask);
     LOG.debug("✓ Resolved Finance domain task");
 
@@ -14314,9 +14300,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 9: Resolve the PII.Sensitive tag task
     LOG.info("Resolving PII.Sensitive tag task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolvePiiTask =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolvePiiTask = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     owner1Client.tasks().resolve(piiTask.getId().toString(), resolvePiiTask);
     LOG.debug("✓ Resolved PII.Sensitive tag task");
 
@@ -14810,8 +14794,7 @@ public class WorkflowDefinitionResourceIT {
           .tasks()
           .resolve(
               originalTask.getId().toString(),
-              new org.openmetadata.schema.api.tasks.ResolveTask()
-                  .withResolutionType(TaskResolutionType.Approved));
+              new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
       await("surviving task must resolve and drive the workflow to Approved")
           .atMost(Duration.ofSeconds(45))
@@ -14872,8 +14855,7 @@ public class WorkflowDefinitionResourceIT {
           .tasks()
           .resolve(
               supersedingTask.getId().toString(),
-              new org.openmetadata.schema.api.tasks.ResolveTask()
-                  .withResolutionType(TaskResolutionType.Approved));
+              new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
       await("superseding task must resolve and drive the workflow to Approved")
           .atMost(Duration.ofSeconds(45))
@@ -15396,8 +15378,8 @@ public class WorkflowDefinitionResourceIT {
     // BPMN's approve/reject edge conditions match the projected id).
     OpenMetadataClient reviewerClient =
         SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
+    ResolveTask resolveRequest =
+        new ResolveTask()
             .withTransitionId("approve")
             .withResolutionType(TaskResolutionType.Approved);
     reviewerClient.tasks().resolve(task.getId().toString(), resolveRequest);
@@ -15668,15 +15650,33 @@ public class WorkflowDefinitionResourceIT {
     OpenMetadataClient admin = SdkClients.adminClient();
     OpenMetadataClient ownerClient = SdkClients.user1Client();
     EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
-    Domain domain =
-        admin
-            .domains()
-            .create(
-                new CreateDomain()
-                    .withName(ns.shortPrefix("ownerGates"))
-                    .withDescription("Domain approved by its owner at two gates")
-                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
-                    .withOwners(List.of(owner)));
+    Domain domain = createOwnedDomain(admin, ns, owner);
+    deployTwoOwnerGates(admin, ns, domain);
+    patchDomainDescription(admin, domain, "Ready for review");
+
+    Task first = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), null);
+    approveAs(ownerClient, first);
+    Task second = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), first.getId());
+    assertEquals(Set.of(owner.getId()), assigneeIds(second));
+
+    approveAs(ownerClient, second);
+    awaitDomainStatus(admin, domain, EntityStatus.APPROVED);
+  }
+
+  private static Domain createOwnedDomain(
+      OpenMetadataClient admin, TestNamespace ns, EntityReference owner) {
+    return admin
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(ns.shortPrefix("ownerGates"))
+                .withDescription("Domain approved by its owner at two gates")
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withOwners(List.of(owner)));
+  }
+
+  private void deployTwoOwnerGates(OpenMetadataClient admin, TestNamespace ns, Domain domain)
+      throws Exception {
     // The trigger filter excludes what it matches, so only this domain starts the workflow.
     String onlyThisDomain =
         MAPPER.writeValueAsString(
@@ -15694,39 +15694,36 @@ public class WorkflowDefinitionResourceIT {
                     CreateWorkflowDefinition.class));
     trackWorkflow(created.getName(), created.getId().toString());
     waitForWorkflowDeployment(admin, workflowName);
+  }
 
+  private static void patchDomainDescription(OpenMetadataClient admin, Domain domain, String text)
+      throws Exception {
     admin
         .domains()
         .patch(
             domain.getId(),
             MAPPER.readTree(
-                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Ready for review\"}]"));
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]"
+                    .formatted(text)));
+  }
 
-    Task first = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), null);
-    ownerClient
+  private static void approveAs(OpenMetadataClient client, Task task) {
+    client
         .tasks()
         .resolve(
-            first.getId().toString(),
+            task.getId().toString(),
             new ResolveTask().withResolutionType(TaskResolutionType.Approved));
-    Task second = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), first.getId());
-    assertEquals(
-        List.of(owner.getId()),
-        second.getAssignees().stream().map(EntityReference::getId).toList());
+  }
 
-    ownerClient
-        .tasks()
-        .resolve(
-            second.getId().toString(),
-            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
-
-    await("the second owner approval to approve the domain")
+  private static void awaitDomainStatus(
+      OpenMetadataClient admin, Domain domain, EntityStatus status) {
+    await("domain %s to reach %s".formatted(domain.getName(), status))
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(1))
         .untilAsserted(
             () ->
                 assertEquals(
-                    EntityStatus.APPROVED,
-                    admin.domains().get(domain.getId().toString()).getEntityStatus()));
+                    status, admin.domains().get(domain.getId().toString()).getEntityStatus()));
   }
 
   /** A lifecycle playbook whose only gate never opens, so whatever it enrols stays put. */
@@ -16069,9 +16066,7 @@ public class WorkflowDefinitionResourceIT {
                     .withReviewers(List.of(reviewer.getEntityReference())));
     Task task =
         awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), approver.getId());
-    org.openmetadata.schema.api.tasks.ResolveTask approve =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask approve = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     ForbiddenException refused =
         assertThrows(

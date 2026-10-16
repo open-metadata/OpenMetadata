@@ -160,16 +160,7 @@ class LifecycleMetadataTasksIT {
       final String taskId = onlyTask(domain).get("id").asText();
 
       final InvalidRequestException edited =
-          assertThrows(
-              InvalidRequestException.class,
-              () ->
-                  SdkClients.adminClient()
-                      .tasks()
-                      .patch(
-                          UUID.fromString(taskId),
-                          JsonUtils.readTree(
-                              """
-                              [{"op":"replace","path":"/description","value":"Done"}]""")));
+          assertThrows(InvalidRequestException.class, () -> editDescription(taskId));
       final InvalidRequestException rechecked =
           assertThrows(InvalidRequestException.class, () -> recheck(taskId));
 
@@ -179,6 +170,16 @@ class LifecycleMetadataTasksIT {
     } finally {
       cleanup(domain, workflow);
     }
+  }
+
+  private static void editDescription(final String taskId) {
+    SdkClients.adminClient()
+        .tasks()
+        .patch(
+            UUID.fromString(taskId),
+            JsonUtils.readTree(
+                """
+                [{"op":"replace","path":"/description","value":"Done"}]"""));
   }
 
   @Test

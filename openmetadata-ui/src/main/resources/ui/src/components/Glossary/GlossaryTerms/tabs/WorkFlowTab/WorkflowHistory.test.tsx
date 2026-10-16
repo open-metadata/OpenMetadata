@@ -289,6 +289,45 @@ describe('WorkflowHistory Component', () => {
       );
     });
 
+    it('should find the approval run behind a full page of other workflow runs', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock)
+        .mockResolvedValueOnce({
+          data: Array.from({ length: 25 }, (_, index) => ({
+            id: `event-run-${index}`,
+            workflowDefinitionId: EVENT_WORKFLOW_ID,
+            startedAt: 1000 + index,
+          })),
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'approval-run',
+              workflowDefinitionId: APPROVAL_WORKFLOW_ID,
+              startedAt: 100,
+            },
+          ],
+        });
+
+      await act(async () => {
+        render(<WorkflowHistory glossaryTerm={mockGlossaryTerm} />);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('workflow-history-workflow-name')
+        ).toHaveTextContent('Glossary Term Approval Workflow');
+      });
+
+      expect(getWorkflowInstancesForApplication).toHaveBeenLastCalledWith(
+        expect.objectContaining({ offset: '25' })
+      );
+      expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
+        'GlossaryTermApprovalWorkflow',
+        'approval-run',
+        expect.any(Object)
+      );
+    });
+
     it('should show the lifecycle workflow when its run is newer than the approval run', async () => {
       (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
         data: [
@@ -510,6 +549,7 @@ describe('WorkflowHistory Component', () => {
           endTs: expect.any(Number),
           entityLink: 'entity-link',
           limit: expect.any(Number),
+          offset: '0',
         });
 
         expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(

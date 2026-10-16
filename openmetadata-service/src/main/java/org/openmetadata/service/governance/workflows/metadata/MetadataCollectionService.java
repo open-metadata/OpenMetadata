@@ -67,7 +67,7 @@ public final class MetadataCollectionService {
   static final String CONDITIONS_NOT_MET = "The lifecycle conditions are not met.";
   static final String FILLED_IN = "Everything the stage needs is in place";
   static final String LEFT_STAGE = "The asset left %s";
-  private static final int MAX_STALE_TASKS = 10;
+  private static final int MAX_STALE_TASKS = 50;
 
   static final List<TaskAvailableTransition> TRANSITIONS =
       List.of(
@@ -185,19 +185,16 @@ public final class MetadataCollectionService {
    * next time any of its stages is reconciled.
    */
   private void closeTasksOfOtherStages(final EntityInterface<?> entity, final UUID current) {
-    Task open = repository.findOpenTaskByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE);
-    int closed = 0;
-    while (open != null && !current.equals(open.getId()) && closed < MAX_STALE_TASKS) {
-      final MetadataCompletionPayload payload =
-          JsonUtils.convertValue(open.getPayload(), MetadataCompletionPayload.class);
-      if (isInStage(entity, payload.getStage())) {
-        open = null;
-      } else {
-        finish(open, false);
-        closed++;
-        open = repository.findOpenTaskByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE);
-      }
-    }
+    repository
+        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
+        .stream()
+        .filter(task -> !current.equals(task.getId()))
+        .filter(task -> !isInStage(entity, stageOf(task)))
+        .forEach(task -> finish(task, false));
+  }
+
+  private static EntityStatus stageOf(final Task task) {
+    return JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class).getStage();
   }
 
   private Optional<Task> findTask(final UUID id) {

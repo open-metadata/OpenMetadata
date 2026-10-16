@@ -1568,6 +1568,37 @@ public class IntakeFormResourceIT {
     }
   }
 
+  @Test
+  void glossary_update_ignoresIntakeFormAddedAfterCreation(TestNamespace ns) throws Exception {
+    Glossary existing =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("glossary-before-intake"))
+                    .withDescription("Created before the intake form"));
+    IntakeForm form =
+        createIntakeForm(
+            new CreateIntakeForm()
+                .withName(ns.prefix("glossary-intake-later"))
+                .withEntityType(TargetEntityType.GLOSSARY)
+                .withEnabled(Boolean.TRUE)
+                .withRequiredFields(
+                    List.of(
+                        new IntakeFormRequiredField()
+                            .withFieldPath("displayName")
+                            .withFieldLabel("Business name")
+                            .withFieldKind(FieldKind.NATIVE))));
+    try {
+      existing.setDescription("Edited after the intake form");
+      Glossary updated =
+          SdkClients.adminClient().glossaries().update(existing.getId().toString(), existing);
+      assertEquals("Edited after the intake form", updated.getDescription());
+    } finally {
+      deleteIntakeForm(form.getId());
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // IntakeForm lifecycle affects enforcement
   // ---------------------------------------------------------------------------

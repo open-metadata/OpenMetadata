@@ -1439,6 +1439,18 @@ public class TaskRepository extends EntityRepository<Task> {
     return findTaskByEntityTypeAndStatuses(entityFqn, taskType, OPEN_TASK_STATUSES);
   }
 
+  /** The entity's open tasks of a type, newest first, at most {@code limit} of them. */
+  public List<Task> listOpenTasksByEntityAndType(
+      String entityFqn, TaskEntityType taskType, int limit) {
+    List<String> statusValues = OPEN_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndTypeAndStatuses(entityFqn, taskType.value(), statusValues, limit)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
+  }
+
   public Task findTaskByEntityTypeAndStatus(
       String entityFqn, TaskEntityType taskType, TaskEntityStatus status) {
     return findTaskByEntityTypeAndStatuses(entityFqn, taskType, List.of(status));

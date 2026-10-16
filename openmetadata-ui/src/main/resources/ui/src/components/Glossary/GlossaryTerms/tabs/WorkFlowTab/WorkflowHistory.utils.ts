@@ -68,18 +68,22 @@ const getReadableDefinitions = async (instances: WorkflowInstance[]) => {
   );
 };
 
-/**
- * Without a definition name the instance list covers every workflow that ran for the entity; the
- * newest run of a workflow that sets the entity's stage decides whose history the card shows.
- */
-export const getLatestWorkflowRun = async (
+// Runs are read a page at a time until one of a stage-setting workflow turns up, so runs of other
+// workflows cannot push the stage's history out of view; the page count bounds the search.
+const MAX_INSTANCE_PAGES = 8;
+
+const findStageRun = async (
   entityLink: string,
-  timeRange: WorkflowInstanceStateParams
-): Promise<LatestWorkflowRun | undefined> => {
+  timeRange: WorkflowInstanceStateParams,
+  page = 0
+): Promise<
+  { instance: WorkflowInstance; definition: WorkflowDefinition } | undefined
+> => {
   const { data } = await getWorkflowInstancesForApplication({
     ...timeRange,
     entityLink,
     limit: RECENT_INSTANCES_LIMIT,
+    offset: String(page * RECENT_INSTANCES_LIMIT),
   });
   const instances = orderBy(data ?? [], getInstanceStart, 'desc');
   const definitions = await getReadableDefinitions(instances);
@@ -90,16 +94,35 @@ export const getLatestWorkflowRun = async (
       definitions[workflowDefinitionId] &&
       setsEntityStage(definitions[workflowDefinitionId])
   );
+  const hasMore =
+    instances.length === RECENT_INSTANCES_LIMIT &&
+    page + 1 < MAX_INSTANCE_PAGES;
+
+  if (instance?.workflowDefinitionId) {
+    return { instance, definition: definitions[instance.workflowDefinitionId] };
+  }
+
+  return hasMore ? findStageRun(entityLink, timeRange, page + 1) : undefined;
+};
+
+/**
+ * Without a definition name the instance list covers every workflow that ran for the entity; the
+ * newest run of a workflow that sets the entity's stage decides whose history the card shows.
+ */
+export const getLatestWorkflowRun = async (
+  entityLink: string,
+  timeRange: WorkflowInstanceStateParams
+): Promise<LatestWorkflowRun | undefined> => {
+  const run = await findStageRun(entityLink, timeRange);
   let latestRun: LatestWorkflowRun | undefined;
 
-  if (instance?.id && instance.workflowDefinitionId) {
-    const definition = definitions[instance.workflowDefinitionId];
+  if (run?.instance.id) {
     const { data: states } = await getWorkflowInstanceStateById(
-      definition.name,
-      instance.id,
+      run.definition.name,
+      run.instance.id,
       timeRange
     );
-    latestRun = { definition, states: [...states].reverse() };
+    latestRun = { definition: run.definition, states: [...states].reverse() };
   }
 
   return latestRun;

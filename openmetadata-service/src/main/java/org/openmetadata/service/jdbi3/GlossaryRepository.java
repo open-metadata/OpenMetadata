@@ -83,6 +83,7 @@ import org.openmetadata.service.ontology.OntologyLayerValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -176,7 +177,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   public void prepare(Glossary glossary, boolean update) {
     ontologyLayerValidator.applyDefaultsAndValidate(glossary);
-    IntakeFormValidator.validate(glossary, GLOSSARY);
   }
 
   @Override
@@ -194,12 +194,25 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
   @Override
   public void storeEntity(Glossary glossary, boolean update) {
+    // Intake governs human creation, including PUT upserts; later edits to a glossary that predates
+    // a required field must not be blocked by requirements intended for the creation form.
+    if (!update) {
+      validateIntakeForCreation(glossary);
+    }
     store(glossary, update);
   }
 
   @Override
   public void storeEntities(List<Glossary> entities) {
+    entities.forEach(this::validateIntakeForCreation);
     storeMany(entities);
+  }
+
+  private void validateIntakeForCreation(final Glossary glossary) {
+    if (nullOrEmpty(glossary.getUpdatedBy())
+        || !SubjectContext.getSubjectContext(glossary.getUpdatedBy()).isBot()) {
+      IntakeFormValidator.validate(glossary, GLOSSARY);
+    }
   }
 
   @Override

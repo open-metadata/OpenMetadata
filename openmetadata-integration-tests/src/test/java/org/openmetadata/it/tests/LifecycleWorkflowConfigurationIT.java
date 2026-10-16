@@ -29,6 +29,23 @@ public class LifecycleWorkflowConfigurationIT {
 
   @Test
   void deploysMetadataCollectionWithoutAnInputNamespaceMap(final TestNamespace ns) {
+    final JsonNode created = execute(HttpMethod.POST, WORKFLOWS, collectOnlyRequest(ns));
+    final String path = WORKFLOWS + "/" + created.get("id").asText();
+    try {
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(30))
+          .until(
+              () ->
+                  execute(HttpMethod.GET, path + "?fields=deployed", null)
+                      .path("deployed")
+                      .asBoolean());
+    } finally {
+      execute(HttpMethod.DELETE, path + "?hardDelete=true&recursive=true", null);
+    }
+  }
+
+  /** A workflow whose only step collects metadata, with no input namespace map on that step. */
+  private static ObjectNode collectOnlyRequest(final TestNamespace ns) {
     final ObjectNode request = request(ns);
     request.set(
         "nodes",
@@ -48,19 +65,7 @@ public class LifecycleWorkflowConfigurationIT {
             """
         [{"from":"start","to":"collect"},{"from":"collect","to":"end"}]
         """));
-    final JsonNode created = execute(HttpMethod.POST, WORKFLOWS, request);
-    final String path = WORKFLOWS + "/" + created.get("id").asText();
-    try {
-      Awaitility.await()
-          .atMost(Duration.ofSeconds(30))
-          .until(
-              () ->
-                  execute(HttpMethod.GET, path + "?fields=deployed", null)
-                      .path("deployed")
-                      .asBoolean());
-    } finally {
-      execute(HttpMethod.DELETE, path + "?hardDelete=true&recursive=true", null);
-    }
+    return request;
   }
 
   @Test
