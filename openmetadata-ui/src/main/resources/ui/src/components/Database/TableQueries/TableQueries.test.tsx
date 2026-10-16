@@ -66,6 +66,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
+  Plus: () => <span>Plus</span>,
+  SortAscending: () => <span>SortAscending</span>,
+  SortDescending: () => <span>SortDescending</span>,
+  XCircle: () => <span>XCircle</span>,
 }));
 
 const mockTableQueriesProp: TableQueriesProp = {

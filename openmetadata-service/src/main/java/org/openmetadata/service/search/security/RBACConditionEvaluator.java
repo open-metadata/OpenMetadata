@@ -32,7 +32,6 @@ import org.springframework.expression.spel.ast.OperatorNot;
 import org.springframework.expression.spel.ast.StringLiteral;
 import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
-import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 @Slf4j
 public class RBACConditionEvaluator {
@@ -41,7 +40,15 @@ public class RBACConditionEvaluator {
   private final ExpressionParser spelParser = new SpelExpressionParser();
   private final Cache<String, SpelExpression> expressionCache =
       Caffeine.newBuilder().maximumSize(512).build();
-  private final StandardEvaluationContext spelContext;
+
+  /**
+   * The caller whose conditions are being compiled. One evaluator serves every search request, so
+   * the caller is held per thread for the length of {@link #evaluateConditions}: a shared holder let
+   * a concurrent request compile {@code isOwner()} against another user's identity, and the
+   * compiled query is cached under the caller's own key.
+   */
+  private final ThreadLocal<User> evaluatingUser = new ThreadLocal<>();
+
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
 
@@ -58,12 +65,19 @@ public class RBACConditionEvaluator {
 
   public RBACConditionEvaluator(QueryBuilderFactory queryBuilderFactory) {
     this.queryBuilderFactory = queryBuilderFactory;
-    spelContext = new StandardEvaluationContext();
   }
 
   public OMQueryBuilder evaluateConditions(SubjectContext subjectContext) {
+    evaluatingUser.set(subjectContext.user());
+    try {
+      return compileConditions(subjectContext);
+    } finally {
+      evaluatingUser.remove();
+    }
+  }
+
+  private OMQueryBuilder compileConditions(SubjectContext subjectContext) {
     User user = subjectContext.user();
-    spelContext.setVariable("user", user);
 
     List<OMQueryBuilder> allowQueries = new ArrayList<>();
     List<OMQueryBuilder> denyQueries = new ArrayList<>();
@@ -81,7 +95,7 @@ public class RBACConditionEvaluator {
           continue;
         }
 
-        OMQueryBuilder ruleQuery = buildRuleQuery(rule, user);
+        OMQueryBuilder ruleQuery = buildRuleQuery(rule);
         if (ruleQuery == null || ruleQuery.isEmpty()) {
           continue;
         }
@@ -134,9 +148,8 @@ public class RBACConditionEvaluator {
     return finalQuery;
   }
 
-  private OMQueryBuilder buildRuleQuery(CompiledRule rule, User user) {
+  private OMQueryBuilder buildRuleQuery(CompiledRule rule) {
     ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
-    spelContext.setVariable("user", user);
 
     if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
       OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
@@ -244,9 +257,9 @@ public class RBACConditionEvaluator {
         List<String> tags = extractMethodArguments(methodRef);
         matchAllTags(tags, collector);
       }
-      case "isOwner" -> isOwner((User) spelContext.lookupVariable("user"), collector);
+      case "isOwner" -> isOwner(evaluatingUser.get(), collector);
       case "noOwner" -> noOwner(collector);
-      case "isReviewer" -> isReviewer((User) spelContext.lookupVariable("user"), collector);
+      case "isReviewer" -> isReviewer(evaluatingUser.get(), collector);
       case "hasAnyRole" -> {
         List<String> roles = extractMethodArguments(methodRef);
         hasAnyRole(roles, collector);
@@ -475,7 +488,7 @@ public class RBACConditionEvaluator {
   }
 
   public void hasAnyRole(List<String> roles, ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
+    User user = evaluatingUser.get();
     boolean hasRole = roles.stream().anyMatch(role -> SubjectContext.hasRole(user, role));
 
     if (hasRole) {
@@ -486,7 +499,7 @@ public class RBACConditionEvaluator {
   }
 
   public void hasDomain(ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
+    User user = evaluatingUser.get();
     if (user == null || nullOrEmpty(user.getDomains())) {
       // No user domains: only domainless entities, and never any Domain entity itself.
       collector.addMustNot(queryBuilderFactory.existsQuery("domains.id"));
@@ -516,7 +529,7 @@ public class RBACConditionEvaluator {
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {
-    User user = (User) spelContext.lookupVariable("user");
+    User user = evaluatingUser.get();
     if (user.getTeams() == null || user.getTeams().isEmpty()) {
       collector.setMatchNothing(true);
       return;
