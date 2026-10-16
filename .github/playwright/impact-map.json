@@ -119,12 +119,29 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
-        "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**"
+        "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
         "playwright/e2e/Pages/Lineage/**/*.spec.ts",
         "playwright/e2e/Flow/*Lineage*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The export modal and the PNG/CSV writers behind it: every spec that opens the export modal.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Export/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
+        "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
     {
