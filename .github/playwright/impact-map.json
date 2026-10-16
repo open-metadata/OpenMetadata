@@ -1083,6 +1083,22 @@
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
         "playwright/e2e/Features/TagsSuggestion.spec.ts"
       ]
+    },
+    {
+      "_comment": "The first-login welcome screen and the post-deploy upgrade screen (the chunk-load ErrorFallback), with the brand hooks and artwork they render. Tour.spec.ts covers the welcome screen's gating on the home route; no spec forces a chunk-load failure, so the upgrade screen is verified by unit tests and the PR's screenshots.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/MyDataPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorBoundary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/BrandData/**",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/welcome-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/upgrade-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen.png",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/om-upgrade.svg"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Flow/Tour.spec.ts"
+      ]
     }
   ]
 }

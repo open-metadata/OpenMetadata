@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,50 +10,55 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import WelcomeScreen from './WelcomeScreen.component';
 
-const mockProps = {
-  onCloseMock: jest.fn(),
-};
+const mockNavigate = jest.fn();
+const mockOnClose = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useNavigate: () => mockNavigate,
+}));
+
+jest.mock('../../../context/UntitledUIThemeProvider/theme-provider', () => ({
+  useTheme: () => ({ theme: 'light' }),
+}));
 
 describe('WelcomeScreen', () => {
-  it('should render WelcomeScreen', async () => {
-    await act(async () => {
-      render(<WelcomeScreen onClose={mockProps.onCloseMock} />, {
-        wrapper: MemoryRouter,
-      });
-    });
-    const welcomeImg = screen.getByTestId('welcome-screen-img');
+  beforeEach(() => mockNavigate.mockClear());
 
-    expect(welcomeImg).toBeInTheDocument();
+  it('should render the illustration and message', () => {
+    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+
+    expect(screen.getByTestId('welcome-screen-img')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.welcome-screen-message')
+    ).toBeInTheDocument();
   });
 
   it('should call onClose when the close button is clicked', () => {
-    const { getByTestId } = render(
-      <WelcomeScreen onClose={mockProps.onCloseMock} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
 
-    const closeButton = getByTestId('welcome-screen-close-btn');
-    fireEvent.click(closeButton);
+    fireEvent.click(screen.getByTestId('welcome-screen-close-btn'));
 
-    expect(mockProps.onCloseMock).toHaveBeenCalled();
+    expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('should display the correct welcome message', () => {
-    const { getByText } = render(
-      <WelcomeScreen onClose={mockProps.onCloseMock} />,
-      {
-        wrapper: MemoryRouter,
-      }
-    );
+  it('should open add database service on connect a data source', () => {
+    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
 
-    const welcomeMessage = getByText('message.welcome-screen-message');
+    fireEvent.click(screen.getByTestId('welcome-screen-connect-btn'));
 
-    expect(welcomeMessage).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/databaseServices/add-service');
+  });
+
+  it('should start the tour on take a product tour', () => {
+    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+
+    fireEvent.click(screen.getByTestId('welcome-screen-tour-btn'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/tour');
   });
 });
