@@ -157,11 +157,13 @@ export const usePaging = (
 
   const paginationVisible = useMemo(() => {
     const hasCursorPagination = Boolean(paging.before || paging.after);
+    const isNonDefaultSize =
+      pageSize !== (defaultPageSize ?? pageSizeOptions[0]);
 
     return (
       hasCursorPagination ||
       paging.total > pageSize ||
-      pageSize !== (defaultPageSize ?? pageSizeOptions[0])
+      (paging.total > 0 && isNonDefaultSize)
     );
   }, [
     defaultPageSize,

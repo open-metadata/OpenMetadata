@@ -61,6 +61,23 @@ describe('usePaging', () => {
     expect(result.current.showPagination).toBe(true);
   });
 
+  it('hides pagination at a non-default page size only while there are no records', () => {
+    mockUrlParams.pageSize = '25';
+    const { result } = renderHook(() => usePaging());
+
+    act(() => {
+      result.current.handlePagingChange({ total: 0 });
+    });
+
+    expect(result.current.showPagination).toBe(false);
+
+    act(() => {
+      result.current.handlePagingChange({ total: 3 });
+    });
+
+    expect(result.current.showPagination).toBe(true);
+  });
+
   it('syncs pagination state when url paging params are updated externally', () => {
     const { result, rerender } = renderHook(() => usePaging());
 
