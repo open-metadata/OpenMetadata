@@ -97,7 +97,7 @@ export async function releaseOntologyEditLease(
     .catch(() => undefined);
   await page.getByTestId('mode-tab-view').click();
   await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-    'aria-pressed',
+    'aria-selected',
     'true'
   );
   await expect(

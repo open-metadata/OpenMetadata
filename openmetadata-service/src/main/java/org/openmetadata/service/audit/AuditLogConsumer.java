@@ -19,7 +19,7 @@ import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.scheduled.AuditLogSchedule;
+import org.openmetadata.service.events.consumer.schedule.AuditLogSchedule;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.DIContainer;

@@ -20,7 +20,6 @@ import {
   waitForTestCasesToBeIndexed,
 } from './dataQuality';
 import { getGlossaryApprovalWorkflowSnapshot } from './glossary';
-import { waitForRunningPipelineStatus } from './logsViewer';
 import { setRemoteRunnerAsDefault } from './serviceIngestion';
 
 const readinessChecks: Array<{
@@ -38,11 +37,6 @@ const readinessChecks: Array<{
     name: 'incident indexing',
     run: (context) =>
       waitForIncidentToBeIndexed(context, 'owned-case', Date.now()),
-  },
-  {
-    name: 'pipeline start',
-    run: (context) =>
-      waitForRunningPipelineStatus(context, 'owned-pipeline', 200),
   },
   {
     name: 'CSV export',

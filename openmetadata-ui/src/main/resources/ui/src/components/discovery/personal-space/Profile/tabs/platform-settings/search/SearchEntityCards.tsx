@@ -12,11 +12,12 @@
  */
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import type { FC } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ENTITY_PATH } from '../../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../../context/PermissionProvider/PermissionProvider';
 import { useAuth } from '../../../../../../../hooks/authHooks';
+import { getEntityIconWithBg } from '../../../../../../../utils/Assets/AssetsUtils';
 import { getSearchSettingCategories } from '../../../../../../../utils/SearchSettingsUtils';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SearchSectionTitle } from './SearchSection';
@@ -41,7 +42,8 @@ const SearchEntityCards = ({
         data-testid="search-entity-cards">
         {entityCategories.map((category) => {
           const itemId = category.key.split('.')[2];
-          const Icon = category.icon as FC<{ className?: string }>;
+          const entityType =
+            ENTITY_PATH[itemId as keyof typeof ENTITY_PATH] ?? itemId;
           const open = () =>
             onNavigate({
               type: 'page',
@@ -58,6 +60,7 @@ const SearchEntityCards = ({
               role="button"
               size="md"
               tabIndex={0}
+              variant="muted"
               onClick={open}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -67,8 +70,11 @@ const SearchEntityCards = ({
               }}>
               <Card.Content>
                 <Box align="start" direction="row" gap={3}>
-                  {Icon && (
-                    <Icon className="tw:size-5 tw:shrink-0 tw:text-secondary" />
+                  {/* Same entity tile as the Custom Properties landing cards. */}
+                  {getEntityIconWithBg(
+                    entityType,
+                    { className: 'tw:h-10 tw:w-10 tw:rounded-lg' },
+                    { size: 25 }
                   )}
                   <Box className="tw:min-w-0" direction="col" gap={1}>
                     <Typography size="text-sm" weight="semibold">

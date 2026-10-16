@@ -38,6 +38,7 @@
         "Clickhouse",
         "Clickzetta",
         "Databricks",
+        "Databend",
         "AzureSQL",
         "DynamoDB",
         "SingleStore",
@@ -143,6 +144,9 @@
         },
         {
           "name": "Databricks"
+        },
+        {
+          "name": "Databend"
         },
         {
           "name": "AzureSQL"
@@ -290,6 +294,9 @@
             },
             {
               "$ref": "./connections/database/databricksConnection.json"
+            },
+            {
+              "$ref": "./connections/database/databendConnection.json"
             },
             {
               "$ref": "./connections/database/db2Connection.json"

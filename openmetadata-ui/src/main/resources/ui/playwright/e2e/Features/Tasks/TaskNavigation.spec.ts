@@ -276,7 +276,7 @@ test.describe('Task Navigation - Entity Page', () => {
       await taskCard.click();
 
       // Should open drawer with task details
-      const drawer = page.locator('.ant-drawer-content');
+      const drawer = page.getByTestId('activity-feed-drawer');
 
       if (await drawer.isVisible({ timeout: 5000 })) {
         // Drawer should show task details
@@ -650,7 +650,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
       await expect(notificationBox).toBeVisible();
 
       const latestNotification = notificationBox
-        .locator('li.ant-list-item.notification-dropdown-list-btn')
+        .locator('li.notification-dropdown-list-btn')
         .first();
       await expect(latestNotification).toBeVisible();
 
@@ -752,7 +752,7 @@ test.describe('Task Notification - activity-feed tab refreshes after clicking no
         await expect(notificationBox).toBeVisible();
 
         const latestNotification = notificationBox
-          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .locator('li.notification-dropdown-list-btn')
           .first();
         await expect(latestNotification).toBeVisible();
 

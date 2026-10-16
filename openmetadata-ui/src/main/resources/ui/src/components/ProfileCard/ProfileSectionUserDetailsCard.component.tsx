@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
+  BadgeWithDot,
+  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
+  SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Badge, Button, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -80,64 +81,44 @@ const ProfileManageOptions = ({
   <div style={{ width: '180px' }}>
     {isLoggedInUser && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
         data-testid="edit-displayname"
+        iconLeading={<EditProfileIcon {...ICON_DIMENSION_USER_PAGE} />}
         onClick={onEditDisplayName}>
-        <EditProfileIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography className="profile-manage-label">
-          {t('label.edit-entity', {
-            entity: t('label.display-name'),
-          })}
-        </Typography>
+        {t('label.edit-entity', {
+          entity: t('label.display-name'),
+        })}
       </Button>
     )}
     {showChangePasswordComponent && (isLoggedInUser || isAdminUser) && (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
         data-testid="change-password-button"
+        iconLeading={<ChangePassword {...ICON_DIMENSION_USER_PAGE} />}
         onClick={onChangePassword}>
-        <ChangePassword
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography className="profile-manage-label">
-          {t('label.change-entity', {
-            entity: t('label.password-lowercase'),
-          })}
-        </Typography>
+        {t('label.change-entity', {
+          entity: t('label.password-lowercase'),
+        })}
       </Button>
     )}
     {userData?.deleted ? (
       <Button
-        className="profile-manage-item d-flex item-center w-full text-left border-0 bg-transparent remove-button-default-styling"
+        className="tw:w-full tw:justify-start"
+        color="tertiary"
+        iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
         onClick={onRestore}>
-        <DeleteIcon
-          className="m-r-xss"
-          style={{ marginRight: '10px' }}
-          {...ICON_DIMENSION_USER_PAGE}
-        />
-        <Typography className="profile-manage-label">
-          {t('label.restore')}
-        </Typography>
+        {t('label.restore')}
       </Button>
     ) : (
       isAdminUser && (
         <Button
-          className="remove-button-default-styling profile-manage-item d-flex item-center w-full text-left border-0  bg-transparent"
+          className="tw:w-full tw:justify-start"
+          color="tertiary"
+          iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
           onClick={onDelete}>
-          <DeleteIcon
-            className="m-r-xss"
-            style={{ marginRight: '10px' }}
-            {...ICON_DIMENSION_USER_PAGE}
-          />
-          <Typography className="profile-manage-label">
-            {t('label.delete-profile')}
-          </Typography>
+          {t('label.delete-profile')}
         </Button>
       )
     )}
@@ -277,7 +258,7 @@ const ProfileSectionUserDetailsCard = ({
             aria-label={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
-            className="user-details-menu-icon tw:p-0"
+            className="user-details-menu-icon"
             color="tertiary"
             data-testid="user-profile-manage-btn"
             icon={<MenuDots height={24} width={24} />}
@@ -308,11 +289,11 @@ const ProfileSectionUserDetailsCard = ({
         {userEmailRender}
         {onlineStatus && (
           <div className="m-t-sm">
-            <Badge
-              data-testid="user-online-status"
-              status={onlineStatus.status}
-              text={onlineStatus.text}
-            />
+            <span data-testid="user-online-status">
+              <BadgeWithDot color="success" size="sm">
+                {onlineStatus.text}
+              </BadgeWithDot>
+            </span>
           </div>
         )}
       </div>
@@ -349,35 +330,20 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <Icon
-            className="m-r-xss font-medium text-md ant-icon"
-            component={DeleteIcon}
-          />
+          <DeleteIcon className="tw:mr-1 tw:size-3.5 tw:shrink-0" />
 
           {t('label.deleted')}
         </span>
       )}
 
       {showRestoreModal && (
-        <Button
-          className="remove-button-default-styling"
-          onClick={(e) => e.stopPropagation()}>
-          <Modal
-            centered
-            cancelButtonProps={{
-              type: 'link',
-              disabled: isRestoring,
-            }}
-            className="reactive-modal"
-            closable={false}
-            confirmLoading={isRestoring}
+        <div role="presentation" onClick={(e) => e.stopPropagation()}>
+          <SimpleModal
             data-testid="restore-user-modal"
-            maskClosable={false}
-            okButtonProps={{
-              loading: isRestoring,
-            }}
+            isDismissable={false}
+            isOkLoading={isRestoring}
+            isOpen={showRestoreModal}
             okText={t('label.restore')}
-            open={showRestoreModal}
             title={t('label.restore-entity', {
               entity: EntityType.USER,
             })}
@@ -388,8 +354,8 @@ const ProfileSectionUserDetailsCard = ({
                 entity: getEntityName(userData),
               })}
             </Typography>
-          </Modal>
-        </Button>
+          </SimpleModal>
+        </div>
       )}
     </div>
   );

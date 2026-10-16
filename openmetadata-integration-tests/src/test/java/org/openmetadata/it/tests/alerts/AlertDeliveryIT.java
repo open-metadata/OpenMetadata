@@ -31,7 +31,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
 
 /** Isolated for the same reason as the dispatch scenarios: it drives a tick over inserted events. */
 @Isolated

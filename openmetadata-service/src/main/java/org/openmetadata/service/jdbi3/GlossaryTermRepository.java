@@ -30,6 +30,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.invalid
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.compareEntityReferenceById;
@@ -134,6 +135,7 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.TermRelationMutator;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAssetBucket;
@@ -208,6 +210,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public ResultList<EntityReference> getGlossaryTermAssets(
       UUID glossaryTermId, int limit, int offset) {
+    return getGlossaryTermAssets(glossaryTermId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getGlossaryTermAssets(
+      UUID glossaryTermId, int limit, int offset, SubjectContext caller) {
     GlossaryTerm term = get(null, glossaryTermId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -216,7 +224,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     String fqn = term.getFullyQualifiedName();
-    InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit);
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forGlossaryTerm(fqn, offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -231,8 +240,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   public ResultList<EntityReference> getGlossaryTermAssetsByName(
       String termName, int limit, int offset) {
+    return getGlossaryTermAssetsByName(termName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getGlossaryTermAssetsByName(
+      String termName, int limit, int offset, SubjectContext caller) {
     GlossaryTerm term = getByName(null, termName, getFields("id,fullyQualifiedName"));
-    return getGlossaryTermAssets(term.getId(), limit, offset);
+    return getGlossaryTermAssets(term.getId(), limit, offset, caller);
   }
 
   public int getGlossaryTermAssetCount(String fullyQualifiedName) {
@@ -799,9 +813,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
-    descriptors.add(
-        new PropagationDescriptor(
-            FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    if (SettingsCache.isGlossaryTagPropagationEnabled()) {
+      descriptors.add(
+          new PropagationDescriptor(
+              FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
+    }
     return descriptors;
   }
 
@@ -1097,6 +1113,31 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
     return List.of("glossary", "parent", "reviewers", "relatedTerms");
+  }
+
+  @Override
+  public Set<String> getRelationsReplacedByPut() {
+    return withField(super.getRelationsReplacedByPut(), Entity.FIELD_RELATED_TERMS);
+  }
+
+  // The updater restores both when a PUT leaves them out.
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add("sourceMemoryIds");
+    kept.add("mutuallyExclusive");
+    return Set.copyOf(kept);
+  }
+
+  @Override
+  public Set<String> getRelationsReplacedByImport() {
+    return withField(super.getRelationsReplacedByImport(), Entity.FIELD_RELATED_TERMS);
+  }
+
+  private static Set<String> withField(Set<String> fields, String field) {
+    Set<String> result = new HashSet<>(fields);
+    result.add(field);
+    return Set.copyOf(result);
   }
 
   @Override
@@ -1935,8 +1976,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the descriptor-driven child fan-out never
+        // fires from here. Drive it explicitly or entity children (test cases, test suites) never
+        // pick the term up.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -1949,6 +1995,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // list.
       daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
       applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
+      invalidateCacheAfterTagMutation(term.getEntityReference());
 
       searchRepository.updateEntity(term.getEntityReference());
       RdfUpdater.updateEntity(term);
@@ -1958,13 +2005,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     result.withFailedRequest(failures).withSuccessRequest(success);
 
     // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
+    result.withStatus(
+        deriveBulkOperationStatus(
+            result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
   }
@@ -2000,16 +2043,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       throw new IllegalArgumentException("Column not found: " + columnFqn);
     }
 
-    // Validate mutually exclusive tags
     Map<String, List<TagLabel>> allAssetTags =
         daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
     checkMutuallyExclusiveForParentAndSubField(
         columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
 
     if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
@@ -2107,13 +2148,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     result.withFailedRequest(failures).withSuccessRequest(success);
 
     // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
+    result.withStatus(
+        deriveBulkOperationStatus(
+            result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
   }
@@ -2213,6 +2250,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             .tagUsageDAO()
             .deleteTagsByTagAndTargetEntity(
                 term.getFullyQualifiedName(), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
       }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -2220,11 +2258,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(
+            asset, List.of(), List.of(removedLabel(term)));
         RdfUpdater.updateEntity(asset);
       }
     }
 
     return result.withSuccessRequest(success);
+  }
+
+  /**
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
+   */
+  private static TagLabel removedLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withSource(TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.DERIVED);
   }
 
   /**
@@ -2253,6 +2304,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       daoCollection
           .tagUsageDAO()
           .deleteTagsByTagAndTargetEntity(term.getFullyQualifiedName(), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
     }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -2833,7 +2885,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           Map<String, List<TagLabel>> allAssetTags =
               daoCollection.tagUsageDAO().getTagsByPrefix(fqnHash, "%", false);
 
-          // Assets FQN is not available / we can use fqnHash for now
           checkMutuallyExclusiveForParentAndSubField("", fqnHash, allAssetTags, updatedTags, true);
         }
 

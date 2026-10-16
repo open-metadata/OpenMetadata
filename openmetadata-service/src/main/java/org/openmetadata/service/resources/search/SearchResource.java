@@ -27,6 +27,8 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -105,6 +107,7 @@ import os.org.opensearch.client.opensearch.core.search.Suggest;
 @Collection(name = "search")
 @LatencyPhase
 public class SearchResource {
+  private static final String MUST_BE_NON_NEGATIVE = "must be greater than or equal to 0";
   private final SearchRepository searchRepository;
   private final Authorizer authorizer;
 
@@ -164,10 +167,12 @@ public class SearchResource {
           Boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
@@ -546,6 +551,8 @@ public class SearchResource {
       @RequestBody(description = "Preview request containing search settings", required = true)
           PreviewSearchRequest previewRequest)
       throws IOException {
+    requireNonNegative("from", previewRequest.getFrom());
+    requireNonNegative("size", previewRequest.getSize());
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
 
@@ -567,6 +574,12 @@ public class SearchResource {
 
     return searchRepository.previewSearch(
         searchRequest, subjectContext, previewRequest.getSearchSettings());
+  }
+
+  private static void requireNonNegative(String fieldName, Integer value) {
+    if (value != null && value < 0) {
+      throw new BadRequestException(String.format("%s %s", fieldName, MUST_BE_NON_NEGATIVE));
+    }
   }
 
   @GET
@@ -600,10 +613,12 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size,
       @Parameter(
@@ -703,6 +718,8 @@ public class SearchResource {
       @Parameter(description = "Index Name", schema = @Schema(type = "string")) @PathParam("index")
           String indexName)
       throws IOException {
+    // A raw document from any index, read by id with no policy filter; for admins and bots only.
+    authorizer.authorizeAdminOrBot(securityContext);
     return searchRepository.getDocument(indexName, id);
   }
 
@@ -735,15 +752,18 @@ public class SearchResource {
           boolean deleted,
       @Parameter(description = "From field to paginate the results, defaults to 0")
           @DefaultValue("0")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("from")
           int from,
       @Parameter(description = "Size field to limit the no.of results returned, defaults to 10")
           @DefaultValue("10")
+          @Min(value = 0, message = MUST_BE_NON_NEGATIVE)
           @QueryParam("size")
           int size)
       throws IOException {
 
-    return searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size);
+    return searchRepository.searchByField(
+        fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext));
   }
 
   @GET
@@ -766,7 +786,7 @@ public class SearchResource {
       @Parameter(description = "source url") @QueryParam("sourceUrl") String sourceUrl)
       throws IOException {
 
-    return searchRepository.searchBySourceUrl(sourceUrl);
+    return searchRepository.searchBySourceUrl(sourceUrl, getSubjectContext(securityContext));
   }
 
   @GET
@@ -834,7 +854,8 @@ public class SearchResource {
             .withDeleted(deleted)
             .withQueryText(queryText);
 
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return searchRepository.aggregate(aggregationRequest, subjectContext);
   }
 
   @POST
@@ -857,7 +878,8 @@ public class SearchResource {
       @Context SecurityContext securityContext,
       @Valid AggregationRequest aggregationRequest)
       throws IOException {
-    return searchRepository.aggregate(aggregationRequest);
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    return searchRepository.aggregate(aggregationRequest, subjectContext);
   }
 
   @GET

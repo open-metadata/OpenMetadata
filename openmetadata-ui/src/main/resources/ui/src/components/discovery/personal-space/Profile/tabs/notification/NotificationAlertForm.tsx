@@ -317,7 +317,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
       </Box>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         direction="row"
         gap={3}
         justify="end">

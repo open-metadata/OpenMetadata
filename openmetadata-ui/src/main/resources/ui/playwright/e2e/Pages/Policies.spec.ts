@@ -32,6 +32,7 @@ import {
   PolicyRulesType,
 } from '../../support/access-control/PoliciesClass';
 import {
+  chooseSelectOption,
   closeFirstPopupAlert,
   descriptionBox,
   fillDescriptionBox,
@@ -54,8 +55,7 @@ const addRule = async (
   ruleDescription: string,
   descriptionIndex: number
 ) => {
-  // Validate form name field input
-  await page.fill('[data-testid="rule-name"]', rulename);
+  await page.getByTestId('rule-name').getByRole('textbox').fill(rulename);
 
   // Enter rule description
   await page
@@ -63,36 +63,31 @@ const addRule = async (
     .nth(descriptionIndex)
     .fill(ruleDescription);
 
-  // Select resource dropdown
-  await page.locator('[data-testid="resources"]').click();
+  // Select "All" resources, then all operations for them. The form's mount-time
+  // resource/function fetches rebuild these options, so a plain click can hold a
+  // detached option; chooseSelectOption reopens and retries.
+  const resources = page.getByTestId('resources');
+  await chooseSelectOption(
+    resources,
+    page.getByRole('option', { name: 'All', exact: true })
+  );
+  await resources.getByRole('combobox').press('Escape');
 
-  // Select All
-  await page.locator('.ant-select-tree-checkbox-inner').first().click();
+  const operations = page.getByTestId('operations');
+  await chooseSelectOption(
+    operations,
+    page.getByRole('option', { name: 'All', exact: true })
+  );
+  await operations.getByRole('combobox').press('Escape');
 
-  // Click on operations dropdown
-  await page.locator('[data-testid="operations"]').click();
-
-  // Select operation
-  await page.locator('.ant-select-tree-checkbox-inner').nth(1).click();
-
-  // Click on condition combobox
-  await page.locator('[data-testid="condition"]').click();
-
-  // Select condition. The listener goes up first because typing the condition validates it too,
-  // so the response can arrive before the option is clicked.
+  // Typing the condition validates it, so the listener goes up first.
   const conditionResponse = page.waitForResponse(
     '/api/v1/policies/validation/condition/*'
   );
-
-  // Type the condition to filter the list. The options are built from every policy function's
-  // examples and the dropdown is virtualized, so an option far enough down the list is not in the
-  // DOM to be clicked - which is what happens whenever a new function is added.
   await page
-    .locator(
-      '[data-testid="condition"] > .ant-select-selector .ant-select-selection-search-input'
-    )
+    .getByTestId('condition')
+    .getByRole('combobox')
     .fill(RULE_DETAILS.condition);
-  await page.locator(`[title="${RULE_DETAILS.condition}"]`).click();
   await conditionResponse;
 
   // Verify condition success
@@ -137,7 +132,7 @@ test.describe(
         ).toBeVisible();
 
         // Enter policy name
-        await page.locator('[data-testid="policy-name"]').fill(POLICY_NAME);
+        await page.getByTestId('policy-name').fill(POLICY_NAME);
         await validateFormNameFieldInput({
           page,
           value: POLICY_NAME,
@@ -171,10 +166,10 @@ test.describe(
         // Verify rule description
         await expect(
           page
-            .locator(
-              '[data-testid="viewer-container"] > [data-testid="markdown-parser"]'
-            )
-            .nth(1)
+            .getByTestId('rule-card')
+            .filter({ has: page.getByText(RULE_NAME, { exact: true }) })
+            .getByTestId('description')
+            .getByTestId('markdown-parser')
         ).toContainText(RULE_DESCRIPTION);
 
         // Verify other details
@@ -268,7 +263,10 @@ test.describe(
         await page.locator('[data-testid="edit-rule"]').click();
 
         // Enter new name
-        await page.locator('[data-testid="rule-name"]').fill(UPDATED_RULE_NAME);
+        await page
+          .getByTestId('rule-name')
+          .getByRole('textbox')
+          .fill(UPDATED_RULE_NAME);
 
         // Click on submit button
         await page.locator('[data-testid="submit-btn"]').click();

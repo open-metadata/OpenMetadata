@@ -16,6 +16,7 @@ import { ExtraInfo } from 'Models';
 import { FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { isTierTag } from '../../../utils/TablePureUtils';
 import { getTagValue } from '../../../utils/TagsPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -36,7 +37,7 @@ const TableDataCardBody: FunctionComponent<Props> = ({
 
   return (
     <div data-testid="table-body">
-      <div className="m-b-sm description-text" data-testid="description-text">
+      <div className="tw:mb-1.5" data-testid="description-text">
         {description?.trim() ? (
           <RichTextEditorPreviewerV1
             className="max-two-lines"
@@ -66,7 +67,11 @@ const TableDataCardBody: FunctionComponent<Props> = ({
         <div className="m-t-md" data-testid="tags-container">
           <TagsViewer
             sizeCap={3}
-            tags={(tags ?? []).map((tag) => getTagValue(tag))}
+            tags={(tags ?? [])
+              .filter(
+                (tag) => !isTierTag(typeof tag === 'string' ? tag : tag.tagFQN)
+              )
+              .map((tag) => getTagValue(tag))}
           />
         </div>
       )}

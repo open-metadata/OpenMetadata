@@ -11,12 +11,19 @@
  *  limitations under the License.
  */
 
-import { LeftOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Alert, Button, Carousel, Col, Row, Space, Tooltip } from 'antd';
+import {
+  Alert,
+  Box,
+  Button,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { uniqueId } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppScreenshots } from './AppScreenshots';
+
+import { ChevronLeft } from '@openmetadata/ui-core-components/icons';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckMarkIcon } from '../../../../assets/svg/ic-cloud-checkmark.svg';
@@ -64,10 +71,15 @@ const MarketPlaceAppDetails = () => {
       const imageSrc = imageModule.default;
 
       return (
-        <img alt={screenshotName} src={imageSrc} style={{ height: '320px' }} />
+        <img
+          alt={screenshotName}
+          key={screenshotName}
+          src={imageSrc}
+          style={{ height: '320px' }}
+        />
       );
     } catch (error) {
-      return <></>;
+      return <Fragment key={screenshotName} />;
     }
   };
 
@@ -153,12 +165,11 @@ const MarketPlaceAppDetails = () => {
 
   const leftPanel = useMemo(() => {
     return (
-      <div className="p-x-md p-t-md ">
+      <div className="p-x-md p-t-md">
         <Button
-          className="p-0"
-          icon={<LeftOutlined />}
-          size="small"
-          type="text"
+          color="tertiary"
+          iconLeading={ChevronLeft}
+          size="xs"
           onClick={onBrowseAppsClick}>
           <Typography className="font-medium">
             {t('label.browse-app-plural')}
@@ -167,22 +178,29 @@ const MarketPlaceAppDetails = () => {
         <div className="flex-center m-t-md">
           <AppLogo appName={appData?.fullyQualifiedName ?? ''} />
         </div>
-        <Tooltip placement="top" title={tooltipTitle} trigger="hover">
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          isDisabled={!tooltipTitle}
+          placement="top"
+          title={tooltipTitle}
+          triggerClassName="tw:block tw:w-full m-t-md">
           <Button
-            block
-            className="m-t-md"
+            className="tw:w-full"
+            color="primary"
             data-testid="install-application"
-            disabled={isInstalled || isAppDisabled}
-            type="primary"
-            onClick={installApp}>
+            isDisabled={isInstalled || isAppDisabled}
+            size="md"
+            onPress={installApp}>
             {t('label.install')}
           </Button>
         </Tooltip>
 
         {isAppDisabled && (
           <Alert
-            className="m-t-md text-xs d-flex items-start p-xs"
-            message={
+            className="m-t-md"
+            showIcon={false}
+            title={
               isCacheWarmupDisabled ? (
                 <Typography>
                   {t('message.cache-service-not-configured-message')}
@@ -210,16 +228,22 @@ const MarketPlaceAppDetails = () => {
                 </>
               )
             }
-            type="info"
+            variant="brand"
           />
         )}
         <div className="m-t-md">
-          <CheckMarkIcon className="v-middle m-r-xss" />
+          <CheckMarkIcon className="tw:align-middle tw:mr-1" />
           <Typography className="text-xs font-medium" color="secondary">
             {t('message.marketplace-verify-msg')}
           </Typography>
         </div>
-        <Space className="p-t-lg" direction="vertical" size={8}>
+        <Box
+          inline
+          align="stretch"
+          className="layout-space p-t-lg"
+          direction="col"
+          gap={2}
+          itemClassName="layout-space-item">
           <Typography>
             {appData?.supportEmail && (
               <Typography>
@@ -228,7 +252,14 @@ const MarketPlaceAppDetails = () => {
                   href={`mailto:${appData?.supportEmail}`}
                   rel="noopener noreferrer"
                   target="_blank">
-                  <Space>{t('label.get-app-support')}</Space>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.get-app-support')}
+                  </Box>
                 </a>
               </Typography>
             )}
@@ -238,7 +269,14 @@ const MarketPlaceAppDetails = () => {
                   href={appData?.developerUrl}
                   rel="noopener noreferrer"
                   target="_blank">
-                  <Space>{t('label.visit-developer-website')}</Space>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.visit-developer-website')}
+                  </Box>
                 </a>
               </Typography>
             )}
@@ -248,12 +286,19 @@ const MarketPlaceAppDetails = () => {
                   href={appData?.privacyPolicyUrl}
                   rel="noopener noreferrer"
                   target="_blank">
-                  <Space>{t('label.privacy-policy')}</Space>
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    {t('label.privacy-policy')}
+                  </Box>
                 </a>
               </Typography>
             )}
           </Typography>
-        </Space>
+        </Box>
       </div>
     );
   }, [appData, isInstalled, isCacheWarmupDisabled, tooltipTitle]);
@@ -272,41 +317,27 @@ const MarketPlaceAppDetails = () => {
       leftPanel={leftPanel}
       leftPanelWidth={260}
       pageTitle={getEntityName(appData) || t('label.application-plural')}>
-      <Row>
-        <Col span={24}>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={24}>
           <Typography as="h2" className="p-md m-0 p-t-xss">
             {getEntityName(appData)}
           </Typography>
-        </Col>
-      </Row>
-      <Row>
-        <Col span={24}>
-          <Carousel
-            autoplay
-            dots
-            autoplaySpeed={3000}
-            className="p-x-md"
-            easing="ease-in-out">
-            {appScreenshots.map((data) => (
-              <div
-                className="app-slider-container"
-                data-testid="slider-container"
-                key={uniqueId()}>
-                {data}
-              </div>
-            ))}
-          </Carousel>
-        </Col>
+        </Grid.Item>
+      </Grid>
+      <Grid className="layout-row layout-grid">
+        <Grid.Item className="layout-column" span={24}>
+          <AppScreenshots key={fqn} screenshots={appScreenshots} />
+        </Grid.Item>
 
-        <Col span={24}>
+        <Grid.Item className="layout-column" span={24}>
           <div className="p-md">
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
               markdown={appData?.description ?? ''}
             />
           </div>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card, Col, Empty, Row } from 'antd';
-import Tree from 'antd/lib/tree';
+import {
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Grid,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +28,8 @@ import {
   PipelineStatus,
   Task,
 } from '../../../../generated/entity/data/pipeline';
+import { TreeNode } from '../../../../interface/tree.interface';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getTreeData, getTreeViewData } from '../../../../utils/executionUtils';
 import './tree-view-tab.less';
@@ -53,55 +61,77 @@ const TreeViewTab = ({
 
   const { t } = useTranslation();
 
+  const renderNode = (
+    node: TreeNode,
+    showGuideLines: boolean
+  ): React.ReactNode => (
+    <Tree.Item id={node.key} key={node.key} textValue={String(node.key)}>
+      <Tree.ItemContent
+        className="tw:min-h-9"
+        indentPerLevel={showGuideLines ? 22 : 0}
+        showExpandIcon={false}
+        showGuideLines={showGuideLines}>
+        {node.icon}
+        {node.title}
+      </Tree.ItemContent>
+      {node.children?.map((child) => renderNode(child, showGuideLines))}
+    </Tree.Item>
+  );
+  const expandedKeys = (nodes: TreeNode[]): (string | number)[] =>
+    nodes.flatMap((node) => [node.key, ...expandedKeys(node.children ?? [])]);
+
   return (
     <Card>
-      <Row
-        align="middle"
-        className="m-b-lg m-t-md"
-        gutter={16}
-        justify="center">
-        <Col>
-          <ArrowSvg className="cursor-pointer" />
-        </Col>
-        <Col>
-          <Typography className="p-b-0 m-b-0 font-medium">
-            {`${formatDateTime(startTime)} ${t(
-              'label.to-lowercase'
-            )} ${formatDateTime(endTime)}`}
-          </Typography>
-        </Col>
-        <Col>
-          <ArrowSvg className=" cursor-pointer transform-180" />
-        </Col>
-      </Row>
+      <Card.Content>
+        <Box
+          align="center"
+          className="layout-row m-b-lg m-t-md"
+          justify="center"
+          style={{ ...getLayoutGutter(16) }}
+          wrap="wrap">
+          <Box className="layout-column tw:block">
+            <ArrowSvg className="cursor-pointer" />
+          </Box>
+          <Box className="layout-column tw:block">
+            <Typography className="p-b-0 m-b-0 font-medium">
+              {`${formatDateTime(startTime)} ${t(
+                'label.to-lowercase'
+              )} ${formatDateTime(endTime)}`}
+            </Typography>
+          </Box>
+          <Box className="layout-column tw:block">
+            <ArrowSvg className=" cursor-pointer transform-180" />
+          </Box>
+        </Box>
 
-      {isEmpty(viewData) ? (
-        <Empty
-          className="my-4"
-          description={t('message.no-execution-runs-found')}
-        />
-      ) : (
-        <Row className="w-full">
-          <Col span={12}>
-            <Tree
-              defaultExpandAll
-              showIcon
-              showLine={{ showLeafIcon: false }}
-              switcherIcon={<></>}
-              treeData={treeLabelList}
+        {isEmpty(viewData) ? (
+          <Box className="tw:relative tw:my-4 tw:min-h-40">
+            <EmptyPlaceholder
+              icon={<ClockRewind className="tw:text-secondary" />}
+              title={t('message.no-execution-runs-found')}
             />
-          </Col>
-          <Col span={12}>
-            <Tree
-              defaultExpandAll
-              showIcon
-              className="tree-without-indent"
-              switcherIcon={<></>}
-              treeData={treeDataList}
-            />
-          </Col>
-        </Row>
-      )}
+          </Box>
+        ) : (
+          <Grid className="layout-row layout-grid w-full">
+            <Grid.Item className="layout-column" span={12}>
+              <Tree
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeLabelList)}
+                selectionMode="none">
+                {treeLabelList.map((node) => renderNode(node, true))}
+              </Tree>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={12}>
+              <Tree
+                aria-label={t('label.task-plural')}
+                defaultExpandedKeys={expandedKeys(treeDataList)}
+                selectionMode="none">
+                {treeDataList.map((node) => renderNode(node, false))}
+              </Tree>
+            </Grid.Item>
+          </Grid>
+        )}
+      </Card.Content>
     </Card>
   );
 };

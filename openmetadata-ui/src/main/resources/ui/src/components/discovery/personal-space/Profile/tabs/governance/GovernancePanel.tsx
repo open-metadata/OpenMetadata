@@ -171,7 +171,7 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
           <Button
             color="primary"
             data-testid="add-relation-type"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'glossary-add' })}>
             {addRelType}
           </Button>
@@ -232,6 +232,7 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
       return (
         <GovernanceIntakeFormPage
           entityType={view.entityType}
+          key={view.entityType}
           onNavigate={onNavigate}
         />
       );
@@ -239,7 +240,11 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
 
     if (view.type === 'intake-edit') {
       return (
-        <GovernanceIntakeFormPage editId={view.id} onNavigate={onNavigate} />
+        <GovernanceIntakeFormPage
+          editId={view.id}
+          key={view.id}
+          onNavigate={onNavigate}
+        />
       );
     }
 

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Modal } from 'antd';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -139,25 +145,41 @@ export const DataProductDomainWidget = () => {
         onUpdate={handleDomainUpdate}
       />
 
-      <Modal
-        centered
-        closable={false}
-        confirmLoading={isLoading}
-        data-testid="domain-change-confirmation-modal"
-        maskClosable={false}
-        okButtonProps={{ danger: false }}
-        okText={t('label.confirm')}
-        open={isConfirmModalOpen}
-        title={t('label.change-entity', { entity: t('label.domain') })}
-        onCancel={handleCancel}
-        onOk={handleConfirm}>
-        <p>
-          {t('message.domain-change-asset-migration-warning', {
-            count: assetCount,
-            domain: getNewDomainName(),
-          })}
-        </p>
-      </Modal>
+      <ModalOverlay
+        isDismissable={false}
+        isOpen={isConfirmModalOpen}
+        onOpenChange={(open) => !open && !isLoading && handleCancel()}>
+        <Modal data-testid="domain-change-confirmation-modal">
+          <Dialog
+            dividers="scroll"
+            title={t('label.change-entity', { entity: t('label.domain') })}
+            width={520}>
+            <Dialog.Content>
+              <Typography as="p" size="text-sm">
+                {t('message.domain-change-asset-migration-warning', {
+                  count: assetCount,
+                  domain: getNewDomainName(),
+                })}
+              </Typography>
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button
+                color="secondary"
+                isDisabled={isLoading}
+                onPress={handleCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                showTextWhileLoading
+                color="primary"
+                isLoading={isLoading}
+                onPress={handleConfirm}>
+                {t('label.confirm')}
+              </Button>
+            </Dialog.Footer>
+          </Dialog>
+        </Modal>
+      </ModalOverlay>
     </>
   );
 };

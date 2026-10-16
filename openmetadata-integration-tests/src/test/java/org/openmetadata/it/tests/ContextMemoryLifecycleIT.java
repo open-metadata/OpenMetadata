@@ -219,6 +219,42 @@ public class ContextMemoryLifecycleIT {
     assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus());
   }
 
+  @Test
+  void anUnprocessedConflictCanBeDraftedWithoutLosingItsReason(TestNamespace ns) {
+    ContextMemory pending =
+        withReviewReason(
+            admin()
+                .create(
+                    memory(ns, "pending-conflict")
+                        .withEntityStatus(ContextMemoryStatus.UNPROCESSED)));
+
+    ContextMemory draft = admin().patch(idOf(pending), status(ContextMemoryStatus.DRAFT));
+
+    assertEquals(ContextMemoryStatus.DRAFT, draft.getEntityStatus());
+    assertEquals(pending.getAnswer(), draft.getAnswer());
+    assertEquals(pending.getStatusReason(), draft.getStatusReason());
+    assertEquals(draft.getStatusReason(), admin().get(idOf(draft)).getStatusReason());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void aDraftConflictCanBeResolvedOrExplicitlyRequeued(
+      ContextMemoryStatus stage, TestNamespace ns) {
+    ContextMemory draft =
+        withReviewReason(
+            admin()
+                .create(memory(ns, "draft-conflict").withEntityStatus(ContextMemoryStatus.DRAFT)));
+
+    ContextMemory resolved = admin().patch(idOf(draft), status(stage));
+
+    assertEquals(stage, resolved.getEntityStatus());
+    assertEquals(draft.getAnswer(), resolved.getAnswer());
+    assertNull(resolved.getStatusReason());
+    assertEquals(stage, admin().get(idOf(resolved)).getEntityStatus());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
@@ -309,8 +345,10 @@ public class ContextMemoryLifecycleIT {
   @Test
   void disputes_areResolvedAndValidated(TestNamespace ns) {
     ContextMemory other = admin().create(memory(ns, "other-view"));
-    ContextMemory memory = admin().create(memory(ns, "disputed"));
-    ContextMemory untouched = admin().create(memory(ns, "disputed-invalid"));
+    ContextMemory memory =
+        admin().create(memory(ns, "disputed").withEntityStatus(ContextMemoryStatus.DRAFT));
+    ContextMemory untouched =
+        admin().create(memory(ns, "disputed-invalid").withEntityStatus(ContextMemoryStatus.DRAFT));
 
     ContextMemory disputed =
         admin()
@@ -320,8 +358,8 @@ public class ContextMemoryLifecycleIT {
                     ADD_DISPUTE.formatted(other.getId(), "Fiscal Q1 starts in Feb")));
 
     assertEquals(other.getName(), disputed.getDisputes().getFirst().getMemory().getName());
-    assertEquals(
-        ContextMemoryStatus.APPROVED, disputed.getEntityStatus(), "a dispute keeps both Active");
+    assertEquals(1700000000000L, disputed.getDisputes().getFirst().getDetectedAt());
+    assertEquals(ContextMemoryStatus.DRAFT, disputed.getEntityStatus());
     assertTrue(changedFields(disputed).contains("disputes"));
     assertThrows(
         InvalidRequestException.class,
@@ -339,6 +377,47 @@ public class ContextMemoryLifecycleIT {
                     JsonUtils.readTree(ADD_DISPUTE.formatted(untouched.getId(), "self"))));
   }
 
+  @Test
+  void aDisputeOutsideDraft_isRejected(TestNamespace ns) {
+    ContextMemory other = admin().create(memory(ns, "approved-other"));
+    ContextMemory approved = admin().create(memory(ns, "approved-disputed"));
+
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                admin()
+                    .patch(
+                        idOf(approved),
+                        JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts"))));
+
+    assertTrue(error.getMessage().contains("only a Draft memory"));
+    assertTrue(listOrEmpty(admin().get(idOf(approved)).getDisputes()).isEmpty());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "REJECTED", "UNPROCESSED"})
+  void leavingDraft_releasesItsDisputesAndHistoryKeepsThem(
+      ContextMemoryStatus stage, TestNamespace ns) {
+    ContextMemory other = admin().create(memory(ns, "release-other"));
+    ContextMemory draft =
+        admin().create(memory(ns, "release-draft").withEntityStatus(ContextMemoryStatus.DRAFT));
+    ContextMemory disputed =
+        admin()
+            .patch(
+                idOf(draft), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
+
+    ContextMemory released = admin().patch(idOf(draft), status(stage));
+
+    assertEquals(stage, released.getEntityStatus());
+    assertTrue(listOrEmpty(released.getDisputes()).isEmpty());
+    assertTrue(listOrEmpty(admin().get(idOf(draft)).getDisputes()).isEmpty());
+    ContextMemory previous = admin().getVersion(idOf(draft), disputed.getVersion());
+    assertEquals(other.getId(), previous.getDisputes().getFirst().getMemory().getId());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
@@ -346,13 +425,9 @@ public class ContextMemoryLifecycleIT {
   void putPreservesLifecycleWhenStatusIsOmitted(
       ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "put-keeper"));
-    ContextMemory other = admin().create(memory(ns, "put-dispute"));
     ContextMemory original = admin().create(memory(ns, "put-lifecycle"));
     ContextMemory superseded =
         admin().patch(idOf(original), supersede(keeper, "Duplicate fact", retirementStage));
-    admin()
-        .patch(
-            idOf(original), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
 
     ContextMemory updated =
         admin()
@@ -364,9 +439,24 @@ public class ContextMemoryLifecycleIT {
     assertEquals(retirementStage, updated.getEntityStatus());
     assertEquals(keeper.getId(), updated.getSupersededBy().getId());
     assertEquals("Duplicate fact", updated.getStatusReason());
-    assertEquals(other.getId(), updated.getDisputes().getFirst().getMemory().getId());
     assertEquals("Re-extracted answer", updated.getAnswer());
     assertEquals(retirementStage, superseded.getEntityStatus());
+  }
+
+  @Test
+  void putPreservesTheDisputesOfADraftMemory(TestNamespace ns) {
+    ContextMemory other = admin().create(memory(ns, "put-dispute"));
+    ContextMemory draft =
+        admin().create(memory(ns, "put-draft").withEntityStatus(ContextMemoryStatus.DRAFT));
+    admin()
+        .patch(idOf(draft), JsonUtils.readTree(ADD_DISPUTE.formatted(other.getId(), "Conflicts")));
+
+    ContextMemory updated =
+        admin().put(memory(ns, "put-draft").withEntityStatus(null).withAnswer("Edited in review"));
+
+    assertEquals(ContextMemoryStatus.DRAFT, updated.getEntityStatus());
+    assertEquals(other.getId(), updated.getDisputes().getFirst().getMemory().getId());
+    assertEquals("Edited in review", updated.getAnswer());
   }
 
   @Test
@@ -380,6 +470,12 @@ public class ContextMemoryLifecycleIT {
                         new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
     ContextMemory editable =
         admin().create(memory(ns, "editable").withOwners(List.of(SharedEntities.get().USER1_REF)));
+    ContextMemory editableDraft =
+        admin()
+            .create(
+                memory(ns, "editable-draft")
+                    .withEntityStatus(ContextMemoryStatus.DRAFT)
+                    .withOwners(List.of(SharedEntities.get().USER1_REF)));
 
     InvalidRequestException supersedeError =
         assertThrows(
@@ -391,7 +487,7 @@ public class ContextMemoryLifecycleIT {
             () ->
                 user1()
                     .patch(
-                        idOf(editable),
+                        idOf(editableDraft),
                         JsonUtils.readTree(
                             ADD_DISPUTE.formatted(privateTarget.getId(), "Hidden dispute"))));
 
@@ -400,7 +496,7 @@ public class ContextMemoryLifecycleIT {
     ContextMemory unchanged = admin().get(idOf(editable));
     assertEquals(ContextMemoryStatus.APPROVED, unchanged.getEntityStatus());
     assertNull(unchanged.getSupersededBy());
-    assertTrue(listOrEmpty(unchanged.getDisputes()).isEmpty());
+    assertTrue(listOrEmpty(admin().get(idOf(editableDraft)).getDisputes()).isEmpty());
   }
 
   /** A second status change must validate against the current status, not the session baseline. */
@@ -536,6 +632,15 @@ public class ContextMemoryLifecycleIT {
   private static JsonNode status(ContextMemoryStatus status) {
     return JsonUtils.readTree(
         "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"" + status.value() + "\"}]");
+  }
+
+  private static ContextMemory withReviewReason(ContextMemory memory) {
+    return admin()
+        .patch(
+            idOf(memory),
+            JsonUtils.readTree(
+                """
+                [{"op":"add","path":"/statusReason","value":"contradicts: threshold differs"}]"""));
   }
 
   private static Set<String> changedFields(ContextMemory memory) {

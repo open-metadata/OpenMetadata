@@ -12,12 +12,19 @@ public class Workflow {
   public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
   public static final String RELATED_ENTITY_ID_VARIABLE = "relatedEntityId";
+  // Carries the single edit's approval-gated change (a ChangeDescription-shaped diff) on the signal
+  // that the gate raises when it holds a change. The trigger filter reads it to evaluate the fields
+  // and the proposed entity for exactly that edit, rather than the requester's accumulated hold.
+  public static final String PENDING_HELD_CHANGE_VARIABLE = "pendingHeldChange";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
   public static final String RECOGNIZER_FEEDBACK = "recognizerFeedback";
   public static final String RESULT_VARIABLE = "result";
   public static final String UPDATED_BY_VARIABLE = "updatedBy";
+  public static final String CHANGE_REQUEST_ID_VARIABLE = "changeRequestId";
+  public static final String CHANGE_REQUEST_REVISION_VARIABLE = "changeRequestRevision";
+  public static final String CHANGE_REQUEST_WORKFLOW_VARIABLE = "changeRequestWorkflow";
   public static final String STAGE_INSTANCE_STATE_ID_VARIABLE = "stageInstanceStateId";
   public static final String WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE =
       "workflowInstanceExecutionId";
@@ -31,6 +38,11 @@ public class Workflow {
   // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for supersede.
   public static final String SUPERSEDED_BY_NEWER_RUN =
       "Superseded by a newer approval workflow run for the same entity";
+  // Cause string passed to deleteProcessInstance when an administrator terminates a workflow
+  // instance. Whitelisted in WorkflowFailureListener; the admin's own reason lives on the
+  // WorkflowInstance record, so this string stays fixed for the whitelist match.
+  public static final String TERMINATED_BY_ADMIN =
+      "Workflow instance terminated by an administrator";
   public static final String APPROVE_CONDITION = "approve";
   public static final String REJECT_CONDITION = "reject";
   public static final String LEGACY_APPROVE_CONDITION = "true";
