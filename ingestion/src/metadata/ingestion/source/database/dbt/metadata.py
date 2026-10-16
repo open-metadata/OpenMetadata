@@ -184,6 +184,21 @@ class DbtSource(DbtServiceSource):
             if catalog and database
         }
 
+    def _map_catalogs_in_sql(self, sql: str) -> str:
+        """
+        Swap each mapped catalog in the three-part table names of compiled SQL for the database
+        it is ingested under, so query lineage looks the tables up where they really are.
+        See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
+        """
+        for catalog, database in self.catalog_mapping.items():
+            sql = re.sub(
+                rf'(?<![\w."`])("?){re.escape(catalog)}\1(?=\s*\.\s*(?:"[^"]+"|[\w$]+)\s*\.)',
+                lambda _match, database=database: f'"{database}"',
+                sql,
+                flags=re.IGNORECASE,
+            )
+        return sql
+
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
@@ -1321,7 +1336,7 @@ class DbtSource(DbtServiceSource):
                     *source_elements[-3:]
                 )
                 query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
-                query = f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
+                query = f"create table {query_fqn} as {self._map_catalogs_in_sql(data_model_link.datamodel.sql.root)}"
                 connection_type = str(self.config.serviceConnection.root.config.type.value)
                 dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
                 lineages = get_lineage_by_query(
