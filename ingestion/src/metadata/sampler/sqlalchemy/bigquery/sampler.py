@@ -39,6 +39,12 @@ class BigQuerySampler(SQASampler):
     run the query in the whole table.
     """
 
+    def _partition_cte_column_name(self, column_name: str) -> str:
+        """Prefix digit-leading names so BigQuery can reference CTE columns."""
+        if column_name and column_name[0].isdigit():
+            return f"_{column_name}"
+        return column_name
+
     def __init__(self, *args, **kwargs):
         table_type = kwargs.pop("table_type", None)
         super().__init__(*args, **kwargs)

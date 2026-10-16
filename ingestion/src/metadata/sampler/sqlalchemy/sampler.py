@@ -483,14 +483,22 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         )
         cte_name = f"{self.get_sampler_table_name()}_partitioned"
 
-        # Some dialects rewrite labels while compiling a CTE. BigQuery, for
-        # example, prefixes an underscore to labels that start with a digit.
-        # Explicitly label those columns in the inner CTE and project them
-        # back through the CTE column collection so outer references use the
-        # names that actually exist in the CTE.
-        dialect_name = getattr(getattr(self.connection, "dialect", None), "name", "")
         column_names = [column.name for column in raw_table.c]
-        safe_names = self._partition_cte_column_names(column_names, dialect_name)
+        safe_names = []
+        used_names = {
+            column.name for column in raw_table.c if self._partition_cte_column_name(column.name) == column.name
+        }
+        for column in raw_table.c:
+            safe_name = self._partition_cte_column_name(column.name)
+            if safe_name != column.name:
+                base_name = safe_name
+                suffix = 1
+                while safe_name in used_names:
+                    safe_name = f"{base_name}_{suffix}"
+                    suffix += 1
+            used_names.add(safe_name)
+            safe_names.append(safe_name)
+
         if column_names == safe_names:
             stmt = select(self.raw_dataset).where(partition_filter)
             return stmt.cte(cte_name)
@@ -502,9 +510,8 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 continue
 
             safe_column = column.label(safe_name)
-            # Keep the logical column key used by the profiler while making
-            # the SQL alias valid for BigQuery. The CTE proxy then compiles
-            # references to this key using the emitted safe alias.
+            # Keep the profiler's logical key while giving the CTE the
+            # connector-specific alias it needs.
             safe_column.key = column.key
             inner_columns.append(safe_column)
 
@@ -515,33 +522,13 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                 column.info[ORIGINAL_COLUMN_NAME] = logical_name
         return cte
 
-    @classmethod
-    def _partition_cte_column_names(cls, column_names: list[str], dialect_name: str) -> list[str]:
-        """Return unique SQL-safe CTE labels while preserving column order."""
-        safe_names = []
-        used_names = {
-            column_name
-            for column_name in column_names
-            if cls._partition_cte_column_name(column_name, dialect_name) == column_name
-        }
-        for column_name in column_names:
-            safe_name = cls._partition_cte_column_name(column_name, dialect_name)
-            if safe_name != column_name:
-                base_name = safe_name
-                suffix = 1
-                while safe_name in used_names:
-                    safe_name = f"{base_name}_{suffix}"
-                    suffix += 1
-            used_names.add(safe_name)
-            safe_names.append(safe_name)
-        return safe_names
+    def _partition_cte_column_name(self, column_name: str) -> str:
+        """Return the CTE label for a physical column name.
 
-    @staticmethod
-    def _partition_cte_column_name(column_name: str, dialect_name: str) -> str:
-        """Return the label emitted by dialects that sanitize column names."""
-        if dialect_name != "bigquery" or not column_name or not column_name[0].isdigit():
-            return column_name
-        return f"_{column_name}"
+        Connectors can override this hook when their SQL dialect requires a
+        transformed identifier. The shared sampler preserves physical names.
+        """
+        return column_name
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""

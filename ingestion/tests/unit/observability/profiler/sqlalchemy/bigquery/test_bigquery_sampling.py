@@ -314,7 +314,7 @@ class SampleTest(TestCase):
 
     def test_partitioned_sampling_uses_emitted_bigquery_cte_column_names(self, sampler_mock):
         """Digit-leading columns must be referenced using BigQuery's CTE labels."""
-        sampler = object.__new__(SQASampler)
+        sampler = object.__new__(BigQuerySampler)
         sampler._table = DigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(
@@ -337,7 +337,7 @@ class SampleTest(TestCase):
         assert "`normal` IN ('1')" in compiled
 
     def test_partitioned_sampling_disambiguates_sanitized_column_names(self, sampler_mock):
-        sampler = object.__new__(SQASampler)
+        sampler = object.__new__(BigQuerySampler)
         sampler._table = CollidingDigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(
@@ -354,8 +354,15 @@ class SampleTest(TestCase):
         assert "AS `_123_id_1`" in compiled
         assert "`123_id`" not in compiled.rsplit(")\n SELECT", 1)[-1]
 
+    def test_bigquery_partition_column_name_only_rewrites_digit_leading_names(self, sampler_mock):
+        sampler = object.__new__(BigQuerySampler)
+
+        assert sampler._partition_cte_column_name("123_id") == "_123_id"
+        assert sampler._partition_cte_column_name("user-name") == "user-name"
+        assert sampler._partition_cte_column_name("user name") == "user name"
+
     def test_partitioned_metric_resolves_digit_leading_column(self, sampler_mock):
-        sampler = object.__new__(SQASampler)
+        sampler = object.__new__(BigQuerySampler)
         sampler._table = DigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(
@@ -376,7 +383,7 @@ class SampleTest(TestCase):
         assert "`2024_revenue`" not in outer_sql
 
     def test_partitioned_fetch_sample_data_preserves_logical_column_names(self, sampler_mock):
-        sampler = object.__new__(SQASampler)
+        sampler = object.__new__(BigQuerySampler)
         sampler._table = DigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(
@@ -402,7 +409,7 @@ class SampleTest(TestCase):
         assert table_data.rows == [[42]]
 
     def test_partitioned_fetch_sample_data_matches_colliding_names_exactly(self, sampler_mock):
-        sampler = object.__new__(SQASampler)
+        sampler = object.__new__(BigQuerySampler)
         sampler._table = CollidingDigitLeadingColumns
         sampler.connection = SimpleNamespace(dialect=bigquery_dialect())
         sampler.partition_details = PartitionProfilerConfig(
