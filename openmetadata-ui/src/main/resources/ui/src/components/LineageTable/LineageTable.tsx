@@ -646,9 +646,32 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     timeFilter?.endTime,
   ]);
 
+  // Reset to page 1 only when the time range itself changes. `handlePageChange`
+  // from `usePaging` is recreated whenever `currentPage` changes, so listing it
+  // as a dependency would re-run this effect on every page navigation and send
+  // the user back to page 1. Track the previous time bounds in a ref and only
+  // reset when they actually differ.
+  const prevTimeBoundsRef = useRef({
+    startTime: timeFilter?.startTime,
+    endTime: timeFilter?.endTime,
+  });
+  const handlePageChangeRef = useRef(handlePageChange);
+  handlePageChangeRef.current = handlePageChange;
+
   useEffect(() => {
-    handlePageChange(1);
-  }, [handlePageChange, timeFilter?.startTime, timeFilter?.endTime]);
+    const prev = prevTimeBoundsRef.current;
+
+    if (
+      prev.startTime !== timeFilter?.startTime ||
+      prev.endTime !== timeFilter?.endTime
+    ) {
+      prevTimeBoundsRef.current = {
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
+      };
+      handlePageChangeRef.current(1);
+    }
+  }, [timeFilter?.startTime, timeFilter?.endTime]);
 
   // Table-level lineage: fetch on all dependencies
   useEffect(() => {

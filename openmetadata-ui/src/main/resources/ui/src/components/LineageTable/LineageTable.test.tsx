@@ -1487,5 +1487,59 @@ describe('LineageTable', () => {
         expect(handlePageChange).toHaveBeenCalledWith(1);
       });
     });
+
+    it('does not reset to page 1 when only the current page changes (time filter unchanged)', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const handlePageChangePage1 = jest.fn();
+      const handlePageChangePage2 = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 1,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange: handlePageChangePage1,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled();
+      });
+
+      // Simulate the user navigating to page 2. The real `usePaging` hook
+      // recreates `handlePageChange` whenever `currentPage` changes, so give
+      // the mock a new identity to mirror that. The time filter is unchanged,
+      // so the table must NOT reset to page 1.
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange: handlePageChangePage2,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({ from: 25 })
+        );
+      });
+
+      expect(handlePageChangePage2).not.toHaveBeenCalledWith(1);
+    });
   });
 });
