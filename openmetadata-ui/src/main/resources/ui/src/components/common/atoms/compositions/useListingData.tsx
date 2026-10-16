@@ -100,11 +100,16 @@ export const useListingData = <
     : urlState.pageSize || pageSize;
   const effectivePage = isOffScaleUrlSize ? 1 : urlState.currentPage;
 
+  // Keep-alive keeps a visited listing mounted while another is on screen, and
+  // every listing reads the same `q` param — so without this a hidden page
+  // re-queries its own index on each keystroke and throws the answer away.
+  const isRouteVisible = useIsRouteVisible();
+
   useEffect(() => {
-    if (isOffScaleUrlSize) {
+    if (isRouteVisible && isOffScaleUrlSize) {
       resetPaging();
     }
-  }, [isOffScaleUrlSize, resetPaging]);
+  }, [isRouteVisible, isOffScaleUrlSize, resetPaging]);
 
   const dataFetching = useDataFetching<T>({
     searchIndex,
@@ -132,10 +137,6 @@ export const useListingData = <
     onCustomAddClick,
   });
 
-  // Keep-alive keeps a visited listing mounted while another is on screen, and
-  // every listing reads the same `q` param — so without this a hidden page
-  // re-queries its own index on each keystroke and throws the answer away.
-  const isRouteVisible = useIsRouteVisible();
   const lastFetchedRef = useRef<string>('');
 
   useEffect(() => {

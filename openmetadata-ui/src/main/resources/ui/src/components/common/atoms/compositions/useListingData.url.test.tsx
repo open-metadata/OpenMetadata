@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
+import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { useListingData } from './useListingData';
@@ -29,22 +30,30 @@ const mockSearchQuery = searchQuery as jest.Mock;
 const FILTER_KEYS: string[] = [];
 const COLUMNS: [] = [];
 const LIST_OPTIONS = [15, 25, 50];
+const GRID_OPTIONS = [12, 24, 48];
 
-const renderListing = (url: string) =>
+const renderListing = (
+  url: string,
+  { isVisible = true, pageSize = 15, pageSizeOptions = LIST_OPTIONS } = {}
+) =>
   renderHook(
     () => ({
       listing: useListingData({
         searchIndex: SearchIndex.DOMAIN,
         filterKeys: FILTER_KEYS,
         columns: COLUMNS,
-        pageSize: 15,
-        pageSizeOptions: LIST_OPTIONS,
+        pageSize,
+        pageSizeOptions,
       }),
       location: useLocation(),
     }),
     {
       wrapper: ({ children }: { children: ReactNode }) => (
-        <MemoryRouter initialEntries={[url]}>{children}</MemoryRouter>
+        <MemoryRouter initialEntries={[url]}>
+          <RouteVisibilityProvider isVisible={isVisible}>
+            {children}
+          </RouteVisibilityProvider>
+        </MemoryRouter>
       ),
     }
   );
@@ -75,6 +84,20 @@ describe('useListingData with a page size from an old link', () => {
       expect(mockSearchQuery).toHaveBeenCalledWith(
         expect.objectContaining({ pageNumber: 2, pageSize: 25 })
       );
+    });
+
+    expect(result.current.location.search).toBe('?page=2&size=25');
+  });
+
+  it('leaves the URL paging alone while its route is hidden', async () => {
+    const { result } = renderListing('/data-products?page=2&size=25', {
+      isVisible: false,
+      pageSize: 12,
+      pageSizeOptions: GRID_OPTIONS,
+    });
+
+    await act(async () => {
+      await Promise.resolve();
     });
 
     expect(result.current.location.search).toBe('?page=2&size=25');
