@@ -12,6 +12,7 @@
  */
 
 import { APIRequestContext, Page } from '@playwright/test';
+import { createHash } from 'crypto';
 import {
   CreateTable,
   DataType,
@@ -291,22 +292,43 @@ async function addAssetBatch(
 }
 
 /**
- * Columns inherit their table's glossary terms (#31834), so the search-backed
- * asset count of a term includes every column, nested ones too, of each tagged
- * table.
+ * Columns inherit their table's glossary terms (#31834), so a term's search-backed
+ * assets include every column, nested ones too, of each tagged table.
  */
-function countAssetsWithColumns(tablesWithTerm: Table[]): number {
-  return tablesWithTerm.reduce(
-    (total, table) => total + 1 + countColumns(table.columns),
-    0
-  );
+function assetIdsWithColumns(tablesWithTerm: Table[]): string[] {
+  return tablesWithTerm.flatMap((table) => [
+    table.id,
+    ...flattenColumns(table.columns).map((column) =>
+      columnAssetId(column.fullyQualifiedName ?? '')
+    ),
+  ]);
 }
 
-function countColumns(columns: Column[] = []): number {
-  return columns.reduce(
-    (total, column) => total + 1 + countColumns(column.children),
-    0
-  );
+function countAssetsWithColumns(tablesWithTerm: Table[]): number {
+  return assetIdsWithColumns(tablesWithTerm).length;
+}
+
+function flattenColumns(columns: Column[] = []): Column[] {
+  return columns.flatMap((column) => [
+    column,
+    ...flattenColumns(column.children),
+  ]);
+}
+
+/** Java's UUID.nameUUIDFromBytes, which ColumnSearchIndex uses as the column doc id. */
+function columnAssetId(columnFqn: string): string {
+  const bytes = createHash('md5').update(columnFqn, 'utf8').digest();
+  bytes[6] = (bytes[6] & 0x0f) | 0x30;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join('-');
 }
 
 async function getAssetCount(
@@ -470,7 +492,10 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ]),
           { timeout: LONG_ACTION_TIMEOUT }
         )
-        .toEqual([PRIMARY_ASSET_COUNT, 1]);
+        .toEqual([
+          countAssetsWithColumns(tables.slice(0, PRIMARY_ASSET_COUNT)),
+          countAssetsWithColumns([tables[SECONDARY_ASSET_INDEX]]),
+        ]);
       await expect
         .poll(
           async () => {
@@ -714,7 +739,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       ).toBeVisible();
 
       const primaryAssetIds = new Set(
-        tables.slice(0, PRIMARY_ASSET_COUNT).map((table) => table.id)
+        assetIdsWithColumns(tables.slice(0, PRIMARY_ASSET_COUNT))
       );
       await expect
         .poll(async () => {
