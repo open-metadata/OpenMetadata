@@ -64,8 +64,8 @@ export const pickDateInCorePicker = async (
 ) => {
   const [year, month, day] = isoDate.split('-').map(Number);
   // Cell labels follow the app locale ("Tuesday, 9 July 2024" or
-  // "Tuesday, July 9, 2024"). Days of the adjacent months are rendered too but
-  // disabled, so the day number plus `disabled: false` identifies the cell.
+  // "Tuesday, July 9, 2024"); only the displayed month's days are rendered, so
+  // the day number alone identifies the cell.
   const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
 
   // The form this picker sits in is itself a dialog, so the calendar is
@@ -101,7 +101,7 @@ export const pickDateInCorePicker = async (
 
   await calendar
     .getByRole('gridcell')
-    .getByRole('button', { name: dayLabel, disabled: false })
+    .getByRole('button', { name: dayLabel })
     .click();
   await calendar.getByRole('button', { name: 'Apply' }).click();
 
