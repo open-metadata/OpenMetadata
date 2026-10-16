@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
+import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -543,7 +544,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       entity.setSourceEntity(
           Entity.getEntityReference(entity.getSourceEntity(), Include.NON_DELETED));
     }
-    entity.setRelatedEntities(EntityUtil.populateEntityReferences(entity.getRelatedEntities()));
+    List<EntityReference> cited = entity.getRelatedEntities();
+    entity.setRelatedEntities(EntityUtil.populateEntityReferences(cited));
+    MemoryEvidenceHolds.holdIfCitingRetired(entity, cited);
 
     if (entity.getRootMemory() != null) {
       ContextMemory rootMemory = Entity.getEntity(entity.getRootMemory(), "", Include.NON_DELETED);
