@@ -17,7 +17,7 @@ import {
   DataType,
   TableType,
 } from '../../../src/generated/api/data/createTable';
-import { Table } from '../../../src/generated/entity/data/table';
+import { Column, Table } from '../../../src/generated/entity/data/table';
 import { EntityReference } from '../../../src/generated/entity/type';
 import {
   ACTION_TIMEOUT,
@@ -290,6 +290,25 @@ async function addAssetBatch(
   expect(response.ok(), await response.text()).toBe(true);
 }
 
+/**
+ * Columns inherit their table's glossary terms (#31834), so the search-backed
+ * asset count of a term includes every column, nested ones too, of each tagged
+ * table.
+ */
+function countAssetsWithColumns(tablesWithTerm: Table[]): number {
+  return tablesWithTerm.reduce(
+    (total, table) => total + 1 + countColumns(table.columns),
+    0
+  );
+}
+
+function countColumns(columns: Column[] = []): number {
+  return columns.reduce(
+    (total, column) => total + 1 + countColumns(column.children),
+    0
+  );
+}
+
 async function getAssetCount(
   apiContext: APIRequestContext,
   term: GlossaryTerm,
@@ -422,7 +441,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ),
           { timeout: 120_000 }
         )
-        .toBe(PRIMARY_ASSET_COUNT);
+        .toBe(countAssetsWithColumns(tables.slice(0, PRIMARY_ASSET_COUNT)));
       await expect
         .poll(
           () =>
@@ -433,7 +452,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ),
           { timeout: LONG_ACTION_TIMEOUT }
         )
-        .toBe(1);
+        .toBe(countAssetsWithColumns([tables[SECONDARY_ASSET_INDEX]]));
       await expect
         .poll(
           () =>
