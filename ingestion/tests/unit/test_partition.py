@@ -11,24 +11,43 @@
 
 """Partition utility tests"""
 
+import logging
+from types import SimpleNamespace
+
 import pytest
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
     PartitionIntervalUnit,
     PartitionProfilerConfig,
+    Table,
     TablePartition,
     TableProfilerConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
+    PostgresConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
+    SnowflakeConnection,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import (
+    DatabaseServiceProfilerPipeline,
+)
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.profiler.source.database.base.profiler_source import ProfilerSource
 from metadata.sampler.partition import get_partition_details
+from metadata.utils.logger import sampler_logger
 
 
 class MockTable(BaseModel):
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
     tablePartition: TablePartition | None = None  # noqa: N815
     tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
@@ -38,6 +57,7 @@ class MockTable(BaseModel):
 
 
 class MockRedshiftTable(BaseModel):
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
     tablePartition: TablePartition | None = None  # noqa: N815
     tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815
@@ -47,6 +67,7 @@ class MockRedshiftTable(BaseModel):
 
 
 class MockAthenaTable(BaseModel):
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
     tablePartition: TablePartition | None = None  # noqa: N815
     tableProfilerConfig: TableProfilerConfig | None = None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Athena  # noqa: N815
@@ -269,3 +290,210 @@ def test_bigquery_time_unit_partition_default_intervals():
         "YEAR-granularity TIME_UNIT partitions need a 370-day window so the current "
         "yearly partition (up to ~365 days old at year-end) is still sampled."
     )
+
+
+def _table(
+    service_type: DatabaseServiceType,
+    partition: PartitionColumnDetails | None,
+    columns: dict[str, DataType],
+    profiler_config: TableProfilerConfig | None = None,
+) -> Table:
+    return Table(
+        id="2aaa012e-099a-11ed-861d-0242ac120002",
+        name="orders",
+        fullyQualifiedName="service.db.schema.orders",
+        serviceType=service_type,
+        columns=[Column(name=name, dataType=data_type) for name, data_type in columns.items()],
+        tablePartition=TablePartition(columns=[partition]) if partition else None,
+        tableProfilerConfig=profiler_config,
+    )
+
+
+@pytest.mark.parametrize(
+    "service_type,data_type,interval,expected_unit,expected_interval",
+    [
+        (DatabaseServiceType.Postgres, DataType.DATE, None, PartitionIntervalUnit.DAY, 3),
+        (DatabaseServiceType.Timescale, DataType.TIMESTAMPZ, "604800000000 microseconds", PartitionIntervalUnit.DAY, 3),
+        (DatabaseServiceType.Doris, DataType.DATETIME, None, PartitionIntervalUnit.DAY, 3),
+        (DatabaseServiceType.StarRocks, DataType.TIMESTAMP, "HOUR", PartitionIntervalUnit.HOUR, 24),
+        (DatabaseServiceType.Greenplum, DataType.DATE, "month", PartitionIntervalUnit.DAY, 35),
+    ],
+)
+def test_auto_detect_time_unit_partition(service_type, data_type, interval, expected_unit, expected_interval):
+    entity = _table(
+        service_type,
+        PartitionColumnDetails(
+            columnName="Order_Date", intervalType=PartitionIntervalTypes.TIME_UNIT, interval=interval
+        ),
+        {"order_date": data_type, "amount": DataType.INT},
+    )
+
+    partition = get_partition_details(entity, auto_detect_partition=True)
+
+    assert partition == PartitionProfilerConfig(
+        enablePartitioning=True,
+        partitionColumnName="Order_Date",
+        partitionIntervalType=PartitionIntervalTypes.TIME_UNIT,
+        partitionIntervalUnit=expected_unit,
+        partitionInterval=expected_interval,
+    )
+
+
+def test_auto_detect_integer_range_partition():
+    entity = _table(
+        DatabaseServiceType.Timescale,
+        PartitionColumnDetails(columnName="id", intervalType=PartitionIntervalTypes.INTEGER_RANGE, interval="1000"),
+        {"id": DataType.BIGINT},
+    )
+
+    partition = get_partition_details(entity, auto_detect_partition=True)
+
+    assert partition == PartitionProfilerConfig(
+        enablePartitioning=True,
+        partitionColumnName="id",
+        partitionIntervalType=PartitionIntervalTypes.INTEGER_RANGE,
+        partitionIntegerRangeStart=1,
+        partitionIntegerRangeEnd=10000,
+    )
+
+
+@pytest.mark.parametrize(
+    "interval_type,data_type",
+    [
+        (PartitionIntervalTypes.COLUMN_VALUE, DataType.VARCHAR),
+        (PartitionIntervalTypes.INJECTED, DataType.DATE),
+        (PartitionIntervalTypes.ENUM, DataType.DATE),
+        (PartitionIntervalTypes.OTHER, DataType.DATE),
+        (PartitionIntervalTypes.INGESTION_TIME, DataType.TIMESTAMP),
+        # Postgres reports every range partition as TIME_UNIT and Doris/StarRocks every partition key,
+        # a date filter on these columns would fail at query time.
+        (PartitionIntervalTypes.TIME_UNIT, DataType.INT),
+        (PartitionIntervalTypes.TIME_UNIT, DataType.VARCHAR),
+        (PartitionIntervalTypes.INTEGER_RANGE, DataType.DATE),
+        (None, DataType.DATE),
+    ],
+)
+def test_auto_detect_skips_partitions_without_a_usable_filter(interval_type, data_type):
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="part", intervalType=interval_type),
+        {"part": data_type},
+    )
+
+    assert get_partition_details(entity, auto_detect_partition=True) is None
+
+
+def test_auto_detect_skips_partition_column_missing_from_table():
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="part", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"other": DataType.DATE},
+    )
+
+    assert get_partition_details(entity, auto_detect_partition=True) is None
+
+
+def test_auto_detect_uses_first_partition_column():
+    entity = _table(DatabaseServiceType.Doris, None, {"region": DataType.VARCHAR, "day": DataType.DATE})
+    entity.tablePartition = TablePartition(
+        columns=[
+            PartitionColumnDetails(columnName="region", intervalType=PartitionIntervalTypes.TIME_UNIT),
+            PartitionColumnDetails(columnName="day", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        ]
+    )
+
+    assert get_partition_details(entity, auto_detect_partition=True) is None
+
+
+def test_manual_partition_config_wins_over_auto_detection():
+    manual = PartitionProfilerConfig(
+        enablePartitioning=True,
+        partitionColumnName="region",
+        partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+        partitionValues=["EU"],
+    )
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="order_date", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": DataType.DATE, "region": DataType.VARCHAR},
+        profiler_config=TableProfilerConfig(partitioning=manual),
+    )
+
+    assert get_partition_details(entity, auto_detect_partition=True) == manual
+
+
+def test_disabled_auto_detection_returns_no_partition():
+    for service_type in (DatabaseServiceType.Postgres, DatabaseServiceType.BigQuery):
+        entity = _table(
+            service_type,
+            PartitionColumnDetails(
+                columnName="order_date", intervalType=PartitionIntervalTypes.TIME_UNIT, interval="DAY"
+            ),
+            {"order_date": DataType.DATE},
+        )
+        assert get_partition_details(entity, auto_detect_partition=False) is None
+
+
+def test_unset_auto_detection_keeps_bigquery_only_inference():
+    """Test suites and auto classification do not pass the setting and keep the previous behavior."""
+    partition = PartitionColumnDetails(
+        columnName="order_date", intervalType=PartitionIntervalTypes.TIME_UNIT, interval="DAY"
+    )
+
+    postgres = _table(DatabaseServiceType.Postgres, partition, {"order_date": DataType.DATE})
+    bigquery = _table(DatabaseServiceType.BigQuery, partition, {"order_date": DataType.DATE})
+
+    assert get_partition_details(postgres) is None
+    assert get_partition_details(bigquery).partitionColumnName == "order_date"
+
+
+def test_auto_detection_keeps_athena_injected_validation():
+    entity = _table(
+        DatabaseServiceType.Athena,
+        PartitionColumnDetails(columnName="dt", intervalType=PartitionIntervalTypes.INJECTED),
+        {"dt": DataType.DATE},
+    )
+
+    with pytest.raises(RuntimeError, match="Table profiler config is missing"):
+        get_partition_details(entity, auto_detect_partition=True)
+
+
+def test_auto_detection_logs_applied_partitioning(caplog):
+    entity = _table(
+        DatabaseServiceType.Postgres,
+        PartitionColumnDetails(columnName="order_date", intervalType=PartitionIntervalTypes.TIME_UNIT),
+        {"order_date": DataType.DATE},
+    )
+
+    with caplog.at_level(logging.INFO, logger=sampler_logger().name):
+        get_partition_details(entity, auto_detect_partition=True)
+
+    assert any(
+        record.levelno == logging.INFO
+        and "order_date" in record.getMessage()
+        and "service.db.schema.orders" in record.getMessage()
+        for record in caplog.records
+    )
+
+
+_POSTGRES = {"hostPort": "localhost:5432", "username": "user", "database": "db"}
+_SNOWFLAKE = {"account": "acc", "username": "user", "warehouse": "wh"}
+
+
+@pytest.mark.parametrize(
+    "service_conn_config,pipeline_config,expected",
+    [
+        (PostgresConnection(**_POSTGRES), {}, True),
+        (PostgresConnection(**_POSTGRES), {"enableAutoPartitionDetection": False}, False),
+        (PostgresConnection(**_POSTGRES, supportsAutoPartitionDetection=False), {}, False),
+        (SnowflakeConnection(**_SNOWFLAKE), {}, False),
+    ],
+)
+def test_profiler_auto_detect_partition_setting(service_conn_config, pipeline_config, expected):
+    """The pipeline toggle only applies to services whose connection declares support for it."""
+    source = SimpleNamespace(
+        source_config=DatabaseServiceProfilerPipeline(**pipeline_config),
+        service_conn_config=service_conn_config,
+    )
+
+    assert ProfilerSource._auto_detect_partition(source) is expected
