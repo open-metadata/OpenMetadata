@@ -735,14 +735,20 @@ public interface ClassificationTagDAOs {
                 .withAppliedBy(r.getString("appliedBy"))
                 .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
+        String json = r.getString("json");
+        if (json == null) {
+          // The tag or glossary term row is already gone but its tag_usage rows are removed later
+          // in postDelete; return the label unenriched instead of failing the caller's read.
+          return Pair.of(r.getString("targetFQNHash"), label);
+        }
         if (source == TagLabel.TagSource.CLASSIFICATION) {
-          Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
+          Tag tag = JsonUtils.readValue(json, Tag.class);
           label.setName(tag.getName());
           label.setDisplayName(tag.getDisplayName());
           label.setDescription(tag.getDescription());
           label.setStyle(tag.getStyle());
         } else if (source == TagLabel.TagSource.GLOSSARY) {
-          GlossaryTerm glossaryTerm = JsonUtils.readValue(r.getString("json"), GlossaryTerm.class);
+          GlossaryTerm glossaryTerm = JsonUtils.readValue(json, GlossaryTerm.class);
           label.setName(glossaryTerm.getName());
           label.setDisplayName(glossaryTerm.getDisplayName());
           label.setDescription(glossaryTerm.getDescription());

@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { SOCKET_EVENTS } from '../../../constants/constants';
 import { ColumnGridResponse } from '../../../generated/api/data/columnGridResponse';
-import { getColumnGrid } from '../../../rest/columnAPI';
+import {
+  bulkUpdateColumnsAsync,
+  CSVImportResponse,
+  getColumnGrid,
+} from '../../../rest/columnAPI';
+import { showSuccessToast } from '../../../utils/ToastUtils';
 import ColumnGrid from './ColumnGrid.component';
 
 jest.mock('../../../rest/columnAPI', () => ({
@@ -21,13 +27,28 @@ jest.mock('../../../rest/columnAPI', () => ({
   bulkUpdateColumnsAsync: jest.fn(),
 }));
 
+const socketHandlers: Record<string, (message: string) => void> = {};
+const mockSocket = {
+  on: (event: string, handler: (message: string) => void) => {
+    socketHandlers[event] = handler;
+  },
+  off: jest.fn(),
+};
+
 jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
-  useWebSocketConnector: jest.fn(() => ({ socket: undefined })),
+  useWebSocketConnector: jest.fn(() => ({ socket: mockSocket })),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 const mockGetColumnGrid = getColumnGrid as jest.MockedFunction<
   typeof getColumnGrid
 >;
+const mockBulkUpdateColumnsAsync =
+  bulkUpdateColumnsAsync as jest.MockedFunction<typeof bulkUpdateColumnsAsync>;
 
 const GRID_RESPONSE: ColumnGridResponse = {
   columns: [
@@ -109,5 +130,37 @@ describe('ColumnGrid loading and empty states', () => {
     expect(
       screen.queryByTestId('table-view-container')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ColumnGrid bulk update', () => {
+  it('shows the success toast when the job completes before the update request returns', async () => {
+    mockGetColumnGrid.mockResolvedValue(GRID_RESPONSE);
+    const updateRequest = deferred<CSVImportResponse>();
+    mockBulkUpdateColumnsAsync.mockReturnValue(updateRequest.promise);
+
+    renderGrid();
+
+    const row = await screen.findByTestId('column-row-customer_id');
+    fireEvent.click(row.querySelector('[slot="selection"] input') as Element);
+    fireEvent.click(screen.getByTestId('edit-button'));
+    fireEvent.change(
+      screen
+        .getByTestId('display-name-input')
+        .querySelector('input') as Element,
+      { target: { value: 'Customer' } }
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
+
+    await act(async () => {
+      socketHandlers[SOCKET_EVENTS.BULK_ASSETS_CHANNEL](
+        JSON.stringify({ jobId: 'job-1', status: 'COMPLETED' })
+      );
+      updateRequest.resolve({ jobId: 'job-1', message: '' });
+    });
+
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'server.bulk-update-initiated'
+    );
   });
 });
