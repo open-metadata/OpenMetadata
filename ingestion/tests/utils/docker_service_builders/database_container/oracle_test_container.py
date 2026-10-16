@@ -21,6 +21,13 @@ ORACLE_READY_LOG = "DATABASE IS READY TO USE!"
 ORACLE_STARTUP_TIMEOUT_SECONDS = 600
 
 
+class _LogReadyOracleDbContainer(OracleDbContainer):
+    """Readiness is the image's ready banner, not the default SQLAlchemy connect probe."""
+
+    def _connect(self) -> None:
+        wait_for_logs(self, ORACLE_READY_LOG, timeout=ORACLE_STARTUP_TIMEOUT_SECONDS)
+
+
 class OracleTestContainer(DataBaseTestContainer):
     def __init__(self):
         self.username = "test"
@@ -32,7 +39,7 @@ class OracleTestContainer(DataBaseTestContainer):
 
         self.image = "gvenzl/oracle-free:23-slim-faststart"
 
-        self.oracle_container = OracleDbContainer(
+        self.oracle_container = _LogReadyOracleDbContainer(
             image=self.image,
             oracle_password=self.password,
             username=self.username,
@@ -41,20 +48,12 @@ class OracleTestContainer(DataBaseTestContainer):
             dbname=self.dbname,
         )
         self.oracle_container.with_bind_ports(self.port, self.exposed_port)
-        self.oracle_container._connect = self._wait_until_ready
         self.start()
 
         self.connection_url = self.get_connection_url()
 
     def start(self):
         self.oracle_container.start()
-
-    def _wait_until_ready(self):
-        wait_for_logs(
-            self.oracle_container,
-            ORACLE_READY_LOG,
-            timeout=ORACLE_STARTUP_TIMEOUT_SECONDS,
-        )
 
     def stop(self):
         self.oracle_container.stop()
