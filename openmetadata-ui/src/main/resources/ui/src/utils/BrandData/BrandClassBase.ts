@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import UpgradeScreenDarkSrc from '../../assets/img/upgrade-screen-dark.svg';
+import UpgradeScreenLightSrc from '../../assets/img/upgrade-screen-light.svg';
+import WelcomeScreenDarkSrc from '../../assets/img/welcome-screen-dark.svg';
+import WelcomeScreenLightSrc from '../../assets/img/welcome-screen-light.svg';
 import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
-import UpgradeScreenDarkSrc from '../../assets/svg/upgrade-screen-dark.svg';
-import UpgradeScreenLightSrc from '../../assets/svg/upgrade-screen-light.svg';
-import WelcomeScreenDarkSrc from '../../assets/svg/welcome-screen-dark.svg';
-import WelcomeScreenLightSrc from '../../assets/svg/welcome-screen-light.svg';
 import { Theme } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { t } from '../i18next/LocalUtil';
 

@@ -1090,8 +1090,8 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/MyDataPage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorBoundary/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/BrandData/**",
-        "openmetadata-ui/src/main/resources/ui/src/assets/svg/welcome-screen-*.svg",
-        "openmetadata-ui/src/main/resources/ui/src/assets/svg/upgrade-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/upgrade-screen-*.svg",
         "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen.png",
         "openmetadata-ui/src/main/resources/ui/src/assets/svg/om-upgrade.svg"
       ],

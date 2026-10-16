@@ -89,9 +89,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
               <h1 className="tw:m-0 tw:mt-2.5 tw:text-[40px] tw:leading-12 tw:font-bold tw:text-primary">
                 <Transi18next
                   i18nKey="message.your-platform-is-ready"
-                  renderElement={
-                    <span className="tw:text-utility-brand-600 tw:dark:text-brand-600" />
-                  }
+                  renderElement={<span className="tw:text-utility-brand-600" />}
                   values={{ platform: brandClassBase.getPlatformName() }}
                 />
               </h1>

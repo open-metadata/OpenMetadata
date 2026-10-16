@@ -65,12 +65,12 @@ const ErrorFallback: React.FC<FallbackProps> = ({
   return (
     <Box
       align="center"
-      className="tw:h-full tw:overflow-y-auto tw:bg-tertiary tw:p-8 tw:dark:bg-secondary"
+      className="tw:h-full tw:overflow-y-auto tw:bg-secondary tw:p-8"
       data-testid="upgrade-screen"
       justify="center">
       <Box
         align="center"
-        className="tw:w-fit tw:min-w-[min(636px,100%)] tw:max-w-full tw:rounded-3xl tw:bg-primary tw:px-9 tw:py-17.5 tw:text-center tw:dark:bg-tertiary"
+        className="tw:w-fit tw:min-w-[min(636px,100%)] tw:max-w-full tw:rounded-3xl tw:bg-surface tw:px-9 tw:py-17.5 tw:text-center"
         direction="col"
         gap={9}>
         <img
