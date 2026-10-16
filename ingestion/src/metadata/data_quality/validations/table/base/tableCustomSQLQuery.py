@@ -78,11 +78,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             default=0,
         )
 
-        strategy = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "strategy",
-            Strategy,
-        )
+        strategy = self._get_strategy()
 
         operator = cast(str, operator)  # satisfy mypy  # noqa: TC006
         sql_expression = cast(str, sql_expression)  # satisfy mypy  # noqa: TC006
@@ -139,6 +135,20 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             failed_rows=failed_rows,
             passed_rows=passed_rows,
         )
+
+    def _get_strategy(self) -> Strategy | None:
+        """Read `strategy` as the server accepts it: in any case, around any spaces, blank as unset
+
+        `thresholdUnit` and `dimensionFailurePolicy` are read the same way.
+        """
+        raw_strategy = self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            "strategy",
+            str,
+            default="",
+        )
+        value = str(raw_strategy).strip().upper()
+        return Strategy(value) if value else None
 
     def _aborted(self, msg: str) -> TestCaseResult:
         logger.error(msg)

@@ -547,6 +547,20 @@ ABORTED_BEFORE_ROW_COUNT = {
             None,
         ),
         (
+            "test_case_table_custom_sql_query_lowercase_strategy",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "30", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_table_custom_sql_query_blank_strategy",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "60", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_unsafe_query_aborted",
             "tableCustomSQLQuery",
             "TABLE",

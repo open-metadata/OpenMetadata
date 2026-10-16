@@ -694,6 +694,37 @@ def test_case_table_custom_sql_query_with_threshold_success():
 
 
 @pytest.fixture
+def test_case_table_custom_sql_query_lowercase_strategy():
+    """The server accepts an option in any case, so the runner must read `count` as COUNT"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="SELECT COUNT(*) FROM users WHERE age > 30"),
+            TestCaseParameterValue(name="strategy", value=" count "),
+            TestCaseParameterValue(name="threshold", value="50"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
+def test_case_table_custom_sql_query_blank_strategy():
+    """The server stores a blank option as unset, so the runner must fall back to ROWS"""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_NAME,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="sqlExpression", value="SELECT * FROM users WHERE age > 20"),
+            TestCaseParameterValue(name="strategy", value="  "),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_custom_sql_unsafe_query_aborted():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
