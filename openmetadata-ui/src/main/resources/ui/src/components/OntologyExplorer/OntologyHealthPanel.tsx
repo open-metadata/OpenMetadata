@@ -40,6 +40,7 @@ import { OntologyHealthSummary } from './OntologyStudio.utils';
 /** AI proposals parked here once the canvas proposal bar is closed. */
 export interface OntologyHealthAiProposals {
   readonly total: number;
+  readonly title: string;
   readonly summary: string;
   readonly onReview: () => void;
 }
@@ -278,7 +279,7 @@ const OntologyHealthPanel = ({
                 className="tw:min-w-0 tw:flex-1 tw:whitespace-normal"
                 size="text-xs">
                 <span className="tw:font-medium tw:text-primary">
-                  {t('message.count-ai-proposal', { count: aiProposals.total })}
+                  {aiProposals.title}
                 </span>{' '}
                 <span className="tw:text-secondary">{aiProposals.summary}</span>
               </Typography>

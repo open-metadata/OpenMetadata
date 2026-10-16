@@ -62,13 +62,6 @@ export interface OntologyProposalRef {
   operationId: string;
 }
 
-export type AiProposalTab = 'terms' | 'relationships';
-
-/** What the AI proposals drawer shows: a tab of the list, or one proposal. */
-export type AiProposalView =
-  | { kind: 'list'; tab: AiProposalTab }
-  | { kind: 'item'; key: string };
-
 export interface OntologyNode {
   id: string;
   label: string;
