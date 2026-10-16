@@ -391,6 +391,32 @@ describe('Services', () => {
     (usePaging as jest.Mock).mockReturnValue(pagingState);
   });
 
+  it('keeps the pager on an empty later page so the user can page back', async () => {
+    (getServices as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 20 } })
+    );
+    const pagingState = (usePaging as jest.Mock)();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      currentPage: 2,
+    });
+
+    await act(async () => {
+      render(<Services serviceName={ServiceCategory.PIPELINE_SERVICES} />);
+    });
+
+    expect(ListView).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        customPaginationProps: expect.objectContaining({
+          showPagination: true,
+        }),
+      }),
+      expect.anything()
+    );
+
+    (usePaging as jest.Mock).mockReturnValue(pagingState);
+  });
+
   it('hides the pager when there are no services', async () => {
     (getServices as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: [], paging: { total: 0 } })

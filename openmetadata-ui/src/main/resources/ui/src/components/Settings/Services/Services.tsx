@@ -380,9 +380,11 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName]);
 
   // Shown whenever there are services, even a single page of them, so the page size can be changed.
+  // Hidden only on an empty first page: an empty later page (a stale link, deleted services) keeps it
+  // so the user can page back.
   const customPaginationTableProps = useMemo(
     () => ({
-      showPagination: !isEmpty(serviceDetails),
+      showPagination: !isEmpty(serviceDetails) || currentPage > 1,
       currentPage,
       isLoading,
       isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),

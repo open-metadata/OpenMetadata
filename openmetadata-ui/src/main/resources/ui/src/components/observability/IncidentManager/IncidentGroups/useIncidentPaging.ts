@@ -32,12 +32,10 @@ export const useIncidentPaging = (
   defaultPageSize?: number
 ) => {
   const { savedPageSize, savePageSize } = useSavedPageSize();
-  const [pageSize, setPageSizeState] = useState(
-    defaultPageSize ?? savedPageSize
-  );
-  const setPageSize = useCallback(
+  const [pageSize, setPageSize] = useState(defaultPageSize ?? savedPageSize);
+  const changePageSize = useCallback(
     (size: number) => {
-      setPageSizeState(size);
+      setPageSize(size);
       savePageSize(size);
     },
     [savePageSize]
@@ -55,5 +53,5 @@ export const useIncidentPaging = (
     [pagedKey]
   );
 
-  return { currentPage, pageSize, setPageSize, goToPage };
+  return { currentPage, pageSize, setPageSize: changePageSize, goToPage };
 };

@@ -185,9 +185,10 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
           </Box>
         ),
       }}
-      // Shown whenever there are records, even a single page of them; hidden when there are none.
+      // Shown whenever there are records, even a single page of them. Hidden only on an empty first
+      // page: the retry queue drains, so a later page can come back empty and still needs a way back.
       pagination={
-        isEmpty(records)
+        isEmpty(records) && currentPage === 1
           ? false
           : {
               total: paging.total,

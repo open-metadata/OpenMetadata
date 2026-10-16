@@ -101,7 +101,8 @@ export const usePaging = (
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
-  const [storedPageSize, setPageSize] = useState<number>(resolvedPageSize);
+  const [storedPageSize, setStoredPageSize] =
+    useState<number>(resolvedPageSize);
   // The sync effect below corrects the stored size a render late. When the options change (a page
   // switching between its list and grid scale), callers would fetch with the old scale's size in
   // that render, so hand out the resolved size until the stored one catches up.
@@ -117,7 +118,7 @@ export const usePaging = (
     setCurrentPage((currentPage) =>
       currentPage === nextCurrentPage ? currentPage : nextCurrentPage
     );
-    setPageSize((pageSize) =>
+    setStoredPageSize((pageSize) =>
       pageSize === resolvedPageSize ? pageSize : resolvedPageSize
     );
   }, [resolvedPageSize, urlParams.currentPage]);
@@ -139,7 +140,7 @@ export const usePaging = (
 
   const handlePageSize = useCallback(
     (page: number) => {
-      setPageSize(page);
+      setStoredPageSize(page);
       savePageSize(page);
       setCurrentPage(INITIAL_PAGING_VALUE);
 
@@ -151,7 +152,7 @@ export const usePaging = (
         cursorValue: null,
       });
     },
-    [setPageSize, savePageSize, setCurrentPage, updateUrlParams]
+    [setStoredPageSize, savePageSize, setCurrentPage, updateUrlParams]
   );
 
   const paginationVisible = useMemo(() => {
