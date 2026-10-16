@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,23 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RefObject } from 'react';
+import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 
-@import (reference) '../../../styles/variables.less';
-
-.sidebar-icon-container {
-  svg {
-    width: 20px;
-    height: 20px;
-  }
-
-  width: 46px;
-  box-sizing: content-box !important;
-  border: @global-border;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: @padding-xs;
-  background-color: @grey-1;
-  border-radius: @border-rad-base;
-  margin: auto;
+export interface LineageColumnMenuProps {
+  onEdit: (
+    direction: LineageDirection,
+    triggerRef: RefObject<HTMLElement>
+  ) => void;
 }
