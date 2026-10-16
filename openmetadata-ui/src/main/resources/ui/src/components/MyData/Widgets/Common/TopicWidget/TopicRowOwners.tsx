@@ -16,22 +16,10 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityReference } from '../../../../../generated/entity/type';
-
-// The core chip sets its name at 14px; a topic row's secondary line is 12px.
-const OWNER_NAME_CLASSES =
-  'tw:[&_[data-testid=owner-link]]:text-xs tw:[&_[data-testid=owner-link]]:text-tertiary';
-
-// Core's avatar group backs each avatar with an opaque disc so overlaps cut
-// cleanly. That disc is a block span sized by the line height, not the avatar,
-// so it showed as an oversized white blob; and it is always `bg-surface`, which
-// stood out on the row's hover tint. Flex the spans so the disc hugs the
-// avatar, and give it the row's hover tint so the cut still matches. The "+N"
-// trigger is sized by the line height the same way, so it is flexed too or it
-// sits below the avatars.
-const AVATAR_BACKING_CLASSES =
-  'tw:[&_[data-testid=avatar-group-item]]:flex tw:[&_[data-testid=avatar-group-item]_span]:flex ' +
-  'tw:[&_[data-testid=avatar-group-overflow]]:flex ' +
-  'tw:group-hover:[&_[data-testid=avatar-group-item]]:bg-utility-gray-blue-50';
+import {
+  TOPIC_ROW_AVATAR_BACKING_CLASSES,
+  TOPIC_ROW_OWNER_NAME_CLASSES,
+} from './topicRowStyles';
 
 export interface TopicRowOwnersProps {
   owners: EntityReference[];
@@ -76,8 +64,8 @@ const TopicRowOwners: React.FC<TopicRowOwnersProps> = ({
       className={classNames(
         // Capped like the row's title, so a long owner name truncates.
         'tw:relative tw:z-10 tw:min-w-0 tw:max-w-full',
-        OWNER_NAME_CLASSES,
-        AVATAR_BACKING_CLASSES,
+        TOPIC_ROW_OWNER_NAME_CLASSES,
+        TOPIC_ROW_AVATAR_BACKING_CLASSES,
         className
       )}
       data-testid={dataTestId}

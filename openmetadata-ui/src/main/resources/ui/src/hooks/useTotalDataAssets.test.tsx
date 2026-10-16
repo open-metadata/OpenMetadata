@@ -67,8 +67,8 @@ describe('deriveTotalDataAssets', () => {
     expect(result.totalAssets).toBe(100);
     expect(result.totalDelta).toBe(20);
     expect(result.assetTypes).toEqual([
-      { count: 75, delta: 5, key: 'table', name: 'Table', share: 75 },
-      { count: 25, delta: 15, key: 'dashboard', name: 'Dashboard', share: 25 },
+      { count: 75, delta: 5, key: 'table', share: 75 },
+      { count: 25, delta: 15, key: 'dashboard', share: 25 },
     ]);
     expect(result.fastestGrowing?.key).toBe('dashboard');
   });
@@ -199,6 +199,41 @@ describe('useTotalDataAssets', () => {
     // A live count has no history to measure a change against.
     expect(result.current.totalDelta).toBeNull();
     expect(result.current.assetTypes[0].delta).toBeNull();
+  });
+
+  // The chart leaves out tags and glossary terms, and Data Insights never
+  // indexes the data-quality types; counting them live made the total drop the
+  // day the chart started returning rows.
+  it('counts live only the types the totals chart counts', async () => {
+    mockGetCharts.mockResolvedValue({
+      [SystemChartType.TotalDataAssets]: { results: [] },
+      [SystemChartType.PercentageOfDataAssetWithDescription]: { results: [] },
+    } as never);
+    mockAggregate.mockResolvedValue({
+      data: {
+        aggregations: {
+          'sterms#entityType': {
+            buckets: [
+              { doc_count: 30, key: 'table' },
+              { doc_count: 6, key: 'dataProduct' },
+              { doc_count: 500, key: 'tag' },
+              { doc_count: 80, key: 'glossaryTerm' },
+              { doc_count: 40, key: 'testCaseResult' },
+              { doc_count: 9, key: 'apiService' },
+            ],
+          },
+        },
+      },
+    } as never);
+
+    const { result } = renderHook(() => useTotalDataAssets(), { wrapper });
+
+    await waitFor(() => expect(result.current.totalAssets).toBe(36));
+
+    expect(result.current.assetTypes.map((type) => type.key)).toEqual([
+      'table',
+      'dataProduct',
+    ]);
   });
 
   it('surfaces a failed fetch', async () => {

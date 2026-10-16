@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  BadgeColors,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Badge, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { AssetTypeCount } from '../../../../hooks/useTotalDataAssets';
+import { getEntityNameLabel } from '../../../../utils/EntityNameUtils';
+import { deltaColor } from './TotalDataAssetsWidget.utils';
 
 export interface AssetTypeRowsProps {
   assetTypes: AssetTypeCount[];
@@ -27,14 +25,6 @@ export interface AssetTypeRowsProps {
   formatShare: (value: number) => string;
   formatDelta: (value: number) => string;
 }
-
-const deltaColor = (delta: number): BadgeColors => {
-  if (delta > 0) {
-    return 'success';
-  }
-
-  return delta < 0 ? 'error' : 'gray';
-};
 
 /** One row per asset type: swatch, name, share, count and its change. */
 const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
@@ -64,7 +54,7 @@ const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
             className="tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
             size="text-sm">
-            {type.name}
+            {getEntityNameLabel(type.key)}
           </Typography>
         </span>
         <Typography

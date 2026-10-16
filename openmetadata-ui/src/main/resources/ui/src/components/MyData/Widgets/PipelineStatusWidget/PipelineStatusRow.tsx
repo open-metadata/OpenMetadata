@@ -38,6 +38,7 @@ import {
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { TOPIC_ROW_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
+  DURATION_UNITS,
   NOT_RUN_STYLE,
   PIPELINE_STATUS_STYLES,
   RUN_HISTORY_STATUS,
@@ -49,8 +50,6 @@ export interface PipelineStatusRowProps {
   /** Recent runs, oldest first. */
   runs: PipelineStatus[];
 }
-
-const DURATION_UNITS = 2;
 
 /** One pipeline: its latest run, the last few runs, and what broke if it did. */
 const PipelineStatusRow: React.FC<PipelineStatusRowProps> = ({

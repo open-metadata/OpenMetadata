@@ -15,6 +15,7 @@ import type { RunHistoryStatus } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   Clock,
+  Dataflow03,
   IconProps,
   PlayCircle,
   SlashCircle01,
@@ -24,6 +25,7 @@ import { FC } from 'react';
 import { StatusType } from '../../../../generated/entity/data/pipeline';
 import { LastRunStatus } from '../../../../generated/type/pipelineSummary';
 import type { TopicFilterTone } from '../Common/TopicWidget/TopicFilterChips';
+import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 
 export interface PipelineStatusStyle {
   icon: FC<IconProps>;
@@ -103,3 +105,11 @@ export const RUN_STATUS_LABEL_KEY: Record<StatusType, string> = {
   [StatusType.Skipped]: 'label.skipped',
   [StatusType.Pending]: 'label.pending',
 };
+
+export const PIPELINE_STATUS_TONE = {
+  icon: Dataflow03,
+  tile: TOPIC_BLUE_TILE_CLASSES,
+};
+
+/** A run's duration, at most this many units ("1h 4m", not "1h 4m 12s"). */
+export const DURATION_UNITS = 2;

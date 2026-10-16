@@ -12,7 +12,6 @@
  */
 
 import { Checkbox, Typography } from '@openmetadata/ui-core-components';
-import { ClipboardCheck } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -26,21 +25,16 @@ import {
 import { getTaskTitle } from '../../../discovery/personal-space/InboxPage/taskTitle.utils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
-import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 import MyTaskRow from './MyTaskRow';
 import MyTasksSelectionBar from './MyTasksSelectionBar';
+import { MY_TASKS_TONE } from './MyTasksWidget.constants';
 import { getMyTasksHeadline } from './MyTasksWidget.utils';
 import { BulkDecision, useBulkResolveTasks } from './useBulkResolveTasks';
 import { useMyTasksPath } from './useMyTasksPath';
-
-const TONE = {
-  icon: ClipboardCheck,
-  tile: TOPIC_BLUE_TILE_CLASSES,
-};
 
 export type MyTasksWidgetProps = WidgetCommonProps;
 
@@ -130,7 +124,7 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
             },
             meta: t('label.count-open', { count: 0 }),
           },
-          icon: ClipboardCheck,
+          icon: MY_TASKS_TONE.icon,
           summary: t('message.no-open-tasks-assigned-to-you'),
           title: t('message.you-are-all-caught-up'),
         }
@@ -151,7 +145,7 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
       status={status}
       summary={summary}
       title={t('label.my-task-plural')}
-      tone={TONE}
+      tone={MY_TASKS_TONE}
       topicKey={TopicKey.MY_TASKS}
       widgetKey={widgetKey}
       onRetry={refetch}>

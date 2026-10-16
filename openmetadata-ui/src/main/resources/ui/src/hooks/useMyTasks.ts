@@ -23,6 +23,7 @@ export const MY_TASKS_QUERY_KEY = ['landingPage', 'widgets', 'myTasks'];
  * they describe the loaded tasks rather than every task — the card says
  * "Showing N of M" when that happens.
  */
+// ADR:2026-10-16-landing-task-and-pipeline-cards-read-one-page
 export const MY_TASKS_PAGE_SIZE = 100;
 // `payload` is what a legacy approve resolves to; without it an approve from
 // the card would apply an empty value.

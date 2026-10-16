@@ -13,10 +13,7 @@
 
 import { Typography } from '@openmetadata/ui-core-components';
 import { getSeriesColor } from '@openmetadata/ui-core-components/charts';
-import {
-  Calendar,
-  LayersThree01,
-} from '@openmetadata/ui-core-components/icons';
+import { Calendar } from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -28,21 +25,17 @@ import {
   useTotalDataAssets,
 } from '../../../../hooks/useTotalDataAssets';
 import { WidgetCommonProps } from '../../../../interface/customization.interface';
+import { getEntityNameLabel } from '../../../../utils/EntityNameUtils';
 import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import ShareBar, { ShareSegment } from '../Common/TopicWidget/ShareBar';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 import AssetTypeRows from './AssetTypeRows';
-
-const TONE = {
-  icon: LayersThree01,
-  tile: TOPIC_BLUE_TILE_CLASSES,
-};
+import { TOTAL_DATA_ASSETS_TONE } from './TotalDataAssetsWidget.constants';
 
 export type TotalDataAssetsWidgetProps = WidgetCommonProps;
 
@@ -108,10 +101,13 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       assetTypes.map((type, index) => ({
         color: colors[index],
         key: type.key,
-        name: type.name,
+        name: getEntityNameLabel(type.key),
         value: type.count,
       })),
-    [assetTypes, colors]
+    // `t` changes with the language. getEntityNameLabel translates through the
+    // global instance, so without it the names would not re-translate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+    [assetTypes, colors, t]
   );
 
   // Worded for the selected window — "+4 in the last 30 days" — rather than
@@ -130,7 +126,9 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       count: assetTypes.length,
     }),
     fastestGrowing &&
-      t('message.entity-grew-fastest', { entity: fastestGrowing.name }),
+      t('message.entity-grew-fastest', {
+        entity: getEntityNameLabel(fastestGrowing.key),
+      }),
   ]
     .filter(Boolean)
     .join(' ');
@@ -152,7 +150,7 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
               : undefined,
             meta: t('label.count-asset', { count: 0 }),
           },
-          icon: TONE.icon,
+          icon: TOTAL_DATA_ASSETS_TONE.icon,
           summary: t('message.no-assets-ingested-yet'),
           title: t('message.no-data-assets-yet'),
         }
@@ -173,7 +171,7 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       status={deltaLabel ? { color: 'blue', label: deltaLabel } : undefined}
       summary={summary}
       title={t('label.total-entity', { entity: t('label.data-asset-plural') })}
-      tone={TONE}
+      tone={TOTAL_DATA_ASSETS_TONE}
       topicKey={TopicKey.TOTAL_DATA_ASSETS}
       widgetKey={widgetKey}
       onRetry={refetch}>

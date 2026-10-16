@@ -113,6 +113,8 @@ const mockBucketServices = useBucketServices as jest.MockedFunction<
   typeof useBucketServices
 >;
 
+const mockBucketRefetch = jest.fn();
+
 const bucketService = (id: string): BucketService => ({
   displayName: id,
   fqn: id,
@@ -159,6 +161,7 @@ const renderWidget = (
     isError: false,
     isFetching: false,
     isLoading: false,
+    refetch: mockBucketRefetch,
     services: filter
       ? [bucketService(`${filter}-a`), bucketService(`${filter}-b`)]
       : [],
@@ -278,6 +281,31 @@ describe('PlatformHealthWidget', () => {
       fireEvent.click(screen.getByTestId('bucket-service-notRun-a'));
 
       expect(mockNavigate).toHaveBeenCalledWith('/service');
+    });
+
+    // An empty list under a chip that counts services would contradict it.
+    it('says a bucket failed to load, and retries it', () => {
+      renderWidget();
+      mockBucketServices.mockImplementation(() => ({
+        isError: true,
+        isFetching: false,
+        isLoading: false,
+        refetch: mockBucketRefetch,
+        services: [],
+      }));
+
+      fireEvent.click(screen.getByTestId('topic-stat-healthy'));
+
+      expect(
+        screen.getByTestId('platform-health-bucket-error')
+      ).toHaveTextContent('server.unexpected-error');
+      expect(
+        screen.queryByTestId('view-all-healthy-services')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('platform-health-bucket-retry'));
+
+      expect(mockBucketRefetch).toHaveBeenCalledTimes(1);
     });
 
     it('disables an empty bucket', () => {

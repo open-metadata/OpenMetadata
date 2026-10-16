@@ -12,12 +12,12 @@
  */
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { startCase } from 'lodash';
 import type { Bucket } from 'Models';
 import { useMemo } from 'react';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../constants/constants';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { DataAssetType } from '../generated/dataInsight/custom/dataAssetType';
 import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { getAggregations } from '../utils/ExplorePureUtils';
 import {
@@ -36,6 +36,25 @@ export const LIVE_ASSET_TYPES_QUERY_KEY = [
 ];
 const ENTITY_TYPE_FIELD = 'entityType';
 
+/**
+ * The types the `total_data_assets` chart counts: the Data Insights asset
+ * types, less the `tag` and `glossaryTerm` groups the chart excludes and the
+ * data-quality types Data Insights reads from their live index rather than
+ * indexing. The live fallback counts the same population, so the total does
+ * not drop the day the chart starts returning rows.
+ */
+const CHART_ASSET_TYPES: ReadonlySet<string> = new Set(
+  Object.values(DataAssetType).filter(
+    (type) =>
+      ![
+        DataAssetType.Tag,
+        DataAssetType.GlossaryTerm,
+        DataAssetType.TestCaseResult,
+        DataAssetType.TestCaseResolutionStatus,
+      ].includes(type)
+  )
+);
+
 /** Windows the card's range filter offers. */
 export const TOTAL_DATA_ASSETS_WINDOW_OPTIONS = [
   TOTAL_DATA_ASSETS_WINDOW_DAYS,
@@ -44,10 +63,11 @@ export const TOTAL_DATA_ASSETS_WINDOW_OPTIONS = [
 ];
 
 export interface AssetTypeCount {
-  /** The chart's raw group, e.g. `databaseSchema` — stable across locales. */
+  /**
+   * The chart's raw group, e.g. `databaseSchema`. Stable across locales; the
+   * card translates it for display with `getEntityNameLabel`.
+   */
   key: string;
-  /** What the row shows, e.g. `Database Schema`. */
-  name: string;
   count: number;
   /** Percentage of the total, 0–100. */
   share: number;
@@ -109,7 +129,6 @@ export const deriveTotalDataAssets = (
       count,
       delta: hasBaseline ? count - (baseline.get(group) ?? 0) : null,
       key: group,
-      name: startCase(group),
       share: totalAssets > 0 ? (count / totalAssets) * 100 : 0,
     }))
     .sort((a, b) => b.count - a.count);
@@ -144,12 +163,14 @@ const fetchLiveAssetTypes = async (): Promise<ChartResults> => {
       ?.buckets ?? [];
 
   // Shaped as one chart day so the same derivation reads both sources.
-  return buckets.map((bucket) => ({
-    count: bucket.doc_count,
-    day: 0,
-    group: bucket.key,
-    term: bucket.key,
-  }));
+  return buckets
+    .filter((bucket) => CHART_ASSET_TYPES.has(bucket.key))
+    .map((bucket) => ({
+      count: bucket.doc_count,
+      day: 0,
+      group: bucket.key,
+      term: bucket.key,
+    }));
 };
 
 /**

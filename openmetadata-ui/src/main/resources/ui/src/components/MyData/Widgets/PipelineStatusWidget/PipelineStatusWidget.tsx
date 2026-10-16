@@ -12,7 +12,7 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { Dataflow03 } from '@openmetadata/ui-core-components/icons';
+import {} from '@openmetadata/ui-core-components/icons';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,18 +34,15 @@ import { getExplorePath } from '../../../../utils/RouterUtils';
 import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
-import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 import PipelineStatusRow from './PipelineStatusRow';
-import { PIPELINE_STATUS_STYLES } from './PipelineStatusWidget.constants';
-
-const TONE = {
-  icon: Dataflow03,
-  tile: TOPIC_BLUE_TILE_CLASSES,
-};
+import {
+  PIPELINE_STATUS_STYLES,
+  PIPELINE_STATUS_TONE,
+} from './PipelineStatusWidget.constants';
 
 export type PipelineStatusWidgetProps = WidgetCommonProps;
 
@@ -124,7 +121,7 @@ const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
               : undefined,
             meta: t('message.no-runs-recorded'),
           },
-          icon: TONE.icon,
+          icon: PIPELINE_STATUS_TONE.icon,
           summary: t('message.no-pipelines-connected-yet'),
           title: t('message.no-pipeline-runs-yet'),
         }
@@ -163,7 +160,7 @@ const PipelineStatusWidget: React.FC<PipelineStatusWidgetProps> = ({
       }
       summary={summary}
       title={t('label.pipeline-status')}
-      tone={TONE}
+      tone={PIPELINE_STATUS_TONE}
       topicKey={TopicKey.PIPELINE_STATUS}
       widgetKey={widgetKey}
       onRetry={refetch}>

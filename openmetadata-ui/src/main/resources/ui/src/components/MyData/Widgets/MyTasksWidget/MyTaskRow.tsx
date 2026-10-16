@@ -17,16 +17,9 @@ import {
   Checkbox,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  AlertTriangle,
-  CheckCircle,
-  ClipboardCheck,
-  IconProps,
-  Key01,
-  MessageSquare01,
-} from '@openmetadata/ui-core-components/icons';
+import { MessageSquare01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, { FC } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Task } from '../../../../generated/entity/tasks/task';
@@ -35,38 +28,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getMyTaskBucket, MyTaskBucket } from '../../../../utils/myTaskBuckets';
 import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import { TOPIC_ROW_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
-
-interface KindStyle {
-  icon: FC<IconProps>;
-  tile: string;
-  labelKey: string;
-}
-
-const KIND_STYLES: Record<MyTaskBucket, KindStyle> = {
-  [MyTaskBucket.INCIDENTS]: {
-    icon: AlertTriangle,
-    labelKey: 'label.incident',
-    tile: 'tw:bg-utility-error-50 tw:text-utility-error-600',
-  },
-  [MyTaskBucket.ACCESS]: {
-    icon: Key01,
-    labelKey: 'label.access-request',
-    tile: 'tw:bg-utility-blue-light-50 tw:text-utility-blue-light-600',
-  },
-  [MyTaskBucket.APPROVALS]: {
-    icon: CheckCircle,
-    labelKey: 'label.approval',
-    tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
-  },
-  [MyTaskBucket.ALL]: {
-    icon: ClipboardCheck,
-    labelKey: 'label.task',
-    tile: 'tw:bg-utility-gray-50 tw:text-utility-gray-600',
-  },
-};
-
-// The inbox shows `TASK-00042` as `#00042`; the card reads the same.
-const TASK_ID_PREFIX = 'TASK-';
+import { MY_TASK_KIND_STYLES, TASK_ID_PREFIX } from './MyTasksWidget.constants';
 
 export interface MyTaskRowProps {
   task: Task;
@@ -83,7 +45,7 @@ const MyTaskRow: React.FC<MyTaskRowProps> = ({
   onSelectedChange,
 }) => {
   const { t } = useTranslation();
-  const kind = KIND_STYLES[getMyTaskBucket(task) ?? MyTaskBucket.ALL];
+  const kind = MY_TASK_KIND_STYLES[getMyTaskBucket(task) ?? MyTaskBucket.ALL];
   const KindIcon = kind.icon;
   const requester = getEntityName(task.createdBy);
   const aboutName = task.about ? getEntityName(task.about) : undefined;

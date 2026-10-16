@@ -308,7 +308,7 @@ export const useBucketServices = (
   filter: QuietHealthFilter | undefined,
   limit: number
 ) => {
-  const { data, isError, isFetching, isPending } = useQuery({
+  const { data, isError, isFetching, isPending, refetch } = useQuery({
     enabled: filter !== undefined,
     gcTime: PIPELINE_STATS_GC_TIME_MS,
     queryFn: async (): Promise<BucketService[]> => {
@@ -328,6 +328,7 @@ export const useBucketServices = (
     isError,
     isFetching,
     isLoading: filter !== undefined && isPending,
+    refetch: () => void refetch(),
     services: data ?? [],
   };
 };

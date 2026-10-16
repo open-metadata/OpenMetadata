@@ -31,6 +31,7 @@ export const PIPELINE_RUNS_QUERY_KEY = [
   'widgets',
   'pipelineRuns',
 ];
+// ADR:2026-10-16-landing-task-and-pipeline-cards-read-one-page
 /** Rows the card lists per bucket. */
 export const PIPELINE_STATUS_PAGE_SIZE = 10;
 /** Runs the history strip draws per pipeline. */

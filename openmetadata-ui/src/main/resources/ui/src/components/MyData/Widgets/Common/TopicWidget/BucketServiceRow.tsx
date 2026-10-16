@@ -21,15 +21,8 @@ import {
   BucketService,
   QuietHealthFilter,
 } from '../../PlatformHealthWidget/useIngestionPipelineStats';
+import { BUCKET_BADGE } from './BucketServiceRow.constants';
 import { TOPIC_ROW_CLASSES } from './topicRowStyles';
-
-const BUCKET_BADGE: Record<
-  QuietHealthFilter,
-  { color: 'success' | 'gray'; labelKey: string }
-> = {
-  healthy: { color: 'success', labelKey: 'label.healthy' },
-  notRun: { color: 'gray', labelKey: 'label.not-run-yet' },
-};
 
 export interface BucketServiceRowProps {
   service: BucketService;

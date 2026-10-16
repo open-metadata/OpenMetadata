@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Skeleton } from '@openmetadata/ui-core-components';
+import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import {
   Activity,
   DataHealthScore,
@@ -292,6 +292,32 @@ const BucketRowsSkeleton = () => (
   </div>
 );
 
+/**
+ * A healthy or not-run bucket whose read failed. Said outright, with a retry:
+ * an empty list under a chip that counts services would read as a contradiction.
+ */
+const BucketRowsError = ({ onRetry }: { onRetry: () => void }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:mt-4 tw:flex tw:items-center tw:gap-2 tw:py-3"
+      data-testid="platform-health-bucket-error"
+      role="alert">
+      <Typography className="tw:text-text-tertiary!" size="text-xs">
+        {t('server.unexpected-error')}
+      </Typography>
+      <Button
+        color="link-color"
+        data-testid="platform-health-bucket-retry"
+        size="xs"
+        onPress={onRetry}>
+        {t('label.retry')}
+      </Button>
+    </div>
+  );
+};
+
 interface HealthBucketsProps {
   counts: HealthCounts;
   failingServices: FailingService[];
@@ -329,6 +355,10 @@ const HealthBuckets: React.FC<HealthBucketsProps> = ({
           onViewAll={() => goToHealth('failing')}
         />
       );
+    }
+
+    if (bucketServices.isError) {
+      return <BucketRowsError onRetry={bucketServices.refetch} />;
     }
 
     return bucketServices.isLoading ? (

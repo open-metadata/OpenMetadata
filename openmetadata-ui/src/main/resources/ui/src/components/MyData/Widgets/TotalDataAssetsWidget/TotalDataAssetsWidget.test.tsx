@@ -85,21 +85,18 @@ const TABLE = {
   count: 800,
   delta: 24,
   key: 'table',
-  name: 'Table',
   share: 80,
 };
 const DASHBOARD = {
   count: 150,
   delta: 31,
   key: 'dashboard',
-  name: 'Dashboard',
   share: 15,
 };
 const CONTAINER = {
   count: 50,
   delta: -3,
   key: 'container',
-  name: 'Container',
   share: 5,
 };
 
@@ -178,7 +175,9 @@ describe('TotalDataAssetsWidget', () => {
     renderWidget();
 
     expect(
-      screen.getByText(/message\.entity-grew-fastest {"entity":"Dashboard"}/)
+      screen.getByText(
+        /message\.entity-grew-fastest {"entity":"label\.dashboard"}/
+      )
     ).toBeInTheDocument();
   });
 
