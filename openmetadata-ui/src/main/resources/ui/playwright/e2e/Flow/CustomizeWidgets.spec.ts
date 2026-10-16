@@ -684,8 +684,8 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
     );
   });
 
-  await test.step('Widening the range refetches the 30-day window', async () => {
-    const thirtyDayResponse = waitForResponseWithStatus(
+  await test.step('Widening the range refetches the 90-day window', async () => {
+    const ninetyDayResponse = waitForResponseWithStatus(
       page,
       (response) => {
         const url = new URL(response.url());
@@ -694,14 +694,14 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
           isFailedTestsResponse(response) &&
           Number(url.searchParams.get('endTimestamp')) -
             Number(url.searchParams.get('startTimestamp')) ===
-            30 * 24 * 60 * 60 * 1000
+            90 * 24 * 60 * 60 * 1000
         );
       },
       200
     );
 
-    await selectTopicCardFilterOption(page, widget, 'dq-range-filter', '30');
-    const response = await thirtyDayResponse;
+    await selectTopicCardFilterOption(page, widget, 'dq-range-filter', '90');
+    const response = await ninetyDayResponse;
     const url = new URL(response.url());
 
     // Scope survives the range change, and the window ends now.
@@ -711,7 +711,7 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
     ).toBeLessThan(5 * 60 * 1000);
 
     await expect(widget.getByTestId('dq-range-filter')).toContainText(
-      'Last 30 days'
+      'Last 90 days'
     );
     await expect(widget.getByTestId(`dq-test-${testCase.id}`)).toBeVisible();
   });
