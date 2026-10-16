@@ -38,6 +38,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -179,6 +180,14 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
     return List.of("reviewers");
+  }
+
+  // The updater restores it when a PUT leaves it out; it cannot change after creation.
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add("mutuallyExclusive");
+    return Set.copyOf(kept);
   }
 
   @Override

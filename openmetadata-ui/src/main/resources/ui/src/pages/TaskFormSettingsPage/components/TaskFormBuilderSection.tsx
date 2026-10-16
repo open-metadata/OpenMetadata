@@ -24,7 +24,6 @@
  *  limitations under the License.
  */
 
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   Autocomplete,
   Box,
@@ -37,7 +36,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { List } from '@openmetadata/ui-core-components/icons';
+import { List, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Key, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
@@ -154,7 +153,7 @@ const TaskFormBuilderSection = ({
         <Button
           color="secondary"
           data-testid={`${testIdPrefix}-add-field`}
-          iconLeading={<PlusOutlined />}
+          iconLeading={Plus}
           onClick={() => onChange([...fields, createEmptyDesignerField()])}>
           {t('label.add-field')}
         </Button>
@@ -186,7 +185,7 @@ const TaskFormBuilderSection = ({
                       <Button
                         color="tertiary-destructive"
                         data-testid={`${testIdPrefix}-field-remove-${index}`}
-                        iconLeading={<DeleteOutlined />}
+                        iconLeading={Trash01}
                         size="xs"
                         onClick={() =>
                           onChange(

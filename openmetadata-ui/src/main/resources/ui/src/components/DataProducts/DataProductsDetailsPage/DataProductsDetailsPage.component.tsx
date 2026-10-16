@@ -101,6 +101,7 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import {
   ManageMenu,
@@ -122,6 +123,7 @@ import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.compo
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
 import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
@@ -399,6 +401,13 @@ function DataProductActionButtons(
             entity: t('label.asset-plural'),
           })}
         </Button>
+      )}
+
+      {!isVersionsView && (
+        <ChangeRequestsIndicator
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+        />
       )}
 
       <Box align="center" gap={4}>
@@ -1021,6 +1030,11 @@ const DataProductsDetailsPage = ({
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
+          <DomainMismatchAlert
+            className="tw:mx-5"
+            domains={dataProduct.domains}
+            entityId={dataProduct.id}
+          />
           <div className="tw:flex tw:flex-wrap tw:gap-y-3 tw:mx-5 tw:items-center tw:justify-between">
             <div className="tw:min-w-0 tw:max-w-full tw:lg:max-w-[60%]">
               <EntityHeader
