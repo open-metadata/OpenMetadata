@@ -11,22 +11,27 @@
  *  limitations under the License.
  */
 
-import { Label, Typography } from '@openmetadata/ui-core-components';
-import { Button, Col, Dropdown, Row, Select, TableProps, Tooltip } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Button,
+  ButtonUtility,
+  Dropdown,
+  Grid,
+  Label,
+  Select,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
-  DE_ACTIVE_COLOR,
-  ICON_DIMENSION,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
   PAGE_SIZE_LARGE,
@@ -42,6 +47,7 @@ import {
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
 import { EntityType } from '../../../enums/entity.enum';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import {
   Column,
   Constraint,
@@ -51,6 +57,7 @@ import { TestSummary } from '../../../generated/tests/testCase';
 import { TagSource } from '../../../generated/type/schema';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useSub } from '../../../hooks/usePubSub';
@@ -63,6 +70,7 @@ import {
 } from '../../../rest/tableAPI';
 import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../../types/taskSuggestion';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -96,6 +104,7 @@ import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.inte
 import {
   ColumnsType,
   ExpandableConfig,
+  TableProps,
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
@@ -114,13 +123,24 @@ const ModalWithMarkdownEditor = withSuspenseFallback(
   )
 );
 
+const NO_CONSTRAINT_KEY = 'none';
+
 const SchemaTable = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [editColumn, setEditColumn] = useState<Column>();
-  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
+  const defaultColumnOrder = useApplicationStore(
+    (state) => state.appPreferences.defaultColumnOrder
+  );
+  // The tenant default only picks the starting order; the Sort menu still
+  // changes it for this view without saving.
+  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>(() =>
+    defaultColumnOrder === DefaultColumnOrder.SourceOrder
+      ? 'ordinalPosition'
+      : 'name'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [activeTagFilter, setActiveTagFilter] = useState<{
     tags: string[];
@@ -224,7 +244,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -275,7 +299,11 @@ const SchemaTable = () => {
       columnSortBy?: 'name' | 'ordinalPosition',
       columnSortOrder?: 'asc' | 'desc'
     ) => {
+      // The customize page previews this table without a route FQN, so there
+      // is nothing to fetch and the loader would otherwise never clear.
       if (!tableFqn) {
+        setColumnsLoading(false);
+
         return;
       }
 
@@ -649,39 +677,8 @@ const SchemaTable = () => {
     [openColumnDetailPanel]
   );
 
-  const sortMenuItems: ItemType[] = useMemo(
-    () => [
-      {
-        key: 'name',
-        label: (
-          <span data-testid="sort-alphabetical">
-            {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
-            {t('label.alphabetical')} (A → Z)
-          </span>
-        ),
-        icon:
-          // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
-          sortBy === 'name' ? <span className="text-primary">✓</span> : null,
-      },
-      {
-        key: 'ordinalPosition',
-        label: (
-          <span data-testid="sort-original-order">
-            {t('label.original-order')}
-          </span>
-        ),
-        icon:
-          sortBy === 'ordinalPosition' ? (
-            // eslint-disable-next-line i18next/no-literal-string -- decorative checkmark glyph
-            <span className="text-primary">✓</span>
-          ) : null,
-      },
-    ],
-    [sortBy, t]
-  );
-
   const handleSortMenuClick = useCallback(
-    ({ key }: { key: string }) => {
+    (key: Key) => {
       const newSortBy = key as 'name' | 'ordinalPosition';
       if (newSortBy !== sortBy) {
         setSortBy(newSortBy);
@@ -722,23 +719,15 @@ const SchemaTable = () => {
             </div>
             <div className="d-flex items-center">
               {editDisplayNamePermission && (
-                <Tooltip placement="top" title={t('label.edit')}>
-                  <Button
-                    className="cursor-pointer hover-cell-icon flex-center"
+                <Tooltip arrow placement="top" title={t('label.edit')}>
+                  <ButtonUtility
+                    className="hover-cell-icon"
+                    color="tertiary"
                     data-testid="edit-displayName-button"
-                    style={{
-                      color: DE_ACTIVE_COLOR,
-                      padding: 0,
-                      border: 'none',
-                      background: 'transparent',
-                      width: '24px',
-                      height: '24px',
-                    }}
-                    onClick={() => handleEditDisplayNameClick(record)}>
-                    <IconEdit
-                      style={{ color: DE_ACTIVE_COLOR, ...ICON_DIMENSION }}
-                    />
-                  </Button>
+                    icon={IconEdit}
+                    size="xs"
+                    onClick={() => handleEditDisplayNameClick(record)}
+                  />
                 </Tooltip>
               )}
               {record.fullyQualifiedName && (
@@ -786,14 +775,13 @@ const SchemaTable = () => {
       {
         title: (
           <Button
-            className="d-flex items-center cursor-pointer bg-transparent border-none p-0 h-auto hover:bg-transparent"
+            color="tertiary"
             data-testid="name-column-header"
-            type="text"
             onClick={handleColumnHeaderSortToggle}>
-            <span
+            <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
-            </span>
+            </Typography>
             <IconSortIndicator
               className="m-l-xss"
               data-testid="sort-indicator"
@@ -924,18 +912,30 @@ const SchemaTable = () => {
         })}
       </Label>
       <Select
-        allowClear
+        aria-label={t('label.entity-type-plural', {
+          entity: t('label.constraint'),
+        })}
         data-testid="constraint-type-select"
-        getPopupContainer={(triggerNode) => triggerNode.parentElement}
-        options={constraintOptionsTranslated}
         placeholder={t('label.select-entity', {
           entity: t('label.entity-type-plural', {
             entity: t('label.constraint'),
           }),
         })}
-        value={editConstraint}
-        onChange={(value) => setEditConstraint(value)}
-      />
+        selectedKey={editConstraint ?? null}
+        onSelectionChange={(key) =>
+          setEditConstraint(
+            key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
+          )
+        }>
+        <Select.Item id={NO_CONSTRAINT_KEY} label={t('label.none')} />
+        {constraintOptionsTranslated.map((option) => (
+          <Select.Item
+            id={option.value}
+            key={option.value}
+            label={option.label}
+          />
+        ))}
+      </Select>
     </div>
   );
 
@@ -997,8 +997,10 @@ const SchemaTable = () => {
   );
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col id="schemaDetails" span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 16) }}>
+      <Grid.Item className="layout-column" id="schemaDetails" span={24}>
         <Table
           className="align-table-filter-left"
           columns={columns}
@@ -1009,18 +1011,37 @@ const SchemaTable = () => {
           expandable={expandableConfig}
           extraTableFilters={
             <div className="d-flex items-center gap-4">
-              <Dropdown
-                menu={{ items: sortMenuItems, onClick: handleSortMenuClick }}
-                trigger={['click']}>
+              <Dropdown.Root>
                 <Button
-                  className="flex-center gap-2"
+                  color="tertiary"
                   data-testid="sort-dropdown"
-                  icon={<IconSort height={14} width={14} />}
-                  size="small"
-                  type="text">
+                  iconLeading={<IconSort height={14} width={14} />}
+                  size="sm">
                   {t('label.sort')}
                 </Button>
-              </Dropdown>
+                <Dropdown.Popover className="tw:w-auto">
+                  <Dropdown.Menu
+                    aria-label={t('label.sort')}
+                    selectedKeys={[sortBy]}
+                    onAction={handleSortMenuClick}>
+                    <Dropdown.Item
+                      id="name"
+                      textValue={t('label.alphabetical')}>
+                      <Typography data-testid="sort-alphabetical">
+                        {/* eslint-disable-next-line i18next/no-literal-string -- decorative sort-direction glyph */}
+                        {t('label.alphabetical')} (A → Z)
+                      </Typography>
+                    </Dropdown.Item>
+                    <Dropdown.Item
+                      id="ordinalPosition"
+                      textValue={t('label.original-order')}>
+                      <Typography data-testid="sort-original-order">
+                        {t('label.original-order')}
+                      </Typography>
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown.Root>
               {getBulkEditButton(canEditAll, handleEditTable)}
             </div>
           }
@@ -1037,7 +1058,7 @@ const SchemaTable = () => {
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleColumnFilterChange}
         />
-      </Col>
+      </Grid.Item>
       {editColumn && (
         <EntityAttachmentProvider
           entityFqn={editColumn.fullyQualifiedName}
@@ -1066,7 +1087,7 @@ const SchemaTable = () => {
           onSave={handleEditColumnData}
         />
       )}
-    </Row>
+    </Grid>
   );
 };
 

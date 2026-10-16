@@ -32,13 +32,14 @@ import { UserClass } from '../support/user/UserClass';
 import { selectOption, showAdvancedSearchDialog } from './advancedSearch';
 import { CODE_EDITOR_CONTENT, typeInCodeEditor } from './codeEditor';
 import {
+  clickIgnoringToasts,
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getDescriptionBox,
   selectOptionWithRetry,
   uuid,
-  waitForToastStackToClear,
 } from './common';
+import { pickDateInCorePicker } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import {
   navigateToEntityPanelTab,
@@ -82,50 +83,6 @@ export interface CustomProperty {
   };
 }
 
-/**
- * Picks `isoDate` (yyyy-MM-dd) in the core DatePicker inside `scope`: opens the
- * calendar, pages to the target month, clicks the day, then Apply.
- */
-const pickDateInCorePicker = async (
-  page: Page,
-  scope: Locator,
-  isoDate: string
-) => {
-  const [year, month, day] = isoDate.split('-').map(Number);
-  // Cell labels follow the app locale ("Tuesday, 9 July 2024" or
-  // "Tuesday, July 9, 2024"); only the displayed month's days are rendered, so
-  // the day number alone identifies the cell.
-  const dayLabel = new RegExp(`(^|\\D)${day}(\\D|$)`);
-
-  await scope.getByTestId('date-time-picker').getByRole('button').click();
-  const calendar = page
-    .getByRole('dialog')
-    .filter({ has: page.getByRole('grid') });
-  await expect(calendar).toBeVisible();
-
-  const heading = calendar.getByRole('heading');
-  const targetMonth = year * 12 + (month - 1);
-  const MAX_MONTH_STEPS = 240;
-  for (let step = 0; step < MAX_MONTH_STEPS; step++) {
-    const shown = new Date(`1 ${await heading.textContent()}`);
-    const shownMonth = shown.getFullYear() * 12 + shown.getMonth();
-    if (shownMonth === targetMonth) {
-      break;
-    }
-    await calendar
-      .getByRole('button', {
-        name: shownMonth > targetMonth ? 'Previous' : 'Next',
-      })
-      .click();
-  }
-
-  await calendar
-    .getByRole('gridcell')
-    .getByRole('button', { name: dayLabel })
-    .click();
-  await calendar.getByRole('button', { name: 'Apply' }).click();
-};
-
 /** Types `HH:mm:ss` into the core TimePicker's segments inside `scope`. */
 const typeTimeInCorePicker = async (scope: Locator, time: string) => {
   const hourSegment = scope
@@ -155,12 +112,7 @@ export const openCustomPropertyEditModal = async (
 ) => {
   const editButton = getCustomPropertyEditButton(container);
   await editButton.scrollIntoViewIfNeeded();
-  // Background async-delete notifications stack as toasts at bottom-center and
-  // intercept the click; force skips the actionability check but the event
-  // still lands on the toast, so drain the stack before clicking.
-  await waitForToastStackToClear(page);
-  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-  await editButton.click({ force: true });
+  await clickIgnoringToasts(editButton);
 
   const editModal = page.getByTestId('custom-property-edit-modal');
   await expect(editModal).toBeVisible();
@@ -280,7 +232,11 @@ export const fillCustomPropertyEditModal = async (data: {
     case 'date-cp':
     case 'dateTime-cp': {
       const [datePart, timePart] = value.split(' ');
-      await pickDateInCorePicker(page, editModal, datePart);
+      await pickDateInCorePicker(
+        page,
+        editModal.getByTestId('date-time-picker').getByRole('button'),
+        datePart
+      );
       if (timePart) {
         await typeTimeInCorePicker(editModal, timePart);
       }
@@ -779,52 +735,64 @@ export const addCustomPropertiesForEntity = async ({
   // Click the switch to show service doc panel
   await page.locator('[data-testid="show-side-panel-switch"]').click();
 
-  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
-  await page.fill(
-    '[data-testid="name"]',
-    CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON
-  );
+  const form = page.getByTestId('custom-property-form');
+  const nameInput = form
+    .getByTestId('custom-property-name')
+    .getByRole('textbox');
 
-  await expect(page.locator('#name_help')).toContainText(
-    CUSTOM_PROPERTY_NAME_VALIDATION_ERROR
-  );
+  // Validation check — name must start with a letter/number and must not contain: " * : ^ $ \ < > & ~ /
+  await nameInput.fill(CUSTOM_PROPERTY_INVALID_NAMES.DISALLOWED_COLON);
+
+  await expect(
+    form.getByText(CUSTOM_PROPERTY_NAME_VALIDATION_ERROR)
+  ).toBeVisible();
 
   // Correct name
-  await page.fill('[data-testid="name"]', propertyName);
+  await nameInput.fill(propertyName);
 
   // displayName
-  await page.fill('[data-testid="display-name"]', propertyName);
+  await form
+    .getByTestId('custom-property-display-name')
+    .getByRole('textbox')
+    .fill(propertyName);
 
   // Select custom type
   await selectOptionWithRetry(
-    page.locator('[data-testid="propertyType"]'),
+    form.getByTestId('custom-property-type').getByRole('button'),
     page.getByRole('option', { name: customType, exact: true })
   );
 
   // Enum configuration
   if (customType === 'Enum' && enumConfig) {
+    const enumInput = form
+      .getByTestId('custom-property-enum-config')
+      .locator('input');
     for (const val of enumConfig.values) {
-      const enumInput = page.locator(String.raw`#root\/enumConfig`);
-      await enumInput.clear();
-      await enumInput.pressSequentially(val, { delay: 50 });
+      await enumInput.fill(val);
       await enumInput.press('Enter');
       await expect(enumInput).toHaveValue('');
     }
+    // The form is a dismissable drawer: Escape with no open list closes it.
+    if ((await enumInput.getAttribute('aria-expanded')) === 'true') {
+      await page.keyboard.press('Escape');
+    }
 
     if (enumConfig.multiSelect) {
-      await page.getByTestId('multiSelect').click();
+      await form.getByTestId('custom-property-multi-select').click();
     }
   }
   // Table configuration
   if (customType === 'Table' && tableConfig) {
+    const columnInput = form
+      .getByTestId('custom-property-columns')
+      .locator('input');
     for (const val of tableConfig.columns) {
-      const columnInput = page.locator(String.raw`#root\/columns`);
-      await expect(columnInput).toBeVisible();
-      await columnInput.click();
-      await columnInput.clear();
-      await columnInput.pressSequentially(val, { delay: 100 });
+      await columnInput.fill(val);
       await columnInput.press('Enter');
-      await expect(columnInput).toHaveValue(''); // Verify input is consumed
+      await expect(columnInput).toHaveValue('');
+    }
+    if ((await columnInput.getAttribute('aria-expanded')) === 'true') {
+      await page.keyboard.press('Escape');
     }
   }
 
@@ -833,53 +801,32 @@ export const addCustomPropertiesForEntity = async ({
     ENTITY_REFERENCE_PROPERTIES.includes(customType) &&
     entityReferenceConfig
   ) {
+    const refInput = form
+      .getByTestId('custom-property-entity-ref-config')
+      .locator('input');
     for (const val of entityReferenceConfig) {
-      await page.click(String.raw`#root\/entityReferenceConfig`);
-      await page.keyboard.type(val);
-
-      // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
-      const option = page
-        .locator('.ant-select-dropdown:visible')
-        .locator(`[title="${val}"]`);
-      await expect(option).toBeVisible();
-      await option.click();
-
-      // Close the dropdown by pressing Escape
+      await refInput.click();
+      await refInput.fill(val);
+      await page.getByRole('option', { name: val, exact: true }).click();
+    }
+    if ((await refInput.getAttribute('aria-expanded')) === 'true') {
       await page.keyboard.press('Escape');
-
-      // Wait for dropdown to close
-      await expect(page.locator('.ant-select-dropdown')).toBeHidden();
-
-      // Verify the selection was applied
-      await expect(
-        page.locator(String.raw`#root\/entityReferenceConfig_list`)
-      ).not.toBeVisible();
     }
   }
 
   // Format configuration
   if (['Date', 'Date Time', 'Time'].includes(customType) && formatConfig) {
     await selectOptionWithRetry(
-      page.getByTestId('formatConfig'),
+      form.getByTestId('custom-property-format-config').getByRole('button'),
       page.getByRole('option', { name: formatConfig, exact: true })
     );
   }
 
   // Description
-  await expect(
-    page.locator(String.raw`#root\/entityReferenceConfig_list`)
-  ).not.toBeVisible();
-
   await getDescriptionBox(page).waitFor({ state: 'visible' });
   await expect(getDescriptionBox(page)).toHaveCount(1);
   await getDescriptionBox(page).click();
   await page.keyboard.type(customPropertyData.description, { delay: 50 });
-
-  // Click on name field to blur description and trigger validation without closing modal
-  await page.click('[data-testid="name"]');
-
-  await expect(page.locator('#propertyType_help')).not.toBeVisible();
-  await expect(page.locator('#description_help')).not.toBeVisible();
 
   const createButton = page.locator('[data-testid="create-button"]');
   await expect(createButton).toBeVisible();

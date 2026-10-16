@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.ownTagsWith;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -71,6 +72,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -114,6 +116,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
+    return getTagAssets(tagId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getTagAssets(
+      UUID tagId, int limit, int offset, SubjectContext caller) {
     Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -122,7 +130,7 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -138,8 +146,13 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
+    return getTagAssetsByName(tagName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getTagAssetsByName(
+      String tagName, int limit, int offset, SubjectContext caller) {
     Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
-    return getTagAssets(tag.getId(), limit, offset);
+    return getTagAssets(tag.getId(), limit, offset, caller);
   }
 
   public Map<String, Integer> getAllTagsWithAssetsCount() {
@@ -528,7 +541,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
 
       try {
@@ -554,8 +567,11 @@ public class TagRepository extends EntityRepository<Tag> {
         tempList.add(tagLabel);
         // Apply Tags to Entities
         entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
 
         searchRepository.updateEntity(ref);
+        // updateEntity clears the change description, so the child fan-out never fires from here.
+        searchRepository.propagateTagChangeToChildren(asset, List.of(tagLabel), List.of());
         RdfUpdater.updateEntity(asset);
       }
     }
@@ -564,13 +580,9 @@ public class TagRepository extends EntityRepository<Tag> {
     result.withFailedRequest(failures).withSuccessRequest(success);
 
     // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
+    result.withStatus(
+        deriveBulkOperationStatus(
+            result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
   }
@@ -616,9 +628,8 @@ public class TagRepository extends EntityRepository<Tag> {
         false);
 
     if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      applyTags(ownTagsWith(targetColumn.getTags(), tagLabel), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
@@ -683,7 +694,7 @@ public class TagRepository extends EntityRepository<Tag> {
       }
 
       EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
+      EntityInterface<?> asset =
           entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
 
       // Skip the destructive tag_usage delete + ES update on dryRun so the preview
@@ -693,6 +704,7 @@ public class TagRepository extends EntityRepository<Tag> {
             .tagUsageDAO()
             .deleteTagsByTagAndTargetEntity(
                 tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
+        invalidateCacheAfterTagMutation(asset.getEntityReference());
       }
       success.add(new BulkResponse().withRequest(ref));
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -700,11 +712,23 @@ public class TagRepository extends EntityRepository<Tag> {
       if (!dryRun) {
         // Update ES
         searchRepository.updateEntity(ref);
+        searchRepository.propagateTagChangeToChildren(asset, List.of(), List.of(removedLabel(tag)));
         RdfUpdater.updateEntity(asset);
       }
     }
 
     return result.withSuccessRequest(success);
+  }
+
+  /**
+   * The label the child-doc cascade removes. The delete script matches on the FQN and only touches
+   * the child's DERIVED copies, so a child's own label of the same term is left alone.
+   */
+  private static TagLabel removedLabel(Tag tag) {
+    return new TagLabel()
+        .withTagFQN(tag.getFullyQualifiedName())
+        .withSource(TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.DERIVED);
   }
 
   /**
@@ -733,6 +757,7 @@ public class TagRepository extends EntityRepository<Tag> {
       daoCollection
           .tagUsageDAO()
           .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
+      invalidateCacheAfterTagMutation(table.getEntityReference());
     }
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);

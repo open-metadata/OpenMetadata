@@ -21,7 +21,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import { withSuggestions } from '../../components/AppRouter/withSuggestions';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../components/common/Loader/Loader';
@@ -44,7 +43,7 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { mockTablePermission } from '../../constants/mockTourData.constants';
+import { mockTablePermission } from '../../constants/mockTourPermission.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -122,6 +121,33 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
+// The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
+const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
+  canViewTests
+    ? getListTestCaseIncidentStatus({
+        originEntityFQN: tableFqn,
+        latest: true,
+        // The server picks each test case's latest status before applying this filter, so
+        // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
+        // before that and still includes resolved test cases.
+        testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
+        // `latest` is only honoured together with a time range.
+        startTs: 0,
+        endTs: Date.now(),
+        limit: DQ_INDICATOR_FETCH_LIMIT,
+      })
+    : Promise.resolve({ data: [], paging: { total: 0 } });
+
+// useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
+// the render that starts the request, so the badge never flashes a placeholder 0. The tour's
+// table is mock data with no stored queries, so it is never counted.
+const useTableQueryCount = (tableId: string, isTourDataset: boolean) =>
+  useQuery({
+    queryKey: tableQueryCountKey(tableId),
+    queryFn: tableQueryCountFn(tableId),
+    enabled: Boolean(tableId) && !isTourDataset,
+  });
+
 const TableDetailsPageV1: React.FC = () => {
   const {
     isTourOpen,
@@ -254,13 +280,8 @@ const TableDetailsPageV1: React.FC = () => {
 
   const tableDetailsId = tableDetails?.id ?? '';
 
-  // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
-  // the render that starts the request, so the badge never flashes a placeholder 0.
-  const { data: queryCount = 0, isFetching: isQueryCountLoading } = useQuery({
-    queryKey: tableQueryCountKey(tableDetailsId),
-    queryFn: tableQueryCountFn(tableDetailsId),
-    enabled: Boolean(tableDetails?.id),
-  });
+  const { data: queryCount = 0, isFetching: isQueryCountLoading } =
+    useTableQueryCount(tableDetailsId, isTourDataset);
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
   // render so the navigate call doesn't fire during the same commit that returns the query
@@ -358,18 +379,7 @@ const TableDetailsPageV1: React.FC = () => {
             testCaseStatus: TestCaseStatus.Failed,
             limit: DQ_INDICATOR_FETCH_LIMIT,
           }),
-          getListTestCaseIncidentStatus({
-            originEntityFQN: tableFqn,
-            latest: true,
-            // The server picks each test case's latest status before applying this filter, so
-            // Resolved history can't fill the page. Count on `data`: `paging.total` is computed
-            // before that and still includes resolved test cases.
-            testCaseResolutionStatusType: OPEN_INCIDENT_STATUSES,
-            // `latest` is only honoured together with a time range.
-            startTs: 0,
-            endTs: Date.now(),
-            limit: DQ_INDICATOR_FETCH_LIMIT,
-          }),
+          fetchOpenIncidents(tableFqn, viewTestCasePermission),
           getDataQualityLineage(tableFqn, { upstreamDepth: 1 }),
         ]);
 
@@ -408,7 +418,7 @@ const TableDetailsPageV1: React.FC = () => {
             : 0,
       });
     },
-    [tableFqn, setDqLineageData]
+    [tableFqn, setDqLineageData, viewTestCasePermission]
   );
 
   const {
@@ -483,7 +493,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab && !isTourOpen) {
+    if (activeKey !== activeTab && !isTourDataset) {
       navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
         replace: true,
         state: location.state,
@@ -984,7 +994,7 @@ const TableDetailsPageV1: React.FC = () => {
       data-testid="tabs"
       selectedKey={getRenderedActiveTab(
         tabs,
-        isTourOpen ? activeTabForTourDatasetPage : activeTab
+        isTourDataset ? activeTabForTourDatasetPage : activeTab
       )}
       onSelectionChange={(key) => handleTabChange(String(key))}>
       <Tabs.List
@@ -1068,4 +1078,4 @@ const TableDetailsPageV1: React.FC = () => {
   );
 };
 
-export default withSuggestions(withActivityFeed(TableDetailsPageV1));
+export default withActivityFeed(TableDetailsPageV1);

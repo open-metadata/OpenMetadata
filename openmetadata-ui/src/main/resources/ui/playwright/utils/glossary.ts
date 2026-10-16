@@ -730,10 +730,12 @@ export const addAssetToGlossaryTerm = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -759,7 +761,7 @@ export const addAssetToGlossaryTerm = async (
     await page
       .locator(`[data-testid="table-data-card_${entityFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
@@ -868,10 +870,12 @@ export const verifyAssetModalFilters = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -886,7 +890,7 @@ export const verifyAssetModalFilters = async (
     ).toBeVisible();
   }
 
-  const filterWrapper = page.locator('.asset-filters-wrapper');
+  const filterWrapper = page.getByTestId('asset-filters');
   await waitForAllLoadersToDisappear(page);
 
   await testFilterWithSpecificOption(
@@ -1280,26 +1284,24 @@ export const createDescriptionTaskForGlossary = async (
   const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
   const entityName = get(entity, 'responseData.displayName');
 
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `${
       addDescription ? 'Update' : 'Request'
     } description for ${entityType} ${entityName}`
   );
 
   if (isUndefined(value.assignee)) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee ?? '');
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
-    );
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
 
     const userSearchResponse = page.waitForResponse(
@@ -1336,25 +1338,23 @@ export const createTagTaskForGlossary = async (
   const entityType = isGlossary ? 'glossary' : 'glossaryTerm';
   const entityName = get(entity, 'responseData.displayName');
 
-  await expect(page.locator('#title')).toHaveValue(
+  await expect(page.getByTestId('title').locator('input')).toHaveValue(
     `Request tags for ${entityType} ${entityName}`
   );
 
   if (isUndefined(value.assignee)) {
-    await expect(
-      page.locator('[data-testid="select-assignee"] > .ant-select-selector')
-    ).toHaveText(value.assignee ?? '');
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      value.assignee ?? ''
+    );
 
     await expect(
-      page.locator(
-        '[data-testid="select-assignee"] > .ant-select-selector input'
-      )
+      page.getByTestId('select-assignee').getByRole('combobox')
     ).toBeDisabled();
   } else {
     // select assignee
-    const assigneeField = page.locator(
-      '[data-testid="select-assignee"] > .ant-select-selector #assignees'
-    );
+    const assigneeField = page
+      .getByTestId('select-assignee')
+      .getByRole('combobox');
     await assigneeField.click();
     const userSearchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${value.assignee}**&index=user%2Cteam*`
@@ -1371,9 +1371,7 @@ export const createTagTaskForGlossary = async (
 
   if (addTag) {
     // select tags
-    const suggestTags = page.locator(
-      '[data-testid="tag-selector"] > .ant-select-selector .ant-select-selection-search-input'
-    );
+    const suggestTags = page.locator('[data-testid="tag-selector"] input');
     await suggestTags.click();
 
     const querySearchResponse = page.waitForResponse(
@@ -1857,7 +1855,17 @@ export const setupGlossaryDenyPermissionTest = async (
 };
 
 export const performExpandAll = async (page: Page) => {
-  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  // Match only the expand-tree fetch (?glossary= / ?parent=). A bare
+  // glossaryTerms glob also matches the tab's first-level ?directChildrenOf=
+  // fetch, so the wait could resolve before the tree request was even sent.
+  const termRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms') &&
+      (url.searchParams.has('glossary') || url.searchParams.has('parent'))
+    );
+  });
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, Response, test } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { performAdminLogin } from '../../utils/admin';
 import { getAuthContext } from '../../utils/common';
 import { auth0ProviderFixture } from '../../utils/sso-providers/auth0';
@@ -267,7 +268,7 @@ for (const fixture of FIXTURES) {
         await fixture.performLogin(page);
 
         await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-          timeout: 30_000,
+          timeout: ACTION_TIMEOUT,
         });
       });
 
@@ -492,7 +493,7 @@ for (const fixture of FIXTURES) {
             page,
             (resp) => resp.url().includes(AUTH_REFRESH_PATH),
             200,
-            { timeout: 30_000 }
+            { timeout: ACTION_TIMEOUT }
           );
 
           // Reload rather than a same-URL goto: reload guarantees the coordinator
@@ -503,7 +504,7 @@ for (const fixture of FIXTURES) {
           await refreshPromise;
 
           await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-            timeout: 30_000,
+            timeout: ACTION_TIMEOUT,
           });
           expect(page.url()).not.toContain('/signin');
         });
@@ -715,10 +716,10 @@ for (const fixture of FIXTURES) {
 
               await Promise.all([
                 expect(tabA.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-                  timeout: 30_000,
+                  timeout: ACTION_TIMEOUT,
                 }),
                 expect(tabB.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-                  timeout: 30_000,
+                  timeout: ACTION_TIMEOUT,
                 }),
               ]);
 
@@ -810,7 +811,7 @@ for (const fixture of FIXTURES) {
             waitUntil: 'domcontentloaded',
           });
           await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-            timeout: 30_000,
+            timeout: ACTION_TIMEOUT,
           });
 
           const visitedPaths = trackVisitedPaths(page);
@@ -829,7 +830,7 @@ for (const fixture of FIXTURES) {
             timeout: 60_000,
           });
           await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-            timeout: 30_000,
+            timeout: ACTION_TIMEOUT,
           });
           expect(await silentReauthCount()).toBe(1);
           expect(visitedPaths).not.toContain('/signin');
@@ -856,7 +857,7 @@ for (const fixture of FIXTURES) {
             waitUntil: 'domcontentloaded',
           });
           await expect(page.getByTestId(APP_BAR_HOME_TESTID)).toBeVisible({
-            timeout: 30_000,
+            timeout: ACTION_TIMEOUT,
           });
 
           const silentReauthCount = trackSilentReauth(page);

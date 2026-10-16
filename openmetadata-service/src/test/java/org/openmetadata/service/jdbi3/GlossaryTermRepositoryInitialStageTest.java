@@ -110,7 +110,7 @@ class GlossaryTermRepositoryInitialStageTest {
   }
 
   @SuppressWarnings("unchecked")
-  private static <E extends EntityInterface> EntityReference stored(
+  private static <E extends EntityInterface<?>> EntityReference stored(
       String entityType, Class<E> entityClass, E entity) {
     EntityRepository<E> store = mock(EntityRepository.class);
     when(store.get(any(), eq(entity.getId()), any(), any(Include.class), anyBoolean()))

@@ -15,14 +15,14 @@ import { EditorView } from '@tiptap/pm/view';
 /**
  * Mount editor popups (tippy content) inside the editor's nearest
  * focus-trapping dialog (e.g. React Aria's SlideoutMenu) so it does not get
- * marked inert or swallow their clicks. antd modals/drawers don't trap focus
- * from a body-portalled popup, and their transforms would misposition it, so
- * fall back to document.body for those (and when not inside a dialog at all).
+ * marked inert or swallow their clicks. antd drawers don't trap focus from a
+ * body-portalled popup, and their transforms would misposition it, so fall
+ * back to document.body for those (and when not inside a dialog at all).
  */
 export const getDialogContainer = (view: EditorView): HTMLElement => {
   const dialog = view.dom.closest('[role="dialog"]');
 
-  return dialog && !dialog.closest('.ant-modal, .ant-drawer')
+  return dialog && !dialog.closest('.ant-drawer')
     ? (dialog as HTMLElement)
     : document.body;
 };

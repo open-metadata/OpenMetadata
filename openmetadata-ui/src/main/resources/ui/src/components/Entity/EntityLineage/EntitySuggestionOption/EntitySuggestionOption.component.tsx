@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Badge } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { get } from 'lodash';
 import { FC, useMemo } from 'react';
@@ -20,12 +19,10 @@ import { getEntityIcon } from '../../../../utils/EntityIconUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
-import './entity-suggestion-option.less';
 import { EntitySuggestionOptionProps } from './EntitySuggestionOption.interface';
 const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
   entity,
   heading,
-  onSelectHandler,
   className,
   showEntityTypeBadge = false,
 }) => {
@@ -53,18 +50,7 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
   }, [entity]);
 
   return (
-    <Button
-      block
-      className={classNames(
-        'd-flex items-center entity-suggestion-option-btn p-0',
-        className
-      )}
-      data-testid={`node-suggestion-${entity.fullyQualifiedName}`}
-      key={entity.fullyQualifiedName}
-      type="text"
-      onClick={() => {
-        onSelectHandler?.(entity);
-      }}>
+    <div className={classNames('tw:w-full', className)}>
       <div className="d-flex items-center w-full overflow-hidden justify-between">
         <div className="d-flex items-center flex-1 overflow-hidden">
           {serviceIcon}
@@ -92,7 +78,7 @@ const EntitySuggestionOption: FC<EntitySuggestionOptionProps> = ({
           </Badge>
         )}
       </div>
-    </Button>
+    </div>
   );
 };
 

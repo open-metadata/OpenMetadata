@@ -34,8 +34,12 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Returns one deterministic, line-bounded part of a persona's shared AI context document. */
 public class GetPersonaContextTool implements McpTool {
-  private static final int PART_RESPONSE_BUDGET = McpResponseTrim.MAX_RESPONSE_CHARS - 10_000;
+  private static final int PART_RESPONSE_HEADROOM_CHARS = 10_000;
   private static final String INSTRUCTIONS_KEY = "instructions";
+
+  private static int partResponseBudget() {
+    return McpResponseTrim.maxResponseChars() - PART_RESPONSE_HEADROOM_CHARS;
+  }
 
   @Override
   public Map<String, Object> execute(
@@ -118,7 +122,7 @@ public class GetPersonaContextTool implements McpTool {
     }
     int start = 0;
     while (start < content.length()) {
-      int budget = PART_RESPONSE_BUDGET - (parts.isEmpty() ? firstPartReserve : 0);
+      int budget = partResponseBudget() - (parts.isEmpty() ? firstPartReserve : 0);
       int candidateEnd = largestSerializableEnd(content, start, budget);
       int end = candidateEnd;
       if (candidateEnd < content.length()) {

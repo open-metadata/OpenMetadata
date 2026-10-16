@@ -6,7 +6,7 @@
   "description": "An uploaded file (PDF, spreadsheet, document) stored in the Context Center Drive.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.ContextFile",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "fileType": {
       "javaType": "org.openmetadata.schema.entity.data.ContextFileType",

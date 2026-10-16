@@ -18,11 +18,13 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowRight,
+  Lightbulb01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LearningIconSvg } from '../../../assets/svg/ic-learning.svg';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { LearningIconProps } from './LearningIcon.interface';
@@ -126,7 +128,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
           )}
           color="tertiary"
           data-testid="learning-icon"
-          iconLeading={LearningIconSvg}
+          iconLeading={Lightbulb01}
           size="xs"
           onMouseEnter={openPopover}
           onMouseLeave={closePopover}
@@ -147,7 +149,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
             <Button
               color="tertiary"
               data-testid="learning-resources-button"
-              iconTrailing={<ArrowRight size={14} />}
+              iconTrailing={ArrowRight}
               size="sm"
               onPress={handleClick}>
               {resourceCount} {t('label.resource-plural').toLowerCase()}

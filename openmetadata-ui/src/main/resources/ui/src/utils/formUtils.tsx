@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Alert,
   Divider,
   Input as UTInput,
   Select as UTSelect,
@@ -19,25 +20,15 @@ import {
   ToggleProps,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Alert,
-  Checkbox,
-  Form,
-  FormItemProps,
-  Input,
-  InputNumber,
-  Select,
-  TooltipProps,
-} from 'antd';
+import { Form, FormItemProps, Input, Select } from 'antd';
 import { RuleObject } from 'antd/lib/form';
-import { TooltipPlacement } from 'antd/lib/tooltip';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString, startCase, toString } from 'lodash';
-import React, { ComponentProps, Fragment, ReactNode } from 'react';
+import { ComponentProps, Fragment, ReactNode } from 'react';
+import type { Placement } from 'react-aria';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
-import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
@@ -101,11 +92,7 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       />
     ),
   }),
-  [FieldTypes.NUMBER]: ({ props, id, placeholder }) => ({
-    element: (
-      <InputNumber id={id} placeholder={placeholder} size="small" {...props} />
-    ),
-  }),
+
   [FieldTypes.FILTER_PATTERN]: ({ props }) => ({
     element: <FilterPattern {...(props as unknown as FilterPatternProps)} />,
   }),
@@ -120,10 +107,7 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       formPropsPatch: { valuePropName: 'isSelected' },
     };
   },
-  [FieldTypes.CHECK_BOX]: ({ props, id }) => ({
-    element: <Checkbox {...props} id={id} />,
-    formPropsPatch: { valuePropName: 'checked' },
-  }),
+
   [FieldTypes.SELECT]: ({ props, id }) => ({
     element: <Select {...props} id={id} />,
   }),
@@ -194,9 +178,6 @@ const FIELD_ELEMENT_RENDERERS: Partial<
       ),
     };
   },
-  [FieldTypes.COLOR_PICKER]: ({ props }) => ({
-    element: <ColorPicker {...props} />,
-  }),
   [FieldTypes.COMPONENT]: ({ props }) => ({
     element: props.children,
   }),
@@ -375,14 +356,11 @@ export const getField = (field: FieldProp) => {
 
   const labelValue = (
     <FormItemLabel
-      align={props.tooltipAlign as TooltipProps['align']}
       helperText={helperText}
       helperTextType={helperTextType}
       isBeta={isBeta}
       label={label}
-      overlayClassName={props.overlayClassName as string}
-      overlayInnerStyle={props.overlayInnerStyle as React.CSSProperties}
-      placement={props.tooltipPlacement as TooltipPlacement}
+      placement={props.tooltipPlacement as Placement}
       showHelperText={showHelperText}
     />
   );
@@ -416,8 +394,8 @@ export const getField = (field: FieldProp) => {
           showIcon
           className="m-b-lg alert-icon"
           data-testid="form-item-alert"
-          message={helperText}
-          type="warning"
+          title={helperText}
+          variant="warning"
         />
       )}
 

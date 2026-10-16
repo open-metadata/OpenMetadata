@@ -119,6 +119,61 @@ class SearchIndexUtilsTest {
   }
 
   @Test
+  void knownIndexNamesCoversEntityTypesIndexNamesAndAliases() {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+
+    assertTrue(known.containsAll(List.of("table", "tableColumn", "customEntity")));
+    assertTrue(known.containsAll(List.of("table_search_index", "custom_search_index")));
+    assertTrue(known.containsAll(List.of("all", "dataAsset")));
+    assertFalse(known.contains("nope_search_index"));
+    assertEquals(Set.of(), SearchIndexUtils.knownIndexNames(null));
+  }
+
+  @ParameterizedTest
+  @MethodSource("typedIndexes")
+  void unknownIndexNamesNamesOnlyWhatOpenMetadataDoesNotManage(
+      String typed, List<String> expected) {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+    for (String clusterAlias : new String[] {"cluster", null}) {
+      String resolved =
+          SearchIndexUtils.getIndexOrAliasName(typed, resolutionMappings(), Map.of(), clusterAlias);
+      assertEquals(
+          expected,
+          SearchIndexUtils.unknownIndexNames(resolved, known, clusterAlias),
+          typed + " with cluster alias " + clusterAlias);
+    }
+  }
+
+  static Stream<Arguments> typedIndexes() {
+    return Stream.of(
+        Arguments.of("table", List.of()),
+        Arguments.of("table_search_index", List.of()),
+        Arguments.of("all", List.of()),
+        Arguments.of("dataAsset", List.of()),
+        Arguments.of("nope_search_index", List.of("nope_search_index")),
+        Arguments.of("table,nope", List.of("nope")),
+        Arguments.of("nope,nope", List.of("nope")),
+        Arguments.of("nope*", List.of()),
+        Arguments.of("di-data-assets-table", List.of()));
+  }
+
+  @Test
+  void unknownIndexNamesStripsTheClusterPrefixTheCallerAlreadyTyped() {
+    Set<String> known = SearchIndexUtils.knownIndexNames(resolutionMappings());
+    assertEquals(
+        List.of(),
+        SearchIndexUtils.unknownIndexNames("cluster_table_search_index", known, "cluster"));
+    assertEquals(
+        List.of("nope"), SearchIndexUtils.unknownIndexNames("cluster_nope", known, "cluster"));
+  }
+
+  @Test
+  void unknownIndexNamesKeepsServerErrorWhenItCannotClassify() {
+    assertEquals(List.of(), SearchIndexUtils.unknownIndexNames("nope", Set.of(), "cluster"));
+    assertEquals(List.of(), SearchIndexUtils.unknownIndexNames(null, Set.of("table"), null));
+  }
+
+  @Test
   void getIndexOrAliasNamePreservesNullAndUnknownTargetsWithoutRegistry() {
     assertNull(SearchIndexUtils.getIndexOrAliasName(null, null, null, null));
     assertEquals("", SearchIndexUtils.getIndexOrAliasName("", null, null, "cluster"));

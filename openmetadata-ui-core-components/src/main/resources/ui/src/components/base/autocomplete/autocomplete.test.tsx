@@ -37,6 +37,20 @@ const renderAutocomplete = (onItemInserted: (id: unknown) => void) =>
   );
 
 describe('Autocomplete – selection commit', () => {
+  it('provides a named remove button and the full selected label', () => {
+    const label = 'service.database.schema.' + 'long_table_name_'.repeat(20);
+    render(
+      <Autocomplete items={[]} selectedItems={[{ id: label, label }]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    expect(screen.getByRole('button', { name: /remove/i })).toBeVisible();
+    expect(screen.getByTitle(label)).toHaveTextContent(label);
+  });
+
   it('inserts the focused option on Enter', async () => {
     const onItemInserted = vi.fn();
     renderAutocomplete(onItemInserted);
@@ -230,5 +244,61 @@ describe('Autocomplete – scroll paging across the virtualization threshold', (
     rerender(renderWithItems(LARGE_OPTIONS, onPopoverScroll));
 
     expect(screen.getByRole('listbox').scrollTop).toBe(scrolledTo);
+  });
+});
+
+describe('Autocomplete – popover header and footer', () => {
+  it('renders the header and footer around the open list', async () => {
+    render(
+      <Autocomplete
+        items={OPTIONS}
+        placeholder="Select"
+        popoverFooter={<div>Footer hints</div>}
+        popoverHeader={<div>Showing 2 of 2</div>}
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    expect(screen.queryByText('Showing 2 of 2')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    const listbox = await screen.findByRole('listbox');
+    const header = screen.getByText('Showing 2 of 2');
+    const footer = screen.getByText('Footer hints');
+
+    expect(
+      header.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      listbox.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+});
+
+describe('Autocomplete – empty state', () => {
+  it('renders the given empty state instead of the default one', async () => {
+    render(
+      <Autocomplete
+        emptyState={<div>Loading results</div>}
+        items={[]}
+        placeholder="Select"
+        selectedItems={[]}>
+        {(item) => (
+          <Autocomplete.Item id={item.id} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+
+    expect(await screen.findByText('Loading results')).toBeInTheDocument();
   });
 });

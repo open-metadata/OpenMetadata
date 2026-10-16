@@ -33,12 +33,14 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 
@@ -67,7 +69,7 @@ class ContextMemoryIndexTest {
             .withSummary("Quick guide on Certification filtering")
             .withMemoryType(ContextMemoryType.FAQ)
             .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
-            .withEntityStatus(EntityStatus.APPROVED)
+            .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withPinned(true)
             .withSourceType(ContextMemorySourceType.CHAT_PROMOTION)
             .withUsageCount(7)
@@ -135,6 +137,44 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
 
     assertEquals(0, doc.get("usageCount"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_aMemoryNeverCountedIndexesNoOutcomes() {
+    ContextMemory memory = baseMemory().withUsageCount(37);
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    assertFalse(
+        doc.containsKey("outcomes"),
+        "a list read from search must fall back to usage, not show zero citations");
+    assertEquals(37, doc.get("usageCount"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_indexesTheStoredOutcomes() {
+    ContextMemory memory =
+        baseMemory()
+            .withOutcomes(
+                new MemoryOutcomes()
+                    .withAppliedCount(12)
+                    .withPositiveCount(3)
+                    .withNegativeCount(1)
+                    .withCorrectedCount(2)
+                    .withLastAppliedAt(1_700_000_000_000L)
+                    .withLastCorrectedAt(1_690_000_000_000L)
+                    .withCountedAt(1_700_000_500_000L));
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    Map<?, ?> outcomes = (Map<?, ?>) doc.get("outcomes");
+    assertEquals(12, outcomes.get("appliedCount"));
+    assertEquals(3, outcomes.get("positiveCount"));
+    assertEquals(1, outcomes.get("negativeCount"));
+    assertEquals(2, outcomes.get("correctedCount"));
+    assertEquals(1_700_000_000_000L, outcomes.get("lastAppliedAt"));
+    assertEquals(1_690_000_000_000L, outcomes.get("lastCorrectedAt"));
+    assertEquals(1_700_000_500_000L, outcomes.get("countedAt"));
   }
 
   @Test

@@ -20,6 +20,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
@@ -30,6 +31,8 @@ import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
+import com.google.common.collect.Lists;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -63,6 +66,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.resources.domains.DataProductResource;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.rules.RuleValidationException;
@@ -74,6 +78,8 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -90,11 +96,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
       "Data Product Domain Validation";
 
-  // Max descendants whose domains/data-products are hydrated at once while reconciling a level.
+  // Max assets whose domains/data-products are hydrated at once while reconciling (a level of
+  // descendants, or the direct assets that inherit their domain).
   // Bounds peak heap to ~O(chunk * tree-depth) instead of O(widest level) — the same reason
   // bulkHardDeleteSubtree chunks each level (a database with hundreds of thousands of tables would
   // otherwise load the whole level into the heap in one shot).
-  private static final int DESCENDANT_RECONCILE_CHUNK_SIZE = 200;
+  private static final int RECONCILE_CHUNK_SIZE = 200;
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -167,6 +174,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public void storeEntity(DataProduct entity, boolean update) {
     // Ports are stored as relationships via dedicated APIs, not in entity JSON
     store(entity, update);
+  }
+
+  @Override
+  public Set<String> getRelationsReplacedByImport() {
+    Set<String> replaced = new HashSet<>(super.getRelationsReplacedByImport());
+    replaced.add(Entity.FIELD_EXPERTS);
+    return Set.copyOf(replaced);
   }
 
   @Override
@@ -348,10 +362,23 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    EntityReference productRef = dataProduct.getEntityReference();
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DATA_PRODUCTS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset ->
+                asset.setDataProducts(
+                    ApprovalGate.withReference(asset.getDataProducts(), productRef)));
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, true, userName);
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    // Held assets were removed from the request; the ones added now get their lineage.
+    boolean added = result.getStatus().equals(ApiStatus.SUCCESS);
+    ApprovalGate.withHeld(result, held);
+    if (added) {
       for (EntityReference ref : listOrEmpty(request.getAssets())) {
         LineageUtil.addDataProductsLineage(
             ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
@@ -363,16 +390,35 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   public BulkOperationResult bulkRemoveAssets(
       String domainName, BulkAssets request, String userName) {
     DataProduct dataProduct = getByName(null, domainName, getFields("id"));
+    List<BulkResponse> held =
+        ApprovalGate.holdGatedAssets(
+            request.getAssets(),
+            FIELD_DATA_PRODUCTS,
+            userName,
+            Boolean.TRUE.equals(request.getDryRun()),
+            asset ->
+                asset.setDataProducts(
+                    ApprovalGate.withoutReference(asset.getDataProducts(), dataProduct.getId())));
     BulkOperationResult result =
         bulkAssetsOperation(
             dataProduct.getId(), DATA_PRODUCT, Relationship.HAS, request, false, userName);
+    // Only the assets this write removed lose their lineage and output-port links; a held asset
+    // keeps them until its removal is approved, so the held items are added afterwards.
     for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
-      EntityReference ref = (EntityReference) response.getRequest();
-      LineageUtil.removeDataProductsLineage(
-          ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
-      deleteRelationship(
-          dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), Relationship.OUTPUT_PORT);
+      // BulkResponse.request is an untyped schema field; the bulk write sets it to the asset's
+      // EntityReference, and to null for the placeholder it reports when every asset was held.
+      if (response.getRequest() instanceof EntityReference ref) {
+        LineageUtil.removeDataProductsLineage(
+            ref.getId(), ref.getType(), List.of(dataProduct.getEntityReference()));
+        deleteRelationship(
+            dataProduct.getId(),
+            DATA_PRODUCT,
+            ref.getId(),
+            ref.getType(),
+            Relationship.OUTPUT_PORT);
+      }
     }
+    ApprovalGate.withHeld(result, held);
     return result;
   }
 
@@ -544,6 +590,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityReference> getDataProductAssets(
       UUID dataProductId, int limit, int offset) {
+    return getDataProductAssets(dataProductId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getDataProductAssets(
+      UUID dataProductId, int limit, int offset, SubjectContext caller) {
     DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -553,7 +605,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Use InheritedFieldQuery for data product assets
     InheritedFieldQuery query =
-        InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), offset, limit)
+            .forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -570,18 +623,28 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   public ResultList<EntityReference> getDataProductAssetsByName(
       String dataProductName, int limit, int offset) {
-    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
-    return getDataProductAssets(dataProduct.getId(), limit, offset);
+    return getDataProductAssetsByName(dataProductName, limit, offset, null);
   }
 
-  public Map<String, Integer> getAllDataProductsWithAssetsCount() {
+  public ResultList<EntityReference> getDataProductAssetsByName(
+      String dataProductName, int limit, int offset, SubjectContext caller) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    return getDataProductAssets(dataProduct.getId(), limit, offset, caller);
+  }
+
+  /**
+   * Asset counts for the data products the caller may list, counting only assets the caller's
+   * search access policies allow.
+   */
+  public Map<String, Integer> getAllDataProductsWithAssetsCount(SecurityContext securityContext) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for data product asset counts");
       return new HashMap<>();
     }
 
-    List<DataProduct> allDataProducts =
-        listAll(getFields("fullyQualifiedName"), new ListFilter(null));
+    ListFilter listable = new ListFilter(null);
+    EntityUtil.addDomainQueryParam(securityContext, listable, Entity.DATA_PRODUCT);
+    List<DataProduct> allDataProducts = listAll(getFields("fullyQualifiedName"), listable);
     Map<String, Integer> dataProductAssetCounts = new LinkedHashMap<>();
 
     for (DataProduct dataProduct : allDataProducts) {
@@ -594,7 +657,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         inheritedFieldEntitySearch.getAggregatedCountsByField(
             "dataProducts.fullyQualifiedName",
             queryFilter,
-            EntityBuilderConstant.MAX_AGGREGATE_SIZE);
+            EntityBuilderConstant.MAX_AGGREGATE_SIZE,
+            DefaultAuthorizer.getSubjectContext(securityContext));
 
     for (Map.Entry<String, Integer> entry : exactCounts.entrySet()) {
       dataProductAssetCounts.computeIfPresent(
@@ -667,9 +731,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     Map<UUID, EntityWithType> entitiesById = new HashMap<>();
     for (Map.Entry<String, List<EntityReference>> entry : refsByType.entrySet()) {
       String entityType = entry.getKey();
-      List<EntityInterface> entitiesOfType =
+      List<EntityInterface<?>> entitiesOfType =
           Entity.getEntities(entry.getValue(), fieldsToFetch, NON_DELETED);
-      for (EntityInterface entity : entitiesOfType) {
+      for (EntityInterface<?> entity : entitiesOfType) {
         entitiesById.put(entity.getId(), new EntityWithType(entity, entityType));
       }
     }
@@ -762,14 +826,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     // Fetch all asset entities grouped by type so add-validation can still run during dryRun
-    Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
+    Map<UUID, EntityInterface<?>> assetEntitiesMap = new HashMap<>();
     if (isAdd && !assets.isEmpty()) {
       for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
-        List<EntityInterface> entitiesOfType =
+        List<EntityInterface<?>> entitiesOfType =
             Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
         // Key by each entity's own id; getEntities may reorder or drop rows relative to the
         // request list, so request-index zipping would validate the wrong asset.
-        for (EntityInterface entity : entitiesOfType) {
+        for (EntityInterface<?> entity : entitiesOfType) {
           assetEntitiesMap.put(entity.getId(), entity);
         }
       }
@@ -780,7 +844,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
       try {
         if (isAdd) {
-          EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
+          EntityInterface<?> assetEntity = assetEntitiesMap.get(ref.getId());
           if (assetEntity == null) {
             throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
           }
@@ -838,7 +902,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Create a Change Event on successful operations (skip when dryRun makes no changes)
     if (!dryRun && !success.isEmpty()) {
-      EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
       List<EntityReference> successfulAssets = new ArrayList<>();
       for (BulkResponse response : success) {
         successfulAssets.add((EntityReference) response.getRequest());
@@ -865,7 +929,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
    * @throws RuleValidationException if validation fails
    */
   private void validateAssetDataProductAssignment(
-      EntityInterface assetEntity, EntityReference dataProductRef) {
+      EntityInterface<?> assetEntity, EntityReference dataProductRef) {
     try {
 
       List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
@@ -1169,11 +1233,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       return;
     }
     // Direct assets were just migrated to the data product's new domains. Reconcile each against
-    // its own (updated) explicit domains, and hand those domains down as the inherited set for its
+    // its own (updated) effective domains, and hand those domains down as the inherited set for its
     // subtree. Detached assets are reindexed once at the end (a single batched search write) rather
     // than one call per asset, which matters when a mass-detach touches many descendants.
     List<EntityReference> reindexQueue = new ArrayList<>();
-    Map<UUID, Set<UUID>> directDomains = batchFetchDomainIds(refIds(assets));
+    Map<UUID, Set<UUID>> directDomains = fetchEffectiveDomainIds(assets);
     reconcileConflicts(assets, directDomains, reindexQueue);
     reconcileInheritingDescendants(assets, directDomains, reindexQueue);
     if (searchRepository != null && !reindexQueue.isEmpty()) {
@@ -1217,10 +1281,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       Map<UUID, Set<UUID>> nextInherited = new HashMap<>();
       // Hydrate domains/data-products and detach in bounded chunks so peak heap stays ~O(chunk),
       // not O(widest level) — mirroring bulkHardDeleteSubtree's per-level chunking.
-      for (int start = 0; start < candidates.size(); start += DESCENDANT_RECONCILE_CHUNK_SIZE) {
+      for (int start = 0; start < candidates.size(); start += RECONCILE_CHUNK_SIZE) {
         List<EntityReference> chunk =
-            candidates.subList(
-                start, Math.min(start + DESCENDANT_RECONCILE_CHUNK_SIZE, candidates.size()));
+            candidates.subList(start, Math.min(start + RECONCILE_CHUNK_SIZE, candidates.size()));
         Map<UUID, Set<UUID>> chunkOwnDomains = batchFetchDomainIds(refIds(chunk));
         List<EntityReference> inheritingChunk = new ArrayList<>();
         Map<UUID, Set<UUID>> chunkEffective = new HashMap<>();
@@ -1333,6 +1396,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         daoCollection
             .relationshipDAO()
             .findFromBatch(assetIds, Relationship.HAS.ordinal(), DOMAIN, NON_DELETED));
+  }
+
+  /**
+   * Each direct asset's domains as the "Data Product Domain Validation" rule sees them: explicit, or
+   * inherited from its container when it has none. Clearing a data product's domains writes no new
+   * DOMAIN edge, so an asset that inherits its domain would otherwise read as domain-less and lose
+   * every data product, down its whole subtree. Inheriting assets go through the regular read path
+   * so each repository's own inheritance logic applies, in bounded chunks per entity type.
+   */
+  private Map<UUID, Set<UUID>> fetchEffectiveDomainIds(List<EntityReference> assets) {
+    Map<UUID, Set<UUID>> domainsByAsset = batchFetchDomainIds(refIds(assets));
+    assets.stream()
+        .filter(asset -> !domainsByAsset.containsKey(asset.getId()))
+        .collect(Collectors.groupingBy(EntityReference::getType))
+        .values()
+        .forEach(
+            sameType ->
+                Lists.partition(sameType, RECONCILE_CHUNK_SIZE)
+                    .forEach(chunk -> putInheritedDomainIds(chunk, domainsByAsset)));
+    return domainsByAsset;
+  }
+
+  private static void putInheritedDomainIds(
+      List<EntityReference> sameTypeAssets, Map<UUID, Set<UUID>> domainsByAsset) {
+    List<EntityInterface<?>> entities =
+        Entity.getEntities(sameTypeAssets, FIELD_DOMAINS, NON_DELETED);
+    for (EntityInterface<?> entity : entities) {
+      domainsByAsset.put(
+          entity.getId(),
+          listOrEmpty(entity.getDomains()).stream()
+              .map(EntityReference::getId)
+              .collect(Collectors.toSet()));
+    }
   }
 
   private Map<UUID, Set<UUID>> batchFetchDataProductDomainIds(List<String> dataProductIds) {

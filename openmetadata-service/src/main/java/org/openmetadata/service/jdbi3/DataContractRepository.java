@@ -78,10 +78,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
 import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
@@ -146,6 +146,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                 Entity.getEntity(
                     Entity.TABLE, table.getId(), "columns,lifeCycle", Include.NON_DELETED),
             new TableRefreshHistoryLoader(daoCollection.profilerDataTimeSeriesDao(), clock));
+    supportsSearch = true;
   }
 
   @Override
@@ -534,7 +535,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   private SchemaValidationResult validateFieldsAgainstEntity(
       DataContract dataContract, EntityReference entityRef) {
     ChildFieldResolver.ChildContainerSpec spec = ChildFieldResolver.specFor(entityRef.getType());
-    EntityInterface parent =
+    EntityInterface<?> parent =
         Entity.getEntity(
             entityRef.getType(), entityRef.getId(), spec.requiredFields(), Include.NON_DELETED);
     List<FieldInterface> children = ChildFieldResolver.childrenOf(parent, entityRef.getType());
@@ -1024,7 +1025,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * @param user The user creating the contract
    */
   public DataContract materializeInheritedContract(
-      EntityInterface entity, String dataProductContractName, String user) {
+      EntityInterface<?> entity, String dataProductContractName, String user) {
     // Name format: "<Data Product Contract> - <entity name>"
     String contractName = dataProductContractName + " - " + entity.getName();
     String contractFqn = entity.getFullyQualifiedName() + ".contract";
@@ -1050,7 +1051,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * @return the stored result, or empty when no contract applies to the entity
    */
   public Optional<RestUtil.PutResponse<DataContractResult>> validateEntityContract(
-      EntityInterface entity, String user) {
+      EntityInterface<?> entity, String user) {
     return Optional.ofNullable(getEffectiveDataContract(entity))
         .map(
             effective ->
@@ -1059,7 +1060,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private DataContract contractForResults(
-      EntityInterface entity, DataContract effective, String user) {
+      EntityInterface<?> entity, DataContract effective, String user) {
     DataContract direct = getEntityDataContractSafely(entity);
     DataContract contract = direct != null ? direct : effective;
     if (direct == null && Boolean.TRUE.equals(effective.getInherited())) {
@@ -1228,7 +1229,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     try {
       // Get the entity that the contract applies to
-      EntityInterface entity =
+      EntityInterface<?> entity =
           Entity.getEntity(
               dataContract.getEntity().getType(),
               dataContract.getEntity().getId(),
@@ -1429,7 +1430,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .withResultId(result.getId()));
 
     ChangeEvent changeEvent =
-        FormatterUtil.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
+        ChangeEvents.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(dataContract));
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
@@ -1590,7 +1591,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
     try {
-      DataContract updated = JsonUtils.deepCopy(dataContract, DataContract.class);
+      // Reload with the relationship fields the search doc is built from: callers pass contracts
+      // fetched without owners/reviewers, and the reindex after this update would blank them.
+      DataContract original =
+          Entity.getEntity(
+              Entity.DATA_CONTRACT,
+              dataContract.getId(),
+              "owners,reviewers,extension",
+              Include.NON_DELETED);
+      DataContract updated = JsonUtils.deepCopy(original, DataContract.class);
       updated.setLatestResult(
           new LatestResult()
               .withTimestamp(result.getTimestamp())
@@ -1598,7 +1607,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               .withMessage(result.getResult())
               .withResultId(result.getId()));
       EntityRepository.EntityUpdater entityUpdater =
-          getUpdater(dataContract, updated, EntityRepository.Operation.PATCH, null);
+          getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
       entityUpdater.update();
     } catch (Exception e) {
       LOG.error(
@@ -1616,7 +1625,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         DataContract.class);
   }
 
-  public DataContract getEntityDataContractSafely(EntityInterface entity) {
+  public DataContract getEntityDataContractSafely(EntityInterface<?> entity) {
     try {
       return loadEntityDataContract(entity.getEntityReference());
     } catch (Exception e) {
@@ -1625,7 +1634,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContract getEffectiveDataContract(EntityInterface entity) {
+  public DataContract getEffectiveDataContract(EntityInterface<?> entity) {
     DataContract entityContract = getEntityDataContractSafely(entity);
 
     List<EntityReference> dataProducts = entity.getDataProducts();
@@ -1668,7 +1677,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private DataContract inheritFromDataProductContract(
-      EntityInterface entity, DataContract dataProductContract) {
+      EntityInterface<?> entity, DataContract dataProductContract) {
     DataContract inherited = JsonUtils.deepCopy(dataProductContract, DataContract.class);
 
     // Update the entity reference to point to the actual entity, not the data product

@@ -45,6 +45,8 @@ export interface ProfileContentHeaderProps {
   titleInput?: React.ReactNode;
   /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
   titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
 }
 
 /**
@@ -62,6 +64,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   actions,
   titleInput,
   titleSuffix,
+  meta,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -78,7 +81,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       className="ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:py-4 tw:mb-7"
       data-testid="profile-content-header"
       direction="col"
-      gap={3}>
+      gap={5}>
       <Breadcrumbs
         divider="chevron"
         items={resolvedBreadcrumbs}
@@ -101,7 +104,8 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           <Box align="center" direction="row" gap={1}>
             {titleInput ?? (
               <Typography
-                className="tw:text-primary-900"
+                className="tw:text-primary"
+                data-testid="profile-content-header-title"
                 size="text-lg"
                 weight="bold">
                 {title}
@@ -115,10 +119,14 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             weight="regular">
             {description}
           </Typography>
+          {meta}
         </Box>
+        {/* The header sits under the modal's close button, which core pins to
+            the dialog's top-right corner; the right margin keeps the actions
+            clear of it, as core's own Dialog header does with `pr-12`. */}
         {actions && (
           <Box
-            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
+            className="tw:ml-auto tw:mr-12 tw:flex tw:items-center tw:gap-2"
             direction="row">
             {actions}
           </Box>

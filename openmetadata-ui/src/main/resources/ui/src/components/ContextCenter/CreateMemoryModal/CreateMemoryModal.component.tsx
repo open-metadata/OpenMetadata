@@ -42,7 +42,7 @@ import {
   Lock01,
   Plus,
   Share07,
-  X,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { ConfigProvider } from 'antd';
 import { AxiosError } from 'axios';
@@ -80,8 +80,8 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   ContextMemory,
+  ContextMemoryStatus,
   EntityReference,
-  EntityStatus,
   MemoryType,
   ShareVisibility,
   TagLabel,
@@ -187,7 +187,7 @@ const LinkedAssetCard: FC<{
             <ButtonUtility
               color="tertiary"
               data-testid="remove-linked-asset-btn"
-              icon={<X size={18} strokeWidth={2} />}
+              icon={<XClose size={18} strokeWidth={2} />}
               onClick={() => onRemove(fqn)}
             />
           )}
@@ -645,12 +645,18 @@ const MemoryTagsRow: FC<{
 );
 
 const getEntityStatusColor = (
-  status: EntityStatus
+  status: ContextMemoryStatus
 ): 'error' | 'warning' | 'gray' => {
-  if (status === EntityStatus.Rejected) {
+  if (
+    status === ContextMemoryStatus.Rejected ||
+    status === ContextMemoryStatus.Invalidated
+  ) {
     return 'error';
   }
-  if (status === EntityStatus.Deprecated) {
+  if (
+    status === ContextMemoryStatus.Deprecated ||
+    status === ContextMemoryStatus.Superseded
+  ) {
     return 'warning';
   }
 
@@ -708,7 +714,9 @@ const MemoryLifecycleRows: FC<{
           data-testid="memory-lifecycle-status"
           size="sm"
           type="color">
-          {t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])}
+          {MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus]
+            ? t(MEMORY_STATUS_LABEL_KEYS[memoryToEdit.entityStatus])
+            : memoryToEdit.entityStatus}
         </Badge>
       </div>
     )}
@@ -727,7 +735,8 @@ const MemoryLifecycleRows: FC<{
         </Typography>
       </div>
     )}
-    {memoryToEdit?.entityStatus === EntityStatus.Deprecated &&
+    {(memoryToEdit?.entityStatus === ContextMemoryStatus.Deprecated ||
+      memoryToEdit?.entityStatus === ContextMemoryStatus.Superseded) &&
       memoryToEdit.supersededBy && (
         <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
           <div className="tw:basis-[30%]">
@@ -1138,7 +1147,12 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       style={{ zIndex: 999 }}
       onOpenChange={(open) => !open && handleClose()}>
       <Modal>
-        <Dialog showCloseButton title="" width={600} onClose={handleClose}>
+        <Dialog
+          showCloseButton
+          data-testid="memory-modal"
+          title=""
+          width={600}
+          onClose={handleClose}>
           <Dialog.Content className="tw:p-0! tw:min-h-[92vh]">
             <div ref={modalContainerRef}>
               <ConfigProvider
@@ -1146,7 +1160,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                   modalContainerRef.current ?? document.body
                 }>
                 <HookForm
-                  className="tw:flex tw:flex-col tw:max-h-[92vh]"
+                  className="tw:flex tw:flex-col tw:h-[92vh]"
                   form={form}
                   onSubmit={form.handleSubmit(handleSubmit)}>
                   {/* Sticky header */}

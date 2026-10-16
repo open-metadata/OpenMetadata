@@ -14,7 +14,7 @@
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import {
-  EntityStatus,
+  ContextMemoryStatus,
   MemoryType,
   ShareVisibility,
 } from '../generated/entity/context/contextMemory';
@@ -137,17 +137,32 @@ export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 
+export const DEFAULT_MEMORY_STATUSES = [
+  ContextMemoryStatus.Approved,
+  ContextMemoryStatus.Unprocessed,
+];
+
+// Draft holds a memory for a person: one whose supporting query was deleted has no review task.
+export const DEFAULT_MEMORY_LIST_STATUSES = [
+  ...DEFAULT_MEMORY_STATUSES,
+  ContextMemoryStatus.Draft,
+];
+
 export const MEMORY_STATUS_LABEL_KEYS: Record<string, string> = {
-  [EntityStatus.Approved]: 'label.approved',
-  [EntityStatus.Archived]: 'label.archived',
-  [EntityStatus.Draft]: 'label.draft',
-  [EntityStatus.Deprecated]: 'label.deprecated',
-  [EntityStatus.Rejected]: 'label.rejected',
+  [ContextMemoryStatus.Unprocessed]: 'label.unprocessed',
+  [ContextMemoryStatus.Approved]: 'label.approved',
+  [ContextMemoryStatus.Archived]: 'label.archived',
+  [ContextMemoryStatus.Draft]: 'label.draft',
+  [ContextMemoryStatus.Deprecated]: 'label.deprecated',
+  [ContextMemoryStatus.Rejected]: 'label.rejected',
+  [ContextMemoryStatus.Superseded]: 'label.superseded',
+  [ContextMemoryStatus.Invalidated]: 'label.invalidated',
 };
 
 export const FILTER_TABS = [
   { id: 'all', label: 'label.all' },
   { id: 'created-by-me', label: 'label.created-by-me' },
+  { id: 'needs-review', label: 'label.needs-review' },
 ] as const;
 
 // utility-gray-blue-50 resolves to gray-blue-950 in dark, which reads as a

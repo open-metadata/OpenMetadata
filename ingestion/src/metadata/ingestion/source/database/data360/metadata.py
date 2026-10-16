@@ -16,6 +16,7 @@ import traceback
 from collections.abc import Iterable
 from typing import TYPE_CHECKING, Any, cast
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -76,7 +77,6 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_table
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 if TYPE_CHECKING:
     from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
@@ -176,21 +176,25 @@ class Data360Source(DatabaseServiceSource):
 
     def yield_database_tag(self, database_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Yields classification tags derived from the dataspace status."""
+        if not self.source_config.includeTags:
+            return
         try:
             dataspace = self.dataspace_map.get(database_name, {})
             status = dataspace.get(ResponseConstant.STATUS)
-            yield from get_ometa_tag_and_classification(
-                tag_fqn=FullyQualifiedEntityName(
-                    self._build_fqn(
-                        Database,
-                        service_name=self._service_name,
-                        database_name=database_name,
-                    )
+            if not status:
+                return
+            yield from self.register_tag(
+                entity_fqn=self._build_fqn(
+                    Database,
+                    service_name=self._service_name,
+                    database_name=database_name,
                 ),
-                tags=[status] if status else [],
-                classification_name=Constant.TAG_CLASSIFICATION_NAME,
-                tag_description=ResponseConstant.STATUS,
-                classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                definition=TagDefinition(
+                    classification_name=Constant.TAG_CLASSIFICATION_NAME,
+                    tag_name=status,
+                    tag_description=ResponseConstant.STATUS,
+                    classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                ),
             )
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
@@ -205,18 +209,12 @@ class Data360Source(DatabaseServiceSource):
         """Yields a CreateDatabaseRequest for each dataspace."""
         try:
             dataspace = self.dataspace_map.get(database_name, {})
-            status = dataspace.get(ResponseConstant.STATUS)
             yield Either(  # pyright: ignore[reportCallIssue]
                 right=CreateDatabaseRequest(
                     name=EntityName(database_name),
                     displayName=dataspace.get(ResponseConstant.LABEL),
                     description=dataspace.get(ResponseConstant.DESCRIPTION),
-                    tags=get_tag_labels(
-                        self.metadata,
-                        [status] if status else [],
-                        Constant.TAG_CLASSIFICATION_NAME,
-                        bool(self.source_config.includeTags),
-                    ),
+                    tags=self.get_database_tag_labels(database_name),
                     service=FullyQualifiedEntityName(self._service_name),
                 )
             )
@@ -347,23 +345,16 @@ class Data360Source(DatabaseServiceSource):
                     description = ci_details.get(ResponseConstant.DESCRIPTION)
             else:
                 table[Constant.TABLE_CONSTRAINTS] = get_table_constraints(table.get(ResponseConstant.PRIMARY_KEYS, []))
-                category = table.get(ResponseConstant.CATEGORY)
-                table[Constant.TAGS] = get_tag_labels(
-                    self.metadata,
-                    [category] if category else [],
-                    Constant.TAG_CLASSIFICATION_NAME,
-                    bool(self.source_config.includeTags),
-                )
 
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
                 tableType=table_type,
-                columns=self.get_columns(table.get(ResponseConstant.FIELDS, [])),
+                columns=self.get_columns(table.get(ResponseConstant.FIELDS, []), table_name),
                 displayName=table.get(ResponseConstant.DISPLAY_NAME),
                 description=description,
                 tablePartition=table.get(Constant.TABLE_PARTITION),
                 tableConstraints=table.get(Constant.TABLE_CONSTRAINTS),
-                tags=table.get(Constant.TAGS, []),
+                tags=self.get_tag_labels(table_name),
                 databaseSchema=FullyQualifiedEntityName(
                     self._build_fqn(
                         DatabaseSchema,
@@ -385,7 +376,7 @@ class Data360Source(DatabaseServiceSource):
                 )
             )
 
-    def get_columns(self, fields: list) -> list[Column]:
+    def get_columns(self, fields: list, table_name: str) -> list[Column]:
         """Builds Column objects from DataCloud field definitions."""
         columns = []
         for ordinal, column in enumerate(fields, start=1):
@@ -394,12 +385,7 @@ class Data360Source(DatabaseServiceSource):
                     name=ColumnName(column[ResponseConstant.NAME]),
                     displayName=column[ResponseConstant.DISPLAY_NAME],
                     dataType=DataType(ColumnTypeParser.get_column_type(column[ResponseConstant.TYPE])),
-                    tags=get_tag_labels(
-                        self.metadata,
-                        [column.get(Constant.FIELD_TYPE)] if column.get(Constant.FIELD_TYPE) else [],
-                        Constant.TAG_CLASSIFICATION_NAME,
-                        bool(self.source_config.includeTags),
-                    ),
+                    tags=self.get_column_tag_labels(table_name, column),
                     dataTypeDisplay=column[ResponseConstant.BUSINESS_TYPE],
                     ordinalPosition=ordinal,
                 )
@@ -409,11 +395,11 @@ class Data360Source(DatabaseServiceSource):
     def yield_table_tags(
         self, table_name_and_type: tuple[str, TableType]
     ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Yields classification tags for non-CIO table types."""
+        """Registers table categories and column field types."""
+        if not self.source_config.includeTags:
+            return
         table_name, _ = table_name_and_type
         try:
-            if get_metadata_type(self._schema_name) == MetadataTypesConstant.CALCULATED_INSIGHT:
-                return
             table_fqn = self._build_fqn(
                 Table,
                 service_name=self._service_name,
@@ -422,21 +408,53 @@ class Data360Source(DatabaseServiceSource):
                 table_name=table_name,
             )
             table = self.table_map.get(table_fqn, {})
-            category = table.get(ResponseConstant.CATEGORY)
-            tags = [t for t in [category, Constant.MEASURE, Constant.DIMENSION] if t]
-            yield from get_ometa_tag_and_classification(
-                tag_fqn=FullyQualifiedEntityName(
-                    self._build_fqn(
-                        Database,
-                        service_name=self._service_name,
-                        database_name=self._database_name,
+            if get_metadata_type(self._schema_name) == MetadataTypesConstant.CALCULATED_INSIGHT:
+                combine_ci_fields(table)
+            else:
+                category = table.get(ResponseConstant.CATEGORY)
+                if category:
+                    yield from self.register_tag(
+                        entity_fqn=self._build_fqn(
+                            Table,
+                            service_name=self._service_name,
+                            database_name=self._database_name,
+                            schema_name=self._schema_name,
+                            table_name=table_name,
+                            skip_es_search=True,
+                        ),
+                        definition=TagDefinition(
+                            classification_name=Constant.TAG_CLASSIFICATION_NAME,
+                            tag_name=category,
+                            tag_description=ResponseConstant.CATEGORY,
+                            classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                        ),
                     )
-                ),
-                tags=tags,
-                classification_name=Constant.TAG_CLASSIFICATION_NAME,
-                tag_description=ResponseConstant.CATEGORY,
-                classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
-            )
+                for tag_name in (Constant.MEASURE, Constant.DIMENSION):
+                    self.define_tag(
+                        classification_name=Constant.TAG_CLASSIFICATION_NAME,
+                        tag_name=tag_name,
+                        tag_description=ResponseConstant.CATEGORY,
+                        classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                    )
+            for column in table.get(ResponseConstant.FIELDS, []):
+                field_type = column.get(Constant.FIELD_TYPE)
+                if field_type:
+                    yield from self.register_tag(
+                        entity_fqn=self._build_fqn(
+                            Column,
+                            service_name=self._service_name,
+                            database_name=self._database_name,
+                            schema_name=self._schema_name,
+                            table_name=table_name,
+                            column_name=column[ResponseConstant.NAME],
+                        ),
+                        definition=TagDefinition(
+                            classification_name=Constant.TAG_CLASSIFICATION_NAME,
+                            tag_name=field_type,
+                            tag_description=ResponseConstant.CATEGORY,
+                            classification_description=Constant.TAG_CLASSIFICATION_DESCRIPTION,
+                        ),
+                    )
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(

@@ -70,11 +70,11 @@ class RdfBulkSinkTest {
     sink.close();
   }
 
-  private List<EntityInterface> batchOf(int size) {
+  private List<EntityInterface<?>> batchOf(int size) {
     return java.util.stream.IntStream.range(0, size)
-        .mapToObj(
+        .<EntityInterface<?>>mapToObj(
             i -> {
-              EntityInterface entity = mock(EntityInterface.class);
+              EntityInterface<?> entity = mock(EntityInterface.class);
               lenient().when(entity.getId()).thenReturn(UUID.randomUUID());
               return entity;
             })
@@ -243,7 +243,8 @@ class RdfBulkSinkTest {
         .thenReturn(new RdfBatchProcessor.BatchProcessingResult(1, 0));
 
     RdfBatchProcessor.BatchProcessingResult result =
-        sink.submit("table", List.of(mock(EntityInterface.class))).get(30, TimeUnit.SECONDS);
+        sink.submit("table", List.<EntityInterface<?>>of(mock(EntityInterface.class)))
+            .get(30, TimeUnit.SECONDS);
 
     // Previously always 0: the run record showed no translation cost at all.
     assertTrue(
