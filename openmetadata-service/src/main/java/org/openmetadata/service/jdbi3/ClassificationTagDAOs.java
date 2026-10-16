@@ -737,8 +737,14 @@ public interface ClassificationTagDAOs {
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
         String json = r.getString("json");
         if (json == null) {
-          // The tag or glossary term row is already gone but its tag_usage rows are removed later
-          // in postDelete; return the label unenriched instead of failing the caller's read.
+          // An orphaned tag_usage row: its tag or glossary term no longer exists. Return the label
+          // unenriched so one bad row does not fail the whole read, and log it so it can be found.
+          TAG_USAGE_LOG.warn(
+              "Orphaned tag_usage row: {} tag '{}' on target '{}' has no tag or glossary term."
+                  + " Returning the label without enrichment.",
+              source,
+              label.getTagFQN(),
+              r.getString("targetFQNHash"));
           return Pair.of(r.getString("targetFQNHash"), label);
         }
         if (source == TagLabel.TagSource.CLASSIFICATION) {
