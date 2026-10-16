@@ -297,6 +297,7 @@ describe('WorkflowHistory Component', () => {
             workflowDefinitionId: EVENT_WORKFLOW_ID,
             startedAt: 1000 + index,
           })),
+          paging: { after: 'next-page-cursor', total: 26 },
         })
         .mockResolvedValueOnce({
           data: [
@@ -318,8 +319,12 @@ describe('WorkflowHistory Component', () => {
         ).toHaveTextContent('Glossary Term Approval Workflow');
       });
 
+      expect(getWorkflowInstancesForApplication).toHaveBeenNthCalledWith(
+        1,
+        expect.not.objectContaining({ offset: expect.anything() })
+      );
       expect(getWorkflowInstancesForApplication).toHaveBeenLastCalledWith(
-        expect.objectContaining({ offset: '25' })
+        expect.objectContaining({ offset: 'next-page-cursor' })
       );
       expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
         'GlossaryTermApprovalWorkflow',
@@ -549,7 +554,6 @@ describe('WorkflowHistory Component', () => {
           endTs: expect.any(Number),
           entityLink: 'entity-link',
           limit: expect.any(Number),
-          offset: '0',
         });
 
         expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
