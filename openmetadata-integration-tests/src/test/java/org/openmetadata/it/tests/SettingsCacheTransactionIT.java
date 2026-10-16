@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -23,11 +24,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.EntityRulesUtil;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.settings.Settings;
@@ -51,6 +54,12 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 @Execution(ExecutionMode.CONCURRENT)
 class SettingsCacheTransactionIT {
   private static final String RULES_KEY = SettingsType.ENTITY_RULES_SETTINGS.toString();
+
+  @BeforeAll
+  static void requireTheEmbeddedServer() {
+    assumeFalse(
+        OssTestServer.isExternalMode(), "Opens transactions on the embedded server's database");
+  }
 
   @Test
   @ResourceLock("MULTI_DOMAIN_RULE")
