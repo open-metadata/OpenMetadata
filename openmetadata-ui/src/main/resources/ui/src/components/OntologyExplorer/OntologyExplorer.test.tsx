@@ -22,10 +22,11 @@ import { useState } from 'react';
 import { PaletteKey } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import { addTermRelation } from '../../rest/glossaryAPI';
-import ontologyExplorerClassBase, {
+import ontologyExplorerClassBase from '../../utils/OntologyExplorerClassBase';
+import {
   OntologyAiProposals,
   OntologyAiProposalsOptions,
-} from '../../utils/OntologyExplorerClassBase';
+} from '../../utils/OntologyExplorerClassBase.interface';
 import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyExplorer from './OntologyExplorer';
 import { LayoutType } from './OntologyExplorer.constants';
