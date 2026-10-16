@@ -10924,7 +10924,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * own source produces, and the server records no ownership for a custom property, so reading an
      * absent key as a deletion would drop the ones a user curated in the UI - the very loss the bot
      * guard exists to prevent. A property removed at the source therefore lingers until someone
-     * deletes it; that needs per-key provenance, which is tracked separately.
+     * deletes it; that needs per-key provenance, which is tracked separately. Do not turn this into
+     * a wholesale replace to match tags - see
+     * ADR:2026-10-16-a-force-sync-merges-connector-supplied-custom-properties.
      */
     private Object mergedOverStoredExtension(Object storedExtension, Object incomingExtension) {
       JsonNode stored = JsonUtils.valueToTree(storedExtension);

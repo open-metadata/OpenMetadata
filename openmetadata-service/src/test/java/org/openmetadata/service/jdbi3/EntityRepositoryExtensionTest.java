@@ -217,6 +217,20 @@ class EntityRepositoryExtensionTest {
   }
 
   @Test
+  void botPutWithOverrideMetadataPassesANonObjectExtensionThrough() throws Exception {
+    // extension is schema-typed as an object; a non-object is malformed input. The merge must not
+    // try to combine it with the stored object, it just hands it on to the normal diff.
+    registerBotUser();
+
+    Pipeline original = pipelineWithExtension(BOT_NAME, extension("owner_team", "curated"));
+    Pipeline updated = pipelineWithExtension(BOT_NAME, "not-an-object");
+
+    invokeUpdateExtension(updater(original, updated, true));
+
+    assertEquals("not-an-object", updated.getExtension());
+  }
+
+  @Test
   void humanPutAppliesIncomingExtensionWithoutOverrideMetadata() throws Exception {
     registerNoUsersFound();
 
