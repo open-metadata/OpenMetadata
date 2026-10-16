@@ -63,11 +63,6 @@ jest.mock(
   })
 );
 
-jest.mock('../../Entity/EntityLineage/EntityLineageSidebar.component', () => ({
-  __esModule: true,
-  default: () => <div data-testid="entity-lineage-sidebar" />,
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => {
   type ChildrenProps = { children?: ReactNode };
 
@@ -437,6 +432,35 @@ describe('Lineage integration', () => {
     downstreamEdges: {},
     upstreamEdges: {},
   };
+
+  it('fetches the lineage once when the same config is re-applied mid-request', async () => {
+    let resolveFetch: (value: typeof emptyLineageResponse) => void = jest.fn();
+    (getLineageDataByFQN as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      })
+    );
+
+    renderMounted();
+
+    await waitFor(() => expect(getLineageDataByFQN).toHaveBeenCalledTimes(1));
+
+    // Lineage settings load after mount and re-apply an equal config object,
+    // which re-runs the fetch effect for the same graph.
+    act(() => {
+      useLineageStore
+        .getState()
+        .setLineageConfig({ ...useLineageStore.getState().lineageConfig });
+    });
+    await act(async () => {
+      resolveFetch(emptyLineageResponse);
+    });
+    await waitFor(() => expect(useLineageStore.getState().init).toBe(true));
+
+    // A duplicate response landing after the user switched layers would
+    // redraw with the layers captured at its call and drop the column rows.
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+  });
 
   it('seeds the store time filter from the URL and fetches with it', async () => {
     mockLocation.search = '?lineageStartTime=100&lineageEndTime=200';

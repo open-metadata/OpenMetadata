@@ -192,7 +192,7 @@ const FailingServicesList: React.FC<FailingServicesListProps> = ({
           className="tw:mt-3 tw:self-start tw:px-0"
           color="link-color"
           data-testid="view-all-failing-services"
-          size="sm"
+          size="xs"
           onPress={onViewAll}>
           {t('message.view-all-count-failing-services', {
             count: failingCount,

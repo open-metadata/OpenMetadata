@@ -23,6 +23,7 @@ export interface LineageEdgeColors {
   columnHighlight: string;
   dqHighlight: string;
   labelBackground: string;
+  labelBorder?: string;
   labelText: string;
 }
 

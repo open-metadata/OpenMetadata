@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate.
+ *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -16,7 +16,10 @@ import type {
   LineageData,
   NodeData,
 } from '../interface/lineage.interface';
-import { parseLineageData } from './EntityLineagePureUtils';
+import {
+  parseLineageData,
+  withoutLineageEdges,
+} from './EntityLineagePureUtils';
 
 jest.mock('../rest/miscAPI', () => ({
   addLineage: jest.fn(),
@@ -42,7 +45,7 @@ const tableNode = (
   nodeDepth,
 });
 
-const edge = (
+const lineageEdge = (
   from: string,
   to: string,
   extra: Partial<EdgeDetails> = {}
@@ -119,8 +122,8 @@ describe('parseLineageData', () => {
       lineage(
         [tableNode(ROOT, 0), tableNode('svc.a', 1), pipelineNode],
         [
-          edge(ROOT, 'svc.a', { pipeline }),
-          edge(ROOT, 'svc.b', {
+          lineageEdge(ROOT, 'svc.a', { pipeline }),
+          lineageEdge(ROOT, 'svc.b', {
             pipeline: { ...pipeline, fullyQualifiedName: 'svc.missing' },
           }),
         ]
@@ -152,8 +155,8 @@ describe('parseLineageData', () => {
           tableNode('svc.a', 1, { entityDownstreamCount: 1 }),
           tableNode('svc.u', -1),
         ],
-        [edge(ROOT, 'svc.a'), edge('svc.a', 'svc.b')],
-        [edge('svc.u', ROOT)]
+        [lineageEdge(ROOT, 'svc.a'), lineageEdge('svc.a', 'svc.b')],
+        [lineageEdge('svc.u', ROOT)]
       ),
       ROOT,
       ROOT
@@ -197,13 +200,15 @@ describe('parseLineageData', () => {
       for (let i = 0; i < 50; i++) {
         const first = `svc.u${i}`;
         nodes.push(tableNode(first, -1, { entityUpstreamCount: 50 }));
-        upstream.push(edge(first, ROOT));
+        upstream.push(lineageEdge(first, ROOT));
         for (let j = 0; j < 50; j++) {
           const second = `svc.u${i}.u${j}`;
           nodes.push(tableNode(second, -2, { entityUpstreamCount: 20 }));
-          upstream.push(edge(second, first));
+          upstream.push(lineageEdge(second, first));
           for (let k = 0; k < 20; k++) {
-            upstream.push(edge(`svc.unfetched.u${i}.u${j}.u${k}`, second));
+            upstream.push(
+              lineageEdge(`svc.unfetched.u${i}.u${j}.u${k}`, second)
+            );
           }
         }
       }
@@ -217,5 +222,30 @@ describe('parseLineageData', () => {
       expect(result.entity.fullyQualifiedName).toBe(ROOT);
       expect(elapsedMs).toBeLessThan(3000);
     });
+  });
+});
+
+const edge = (from: string, to: string) =>
+  ({
+    fromEntity: { id: from, type: 'table' },
+    toEntity: { id: to, type: 'table' },
+  } as EdgeDetails);
+
+describe('withoutLineageEdges', () => {
+  it('drops every removed edge of a node with upstream and downstream links', () => {
+    const edges = [edge('a', 'x'), edge('x', 'b'), edge('a', 'b')];
+
+    expect(
+      withoutLineageEdges(edges, [
+        { fromId: 'a', toId: 'x' },
+        { fromId: 'x', toId: 'b' },
+      ])
+    ).toEqual([edge('a', 'b')]);
+  });
+
+  it('keeps the list unchanged when nothing is removed', () => {
+    const edges = [edge('a', 'x')];
+
+    expect(withoutLineageEdges(edges, [])).toEqual(edges);
   });
 });

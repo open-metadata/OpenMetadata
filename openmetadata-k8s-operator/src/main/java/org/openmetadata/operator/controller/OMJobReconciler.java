@@ -23,6 +23,7 @@ import io.javaoperatorsdk.operator.api.reconciler.Reconciler;
 import io.javaoperatorsdk.operator.api.reconciler.UpdateControl;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.openmetadata.operator.config.OperatorConfig;
 import org.openmetadata.operator.model.OMJobPhase;
@@ -51,6 +52,9 @@ public class OMJobReconciler
     implements Reconciler<OMJobResource>, ErrorStatusHandler<OMJobResource> {
 
   private static final Logger LOG = LoggerFactory.getLogger(OMJobReconciler.class);
+
+  static final String REASON_RESOURCES_CLEANED_UP = "ResourcesCleanedUp";
+  static final String MESSAGE_RESOURCES_CLEANED_UP = "Deleted %d pods after TTL expiration";
 
   private PodManager podManager;
   private EventPublisher eventPublisher;
@@ -314,10 +318,14 @@ public class OMJobReconciler
     // Check if cleanup is needed based on TTL
     if (omJob.shouldCleanup()) {
       LOG.info("TTL expired for OMJob: {}, cleaning up pods", omJob.getMetadata().getName());
-      podManager.deletePods(omJob);
-
-      eventPublisher.publishNormalEvent(
-          omJob, "ResourcesCleanedUp", "Cleaned up pods due to TTL expiration");
+      List<String> deletedPodNames = podManager.deletePods(omJob);
+      // Finished OMJobs are reconciled again on every restart, so only report real deletions
+      if (!deletedPodNames.isEmpty()) {
+        eventPublisher.publishNormalEvent(
+            omJob,
+            REASON_RESOURCES_CLEANED_UP,
+            String.format(MESSAGE_RESOURCES_CLEANED_UP, deletedPodNames.size()));
+      }
 
       return UpdateControl.<OMJobResource>noUpdate();
     }

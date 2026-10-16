@@ -178,7 +178,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
                   utilities and would otherwise silently win. */}
                 <Typography
                   className="tw:min-w-0 tw:flex-1 tw:text-pretty tw:text-text-secondary!"
-                  size="text-sm">
+                  size="text-xs">
                   <ActivitySentence entityLink={entityLink} event={event} />
                   {` · ${getRelativeTime(event.timestamp)}`}
                 </Typography>
