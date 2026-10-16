@@ -437,12 +437,32 @@ describe('WorkflowHeader — manage menu', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows no menu when the workflow cannot be deleted', () => {
+  it('offers Suspend without Delete when the workflow cannot be deleted', () => {
     mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
 
     render(
       <WorkflowHeader
         {...defaultProps}
+        handleDeleteWorkflow={handleDeleteWorkflow}
+        handleToggleSuspend={handleToggleSuspend}
+      />
+    );
+
+    expect(screen.getByTestId('suspend-workflow-button')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-workflow-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no menu outside view mode', () => {
+    mockUseWorkflowModeContext.mockReturnValue(
+      buildContextMock({ showEditButton: false })
+    );
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        handleDeleteWorkflow={handleDeleteWorkflow}
         handleToggleSuspend={handleToggleSuspend}
       />
     );

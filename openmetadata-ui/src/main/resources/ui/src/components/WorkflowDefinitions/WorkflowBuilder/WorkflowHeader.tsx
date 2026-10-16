@@ -50,9 +50,12 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   isSuspended = false,
 }) => {
   const { t } = useTranslation();
-  const { showDeleteButton } = useWorkflowModeContext();
+  const { showDeleteButton, showEditButton } = useWorkflowModeContext();
+  // Suspending is allowed wherever the workflow can be edited; deleting is a separate capability.
+  const onToggleSuspend = showEditButton ? handleToggleSuspend : undefined;
+  const onDelete = showDeleteButton ? handleDeleteWorkflow : undefined;
 
-  if (!showDeleteButton || (!handleToggleSuspend && !handleDeleteWorkflow)) {
+  if (!onToggleSuspend && !onDelete) {
     return null;
   }
 
@@ -69,7 +72,7 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
         <Dropdown.Menu
           aria-label={t('label.more-action-plural')}
           selectionMode="none">
-          {handleToggleSuspend && (
+          {onToggleSuspend && (
             <Dropdown.Item
               data-testid={
                 isSuspended
@@ -78,15 +81,15 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
               }
               id="suspend"
               label={isSuspended ? t('label.resume') : t('label.suspend')}
-              onAction={handleToggleSuspend}
+              onAction={onToggleSuspend}
             />
           )}
-          {handleDeleteWorkflow && (
+          {onDelete && (
             <Dropdown.Item
               data-testid="delete-workflow-button"
               id="delete"
               textValue={t('label.delete')}
-              onAction={handleDeleteWorkflow}>
+              onAction={onDelete}>
               <span className="tw:text-error-primary">{t('label.delete')}</span>
             </Dropdown.Item>
           )}
