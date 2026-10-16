@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Accordion,
   AccordionHeader,
@@ -889,6 +888,8 @@ const EntitySearchSettings = () => {
     );
   };
 
+  const EntityIcon = entityData?.icon;
+
   return (
     <PageLayoutV1
       className="entity-search-settings"
@@ -902,7 +903,9 @@ const EntitySearchSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Grid.Item>
         <Grid.Item className="layout-column flex items-center gap-4" span={24}>
-          <Icon className="entity-icon" component={entityData?.icon} />
+          {EntityIcon && (
+            <EntityIcon className="entity-icon tw:size-[55px] tw:shrink-0" />
+          )}
           <div
             className="page-header-container"
             data-testid="page-header-container">

@@ -1,6 +1,11 @@
+import type { HTMLAttributes } from 'react';
 import { cx } from '@/utils/cx';
 
-export interface ProgressBarProps {
+export interface ProgressBarProps
+  extends Pick<
+    HTMLAttributes<HTMLDivElement>,
+    'aria-label' | 'aria-labelledby'
+  > {
   /**
    * The current value of the progress bar.
    */
@@ -45,11 +50,15 @@ export const ProgressBarBase = ({
   max = 100,
   className,
   progressClassName,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }: ProgressBarProps) => {
   const percentage = ((value - min) * 100) / (max - min);
 
   return (
     <div
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       aria-valuemax={max}
       aria-valuemin={min}
       aria-valuenow={value}
@@ -102,6 +111,8 @@ export const ProgressBar = ({
   labelPosition,
   className,
   progressClassName,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
 }: ProgressIndicatorWithTextProps) => {
   const percentage = ((value - min) * 100) / (max - min);
   const formattedValue = valueFormatter
@@ -110,6 +121,8 @@ export const ProgressBar = ({
 
   const baseProgressBar = (
     <ProgressBarBase
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledBy}
       className={className}
       color={color}
       max={max}

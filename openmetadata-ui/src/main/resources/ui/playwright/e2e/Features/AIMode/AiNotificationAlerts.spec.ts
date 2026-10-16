@@ -23,11 +23,11 @@ import {
   getDestinationCategoryOptions,
   getFilterArgumentOptions,
   getFilterSelectOptions,
-  openAddAlertModal,
-  saveAlertModal,
+  openAddAlertDrawer,
+  saveAlertDrawer,
   selectAlertSource,
   selectDestinationCategory,
-} from '../../Utils/aiAlertModal';
+} from '../../Utils/aiAlertDrawer';
 import { enableAiAppMode } from '../../Utils/appMode';
 import {
   expectSurfaceTheme,
@@ -296,7 +296,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
   test('narrows destinations and event types to what the source supports', async ({
     page,
   }) => {
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await selectAlertSource(page, 'Conversation');
     await dialog.getByTestId('add-destination-button').click();
@@ -352,7 +352,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
   });
 
   test('rejects alert names the classic form rejects', async ({ page }) => {
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await fillAlertName(dialog, 'bad::name');
     await dialog.getByTestId('save-button').click();
@@ -373,7 +373,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
     page,
   }) => {
     const alertName = `pw-ai-notification-${uuid()}`;
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await fillAlertName(dialog, alertName);
     await selectAlertSource(page, 'Table');
@@ -400,7 +400,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
       .fill('openmetadata');
     await dialog.getByTestId('http-method-0').getByText('PUT').click();
 
-    const { request, response } = await saveAlertModal(page, dialog);
+    const { request, response } = await saveAlertDrawer(page, dialog);
     const body = request.postDataJSON();
 
     expect(request.method()).toBe('POST');
@@ -464,7 +464,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
       .getByRole('textbox')
       .fill(description);
 
-    const { request, response } = await saveAlertModal(page, dialog);
+    const { request, response } = await saveAlertDrawer(page, dialog);
 
     expect(request.method()).toBe('PATCH');
     expect(response?.status()).toBe(200);
