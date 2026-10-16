@@ -528,10 +528,14 @@ const OntologyExplorerPage: React.FC = () => {
     isAdminUser,
     permissions
   );
+  // Approving applies the draft to its glossaries and edits the draft itself
+  // under a change-set lease, so it needs both permissions.
   const proposalPermissions = useMemo(
     () => ({
-      canApprove: changeSetPermissions.canApply,
-      canReject: changeSetPermissions.canDiscard,
+      canApprove: Boolean(
+        changeSetPermissions.canApply && changeSetPermissions.canDiscard
+      ),
+      canReject: Boolean(changeSetPermissions.canDiscard),
     }),
     [changeSetPermissions.canApply, changeSetPermissions.canDiscard]
   );

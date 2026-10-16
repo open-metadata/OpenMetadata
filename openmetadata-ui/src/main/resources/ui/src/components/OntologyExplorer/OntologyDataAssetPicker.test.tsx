@@ -13,6 +13,10 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import {
+  BulkOperationResult,
+  Status,
+} from '../../generated/type/bulkOperationResult';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import OntologyDataAssetPicker from './OntologyDataAssetPicker';
@@ -49,9 +53,12 @@ describe('OntologyDataAssetPicker', () => {
     mockSearch.mockResolvedValue({
       hits: {
         hits: [hit('t-1', 'customers', 'table'), hit('t-2', 'orders', 'table')],
+        total: { value: 2 },
       },
     } as never);
-    mockAddAssets.mockResolvedValue(TERM);
+    mockAddAssets.mockResolvedValue({
+      status: Status.Success,
+    } as BulkOperationResult);
   });
 
   it('searches tables and columns, then narrows to columns', async () => {
@@ -59,6 +66,7 @@ describe('OntologyDataAssetPicker', () => {
       <OntologyDataAssetPicker
         term={TERM}
         onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
         onSave={jest.fn()}
       />
     );
@@ -90,6 +98,7 @@ describe('OntologyDataAssetPicker', () => {
       <OntologyDataAssetPicker
         term={TERM}
         onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
         onSave={onSave}
       />
     );
@@ -104,8 +113,80 @@ describe('OntologyDataAssetPicker', () => {
     await waitFor(() => expect(onSave).toHaveBeenCalled());
 
     expect(mockAddAssets).toHaveBeenCalledWith(TERM, [
-      { id: 't-1', type: 'table' },
-      { id: 't-2', type: 'table' },
+      expect.objectContaining({
+        fullyQualifiedName: 'svc.db.sch.customers',
+        id: 't-1',
+        type: 'table',
+      }),
+      expect.objectContaining({ id: 't-2', type: 'table' }),
     ]);
+  });
+
+  it('keeps refused assets selected with the reason and refreshes for the rest', async () => {
+    mockAddAssets.mockResolvedValue({
+      failedRequest: [
+        { message: 'Tag conflict', request: { id: 't-2', type: 'table' } },
+      ],
+      status: Status.PartialSuccess,
+    } as BulkOperationResult);
+    const onSave = jest.fn();
+    const onPartialSave = jest.fn();
+    render(
+      <OntologyDataAssetPicker
+        term={TERM}
+        onCancel={jest.fn()}
+        onPartialSave={onPartialSave}
+        onSave={onSave}
+      />
+    );
+    await screen.findByTestId('ontology-data-asset-option-t-1');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-error-t-2')
+    ).toHaveTextContent('Tag conflict');
+    expect(onPartialSave).toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: 'orders' })).toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: 'customers' })
+    ).not.toBeChecked();
+  });
+
+  it('loads the next page of matches on demand', async () => {
+    mockSearch.mockResolvedValueOnce({
+      hits: {
+        hits: [hit('t-1', 'customers', 'table')],
+        total: { value: 2 },
+      },
+    } as never);
+    mockSearch.mockResolvedValueOnce({
+      hits: { hits: [hit('t-2', 'orders', 'table')], total: { value: 2 } },
+    } as never);
+    render(
+      <OntologyDataAssetPicker
+        term={TERM}
+        onCancel={jest.fn()}
+        onPartialSave={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('ontology-data-asset-load-more'));
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-option-t-2')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-data-asset-option-t-1')
+    ).toBeInTheDocument();
+    expect(mockSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageNumber: 2 })
+    );
+    expect(
+      screen.queryByTestId('ontology-data-asset-load-more')
+    ).not.toBeInTheDocument();
   });
 });

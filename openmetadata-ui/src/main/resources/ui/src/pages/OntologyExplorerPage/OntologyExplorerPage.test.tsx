@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
@@ -560,6 +561,38 @@ describe('OntologyExplorerPage', () => {
     expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('mode-tab-view')).toBeVisible();
     expect(screen.getByTestId('mode-tab-query')).toBeVisible();
+  });
+
+  it('lets a user approve AI proposals only with edit rights on glossaries and change sets', () => {
+    mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
+    const mockPermissions = usePermissionProvider as jest.Mock;
+    mockPermissions.mockReturnValue({
+      permissions: { glossary: { EditAll: true } },
+    });
+
+    render(<OntologyExplorerPage />);
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        proposalPermissions: { canApprove: false, canReject: false },
+      })
+    );
+
+    mockPermissions.mockReturnValue({
+      permissions: {
+        glossary: { EditAll: true },
+        ontologyChangeSet: { EditAll: true },
+      },
+    });
+    render(<OntologyExplorerPage />);
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        proposalPermissions: { canApprove: true, canReject: true },
+      })
+    );
+
+    mockPermissions.mockReturnValue({ permissions: {} });
   });
 
   it('hides the Needs review tab from the Studio mode bar', () => {

@@ -12,12 +12,12 @@
  */
 import type { Graph, GraphData } from '@antv/g6';
 import {
-    canEndRelationship,
-    findBadgeIndex,
-    isDataModeAssetBadgeShape,
-    isDataModeLoadMoreBadgeShape,
-    isGraphTopologySynced,
-    stripNodePositionsForDataMode
+  canEndRelationship,
+  findBadgeIndex,
+  isDataModeAssetBadgeShape,
+  isDataModeLoadMoreBadgeShape,
+  isGraphTopologySynced,
+  stripNodePositionsForDataMode,
 } from './useOntologyGraph';
 
 jest.mock('@antv/g6', () => ({

@@ -48,6 +48,7 @@ import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { Provenance } from '../../generated/type/termRelation';
 import {
   addTermRelation,
+  getGlossaryTermByFQN,
   removeTermRelationById,
   updateTermRelationById,
 } from '../../rest/glossaryAPI';
@@ -92,6 +93,7 @@ import OntologyTreeView from './OntologyTreeView';
 import {
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
+  buildGraphFromAllTerms,
   isDataAssetLikeNode,
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
@@ -547,7 +549,23 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     t,
   ]);
 
-  const [pendingEditFqn, setPendingEditFqn] = useState<string>();
+  // "Add & edit" opens the created concept from the server: the refreshed
+  // graph pages its terms, so the new one may not be on the canvas yet.
+  const handleEditCreatedTerm = useCallback(
+    async (fullyQualifiedName: string) => {
+      onRequestEdit?.();
+      try {
+        const term = await getGlossaryTermByFQN(fullyQualifiedName, {
+          fields: 'relatedTerms,owners',
+        });
+        const [node] = buildGraphFromAllTerms([term], glossaries, t).nodes;
+        setSelectedNode(node ?? null);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [glossaries, onRequestEdit, setSelectedNode, t]
+  );
   const useAiProposals = ontologyExplorerClassBase.getAiProposalsHook();
   const aiProposals = useAiProposals({
     glossaries,
@@ -562,10 +580,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     relationTypes,
     selectedGlossaryIds: globalGlossaryIds,
     onApplied: handleRefresh,
-    onEditTerm: (fullyQualifiedName) => {
-      setPendingEditFqn(fullyQualifiedName);
-      onRequestEdit?.();
-    },
+    onEditTerm: (fullyQualifiedName) =>
+      void handleEditCreatedTerm(fullyQualifiedName),
     onSelectTerm: (nodeId) =>
       setSelectedNode(
         graphDataToShow?.nodes.find((node) => node.id === nodeId) ?? null
@@ -585,19 +601,6 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       ),
     [aiProposals.edges, aiProposals.nodes, graphDataToShow, localConceptNode]
   );
-
-  // "Add & edit" selects the new concept once the refreshed graph includes it.
-  useEffect(() => {
-    const created =
-      pendingEditFqn &&
-      graphDataToShow?.nodes.find(
-        (node) => node.fullyQualifiedName === pendingEditFqn
-      );
-    if (created) {
-      setPendingEditFqn(undefined);
-      setSelectedNode(created);
-    }
-  }, [graphDataToShow, pendingEditFqn, setSelectedNode]);
 
   useEffect(() => {
     if (!localConceptNode?.isOptimistic) {

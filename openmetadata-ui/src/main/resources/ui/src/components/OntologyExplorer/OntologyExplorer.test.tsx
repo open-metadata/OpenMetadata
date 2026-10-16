@@ -21,7 +21,7 @@ import {
 import { useState } from 'react';
 import { PaletteKey } from '../../generated/entity/data/relationshipType';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
-import { addTermRelation } from '../../rest/glossaryAPI';
+import { addTermRelation, getGlossaryTermByFQN } from '../../rest/glossaryAPI';
 import ontologyExplorerClassBase from '../../utils/OntologyExplorerClassBase';
 import {
   OntologyAiProposals,
@@ -66,6 +66,7 @@ jest.mock('../../utils/ToastUtils', () => ({
 jest.mock('../../rest/glossaryAPI', () => ({
   ...jest.requireActual('../../rest/glossaryAPI'),
   addTermRelation: jest.fn(),
+  getGlossaryTermByFQN: jest.fn(),
 }));
 
 jest.mock('./OntologyGraphG6', () => {
@@ -887,21 +888,33 @@ describe('OntologyExplorer AI proposals extension', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('opens a concept created from a proposal for editing once the graph has it', async () => {
+  it('opens a concept created from a proposal for editing even when the canvas has not loaded it', async () => {
+    (
+      getGlossaryTermByFQN as jest.MockedFunction<typeof getGlossaryTermByFQN>
+    ).mockResolvedValue({
+      description: '',
+      fullyQualifiedName: 'DataStudio.Revenue',
+      glossary: { id: 'glossary-id', type: 'glossary' },
+      id: '7d3c1a52-8a52-4f2c-9a3c-3b3c3e4f5a6b',
+      name: 'Revenue',
+    });
     const onRequestEdit = renderStudio();
 
-    act(() => hookOptions?.onEditTerm(createdNode.fullyQualifiedName ?? ''));
+    act(() => hookOptions?.onEditTerm('DataStudio.Revenue'));
 
     expect(onRequestEdit).toHaveBeenCalledTimes(1);
     expect(
-      screen.queryByTestId('ontology-authoring-inspector')
-    ).not.toBeInTheDocument();
-
-    act(() => hookOptions?.onApplied());
-
-    expect(
       await screen.findByTestId('ontology-authoring-inspector')
     ).toBeInTheDocument();
+    expect(getGlossaryTermByFQN).toHaveBeenCalledWith('DataStudio.Revenue', {
+      fields: 'relatedTerms,owners',
+    });
+    expect(lastGraphProps().nodes).not.toContainEqual(
+      expect.objectContaining({
+        fullyQualifiedName: 'DataStudio.Revenue',
+        id: '7d3c1a52-8a52-4f2c-9a3c-3b3c3e4f5a6b',
+      })
+    );
   });
 
   it('does not save a relationship drawn to a proposed concept', async () => {

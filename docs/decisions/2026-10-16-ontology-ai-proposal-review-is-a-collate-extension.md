@@ -29,6 +29,8 @@ every `*ClassBase` import for its override.
 
 ## Consequences
 
-Proposal UI, its strings and its tests are added in Collate, not here. A change to the hook's
-contract needs a paired Collate change. Bringing review back to OSS would mean making the AI that
+Proposal UI, its strings and its tests are added in Collate, not here. The hook's contract —
+one stable `(OntologyAiProposalsOptions) => OntologyAiProposals` — is shared by both repositories,
+so changing either interface needs a paired Collate change, and the OSS change merges before the
+Collate override that depends on it. Bringing review back to OSS would mean making the AI that
 produces proposals available in OSS first.

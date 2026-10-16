@@ -192,6 +192,7 @@ export const OntologyConceptDataAssets = ({
       <OntologyDataAssetPicker
         term={term}
         onCancel={() => setIsPickerOpen(false)}
+        onPartialSave={() => void reloadAfterEdit()}
         onSave={handleAssetsAdded}
       />
     ) : null;

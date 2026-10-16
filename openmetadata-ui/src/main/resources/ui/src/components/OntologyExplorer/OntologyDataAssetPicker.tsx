@@ -53,7 +53,10 @@ const SEARCH_DEBOUNCE_MS = 250;
 interface OntologyDataAssetPickerProps {
   readonly term: GlossaryTerm;
   readonly onCancel: () => void;
+  /** Every selected asset was added. */
   readonly onSave: () => void;
+  /** Some assets were added and others were not; the picker stays open. */
+  readonly onPartialSave: () => void;
 }
 
 const SearchIcon = ({ className }: { className?: string }) => (
@@ -71,11 +74,18 @@ const OntologyDataAssetPicker = ({
   term,
   onCancel,
   onSave,
+  onPartialSave,
 }: OntologyDataAssetPickerProps) => {
   const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [scope, setScope] = useState<AssetScope>('all');
   const [results, setResults] = useState<EntityReference[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  // Why the server refused an asset, keyed by asset id.
+  const [failures, setFailures] = useState<Map<string, string>>(
+    () => new Map()
+  );
   const [selected, setSelected] = useState<Map<string, EntityReference>>(
     () => new Map()
   );
@@ -83,26 +93,30 @@ const OntologyDataAssetPicker = ({
   const termFqn = term.fullyQualifiedName ?? term.name;
 
   useEffect(() => {
+    setPage(1);
+  }, [query, scope, termFqn]);
+
+  useEffect(() => {
     let isCurrent = true;
     const timer = window.setTimeout(async () => {
       try {
         const response = await searchQuery({
-          pageNumber: 1,
+          pageNumber: page,
           pageSize: PAGE_SIZE,
           query: query.trim() ? `*${query.trim()}*` : '',
           queryFilter: getQueryFilterToExcludeTerm(termFqn),
           searchIndex: SCOPE_INDEXES[scope],
         });
         if (isCurrent) {
-          setResults(
-            // The same reference the Add Assets modal builds from a search hit.
-            response.hits.hits.map(({ _source }) =>
-              getEntityReferenceFromEntity(
-                _source as Omit<EntityReference, 'type'>,
-                _source.entityType as EntityType
-              )
+          // The same reference the Add Assets modal builds from a search hit.
+          const hits = response.hits.hits.map(({ _source }) =>
+            getEntityReferenceFromEntity(
+              _source as Omit<EntityReference, 'type'>,
+              _source.entityType as EntityType
             )
           );
+          setResults((current) => (page === 1 ? hits : [...current, ...hits]));
+          setTotal(response.hits.total.value ?? 0);
         }
       } catch (error) {
         if (isCurrent) {
@@ -115,7 +129,7 @@ const OntologyDataAssetPicker = ({
       isCurrent = false;
       window.clearTimeout(timer);
     };
-  }, [query, scope, termFqn]);
+  }, [page, query, scope, termFqn]);
 
   const toggle = (asset: EntityReference, isSelected: boolean) =>
     setSelected((current) => {
@@ -145,11 +159,28 @@ const OntologyDataAssetPicker = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await addAssetsToGlossaryTerm(
-        term,
-        [...selected.values()].map(({ id, type }) => ({ id, type }))
+      // Full references: a column is resolved through its FQN.
+      const result = await addAssetsToGlossaryTerm(term, [
+        ...selected.values(),
+      ]);
+      const failed = new Map(
+        (result.failedRequest ?? []).map(({ message, request }) => [
+          (request as EntityReference | undefined)?.id ?? '',
+          message ?? '',
+        ])
       );
-      onSave();
+      if (failed.size === 0) {
+        onSave();
+
+        return;
+      }
+      setFailures(failed);
+      setSelected(
+        (current) => new Map([...current].filter(([id]) => failed.has(id)))
+      );
+      if (failed.size < selected.size) {
+        onPartialSave();
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -237,6 +268,15 @@ const OntologyDataAssetPicker = ({
                         {entityUtilClassBase.getFormattedEntityType(asset.type)}
                       </Typography>
                     </span>
+                    {failures.has(asset.id) ? (
+                      <Typography
+                        as="span"
+                        className="tw:text-error-primary"
+                        data-testid={`ontology-data-asset-error-${asset.id}`}
+                        size="text-xs">
+                        {failures.get(asset.id)}
+                      </Typography>
+                    ) : null}
                   </span>
                 }
                 onChange={(isSelected) => toggle(asset, isSelected)}
@@ -244,6 +284,19 @@ const OntologyDataAssetPicker = ({
             </li>
           ))}
         </ul>
+        {results.length < total ? (
+          <Box
+            className="tw:border-t tw:border-secondary tw:p-2"
+            justify="center">
+            <Button
+              color="link-gray"
+              data-testid="ontology-data-asset-load-more"
+              size="sm"
+              onPress={() => setPage((current) => current + 1)}>
+              {t('label.load-more')}
+            </Button>
+          </Box>
+        ) : null}
       </Card>
       <Box gap={2} justify="end">
         <Button color="secondary" size="sm" onPress={onCancel}>
