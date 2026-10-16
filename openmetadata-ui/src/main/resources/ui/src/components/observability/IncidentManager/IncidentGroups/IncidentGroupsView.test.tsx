@@ -483,6 +483,34 @@ describe('IncidentGroupsView', () => {
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
   });
 
+  it('should offer no clear-all while nothing is filtered', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(
+      screen.queryByTestId('incident-groups-clear-filters')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should clear every filter from the stats line', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-assignee'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-clear-filters'));
+    });
+
+    expect(screen.getByTestId('filters-state')).not.toHaveTextContent('aaron');
+    expect(
+      screen.queryByTestId('incident-groups-clear-filters')
+    ).not.toBeInTheDocument();
+  });
+
   it('should refire the fetch with the ordering the table hands back', async () => {
     await act(async () => {
       renderView();
