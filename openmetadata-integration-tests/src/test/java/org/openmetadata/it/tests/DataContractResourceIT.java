@@ -77,6 +77,7 @@ import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.SystemProfile;
@@ -7459,6 +7460,13 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .parameter("minValue", "0")
             .parameter("maxValue", "100")
             .create();
+    TestCase deletedTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_deleted_before_suite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
 
     // Create the contract with quality expectations; this mints a logical TestSuite and a DQ
     // ingestion pipeline (postCreateOrUpdate) and links the contract's testSuite reference.
@@ -7467,7 +7475,8 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .withName(ns.prefix("dc_dangling_suite"))
             .withEntity(table.getEntityReference())
             .withEntityStatus(EntityStatus.APPROVED)
-            .withQualityExpectations(List.of(tc.getEntityReference()))
+            .withQualityExpectations(
+                List.of(tc.getEntityReference(), deletedTest.getEntityReference()))
             .withDescription(
                 "Guard: contract update must survive its test suite being soft-deleted");
     DataContract contract = createEntity(request);
@@ -7479,6 +7488,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     TestSuite suite = client.testSuites().get(suiteId.toString(), "tests,pipelines");
     assertNotNull(suite);
     assertFalse(Boolean.TRUE.equals(suite.getDeleted()), "Suite must start non-deleted");
+    assertNotNull(suite.getPipelines());
+    assertEquals(1, suite.getPipelines().size());
+    UUID pipelineId = suite.getPipelines().getFirst().getId();
+
+    client.testCases().delete(deletedTest.getId().toString());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted());
 
     // Soft-delete the suite through the standard Data Quality DELETE endpoint. This flips
     // deleted=true on the suite (and its DQ pipeline) but leaves DataContract.testSuite pointing
@@ -7524,6 +7543,19 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(restoredSuite, "Restored suite must be visible again to NON_DELETED fetches");
     assertFalse(
         Boolean.TRUE.equals(restoredSuite.getDeleted()), "Restored suite must have deleted=false");
+    assertEquals(
+        List.of(pipelineId),
+        restoredSuite.getPipelines().stream().map(EntityReference::getId).toList());
+    assertFalse(client.ingestionPipelines().get(pipelineId.toString()).getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted(),
+        "Recovering the contract's suite must not restore independently deleted tests");
+    assertEquals(
+        List.of(tc.getId()),
+        restoredSuite.getTests().stream().map(EntityReference::getId).toList());
 
     // A second update still succeeds — the recovery is not a one-shot side effect that leaves the
     // contract stuck on the next edit.

@@ -859,10 +859,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
    * just go ahead and clean the Ingestion Pipelines
    */
   private void deleteChildIngestionPipelines(UUID id, boolean hardDelete, String updatedBy) {
-    List<CollectionDAO.EntityRelationshipRecord> childrenRecords =
-        daoCollection
-            .relationshipDAO()
-            .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
+    List<CollectionDAO.EntityRelationshipRecord> childrenRecords = findChildIngestionPipelines(id);
 
     if (childrenRecords.isEmpty()) {
       LOG.debug("No children to delete");
@@ -870,6 +867,28 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     }
     // Delete all the contained entities
     deleteChildren(childrenRecords, hardDelete, updatedBy);
+  }
+
+  @Override
+  protected void restoreChildren(UUID id, String updatedBy) {
+    if (Boolean.TRUE.equals(find(id, ALL).getBasic())) {
+      super.restoreChildren(id, updatedBy);
+    } else {
+      // Logical suites only group tests; mirror their pipeline-only delete cascade so tests
+      // deleted independently stay deleted when the suite is restored.
+      final List<UUID> pipelineIds =
+          findChildIngestionPipelines(id).stream()
+              .map(CollectionDAO.EntityRelationshipRecord::getId)
+              .toList();
+      Entity.getEntityRepository(Entity.INGESTION_PIPELINE)
+          .bulkRestoreSubtree(pipelineIds, updatedBy);
+    }
+  }
+
+  private List<CollectionDAO.EntityRelationshipRecord> findChildIngestionPipelines(UUID id) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(id, entityType, Relationship.CONTAINS.ordinal(), Entity.INGESTION_PIPELINE);
   }
 
   public Response deleteLogicalTestSuiteAsync(
