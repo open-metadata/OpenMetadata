@@ -1,9 +1,9 @@
 # Column bulk update buffers socket messages until its job id is known
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-10-16 (evict the oldest progress message, never a terminal one)
 - **Deciders:** anuj-kumary
-- **Guard:** `ColumnGrid.test.tsx` — "shows the success toast when the job completes before the update request returns"
+- **Guard:** `ColumnGrid.test.tsx` — "shows the success toast when the job completes before the update request returns" and "keeps an early completion when another job floods the buffer"
 - **Related:** #35595, #35596
 
 ## Context
@@ -25,3 +25,8 @@ contract stays the same. 100 is far more than one request's round trip can deliv
 sends more than 100 progress messages in that window loses only its oldest progress updates. Revisit
 if the endpoint starts returning the `jobId` before it starts the job, which would make the buffer
 unnecessary.
+
+## Amendment
+v2: the channel carries every bulk job of the user, so another job's progress messages can fill
+the buffer. When full, the buffer now evicts its oldest **non-terminal** message; a terminal
+COMPLETED/FAILED message is evicted only if the buffer holds nothing else.

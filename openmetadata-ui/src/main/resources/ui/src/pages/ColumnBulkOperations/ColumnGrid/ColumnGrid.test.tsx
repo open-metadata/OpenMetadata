@@ -21,6 +21,7 @@ import {
 } from '../../../rest/columnAPI';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import ColumnGrid from './ColumnGrid.component';
+import { MAX_EARLY_SOCKET_MESSAGES } from './constants/ColumnGrid.constants';
 
 jest.mock('../../../rest/columnAPI', () => ({
   getColumnGrid: jest.fn(),
@@ -134,7 +135,7 @@ describe('ColumnGrid loading and empty states', () => {
 });
 
 describe('ColumnGrid bulk update', () => {
-  it('shows the success toast when the job completes before the update request returns', async () => {
+  const submitBulkUpdate = async () => {
     mockGetColumnGrid.mockResolvedValue(GRID_RESPONSE);
     const updateRequest = deferred<CSVImportResponse>();
     mockBulkUpdateColumnsAsync.mockReturnValue(updateRequest.promise);
@@ -152,10 +153,39 @@ describe('ColumnGrid bulk update', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.update' }));
 
+    return updateRequest;
+  };
+
+  const emitSocketMessage = (jobId: string, status: string) =>
+    socketHandlers[SOCKET_EVENTS.BULK_ASSETS_CHANNEL](
+      JSON.stringify({ jobId, status })
+    );
+
+  beforeEach(() => {
+    jest.mocked(showSuccessToast).mockClear();
+  });
+
+  it('shows the success toast when the job completes before the update request returns', async () => {
+    const updateRequest = await submitBulkUpdate();
+
     await act(async () => {
-      socketHandlers[SOCKET_EVENTS.BULK_ASSETS_CHANNEL](
-        JSON.stringify({ jobId: 'job-1', status: 'COMPLETED' })
-      );
+      emitSocketMessage('job-1', 'COMPLETED');
+      updateRequest.resolve({ jobId: 'job-1', message: '' });
+    });
+
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'server.bulk-update-initiated'
+    );
+  });
+
+  it('keeps an early completion when another job floods the buffer', async () => {
+    const updateRequest = await submitBulkUpdate();
+
+    await act(async () => {
+      emitSocketMessage('job-1', 'COMPLETED');
+      for (let i = 0; i < MAX_EARLY_SOCKET_MESSAGES; i++) {
+        emitSocketMessage('job-2', 'IN_PROGRESS');
+      }
       updateRequest.resolve({ jobId: 'job-1', message: '' });
     });
 

@@ -120,6 +120,32 @@ interface BulkAssetsSocketMessage {
   result?: BulkOperationResult;
 }
 
+const TERMINAL_BULK_ASSETS_STATUSES = new Set([
+  'COMPLETED',
+  'SUCCESS',
+  'FAILED',
+  'FAILURE',
+]);
+
+const isTerminalBulkAssetsMessage = (message: string) => {
+  try {
+    const { status } = JSON.parse(message) as BulkAssetsSocketMessage;
+
+    return TERMINAL_BULK_ASSETS_STATUSES.has(status?.toUpperCase() ?? '');
+  } catch {
+    return false;
+  }
+};
+
+// Drops the oldest progress message so a terminal one is never lost; the
+// channel carries every job of the user, so another job can fill the buffer.
+const evictOldestEarlyMessage = (messages: string[]) => {
+  const progressIndex = messages.findIndex(
+    (message) => !isTerminalBulkAssetsMessage(message)
+  );
+  messages.splice(Math.max(progressIndex, 0), 1);
+};
+
 interface ColumnEditFormHandle {
   getDisplayName: () => string;
   getDescription: () => string | undefined;
@@ -1826,7 +1852,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       return false;
     }
     if (earlyMessages.length >= MAX_EARLY_SOCKET_MESSAGES) {
-      earlyMessages.shift();
+      evictOldestEarlyMessage(earlyMessages);
     }
     earlyMessages.push(message);
 
