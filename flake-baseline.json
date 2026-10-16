@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-14T03:40:35Z",
+  "generatedAt": "2026-10-16T03:43:04Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37257479217",
-      "sourceSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
-      "recordedAt": "2026-10-05T03:30:16Z"
-    },
     {
       "runId": "37406058596",
       "sourceSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
@@ -53,6 +48,11 @@
       "runId": "38502607895",
       "sourceSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "recordedAt": "2026-10-14T03:40:35Z"
+    },
+    {
+      "runId": "38842001693",
+      "sourceSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "recordedAt": "2026-10-16T03:43:04Z"
     }
   ],
   "entries": {
@@ -126,16 +126,6 @@
       "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
-    "chromium :: Features/DataQuality/ColumnLevelTests.spec.ts :: Column Level Data Quality Test Cases \u203a Column Values To Be In Set": {
-      "observations": [
-        "37257479217"
-      ],
-      "project": "chromium",
-      "file": "Features/DataQuality/ColumnLevelTests.spec.ts",
-      "title": "Column Level Data Quality Test Cases \u203a Column Values To Be In Set",
-      "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
-      "hardFailure": false
-    },
     "chromium :: Features/ProfilePlatformSettings.spec.ts :: Profile Platform Settings \u203a learning resources: adds, edits and deletes a resource": {
       "observations": [
         "38018608325"
@@ -164,6 +154,16 @@
       "file": "Features/RestoreEntityInheritedFields.spec.ts",
       "title": "DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned",
       "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "hardFailure": false
+    },
+    "chromium :: Features/Tasks/TaskNavigation.spec.ts :: Task Navigation - Activity Feed Widget \u203a task link should contain correct entity FQN, not task ID": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Features/Tasks/TaskNavigation.spec.ts",
+      "title": "Task Navigation - Activity Feed Widget \u203a task link should contain correct entity FQN, not task ID",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
       "hardFailure": false
     },
     "chromium :: Pages/AppStopRunModal.spec.ts :: App Stop Run Modal \u203a should close stop modal when cancel is clicked": {
@@ -217,15 +217,165 @@
       "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
-    "chromium :: Pages/Domains.spec.ts :: Domains \u203a Verify redirect path on data product delete": {
+    "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete": {
       "observations": [
-        "37257479217"
+        "38842001693"
       ],
       "project": "chromium",
-      "file": "Pages/Domains.spec.ts",
-      "title": "Domains \u203a Verify redirect path on data product delete",
-      "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
-      "hardFailure": false
+      "file": "Pages/Entity.spec.ts",
+      "title": "Api Endpoint \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Chart \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Container \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Container \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Dashboard Data Model \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Dashboard Data Model \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Dashboard \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Dashboard \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Directory \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Directory \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: File \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "File \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Metric \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Metric \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Ml Model \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Ml Model \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Pipeline \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Pipeline \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Search Index \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Search Index \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Spreadsheet \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Spreadsheet \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Stored Procedure \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Stored Procedure \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Table \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Table \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Topic \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Topic \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Entity.spec.ts :: Worksheet \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/Entity.spec.ts",
+      "title": "Worksheet \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
     },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboardDataModel -> dashboard": {
       "observations": [
@@ -237,15 +387,55 @@
       "lastSeenSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
       "hardFailure": false
     },
-    "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Announcement create, edit & delete": {
+    "chromium :: Pages/ServiceEntity.spec.ts :: Api Service \u203a Inactive Announcement create & delete": {
       "observations": [
-        "37257479217"
+        "38842001693"
       ],
       "project": "chromium",
       "file": "Pages/ServiceEntity.spec.ts",
-      "title": "Database Schema \u203a Announcement create, edit & delete",
-      "lastSeenSha": "d51818cce56d5bfc133d6d8f3e0ce59d5b73a548",
-      "hardFailure": false
+      "title": "Api Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Dashboard Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Dashboard Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Database Schema \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Database Schema \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Database Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Database Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Database \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Database \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
     },
     "chromium :: Pages/ServiceEntity.spec.ts :: Delete Storage Service": {
       "observations": [
@@ -256,6 +446,66 @@
       "title": "Delete Storage Service",
       "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
       "hardFailure": false
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Drive Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Drive Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Messaging Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Messaging Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Mlmodel Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Mlmodel Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Pipeline Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Pipeline Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Search Index Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Search Index Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
+    },
+    "chromium :: Pages/ServiceEntity.spec.ts :: Storage Service \u203a Inactive Announcement create & delete": {
+      "observations": [
+        "38842001693"
+      ],
+      "project": "chromium",
+      "file": "Pages/ServiceEntity.spec.ts",
+      "title": "Storage Service \u203a Inactive Announcement create & delete",
+      "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
+      "hardFailure": true
     },
     "chromium :: Pages/Tags.spec.ts :: Verify Owner Add Delete": {
       "observations": [
