@@ -26,6 +26,7 @@ class OpenSearchRbacCacheKeyTest {
 
   private static final UUID USER_ID = UUID.randomUUID();
   private static final UUID ROLE_ID = UUID.randomUUID();
+  private static final long GENERATION = 7L;
 
   @Test
   @DisplayName("Two subjects sharing roles but not domains do not share a cached query")
@@ -33,9 +34,7 @@ class OpenSearchRbacCacheKeyTest {
     SubjectContext financeSubject = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
     SubjectContext marketingSubject = subject(List.of(ROLE_ID), List.of(UUID.randomUUID()));
 
-    assertNotEquals(
-        OpenSearchSearchManager.rbacCacheKey(financeSubject),
-        OpenSearchSearchManager.rbacCacheKey(marketingSubject));
+    assertNotEquals(pinnedKey(financeSubject), pinnedKey(marketingSubject));
   }
 
   @Test
@@ -45,10 +44,8 @@ class OpenSearchRbacCacheKeyTest {
     UUID domainId = UUID.randomUUID();
 
     assertEquals(
-        OpenSearchSearchManager.rbacCacheKey(
-            subject(List.of(ROLE_ID, secondRoleId), List.of(domainId))),
-        OpenSearchSearchManager.rbacCacheKey(
-            subject(List.of(secondRoleId, ROLE_ID), List.of(domainId))));
+        pinnedKey(subject(List.of(ROLE_ID, secondRoleId), List.of(domainId))),
+        pinnedKey(subject(List.of(secondRoleId, ROLE_ID), List.of(domainId))));
   }
 
   @Test
@@ -61,8 +58,8 @@ class OpenSearchRbacCacheKeyTest {
         subject(List.of(ROLE_ID), List.of(domainId), List.of(UUID.randomUUID()));
 
     assertNotEquals(
-        OpenSearchSearchManager.rbacCacheKey(engineering),
-        OpenSearchSearchManager.rbacCacheKey(marketing),
+        pinnedKey(engineering),
+        pinnedKey(marketing),
         "isOwner, isReviewer and inAnyTeam compile team ids into the query");
   }
 
@@ -71,9 +68,7 @@ class OpenSearchRbacCacheKeyTest {
   void testKeyToleratesNullCollections() {
     SubjectContext bareSubject = subject(null, null, null);
 
-    assertEquals(
-        ServiceAttributeResolver.generation() + ":" + USER_ID + ":::",
-        OpenSearchSearchManager.rbacCacheKey(bareSubject));
+    assertEquals(GENERATION + ":" + USER_ID + ":::", pinnedKey(bareSubject));
   }
 
   /**
@@ -98,6 +93,19 @@ class OpenSearchRbacCacheKeyTest {
     }
 
     assertNotEquals(beforeKey, afterKey);
+  }
+
+  /**
+   * The generation is the signature of a process-wide snapshot that refreshes in the background
+   * once it is a minute old, so two unpinned reads in one test can straddle a reload and differ for
+   * a reason the test is not about. Pinning it keeps each test on the subject fields it varies.
+   */
+  private static String pinnedKey(SubjectContext subjectContext) {
+    try (MockedStatic<ServiceAttributeResolver> resolver =
+        mockStatic(ServiceAttributeResolver.class)) {
+      resolver.when(ServiceAttributeResolver::generation).thenReturn(GENERATION);
+      return OpenSearchSearchManager.rbacCacheKey(subjectContext);
+    }
   }
 
   private static SubjectContext subject(List<UUID> roleIds, List<UUID> domainIds) {
