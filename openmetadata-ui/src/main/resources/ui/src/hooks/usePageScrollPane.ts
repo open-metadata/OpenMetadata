@@ -95,9 +95,15 @@ export const usePageScrollPane = (
       )}px`;
     };
 
+    // Only a downward, mainly vertical scroll: cancelling a sideways swipe or a
+    // Shift+wheel would also stop a wide child scrolling across.
     const handleWheel = (event: WheelEvent) => {
       const remaining = getRemainingScroll(scrollParent);
-      if (event.deltaY <= 0 || remaining < 1 || event.ctrlKey) {
+      const isVerticalDown =
+        event.deltaY > 0 &&
+        !event.shiftKey &&
+        Math.abs(event.deltaY) > Math.abs(event.deltaX);
+      if (!isVerticalDown || remaining < 1 || event.ctrlKey) {
         return;
       }
       event.preventDefault();

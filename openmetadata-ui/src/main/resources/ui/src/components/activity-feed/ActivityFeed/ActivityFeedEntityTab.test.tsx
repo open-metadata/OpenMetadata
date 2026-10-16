@@ -29,6 +29,13 @@ jest.mock('./useTaskStatusParam', () => ({
   useTaskStatusParam: () => ['closed', mockSetTaskStatus],
 }));
 
+const mockSetDatePreset = jest.fn();
+const SEVEN_DAYS = { startTs: 7, endTs: 8, key: 'last7days' };
+
+jest.mock('./useActivityDatePresetParam', () => ({
+  useActivityDatePresetParam: () => [SEVEN_DAYS, mockSetDatePreset],
+}));
+
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
   __esModule: true,
   default: {
@@ -43,6 +50,8 @@ jest.mock('./ActivityFeed', () => ({
     entityLink,
     view,
     taskStatus,
+    dateRange,
+    onDatePresetChange,
     onTaskChange,
     onTaskStatusChange,
     onViewChange,
@@ -50,11 +59,14 @@ jest.mock('./ActivityFeed', () => ({
     entityLink: string;
     view: string;
     taskStatus: string;
+    dateRange: { key: string };
+    onDatePresetChange: (preset: string) => void;
     onTaskChange: () => void;
     onTaskStatusChange: (status: string) => void;
     onViewChange: (view: string) => void;
   }) => (
     <div
+      data-date={dateRange.key}
       data-link={entityLink}
       data-task-status={taskStatus}
       data-testid="activity-feed"
@@ -62,6 +74,9 @@ jest.mock('./ActivityFeed', () => ({
       <button onClick={onTaskChange}>task-changed</button>
       <button onClick={() => onViewChange('tasks')}>to-tasks</button>
       <button onClick={() => onTaskStatusChange('all')}>to-all</button>
+      <button onClick={() => onDatePresetChange('yesterday')}>
+        to-yesterday
+      </button>
     </div>
   ),
 }));
@@ -144,5 +159,19 @@ describe('ActivityFeedEntityTab', () => {
     fireEvent.click(screen.getByText('to-all'));
 
     expect(mockSetTaskStatus).toHaveBeenCalledWith('all');
+  });
+
+  // In the URL, so the page's tab label counts the same window.
+  it('keeps the Activity window in the URL', () => {
+    renderTab();
+
+    expect(screen.getByTestId('activity-feed')).toHaveAttribute(
+      'data-date',
+      'last7days'
+    );
+
+    fireEvent.click(screen.getByText('to-yesterday'));
+
+    expect(mockSetDatePreset).toHaveBeenCalledWith('yesterday');
   });
 });

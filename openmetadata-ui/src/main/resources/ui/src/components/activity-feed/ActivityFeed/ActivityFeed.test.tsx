@@ -61,11 +61,31 @@ jest.mock('@openmetadata/ui-core-components', () => {
 // The two views have their own suites; here they report what they were given.
 jest.mock('../../discovery/personal-space/InboxPage/tabs/ActivityTab', () => ({
   __esModule: true,
-  default: ({ scope, leading }: { scope: unknown; leading: ReactNode }) => (
-    <div data-scope={JSON.stringify(scope)} data-testid="activity-view">
+  default: ({
+    scope,
+    leading,
+    dateRange,
+    onDatePresetChange,
+  }: {
+    scope: unknown;
+    leading: ReactNode;
+    dateRange: { key: string };
+    onDatePresetChange: (preset: string) => void;
+  }) => (
+    <div
+      data-date={dateRange.key}
+      data-scope={JSON.stringify(scope)}
+      data-testid="activity-view">
       {leading}
+      <button onClick={() => onDatePresetChange('last7days')}>pick-7</button>
     </div>
   ),
+}));
+
+const mockInvalidateQueries = jest.fn();
+
+jest.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
 jest.mock('./ActivityFeedTasks', () => ({
@@ -75,11 +95,13 @@ jest.mock('./ActivityFeedTasks', () => ({
     leading,
     status,
     onStatusChange,
+    onTaskChange,
   }: {
     scope: unknown;
     leading: ReactNode;
     status: string;
     onStatusChange: (status: string) => void;
+    onTaskChange: () => void;
   }) => (
     <div
       data-scope={JSON.stringify(scope)}
@@ -87,11 +109,13 @@ jest.mock('./ActivityFeedTasks', () => ({
       data-testid="tasks-view">
       {leading}
       <button onClick={() => onStatusChange('closed')}>pick-closed</button>
+      <button onClick={onTaskChange}>task-changed</button>
     </div>
   ),
 }));
 
 jest.mock('../../discovery/personal-space/InboxPage/useInboxActivity', () => ({
+  INBOX_ACTIVITY_QUERY_KEY: 'inbox-activity',
   useInboxActivity: () => ({
     items: [],
     total: 5,
@@ -193,5 +217,45 @@ describe('ActivityFeed', () => {
     fireEvent.click(screen.getByText('pick-tasks'));
 
     expect(onViewChange).toHaveBeenCalledWith('tasks');
+  });
+
+  // A host that keeps the window in its URL controls it.
+  it('follows a controlled date window and reports a change', () => {
+    const onDatePresetChange = jest.fn();
+    render(
+      <ActivityFeed
+        dateRange={{ startTs: 7, endTs: 8, key: 'yesterday' }}
+        entityLink={TABLE_LINK}
+        onDatePresetChange={onDatePresetChange}
+      />
+    );
+
+    expect(screen.getByTestId('activity-view')).toHaveAttribute(
+      'data-date',
+      'yesterday'
+    );
+
+    fireEvent.click(screen.getByText('pick-7'));
+
+    expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
+  });
+
+  // An approved description is a change: the Activity lists must re-read it.
+  it('re-reads the Activity after a task action, then tells the host', () => {
+    const onTaskChange = jest.fn();
+    render(
+      <ActivityFeed
+        defaultView="tasks"
+        entityLink={TABLE_LINK}
+        onTaskChange={onTaskChange}
+      />
+    );
+
+    fireEvent.click(screen.getByText('task-changed'));
+
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['inbox-activity'],
+    });
+    expect(onTaskChange).toHaveBeenCalled();
   });
 });

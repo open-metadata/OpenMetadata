@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePageScrollPane } from '../../../hooks/usePageScrollPane';
@@ -23,6 +24,7 @@ import {
   INBOX_DATE_RANGE_OPTIONS,
 } from '../../discovery/personal-space/InboxPage/inbox.utils';
 import ActivityTab from '../../discovery/personal-space/InboxPage/tabs/ActivityTab';
+import { INBOX_ACTIVITY_QUERY_KEY } from '../../discovery/personal-space/InboxPage/useInboxActivity';
 import type { TaskStatusFilter } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 import ActivityFeedTasks from './ActivityFeedTasks';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
@@ -49,6 +51,9 @@ export interface ActivityFeedProps {
   // The Tasks Status, which the Tasks badge counts; or control it with these.
   taskStatus?: TaskStatusFilter;
   onTaskStatusChange?: (status: TaskStatusFilter) => void;
+  // The Activity window, which its badge counts; or control it with these.
+  dateRange?: InboxDateRange;
+  onDatePresetChange?: (preset: string) => void;
   // After a task action changed the task, and possibly its entity.
   onTaskChange?: () => void;
 }
@@ -67,9 +72,12 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   onViewChange,
   taskStatus: controlledTaskStatus,
   onTaskStatusChange,
+  dateRange: controlledDateRange,
+  onDatePresetChange,
   onTaskChange,
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const rootRef = useRef<HTMLDivElement>(null);
   usePageScrollPane(rootRef, getEntityTabBar);
   const [ownView, setOwnView] = useState<ActivityFeedView>(defaultView);
@@ -93,20 +101,32 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
     [onTaskStatusChange]
   );
   // Read when the feed mounts, so a page left open keeps a current window.
-  const [dateRange, setDateRange] = useState<InboxDateRange>(() => ({
+  const [ownDateRange, setOwnDateRange] = useState<InboxDateRange>(() => ({
     ...getDefaultInboxDateRange(),
     key: DEFAULT_INBOX_DATE_PRESET,
   }));
+  const dateRange = controlledDateRange ?? ownDateRange;
   // Both counts read the queries their lists use, so neither is fetched twice.
   const { activityScope, taskScope, activityCount, taskCounts } =
     useActivityFeedCounts(entityLink, dateRange);
 
-  const handleDatePresetChange = useCallback((key: string) => {
-    setDateRange({
-      ...getInboxDateRange(INBOX_DATE_RANGE_OPTIONS[key].days),
-      key,
-    });
-  }, []);
+  const handleDatePresetChange = useCallback(
+    (key: string) => {
+      setOwnDateRange({
+        ...getInboxDateRange(INBOX_DATE_RANGE_OPTIONS[key].days),
+        key,
+      });
+      onDatePresetChange?.(key);
+    },
+    [onDatePresetChange]
+  );
+
+  // A task action can write activity (an approved description is a change),
+  // so every cached Activity list, and the counts read from them, re-read.
+  const handleTaskChange = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: [INBOX_ACTIVITY_QUERY_KEY] });
+    onTaskChange?.();
+  }, [queryClient, onTaskChange]);
 
   const viewSwitch = (
     <Tabs
@@ -145,7 +165,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
           scope={taskScope}
           status={taskStatus}
           onStatusChange={handleTaskStatusChange}
-          onTaskChange={onTaskChange}
+          onTaskChange={handleTaskChange}
         />
       )}
     </Box>

@@ -20,6 +20,7 @@ import {
   ActivityFeedTabs,
 } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import ActivityFeed, { ActivityFeedView } from './ActivityFeed';
+import { useActivityDatePresetParam } from './useActivityDatePresetParam';
 import { useTaskStatusParam } from './useTaskStatusParam';
 
 export type ActivityFeedEntityTabProps = Pick<
@@ -42,8 +43,9 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
   const navigate = useNavigate();
   const { search } = useLocation();
   const { subTab } = useParams<{ subTab?: string }>();
-  // In the URL, so the page's tab label counts the same Status.
+  // In the URL, so the page's tab label counts the same Status and window.
   const [taskStatus, setTaskStatus] = useTaskStatusParam();
+  const [dateRange, setDatePreset] = useActivityDatePresetParam();
   // The route names the view, as it does for today's tab, so a link to
   // …/activity_feed/tasks opens on Tasks and a switch can be shared.
   const view: ActivityFeedView =
@@ -76,9 +78,11 @@ const ActivityFeedEntityTab: React.FC<ActivityFeedEntityTabProps> = ({
 
   return (
     <ActivityFeed
+      dateRange={dateRange}
       entityLink={entityLink}
       taskStatus={taskStatus}
       view={view}
+      onDatePresetChange={setDatePreset}
       onTaskChange={handleTaskChange}
       onTaskStatusChange={setTaskStatus}
       onViewChange={handleViewChange}

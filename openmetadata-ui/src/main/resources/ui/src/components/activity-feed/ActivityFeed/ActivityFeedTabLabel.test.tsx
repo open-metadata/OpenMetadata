@@ -30,6 +30,13 @@ jest.mock('./useTaskStatusParam', () => ({
   useTaskStatusParam: () => [mockTaskStatus, jest.fn()],
 }));
 
+const SEVEN_DAYS = { startTs: 7, endTs: 8, key: 'last7days' };
+let mockDateRange = { startTs: 30, endTs: 31, key: 'last30days' };
+
+jest.mock('./useActivityDatePresetParam', () => ({
+  useActivityDatePresetParam: () => [mockDateRange, jest.fn()],
+}));
+
 jest.mock('./useEntityFeedLink', () => ({
   useEntityFeedLink: (...args: unknown[]) => {
     mockUseEntityFeedLink(...args);
@@ -68,6 +75,7 @@ describe('ActivityFeedTabLabel', () => {
   beforeEach(() => {
     mockIsAiMode = true;
     mockTaskStatus = 'open';
+    mockDateRange = { startTs: 30, endTs: 31, key: 'last30days' };
     mockUseActivityFeedCounts.mockReturnValue({
       activityCount: { total: 20, isCapped: false },
       taskCounts: { all: 27, open: 19, closed: 8 },
@@ -88,6 +96,17 @@ describe('ActivityFeedTabLabel', () => {
         startTs: expect.any(Number),
         endTs: expect.any(Number),
       })
+    );
+  });
+
+  // The feed's date window is in the URL, so the page counts the same cards.
+  it('counts the Activity of the window chosen in the feed', () => {
+    mockDateRange = SEVEN_DAYS;
+    renderLabel();
+
+    expect(mockUseActivityFeedCounts).toHaveBeenCalledWith(
+      TABLE_LINK,
+      SEVEN_DAYS
     );
   });
 

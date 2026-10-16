@@ -39,6 +39,7 @@ import {
   ActivityFilter,
   ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,
+  getActivityLookbackDays,
   getActivityWindowDays,
   getFeedSortTimestamp,
   InboxCount,
@@ -113,6 +114,10 @@ interface FeedWindow {
   endTs?: number;
 }
 
+// A `days`-only endpoint reaches back to the window's start, not just `days`.
+const getLookbackDays = (days: number, startTs?: number) =>
+  startTs ? getActivityLookbackDays(startTs) : days;
+
 interface FeedRequests {
   activity: Promise<PagingResponse<ActivityEvent[]>>;
   conversations: Promise<PagingResponse<Conversation[]>>;
@@ -163,8 +168,11 @@ const getEntityRequests = (
           limit: ACTIVITY_LIMIT,
           entityLink,
         })
-      : // `/about` takes `days` only; clipToWindow trims it to the window.
-        getActivityByEntityLink(entityLink, { days, limit: ACTIVITY_LIMIT }),
+      : // `/about` takes a `days` look-back only; clipToWindow trims it.
+        getActivityByEntityLink(entityLink, {
+          days: getLookbackDays(days, startTs),
+          limit: ACTIVITY_LIMIT,
+        }),
     // Its columns' conversations too, as its activity includes their changes.
     conversations: listConversations({
       entityLink,
@@ -181,10 +189,13 @@ const getEntityRequests = (
 // The activity API reads a user by id; the link names them.
 const getUserRequests = (
   userName: string,
-  { days }: FeedWindow
+  { days, startTs }: FeedWindow
 ): FeedRequests => ({
   activity: getUserByName(userName).then((user) =>
-    getUserActivity(user.id, { days, limit: ACTIVITY_LIMIT })
+    getUserActivity(user.id, {
+      days: getLookbackDays(days, startTs),
+      limit: ACTIVITY_LIMIT,
+    })
   ),
   conversations: NO_CONVERSATIONS,
 });

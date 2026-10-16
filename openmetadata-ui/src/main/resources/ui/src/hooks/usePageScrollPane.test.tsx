@@ -74,8 +74,12 @@ const mountInScrollContainer = (withBar = true) => {
   return { result, pane: result.getByTestId('pane'), container };
 };
 
-const wheel = (element: HTMLElement, deltaY: number) => {
-  const event = new WheelEvent('wheel', { deltaY, cancelable: true });
+const wheel = (
+  element: HTMLElement,
+  deltaY: number,
+  init: WheelEventInit = {}
+) => {
+  const event = new WheelEvent('wheel', { deltaY, cancelable: true, ...init });
   element.dispatchEvent(event);
 
   return event;
@@ -126,6 +130,15 @@ describe('usePageScrollPane', () => {
 
     // The page has ended: the pane scrolls itself.
     expect(wheel(pane, 200).defaultPrevented).toBe(false);
+  });
+
+  // A sideways swipe or Shift+wheel may be meant for a wide child.
+  it('leaves a sideways or Shift scroll to the browser', () => {
+    const { pane, container } = mountInScrollContainer();
+
+    expect(wheel(pane, 20, { deltaX: 80 }).defaultPrevented).toBe(false);
+    expect(wheel(pane, 120, { shiftKey: true }).defaultPrevented).toBe(false);
+    expect(container.scrollTop).toBe(0);
   });
 
   it('leaves scrolling up to the browser', () => {

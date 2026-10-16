@@ -505,8 +505,10 @@ describe('fetchInboxActivity per scope', () => {
   it('reads everything about an entity and the conversations on it and its fields', async () => {
     await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, entity);
 
+    // `/about` takes a look-back from now: back to the window's start (held
+    // to the endpoint's 90-day cap for this 1970 window).
     expect(mockGetActivityByEntityLink).toHaveBeenCalledWith(TABLE_LINK, {
-      days: 1,
+      days: 90,
       limit: 200,
     });
     expect(mockListConversations).toHaveBeenCalledWith({
@@ -554,7 +556,7 @@ describe('fetchInboxActivity per scope', () => {
 
     expect(mockGetUserByName).toHaveBeenCalledWith('harsh.vador');
     expect(mockGetUserActivity).toHaveBeenCalledWith('user-1', {
-      days: 1,
+      days: 90,
       limit: 200,
     });
     expect(mockListConversations).not.toHaveBeenCalled();

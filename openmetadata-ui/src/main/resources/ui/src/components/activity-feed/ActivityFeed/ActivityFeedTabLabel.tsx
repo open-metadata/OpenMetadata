@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React, { useMemo } from 'react';
+import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../common/TabsLabel/TabsLabel.interface';
-import { getDefaultInboxDateRange } from '../../discovery/personal-space/InboxPage/inbox.utils';
+import { useActivityDatePresetParam } from './useActivityDatePresetParam';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
 import { useEntityFeedLink } from './useEntityFeedLink';
 import { useTaskStatusParam } from './useTaskStatusParam';
@@ -34,8 +34,8 @@ const getTabCount = (total: number, isCapped: boolean) =>
 const ActivityFeedCountLabel: React.FC<
   TabsLabelProps & { entityLink: string }
 > = ({ entityLink, ...labelProps }) => {
-  // The window the feed opens on, so this reads the queries the feed will.
-  const dateRange = useMemo(getDefaultInboxDateRange, []);
+  // The window the feed shows, so this reads the queries the feed does.
+  const [dateRange] = useActivityDatePresetParam();
   const [taskStatus] = useTaskStatusParam();
   const { activityCount, taskCounts } = useActivityFeedCounts(
     entityLink,
