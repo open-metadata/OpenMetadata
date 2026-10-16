@@ -12,13 +12,12 @@
  */
 
 import { APIRequestContext, Page } from '@playwright/test';
-import { createHash } from 'crypto';
 import {
   CreateTable,
   DataType,
   TableType,
 } from '../../../src/generated/api/data/createTable';
-import { Column, Table } from '../../../src/generated/entity/data/table';
+import { Table } from '../../../src/generated/entity/data/table';
 import { EntityReference } from '../../../src/generated/entity/type';
 import {
   ACTION_TIMEOUT,
@@ -32,6 +31,7 @@ import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
 import { connectEdgeBetweenNodesViaAPI } from '../../utils/lineage';
+import { assetIdsWithColumns, countAssetsWithColumns } from '../../utils/table';
 import {
   navigateToOntologyStudio,
   readSearchHighlightIds,
@@ -289,46 +289,6 @@ async function addAssetBatch(
   );
 
   expect(response.ok(), await response.text()).toBe(true);
-}
-
-/**
- * Columns inherit their table's glossary terms (#31834), so a term's search-backed
- * assets include every column, nested ones too, of each tagged table.
- */
-function assetIdsWithColumns(tablesWithTerm: Table[]): string[] {
-  return tablesWithTerm.flatMap((table) => [
-    table.id,
-    ...flattenColumns(table.columns).map((column) =>
-      columnAssetId(column.fullyQualifiedName ?? '')
-    ),
-  ]);
-}
-
-function countAssetsWithColumns(tablesWithTerm: Table[]): number {
-  return assetIdsWithColumns(tablesWithTerm).length;
-}
-
-function flattenColumns(columns: Column[] = []): Column[] {
-  return columns.flatMap((column) => [
-    column,
-    ...flattenColumns(column.children),
-  ]);
-}
-
-/** Java's UUID.nameUUIDFromBytes, which ColumnSearchIndex uses as the column doc id. */
-function columnAssetId(columnFqn: string): string {
-  const bytes = createHash('md5').update(columnFqn, 'utf8').digest();
-  bytes[6] = (bytes[6] & 0x0f) | 0x30;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = bytes.toString('hex');
-
-  return [
-    hex.slice(0, 8),
-    hex.slice(8, 12),
-    hex.slice(12, 16),
-    hex.slice(16, 20),
-    hex.slice(20),
-  ].join('-');
 }
 
 async function getAssetCount(

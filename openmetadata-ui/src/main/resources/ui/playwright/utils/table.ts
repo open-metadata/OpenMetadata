@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { createHash } from 'crypto';
+import { Column, Table } from '../../src/generated/entity/data/table';
 import { TableClass } from '../support/entity/TableClass';
 
 export const getTableColumnsCount = (columns: TableClass['children']) => {
@@ -24,3 +26,37 @@ export const getTableColumnsCount = (columns: TableClass['children']) => {
 
   return columnsCount;
 };
+
+export const flattenColumns = (columns: Column[] = []): Column[] =>
+  columns.flatMap((column) => [column, ...flattenColumns(column.children)]);
+
+/** Java's UUID.nameUUIDFromBytes, which ColumnSearchIndex uses as the column doc id. */
+export const getColumnAssetId = (columnFqn: string): string => {
+  const bytes = createHash('md5').update(columnFqn, 'utf8').digest();
+  bytes[6] = (bytes[6] & 0x0f) | 0x30;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    hex.slice(12, 16),
+    hex.slice(16, 20),
+    hex.slice(20),
+  ].join('-');
+};
+
+/**
+ * Columns inherit their table's glossary terms (#31834), so a term's search-backed
+ * assets include every column, nested ones too, of each tagged table.
+ */
+export const assetIdsWithColumns = (tablesWithTerm: Table[]): string[] =>
+  tablesWithTerm.flatMap((table) => [
+    table.id,
+    ...flattenColumns(table.columns).map((column) =>
+      getColumnAssetId(column.fullyQualifiedName ?? '')
+    ),
+  ]);
+
+export const countAssetsWithColumns = (tablesWithTerm: Table[]): number =>
+  assetIdsWithColumns(tablesWithTerm).length;
