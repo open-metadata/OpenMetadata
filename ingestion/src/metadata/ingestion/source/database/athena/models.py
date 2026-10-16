@@ -14,7 +14,7 @@ Athena Models
 """
 
 from datetime import datetime
-from typing import List, Optional  # noqa: UP035
+from typing import List, Optional, Protocol  # noqa: UP035
 
 from pydantic import BaseModel
 
@@ -40,6 +40,22 @@ class AthenaQueryExecution(BaseModel):
 
 class AthenaQueryExecutionList(BaseModel):
     QueryExecutions: Optional[List[AthenaQueryExecution]] = None  # noqa: UP006, UP045
+
+
+class AthenaUserQueryStatus(Protocol):
+    State: str
+    SubmissionDateTime: datetime
+
+
+class AthenaUserQuery(Protocol):
+    """
+    A query execution that passed the query history filter, so usage and
+    lineage can rely on its SQL and submission time
+    """
+
+    Query: str
+    Statistics: AthenaStatistics | None
+    Status: AthenaUserQueryStatus
 
 
 class WorkGroup(BaseModel):

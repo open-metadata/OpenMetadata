@@ -745,6 +745,8 @@ def _build_table_lineage(
             to_entity_fqn=model_str(to_entity_fqn),
             to_entity_type="table",
             lineage_details=lineage_details,
+            from_entity_id=from_entity.id,
+            to_entity_id=to_entity.id,
         )
         return Either(right=lineage)
     except Exception as e:
