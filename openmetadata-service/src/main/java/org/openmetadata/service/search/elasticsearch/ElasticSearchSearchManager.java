@@ -72,7 +72,6 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -476,6 +475,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
       }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
+      }
     }
 
     try {
@@ -512,7 +514,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -781,6 +783,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       } else {
         requestBuilder.sort(searchSortFilter.getSortField(), sortOrder, "long");
       }
+      if (searchSortFilter.getThenSortField() != null) {
+        requestBuilder.sort(searchSortFilter.getThenSortField(), sortOrder, "long");
+      }
     }
 
     try {
@@ -842,7 +847,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
           results, totalHits, lastHitSortValues, lastDocumentsInBatch);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(String.format("Failed to find index %s", index));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
@@ -1310,8 +1315,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }
@@ -1503,8 +1507,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       return new SearchResultListMapper(results, totalHits, lastHitSortValues);
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find index %s", request.getIndex()));
+        throw SearchEngineErrors.indexNotFound(request.getIndex());
       } else {
         throw buildSearchException(e);
       }

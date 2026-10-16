@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Dot,
@@ -243,13 +242,15 @@ const NotificationBox = ({
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
+    const NotificationIcon =
+      key === NotificationTabsKey.TASK ? IconTask : IconMentions;
+
     return (
       <span className="tw:relative tw:inline-flex tw:items-center">
-        <Icon
-          alt="notification-icon"
-          className="align-middle m-r-xs"
-          component={key === NotificationTabsKey.TASK ? IconTask : IconMentions}
-          style={{ fontSize: '16px' }}
+        <NotificationIcon
+          aria-label="notification-icon"
+          className="tw:align-middle tw:mr-2 tw:size-4 tw:shrink-0"
+          role="img"
         />
         {name}
         {(key === NotificationTabsKey.TASK

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -52,6 +54,10 @@ import org.openmetadata.service.Entity;
  * A non-admin user holding the seeded {@code DomainOnlyAccessRole} must only see aggregation buckets
  * and {@code topHits} snippets for documents in their own domains when search access control is enabled,
  * matching the document set the same caller receives on {@code /v1/search}. Admins are unfiltered.
+ *
+ * <p>The tests that call as the restricted user run embedded only. The harness signs that user's
+ * token with its own key, which a deployed cluster does not trust, so every call would fail with
+ * 401 there.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -70,6 +76,7 @@ public class SearchAggregateRbacIT {
 
   @Test
   void test_aggregate_restrictedUserSeesOnlyOwnDomain(TestNamespace ns) throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
@@ -181,6 +188,7 @@ public class SearchAggregateRbacIT {
 
   @Test
   void test_aggregate_postEndpointAlsoRestricts(TestNamespace ns) throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
@@ -394,6 +402,12 @@ public class SearchAggregateRbacIT {
     return table;
   }
 
+  private static void assumeTheServerTrustsHarnessSignedTokens() {
+    Assumptions.assumeTrue(
+        !OssTestServer.isExternalMode(),
+        "Signs the restricted user's token with the harness key, which a deployed cluster rejects");
+  }
+
   private OpenMetadataClient createRestrictedUserClient(
       OpenMetadataClient admin, String prefix, Domain allowedDomain, Deque<Runnable> cleanup) {
     Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
@@ -412,6 +426,7 @@ public class SearchAggregateRbacIT {
 
   @Test
   void test_aggregate_accessControlOffShowsBothDomains(TestNamespace ns) throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
     OpenMetadataClient admin = SdkClients.adminClient();
     Deque<Runnable> cleanup = new ArrayDeque<>();
     try {
