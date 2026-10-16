@@ -304,6 +304,7 @@ const EntityLineageCanvas = ({
         nodeTypes={nodeTypes}
         nodes={flowNodes}
         nodesConnectable={false}
+        onlyRenderVisibleElements
         selectNodesOnDrag={false}
         onInit={onInitReactFlow}
         onNodeClick={handleNodeClick}
