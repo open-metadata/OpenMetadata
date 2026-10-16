@@ -1597,7 +1597,7 @@ describe('LineageTable', () => {
       // fetch resolves and applies its result. We then resolve the stale
       // fetch with distinct rows to prove the stale-response guard
       // discards them rather than letting them overwrite page 1.
-      let resolveStaleFetch: (value: unknown) => void;
+      let resolveStaleFetch: (value: unknown) => void = () => {};
       mockGetLineageByEntityCount.mockImplementationOnce(
         () =>
           new Promise((resolve) => {
@@ -1654,7 +1654,7 @@ describe('LineageTable', () => {
       // must discard this response — setFilterNodes should not be called
       // again with the stale data.
       await act(async () => {
-        resolveStaleFetch!({
+        resolveStaleFetch({
           nodes: {
             'stale.table': {
               entity: {
