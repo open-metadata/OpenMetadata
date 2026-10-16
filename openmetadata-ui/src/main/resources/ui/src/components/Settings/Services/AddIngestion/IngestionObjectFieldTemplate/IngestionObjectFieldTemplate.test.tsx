@@ -91,6 +91,14 @@ const isFieldHidden = (container: HTMLElement, testId: string): boolean => {
   return wrapper?.classList.contains('tw:hidden') ?? false;
 };
 
+// SectionFields renders wide fields with tw:w-full on the property-wrapper.
+const isFieldWide = (testId: string): boolean => {
+  const el = screen.getByTestId(testId);
+  const wrapper = el.closest('.property-wrapper');
+
+  return wrapper?.classList.contains('tw:w-full') ?? false;
+};
+
 describe('IngestionObjectFieldTemplate', () => {
   afterEach(() => {
     cleanup();
@@ -104,7 +112,6 @@ describe('IngestionObjectFieldTemplate', () => {
 
       expect(within(essential).getByTestId('field-name')).toBeInTheDocument();
       expect(within(essential).getByTestId('field-type')).toBeInTheDocument();
-      // Non-collapsible section has no chevron icon
       expect(
         within(essential).queryByTestId('chevron')
       ).not.toBeInTheDocument();
@@ -115,7 +122,6 @@ describe('IngestionObjectFieldTemplate', () => {
 
       const essential = screen.getByTestId('ingestion-section-essential');
 
-      // Clicking the header should not hide the fields
       fireEvent.click(
         within(essential).getByTestId('ingestion-section-essential-toggle')
       );
@@ -131,14 +137,13 @@ describe('IngestionObjectFieldTemplate', () => {
 
       const advanced = screen.getByTestId('ingestion-section-advanced');
 
-      // Section is collapsed by default — toggle exists with chevron
       expect(
         within(advanced).getByTestId('ingestion-section-advanced-toggle')
       ).toBeInTheDocument();
 
-      // The key assertion: visible fields must stay mounted (tw:hidden) so
-      // transformErrors can find their DOM elements and validation is not
-      // bypassed.
+      // transformErrors discards errors whose field elements are absent from
+      // the DOM, so collapsed sections must keep fields mounted (tw:hidden)
+      // to preserve validation.
       expect(
         within(advanced).getByTestId('field-confidence')
       ).toBeInTheDocument();
@@ -153,6 +158,29 @@ describe('IngestionObjectFieldTemplate', () => {
       expect(isFieldHidden(advanced, 'field-confidence')).toBe(true);
       expect(isFieldHidden(advanced, 'field-sampleDataCount')).toBe(true);
       expect(isFieldHidden(advanced, 'field-connectionArguments')).toBe(true);
+    });
+
+    it('auto-expands a collapsed section when it has validation errors', () => {
+      const props = getRootProps({
+        errorSchema: {
+          confidence: { __errors: ['must be <= 1'] },
+        },
+      } as unknown as ObjectFieldTemplateProps);
+
+      render(<IngestionObjectFieldTemplate {...props} />);
+
+      const advanced = screen.getByTestId('ingestion-section-advanced');
+
+      expect(isFieldHidden(advanced, 'field-confidence')).toBe(false);
+      expect(isFieldHidden(advanced, 'field-sampleDataCount')).toBe(false);
+    });
+
+    it('does not expand a section that has no validation errors', () => {
+      render(<IngestionObjectFieldTemplate {...getRootProps()} />);
+
+      const advanced = screen.getByTestId('ingestion-section-advanced');
+
+      expect(isFieldHidden(advanced, 'field-confidence')).toBe(true);
     });
 
     it('keeps all filter-pattern fields mounted when collapsed', () => {
@@ -221,7 +249,6 @@ describe('IngestionObjectFieldTemplate', () => {
         within(advanced).getByTestId('field-connectionArguments')
       ).toBeInTheDocument();
 
-      // Fields are now visible (no tw:hidden on wrapper)
       expect(isFieldHidden(advanced, 'field-confidence')).toBe(false);
       expect(isFieldHidden(advanced, 'field-sampleDataCount')).toBe(false);
     });
@@ -262,15 +289,14 @@ describe('IngestionObjectFieldTemplate', () => {
         'ingestion-section-advanced-toggle'
       );
 
-      // Expand
       fireEvent.click(toggle);
 
       expect(isFieldHidden(advanced, 'field-confidence')).toBe(false);
 
-      // Collapse
       fireEvent.click(toggle);
 
-      // Fields must still be in the DOM (hidden via tw:hidden), not unmounted
+      // Collapsed fields must stay in the DOM (hidden via tw:hidden) so
+      // transformErrors can still find their elements.
       expect(
         within(advanced).queryByTestId('field-confidence')
       ).toBeInTheDocument();
@@ -283,13 +309,7 @@ describe('IngestionObjectFieldTemplate', () => {
   });
 
   describe('Collapsible section with only hidden fields', () => {
-    it('omits the card entirely but still mounts hidden advanced fields in the DOM', () => {
-      // Override advanced fields to all be hidden. The section-building logic
-      // uses hasVisibleProperties which checks !property.hidden so it filters
-      // out sections with only hidden properties. The early-return branch in
-      // SectionCard (collapsible && !hasVisibleFields → HiddenFields) is
-      // reachable only for mixed-content sections. Here we verify the fields
-      // are at least not in a card.
+    it('omits the advanced card when all advanced fields are hidden', () => {
       const props = getRootProps({
         properties: [
           field('name'),
@@ -301,12 +321,10 @@ describe('IngestionObjectFieldTemplate', () => {
 
       render(<IngestionObjectFieldTemplate {...props} />);
 
-      // No advanced card rendered — hasVisibleProperties filtered out the section
       expect(
         screen.queryByTestId('ingestion-section-advanced')
       ).not.toBeInTheDocument();
 
-      // Essential fields are still visible
       expect(screen.getByTestId('field-name')).toBeInTheDocument();
       expect(screen.getByTestId('field-type')).toBeInTheDocument();
     });
@@ -343,10 +361,8 @@ describe('IngestionObjectFieldTemplate', () => {
 
       render(<IngestionObjectFieldTemplate {...props} />);
 
-      // Schema title takes priority over the fallback label
       expect(screen.getByText('Catalog Mapping')).toBeInTheDocument();
 
-      // Add button exists and calls onAddClick
       const addBtn = screen.getByLabelText('label.add-entity');
 
       expect(addBtn).toBeInTheDocument();
@@ -401,12 +417,10 @@ describe('IngestionObjectFieldTemplate', () => {
         properties: [field('name'), field('codeField')],
       } as unknown as ObjectFieldTemplateProps;
 
-      // For non-root, isWide is indirectly tested through SectionFields layout.
-      // We can verify the code field renders as wide by checking it exists.
       render(<IngestionObjectFieldTemplate {...props} />);
 
-      expect(screen.getByTestId('field-name')).toBeInTheDocument();
-      expect(screen.getByTestId('field-codeField')).toBeInTheDocument();
+      expect(isFieldWide('field-codeField')).toBe(true);
+      expect(isFieldWide('field-name')).toBe(false);
     });
 
     it('treats object and array types as wide', () => {
@@ -423,9 +437,9 @@ describe('IngestionObjectFieldTemplate', () => {
 
       render(<IngestionObjectFieldTemplate {...props} />);
 
-      expect(screen.getByTestId('field-name')).toBeInTheDocument();
-      expect(screen.getByTestId('field-objField')).toBeInTheDocument();
-      expect(screen.getByTestId('field-arrField')).toBeInTheDocument();
+      expect(isFieldWide('field-objField')).toBe(true);
+      expect(isFieldWide('field-arrField')).toBe(true);
+      expect(isFieldWide('field-name')).toBe(false);
     });
 
     it('treats oneOf variants with object/array types as wide', () => {
@@ -441,7 +455,8 @@ describe('IngestionObjectFieldTemplate', () => {
 
       render(<IngestionObjectFieldTemplate {...props} />);
 
-      expect(screen.getByTestId('field-variantField')).toBeInTheDocument();
+      expect(isFieldWide('field-variantField')).toBe(true);
+      expect(isFieldWide('field-name')).toBe(false);
     });
   });
 });
