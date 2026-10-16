@@ -26,36 +26,43 @@ export const transformErrors: ErrorTransformer = (errors) => {
       ? 'root' + property?.replaceAll('.', '/')
       : `root/${property}`;
 
-    // If element is not present in DOM, ignore error
-    if (document.getElementById(id)) {
-      const fieldName = startCase(property?.split('/').pop() ?? '');
+    const fieldName = startCase(property?.split('/').pop() ?? '');
 
-      const errorMessages = {
-        required: () => ({
-          message: t('message.field-text-is-required', {
-            fieldText: startCase(params?.missingProperty),
-          }),
+    const errorMessages = {
+      required: () => ({
+        message: t('message.field-text-is-required', {
+          fieldText: startCase(params?.missingProperty),
         }),
-        minimum: () => ({
-          message: t('message.value-must-be-greater-than', {
-            field: fieldName,
-            minimum: params?.limit,
-          }),
+      }),
+      minimum: () => ({
+        message: t('message.value-must-be-greater-than', {
+          field: fieldName,
+          minimum: params?.limit,
         }),
-        maximum: () => ({
-          message: t('message.value-must-be-less-than-or-equal', {
-            field: fieldName,
-            maximum: params?.limit,
-          }),
+      }),
+      maximum: () => ({
+        message: t('message.value-must-be-less-than-or-equal', {
+          field: fieldName,
+          maximum: params?.limit,
         }),
-      };
+      }),
+    };
 
-      const errorHandler = errorMessages[name as keyof typeof errorMessages];
-      if (errorHandler && params) {
+    const errorHandler = errorMessages[name as keyof typeof errorMessages];
+    if (errorHandler && params) {
+      // Only customize the message when the field element is in the DOM so
+      // the field name can be resolved; but never *drop* the error based on
+      // mount state. A collapsible section may temporarily unmount a visible
+      // field (e.g. confidence, sampleDataCount) while its value is still in
+      // form state — discarding the error here would let invalid data submit
+      // silently. Templates that collapse sections should still keep fields
+      // mounted (see IngestionObjectFieldTemplate / SSOGroupedFieldTemplate),
+      // but this guard ensures validation cannot be bypassed by mount state.
+      if (document.getElementById(id)) {
         error.message = errorHandler().message;
-
-        return error;
       }
+
+      return error;
     }
 
     return null;
