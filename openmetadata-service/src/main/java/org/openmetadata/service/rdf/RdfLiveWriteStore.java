@@ -40,11 +40,16 @@ public final class RdfLiveWriteStore {
 
   public void enqueue(final String payload) {
     jdbi.useTransaction(
-        TransactionIsolationLevel.READ_COMMITTED,
-        handle -> {
-          lockEnqueue(handle);
-          handle.execute(RECORD_ENQUEUED, insert(handle, payload));
-        });
+        TransactionIsolationLevel.READ_COMMITTED, handle -> enqueue(handle, payload));
+  }
+
+  /** Enqueue last in the caller's transaction so delivery and the metadata change commit together. */
+  public void enqueue(final Handle handle, final String payload) {
+    if (!handle.isInTransaction()) {
+      throw new IllegalStateException("RDF outbox writes require an open metadata transaction");
+    }
+    lockEnqueue(handle);
+    handle.execute(RECORD_ENQUEUED, insert(handle, payload));
   }
 
   /**

@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -228,15 +229,20 @@ public class AutoCloseIncidentIT {
     // Verify incident is NOT resolved — no Resolved TCRS record appears
     await()
         .during(Duration.ofSeconds(10))
-        .atMost(Duration.ofSeconds(15))
+        .atMost(PIPELINE_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () ->
-                listTcrsForStateId(client, stateId).stream()
-                    .noneMatch(
-                        r ->
-                            r.getTestCaseResolutionStatusType()
-                                == TestCaseResolutionStatusTypes.Resolved));
+        .untilAsserted(
+            () -> {
+              final var statuses = listTcrsForStateId(client, stateId);
+              assertFalse(statuses.isEmpty(), "The incident history must remain available");
+              assertTrue(
+                  statuses.stream()
+                      .noneMatch(
+                          status ->
+                              status.getTestCaseResolutionStatusType()
+                                  == TestCaseResolutionStatusTypes.Resolved),
+                  () -> "Auto-close is disabled: " + statuses);
+            });
 
     // Workflow should still be running
     String workflowInstanceId = taskRef.get().getWorkflowInstanceId().toString();
@@ -307,28 +313,19 @@ public class AutoCloseIncidentIT {
     return null;
   }
 
-  @SuppressWarnings("unchecked")
   private List<TestCaseResolutionStatus> listTcrsForStateId(
       OpenMetadataClient client, UUID stateId) {
-    try {
-      String response =
-          client
-              .getHttpClient()
-              .executeForString(
-                  HttpMethod.GET,
-                  "/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/" + stateId,
-                  null,
-                  RequestOptions.builder().build());
-
-      Map<String, Object> result = JsonUtils.readValue(response, new TypeReference<>() {});
-      List<Object> data = (List<Object>) result.get("data");
-      if (data == null) return List.of();
-      return data.stream()
-          .map(d -> JsonUtils.convertValue(d, TestCaseResolutionStatus.class))
-          .toList();
-    } catch (Exception e) {
-      return List.of();
-    }
+    final String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/testCaseIncidentStatus/stateId/" + stateId,
+                null,
+                RequestOptions.builder().build());
+    return JsonUtils.readValue(
+            response, new TypeReference<ListResponse<TestCaseResolutionStatus>>() {})
+        .getData();
   }
 
   @SuppressWarnings("unchecked")

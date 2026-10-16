@@ -88,6 +88,21 @@ class OntologyLayerValidatorTest {
     assertThrows(BadRequestException.class, () -> validator.applyDefaultsAndValidate(glossary));
   }
 
+  @Test
+  void preservesDistinctNamespaceSpellings() {
+    List<OntologyPrefix> prefixes =
+        List.of(
+            prefix("upper", "HTTPS://EXAMPLE.org/"),
+            prefix("lower", "https://example.org/"),
+            prefix("segments", "https://example.org/part/../"));
+    Glossary glossary = model(L3_ID, "Application", OntologyLayer.L_3, List.of());
+    glossary.getOntologyConfiguration().setPrefixes(prefixes);
+
+    validator(glossary).applyDefaultsAndValidate(glossary);
+
+    assertEquals(prefixes, glossary.getOntologyConfiguration().getPrefixes());
+  }
+
   private static OntologyLayerValidator validator(final Glossary... glossaries) {
     return new OntologyLayerValidator(
         id ->

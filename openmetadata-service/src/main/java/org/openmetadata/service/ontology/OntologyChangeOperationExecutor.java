@@ -27,7 +27,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
@@ -38,23 +37,19 @@ import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
-import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 
 public final class OntologyChangeOperationExecutor {
   private static final String TERM_EDIT_FIELDS = "attributes,conceptMappings";
   private final GlossaryTermRepository termRepository;
   private final GlossaryRepository glossaryRepository;
-  private final OntologyAxiomRepository axiomRepository;
   private final Clock clock;
 
   public OntologyChangeOperationExecutor(
       final GlossaryRepository glossaryRepository,
       final GlossaryTermRepository termRepository,
-      final OntologyAxiomRepository axiomRepository,
       final Clock clock) {
     this.glossaryRepository = glossaryRepository;
     this.termRepository = termRepository;
-    this.axiomRepository = axiomRepository;
     this.clock = clock;
   }
 
@@ -72,8 +67,8 @@ public final class OntologyChangeOperationExecutor {
           case DELETE_ATTRIBUTE -> deleteAttribute(uriInfo, user, operation);
           case UPSERT_MAPPING -> upsertMapping(uriInfo, user, operation);
           case DELETE_MAPPING -> deleteMapping(uriInfo, user, operation);
-          case UPSERT_AXIOM -> upsertAxiom(uriInfo, user, operation);
-          case DELETE_AXIOM -> deleteAxiom(user, operation);
+          case UPSERT_AXIOM, DELETE_AXIOM -> throw new BadRequestException(
+              "Axioms must be authored in an ontology, not a glossary change set");
         };
     return outcome;
   }
@@ -275,26 +270,6 @@ public final class OntologyChangeOperationExecutor {
   private void prepareTerm(final GlossaryTerm term, final String user) {
     term.setUpdatedBy(user);
     term.setUpdatedAt(clock.millis());
-  }
-
-  private OperationOutcome upsertAxiom(
-      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
-    final OntologyAxiom axiom = JsonUtils.deepCopy(operation.getAxiom(), OntologyAxiom.class);
-    axiom.setUpdatedBy(user);
-    axiom.setUpdatedAt(clock.millis());
-    axiomRepository.prepareInternal(axiom, operation.getTargetId() != null);
-    return outcome(axiomRepository.createOrUpdate(uriInfo, axiom, user).getEntity());
-  }
-
-  private OperationOutcome deleteAxiom(final String user, final OntologyChangeOperation operation) {
-    final OntologyAxiom axiom =
-        axiomRepository.get(
-            null, operation.getTargetId(), axiomRepository.getFields(""), Include.ALL, false);
-    final OntologyAxiom deleted =
-        Boolean.TRUE.equals(axiom.getDeleted())
-            ? axiom
-            : axiomRepository.delete(user, operation.getTargetId(), false, false).entity();
-    return outcome(deleted);
   }
 
   private static OperationOutcome outcome(final EntityInterface<?> entity) {

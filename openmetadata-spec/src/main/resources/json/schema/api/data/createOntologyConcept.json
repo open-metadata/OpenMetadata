@@ -1,0 +1,54 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createOntologyConcept.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CreateOntologyConceptRequest",
+  "description": "Create or update an independent ontologyConcept. Approval is managed through existing approval workflows.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateOntologyConcept",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/name"
+    },
+    "displayName": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/displayName"
+    },
+    "description": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/description"
+    },
+    "owners": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/owners"
+    },
+    "reviewers": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/reviewers"
+    },
+    "provider": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/provider"
+    },
+    "iri": {
+      "description": "Semantic IRI preserved for imported definitions. If omitted, creation mints an IRI from the ontology namespace and entity UUID; updates preserve the stored IRI.",
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/iri"
+    },
+    "conceptType": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/conceptType"
+    },
+    "synonyms": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/synonyms"
+    },
+    "conceptMappings": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/conceptMappings"
+    },
+    "ontology": {
+      "description": "Fully qualified name of the owning ontology.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    }
+  },
+  "required": [
+    "name",
+    "ontology",
+    "conceptType"
+  ],
+  "additionalProperties": false
+}

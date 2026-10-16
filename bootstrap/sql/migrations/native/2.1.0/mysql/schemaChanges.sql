@@ -878,3 +878,209 @@ DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- Independent ontology definitions and releases.
+CREATE TABLE IF NOT EXISTS ontology_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json JSON NOT NULL,
+  iriHash CHAR(32) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (md5(json_unquote(json_extract(json, '$.iri')))) STORED NOT NULL,
+  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_fqn_hash_unique UNIQUE (fqnHash),
+  KEY ontology_name_index (name),
+  KEY ontology_deleted_index (deleted),
+  KEY ontology_iri_index (iriHash)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_concept_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json JSON NOT NULL,
+  iriHash CHAR(32) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (md5(json_unquote(json_extract(json, '$.iri')))) STORED NOT NULL,
+  ontologyId VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.ontology.id'))) STORED NOT NULL,
+  conceptType VARCHAR(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.conceptType'))) STORED NOT NULL,
+  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_concept_fqn_hash_unique UNIQUE (fqnHash),
+  CONSTRAINT ontology_concept_iri_unique UNIQUE (ontologyId, iriHash),
+  KEY ontology_concept_name_index (name),
+  KEY ontology_concept_deleted_index (deleted),
+  KEY ontology_concept_ontology_kind_index (ontologyId, conceptType)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_property_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json JSON NOT NULL,
+  iriHash CHAR(32) CHARACTER SET ascii COLLATE ascii_bin GENERATED ALWAYS AS (md5(json_unquote(json_extract(json, '$.iri')))) STORED NOT NULL,
+  ontologyId VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.ontology.id'))) STORED NOT NULL,
+  kind VARCHAR(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.kind'))) STORED NOT NULL,
+  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_property_fqn_hash_unique UNIQUE (fqnHash),
+  CONSTRAINT ontology_property_iri_unique UNIQUE (ontologyId, iriHash),
+  KEY ontology_property_name_index (name),
+  KEY ontology_property_deleted_index (deleted),
+  KEY ontology_property_ontology_kind_index (ontologyId, kind)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_state (
+  ontologyId VARCHAR(36) NOT NULL,
+  workingRevision BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  lastReleaseRevision BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  activeReleaseId VARCHAR(36),
+  activationRevision BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (ontologyId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_release_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) STORED NOT NULL,
+  fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  json JSON NOT NULL,
+  ontologyId VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.ontology.id'))) STORED NOT NULL,
+  releaseRevision BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.releaseRevision'))) STORED NOT NULL,
+  entityStatus VARCHAR(32) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.entityStatus'))) STORED NOT NULL,
+  sealedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.sealedAt'))) STORED,
+  updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) STORED NOT NULL,
+  deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_release_fqn_unique UNIQUE (fqnHash),
+  CONSTRAINT ontology_release_revision_unique UNIQUE (ontologyId, releaseRevision),
+  KEY ontology_release_name_index (name),
+  KEY ontology_release_status_index (ontologyId, entityStatus)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ontology_release_member (
+  releaseId VARCHAR(36) NOT NULL,
+  memberKind VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  memberId VARCHAR(36) NOT NULL,
+  sourceVersion DOUBLE,
+  payload LONGTEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  payloadDigest CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  payloadBytes BIGINT UNSIGNED NOT NULL,
+  PRIMARY KEY (releaseId, memberKind, memberId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE IF NOT EXISTS ontology_release_event (
+  id VARCHAR(36) NOT NULL,
+  ontologyId VARCHAR(36) NOT NULL,
+  releaseId VARCHAR(36) NOT NULL,
+  eventType VARCHAR(32) NOT NULL,
+  createdAt BIGINT UNSIGNED NOT NULL,
+  createdBy VARCHAR(256) NOT NULL,
+  json JSON NOT NULL,
+  PRIMARY KEY (id),
+  KEY ontology_release_event_release_index (releaseId, createdAt, id),
+  KEY ontology_release_event_ontology_index (ontologyId, createdAt, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Studio axioms are unreleased; discard glossary-owned definitions without changing glossaries.
+DELETE FROM entity_relationship WHERE
+  (fromEntity = 'ontologyAxiom' AND fromId IN (SELECT id FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL)) OR
+  (toEntity = 'ontologyAxiom' AND toId IN (SELECT id FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL));
+DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL);
+DELETE FROM ontology_axiom_entity WHERE json_extract(json, '$.ontology.id') IS NULL;
+
+SET @ontology_axiom_owner_ddl = (
+  SELECT IF(COUNT(*) > 0,
+    'ALTER TABLE ontology_axiom_entity DROP INDEX ontology_axiom_glossary_type_index, DROP COLUMN glossaryId, ADD COLUMN ontologyId VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, ''$.ontology.id''))) STORED NOT NULL, ADD INDEX ontology_axiom_ontology_type_index (ontologyId, axiomType)',
+    'SELECT 1')
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_axiom_entity'
+    AND column_name = 'glossaryId'
+);
+PREPARE ontology_axiom_owner_stmt FROM @ontology_axiom_owner_ddl;
+EXECUTE ontology_axiom_owner_stmt;
+DEALLOCATE PREPARE ontology_axiom_owner_stmt;
+
+CREATE TABLE IF NOT EXISTS ontology_reference (
+  ontologyId VARCHAR(36) NOT NULL,
+  sourceType VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  sourceId VARCHAR(36) NOT NULL,
+  role VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  iri TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  iriHash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  PRIMARY KEY (sourceType, sourceId, role, iriHash),
+  KEY ontology_reference_target_index (ontologyId, iriHash, sourceType, sourceId, role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+SET @ontology_concept_listing_index_ddl = (
+  SELECT IF(COUNT(*) = 0, 'CREATE INDEX ontology_concept_listing_index ON ontology_concept_entity (ontologyId, deleted, name, id)', 'SELECT 1')
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_concept_entity' AND index_name = 'ontology_concept_listing_index'
+);
+PREPARE ontology_concept_listing_index_stmt FROM @ontology_concept_listing_index_ddl;
+EXECUTE ontology_concept_listing_index_stmt;
+DEALLOCATE PREPARE ontology_concept_listing_index_stmt;
+
+SET @ontology_property_listing_index_ddl = (
+  SELECT IF(COUNT(*) = 0, 'CREATE INDEX ontology_property_listing_index ON ontology_property_entity (ontologyId, deleted, name, id)', 'SELECT 1')
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_property_entity' AND index_name = 'ontology_property_listing_index'
+);
+PREPARE ontology_property_listing_index_stmt FROM @ontology_property_listing_index_ddl;
+EXECUTE ontology_property_listing_index_stmt;
+DEALLOCATE PREPARE ontology_property_listing_index_stmt;
+
+SET @ontology_axiom_listing_index_ddl = (
+  SELECT IF(COUNT(*) = 0, 'CREATE INDEX ontology_axiom_listing_index ON ontology_axiom_entity (ontologyId, deleted, name, id)', 'SELECT 1')
+  FROM information_schema.statistics
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_axiom_entity' AND index_name = 'ontology_axiom_listing_index'
+);
+PREPARE ontology_axiom_listing_index_stmt FROM @ontology_axiom_listing_index_ddl;
+EXECUTE ontology_axiom_listing_index_stmt;
+DEALLOCATE PREPARE ontology_axiom_listing_index_stmt;
+
+-- Approval state belongs only to immutable ontology releases.
+SET @ontology_release_only_review_ddl = (
+  SELECT IF(COUNT(*) > 0, 'ALTER TABLE ontology_entity DROP COLUMN entityStatus', 'SELECT 1')
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_entity' AND column_name = 'entityStatus'
+);
+PREPARE ontology_release_only_review_stmt FROM @ontology_release_only_review_ddl;
+EXECUTE ontology_release_only_review_stmt;
+DEALLOCATE PREPARE ontology_release_only_review_stmt;
+SET @ontology_concept_release_only_review_ddl = (
+  SELECT IF(COUNT(*) > 0, 'ALTER TABLE ontology_concept_entity DROP COLUMN entityStatus', 'SELECT 1')
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_concept_entity' AND column_name = 'entityStatus'
+);
+PREPARE ontology_concept_release_only_review_stmt FROM @ontology_concept_release_only_review_ddl;
+EXECUTE ontology_concept_release_only_review_stmt;
+DEALLOCATE PREPARE ontology_concept_release_only_review_stmt;
+SET @ontology_property_release_only_review_ddl = (
+  SELECT IF(COUNT(*) > 0, 'ALTER TABLE ontology_property_entity DROP COLUMN entityStatus', 'SELECT 1')
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_property_entity' AND column_name = 'entityStatus'
+);
+PREPARE ontology_property_release_only_review_stmt FROM @ontology_property_release_only_review_ddl;
+EXECUTE ontology_property_release_only_review_stmt;
+DEALLOCATE PREPARE ontology_property_release_only_review_stmt;
+SET @ontology_axiom_release_only_review_ddl = (
+  SELECT IF(COUNT(*) > 0, 'ALTER TABLE ontology_axiom_entity DROP COLUMN entityStatus', 'SELECT 1')
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE() AND table_name = 'ontology_axiom_entity' AND column_name = 'entityStatus'
+);
+PREPARE ontology_axiom_release_only_review_stmt FROM @ontology_axiom_release_only_review_ddl;
+EXECUTE ontology_axiom_release_only_review_stmt;
+DEALLOCATE PREPARE ontology_axiom_release_only_review_stmt;
+
+-- Unreleased glossary axiom drafts cannot be applied to the independent ontology model.
+DELETE FROM entity_relationship WHERE
+  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'))) OR
+  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations')));
+DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'));
+DELETE FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations');

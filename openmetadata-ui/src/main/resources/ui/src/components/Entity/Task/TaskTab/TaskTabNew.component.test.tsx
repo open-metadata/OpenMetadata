@@ -15,6 +15,7 @@ import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
+import APIClient from '../../../../rest/axiosClient';
 import {
   Task,
   TaskCategory,
@@ -23,7 +24,14 @@ import {
   TaskPriority,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../../test/unit/test-utils';
 import { TaskTabNew } from './TaskTabNew.component';
+
+jest.mock('../../../../rest/axiosClient', () => ({ get: jest.fn() }));
+runQueryNotificationsSynchronously();
 
 const MOCK_TASK: Task = {
   id: '8b5076bb-8284-46b0-b00d-5e43a184ba9b',
@@ -1327,6 +1335,130 @@ describe('TaskTabNew Component', () => {
         },
       });
     });
+  });
+
+  it('resolves a native ontology review without echoing its proposed content', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    const { resolveTask } = require('../../../../rest/tasksAPI');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      ontologyReview: {
+        entityId: 'release-id',
+        entityVersion: 0.2,
+        ontologyId: 'ontology-id',
+        reviewRevision: 1,
+        author: 'author',
+        contentDigest: 'a'.repeat(64),
+        workflowDefinitionDigest: 'b'.repeat(64),
+        workflowDefinitionVersion: 1,
+      },
+      payload: { proposedChanges: { description: 'Captured release' } },
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          resolutionType: TaskResolutionType.Approved,
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    };
+    (APIClient.get as jest.Mock).mockImplementation(async (path: string) => ({
+      data: path.endsWith('/diff')
+        ? { data: [], paging: { total: 0 } }
+        : { id: 'release-id', version: 0.2, name: 'Release' },
+    }));
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled()
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+    });
+
+    await waitFor(() =>
+      expect(resolveTask).toHaveBeenCalledWith(task.id, {
+        transitionId: 'approve',
+        resolutionType: TaskResolutionType.Approved,
+        comment: undefined,
+      })
+    );
+  });
+
+  it('disables release approval when the submitted content is unavailable', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    const { resolveTask } = require('../../../../rest/tasksAPI');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          resolutionType: TaskResolutionType.Approved,
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    };
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'message.ontology-review-unavailable'
+    );
+    expect(screen.getByTestId('workflow-task-action-primary')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+
+    expect(resolveTask).not.toHaveBeenCalled();
+  });
+
+  it('does not fall back to legacy approval while a native workflow is starting', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    isTagsTaskType.mockReturnValue(false);
+    const task: Task = {
+      ...MOCK_TASK,
+      type: TaskEntityType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      availableTransitions: [],
+    };
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TaskTabNew {...mockProps} task={task} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.queryByTestId('task-cta-buttons')).not.toBeInTheDocument();
   });
 
   describe('task comments', () => {

@@ -5,7 +5,9 @@
   "description": "Create or update a governed OWL axiom.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.CreateOntologyAxiom",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "properties": {
     "name": {
       "$ref": "../../type/basic.json#/definitions/entityName"
@@ -16,15 +18,14 @@
     "description": {
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
-    "glossary": {
+    "ontology": {
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "axiomType": {
       "$ref": "../../entity/data/ontologyAxiom.json#/definitions/axiomType"
     },
     "subjectIri": {
-      "type": "string",
-      "format": "uri"
+      "$ref": "../../type/ontologyIri.json"
     },
     "expressions": {
       "type": "array",
@@ -33,22 +34,16 @@
       }
     },
     "propertyIri": {
-      "type": "string",
-      "format": "uri"
+      "$ref": "../../type/ontologyIri.json"
     },
     "targetIri": {
-      "type": "string",
-      "format": "uri"
+      "$ref": "../../type/ontologyIri.json"
     },
     "literal": {
       "$ref": "../../type/ontologyExpression.json#/definitions/literal"
     },
     "provenance": {
       "$ref": "../../type/termRelation.json#/definitions/provenance"
-    },
-    "entityStatus": {
-      "description": "Lifecycle stage of the axiom. When omitted, the axiom starts in Draft.",
-      "$ref": "../../type/status.json"
     },
     "owners": {
       "$ref": "../../type/entityReferenceList.json"
@@ -64,7 +59,7 @@
     "name",
     "displayName",
     "description",
-    "glossary",
+    "ontology",
     "axiomType",
     "subjectIri",
     "provenance"

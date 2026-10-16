@@ -14,24 +14,20 @@
  * Create or update a governed OWL axiom.
  */
 export interface CreateOntologyAxiom {
-    axiomType:   AxiomType;
-    description: string;
-    displayName: string;
-    /**
-     * Lifecycle stage of the axiom. When omitted, the axiom starts in Draft.
-     */
-    entityStatus?: EntityStatus;
-    expressions?:  OntologyExpression[];
-    glossary:      string;
-    literal?:      Literal;
-    name:          string;
-    owners?:       EntityReference[];
-    propertyIri?:  string;
-    provenance:    Provenance;
-    provider?:     ProviderType;
-    reviewers?:    EntityReference[];
-    subjectIri:    string;
-    targetIri?:    string;
+    axiomType:    AxiomType;
+    description:  string;
+    displayName:  string;
+    expressions?: OntologyExpression[];
+    literal?:     Literal;
+    name:         string;
+    ontology:     string;
+    owners?:      EntityReference[];
+    propertyIri?: string;
+    provenance:   Provenance;
+    provider?:    ProviderType;
+    reviewers?:   EntityReference[];
+    subjectIri:   string;
+    targetIri?:   string;
 }
 
 export enum AxiomType {
@@ -41,24 +37,6 @@ export enum AxiomType {
     EquivalentClass = "EQUIVALENT_CLASS",
     ObjectPropertyAssertion = "OBJECT_PROPERTY_ASSERTION",
     SubclassOf = "SUBCLASS_OF",
-}
-
-/**
- * Lifecycle stage of the axiom. When omitted, the axiom starts in Draft.
- *
- * General lifecycle stage for entities that reference this vocabulary. Specialized entities
- * can declare their own status schema and lifecycle policy. Entity types without an
- * entityStatus property have no lifecycle. When a create request omits the stage, the
- * server assigns the entity type's initial stage.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**

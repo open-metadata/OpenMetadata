@@ -124,6 +124,7 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
 import org.openmetadata.service.governance.approval.ChangeRequestRecoveryScheduler;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
@@ -472,6 +473,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
+    environment
+        .lifecycle()
+        .manage(new OntologyReviewReconciler(jdbi.onDemand(CollectionDAO.class)));
     environment
         .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));

@@ -27,6 +27,7 @@ import {
   getUserPath,
 } from './RouterUtils';
 import { getEncodedFqn } from './StringUtils';
+import { getTaskDetailPath, isOntologyReviewTask } from './TaskUtils';
 
 export const TASK_ENTITIES = [
   EntityType.TABLE,
@@ -97,7 +98,7 @@ export const getEntityTasksPath = (
 };
 
 export const getTaskDetailPathFromTask = (task: TaskEntity) =>
-  getEntityTasksPath(
+  isOntologyReviewTask(task) ? getTaskDetailPath(task) : getEntityTasksPath(
     (task.about?.type as EntityType) ?? '',
     task.about?.fullyQualifiedName ?? ''
   );

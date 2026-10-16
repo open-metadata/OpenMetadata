@@ -45,6 +45,7 @@
         "EditStatus",
         "EditTags",
         "EditGlossaryTerms",
+        "EditOntologyConcepts",
         "EditTeams",
         "EditTier",
         "EditCertification",

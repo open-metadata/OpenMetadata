@@ -186,13 +186,11 @@ export interface OntologyAxiom {
     deleted?:           boolean;
     description:        string;
     displayName:        string;
-    entityStatus:       EntityStatus;
     /**
      * Class expressions participating in the axiom, ordered from left to right.
      */
     expressions:        OntologyExpression[];
     fullyQualifiedName: string;
-    glossary:           EntityReference;
     href?:              string;
     id:                 string;
     /**
@@ -202,6 +200,7 @@ export interface OntologyAxiom {
     incrementalChangeDescription?: ChangeDescription;
     literal?:                      Literal;
     name:                          string;
+    ontology:                      EntityReference;
     owners?:                       EntityReference[];
     propertyIri?:                  string;
     provenance:                    Provenance;
@@ -286,28 +285,6 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
-}
-
-/**
- * General lifecycle stage for entities that reference this vocabulary. Specialized entities
- * can declare their own status schema and lifecycle policy. Entity types without an
- * entityStatus property have no lifecycle. When a create request omits the stage, the
- * server assigns the entity type's initial stage.
- *
- * Status of the Glossary.
- *
- * Approval status of the glossary term.
- *
- * Approval status of this relation edge.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -535,6 +512,28 @@ export interface Glossary {
      * Votes on the entity.
      */
     votes?: Votes;
+}
+
+/**
+ * Status of the Glossary.
+ *
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Approval status of the glossary term.
+ *
+ * Approval status of this relation edge.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 export interface Namespace {

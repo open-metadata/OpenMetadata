@@ -289,7 +289,7 @@ public abstract class EntityServiceBase<T> {
           original = fetchEntity(id, null);
         }
 
-        originalNode = objectMapper.readTree(objectMapper.writeValueAsString(original));
+        originalNode = objectMapper.valueToTree(original);
       }
 
       // Remove computed/read-only fields that cannot be patched
@@ -306,6 +306,8 @@ public abstract class EntityServiceBase<T> {
 
       return httpClient.execute(
           HttpMethod.PATCH, basePath + "/" + id, patch, getEntityClass(), options);
+    } catch (OpenMetadataException e) {
+      throw e;
     } catch (Exception e) {
       throw new OpenMetadataException("Failed to update entity: " + e.getMessage(), e);
     }

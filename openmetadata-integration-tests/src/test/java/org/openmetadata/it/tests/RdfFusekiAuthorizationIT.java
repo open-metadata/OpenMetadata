@@ -108,6 +108,29 @@ class RdfFusekiAuthorizationIT {
 
   @ParameterizedTest
   @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
+  void graphStorePutReplacesAtomicallyWithWriterCredentials(final String dataset) throws Exception {
+    final String first = "urn:review:" + UUID.randomUUID();
+    final String second = "urn:review:" + UUID.randomUUID();
+    assertEquals(2, replace(dataset, "<" + first + "> <urn:p> <urn:o> .").statusCode() / 100);
+    assertEquals(2, replace(dataset, "<" + second + "> <urn:p> <urn:o> .").statusCode() / 100);
+    assertFalse(contains(dataset, first));
+    assertTrue(contains(dataset, second));
+    final var invalid = replace(dataset, "<urn:invalid> <urn:p> .");
+    assertTrue(invalid.statusCode() >= 400, invalid.body());
+    assertTrue(contains(dataset, second));
+  }
+
+  private static HttpResponse<String> replace(final String dataset, final String turtle)
+      throws Exception {
+    return send(
+        request("/" + dataset + "/data?graph=" + GRAPH)
+            .header("Authorization", basic("openmetadata:test-writer"))
+            .header("Content-Type", "text/turtle")
+            .PUT(HttpRequest.BodyPublishers.ofString(turtle)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
   void anonymousUploadCannotMutateAnyDataset(final String dataset) throws Exception {
     final String subject = "urn:review:" + UUID.randomUUID();
     assertEquals(401, send(upload(dataset, subject)).statusCode());

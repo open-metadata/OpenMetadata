@@ -176,23 +176,10 @@ final class GlossaryOntologyModelBuilder {
   private static void addMappings(
       final Model model, final Resource term, final List<ConceptMapping> mappings) {
     for (final ConceptMapping mapping : listOrEmpty(mappings)) {
-      final Property property = mappingProperty(mapping.getMappingType());
+      final Property property = OntologyRdfVocabulary.mapping(mapping.getMappingType());
       addObjectProperty(
           model, term, property, model.createResource(mapping.getConceptIri().toString()));
     }
-  }
-
-  private static Property mappingProperty(final ConceptMapping.ConceptMappingType mappingType) {
-    final Property property =
-        switch (mappingType) {
-          case EXACT_MATCH -> SKOS.exactMatch;
-          case CLOSE_MATCH -> SKOS.closeMatch;
-          case BROAD_MATCH -> SKOS.broadMatch;
-          case NARROW_MATCH -> SKOS.narrowMatch;
-          case RELATED_MATCH -> SKOS.relatedMatch;
-          case SAME_AS -> OWL2.sameAs;
-        };
-    return property;
   }
 
   /**

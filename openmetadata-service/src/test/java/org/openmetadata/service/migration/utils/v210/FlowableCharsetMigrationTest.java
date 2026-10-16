@@ -59,7 +59,11 @@ class FlowableCharsetMigrationTest {
 
     final List<String> statements = MigrationFile.parseSQLFile(schemaChanges.toFile(), MYSQL);
 
-    assertTrue(statements.getLast().endsWith(ALTER_CURRENT_DATABASE), statements.getLast());
+    assertEquals(
+        1,
+        statements.stream()
+            .filter(statement -> statement.endsWith(ALTER_CURRENT_DATABASE))
+            .count());
   }
 
   @Test

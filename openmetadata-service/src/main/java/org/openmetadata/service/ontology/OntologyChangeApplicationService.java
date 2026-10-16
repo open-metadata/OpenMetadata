@@ -39,7 +39,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
-import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -67,10 +66,8 @@ public final class OntologyChangeApplicationService {
   public OntologyChangeApplicationService(
       final OntologyChangeSetRepository changeSetRepository,
       final GlossaryTermRepository termRepository,
-      final OntologyAxiomRepository axiomRepository,
       final Clock clock) {
-    this(
-        changeSetRepository, productionDependencies(termRepository, axiomRepository, clock), clock);
+    this(changeSetRepository, productionDependencies(termRepository, clock), clock);
   }
 
   OntologyChangeApplicationService(
@@ -300,15 +297,12 @@ public final class OntologyChangeApplicationService {
   }
 
   private static Dependencies productionDependencies(
-      final GlossaryTermRepository termRepository,
-      final OntologyAxiomRepository axiomRepository,
-      final Clock clock) {
+      final GlossaryTermRepository termRepository, final Clock clock) {
     return new Dependencies(
         productionPreflight(),
         new OntologyChangeOperationExecutor(
             (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY),
             termRepository,
-            axiomRepository,
             clock),
         new OntologyChangeEventPublisher(),
         work -> termRepository.executeInTransaction(work),
