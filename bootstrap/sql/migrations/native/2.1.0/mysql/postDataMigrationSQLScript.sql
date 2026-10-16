@@ -643,6 +643,14 @@ WHERE name = 'tableDiff'
   AND JSON_TYPE(JSON_EXTRACT(json, '$.parameterDefinition')) = 'ARRAY'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'parallelQueries'), '$.parameterDefinition');
 
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(json, '$.sourceConfig.config.sampleDataCount', 1000)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.sourceConfig.config.type')) = 'AutoClassification'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount')) = 'INTEGER'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount') > 1000;
+
 -- Say how to choose tableCustomSQLQuery.strategy and what columnValuesToBeInSet.matchEnum changes,
 -- so users and test generation read it from the definition. Seed data only creates missing definitions.
 UPDATE test_definition
