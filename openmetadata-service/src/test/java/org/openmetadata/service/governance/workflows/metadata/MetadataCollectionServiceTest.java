@@ -93,4 +93,28 @@ class MetadataCollectionServiceTest {
               throw new AssertionError("the admins are not looked up while someone can be asked");
             }));
   }
+
+  @Test
+  void aRefreshedTaskKeepsItsAssigneesWhileTheAskedGroupIsEmpty() {
+    final EntityReference admin = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    final EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    final EntityReference steward =
+        new EntityReference().withId(UUID.randomUUID()).withType("user");
+
+    assertEquals(
+        List.of(steward),
+        MetadataCollectionService.refreshedAssignees(
+            List.of(),
+            List.of(steward),
+            () -> {
+              throw new AssertionError("the admins are not asked while the task has someone");
+            }));
+    assertEquals(
+        List.of(admin),
+        MetadataCollectionService.refreshedAssignees(List.of(), null, () -> List.of(admin)));
+    assertEquals(
+        List.of(owner),
+        MetadataCollectionService.refreshedAssignees(
+            List.of(owner), List.of(steward), () -> List.of(admin)));
+  }
 }

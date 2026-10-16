@@ -272,22 +272,21 @@ public final class MetadataCollectionService {
       final Outstanding outstanding) {
     final Task task =
         isOpen(existing) ? existing : repository.reopenTask(existing, actor.getName());
-    final List<EntityReference> assignees = assignees(entity, configuration);
+    final List<EntityReference> assignees =
+        refreshedAssignees(
+            askedGroup(entity, configuration), task.getAssignees(), UserUtil::getAdmins);
     final MetadataCompletionPayload payload = payload(configuration, workflow, node, outstanding);
     final boolean changed =
         !Objects.equals(
                 JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class), payload)
             || !Objects.equals(task.getAvailableTransitions(), TRANSITIONS)
-            || (!assignees.isEmpty() && !sameAssignees(task.getAssignees(), assignees));
+            || !sameAssignees(task.getAssignees(), assignees);
     if (changed) {
       final JsonPatch patch =
           Json.createPatchBuilder()
               .add("/payload", JsonUtils.getJsonStructure(payload))
               .add("/availableTransitions", JsonUtils.getJsonStructure(TRANSITIONS))
-              .add(
-                  "/assignees",
-                  JsonUtils.getJsonStructure(
-                      assignees.isEmpty() ? listOrEmpty(task.getAssignees()) : assignees))
+              .add("/assignees", JsonUtils.getJsonStructure(assignees))
               .build();
       final PatchResponse<Task> response =
           repository.patch(null, task.getId(), GOVERNANCE_BOT, patch, ChangeSource.AUTOMATED, null);
@@ -319,13 +318,30 @@ public final class MetadataCollectionService {
 
   private static List<EntityReference> assignees(
       final EntityInterface<?> entity, final MetadataCollectionConfiguration configuration) {
+    return orAdmins(askedGroup(entity, configuration), UserUtil::getAdmins);
+  }
+
+  /** The people the stage asks, which may be nobody yet. */
+  private static List<EntityReference> askedGroup(
+      final EntityInterface<?> entity, final MetadataCollectionConfiguration configuration) {
     final List<EntityReference> references =
         switch (configuration.getTaskAssignees()) {
           case OWNERS -> entity.getOwners();
           case REVIEWERS -> entity.getReviewers();
           case CANDIDATES -> configuration.getCandidates();
         };
-    return orAdmins(listOrEmpty(references), UserUtil::getAdmins);
+    return listOrEmpty(references);
+  }
+
+  /**
+   * Whom a refreshed task asks: the asked group once it has someone; while it is empty, whoever
+   * the task already has, so a reassignment survives, and the admins only when it has nobody.
+   */
+  static List<EntityReference> refreshedAssignees(
+      final List<EntityReference> asked,
+      final List<EntityReference> current,
+      final Supplier<List<EntityReference>> admins) {
+    return asked.isEmpty() ? orAdmins(listOrEmpty(current), admins) : List.copyOf(asked);
   }
 
   /**
