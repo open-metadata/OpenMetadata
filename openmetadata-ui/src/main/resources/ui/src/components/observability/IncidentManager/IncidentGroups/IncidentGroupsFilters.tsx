@@ -107,7 +107,9 @@ const FilterField = ({
   return (
     <Box
       aria-labelledby={captionId}
-      className="tw:min-w-32 tw:flex-auto"
+      // Capped, so a filter wrapped onto a line of its own does not stretch
+      // across it, and a long picked value truncates.
+      className="tw:max-w-60 tw:min-w-32 tw:flex-auto"
       direction="col"
       role="group">
       <span className="tw:sr-only" id={captionId}>
