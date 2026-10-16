@@ -12,6 +12,7 @@
  */
 import { initCoreI18n } from '@openmetadata/ui-core-components';
 import { afterAll, afterEach, beforeAll, expect } from 'vitest';
+import { cleanup } from 'vitest-browser-react';
 import '../../styles/globalStyles';
 import i18next from '../../utils/i18next/LocalUtil';
 import { worker } from './msw';
@@ -35,7 +36,10 @@ beforeAll(async () => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // vitest-browser-react only unmounts in the next test's beforeEach. Unmount
+  // first so the page can't refetch against reset handlers or the reset URL.
+  await cleanup();
   // Every API call a page makes must be mocked on purpose, so a test can never
   // pass because a request silently failed.
   const unhandled = [...new Set(unhandledApiCalls.splice(0))];

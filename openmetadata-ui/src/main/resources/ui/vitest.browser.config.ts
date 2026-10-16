@@ -101,6 +101,8 @@ export default defineConfig(async (env) => {
         },
         coverage: {
           provider: 'istanbul',
+          // One flaky test must not drop the whole lcov from Sonar.
+          reportOnFailure: true,
           // Report only files the browser actually loaded. Sonar unions this
           // lcov with Jest's line by line (sonar-project.properties), so the
           // gate sees Jest + UI-integration coverage together.
