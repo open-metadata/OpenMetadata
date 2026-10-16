@@ -40,6 +40,7 @@ now, as is the DataContracts entry that was tagged separately on 2026-09-11
 | `e2e/Features/KnowledgeGraph.spec.ts` | re-fits each level around the subject and keeps the viewport when filtering | 2026-09-28 | Not yet diagnosed. Tagged without an entry when #34094 ported the spec from #33088; no failure evidence was recorded. |
 | `e2e/Features/KnowledgeGraph.spec.ts` | label modes and family highlights preserve all real canvas relationships | 2026-09-28 | Not yet diagnosed. Tagged in the same #34094 port, also without recorded evidence. |
 | `e2e/Features/AIMode/PersonaSettings.spec.ts` | all three describes (personal-space modal, management actions, customize saves) | 2026-10-14 | Re-quarantined. First tagged 2026-10-12 (#35244), released by #35234, and still failing afterwards: `Data Assets → Table: a new tab is saved` keeps ejecting PRs from the merge queue. Not yet diagnosed. The spec landed with #34916 (persona settings moved into the AI-mode profile modal). |
+| `e2e/Features/BulkEditEntity.spec.ts` | the whole describe (6 tests): Database service; Database; Database Schema; Table; Glossary; Glossary Term (Nested) | 2026-10-16 | Not yet diagnosed. `Table` was tagged alone in #34296 and released by #34238; the spec is still flaky, so the whole describe is quarantined. |
 
 ### Triage, 2026-09-09
 

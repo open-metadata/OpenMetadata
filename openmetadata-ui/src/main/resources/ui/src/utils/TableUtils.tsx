@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
@@ -156,6 +155,8 @@ export const getConstraintIcon = ({
   const icon = isConstraintDeleted ? config.deletedIcon : config.icon;
   const dataTestId = config.dataTestId;
 
+  const ConstraintIcon = icon;
+
   return (
     <Tooltip
       arrow
@@ -163,15 +164,16 @@ export const getConstraintIcon = ({
       placement="bottom"
       title={title}
       triggerClassName={classNames('tw:inline-flex', className)}>
-      <Icon
-        alt={title}
-        className={classNames({
+      <ConstraintIcon
+        aria-label={title}
+        className={classNames('tw:shrink-0', {
           'diff-added': isConstraintAdded,
           'diff-removed': isConstraintDeleted,
         })}
-        component={icon}
         data-testid={`constraint-icon-${dataTestId}`}
-        style={{ fontSize: width }}
+        height={width}
+        role="img"
+        width={width}
       />
     </Tooltip>
   );
@@ -236,9 +238,23 @@ export const getColumnDataTypeIcon = ({
     [DataType.XML]: IconXML,
   };
 
-  const icon = dataTypeIcons[dataType as keyof typeof dataTypeIcons] || null;
+  const DataTypeIcon = dataTypeIcons[dataType as keyof typeof dataTypeIcons];
 
-  return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
+  // antd's <Icon component={null}> rendered nothing; rendering the component
+  // directly means an unknown dataType has to be guarded here instead.
+  if (!DataTypeIcon) {
+    return null;
+  }
+
+  return (
+    <DataTypeIcon
+      aria-label={dataType}
+      className="tw:shrink-0"
+      height={width}
+      role="img"
+      width={width}
+    />
+  );
 };
 
 export function getTableExpandableConfig<T>(
@@ -247,18 +263,21 @@ export function getTableExpandableConfig<T>(
   DragIcon: FC<{ className?: string }> = IconDrag
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
-    expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      expandable ? (
+    expandIcon: ({ expanded, onExpand, expandable, record }) => {
+      const ExpandIcon = expanded ? IconDown : IconRight;
+
+      return expandable ? (
         <>
           {isDraggable && <DragIcon className="drag-icon" />}
-          <Icon
+          <ExpandIcon
             className={classNames(
-              'table-expand-icon vertical-baseline',
+              'table-expand-icon vertical-baseline tw:size-3 tw:shrink-0',
               expandIconClass
             )}
-            component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            onClick={(e) => onExpand(record, e)}
+            onClick={(e: React.MouseEvent<SVGSVGElement>) =>
+              onExpand(record, e as unknown as React.MouseEvent<HTMLElement>)
+            }
           />
         </>
       ) : (
@@ -268,7 +287,8 @@ export function getTableExpandableConfig<T>(
             <span className="expand-cell-empty-icon-container" />
           </>
         )
-      ),
+      );
+    },
   };
 
   return expandableConfig;

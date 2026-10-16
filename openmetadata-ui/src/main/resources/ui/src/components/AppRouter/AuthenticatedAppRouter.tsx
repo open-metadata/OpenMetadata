@@ -28,11 +28,6 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
-const AddCustomMetricPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
-  )
-);
 
 const CustomizablePage = withPageSuspenseFallback(
   React.lazy(() =>
@@ -503,23 +498,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE} />
 
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
-              Operation.EditDataProfile,
-              ResourceEntity.TABLE,
-              permissions
-            )}>
-            <AddCustomMetricPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.custom-metric'),
-              })}
-            />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.ADD_CUSTOM_METRIC}
-      />
       <Route
         element={
           <AdminProtectedRoute

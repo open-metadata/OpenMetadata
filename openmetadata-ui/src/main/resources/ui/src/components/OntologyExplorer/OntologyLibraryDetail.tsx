@@ -14,9 +14,11 @@
 import {
   Alert,
   Badge,
+  Box,
   Button,
   Card,
   Checkbox,
+  Grid,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -29,8 +31,96 @@ import { useTranslation } from 'react-i18next';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
 import { selectedModuleTotals } from './OntologyLibrary.utils';
+import { OntologyPackIcon } from './OntologyLibraryCatalogue';
 
 export type OntologyLibraryAction = 'dry-run' | 'install';
+
+const MAIN_COLUMN_SPAN = 14;
+const SIDE_COLUMN_SPAN = 10;
+const GRAPH_RADIUS_PERCENT = 36;
+
+const getModuleNodePosition = (index: number, total: number) => {
+  const angle = (2 * Math.PI * index) / total - Math.PI / 2;
+
+  return {
+    x: 50 + GRAPH_RADIUS_PERCENT * Math.cos(angle),
+    y: 50 + GRAPH_RADIUS_PERCENT * Math.sin(angle),
+  };
+};
+
+interface OntologyPackGraphPreviewProps {
+  pack: OntologyPackManifest;
+  selectedModuleIds: string[];
+}
+
+const OntologyPackGraphPreview = ({
+  pack,
+  selectedModuleIds,
+}: OntologyPackGraphPreviewProps) => {
+  const { t } = useTranslation();
+  const nodes = pack.modules.map((module, index) => ({
+    module,
+    isSelected: selectedModuleIds.includes(module.id),
+    ...getModuleNodePosition(index, pack.modules.length),
+  }));
+
+  return (
+    <Card
+      aria-label={t('message.ontology-pack-graph-preview', { pack: pack.name })}
+      className="tw:relative tw:h-80"
+      data-testid="ontology-pack-graph-preview"
+      role="img"
+      variant="muted">
+      <svg
+        aria-hidden="true"
+        className="tw:absolute tw:inset-0 tw:size-full"
+        preserveAspectRatio="none"
+        viewBox="0 0 100 100">
+        {nodes.map(({ module, isSelected, x, y }) => (
+          <line
+            className={
+              isSelected
+                ? 'tw:text-utility-brand-300'
+                : 'tw:text-utility-gray-300'
+            }
+            key={module.id}
+            stroke="currentColor"
+            vectorEffect="non-scaling-stroke"
+            x1={50}
+            x2={x}
+            y1={50}
+            y2={y}
+          />
+        ))}
+      </svg>
+      <Box
+        align="center"
+        className="tw:absolute tw:top-1/2 tw:left-1/2 tw:size-24 tw:-translate-1/2 tw:rounded-full tw:border-4 tw:border-utility-brand-200 tw:bg-brand-solid"
+        justify="center">
+        <Typography
+          className="tw:text-primary_on-brand"
+          size="text-md"
+          weight="semibold">
+          {pack.abbreviation}
+        </Typography>
+      </Box>
+      {nodes.map(({ module, isSelected, x, y }) => (
+        // Backed by the card surface so the translucent dark-mode tint hides the edge.
+        <Box
+          className="tw:absolute tw:-translate-1/2 tw:rounded-full tw:bg-primary_alt"
+          key={module.id}
+          style={{ left: `${x}%`, top: `${y}%` }}>
+          <Badge
+            color={isSelected ? 'brand' : 'gray'}
+            size="md"
+            type="pill-color">
+            {module.name}
+          </Badge>
+        </Box>
+      ))}
+    </Card>
+  );
+};
 
 interface OntologyLibraryDetailProps {
   activeAction?: OntologyLibraryAction;
@@ -80,7 +170,7 @@ const OntologyLibraryInstallPanel = ({
 
   if (pack.bundled && canInstall) {
     return (
-      <Card size="lg">
+      <Card size="md">
         <Card.Header
           subtitle={t('message.ontology-pack-install-description')}
           title={t('label.install-to-new-glossary')}
@@ -123,7 +213,7 @@ const OntologyLibraryInstallPanel = ({
             </Alert>
           ) : null}
 
-          <div className="tw:flex tw:justify-end tw:gap-3">
+          <Box gap={3} justify="end">
             <Button
               color="secondary"
               data-testid="ontology-pack-dry-run"
@@ -142,7 +232,7 @@ const OntologyLibraryInstallPanel = ({
               onPress={onInstall}>
               {t('label.install')}
             </Button>
-          </div>
+          </Box>
         </Card.Content>
       </Card>
     );
@@ -192,23 +282,24 @@ const OntologyLibraryDetail = ({
 }: OntologyLibraryDetailProps) => {
   const { t } = useTranslation();
   const totals = selectedModuleTotals(pack, selectedModuleIds);
+  const moduleNames = new Map(
+    pack.modules.map((module) => [module.id, module.name])
+  );
   const canPreview =
     pack.bundled &&
     selectedModuleIds.length > 0 &&
     targetGlossaryName.trim().length > 0;
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-6"
-      data-testid="ontology-pack-detail">
-      <div className="tw:flex tw:items-center tw:justify-between tw:gap-4">
+    <Box data-testid="ontology-pack-detail" direction="col" gap={5}>
+      <Box align="center" gap={4} justify="between">
         <Button
-          color="tertiary"
+          color="link-gray"
           data-testid="ontology-library-back"
           iconLeading={ArrowLeft}
           size="sm"
           onPress={onBack}>
-          {t('label.back')}
+          {t('label.back-to-library')}
         </Button>
         {installedResult || installedVersion ? (
           <Badge color="success" size="sm" type="pill-color">
@@ -216,173 +307,178 @@ const OntologyLibraryDetail = ({
             {installedResult?.version ?? installedVersion}
           </Badge>
         ) : null}
-      </div>
+      </Box>
 
-      <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.75fr)]">
-        <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-6">
-          <Card size="lg">
-            <Card.Content className="tw:flex tw:flex-col tw:gap-4">
-              <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-3">
-                <Badge color="brand" size="lg" type="color">
-                  {pack.abbreviation}
-                </Badge>
-                <Badge color="gray" size="sm" type="pill-color">
-                  {pack.standard}
-                </Badge>
-              </div>
-              <div className="tw:flex tw:flex-col tw:gap-1">
-                <Typography as="h2" size="display-xs" weight="semibold">
-                  {pack.name}
-                </Typography>
-                <Typography as="p" className="tw:text-tertiary" size="text-sm">
-                  {pack.description}
-                </Typography>
-              </div>
-              <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-4">
-                <Button
-                  color="link-color"
-                  href={pack.sourceUrl}
-                  iconTrailing={ArrowUpRight}
-                  rel="noreferrer"
-                  size="sm"
-                  target="_blank">
-                  {t('label.source')}
-                </Button>
-                <Button
-                  color="link-color"
-                  href={pack.licenseUrl}
-                  iconTrailing={ArrowUpRight}
-                  rel="noreferrer"
-                  size="sm"
-                  target="_blank">
-                  {t('label.license')}: {pack.license}
-                </Button>
-                <Typography
-                  as="span"
-                  className="tw:text-tertiary"
-                  size="text-xs">
-                  {t('label.version')} {pack.version}
-                </Typography>
-              </div>
-            </Card.Content>
-          </Card>
+      <Grid gap="5">
+        <Grid.Item span={MAIN_COLUMN_SPAN}>
+          <Box direction="col" gap={5}>
+            <Card size="md">
+              <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+                <Box gap={2} wrap="wrap">
+                  <Badge color="gray" size="sm" type="pill-color">
+                    {pack.abbreviation}
+                  </Badge>
+                  <Badge color="gray" size="sm" type="pill-color">
+                    {pack.standard}
+                  </Badge>
+                </Box>
+                <Box gap={3}>
+                  <OntologyPackIcon pack={pack} />
+                  <Box className="tw:min-w-0" direction="col" gap={1}>
+                    <Typography
+                      aria-level={3}
+                      className="tw:text-primary"
+                      role="heading"
+                      size="text-lg"
+                      weight="semibold">
+                      {pack.name}
+                    </Typography>
+                    <Typography className="tw:text-tertiary" size="text-sm">
+                      {pack.description}
+                    </Typography>
+                  </Box>
+                </Box>
+                <Box align="center" gap={4} wrap="wrap">
+                  <Button
+                    color="link-color"
+                    href={pack.sourceUrl}
+                    iconTrailing={ArrowUpRight}
+                    rel="noreferrer"
+                    size="sm"
+                    target="_blank">
+                    {t('label.source')}
+                  </Button>
+                  <Button
+                    color="link-color"
+                    href={pack.licenseUrl}
+                    iconTrailing={ArrowUpRight}
+                    rel="noreferrer"
+                    size="sm"
+                    target="_blank">
+                    {t('label.license')}: {pack.license}
+                  </Button>
+                  <Typography className="tw:text-tertiary" size="text-sm">
+                    {t('label.version')} {pack.version}
+                  </Typography>
+                </Box>
+              </Card.Content>
+            </Card>
 
-          <Card size="lg">
-            <Card.Header
-              subtitle={t('message.ontology-pack-preview-description')}
-              title={t('label.graph-preview')}
-            />
-            <Card.Content>
-              <div
-                aria-label={t('message.ontology-pack-graph-preview', {
-                  pack: pack.name,
-                })}
-                className="tw:flex tw:min-h-56 tw:flex-col tw:items-center tw:justify-center tw:gap-6 tw:rounded-xl tw:bg-secondary tw:p-6"
-                data-testid="ontology-pack-graph-preview"
-                role="img">
-                <div className="tw:grid tw:size-20 tw:place-items-center tw:rounded-full tw:bg-brand-solid tw:text-center tw:text-sm tw:font-semibold tw:text-white tw:shadow-lg">
-                  {pack.abbreviation}
-                </div>
-                <div className="tw:flex tw:flex-wrap tw:justify-center tw:gap-3">
-                  {pack.modules.map((module) => (
-                    <span
-                      className={
-                        selectedModuleIds.includes(module.id)
-                          ? 'tw:rounded-full tw:bg-brand-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-brand-secondary'
-                          : 'tw:rounded-full tw:bg-primary tw:px-3 tw:py-1.5 tw:text-xs tw:font-medium tw:text-disabled tw:outline-1 tw:-outline-offset-1 tw:outline-disabled'
-                      }
-                      key={module.id}>
-                      {module.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </Card.Content>
-          </Card>
-        </div>
-
-        <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-6">
-          <Card size="lg">
-            <Card.Header
-              extra={
-                <Badge color="brand" size="sm" type="pill-color">
-                  {selectedModuleIds.length} {t('label.selected-lowercase')}
-                </Badge>
-              }
-              subtitle={t('message.ontology-pack-module-description')}
-              title={t('label.module-plural')}
-            />
-            <Card.Content className="tw:flex tw:flex-col tw:gap-4">
-              {pack.modules.map((module) => (
-                <Checkbox
-                  data-testid={`ontology-module-${module.id}`}
-                  hint={
-                    module.dependencies.length > 0
-                      ? t('message.ontology-pack-module-dependencies', {
-                          modules: module.dependencies.join(', '),
-                        })
-                      : module.description
-                  }
-                  isDisabled={!canInstall || !pack.bundled}
-                  isSelected={selectedModuleIds.includes(module.id)}
-                  key={module.id}
-                  label={module.name}
-                  onChange={(isSelected) =>
-                    onModuleChange(module.id, isSelected)
-                  }
+            <Card size="md">
+              <Card.Header
+                subtitle={t('message.ontology-pack-preview-description')}
+                title={t('label.graph-preview')}
+              />
+              <Card.Content>
+                <OntologyPackGraphPreview
+                  pack={pack}
+                  selectedModuleIds={selectedModuleIds}
                 />
-              ))}
-              <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:border-t tw:border-secondary tw:pt-4">
-                <div className="tw:rounded-lg tw:bg-secondary tw:p-3">
-                  <Typography
-                    as="p"
-                    className="tw:text-tertiary"
-                    size="text-xs">
-                    {t('label.concept-plural')}
-                  </Typography>
-                  <Typography
-                    as="p"
-                    data-testid="ontology-pack-concept-count"
-                    size="text-lg"
-                    weight="semibold">
-                    {totals.concepts}
-                  </Typography>
-                </div>
-                <div className="tw:rounded-lg tw:bg-secondary tw:p-3">
-                  <Typography
-                    as="p"
-                    className="tw:text-tertiary"
-                    size="text-xs">
-                    {t('label.relation-plural')}
-                  </Typography>
-                  <Typography
-                    as="p"
-                    data-testid="ontology-pack-relationship-count"
-                    size="text-lg"
-                    weight="semibold">
-                    {totals.relationships}
-                  </Typography>
-                </div>
-              </div>
-            </Card.Content>
-          </Card>
+              </Card.Content>
+            </Card>
+          </Box>
+        </Grid.Item>
 
-          <OntologyLibraryInstallPanel
-            activeAction={activeAction}
-            canInstall={canInstall}
-            canPreview={canPreview}
-            installedResult={installedResult}
-            pack={pack}
-            previewResult={previewResult}
-            targetGlossaryName={targetGlossaryName}
-            onInstall={onInstall}
-            onOpenGlossary={onOpenGlossary}
-            onPreview={onPreview}
-            onTargetGlossaryChange={onTargetGlossaryChange}
-          />
-        </div>
-      </div>
-    </div>
+        <Grid.Item span={SIDE_COLUMN_SPAN}>
+          <Box direction="col" gap={5}>
+            <Card size="md">
+              <Card.Header
+                extra={
+                  <Badge color="brand" size="sm" type="pill-color">
+                    {selectedModuleIds.length} {t('label.selected-lowercase')}
+                  </Badge>
+                }
+                subtitle={t('message.ontology-pack-module-description')}
+                title={t('label.module-plural')}
+              />
+              <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+                <Box
+                  className="tw:divide-y tw:divide-secondary"
+                  direction="col">
+                  {pack.modules.map((module) => (
+                    <Checkbox
+                      className="tw:py-3"
+                      data-testid={`ontology-module-${module.id}`}
+                      hint={
+                        <>
+                          {module.description}
+                          {module.dependencies.length > 0 ? (
+                            <Typography
+                              className="tw:block tw:text-quaternary"
+                              size="text-sm">
+                              {t('message.ontology-pack-module-dependencies', {
+                                modules: module.dependencies
+                                  .map((id) => moduleNames.get(id) ?? id)
+                                  .join(', '),
+                              })}
+                            </Typography>
+                          ) : null}
+                        </>
+                      }
+                      isDisabled={!canInstall || !pack.bundled}
+                      isSelected={selectedModuleIds.includes(module.id)}
+                      key={module.id}
+                      label={module.name}
+                      onChange={(isSelected) =>
+                        onModuleChange(module.id, isSelected)
+                      }
+                    />
+                  ))}
+                </Box>
+                <Grid gap="3">
+                  <Grid.Item span={12}>
+                    <Card size="sm" variant="muted">
+                      <Card.Content className="tw:py-3">
+                        <Typography className="tw:text-tertiary" size="text-xs">
+                          {t('label.concept-plural')}
+                        </Typography>
+                        <Typography
+                          className="tw:block"
+                          data-testid="ontology-pack-concept-count"
+                          size="text-lg"
+                          weight="semibold">
+                          {totals.concepts}
+                        </Typography>
+                      </Card.Content>
+                    </Card>
+                  </Grid.Item>
+                  <Grid.Item span={12}>
+                    <Card size="sm" variant="muted">
+                      <Card.Content className="tw:py-3">
+                        <Typography className="tw:text-tertiary" size="text-xs">
+                          {t('label.relation-plural')}
+                        </Typography>
+                        <Typography
+                          className="tw:block"
+                          data-testid="ontology-pack-relationship-count"
+                          size="text-lg"
+                          weight="semibold">
+                          {totals.relationships}
+                        </Typography>
+                      </Card.Content>
+                    </Card>
+                  </Grid.Item>
+                </Grid>
+              </Card.Content>
+            </Card>
+
+            <OntologyLibraryInstallPanel
+              activeAction={activeAction}
+              canInstall={canInstall}
+              canPreview={canPreview}
+              installedResult={installedResult}
+              pack={pack}
+              previewResult={previewResult}
+              targetGlossaryName={targetGlossaryName}
+              onInstall={onInstall}
+              onOpenGlossary={onOpenGlossary}
+              onPreview={onPreview}
+              onTargetGlossaryChange={onTargetGlossaryChange}
+            />
+          </Box>
+        </Grid.Item>
+      </Grid>
+    </Box>
   );
 };
 
