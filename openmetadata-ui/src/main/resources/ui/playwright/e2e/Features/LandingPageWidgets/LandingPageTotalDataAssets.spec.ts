@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page, Request, Response } from '@playwright/test';
+import { DataAssetType } from '../../../../src/generated/dataInsight/custom/dataAssetType';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { expect, test } from '../../../support/fixtures/landingPageUser';
 import { okJson } from '../../../utils/apiResponse';
@@ -101,6 +102,26 @@ const newestDayByType = (rows: ChartRow[]) => {
  * runs it — so the card then falls back to a live count by entity type. The
  * expectation is read off whichever answer the card actually used.
  */
+/**
+ * The types the card's live fallback counts — the same population as the
+ * `total_data_assets` chart: the Data Insights asset types, less the `tag` and
+ * `glossaryTerm` groups the chart excludes and the data-quality types Data
+ * Insights reads from their live index. Mirrors `CHART_ASSET_TYPES` in
+ * `useTotalDataAssets.ts`; the seeded tags and glossary terms would otherwise
+ * inflate the expectation past what the card shows.
+ */
+const CHART_ASSET_TYPES: ReadonlySet<string> = new Set(
+  Object.values(DataAssetType).filter(
+    (type) =>
+      ![
+        DataAssetType.Tag,
+        DataAssetType.GlossaryTerm,
+        DataAssetType.TestCaseResult,
+        DataAssetType.TestCaseResolutionStatus,
+      ].includes(type)
+  )
+);
+
 const readExpectedTotals = async (
   chartsResponse: Response,
   liveResponse: Promise<Response>
@@ -125,6 +146,7 @@ const readExpectedTotals = async (
     .filter(([name]) => name.endsWith('entityType'))
     .map(([, value]) => value.buckets ?? []);
   const counts = (buckets ?? [])
+    .filter((bucket) => CHART_ASSET_TYPES.has(bucket.key))
     .map((bucket) => bucket.doc_count)
     .filter((count) => count > 0);
 
