@@ -13,6 +13,7 @@
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import {
   getAvailableTabs,
+  getChildTeamColumns,
   getTabLabel,
   updateTeamsHierarchy,
   withTeamChildrenPlaceholder,
@@ -85,5 +86,29 @@ describe('getTabLabel', () => {
     expect(getTabLabel('roles', t, { defaultRoles: [{}] } as Team, 0, 0)).toBe(
       'label.role-plural (1)'
     );
+  });
+});
+
+describe('getChildTeamColumns', () => {
+  const t = (key: string) => key;
+
+  const renderAssetCount = (
+    record: Team,
+    teamAssetCounts: Record<string, number>
+  ) => {
+    const column = getChildTeamColumns(t, jest.fn(), teamAssetCounts).find(
+      (col) => col.key === 'assets'
+    ) as { render: (value: unknown, record: Team, index: number) => unknown };
+
+    // Antd hands render the dataIndex value first, then the row.
+    return column.render(record.fullyQualifiedName, record, 0);
+  };
+
+  it('shows a sub-team asset count from the team asset counts', () => {
+    expect(renderAssetCount(team('org.eng'), { 'org.eng': 7 })).toBe(7);
+  });
+
+  it('shows zero for a sub-team missing from the team asset counts', () => {
+    expect(renderAssetCount(team('org.eng'), {})).toBe(0);
   });
 });

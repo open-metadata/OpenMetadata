@@ -514,18 +514,7 @@ public class TeamRepository extends EntityRepository<Team> {
                 .relationshipDAO()
                 .findToBatch(teamIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
-    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
-      }
-    }
+    Map<UUID, List<EntityReference>> teamToOwns = resolveTargetsBySource(ownsRecords, Include.ALL);
 
     for (Team team : teams) {
       List<EntityReference> ownsRefs = teamToOwns.get(team.getId());

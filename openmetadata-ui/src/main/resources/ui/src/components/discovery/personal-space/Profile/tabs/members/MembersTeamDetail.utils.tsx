@@ -39,7 +39,6 @@ export const TEAM_FIELDS = [
   TabSpecificField.PARENTS,
   TabSpecificField.CHILDREN_COUNT,
   TabSpecificField.USER_COUNT,
-  TabSpecificField.OWNS,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
   // Resolved recursively on read (excludes the team itself); needed to scope the
@@ -136,7 +135,8 @@ export const updateTeamsHierarchy = (
 
 export const getChildTeamColumns = (
   t: (key: string, options?: Record<string, unknown>) => string,
-  onNavigate: (view: MembersView) => void
+  onNavigate: (view: MembersView) => void,
+  teamAssetCounts: Record<string, number>
 ): ColumnsType<Team> => [
   {
     title: t('label.team-plural'),
@@ -182,9 +182,10 @@ export const getChildTeamColumns = (
   },
   {
     title: t('label.asset-plural'),
-    dataIndex: 'owns',
+    dataIndex: 'fullyQualifiedName',
     key: 'assets',
-    render: (_: unknown, record: Team) => record.owns?.length ?? 0,
+    render: (fullyQualifiedName: string) =>
+      teamAssetCounts[fullyQualifiedName] ?? 0,
   },
   {
     title: t('label.description'),
