@@ -11,17 +11,11 @@
  *  limitations under the License.
  */
 
-import type { BadgeColors } from '@openmetadata/ui-core-components';
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
+import { STATUS_BADGE_COLOR } from './IngestionStatusCount.constants';
 import { IngestionStatusCountProps } from './IngestionStatusCount.interface';
-
-const STATUS_BADGE_COLOR: Record<string, BadgeColors> = {
-  success: 'success',
-  failed: 'error',
-  warning: 'warning',
-};
 
 function IngestionStatusCount({
   summary,
