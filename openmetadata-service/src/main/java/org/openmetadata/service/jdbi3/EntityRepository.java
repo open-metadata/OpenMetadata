@@ -3897,13 +3897,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * DEL: evicted one entity at a time, a restored database read fresh while its schemas still served
    * their soft-deleted copies. The write epochs move before that DEL so a loader holding the
    * pre-commit row cannot write it back afterwards, and L1 is evicted after it because a reader in
-   * the window re-populated L1 from the stale Redis entry. The repair is re-armed from the commit:
-   * the one armed inside the transaction may already have fired.
+   * the window re-populated L1 from the stale Redis entry. They move again before the L1 eviction:
+   * a reader that took its epoch after the first move and fetched the stale entry before the DEL
+   * would otherwise pass its re-check after putting that entry into L1. The repair is re-armed
+   * from the commit: the one armed inside the transaction may already have fired.
    */
   private static void evictCommittedWrites(List<CacheInvalidationKey> writes) {
     writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
     evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
     for (CacheInvalidationKey write : writes) {
+      bumpWriteEpoch(write.entityType, write.id, write.fqn);
       evictLocalCopies(write.entityType, write.id, write.fqn);
       invalidateDerivedRedisL2(write.entityType, write.id);
       publishRefChange(write.entityType, write.id, write.fqn);
@@ -11832,26 +11835,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * order those copies: a same-session revert moves both back. Evictions commute, so the order in
      * which writers finish no longer matters.
      */
-    private void invalidateCachesAfterStore() {
+    @VisibleForTesting
+    void invalidateCachesAfterStore() {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
       // Bump the write-epoch BEFORE invalidating so any in-flight loader sees the new epoch
       // when it does its end-of-load check. Pair with the loader-side race guard in
       // EntityLoaderWithId / EntityLoaderWithName. Cheap (per-entity AtomicLong increment).
-      bumpWriteEpoch(entityType, id, fqn);
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        bumpWriteEpoch(entityType, null, originalFqn);
-      }
-
-      // Evict the Guava L1 so future reads reload from Redis/DB.
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
-      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
-      // getByName(oldFqn) misses and falls through to a 404 from DB.
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
-      }
+      bumpWriteEpochs(id, fqn);
 
       // Drop the Redis entries so the next read misses, goes to the DB, and loads the committed
       // row. A stale base hash field would otherwise serve old values, including old owners and
@@ -11885,6 +11877,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         cachedLineage.invalidate(id);
       }
 
+      // Evict L1 only once Redis has dropped the old JSON. Evicting it first let a concurrent
+      // read, in the gap before the Redis delete above, reload the pre-commit copy from Redis
+      // into L1, where it outlived this write until EntityCacheRepair ran. A read that fetched
+      // that copy before the delete can still put it after this eviction, and it took its epoch
+      // after the first bump, so bump again: its re-check after the put then drops the copy.
+      bumpWriteEpochs(id, fqn);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
+      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
+      // getByName(oldFqn) misses and falls through to a 404 from DB.
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
+      }
       RequestEntityCache.invalidate(entityType, id, fqn);
       deferCacheBundleInvalidation(entityType, id, fqn);
 
@@ -11896,6 +11901,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (originalFqn != null && !originalFqn.equals(fqn)) {
           pubsub.publish(entityType, id, originalFqn, "rename-old");
         }
+      }
+    }
+
+    private void bumpWriteEpochs(UUID id, String fqn) {
+      bumpWriteEpoch(entityType, id, fqn);
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        bumpWriteEpoch(entityType, null, originalFqn);
       }
     }
 
