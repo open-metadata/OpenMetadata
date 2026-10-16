@@ -13,7 +13,7 @@
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useFillAvailableHeight } from '../../../hooks/useFillAvailableHeight';
+import { usePageScrollPane } from '../../../hooks/usePageScrollPane';
 import {
   DEFAULT_INBOX_DATE_PRESET,
   getDefaultInboxDateRange,
@@ -28,6 +28,12 @@ import ActivityFeedTasks from './ActivityFeedTasks';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
 
 export type ActivityFeedView = 'activity' | 'tasks';
+
+// On an entity page, the page's tab bar: the Tabs' list, before the panel the
+// feed renders in. It pins above the feed while the page scrolls.
+const getEntityTabBar = (feed: HTMLElement) =>
+  (feed.closest('[role="tabpanel"]')?.parentElement
+    ?.firstElementChild as HTMLElement | null) ?? null;
 
 export interface ActivityFeedProps {
   /**
@@ -50,7 +56,9 @@ export interface ActivityFeedProps {
 /**
  * The Inbox's Activity and Tasks for one entity or user:
  * `<ActivityFeed entityLink="<#E::table::red.dev.dbt_jaffle.customers>" />`.
- * It fills what is left of the page below it and scrolls inside itself.
+ * Framed as a card, like the Inbox's content. It scrolls inside itself as part
+ * of the page's scroll: the page scrolls until the entity page's tab bar pins
+ * to its top, then the feed (see usePageScrollPane).
  */
 const ActivityFeed: React.FC<ActivityFeedProps> = ({
   entityLink,
@@ -63,7 +71,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
 }) => {
   const { t } = useTranslation();
   const rootRef = useRef<HTMLDivElement>(null);
-  useFillAvailableHeight(rootRef);
+  usePageScrollPane(rootRef, getEntityTabBar);
   const [ownView, setOwnView] = useState<ActivityFeedView>(defaultView);
   const view = controlledView ?? ownView;
   const handleViewChange = useCallback(
@@ -119,7 +127,7 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   return (
     <Box
       // Its panes scroll inside it; nothing spills out to grow the page.
-      className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden tw:px-3"
+      className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:px-3"
       data-testid="activity-feed"
       direction="col"
       ref={rootRef}>
