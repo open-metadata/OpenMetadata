@@ -65,13 +65,18 @@ new component styles use the colour bridge vars or non-colour `var(--om-*)` toke
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
 | `yarn tw-guard` | Fails on NEW `antd` imports / NEW `assets/svg/` raw-SVG files or imports / NEW `.less` files (deprecation). |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
-| `yarn token-audit:report` | Full grouped inventory of every value + its suggested token. |
-| `yarn token-migrate` | Codemod raw values → `var(--om-*)` tokens (safe, idempotent). |
+| `yarn token-audit:report` | Full grouped inventory + legacy token suggestions; convert colour suggestions to semantic `--tw-*` bridge vars. |
+| `yarn token-migrate` | Legacy codemod to `var(--om-*)`; replace colour aliases with semantic `--tw-*` bridge vars before accepting the edits. |
 | `yarn token-gen` | Regenerate the generated block of `tokens.css` + token-reference. |
 | `yarn token-test` | Unit tests for the scanner/codemod engine. |
 
-Errors (fail CI): **hardcoded colors, hardcoded spacing**.
-Warnings: uncommon values (fractional off-grid sizes, exotic durations).
+The legacy tools choose tokens by literal value, so their colour output can still use the
+prohibited `--om-color-*` aliases. Choose the semantic bridge role for the property being styled;
+matching a hex value alone does not identify the role. Non-colour suggestions can use `--om-*`.
+The colour ownership decision is ADR:2026-10-16-less-colours-read-tailwind-bridge-vars.
+
+Errors (fail CI): **hardcoded colors, resolvable hardcoded spacing**.
+Warnings: raw radius, font size/weight, z-index and duration, plus unresolved spacing.
 
 Dark-theme warnings do not fail CI while AI-mode migration is in progress. Resolve them with a
 shared semantic token or document them using the fixed-color and dark-override review template in

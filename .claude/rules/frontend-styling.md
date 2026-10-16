@@ -8,7 +8,7 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx,less,css}"
 Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Token source of truth: core
 `globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the `--om-*` tokens.
 
-## Tailwind & tokens
+## Tailwind & tokens (ADR:2026-10-16-less-colours-read-tailwind-bridge-vars)
 
 - **All Tailwind utility classes use the `tw:` prefix** (`tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to
   avoid collisions with existing Ant Design/Less styles.
@@ -28,10 +28,10 @@ Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.m
   in `@theme static`, so they are invalid, and transparent, in light.
   Never raw hex, `rgb()`, `@white`/`@black`, legacy palette vars (`--om-grey-*`) that never flip, or
   `--tw-color-bg-*`/`--tw-color-text-*`, which `.dark-mode` does not remap.
-- **Non-colour values keep the `--om-*` tokens**: `var(--om-space-*)`, `var(--om-z-*)`, radius, shadow,
-  font and motion tokens. `yarn token-audit` rejects raw px spacing, radius, z-index and durations. If a
-  non-colour value has no token, add it to `tokens.css`; a missing colour role belongs in `globals.css`.
-  Existing `variables.less` `@variable`s stay for antd theming; new component styles use tokens.
+- **Non-colour values keep `--om-*` tokens**: spacing, z-index, radius, shadow, font and motion.
+  `yarn token-audit` fails on colours and resolvable raw spacing; radius, font, z-index and duration
+  produce warnings that still need review. Add missing non-colour values to `tokens.css`, colour roles
+  to `globals.css`. Existing `variables.less` `@variable`s stay for antd theming only.
 
 ## Core components keep their own styling (ADR:2026-10-11-migrated-antd-components-adopt-core-styling)
 
@@ -65,8 +65,9 @@ borders; `transition-shadow` won't animate them) in [`colors.md` §2.3.1](../../
   `specs/untitled/*.md` page for the component you touch.
 - **Run the audits before committing — zero errors required** (from `openmetadata-ui/src/main/resources/ui`):
   `yarn tw-audit` (TSX: hardcoded values; `tw:dark:*` is a warning), `yarn token-audit` (LESS/CSS:
-  hardcoded colours and spacing fail CI) and `yarn tw-guard` (new antd imports, raw-SVG assets, `.less`
-  files). `yarn token-audit:report` suggests the token for a raw value.
+  colours and resolvable spacing fail CI) and `yarn tw-guard` (new antd imports, raw-SVG assets, `.less` files).
+  **Legacy tool caveat:** `token-audit:report` / `token-migrate` still suggest/write `--om-color-*`;
+  replace colour suggestions with semantic `--tw-*` bridge vars before accepting their edits.
 
 ## Dark mode — never hardcode, never use a token that doesn't flip
 
@@ -96,5 +97,4 @@ Light mode is frozen: reach dark with tokens that adapt, never by changing light
   hover/focus/active/selected/disabled states.
 - **`tw:dark:*` is a last resort** (`yarn tw-audit` warns on each): keep the light base and add the dark
   variant (`tw:bg-white tw:dark:bg-surface`), and record it with the dark-override review template in
-  `colors.md`. Prefer core components — they are already themed. Typos fail silently: `tw:bg-bg-primary`
-  is not a class, so there is no background.
+  `colors.md`. Prefer core components — they are already themed. `tw:bg-bg-primary` is not a class (no background).

@@ -56,12 +56,18 @@ Use the diff to classify the PR:
 ### Step 1b — Self-review against `REVIEW.md`
 
 Every PR is reviewed against `REVIEW.md`. Hold the branch to it first, before Step 3, so the tests
-run on the code you will ship. It is not optional, including for small diffs.
+run on the code you will ship. It is not optional, including for small diffs
+(ADR:2026-10-16-prs-self-review-against-shared-review-bar).
+
+Before each pass, commit all intended changes, including fixes from the previous pass, so the
+branch diff includes them. Pin the reviewed commit with `git rev-parse HEAD`; leave unrelated work
+outside the commit.
 
 1. **Review with fresh eyes.** If your harness can start a subagent, start one that has none of your
    session's context, and give it this prompt:
 
-   > Review the branch diff in `<absolute path of this checkout>` (`git diff origin/main...HEAD`)
+   > Review commit `<reviewed SHA>` in `<absolute path of this checkout>`
+   > (`git diff origin/main...<reviewed SHA>`)
    > against `REVIEW.md` at the repository root, as the reviewer that file describes. Follow its
    > "How to review" section. Return the test map (one line per changed source file:
    > `file → test`, or `file → none`), then the findings in its format, 🔴 first. Do not edit files.
@@ -70,7 +76,9 @@ run on the code you will ship. It is not optional, including for small diffs.
    as if someone else had written it.
 2. **Act on every 🔴 and every `→ none` on changed behavior.** Fix the code and add the test that
    fails without the fix, or write one line on why the finding does not apply. Nits are optional.
-3. **Repeat the pass after any code change**, until it returns no unanswered 🔴.
+3. **Commit fixes and repeat after any change**, until the committed diff returns no unanswered 🔴.
+   Any change to the intended files requires a new commit and pass; the final recorded SHA must
+   match the content reviewed.
 4. **Record it** for Step 6: the SHA you reviewed, what you fixed, and what you answered instead and
    why.
 

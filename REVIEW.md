@@ -1,6 +1,7 @@
 # Review instructions
 
-Two readers apply this file, and the bar is the same for both:
+Two readers apply this file, and the bar is the same for both
+(ADR:2026-10-16-prs-self-review-against-shared-review-bar):
 
 - **The reviewer** of a PR, human or automated.
 - **The agent that wrote the change**, before it opens the PR. The `pr-checklist` skill runs a
@@ -186,8 +187,11 @@ Every finding carries three parts: the **trigger** (an input or state that occur
   - Use DB-assigned UTC timestamps.
   - Use `ReentrantLock`, not `synchronized`, on code that runs on virtual threads.
 - **MySQL semantics.**
-  - Replay only whole-transaction rollbacks: MySQL 1213 and Postgres `40P01`/`40001`. Never replay a
-    1205 lock-wait timeout; the transaction is still alive.
+  - Replay a whole unit of work only after rollback, with a fresh transaction per attempt.
+    MySQL 1213 and Postgres `40P01`/`40001` roll back the whole transaction; by default, MySQL 1205
+    rolls back only the failed statement. Do not replay earlier successful work in that still-open
+    transaction. Retrying 1205 after the enclosing transaction rolls back is supported:
+    `DeadlockRetry` outside `inTransaction()`, as in `ConversationRepository.inWriteTransaction`.
   - Under REPEATABLE READ, an `UPDATE … WHERE status='PENDING'` followed by an INSERT into the same
     range deadlocks on gap locks.
   - Wrap a retry around each unit that commits on its own, or a retry re-runs work that already
