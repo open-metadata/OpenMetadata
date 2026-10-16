@@ -168,24 +168,5 @@ describe('IconUtils', () => {
 
       expect(result.placeholderIcon).toBeDefined();
     });
-
-    it('should use the core brand tint when the entity has no color', () => {
-      const result = getEntityAvatarProps({ entityType: 'domain' });
-
-      expect(result).toMatchObject({ placeholderIconColor: 'brand' });
-      expect(result).not.toHaveProperty('style');
-    });
-
-    it('should keep a user-picked entity color as a solid fill', () => {
-      const result = getEntityAvatarProps({
-        style: { color: '#ff0000' },
-        entityType: 'domain',
-      });
-
-      expect(result).toMatchObject({
-        style: { backgroundColor: '#ff0000' },
-      });
-      expect(result).not.toHaveProperty('placeholderIconColor');
-    });
   });
 });

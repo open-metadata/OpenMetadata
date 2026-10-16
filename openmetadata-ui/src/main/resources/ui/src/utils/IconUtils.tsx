@@ -180,15 +180,12 @@ export const getEntityAvatarProps = (entity: {
   const isUrl = iconURL?.startsWith('http') || iconURL?.startsWith('/');
   const iconComponent = iconURL ? ICON_MAP[iconURL] : undefined;
 
-  const customColor = entity.style?.color;
-
   return {
     src: isUrl ? iconURL : undefined,
-    // A user-picked entity color is data, so it stays a solid fill; otherwise
-    // the core tinted tile.
-    ...(customColor
-      ? { className: 'tw:text-white', style: { backgroundColor: customColor } }
-      : { placeholderIconColor: 'brand' as const }),
+    className: 'tw:text-white',
+    style: {
+      backgroundColor: entity.style?.color ?? 'var(--tw-color-brand-600)',
+    },
     placeholderIcon: (isUrl
       ? undefined
       : iconComponent ?? getDefaultIconForEntityType(entity.entityType)) as FC<{
