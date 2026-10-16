@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
@@ -210,6 +211,9 @@ export const rawSearchQuery = <
     paramsSerializer: {
       indexes: null,
     },
+    ...(req.skipDomainFilter && {
+      headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+    }),
   });
 };
 

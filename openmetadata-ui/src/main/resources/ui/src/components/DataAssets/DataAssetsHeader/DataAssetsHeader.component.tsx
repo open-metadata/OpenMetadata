@@ -40,6 +40,7 @@ import { ReactComponent as RedAlertIcon } from '../../../assets/svg/ic-alert-red
 import { ReactComponent as TriggerIcon } from '../../../assets/svg/trigger.svg';
 import { ActivityFeedTabs } from '../../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { DomainLabel } from '../../../components/common/DomainLabel/DomainLabel.component';
+import { DomainMismatchAlert } from '../../../components/common/DomainMismatchAlert/DomainMismatchAlert.component';
 import TierCard from '../../../components/common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
@@ -97,6 +98,7 @@ import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Certification from '../../Certification/Certification.component';
@@ -112,8 +114,10 @@ import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.comp
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
 import './data-asset-header.less';
 import {
   DataAssetHeaderInfo,
@@ -754,10 +758,10 @@ export const DataAssetsHeader = ({
   }, [dataAsset, t]);
 
   useEffect(() => {
-    if (dataAsset.id) {
+    if (dataAsset.id && !isTourPage) {
       void fetchDataContract(dataAsset.id);
     }
-  }, [dataAsset.id, fetchDataContract]);
+  }, [dataAsset.id, isTourPage, fetchDataContract]);
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 
@@ -1069,14 +1073,17 @@ export const DataAssetsHeader = ({
             if (tier) {
               // The chip is a link to the tag, so it is not also a tier trigger.
               return (
-                <ClassificationTag
-                  color={tier.style?.color}
-                  data-testid="Tier"
-                  href={getTagRedirectLink(tier)}
-                  icon={tier.style?.iconURL}
-                  label={getTagName(tier)}
-                  size="sm"
-                />
+                <TagChipTooltip
+                  title={getTagTooltip(tier.tagFQN, tier.description)}>
+                  <ClassificationTag
+                    color={tier.style?.color}
+                    data-testid="Tier"
+                    href={getTagRedirectLink(tier)}
+                    icon={tier.style?.iconURL}
+                    label={getTagName(tier)}
+                    size="sm"
+                  />
+                </TagChipTooltip>
               );
             }
 
@@ -1249,6 +1256,10 @@ export const DataAssetsHeader = ({
         )}
         data-testid="data-assets-header">
         {tableClassBase.getRequestDataAccessBanner()}
+        <DomainMismatchAlert
+          domains={(dataAsset as EntitiesWithDomainField).domains}
+          entityId={dataAsset.id ?? ''}
+        />
 
         <div
           className={classNames(
@@ -1283,6 +1294,10 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            <ChangeRequestsIndicator
+              entityId={dataAsset.id ?? ''}
+              entityType={entityType}
+            />
             {headerActions}
             {renderManageButton()}
           </div>

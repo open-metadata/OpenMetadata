@@ -16,8 +16,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -168,7 +166,9 @@ const TierSection: React.FC<TierSectionProps> = ({
   return (
     <div className="tier-section">
       <div className="tier-header">
-        <Typography className="tier-title">{t('label.tier')}</Typography>
+        <Typography size="text-xs" weight="semibold">
+          {t('label.tier')}
+        </Typography>
         {canShowEditButton && (
           <TierCard
             currentTier={displayTier?.tagFQN}
@@ -179,7 +179,6 @@ const TierSection: React.FC<TierSectionProps> = ({
               newLook
               data-testid="edit-icon-tier"
               disabled={false}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
               title={t('label.edit-entity', {
                 entity: t('label.tier'),

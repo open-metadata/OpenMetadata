@@ -2344,6 +2344,106 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Unrelated text should not match");
   }
 
+  @Test
+  void testListEndpointSearchesWithinEntity(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    Table otherTable = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String text = "Backfill refunds " + ns.prefix("search");
+    Task match = createTaskWithDisplayName(ns, "list-search-match", table, text);
+    Task noMatch = createTaskWithDisplayName(ns, "list-search-other", table, "Unrelated work");
+    Task otherEntity = createTaskWithDisplayName(ns, "list-search-elsewhere", otherTable, text);
+
+    List<UUID> found = searchTaskIdsAbout(table.getFullyQualifiedName(), text);
+
+    assertTrue(found.contains(match.getId()), "A matching task on the entity is returned");
+    assertFalse(found.contains(noMatch.getId()), "A task on the entity that does not match is not");
+    assertFalse(
+        found.contains(otherEntity.getId()), "A matching task on another entity is not returned");
+    assertTrue(
+        searchTaskIdsAbout(table.getFullyQualifiedName(), null)
+            .containsAll(List.of(match.getId(), noMatch.getId())),
+        "Without q the entity's tasks are all listed");
+  }
+
+  @Test
+  void testListEndpointSearchPagesBothWays(TestNamespace ns) throws Exception {
+    Domain domain = createDomain(ns, "list-search-paging-domain");
+    Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    String about = table.getFullyQualifiedName();
+    String text = "Reconcile ledgers " + ns.prefix("paging");
+    List<UUID> matching = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      matching.add(createTaskWithDisplayName(ns, "list-search-page-" + i, table, text).getId());
+    }
+    createTaskWithDisplayName(ns, "list-search-page-other", table, "Unrelated work");
+
+    JsonNode first = searchPage(about, text, "after", null);
+    JsonNode second = searchPage(about, text, "after", first.path("paging").path("after").asText());
+    JsonNode third = searchPage(about, text, "after", second.path("paging").path("after").asText());
+    List<UUID> forward = new ArrayList<>(pageIds(first));
+    forward.addAll(pageIds(second));
+    forward.addAll(pageIds(third));
+
+    assertEquals(3, forward.size(), "Each page holds one match");
+    assertTrue(forward.containsAll(matching), "Paging forward visits every match once");
+    assertEquals(
+        pageIds(second),
+        pageIds(searchPage(about, text, "before", third.path("paging").path("before").asText())),
+        "Paging back returns the previous page");
+  }
+
+  private JsonNode searchPage(String aboutEntity, String query, String cursorParam, String cursor)
+      throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("aboutEntity", aboutEntity)
+            .queryParam("q", query)
+            .queryParam("limit", "1");
+    if (cursor != null) {
+      options.queryParam(cursorParam, cursor);
+    }
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, options.build());
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<UUID> pageIds(JsonNode page) {
+    List<UUID> ids = new ArrayList<>();
+    page.path("data").forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
+  private Task createTaskWithDisplayName(
+      TestNamespace ns, String name, Table table, String displayName) {
+    return SdkClients.adminClient()
+        .tasks()
+        .create(createTaskRequestAboutTable(ns, name, table).withDisplayName(displayName));
+  }
+
+  private static RequestOptions searchOptions(String aboutEntity, String query) {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("aboutEntity", aboutEntity).queryParam("limit", "100");
+    if (query != null) {
+      options.queryParam("q", query);
+    }
+    return options.build();
+  }
+
+  private List<UUID> searchTaskIdsAbout(String aboutEntity, String query) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, searchOptions(aboutEntity, query));
+    List<UUID> ids = new ArrayList<>();
+    JsonUtils.readTree(response)
+        .path("data")
+        .forEach(node -> ids.add(UUID.fromString(node.path("id").asText())));
+    return ids;
+  }
+
   private List<UUID> searchVisibleTaskIds(String query) throws Exception {
     String response =
         SdkClients.user1Client()
@@ -2383,26 +2483,36 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
 
     // assignedTask is visible to user1 both via /visible and /owned (about a
-    // user1-owned table); createdTask exercises /created (createdBy user1).
+    // user1-owned table); createdTask exercises /created (createdBy user1). Scoped to this
+    // test's domain so tasks other concurrent tests give user1 cannot move total vs page.
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+                .listVisible(
+                    null,
+                    null,
+                    domain.getFullyQualifiedName(),
+                    "assignees,about",
+                    1000,
+                    startTs,
+                    endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+                .listOwned(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+                .listCreated(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         createdTask.getId(),
         createdTask.getCreatedAt());
 

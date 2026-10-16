@@ -23,6 +23,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -215,6 +216,8 @@ const collectSelectableNodes = <T,>(
 
 export const TreeSelect = <T = unknown,>({
   label,
+  id,
+  'aria-label': ariaLabel,
   placeholder,
   hint,
   tooltip,
@@ -247,6 +250,11 @@ export const TreeSelect = <T = unknown,>({
   fullWidthTrigger = false,
   onFetchError,
   renderSelectedItem,
+  isLoading = false,
+  maxVisibleItems,
+  selectedDisplayStrategy = 'all',
+  onFocus,
+  onBlur,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
@@ -264,6 +272,11 @@ export const TreeSelect = <T = unknown,>({
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
+  const treeId = useId();
+  const inputId = id ?? `${treeId}-input`;
+  const [pendingTreeFocus, setPendingTreeFocus] = useState<
+    'first' | 'last' | null
+  >(null);
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
@@ -321,7 +334,7 @@ export const TreeSelect = <T = unknown,>({
   // The button badge excludes root ids, so it needs the tree while closed.
   const {
     treeData,
-    loading,
+    loading: dataLoading,
     loadingNodes,
     loadChildren,
     loadMoreChildren,
@@ -336,6 +349,8 @@ export const TreeSelect = <T = unknown,>({
     onFetchError,
     enabled: hasOpened || isButtonVariant,
   });
+
+  const loading = dataLoading || isLoading;
 
   const visibleNodeIds = useMemo(
     () =>
@@ -370,9 +385,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft on open, including a programmatic one via `isOpen`.
+  // Resync on open, including a programmatic one via `isOpen`. Staged mode
+  // drops the draft; a controlled immediate picker drops an optimistic pick the
+  // parent never echoed back (its save failed), which `value` alone cannot
+  // signal because the rejected parent keeps passing the same reference.
   useEffect(() => {
-    if (isOpen && isStaged) {
+    if (isOpen && (isStaged || value !== undefined)) {
       setSelection(toArray(value));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -733,6 +751,7 @@ export const TreeSelect = <T = unknown,>({
       loadingNodes,
       disabled,
       multiple,
+      cascadeSelection,
       showCheckbox,
       showExpandIcon,
       showIcon,
@@ -751,6 +770,51 @@ export const TreeSelect = <T = unknown,>({
     },
     [selectedData, toggleNodeSelection]
   );
+
+  const displayedNodes = useMemo(() => {
+    if (selectedDisplayStrategy === 'all') {
+      return selectedData;
+    }
+    const parents = new Map<string, string>();
+    const walk = (nodes: TreeSelectNode<T>[], parentId?: string) => {
+      nodes.forEach((node) => {
+        if (parentId) {
+          parents.set(node.id, parentId);
+        }
+        if (node.children) {
+          walk(node.children, node.id);
+        }
+      });
+    };
+    walk(treeData);
+    // Selected branches can arrive before their async options have loaded.
+    walk(selectedData);
+    selectedData.forEach((node) => {
+      if (node.parentId && !parents.has(node.id)) {
+        parents.set(node.id, node.parentId);
+      }
+    });
+    const selectedIds = new Set(selectedData.map((node) => node.id));
+
+    return selectedData.filter((node) => {
+      let parentId = parents.get(node.id);
+      while (parentId) {
+        if (selectedIds.has(parentId)) {
+          return false;
+        }
+        parentId = parents.get(parentId);
+      }
+
+      return true;
+    });
+  }, [selectedData, selectedDisplayStrategy, treeData]);
+  const visibleNodes = displayedNodes.slice(
+    0,
+    maxVisibleItems === undefined
+      ? displayedNodes.length
+      : Math.max(0, maxVisibleItems)
+  );
+  const hiddenNodes = displayedNodes.slice(visibleNodes.length);
 
   const displayValue = isOpen
     ? inputValue
@@ -914,6 +978,27 @@ export const TreeSelect = <T = unknown,>({
     setShowSelectedOnly(false);
   }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
+  // Wait for async rows before handing focus to React Aria's keyboard navigation.
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingTreeFocus(null);
+
+      return;
+    }
+    if (!pendingTreeFocus || loading) {
+      return;
+    }
+    const rows = popoverRef.current?.querySelectorAll<HTMLElement>(
+      '[role="row"]:not([aria-disabled="true"])'
+    );
+    const row =
+      pendingTreeFocus === 'first' ? rows?.[0] : rows?.[rows.length - 1];
+    if (row) {
+      row.focus();
+      setPendingTreeFocus(null);
+    }
+  }, [isOpen, pendingTreeFocus, loading, filteredTreeData]);
+
   const treeDropdownContent = (
     <div
       className="tw:contents"
@@ -941,7 +1026,13 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
+        className={cx(
+          // With the row's 2px indent, a row's hover fill spans the search
+          // field's 12px inset on both sides.
+          'tw:max-h-64 tw:overflow-y-auto tw:pl-2.5 tw:pr-3',
+          // The staged footer brings its own top margin.
+          !showFooter && 'tw:pb-2'
+        )}
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
@@ -957,8 +1048,9 @@ export const TreeSelect = <T = unknown,>({
           </div>
         ) : (
           <Tree
-            aria-label={label ?? placeholder ?? 'Tree select'}
+            aria-label={ariaLabel ?? label ?? placeholder ?? t('label.select')}
             expandedKeys={filteredExpandedKeys}
+            id={treeId}
             selectionMode="none"
             onAction={(key) => {
               const id = String(key);
@@ -1050,7 +1142,10 @@ export const TreeSelect = <T = unknown,>({
 
   if (renderTrigger) {
     return (
-      <div className={cx('tw:relative tw:inline-flex', className)}>
+      <div
+        className={cx('tw:relative tw:inline-flex', className)}
+        onBlur={onBlur}
+        onFocus={onFocus}>
         <div
           className={cx('tw:flex tw:min-w-0', fullWidthTrigger && 'tw:w-full')}
           ref={triggerRef}>
@@ -1072,7 +1167,10 @@ export const TreeSelect = <T = unknown,>({
     const triggerText = label ?? placeholder ?? '';
 
     return (
-      <div className={cx('tw:relative tw:inline-flex', className)}>
+      <div
+        className={cx('tw:relative tw:inline-flex', className)}
+        onBlur={onBlur}
+        onFocus={onFocus}>
         <div className="tw:flex" ref={triggerRef}>
           <Button
             className={cx(
@@ -1101,9 +1199,12 @@ export const TreeSelect = <T = unknown,>({
   }
 
   return (
-    <div className={cx('tw:flex tw:flex-col tw:gap-1.5', className)}>
+    <div
+      className={cx('tw:flex tw:flex-col tw:gap-1.5', className)}
+      onBlur={onBlur}
+      onFocus={onFocus}>
       {label && (
-        <Label isRequired={required} tooltip={tooltip}>
+        <Label htmlFor={inputId} isRequired={required} tooltip={tooltip}>
           {label}
         </Label>
       )}
@@ -1129,22 +1230,22 @@ export const TreeSelect = <T = unknown,>({
           <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
 
           {renderSelectedItem
-            ? selectedData.map((node) => (
+            ? visibleNodes.map((node) => (
                 <Fragment key={node.id}>{renderSelectedItem(node)}</Fragment>
               ))
             : null}
 
           {!renderSelectedItem &&
             multiple &&
-            selectedData.map((node) => (
+            visibleNodes.map((node) => (
               <span
-                className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+                className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                 key={node.id}>
                 <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
                   {node.label}
                 </p>
                 <button
-                  aria-label={`Remove ${node.label}`}
+                  aria-label={`${t('label.remove')} ${node.label}`}
                   className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
                   disabled={disabled}
                   type="button"
@@ -1157,12 +1258,28 @@ export const TreeSelect = <T = unknown,>({
               </span>
             ))}
 
+          {hiddenNodes.length > 0 && (
+            <span
+              className="tw:text-sm tw:text-secondary"
+              title={hiddenNodes.map((node) => node.label).join(', ')}>
+              +{hiddenNodes.length}
+            </span>
+          )}
+
           <FocusScope autoFocus={false} contain={false} restoreFocus={false}>
             <input
-              aria-label={label ?? placeholder}
+              aria-controls={isOpen ? treeId : undefined}
+              aria-expanded={isOpen}
+              aria-haspopup="grid"
+              aria-invalid={isInvalid || undefined}
+              aria-label={
+                ariaLabel ?? label ?? placeholder ?? t('label.select')
+              }
+              aria-required={required || undefined}
               autoFocus={autoFocus}
               className="tw:min-w-[6rem] tw:flex-1 tw:appearance-none tw:bg-transparent tw:text-sm tw:text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:disabled:cursor-not-allowed"
               disabled={disabled}
+              id={inputId}
               placeholder={
                 selectedData.length > 0
                   ? undefined
@@ -1170,12 +1287,22 @@ export const TreeSelect = <T = unknown,>({
               }
               readOnly={!searchable}
               ref={inputRef}
+              role="combobox"
               value={displayValue}
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
               onFocus={openOnFocus}
               onKeyDown={(event) => {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  openTrigger();
+                  setPendingTreeFocus(
+                    event.key === 'ArrowDown' ? 'first' : 'last'
+                  );
+
+                  return;
+                }
                 if (event.key === 'Escape') {
                   dismiss();
 

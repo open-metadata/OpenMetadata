@@ -31,6 +31,8 @@ import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDashboard;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
@@ -41,6 +43,8 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Dashboard;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
@@ -869,6 +873,77 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     SdkClients.adminClient()
         .databaseSchemas()
         .update(editableSchema.getId().toString(), editableSchema);
+  }
+
+  @Test
+  void test_domainRemovalKeepsDataProductsOnAssetsWithInheritedDomain(TestNamespace ns)
+      throws Exception {
+    Domain finance = createTestDomain(ns, "finance_inherited");
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db_inherited"))
+                    .withService(getOrCreateDatabaseService(ns).getFullyQualifiedName())
+                    .withDomains(List.of(finance.getFullyQualifiedName())));
+    // Neither the schema nor its table has a domain of its own: both inherit finance.
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema_inherited"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table = createChildTable(ns, "table_inherited", schema, null);
+
+    DataProduct clearedProduct = createFinanceDataProduct(ns, "dp_cleared", finance);
+    DataProduct schemaProduct = createFinanceDataProduct(ns, "dp_on_schema", finance);
+    DataProduct tableProduct = createFinanceDataProduct(ns, "dp_on_table", finance);
+    bulkAddAssets(
+        clearedProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        schemaProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(schema.getEntityReference())));
+    bulkAddAssets(
+        tableProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table.getEntityReference())));
+
+    DataProduct current =
+        SdkClients.adminClient().dataProducts().get(clearedProduct.getId().toString(), "domains");
+    current.setDomains(List.of());
+    SdkClients.adminClient().dataProducts().update(current.getId().toString(), current);
+
+    // The schema and table still resolve finance by inheritance, so every assignment still passes
+    // "Data Product Domain Validation" (a data product with no domains never conflicts).
+    List<EntityReference> schemaDataProducts =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .get(schema.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(schemaDataProducts, clearedProduct.getId()),
+        "The cleared data product must stay on a schema that still inherits a domain");
+    assertTrue(
+        hasDataProduct(schemaDataProducts, schemaProduct.getId()),
+        "An unrelated finance data product must stay on a schema that still inherits finance");
+    List<EntityReference> tableDataProducts =
+        SdkClients.adminClient()
+            .tables()
+            .get(table.getId().toString(), "dataProducts")
+            .getDataProducts();
+    assertTrue(
+        hasDataProduct(tableDataProducts, tableProduct.getId()),
+        "A finance data product must stay on a descendant table that still inherits finance");
+  }
+
+  private DataProduct createFinanceDataProduct(TestNamespace ns, String suffix, Domain finance) {
+    return createEntity(
+        new CreateDataProduct()
+            .withName(ns.prefix(suffix))
+            .withDescription("Data product in finance")
+            .withDomains(List.of(finance.getFullyQualifiedName())));
   }
 
   private void moveDataProductDomain(DataProduct dataProduct, Domain targetDomain) {

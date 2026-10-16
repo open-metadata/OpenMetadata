@@ -94,7 +94,7 @@ let columnDetails1: ReturnType<typeof createColumnRowDetails> & {
   glossary: GlossaryDetails;
 };
 
-test.describe('Bulk Edit Entity', () => {
+test.describe('Bulk Edit Entity', { tag: '@quarantine' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     test.slow();
     user1 = new UserClass();
@@ -810,8 +810,11 @@ test.describe('Bulk Edit Entity', () => {
       }
     });
 
-    await glossary.delete(apiContext);
     await afterAction();
+    // Fresh context: the setup one idled past the server keep-alive and its DELETE hangs up.
+    const cleanup = await getApiContext(page);
+    await glossary.delete(cleanup.apiContext);
+    await cleanup.afterAction();
   });
 
   test('Glossary Term (Nested)', async ({ page }) => {

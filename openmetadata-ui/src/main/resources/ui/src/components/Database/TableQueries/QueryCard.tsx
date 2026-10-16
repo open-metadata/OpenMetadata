@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   ButtonUtility,
   Card,
   Grid,
@@ -20,8 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Copy01 } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
@@ -41,6 +40,7 @@ import {
 } from '../../../constants/Query.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
+import { EntityReference } from '../../../generated/type/entityReference';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
@@ -86,7 +86,7 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
-  const [selectedTables, setSelectedTables] = useState<DefaultOptionType[]>();
+  const [selectedTables, setSelectedTables] = useState<EntityReference[]>();
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
@@ -130,21 +130,7 @@ const QueryCard: FC<QueryCardProp> = ({
     const updatedData = {
       ...query,
       query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
-      queryUsedIn: isUndefined(selectedTables)
-        ? query.queryUsedIn
-        : selectedTables.map((option) => {
-            const existingTable = query.queryUsedIn?.find(
-              (table) => table.id === option.value
-            );
-
-            return (
-              existingTable ?? {
-                id: (option.value as string) ?? '',
-                displayName: option.labelName as string,
-                type: EntityType.TABLE,
-              }
-            );
-          }),
+      queryUsedIn: selectedTables ?? query.queryUsedIn,
     };
     if (query.query !== sqlQuery.query || !isUndefined(selectedTables)) {
       await onQueryUpdate(updatedData, 'query');
@@ -227,19 +213,20 @@ const QueryCard: FC<QueryCardProp> = ({
         gap={4}
         itemClassName="layout-space-item">
         <Button
+          color="secondary"
           data-testid="cancel-query-btn"
           key="cancel"
-          size="small"
+          size="xs"
           onClick={() => setIsEditMode(false)}>
           {t('label.cancel')}
         </Button>
 
         <Button
+          color="primary"
           data-testid="save-query-btn"
+          isLoading={sqlQuery.isLoading}
           key="save"
-          loading={sqlQuery.isLoading}
-          size="small"
-          type="primary"
+          size="xs"
           onClick={updateSqlQuery}>
           {t('label.save')}
         </Button>
@@ -289,9 +276,10 @@ const QueryCard: FC<QueryCardProp> = ({
               gap={2}
               itemClassName="layout-space-item">
               <Button
-                className="flex-center"
+                aria-label={t('label.expand')}
+                color="secondary"
                 data-testid="query-entity-expand-button"
-                icon={renderExpandIcon()}
+                iconLeading={renderExpandIcon()}
                 onClick={handleExpandClick}
               />
               <Tooltip arrow title={t('message.copy-to-clipboard')}>

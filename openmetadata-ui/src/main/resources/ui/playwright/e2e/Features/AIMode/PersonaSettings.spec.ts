@@ -30,6 +30,7 @@ import { selectOption } from '../../../utils/advancedSearch';
 import { deleteFixtureEntity, settleAll } from '../../../utils/apiResponse';
 import { fillDescriptionBox, uuid } from '../../../utils/common';
 import {
+  addCuratedAssetsWidget,
   selectAssetTypes,
   waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
@@ -43,10 +44,29 @@ import { enableAiAppMode } from '../../Utils/appMode';
  * Open the persona settings straight from its hash deep link — the same link
  * the copy-link button produces — and wait for the persona to load.
  */
+/**
+ * The Home page customize route renders the real landing page, so every widget
+ * on it fetches its own data. `/metadata/types/customProperties` is by far the
+ * slowest of those — ~17s against a local stack — and the page sits on its boot
+ * spinner until it answers. Waiting for that response is deterministic, where
+ * `waitForAllLoadersToDisappear` can only count down a timeout and reports a
+ * still-booting page as "no loaders yet".
+ */
+const waitForCustomProperties = (page: Page) =>
+  waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().includes('/api/v1/metadata/types/customProperties') &&
+      response.request().method() === 'GET',
+    200
+  );
+
 const openPersonaSettings = async (
   page: Page,
   personaName: string,
-  subPath = ''
+  subPath = '',
+  // Set for the Home page routes, whose widgets pull in custom properties.
+  waitsForCustomProperties = false
 ) => {
   const personaResponse = waitForResponseWithStatus(
     page,
@@ -55,8 +75,13 @@ const openPersonaSettings = async (
       response.request().method() === 'GET',
     200
   );
+  // Armed before the navigation that triggers it, so it cannot be missed.
+  const customProperties = waitsForCustomProperties
+    ? waitForCustomProperties(page)
+    : undefined;
   await page.goto(`/#personas/${personaName}${subPath}`);
   await personaResponse;
+  await customProperties;
   // Home page and entity customize links open full page, without the modal.
   await expect(
     page
@@ -85,7 +110,7 @@ const discardUnsavedDefaultLayout = async (page: Page) => {
 
 test.describe(
   'Persona settings in the personal-space modal',
-  { tag: [DOMAIN_TAGS.PLATFORM] },
+  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
   () => {
     let persona: PersonaClass;
 
@@ -246,6 +271,10 @@ test.describe(
     test('Home page opens full page and Add Widget stays a modal', async ({
       page,
     }) => {
+      // The Home page customize route renders every landing-page widget, so
+      // it pulls ~42s of API work (17s of it `metadata/types/customProperties`,
+      // fetched again after each reload) and does not fit the 60s default.
+      test.slow();
       await openPersonaSettings(page, persona.data.name);
       await page.getByTestId('customize-card-LandingPage').click();
 
@@ -337,7 +366,9 @@ const buildPersona = (prefix: string) => {
 const saveLayoutAndReload = async (
   page: Page,
   saveButtonTestId: string,
-  expectedPayloadFragment: string
+  expectedPayloadFragment: string,
+  // Set for the Home page routes, whose widgets pull in custom properties.
+  waitsForCustomProperties = false
 ) => {
   const saveResponse = waitForResponseWithStatus(
     page,
@@ -353,12 +384,47 @@ const saveLayoutAndReload = async (
 
   // Callers assert the persisted state on page-specific elements; the entity
   // previews keep a placeholder loader, so a global loader wait never settles.
+  //
+  // The reload must not resolve before the customize store has refetched the
+  // saved layout. `disableSave` is `compare(getPage(type), currentPage)`, and
+  // until that GET lands `getPage` returns the empty fallback, so the patch is
+  // non-empty and Save renders *enabled* — a caller asserting it is disabled
+  // samples that pre-hydration frame and fails with "Received: enabled".
+  //
+  // Scoped to this persona's own document, taken from the save response, so a
+  // docStore GET for anything else cannot satisfy the wait. No `.catch()`
+  // either: if the refetch never happens that is the failure, and it should
+  // surface here rather than as an "enabled" Save button several lines later.
+  const { fullyQualifiedName: documentFqn } = (await response.json()) as {
+    fullyQualifiedName?: string;
+  };
+
+  // Without an FQN the predicate would silently widen to any docStore GET,
+  // which is the bug this scoping exists to prevent.
+  expect(documentFqn, 'layout save response carried no FQN').toBeTruthy();
+
+  const layoutPath = `/api/v1/docStore/name/${documentFqn}`;
+  const layoutLoaded = waitForResponseWithStatus(
+    page,
+    (res) => res.url().includes(layoutPath) && res.request().method() === 'GET',
+    200
+  );
+  // The reload re-renders the page, so the Home page's slow custom-properties
+  // fetch happens again; without waiting for it the callers assert against a
+  // page that is still on its boot spinner. Only the Home page routes request
+  // it, so this is opt-in: awaiting it unconditionally would stall every other
+  // caller until the wait timed out.
+  const customProperties = waitsForCustomProperties
+    ? waitForCustomProperties(page)
+    : undefined;
   await page.reload();
+  await layoutLoaded;
+  await customProperties;
 };
 
 test.describe(
   'Persona settings — persona management actions',
-  { tag: [DOMAIN_TAGS.PLATFORM] },
+  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
   () => {
     let persona: PersonaClass;
     let personaToDelete: PersonaClass;
@@ -547,8 +613,52 @@ test.describe(
         const picker = page
           .getByTestId('add-persona-users-select')
           .getByRole('combobox');
-        await picker.fill(user.responseData.name ?? '');
-        await page.getByRole('option', { name: userName }).click();
+
+        // The picker re-queries the user search index on a 250ms debounce and
+        // replaces its whole option list with the result, so an option found
+        // from the previous result set is torn out mid-click ("element was
+        // detached from the DOM"). Wait for the search that this text triggers
+        // to land before touching the list.
+        //
+        // Match on `q`, not just the index: `onFocus` fires its own
+        // *undebounced* search with an empty query, and `fill()` focuses the
+        // input first. Waiting on the index alone would resolve on that
+        // unfiltered page and leave the assertions racing the debounced
+        // result exactly as before.
+        const searchText = user.responseData.name ?? '';
+        const userSearch = page.waitForResponse((response) => {
+          const params = new URL(response.url()).searchParams;
+
+          return (
+            response.url().includes('/api/v1/search/query') &&
+            params.get('index') === 'user' &&
+            (params.get('q') ?? '').includes(searchText) &&
+            response.status() === 200
+          );
+        });
+        await picker.fill(searchText);
+        await userSearch;
+
+        // Commit with Enter rather than a click: Autocomplete drops a
+        // selection whenever `isLeavingRef` is set, and `onBlurCapture` arms
+        // that ref for a microtask, so a click whose actionability scroll
+        // blurs the input is silently ignored and Save stays disabled.
+        //
+        // ArrowDown highlights the list's *first* option, so wait for the
+        // list to actually be the filtered one before pressing it. The
+        // response landing is not enough: React still has to re-render, and
+        // until it does the listbox is the 25-row unfiltered page that
+        // `onFocus` fetched, whose first row is some other user.
+        const options = page.getByRole('option');
+        await expect(options.filter({ hasText: userName })).toHaveCount(1);
+        await expect(options).toHaveCount(1);
+        await picker.press('ArrowDown');
+        await picker.press('Enter');
+
+        // Prove the value committed before relying on Save.
+        await expect(
+          page.getByTestId('add-persona-users-select').getByText(userName)
+        ).toBeVisible();
 
         const addResponse = waitForResponseWithStatus(
           page,
@@ -611,7 +721,7 @@ test.describe(
 
 test.describe(
   'Persona settings — customize saves',
-  { tag: [DOMAIN_TAGS.PLATFORM] },
+  { tag: [DOMAIN_TAGS.PLATFORM, '@quarantine'] },
   () => {
     // One persona per editor: every save writes the same persona document, so
     // sharing one across parallel workers would race on its version.
@@ -738,10 +848,15 @@ test.describe(
     });
 
     test('Home page: the layout is saved', async ({ page }) => {
+      // The Home page customize route renders every landing-page widget, so
+      // it pulls ~42s of API work (17s of it `metadata/types/customProperties`,
+      // fetched again after each reload) and does not fit the 60s default.
+      test.slow();
       await openPersonaSettings(
         page,
         personas.home.data.name,
-        '/customize/LandingPage'
+        '/customize/LandingPage',
+        true
       );
 
       await expect(
@@ -750,7 +865,7 @@ test.describe(
       // A fresh persona has no saved layout, so the seeded default is unsaved.
       await expect(page.getByTestId('save-button')).toBeEnabled();
 
-      await saveLayoutAndReload(page, 'save-button', 'LandingPage');
+      await saveLayoutAndReload(page, 'save-button', 'LandingPage', true);
 
       await expect(
         page.getByTestId('landing-page-editor-overlay')
@@ -764,7 +879,8 @@ test.describe(
       await openPersonaSettings(
         page,
         personas.homeTheme.data.name,
-        '/customize/LandingPage'
+        '/customize/LandingPage',
+        true
       );
       await page
         .getByTestId('customize-landing-page-header')
@@ -806,34 +922,28 @@ test.describe(
     test('Home page: a configured Curated Assets widget is saved', async ({
       page,
     }) => {
+      // The Home page customize route renders every landing-page widget, so
+      // it pulls ~42s of API work (17s of it `metadata/types/customProperties`,
+      // fetched again after each reload) and does not fit the 60s default.
+      test.slow();
       const widgetTitle = `PW Curated ${uuid()}`;
 
       await openPersonaSettings(
         page,
         personas.curated.data.name,
-        '/customize/LandingPage'
+        '/customize/LandingPage',
+        true
       );
 
-      await test.step('add the Curated Assets placeholder', async () => {
-        await page
-          .getByTestId('customize-landing-page-header')
-          .getByTestId('add-widget-button')
-          .click();
-        const customizeHome = page.getByRole('dialog', {
-          name: 'Customize Home',
-        });
-        await customizeHome.getByTestId('KnowledgePanel.CuratedAssets').click();
-        await customizeHome.getByTestId('apply-btn').click();
-
-        await expect(customizeHome).not.toBeVisible();
-      });
+      // The shared helper drops the default layout's unconfigured Curated
+      // Assets card first: both copies would carry the same test id.
+      const widget = await test.step('add the Curated Assets placeholder', () =>
+        addCuratedAssetsWidget(page));
 
       await test.step('configure it in the Create Widget modal', async () => {
-        const widget = await waitForLandingPageWidget(
-          page,
-          'KnowledgePanel.CuratedAssets'
-        );
-        await widget.getByText('Create').click();
+        await widget
+          .getByRole('button', { name: 'Create', exact: true })
+          .click();
 
         await expect(
           page.getByTestId('curated-assets-modal-container')

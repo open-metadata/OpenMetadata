@@ -12,14 +12,16 @@
  */
 import {
   Box,
+  Button,
+  Card,
   Divider,
   Grid,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Card, Form, Input } from 'antd';
+import { Form, Input } from 'antd';
 import { useForm } from 'antd/lib/form/Form';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, pickBy } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -34,6 +36,8 @@ import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import { AlertAiFormValidationErrors } from '../../components/observability/Alerts/AlertAiFormFields.interface';
+import { validateAlertAiForm } from '../../components/observability/Alerts/AlertAiFormFieldsValidationUtils';
 import {
   PAGE_SIZE_LARGE,
   ROUTES,
@@ -75,8 +79,8 @@ import {
 } from '../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../rest/notificationtemplateAPI';
 import { toCapabilitiesInput } from '../../utils/Alerts/AlertSelectionUtil';
+import { getAlertSourceChanges } from '../../utils/Alerts/ClassicAlertForm.utils';
 import alertsClassBase from '../../utils/AlertsClassBase';
-import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -96,9 +100,15 @@ const NO_SOURCES: string[] = [];
 
 const AddNotificationPage = () => {
   const [form] = useForm<ModifiedCreateEventSubscription>();
+  const [ruleValidationErrors, setRuleValidationErrors] =
+    useState<AlertAiFormValidationErrors>({});
   const navigate = useNavigate();
   const { fqn } = useFqn();
   const { t } = useTranslation();
+  const getRuleValidationErrors = () =>
+    pickBy(validateAlertAiForm(form.getFieldsValue(true), t), (_, path) =>
+      path.startsWith('input.')
+    );
   const { setInlineAlertDetails, inlineAlertDetails, currentUser } =
     useApplicationStore();
   const { getResourceLimit } = useLimitStore();
@@ -308,10 +318,7 @@ const AddNotificationPage = () => {
   if (isSystemProvider) {
     return (
       <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="tw-max-w-md"
-          style={{ marginBottom: '0' }}>
+        <Typography as="p" className="tw-max-w-md tw:mb-0">
           {t('message.system-alert-edit-message')}
         </Typography>
       </ErrorPlaceHolder>
@@ -327,227 +334,296 @@ const AddNotificationPage = () => {
         allowScroll: true,
         children: (
           <Card className="steps-form-container">
-            <Grid
-              className="layout-row layout-grid"
-              style={{ ...getLayoutGutter(16, 16) }}>
-              <Grid.Item className="layout-column" span={24}>
-                <TitleBreadcrumb titleLinks={breadcrumb} />
-              </Grid.Item>
+            <Card.Content>
+              <Grid
+                className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                rowGap="4">
+                <Grid.Item className="layout-column" span={24}>
+                  <TitleBreadcrumb titleLinks={breadcrumb} />
+                </Grid.Item>
 
-              <Grid.Item className="layout-column" span={24}>
-                <Typography as="h5" size="text-md" weight="semibold">
-                  {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
-                    entity: t('label.alert'),
-                  })}
-                </Typography>
-                <Typography>{t('message.alerts-description')}</Typography>
-              </Grid.Item>
-              <Grid.Item className="layout-column" span={24}>
-                <AlertSelectionProvider value={selection}>
-                  <Form<ModifiedCreateEventSubscription>
-                    className="alerts-notification-form"
-                    form={form}
-                    initialValues={{
-                      ...alert,
-                      displayName: getEntityName(alert),
-                      resources: alert?.filteringRules?.resources,
-                    }}
-                    validateMessages={VALIDATION_MESSAGES}
-                    onFinish={handleSave}>
-                    {isLoading ? (
-                      <SkeletonParagraph animation={false} rows={8} />
-                    ) : (
-                      <Grid
-                        className="layout-row layout-grid"
-                        style={{ ...getLayoutGutter(20, 20) }}>
-                        <Grid.Item className="layout-column" span={24}>
-                          <Form.Item
-                            label={t('label.name')}
-                            labelCol={{ span: 24 }}
-                            name="displayName"
-                            rules={NAME_FIELD_RULES}>
-                            <Input placeholder={t('label.name')} />
-                          </Form.Item>
-                        </Grid.Item>
-                        <Grid.Item className="layout-column" span={24}>
-                          <Form.Item
-                            label={t('label.description')}
-                            labelCol={{ span: 24 }}
-                            name="description"
-                            trigger="onTextChange">
-                            <RichTextEditor
-                              data-testid="description"
-                              initialValue={alert?.description}
-                            />
-                          </Form.Item>
-                        </Grid.Item>
-                        <Grid.Item className="layout-column" span={24}>
-                          <Box
-                            className="layout-row"
-                            justify="center"
-                            wrap="wrap">
-                            <Box
-                              className="layout-column tw:block"
-                              style={{
-                                maxWidth: '100%',
-                                flex: '0 0 100%',
-                              }}>
-                              <AlertFormSourceItem
-                                filterResources={entityFunctions}
-                              />
-                            </Box>
-                            {shouldShowFiltersSection && (
-                              <>
-                                <Box className="layout-column tw:block">
-                                  <Divider
-                                    dashed
-                                    className="tw:mx-2 tw:h-6 tw:border-r"
-                                    orientation="vertical"
-                                  />
-                                </Box>
-                                <Box
-                                  className="layout-column tw:block"
-                                  style={{
-                                    maxWidth: '100%',
-                                    flex: '0 0 100%',
-                                  }}>
-                                  <ObservabilityFormFiltersItem />
-                                </Box>
-                              </>
-                            )}
-                            <Box className="layout-column tw:block">
-                              <Divider
-                                dashed
-                                className="tw:mx-2 tw:h-6 tw:border-r"
-                                orientation="vertical"
-                              />
-                            </Box>
-                            <Box
-                              className="layout-column tw:block"
-                              style={{
-                                maxWidth: '100%',
-                                flex: '0 0 100%',
-                              }}>
-                              <DestinationFormItemFormBridge
-                                renderValidationField={(validate) => (
-                                  <Form.Item
-                                    hidden
-                                    name="destinations"
-                                    rules={[{ validator: validate }]}>
-                                    <DestinationFormFieldRegistrar />
-                                  </Form.Item>
-                                )}
-                                values={{
-                                  destinations,
-                                  readTimeout,
-                                  timeout,
-                                }}
-                                onChange={(values) => {
-                                  // Each shared field must be replaced at its root. Ant's
-                                  // bulk setter deep-merges destination array entries and
-                                  // would restore config removed by a type change.
-                                  Object.entries(values).forEach(
-                                    ([name, value]) =>
-                                      form.setFieldValue(name, value)
-                                  );
-                                }}
-                              />
-                            </Box>
-
-                            {!isEmpty(extraFormWidgets) && (
-                              <>
-                                {Object.entries(extraFormWidgets).map(
-                                  ([name, Widget]) => (
-                                    <Fragment key={name}>
-                                      <Box className="layout-column tw:block">
-                                        <Divider
-                                          dashed
-                                          className="tw:mx-2 tw:h-6 tw:border-r"
-                                          orientation="vertical"
-                                        />
-                                      </Box>
-                                      <Box
-                                        className="layout-column tw:block"
-                                        style={{
-                                          maxWidth: '100%',
-                                          flex: '0 0 100%',
-                                        }}>
-                                        <Widget
-                                          alertDetails={alert}
-                                          formRef={form}
-                                          loading={isLoading}
-                                          templateResourcePermission={
-                                            templateResourcePermission
-                                          }
-                                          templates={templates}
-                                        />
-                                      </Box>
-                                    </Fragment>
-                                  )
-                                )}
-                              </>
-                            )}
-                          </Box>
-                        </Grid.Item>
-                        <Form.Item
-                          hidden
-                          initialValue={AlertType.Notification}
-                          name="alertType"
-                        />
-                        <Form.Item
-                          hidden
-                          initialValue={ProviderType.User}
-                          name="provider"
-                        />
-                        <Form.Item
-                          hidden
-                          name="customNotificationTemplateData"
-                        />
-
-                        {!isUndefined(inlineAlertDetails) && (
+                <Grid.Item className="layout-column" span={24}>
+                  <Typography as="h5" size="text-md" weight="semibold">
+                    {t(`label.${isEditMode ? 'edit' : 'add'}-entity`, {
+                      entity: t('label.alert'),
+                    })}
+                  </Typography>
+                  <Typography>{t('message.alerts-description')}</Typography>
+                </Grid.Item>
+                <Grid.Item className="layout-column" span={24}>
+                  <AlertSelectionProvider value={selection}>
+                    <Form<ModifiedCreateEventSubscription>
+                      className="alerts-notification-form"
+                      form={form}
+                      initialValues={{
+                        ...alert,
+                        displayName: getEntityName(alert),
+                        resources: alert?.filteringRules?.resources,
+                      }}
+                      validateMessages={VALIDATION_MESSAGES}
+                      onFinish={handleSave}
+                      onFinishFailed={() =>
+                        setRuleValidationErrors(getRuleValidationErrors())
+                      }>
+                      {isLoading ? (
+                        <SkeletonParagraph animation={false} rows={8} />
+                      ) : (
+                        <Grid
+                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
+                          rowGap="5">
                           <Grid.Item className="layout-column" span={24}>
-                            <InlineAlert {...inlineAlertDetails} />
+                            <Form.Item
+                              label={t('label.name')}
+                              labelCol={{ span: 24 }}
+                              name="displayName"
+                              rules={NAME_FIELD_RULES}>
+                              <Input placeholder={t('label.name')} />
+                            </Form.Item>
                           </Grid.Item>
-                        )}
+                          <Grid.Item className="layout-column" span={24}>
+                            <Form.Item
+                              label={t('label.description')}
+                              labelCol={{ span: 24 }}
+                              name="description"
+                              trigger="onTextChange">
+                              <RichTextEditor
+                                data-testid="description"
+                                initialValue={alert?.description}
+                              />
+                            </Form.Item>
+                          </Grid.Item>
+                          <Grid.Item className="layout-column" span={24}>
+                            <Box
+                              className="layout-row"
+                              justify="center"
+                              wrap="wrap">
+                              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                                <Form.Item
+                                  className="m-b-0"
+                                  name="resources"
+                                  rules={[
+                                    {
+                                      required: true,
+                                      message: t('label.please-select-entity', {
+                                        entity: t('label.data-asset'),
+                                      }),
+                                    },
+                                  ]}>
+                                  <AlertFormSourceItem
+                                    filterResources={entityFunctions}
+                                    onChange={(next, previous) => {
+                                      setRuleValidationErrors({});
+                                      Object.entries(
+                                        getAlertSourceChanges(next, previous)
+                                      ).forEach(([key, value]) =>
+                                        form.setFieldValue(key, value)
+                                      );
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Box>
+                              {shouldShowFiltersSection && (
+                                <>
+                                  <Box className="layout-column tw:block">
+                                    <Divider
+                                      dashed
+                                      className="tw:mx-2 tw:h-6 tw:border-r"
+                                      orientation="vertical"
+                                    />
+                                  </Box>
+                                  <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                                    <ObservabilityFormFiltersItem
+                                      validationErrors={ruleValidationErrors}
+                                      value={
+                                        values ?? form.getFieldsValue(true)
+                                      }
+                                      onChange={(next) => {
+                                        const data =
+                                          typeof next === 'function'
+                                            ? next(form.getFieldsValue(true))
+                                            : next;
+                                        form.setFieldValue('input', data.input);
+                                        if (!isEmpty(ruleValidationErrors)) {
+                                          setRuleValidationErrors(
+                                            getRuleValidationErrors()
+                                          );
+                                        }
+                                      }}
+                                    />
+                                    <Form.Item
+                                      hidden
+                                      getValueProps={() => ({ value: '' })}
+                                      name="input"
+                                      rules={[
+                                        {
+                                          validator: () => {
+                                            const [firstError] = Object.values(
+                                              getRuleValidationErrors()
+                                            );
 
-                        <Grid.Item className="layout-column" span={24}>
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              data-testid="cancel-button"
-                              type="text"
-                              onClick={() => navigate(-1)}>
-                              {t('label.cancel')}
-                            </Button>
-
-                            {Object.entries(extraFormButtons).map(
-                              ([name, ButtonComponent]) => (
-                                <ButtonComponent
-                                  alertDetails={alert}
-                                  formRef={form}
-                                  key={name}
-                                  templateResourcePermission={
-                                    templateResourcePermission
-                                  }
-                                  templates={templates}
-                                  values={values}
+                                            return firstError
+                                              ? Promise.reject(
+                                                  new Error(firstError)
+                                                )
+                                              : Promise.resolve();
+                                          },
+                                        },
+                                      ]}>
+                                      <input
+                                        readOnly
+                                        aria-hidden="true"
+                                        tabIndex={-1}
+                                        type="hidden"
+                                      />
+                                    </Form.Item>
+                                  </Box>
+                                </>
+                              )}
+                              <Box className="layout-column tw:block">
+                                <Divider
+                                  dashed
+                                  className="tw:mx-2 tw:h-6 tw:border-r"
+                                  orientation="vertical"
                                 />
-                              )
-                            )}
-                            <Button
-                              data-testid="save-button"
-                              htmlType="submit"
-                              loading={isButtonLoading}
-                              type="primary">
-                              {t('label.save')}
-                            </Button>
-                          </div>
-                        </Grid.Item>
-                      </Grid>
-                    )}
-                  </Form>
-                </AlertSelectionProvider>
-              </Grid.Item>
-            </Grid>
+                              </Box>
+                              <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                                <DestinationFormItemFormBridge
+                                  renderValidationField={(validate) => (
+                                    <Form.Item
+                                      hidden
+                                      name="destinations"
+                                      rules={[{ validator: validate }]}>
+                                      <DestinationFormFieldRegistrar />
+                                    </Form.Item>
+                                  )}
+                                  values={{
+                                    destinations,
+                                    readTimeout,
+                                    timeout,
+                                  }}
+                                  onChange={(values) => {
+                                    // Each shared field must be replaced at its root. Ant's
+                                    // bulk setter deep-merges destination array entries and
+                                    // would restore config removed by a type change.
+                                    Object.entries(values).forEach(
+                                      ([name, value]) =>
+                                        form.setFieldValue(name, value)
+                                    );
+                                  }}
+                                />
+                              </Box>
+
+                              {!isEmpty(extraFormWidgets) && (
+                                <>
+                                  {Object.entries(extraFormWidgets).map(
+                                    ([name, Widget]) => (
+                                      <Fragment key={name}>
+                                        <Box className="layout-column tw:block">
+                                          <Divider
+                                            dashed
+                                            className="tw:mx-2 tw:h-6 tw:border-r"
+                                            orientation="vertical"
+                                          />
+                                        </Box>
+                                        <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                                          <Widget
+                                            alertDetails={alert}
+                                            formRef={form}
+                                            loading={isLoading}
+                                            templateResourcePermission={
+                                              templateResourcePermission
+                                            }
+                                            templates={templates}
+                                            values={values}
+                                            onValuesChange={(changes) =>
+                                              Object.entries(changes).forEach(
+                                                ([key, value]) =>
+                                                  form.setFieldValue(key, value)
+                                              )
+                                            }
+                                          />
+                                        </Box>
+                                      </Fragment>
+                                    )
+                                  )}
+                                </>
+                              )}
+                            </Box>
+                          </Grid.Item>
+                          <Form.Item
+                            hidden
+                            initialValue={AlertType.Notification}
+                            name="alertType"
+                          />
+                          <Form.Item
+                            hidden
+                            initialValue={ProviderType.User}
+                            name="provider"
+                          />
+                          <Form.Item
+                            hidden
+                            getValueProps={() => ({ value: '' })}
+                            name="notificationTemplate">
+                            <input readOnly type="hidden" />
+                          </Form.Item>
+                          <Form.Item
+                            hidden
+                            getValueProps={() => ({ value: '' })}
+                            name="customNotificationTemplateData">
+                            <input readOnly type="hidden" />
+                          </Form.Item>
+
+                          {!isUndefined(inlineAlertDetails) && (
+                            <Grid.Item className="layout-column" span={24}>
+                              <InlineAlert {...inlineAlertDetails} />
+                            </Grid.Item>
+                          )}
+
+                          <Grid.Item className="layout-column" span={24}>
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                color="tertiary"
+                                data-testid="cancel-button"
+                                onClick={() => navigate(-1)}>
+                                {t('label.cancel')}
+                              </Button>
+
+                              {Object.entries(extraFormButtons).map(
+                                ([name, ButtonComponent]) => (
+                                  <ButtonComponent
+                                    alertDetails={alert}
+                                    formRef={form}
+                                    key={name}
+                                    templateResourcePermission={
+                                      templateResourcePermission
+                                    }
+                                    templates={templates}
+                                    values={values}
+                                    onValuesChange={(changes) =>
+                                      Object.entries(changes).forEach(
+                                        ([key, value]) =>
+                                          form.setFieldValue(key, value)
+                                      )
+                                    }
+                                  />
+                                )
+                              )}
+                              <Button
+                                color="primary"
+                                data-testid="save-button"
+                                isLoading={isButtonLoading}
+                                type="submit">
+                                {t('label.save')}
+                              </Button>
+                            </div>
+                          </Grid.Item>
+                        </Grid>
+                      )}
+                    </Form>
+                  </AlertSelectionProvider>
+                </Grid.Item>
+              </Grid>
+            </Card.Content>
           </Card>
         ),
         minWidth: 700,

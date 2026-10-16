@@ -24,6 +24,12 @@ export interface EventBasedEntityTrigger {
  */
 export interface TriggerConfiguration {
     /**
+     * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+     * published. Enforce holds the edit for review: the workflow's user approval task publishes
+     * it when approved and discards it when rejected.
+     */
+    approvalMode?: ApprovalMode;
+    /**
      * Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes'
      * for multiple types.
      */
@@ -51,6 +57,16 @@ export interface TriggerConfiguration {
      * workflow. Takes priority over exclude fields.
      */
     include?: string[];
+}
+
+/**
+ * How the workflow treats edits to the fields it watches. Default runs it after the edit is
+ * published. Enforce holds the edit for review: the workflow's user approval task publishes
+ * it when approved and discards it when rejected.
+ */
+export enum ApprovalMode {
+    Default = "Default",
+    Enforce = "Enforce",
 }
 
 /**

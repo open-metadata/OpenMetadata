@@ -13,6 +13,7 @@
 
 import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
+import { FieldProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +21,7 @@ import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
+import CoreEnumMultiSelectField from './fields/CoreEnumMultiSelectField';
 import CoreOneOfField from './fields/CoreOneOfField';
 import LayoutGridField from './fields/LayoutGridField';
 import { FormBuilderV1Props } from './FormBuilderV1.interface';
@@ -32,14 +34,22 @@ import {
 import { CoreObjectFieldTemplate } from './templates/CoreObjectFieldTemplate';
 import { CoreWrapIfAdditionalTemplate } from './templates/CoreWrapIfAdditionalTemplate';
 import CoreCheckboxWidget from './widgets/CoreCheckboxWidget';
+import CoreDateWidget from './widgets/CoreDateWidget';
 import CoreInputWidget from './widgets/CoreInputWidget';
 import CorePasswordWidget from './widgets/CorePasswordWidget';
 import CoreRadioWidget from './widgets/CoreRadioWidget';
 import CoreSelectWidget from './widgets/CoreSelectWidget';
 import CoreTextAreaWidget from './widgets/CoreTextAreaWidget';
+const ArrayField = (props: FieldProps) =>
+  props.schema.uiFieldType === 'treeSelect' ? (
+    <CoreEnumMultiSelectField {...props} />
+  ) : (
+    <CoreArrayField {...props} />
+  );
+
 const defaultFields = {
   AnyOfField: CoreOneOfField,
-  ArrayField: CoreArrayField,
+  ArrayField,
   BooleanField: CoreBooleanField,
   OneOfField: CoreOneOfField,
   LayoutGridField,
@@ -47,6 +57,7 @@ const defaultFields = {
 
 const defaultWidgets = {
   CheckboxWidget: CoreCheckboxWidget,
+  DateWidget: CoreDateWidget,
   EmailWidget: CoreInputWidget,
   PasswordWidget: CorePasswordWidget,
   RadioWidget: CoreRadioWidget,
@@ -132,6 +143,19 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
       [props.templates]
     );
 
+    // Custom fields (toggles, tag arrays) report focus through
+    // formContext.handleFocus, so a form-level onFocus has to reach them too.
+    const { onFocus, formContext: consumerFormContext } = props;
+    const formContext = useMemo(
+      () => ({
+        handleFocus: onFocus
+          ? (id: string) => onFocus(id, undefined)
+          : undefined,
+        ...consumerFormContext,
+      }),
+      [consumerFormContext, onFocus]
+    );
+
     return (
       <FieldDocsContext.Provider value={fieldDocs}>
         <Form
@@ -141,6 +165,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           omitExtraData
           className="rjsf no-header"
           fields={mergedFields}
+          formContext={formContext}
           formData={localFormData}
           idSeparator="/"
           ref={ref}
@@ -158,7 +183,7 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
            * and keep the card's bottom border-radius visible during scroll. */}
           {!hideFooter && (
             <Box
-              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-primary tw:pt-4 tw:pb-1"
+              className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-4 tw:border-t tw:border-secondary tw:bg-surface tw:pt-4 tw:pb-1"
               direction="row"
               gap={2}
               justify="end">

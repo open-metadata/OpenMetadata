@@ -66,7 +66,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
                 owner={team.users ?? []}
                 showTeamsTab={false}
                 onUpdate={(users) => onAddUsers(users ?? [])}>
-                <Button color="primary" data-testid="add-user" size="sm">
+                <Button color="primary" data-testid="add-user" size="xs">
                   {t('label.add-entity', { entity: t('label.user') })}
                 </Button>
               </UserTeamSelectableList>

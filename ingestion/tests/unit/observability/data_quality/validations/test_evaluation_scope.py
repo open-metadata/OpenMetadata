@@ -38,7 +38,7 @@ from metadata.generated.schema.entity.data.table import (
     PartitionIntervalTypes,
     PartitionProfilerConfig,
 )
-from metadata.generated.schema.tests.basic import TestCaseStatus
+from metadata.generated.schema.tests.basic import TestCaseEvaluationScope, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -303,6 +303,77 @@ class TestResultMessages:
         validator._run_results = MagicMock(return_value=0)
 
         assert validator.run_validation().result.endswith("Evaluated on the full table.")
+
+
+class TestRecordedScope:
+    """The scope as structured fields on the result, for the UI to read instead of the message"""
+
+    PARTITIONED = EvaluationScopeRuntimeParameters(
+        partition_details=PartitionProfilerConfig(enablePartitioning=True, partitionColumnName="event_date"),
+        partition_predicate="event_date >= '2026-09-10'",
+    )
+
+    def test_a_sampled_run_records_the_sample(self):
+        validator = build_not_null_validator(TEN_PERCENT, 120, 9981, threshold=1, unit="PERCENTAGE")
+
+        scope = validator.run_validation().evaluationScope
+
+        assert scope == TestCaseEvaluationScope(
+            sampled=True,
+            profileSample=10.0,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            partitioned=False,
+        )
+
+    def test_a_partitioned_run_records_the_partition_column(self):
+        validator = build_not_null_validator(self.PARTITIONED, 0, 100)
+
+        scope = validator.run_validation().evaluationScope
+
+        assert scope == TestCaseEvaluationScope(
+            sampled=False, profileSampleType=None, partitioned=True, partitionColumnName="event_date"
+        )
+
+    def test_a_full_table_run_records_that_nothing_was_applied(self):
+        validator = build_not_null_validator(FULL_TABLE, 0, 100)
+
+        scope = validator.run_validation().evaluationScope
+
+        assert scope == TestCaseEvaluationScope(sampled=False, profileSampleType=None, partitioned=False)
+
+    def test_a_configured_sample_the_sampler_did_not_apply_is_not_recorded(self):
+        """A 100% sample that is not randomized reads the whole table"""
+        scope = EvaluationScopeRuntimeParameters(profile_sample=100.0, profile_sample_type=ProfileSampleType.PERCENTAGE)
+
+        assert scope.to_result_scope(bypasses_sampler=False).sampled is False
+
+    def test_a_sample_query_records_neither_the_configured_size_nor_the_partition(self):
+        """The sampler returns the user's query as written, before any sample size or partition"""
+        scope = self.PARTITIONED.model_copy(
+            update={
+                "sample_query": "SELECT * FROM users WHERE active",
+                "profile_sample": 10.0,
+                "profile_sample_type": ProfileSampleType.PERCENTAGE,
+                "sampling_applied": True,
+            }
+        )
+
+        assert scope.to_result_scope(bypasses_sampler=False) == TestCaseEvaluationScope(
+            sampled=True, profileSampleType=None, partitioned=False
+        )
+
+    def test_a_test_running_its_own_sql_records_neither_sample_nor_partition(self):
+        scope = self.PARTITIONED.model_copy(update={"profile_sample": 10.0, "sampling_applied": True})
+
+        assert scope.to_result_scope(bypasses_sampler=True) == TestCaseEvaluationScope(
+            sampled=False, profileSampleType=None, partitioned=False
+        )
+
+    def test_an_aborted_run_records_no_scope(self):
+        validator = build_validator(ColumnValuesToBeNotNullValidator, [scope_parameter(TEN_PERCENT)])
+        validator.get_column = MagicMock(side_effect=ValueError("no such column"))
+
+        assert validator.run_validation().evaluationScope is None
 
 
 class TestSampleAgainstFullTable:

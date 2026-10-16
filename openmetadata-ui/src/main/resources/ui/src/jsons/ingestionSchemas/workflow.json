@@ -809,6 +809,7 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
+                  "maximum": 1000,
                   "title": "Sample Data Count"
                 },
                 "classificationLanguage": {
@@ -1322,6 +1323,7 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
+                  "maximum": 1000,
                   "title": "Sample Data Rows Count"
                 },
                 "classificationLanguage": {
@@ -1780,6 +1782,7 @@
                   "type": "integer",
                   "default": 50,
                   "minimum": 1,
+                  "maximum": 1000,
                   "title": "Sample Data Rows Count"
                 },
                 "classificationLanguage": {
@@ -2559,6 +2562,12 @@
                                       "description": "Google Cloud client certificate uri.",
                                       "type": "string",
                                       "format": "uri"
+                                    },
+                                    "universeDomain": {
+                                      "title": "Universe Domain",
+                                      "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                      "type": "string",
+                                      "default": "googleapis.com"
                                     }
                                   },
                                   "additionalProperties": false
@@ -2740,6 +2749,14 @@
                   "description": "Optional configuration to search across databases for tables or not",
                   "type": "boolean",
                   "default": false
+                },
+                "catalogMapping": {
+                  "title": "Catalog Mapping",
+                  "description": "Optional map from a database name in the dbt manifest to the database it is ingested under in OpenMetadata, for when the engine dbt runs on names it differently. For example, dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up in every database service.",
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  }
                 },
                 "dbtUpdateDescriptions": {
                   "title": "Update Descriptions",
@@ -5245,6 +5262,33 @@
                 },
                 "ingestionRunner": {
                   "description": "Optional value of the ingestion runner name responsible for running the workflow",
+                  "type": "string"
+                },
+                "updateDescriptions": {
+                  "description": "Reverse Metadata Agent: propagate description changes to the source.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "updateOwners": {
+                  "description": "Reverse Metadata Agent: propagate owner changes to the source.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "updateTags": {
+                  "description": "Reverse Metadata Agent: propagate tag changes to the source.",
+                  "type": "boolean",
+                  "default": false
+                },
+                "filter": {
+                  "description": "Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are propagated. Empty means all assets of the service.",
+                  "type": "string"
+                },
+                "SQLTemplate": {
+                  "description": "Reverse Metadata Agent: templated SQL command used instead of the default operations.",
+                  "type": "string"
+                },
+                "sinkService": {
+                  "description": "Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are applied to instead of this service.",
                   "type": "string"
                 }
               },
@@ -14120,6 +14164,12 @@
                         },
                         "supportsViewLineageExtraction": {
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/8/properties/supportsViewLineageExtraction"
+                        },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        },
+                        "supportsUsageExtraction": {
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
                         }
                       },
                       "additionalProperties": false,

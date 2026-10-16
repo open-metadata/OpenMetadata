@@ -14,10 +14,11 @@
 import {
   Badge,
   Dropdown,
+  RadioButtonBase,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Radio } from 'antd';
+
 import { isEmpty, orderBy } from 'lodash';
 import {
   FC,
@@ -53,7 +54,6 @@ import { getEmptyTextFromUserProfileItem } from '../../../../utils/UsersPureUtil
 import InterfaceModeMenuItem from '../../../AppModeSwitcher/InterfaceModeMenuItem';
 import { useAuthProvider } from '../../../Auth/AuthProviders/AuthProvider';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
-import ThemeModeSwitcher from '../../../ThemeModeSwitcher/ThemeModeSwitcher';
 import './user-profile-icon.less';
 
 const LIST_ITEM_CLASS = 'tw:pl-6';
@@ -185,7 +185,7 @@ export const UserProfileIcon = () => {
 
           {defaultPersona?.id === item.id && (
             <Badge
-              className="tw:mr-2 tw:ml-1 tw:font-medium tw:shadow-xs"
+              className="tw:mr-2 tw:ml-1 tw:font-medium"
               color="brand"
               data-testid="default-persona-tag"
               size="sm"
@@ -195,7 +195,12 @@ export const UserProfileIcon = () => {
           )}
         </div>
 
-        <Radio checked={selectedPersona?.id === item.id} />
+        {selectedPersona?.id === item.id && (
+          <span className="tw:sr-only">{t('label.selected')}</span>
+        )}
+        <span aria-hidden="true">
+          <RadioButtonBase isSelected={selectedPersona?.id === item.id} />
+        </span>
       </div>
     ),
     [selectedPersona, defaultPersona, t]
@@ -368,7 +373,6 @@ export const UserProfileIcon = () => {
         <div className="tw:flex tw:flex-col tw:gap-3 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
           <InterfaceModeMenuItem />
           {navbarUtilClassBase.getUserProfileExtraItems()}
-          <ThemeModeSwitcher className="tw:w-full" />
         </div>
       </Dropdown.Popover>
     </Dropdown.Root>

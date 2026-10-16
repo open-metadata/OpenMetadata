@@ -60,13 +60,13 @@ import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.service.Entity;
@@ -302,6 +302,7 @@ public class JwtFilter implements ContainerRequestFilter {
     Timer.Sample authSample = RequestLatencyContext.startAuthOperation();
     ImpersonationContext.clear();
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
 
     try {
       String tokenFromHeader = extractToken(requestContext.getHeaders());
@@ -339,15 +340,20 @@ public class JwtFilter implements ContainerRequestFilter {
 
       CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);
       String scheme = requestContext.getUriInfo().getRequestUri().getScheme();
+      // The persisted navbar selection is a UI view preference: bot tokens (including impersonated
+      // requests) and personal access tokens (scripts, SDK) list without it.
+      EntityReference activeDomain =
+          ActiveDomainContext.resolve(userName, isBotUser || isPersonalAccessToken(claims));
       CatalogSecurityContext catalogSecurityContext =
           new CatalogSecurityContext(
               catalogPrincipal,
               scheme,
               SecurityContext.DIGEST_AUTH,
-              getUserRolesFromClaims(claims, isBotUser),
+              getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
               isBotUser,
               impersonatedBy,
-              activePersona);
+              activePersona,
+              activeDomain);
       LOG.debug("SecurityContext {}", catalogSecurityContext);
       requestContext.setSecurityContext(catalogSecurityContext);
 
@@ -357,9 +363,11 @@ public class JwtFilter implements ContainerRequestFilter {
         ImpersonationContext.clear();
       }
       ActivePersonaContext.setActivePersona(activePersona);
+      ActiveDomainContext.setActiveDomain(activeDomain);
     } catch (Throwable t) {
       ImpersonationContext.clear();
       ActivePersonaContext.clear();
+      ActiveDomainContext.clear();
       throw t;
     } finally {
       RequestLatencyContext.endAuthOperation(authSample);
@@ -493,11 +501,15 @@ public class JwtFilter implements ContainerRequestFilter {
         claims, tokenKeyId, tokenGenerator.getIssuer(), tokenGenerator.getKid());
   }
 
-  // null and an empty set say different things to the role sync downstream: "the provider told us
-  // nothing about roles" vs "the provider told us this user has none". Collapsing them would let a
-  // deployment that never configured a roles claim wipe every user's roles on login.
-  private Set<String> getUserRolesFromClaims(Map<String, Claim> claims, boolean isBot) {
-    if (!useRolesFromProvider || isBot || !claims.containsKey(ROLES_CLAIM)) {
+  // null tells the role sync downstream there is nothing to sync from. A token OpenMetadata minted
+  // (a session token or a PAT) is one of those: its roles are the ones the user had when it was
+  // minted, so syncing from it would restore roles the provider revoked since. In the provider's
+  // own token an absent roles claim means no roles - claims without a value are omitted (OIDC Core
+  // 5.1), and Entra ID drops the claim once a user's last app role is removed.
+  // ADR:2026-10-13-provider-token-is-authoritative-for-roles-and-admin
+  private Set<String> getUserRolesFromClaims(
+      Map<String, Claim> claims, boolean isBot, String tokenKeyId) {
+    if (!useRolesFromProvider || isBot || isInternallyIssuedToken(claims, tokenKeyId)) {
       return null;
     }
     return new HashSet<>(getClaimAsList(claims.get(ROLES_CLAIM)));
@@ -570,12 +582,15 @@ public class JwtFilter implements ContainerRequestFilter {
         "The given token does not match the current bot's token!");
   }
 
+  private static boolean isPersonalAccessToken(Map<String, Claim> claims) {
+    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
+    return tokenTypeClaim != null
+        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenTypeClaim.asString());
+  }
+
   private void validatePersonalAccessToken(
       Map<String, Claim> claims, String tokenFromHeader, String userName) {
-    Claim tokenTypeClaim = claims.get(TOKEN_TYPE);
-    String tokenType = tokenTypeClaim == null ? StringUtils.EMPTY : tokenTypeClaim.asString();
-    if (claims.containsKey(TOKEN_TYPE)
-        && ServiceTokenType.PERSONAL_ACCESS.value().equals(tokenType)) {
+    if (isPersonalAccessToken(claims)) {
       if (UserTokenCache.isTokenValid(userName, tokenFromHeader)) {
         return;
       }
@@ -698,10 +713,12 @@ public class JwtFilter implements ContainerRequestFilter {
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
-        getUserRolesFromClaims(claims, isBotUser),
+        getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
         isBotUser,
         null,
-        activePersona);
+        activePersona,
+        ActiveDomainContext.resolve(
+            resolvedIdentity.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(
