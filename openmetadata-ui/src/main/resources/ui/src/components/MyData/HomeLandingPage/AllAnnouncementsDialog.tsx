@@ -35,17 +35,20 @@ const ALL_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',
   'announcements',
   'all',
+  'active',
 ] as const;
 const ALL_ANNOUNCEMENTS_TTL_MS = 60_000;
 
-// The rail shows only live announcements, so this list is the one place expired
-// and scheduled ones surface. It grows without bound as announcements expire,
-// so it is paged on the API's `after` cursor rather than capped at one fetch —
-// a cap would silently drop the oldest with nothing telling the user so.
+// Every live announcement — the full version of the rail, which shows two at a
+// time. Expired and scheduled ones stay out: the section itself only appears
+// while something is live, so it is no place for them; each asset's
+// Announcements drawer lists those. Paged on the API's `after` cursor rather
+// than capped at one fetch, so a busy estate never silently loses the rest.
 export const ALL_ANNOUNCEMENTS_PAGE_SIZE = 50;
 
 const fetchAnnouncementsPage = ({ pageParam }: { pageParam?: string }) =>
   listAnnouncements({
+    active: true,
     limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
     after: pageParam,
     system: false,
@@ -68,7 +71,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
   const { t } = useTranslation();
 
   // Deferred until the dialog is opened — most sessions never open it, and the
-  // rail's active-only query already covers the default view.
+  // rail's own query already covers the first few.
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       enabled: open,

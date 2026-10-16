@@ -175,14 +175,14 @@ jest.mock('react-i18next', () => ({
 const mockListAnnouncementsApi = listAnnouncements as jest.MockedFunction<
   typeof listAnnouncements
 >;
-// One endpoint serves both reads, so route by intent: the rail's live list
-// asks for `active`; the dialog and the admin probe list everything.
+// One endpoint serves both reads, and both ask for live announcements, so route
+// by page size: the dialog pages at ALL_ANNOUNCEMENTS_PAGE_SIZE, the rail does not.
 const mockGetActiveAnnouncements = jest.fn();
 const mockListAnnouncements = jest.fn();
 const routeListAnnouncements = (params?: ListAnnouncementsParams) =>
-  params?.active
-    ? mockGetActiveAnnouncements(params)
-    : mockListAnnouncements(params);
+  params?.limit === ALL_ANNOUNCEMENTS_PAGE_SIZE
+    ? mockListAnnouncements(params)
+    : mockGetActiveAnnouncements(params);
 
 const USER_ID = 'user-1';
 const ANNOUNCEMENT_ID = 'announcement-1';
@@ -614,11 +614,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       data: [makeAnnouncement('a1')],
     } as never);
     mockListAnnouncements.mockResolvedValue({
-      data: [
-        makeAnnouncement('old', EXPIRED_WINDOW),
-        makeAnnouncement('a1'),
-        makeAnnouncement('soon', SCHEDULED_WINDOW),
-      ],
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
     } as never);
   });
 
@@ -652,35 +648,22 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     });
   });
 
-  it('lists expired and scheduled announcements the rail leaves out', async () => {
+  // The section only appears while something is live, so the dialog is no
+  // place for expired or scheduled announcements; it lists every live one.
+  it('asks only for live announcements, every one of them dismissible', async () => {
     await openDialog();
+
+    expect(mockListAnnouncements).toHaveBeenCalledWith(
+      expect.objectContaining({ active: true, system: false })
+    );
 
     const list = screen.getByTestId('all-announcements-list');
 
-    expect(list).toContainElement(screen.getByTestId(cardId('old')));
-    expect(list).toContainElement(screen.getByTestId(cardId('soon')));
-    // Active first, then Scheduled, then Expired.
+    expect(list).toContainElement(screen.getByTestId(cardId('a2')));
     expect(
-      Array.from(list.children).map((li) =>
-        li.firstElementChild?.getAttribute('data-testid')
-      )
-    ).toEqual([cardId('a1'), cardId('soon'), cardId('old')]);
-  });
-
-  it('offers no dismiss on announcements that are no longer live', async () => {
-    await openDialog();
-
-    const expired = screen.getByTestId(cardId('old'));
-    const scheduled = screen.getByTestId(cardId('soon'));
-
-    expect(expired).toHaveTextContent('label.in-active');
-    expect(scheduled).toHaveTextContent('label.scheduled');
-    expect(
-      expired.querySelector(`[aria-label="${DISMISS_LABEL}"]`)
+      within(list).queryByTestId('announcement-status')
     ).not.toBeInTheDocument();
-    expect(
-      scheduled.querySelector(`[aria-label="${DISMISS_LABEL}"]`)
-    ).not.toBeInTheDocument();
+    expect(within(list).getAllByLabelText(DISMISS_LABEL)).toHaveLength(2);
   });
 
   it('closes itself when an announcement in it is opened', async () => {
@@ -706,9 +689,12 @@ describe('AnnouncementsRail all-announcements dialog', () => {
   });
 
   // The dialog used to live inside the rail's section, so dismissing the last
-  // live card emptied the rail, unmounted the section and closed the dialog on
-  // the scheduled and expired announcements it was still listing.
+  // live card emptied the rail, unmounted the section and closed the dialog
+  // under the user.
   it('stays open when the last live announcement is dismissed from it', async () => {
+    mockListAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1')],
+    } as never);
     await openDialog();
 
     const list = screen.getByTestId('all-announcements-list');
@@ -719,28 +705,26 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     expect(
       screen.queryByTestId('announcements-section')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('all-announcements-list')).toBeInTheDocument();
-    expect(screen.getByTestId(cardId('old'))).toBeInTheDocument();
-    expect(screen.getByTestId(cardId('soon'))).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-active-announcements')
+    ).toBeInTheDocument();
   });
 
   it('pages past the first batch instead of silently truncating', async () => {
     mockListAnnouncements
       .mockResolvedValueOnce({
-        data: [
-          makeAnnouncement('a1'),
-          makeAnnouncement('soon', SCHEDULED_WINDOW),
-        ],
+        data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
         paging: { after: 'cursor-2', total: 3 },
       } as never)
       .mockResolvedValueOnce({
-        data: [makeAnnouncement('old', EXPIRED_WINDOW)],
+        data: [makeAnnouncement('a3')],
         paging: { total: 3 },
       } as never);
 
     await openDialog();
 
     expect(mockListAnnouncements).toHaveBeenLastCalledWith({
+      active: true,
       after: undefined,
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
       system: false,
@@ -749,12 +733,13 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
       '3'
     );
-    expect(screen.queryByTestId(cardId('old'))).not.toBeInTheDocument();
+    expect(screen.queryByTestId(cardId('a3'))).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('all-announcements-load-more'));
 
-    expect(await screen.findByTestId(cardId('old'))).toBeInTheDocument();
+    expect(await screen.findByTestId(cardId('a3'))).toBeInTheDocument();
     expect(mockListAnnouncements).toHaveBeenLastCalledWith({
+      active: true,
       after: 'cursor-2',
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
       system: false,
