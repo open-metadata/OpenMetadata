@@ -83,7 +83,7 @@
     <dependency>
       <groupId>org.hibernate.validator</groupId>
       <artifactId>hibernate-validator</artifactId>
-      <version>8.0.1.Final</version>
+      <version>8.0.6.Final</version>
     </dependency>
     <!-- Jakarta Bean Validation API -->
     <dependency>
@@ -871,7 +871,7 @@
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>33.7.2-jre</version>
+      <version>${guava.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
