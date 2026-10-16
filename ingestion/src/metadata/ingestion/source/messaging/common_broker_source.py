@@ -108,7 +108,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         # Merged Protobuf schema text per topic, held from yield_topic until its sample data is
         # read: the stored schema text lacks its references.
         self._protobuf_schema_texts = LRUCache(maxsize=PROTOBUF_SCHEMA_CACHE_SIZE)
-        # Merged Protobuf schema text per writer schema id, or None to read with the topic's.
+        # Merged Protobuf schema text per writer schema id, or the error that fetching it raised.
         self._protobuf_writer_schemas = LRUCache(maxsize=PROTOBUF_SCHEMA_CACHE_SIZE)
         self._protobuf_decoders = LRUCache(maxsize=PROTOBUF_DECODER_CACHE_SIZE)
         if self.generate_sample_data:
@@ -375,24 +375,31 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         """
         Merged text of the schema a framed record was written with. Its message indexes are
         positions in that schema, so a later version that adds or moves a message would make
-        them name the wrong one. None means read the record with the topic's latest schema.
+        them name the wrong one. None means the record is unframed: read it with the topic's schema.
+        Raises when the writer schema cannot be fetched, so the record is skipped rather than
+        read with a schema that may not match it, as the Avro deserializer does.
         """
         writer_id = read_writer_schema_id(record)
         if writer_id is None or not self.schema_registry_client:
             return None
         if writer_id not in self._protobuf_writer_schemas:
-            schema_text = None
             try:
                 if isinstance(writer_id, int):
                     writer_schema = self.schema_registry_client.get_schema(writer_id)
                 else:
                     writer_schema = self.schema_registry_client.get_schema_by_guid(writer_id)
                 schema_text = merge_and_clean_protobuf_schema(self._get_schema_text_with_references(writer_schema))
+                self._protobuf_writer_schemas[writer_id] = schema_text or ValueError(
+                    f"Writer schema [{writer_id}] could not be merged with its references"
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning("Failed to fetch writer schema [%s], reading with the topic schema: %s", writer_id, exc)
-            self._protobuf_writer_schemas[writer_id] = schema_text
-        return self._protobuf_writer_schemas[writer_id]
+                # Kept, so the registry is asked once per schema rather than once per record.
+                self._protobuf_writer_schemas[writer_id] = exc
+        writer_schema_text = self._protobuf_writer_schemas[writer_id]
+        if isinstance(writer_schema_text, Exception):
+            raise writer_schema_text
+        return writer_schema_text
 
     def close(self):
         # The consumer belongs to the connection, which closes it on teardown.

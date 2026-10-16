@@ -37,7 +37,7 @@ class _BrokerSource(CommonBrokerSource):
     """CommonBrokerSource without the server and broker connections."""
 
     def __init__(self, schema_registry_client=None):
-        self.schema_registry_client = schema_registry_client or object()
+        self.schema_registry_client = schema_registry_client
         self._avro_deserializers = LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE)
         self._protobuf_writer_schemas = LRUCache(maxsize=PROTOBUF_SCHEMA_CACHE_SIZE)
         self._protobuf_decoders = LRUCache(maxsize=PROTOBUF_DECODER_CACHE_SIZE)
@@ -210,16 +210,29 @@ def test_record_written_with_an_older_schema_is_read_with_that_schema():
     assert json.loads(result) == {"id": "L-1"}
 
 
-def test_writer_schema_lookup_failure_falls_back_to_the_topic_schema_once():
+def test_record_is_skipped_when_its_writer_schema_cannot_be_fetched():
     registry = MagicMock()
-    registry.get_schema.side_effect = RuntimeError("registry unreachable")
+    registry.get_schema.side_effect = RuntimeError("schema 7 not found")
     source = _source(registry)
+    # The topic schema could read this payload, but it may not be the schema that wrote it.
     schema = 'syntax = "proto3";\nmessage Loan { string id = 1; }'
     # Confluent framing: magic byte, schema id 7, message index [0]; then id="L-1".
     payload = b"\x00\x00\x00\x00\x07\x00" + b"\x0a\x03L-1"
 
     for _ in range(3):
-        result = CommonBrokerSource.decode_message(source, payload, schema, SchemaType.Protobuf, topic_name="loans")
+        with pytest.raises(RuntimeError, match="schema 7 not found"):
+            CommonBrokerSource.decode_message(source, payload, schema, SchemaType.Protobuf, topic_name="loans")
+
+    registry.get_schema.assert_called_once_with(7)
+
+
+def test_unframed_record_is_read_with_the_topic_schema():
+    registry = MagicMock()
+    schema = 'syntax = "proto3";\nmessage Loan { string id = 1; }'
+
+    result = CommonBrokerSource.decode_message(
+        _source(registry), b"\x0a\x03L-1", schema, SchemaType.Protobuf, topic_name="loans"
+    )
 
     assert json.loads(result) == {"id": "L-1"}
-    registry.get_schema.assert_called_once_with(7)
+    registry.get_schema.assert_not_called()
