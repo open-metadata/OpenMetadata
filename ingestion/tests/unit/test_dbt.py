@@ -24,7 +24,7 @@ from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -5226,8 +5226,42 @@ class TestCatalogMapping:
 
         assert source._map_catalogs_in_sql(compiled_sql) == lineage_sql
 
-    def test_query_lineage_parses_the_sql_with_the_mapped_database(self):
-        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+    @pytest.mark.parametrize(
+        ("catalog_mapping", "column_links"),
+        [
+            (
+                {"bq_catalog": "my-gcp-project"},
+                [
+                    ("bq_svc.my-gcp-project.raw.customers.id", "bq_svc.my-gcp-project.analytics.stg_customers.id"),
+                    ("bq_svc.my-gcp-project.raw.customers.name", "bq_svc.my-gcp-project.analytics.stg_customers.name"),
+                ],
+            ),
+            (None, []),
+        ],
+    )
+    def test_query_lineage_links_the_columns_of_the_mapped_source(self, catalog_mapping, column_links):
+        def table(table_fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=table_fqn.split(".")[-1],
+                fullyQualifiedName=table_fqn,
+                columns=[
+                    Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
+                    for name in ("id", "name")
+                ],
+            )
+
+        tables = [table(self.BQ_SOURCE), table(self.BQ_MODEL)]
+        source = self._source(catalog_mapping=catalog_mapping)
+        source.metadata.es_search_from_fqn.side_effect = lambda *_args, fqn_search_string, **_kwargs: (
+            [
+                ingested
+                for ingested in tables
+                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ]
+            or None
+        )
+        source.metadata.get_by_name.return_value = None
         source.config = SimpleNamespace(
             serviceName="trino_svc",
             serviceConnection=SimpleNamespace(
@@ -5235,20 +5269,23 @@ class TestCatalogMapping:
             ),
         )
         data_model_link = SimpleNamespace(
-            table_entity=Table(id=uuid.uuid4(), name="stg_customers", columns=[], fullyQualifiedName=self.BQ_MODEL),
-            datamodel=SimpleNamespace(sql=SimpleNamespace(root='select id from "bq_catalog"."raw"."customers"')),
+            table_entity=tables[1],
+            datamodel=SimpleNamespace(
+                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
+            ),
         )
 
-        with patch(
-            "metadata.ingestion.source.database.dbt.metadata.get_lineage_by_query", return_value=[]
-        ) as get_lineage_by_query:
-            list(source.create_dbt_query_lineage(data_model_link))
+        requests = [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(data_model_link)
+            if either.right is not None
+        ]
 
-        assert get_lineage_by_query.call_args.kwargs["query"] == (
-            'create table "my-gcp-project"."analytics"."stg_customers" as '
-            'select id from "my-gcp-project"."raw"."customers"'
-        )
-        assert get_lineage_by_query.call_args.kwargs["service_names"] == "bq_svc"
+        assert [
+            (model_str(link.fromColumns[0]), model_str(link.toColumn))
+            for request in requests
+            for link in request.lineage_details.columnsLineage
+        ] == column_links
 
     def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
         source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})
