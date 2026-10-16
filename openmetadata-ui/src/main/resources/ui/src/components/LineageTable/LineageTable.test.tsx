@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -1593,24 +1593,26 @@ describe('LineageTable', () => {
         setFilterNodes,
       });
 
-      // The stale (page 2) fetch returns a never-resolving promise so it
-      // stays pending while the fresh (page 1) fetch resolves and applies
-      // its result. Without the stale-response guard, when the stale
-      // response eventually arrives it would overwrite page 1.
+      // The stale (page 2) fetch stays pending until the fresh (page 1)
+      // fetch resolves and applies its result. We then resolve the stale
+      // fetch with distinct rows to prove the stale-response guard
+      // discards them rather than letting them overwrite page 1.
+      let resolveStaleFetch: (value: unknown) => void;
       mockGetLineageByEntityCount.mockImplementationOnce(
-        () => new Promise(() => {})
+        () =>
+          new Promise((resolve) => {
+            resolveStaleFetch = resolve;
+          })
       );
 
       const { rerender } = render(<LineageTable entity={mockEntity} />, {
         wrapper: MemoryRouter,
       });
 
-      // First fetch (page 2, stale) has started
       await waitFor(() => {
         expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(1);
       });
 
-      // Reset effect fires → handlePageChange(1)
       await waitFor(() => {
         expect(handlePageChange).toHaveBeenCalledWith(1);
       });
@@ -1628,29 +1630,62 @@ describe('LineageTable', () => {
 
       rerender(<LineageTable entity={mockEntity} />);
 
-      // Second fetch (page 1) has started and should resolve (default mock)
       await waitFor(() => {
         expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(2);
       });
 
-      // The fresh (page 1) response should have been applied — the stale
-      // (page 2) response is still pending and must not have blocked it.
+      // The fresh (page 1) response should have been applied with the
+      // default mock data (node1, node2).
       await waitFor(() => {
-        expect(setFilterNodes).toHaveBeenCalled();
+        const lastCall =
+          setFilterNodes.mock.calls[setFilterNodes.mock.calls.length - 1];
+
+        expect(lastCall[0]).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'node1' }),
+            expect.objectContaining({ id: 'node2' }),
+          ])
+        );
       });
 
-      // The stale fetch (page 2) is still pending. Verify it did NOT call
-      // setFilterNodes — only the fresh fetch (page 1) should have applied
-      // its results. The fresh fetch uses the default mock data (node1,
-      // node2), not any stale data.
-      const allCalls = setFilterNodes.mock.calls;
-      for (const call of allCalls) {
-        const nodes = call[0];
-        if (Array.isArray(nodes)) {
-          for (const node of nodes) {
-            expect(node).not.toHaveProperty('id', 'stale');
-          }
-        }
+      const callCountAfterFresh = setFilterNodes.mock.calls.length;
+
+      // Now resolve the stale (page 2) fetch with distinct rows. The guard
+      // must discard this response — setFilterNodes should not be called
+      // again with the stale data.
+      await act(async () => {
+        resolveStaleFetch!({
+          nodes: {
+            'stale.table': {
+              entity: {
+                id: 'stale',
+                fullyQualifiedName: 'stale.table',
+                name: 'stale',
+                entityType: EntityType.TABLE,
+                nodeDepth: 1,
+                owners: [],
+                domains: [],
+                tags: [],
+                type: 'table',
+              },
+              paging: {},
+              nodeDepth: 1,
+            },
+          },
+          upstreamEdges: {},
+          downstreamEdges: {},
+          paginationInfo: mockLineagePagingInfo,
+        });
+      });
+
+      // The stale response must not have overwritten the fresh rows.
+      expect(setFilterNodes.mock.calls.length).toBe(callCountAfterFresh);
+
+      const lastCall =
+        setFilterNodes.mock.calls[setFilterNodes.mock.calls.length - 1];
+
+      for (const node of lastCall[0]) {
+        expect(node).not.toHaveProperty('id', 'stale');
       }
     });
   });
