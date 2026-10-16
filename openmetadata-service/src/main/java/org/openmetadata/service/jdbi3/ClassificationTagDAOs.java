@@ -559,16 +559,6 @@ public interface ClassificationTagDAOs {
         @Bind("tagFQNPrefix") String tagFQNPrefix,
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
 
-    @SqlUpdate(
-        "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
-    void deleteTagsByTagAndTargetEntity(
-        @BindFQN("tagFqnHash") String tagFqnHash,
-        @BindConcat(
-                value = "targetFQNHash",
-                parts = {":targetFQNHashPrefix", "%"},
-                hash = true)
-            String targetFQNHashPrefix);
-
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
 
