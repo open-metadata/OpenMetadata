@@ -44,9 +44,6 @@ class BetweenBoundsChecker(BaseValidationChecker):
         self.min_bound = min_bound
         self.max_bound = max_bound
 
-    def _is_unbounded(self, bound: Any) -> bool:
-        return is_unbounded(bound)
-
     def _check_violations(self, values):
         """Core violation check logic - works for both scalar and Series.
 
@@ -65,9 +62,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         # builds only those conditions: an unset bound excludes nothing, and a None one cannot
         # be compared against at all.
         outside = None
-        if not self._is_unbounded(self.min_bound):
+        if not is_unbounded(self.min_bound):
             outside = values < self.min_bound
-        if not self._is_unbounded(self.max_bound):
+        if not is_unbounded(self.max_bound):
             above = values > self.max_bound
             outside = above if outside is None else (outside | above)
 
@@ -112,9 +109,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         for expr in metrics:
             expr_conditions = []
 
-            if not self._is_unbounded(self.min_bound):
+            if not is_unbounded(self.min_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr < self.min_bound))
-            if not self._is_unbounded(self.max_bound):
+            if not is_unbounded(self.max_bound):
                 expr_conditions.append(and_(expr.isnot(None), expr > self.max_bound))
 
             if expr_conditions:
@@ -142,9 +139,9 @@ class BetweenBoundsChecker(BaseValidationChecker):
         # Build condition: value NOT NULL AND (value < min OR value > max)
         conditions = []
 
-        if not self._is_unbounded(self.min_bound):
+        if not is_unbounded(self.min_bound):
             conditions.append(and_(column.isnot(None), column < self.min_bound))
-        if not self._is_unbounded(self.max_bound):
+        if not is_unbounded(self.max_bound):
             conditions.append(and_(column.isnot(None), column > self.max_bound))
 
         if not conditions:
