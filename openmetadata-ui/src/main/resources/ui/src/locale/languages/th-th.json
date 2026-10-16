@@ -3294,6 +3294,7 @@
     "supported-service-plural": "บริการที่รองรับ",
     "supports-yaml-format": "รองรับรูปแบบ YAML (.yaml, .yml)",
     "suspend": "ระงับ",
+    "suspended": "ระงับแล้ว",
     "svg-uppercase": "SVG",
     "switch-domain": "สลับโดเมน",
     "switch-interface": "Switch interface",

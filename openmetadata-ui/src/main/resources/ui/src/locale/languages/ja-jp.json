@@ -3294,6 +3294,7 @@
     "supported-service-plural": "対応サービス",
     "supports-yaml-format": "YAML 形式をサポート (.yaml, .yml)",
     "suspend": "一時停止",
+    "suspended": "一時停止中",
     "svg-uppercase": "SVG",
     "switch-domain": "ドメインを切り替え",
     "switch-interface": "Switch interface",

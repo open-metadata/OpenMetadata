@@ -215,6 +215,16 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     [showEditButton, enterEditMode, editorLink, t]
   );
 
+  const suspendedBadge = isSuspended && (
+    <Badge
+      color="warning"
+      data-testid="workflow-suspended-badge"
+      size="sm"
+      type="color">
+      {t('label.suspended')}
+    </Badge>
+  );
+
   const systemBadge = useMemo(
     () =>
       isNoOp && (
@@ -281,6 +291,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           }
           badge={
             <>
+              {suspendedBadge}
               {systemBadge}
               {editTitleButton}
             </>
@@ -330,6 +341,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                     weight="semibold">
                     {title}
                   </Typography>
+                  {suspendedBadge}
                   {systemBadge}
                   {editTitleButton}
                 </div>

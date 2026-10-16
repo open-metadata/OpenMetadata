@@ -3294,6 +3294,7 @@
     "supported-service-plural": "Desteklenen Hizmetler",
     "supports-yaml-format": "YAML formatını destekler (.yaml, .yml)",
     "suspend": "Askıya Al",
+    "suspended": "Askıya Alındı",
     "svg-uppercase": "SVG",
     "switch-domain": "Alanı Değiştir",
     "switch-interface": "Switch interface",

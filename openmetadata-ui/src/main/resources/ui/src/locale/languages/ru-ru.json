@@ -3294,6 +3294,7 @@
     "supported-service-plural": "Поддерживаемые Сервисы",
     "supports-yaml-format": "Поддерживает формат YAML (.yaml, .yml)",
     "suspend": "Приостановить",
+    "suspended": "Приостановлено",
     "svg-uppercase": "SVG",
     "switch-domain": "Сменить домен",
     "switch-interface": "Switch interface",

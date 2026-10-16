@@ -452,3 +452,29 @@ describe('WorkflowHeader — manage menu', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('WorkflowHeader — suspended badge', () => {
+  it('shows a warning badge after the title for a suspended workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} isSuspended />);
+
+    const badge = screen.getByTestId('workflow-suspended-badge');
+
+    expect(badge).toHaveTextContent('label.suspended');
+    expect(badge).toHaveAttribute('color', 'warning');
+    expect(
+      screen.getByTestId('workflow-title').compareDocumentPosition(badge)
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows no badge for an active workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} />);
+
+    expect(
+      screen.queryByTestId('workflow-suspended-badge')
+    ).not.toBeInTheDocument();
+  });
+});

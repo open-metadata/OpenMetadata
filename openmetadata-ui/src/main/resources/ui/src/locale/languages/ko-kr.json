@@ -3294,6 +3294,7 @@
     "supported-service-plural": "지원되는 서비스",
     "supports-yaml-format": "YAML 형식 지원 (.yaml, .yml)",
     "suspend": "일시 중단",
+    "suspended": "일시 중단됨",
     "svg-uppercase": "SVG",
     "switch-domain": "도메인 전환",
     "switch-interface": "Switch interface",

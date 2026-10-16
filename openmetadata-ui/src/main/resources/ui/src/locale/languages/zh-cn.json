@@ -3294,6 +3294,7 @@
     "supported-service-plural": "支持的服务",
     "supports-yaml-format": "支持 YAML 格式 (.yaml, .yml)",
     "suspend": "暂停",
+    "suspended": "已暂停",
     "svg-uppercase": "SVG",
     "switch-domain": "切换域",
     "switch-interface": "切换界面",
