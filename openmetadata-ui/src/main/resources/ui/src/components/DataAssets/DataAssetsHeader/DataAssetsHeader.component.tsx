@@ -28,7 +28,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined, toLower } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,7 +49,6 @@ import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
-import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -67,6 +66,7 @@ import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { Style } from '../../../generated/type/schema';
+import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -84,7 +84,6 @@ import {
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
 } from '../../../utils/DataAssetsHeader.utils';
-import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -629,39 +628,20 @@ export const DataAssetsHeader = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract?.latestResult?.status)
     ) {
-      const IconComponent = getDataContractStatusIcon(
-        dataContract?.latestResult?.status
-      );
-
       return (
-        <Button
-          className={classNames(
-            'data-contract-latest-result-button',
-            toLower(dataContract?.latestResult?.status),
-            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status]
+        <ContractLatestResultBadge
+          href={getEntityDetailsPath(
+            entityType,
+            dataAsset?.fullyQualifiedName ?? '',
+            EntityTabs.CONTRACT
           )}
-          color="secondary"
-          data-testid="data-contract-latest-result-btn"
-          iconLeading={IconComponent}
-          size="sm"
-          onPress={() => {
-            navigate(
-              getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.CONTRACT
-              )
-            );
-          }}>
-          {t(`label.entity-${toLower(dataContract?.latestResult?.status)}`, {
-            entity: t('label.contract'),
-          })}
-        </Button>
+          status={dataContract.latestResult.status}
+        />
       );
     }
 
     return null;
-  }, [dataContract, customizedPage?.tabs, entityType, dataAsset, navigate, t]);
+  }, [dataContract, customizedPage?.tabs, entityType, dataAsset]);
 
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {

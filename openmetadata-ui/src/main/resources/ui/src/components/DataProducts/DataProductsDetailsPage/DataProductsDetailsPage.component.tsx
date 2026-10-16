@@ -16,8 +16,7 @@ import {
   RefreshCcw01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
-import { toLower, toString } from 'lodash';
+import { toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -27,7 +26,6 @@ import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export.svg'
 import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ROUTES } from '../../../constants/constants';
-import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -75,7 +73,7 @@ import {
   getRenderedActiveTab,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -139,20 +137,6 @@ type TranslateFn = (key: string, options?: Record<string, unknown>) => string;
 // 12px padding + the 1px antd border that the core ::after outline no longer
 // takes; not-last:-mr-px keeps antd's `.ant-btn + .ant-btn` 1px overlap with
 // the next group button.
-const CONTRACT_RESULT_BUTTON_BASE_CLASS = [
-  'tw:h-10 tw:gap-2 tw:rounded-xl tw:px-3.25 tw:py-1.5 tw:text-sm tw:font-semibold tw:not-last:-mr-px',
-  'tw:shadow-[0px_2px_2px_-1px_var(--om-legacy-color-10-13-18-0-04),0px_4px_6px_-2px_var(--om-legacy-color-10-13-18-0-04),0px_12px_16px_-4px_var(--om-legacy-color-10-13-18-0-04)]!',
-].join(' ');
-
-const CONTRACT_RESULT_BUTTON_BORDER_CLASS: Partial<
-  Record<ContractExecutionStatus, string>
-> = {
-  [ContractExecutionStatus.Failed]: 'tw:after:outline-utility-error-200!',
-  [ContractExecutionStatus.Aborted]:
-    'tw:after:outline-(--om-legacy-color-f9dbaf)! tw:dark:after:outline-utility-orange-200!',
-  [ContractExecutionStatus.Running]: 'tw:after:outline-utility-brand-200!',
-};
-
 // Extracted from DataProductsDetailsPage's render to keep the component's
 // complexity down. Builds the "Manage" dropdown menu content from the
 // permission flags and the modal/action toggles the page owns.
@@ -958,37 +942,16 @@ const DataProductsDetailsPage = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract.latestResult.status)
     ) {
-      const StatusIcon = getDataContractStatusIcon(
-        dataContract.latestResult.status
-      );
-
       return (
-        <Button
-          noTextPadding
-          className={classNames(
-            CONTRACT_RESULT_BUTTON_BASE_CLASS,
-            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status],
-            CONTRACT_RESULT_BUTTON_BORDER_CLASS[
-              dataContract.latestResult.status
-            ]
-          )}
-          color="secondary"
-          data-testid="data-contract-latest-result-btn"
-          iconLeading={
-            StatusIcon ? <StatusIcon className="tw:size-6.5" /> : undefined
-          }
-          onPress={() => {
-            handleTabChange(EntityTabs.CONTRACT);
-          }}>
-          {t(`label.entity-${toLower(dataContract.latestResult.status)}`, {
-            entity: t('label.contract'),
-          })}
-        </Button>
+        <ContractLatestResultBadge
+          href={getDataProductDetailsPath(dataProductFqn, EntityTabs.CONTRACT)}
+          status={dataContract.latestResult.status}
+        />
       );
     }
 
     return null;
-  }, [dataContract]);
+  }, [dataContract, dataProductFqn]);
 
   const statusBadge = useMemo(() => {
     const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(

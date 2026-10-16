@@ -440,26 +440,23 @@ describe('DataProductsDetailsPage — contract latest-result button', () => {
     setMockPermissions(ENTITY_PERMISSIONS);
   });
 
-  it('renders the aborted state with its status tint and opens the contract tab', async () => {
+  it('renders the aborted state as an orange badge linking to the contract tab', async () => {
     (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
       latestResult: { status: ContractExecutionStatus.Aborted },
     });
 
     render(<DataProductsDetailsPage {...defaultProps} />);
 
-    const button = await screen.findByTestId('data-contract-latest-result-btn');
+    const badge = await screen.findByTestId('data-contract-latest-result-btn');
 
-    expect(button.tagName).toBe('BUTTON');
-    expect(button).toHaveClass(
-      'tw:bg-(--om-legacy-color-fef6ee)!',
-      'tw:after:outline-(--om-legacy-color-f9dbaf)!'
+    expect(badge.tagName).toBe('A');
+    expect(badge).toHaveClass(
+      'tw:bg-utility-orange-50',
+      'tw:text-utility-orange-700'
     );
-
-    fireEvent.click(button);
-
-    expect((useNavigate as jest.Mock)()).toHaveBeenCalledWith(
-      '/data-product/test.dataproduct/contract',
-      { replace: true }
+    expect(badge).toHaveAttribute(
+      'href',
+      '/data-product/test.dataproduct/contract'
     );
   });
 
