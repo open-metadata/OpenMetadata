@@ -236,10 +236,8 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
             return True, partition_details
         return False, None
 
-    def get_table_type_for_partitioned_table(self, table_type: TableType) -> TableType:
-        if table_type == TableType.Iceberg:
-            return table_type
-        return super().get_table_type_for_partitioned_table(table_type)
+    def should_preserve_table_type_when_partitioned(self, table_type: TableType) -> bool:
+        return table_type == TableType.Iceberg or super().should_preserve_table_type_when_partitioned(table_type)
 
     def _is_hive_view(self, table_name: str, schema_name: str) -> bool:
         """Whether Glue stores this view in Hive form, whose definition SHOW CREATE VIEW cannot read.
