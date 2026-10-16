@@ -895,6 +895,61 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_testWithUnofferedOptionValue_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("bad_strategy"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableCustomSQLQuery");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedColumnType_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("length_on_number"));
+    // createTable's `id` column is INT, which columnValueLengthsToBeBetween does not support.
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  @Test
+  void patch_doesNotRecheckDefinitionConformance(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("patch_gate"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::name>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+    TestCase testCase = createEntity(request);
+
+    // The stored test now targets a column type its definition does not support, as a row created
+    // before the create-time check, or one whose column was retyped by ingestion, does.
+    table.getColumns().stream()
+        .filter(column -> column.getName().equals("name"))
+        .forEach(column -> column.withDataType(ColumnDataType.INT).withDataLength(null));
+    SdkClients.adminClient().tables().update(table.getId().toString(), table);
+
+    testCase.setDescription("edited");
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+
+    assertEquals("edited", updated.getDescription());
+  }
+
+  @Test
   void test_testCaseWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

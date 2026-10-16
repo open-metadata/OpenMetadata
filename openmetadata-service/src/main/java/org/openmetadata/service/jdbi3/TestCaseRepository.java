@@ -898,6 +898,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition.getTestPlatforms(),
         testDefinition);
     validateColumnTestCase(table, entityLink, testDefinition.getEntityType());
+    // Same gate as the disabled-definition check: a row stored before these rules stays editable.
+    if (!update) {
+      TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
+    }
     validateDimensionColumns(test, table);
     setDataQualityDimension(test, testDefinition);
 

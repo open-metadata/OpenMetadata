@@ -16,6 +16,7 @@ Each test should validate the Success, Failure and Aborted statuses
 """
 
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from freezegun import freeze_time
@@ -23,6 +24,8 @@ from pandas import DataFrame
 
 from metadata.data_quality.validations.base_test_handler import PandasRunner
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.utils.importer import import_test_case_class
 
 TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
@@ -1294,3 +1297,47 @@ def test_suite_validation_datalake(
                 assert dim.failedRowsPercentage == expected_dim[5]
 
             assert dim.impactScore == expected_dim[6]
+
+
+@pytest.mark.parametrize(
+    "test_case_type,parameter_values,status,failed_rows",
+    [
+        (
+            "columnValuesToBeInSet",
+            [
+                TestCaseParameterValue(name="allowedValues", value='["True", "False"]'),
+                TestCaseParameterValue(name="matchEnum", value="true"),
+            ],
+            TestCaseStatus.Success,
+            0,
+        ),
+        (
+            "columnValuesToBeNotInSet",
+            [TestCaseParameterValue(name="forbiddenValues", value='["False"]')],
+            TestCaseStatus.Failed,
+            1,
+        ),
+    ],
+)
+def test_string_booleans_on_a_datalake_column_stay_strings(test_case_type, parameter_values, status, failed_rows):
+    """Pandas infers a column of "True"/"False" strings as BOOLEAN; its sets must still compare as strings"""
+    test_case = TestCase(
+        name="string_booleans",
+        entityLink="<#E::table::service.db.users::columns::flag>",
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=parameter_values,
+        computePassedFailedRowCount=True,
+    )  # type: ignore
+    validator = import_test_case_class(
+        "COLUMN", "pandas", test_case_type, f"{test_case_type[0].upper()}{test_case_type[1:]}Validator"
+    )(
+        PandasRunner(dataset=lambda: iter((DataFrame({"flag": ["True", "False", "True", "True"]}),)), raw_dataset=None),
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    res = validator.run_validation()
+
+    assert res.testCaseStatus == status
+    assert res.failedRows == failed_rows

@@ -25,6 +25,18 @@ if TYPE_CHECKING:
     from sqlalchemy.sql.elements import ClauseElement, ColumnElement
 
 
+def is_unbounded(bound: Any) -> bool:
+    """Whether that side of the window lets everything through
+
+    An unset bound resolves to ∓inf, and to None for a validator that resolves its bounds
+    dynamically and found none on that side. Neither excludes a value, so neither needs a
+    condition -- and None cannot be compared against at all. Only a float can be infinite:
+    a datetime window -- what a between test on a date column resolves to -- compares fine
+    and must not be handed to `math.isinf`, which only takes a number.
+    """
+    return bound is None or (isinstance(bound, float) and math.isinf(bound))
+
+
 class BetweenBoundsChecker(BaseValidationChecker):
     """Checks if value is outside [min_bound, max_bound]"""
 
@@ -33,15 +45,7 @@ class BetweenBoundsChecker(BaseValidationChecker):
         self.max_bound = max_bound
 
     def _is_unbounded(self, bound: Any) -> bool:
-        """Whether that side of the window lets everything through
-
-        An unset bound resolves to ∓inf, and to None for a validator that resolves its bounds
-        dynamically and found none on that side. Neither excludes a value, so neither needs a
-        condition -- and None cannot be compared against at all. Only a float can be infinite:
-        a datetime window -- what a between test on a date column resolves to -- compares fine
-        and must not be handed to `math.isinf`, which only takes a number.
-        """
-        return bound is None or (isinstance(bound, float) and math.isinf(bound))
+        return is_unbounded(bound)
 
     def _check_violations(self, values):
         """Core violation check logic - works for both scalar and Series.

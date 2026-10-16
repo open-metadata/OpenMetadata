@@ -40,6 +40,9 @@ from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
 )
+from metadata.data_quality.validations.checkers.between_bounds_checker import (
+    is_unbounded,
+)
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     get_impact_score_expression,
@@ -75,6 +78,10 @@ class DataQualityQueryType(Enum):
 
 class SQAValidatorMixin:
     """Validator mixin for SQA test cases"""
+
+    def get_set_values_type(self):
+        """The column type the engine declares, so a set compares in that type"""
+        return self.get_column().type  # type: ignore
 
     def get_column(self: HasValidatorContext, column_name: str | None = None) -> Column:
         """Get column object for the given column name
@@ -234,6 +241,28 @@ class SQAValidatorMixin:
             raise SQLAlchemyError(exc)  # noqa: B904
 
         return res
+
+    def _count_rows_outside(
+        self,
+        runner: QueryRunner,
+        column: Column,
+        expression: ColumnElement,
+        min_bound: Any,
+        max_bound: Any,
+    ) -> int | None:
+        """Rows whose `expression` falls outside [min_bound, max_bound]
+
+        An unbounded side excludes nothing. With both sides unbounded no row is outside, and a
+        count with no filter at all would count the whole table.
+        """
+        filters = [
+            (expression, operator, bound)
+            for operator, bound in (("lt", min_bound), ("gt", max_bound))
+            if not is_unbounded(bound)
+        ]
+        return (
+            self._compute_row_count_between(runner, column, {"filters": filters, "or_filter": True}) if filters else 0
+        )
 
     def _compute_row_violations(self, runner: QueryRunner, violations_expr: ColumnElement) -> tuple[Any, Any]:
         """Count the rows read and the violating ones among them, in a single aggregate query
