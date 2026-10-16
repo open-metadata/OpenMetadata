@@ -87,6 +87,7 @@ import Voting from '../../Entity/Voting/Voting.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import ImportOntologyModal from '../ImportOntologyModal/ImportOntologyModal.component';
 import { useGlossaryStore } from '../useGlossary.store';
 import { GlossaryHeaderProps } from './GlossaryHeader.interface';
@@ -286,6 +287,7 @@ const getGlossaryTitleColor = (
 interface GlossaryHeaderActionsProps {
   isVersionView?: boolean;
   createButtons: ReactNode;
+  pendingChangeRequests: ReactNode;
   updateVote?: (data: {
     updatedVoteType: QueryVoteType;
   }) => void | Promise<void>;
@@ -304,6 +306,7 @@ interface GlossaryHeaderActionsProps {
 const GlossaryHeaderActions = ({
   isVersionView,
   createButtons,
+  pendingChangeRequests,
   updateVote,
   voteStatus,
   votes,
@@ -320,6 +323,7 @@ const GlossaryHeaderActions = ({
     {!isVersionView && createButtons}
 
     <Box align="center" gap={4}>
+      {!isVersionView && pendingChangeRequests}
       {updateVote && (
         <Voting
           voteStatus={voteStatus}
@@ -819,6 +823,14 @@ const GlossaryHeader = ({
             isGlossary={isGlossary}
             isVersionView={isVersionView}
             manageButtonContent={manageButtonContent}
+            pendingChangeRequests={
+              <ChangeRequestsIndicator
+                entityId={selectedData?.id ?? ''}
+                entityType={
+                  isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+                }
+              />
+            }
             setShowActions={setShowActions}
             showActions={showActions}
             t={t}

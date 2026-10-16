@@ -1,4 +1,5 @@
 import uuid
+from copy import deepcopy
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsInstance
@@ -7,6 +8,7 @@ from _openmetadata_testutils.ometa import int_admin_ometa
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
     BasicAuth,
 )
@@ -22,7 +24,9 @@ from metadata.generated.schema.entity.teams.user import AuthenticationMechanism,
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseMetadataConfigType,
 )
+from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
@@ -56,7 +60,9 @@ def ingestion_config(db_service, metadata, workflow_config, sink_config):
             "sourceConfig": {
                 "config": {
                     "type": DatabaseMetadataConfigType.DatabaseMetadata.value,
-                    "tableFilterPattern": FilterPattern(includes=["^example_table$"]),
+                    "tableFilterPattern": FilterPattern(
+                        includes=["^(example_table|identifier_en|identifier_es|identifier_it)$"]
+                    ),
                 }
             },
             "serviceConnection": db_service.connection.model_dump(),
@@ -118,7 +124,8 @@ def run_autoclassification(
     load_metadata: MetadataWorkflow,
     autoclassification_config,
 ) -> AutoClassificationWorkflow:
-    return run_workflow(AutoClassificationWorkflow, autoclassification_config)
+    # Workflow creation replaces dict config values with models; keep the shared fixture reusable.
+    return run_workflow(AutoClassificationWorkflow, deepcopy(autoclassification_config))
 
 
 def test_it_returns_the_expected_classifications(
@@ -194,3 +201,72 @@ def test_it_returns_the_expected_classifications(
     # type or semantics (#29083); date_time_patcher now drops them because a bare year names no
     # month or day.
     assert academic_year_code_column.tags == []
+
+
+@pytest.mark.parametrize(
+    "language,table_name,expected",
+    [
+        (
+            ClassificationLanguage.en,
+            "identifier_en",
+            {
+                "iban": ["PII.Sensitive"],
+                "uen": ["PII.Sensitive"],
+                "abn": ["PII.Sensitive"],
+                "acn": ["PII.Sensitive"],
+                "sg_nric": ["PII.Sensitive"],
+                "sku": [],
+                "ticket_id": [],
+                "shipment_ref": [],
+            },
+        ),
+        (ClassificationLanguage.es, "identifier_es", {"nif": ["PII.Sensitive"], "nie": ["PII.Sensitive"]}),
+        (ClassificationLanguage.it, "identifier_it", {"partita_iva": ["PII.Sensitive"]}),
+    ],
+)
+def test_identifier_formats_are_persisted_by_classification_workflow(
+    language: ClassificationLanguage,
+    table_name: str,
+    expected: dict[str, list[str]],
+    db_service: DatabaseService,
+    metadata: OpenMetadata,
+    load_metadata: MetadataWorkflow,
+    autoclassification_config: dict,
+    run_workflow,
+) -> None:
+    config = deepcopy(autoclassification_config)
+    source_config = config["source"]["sourceConfig"]["config"]
+    source_config["tableFilterPattern"] = FilterPattern(includes=[f"^{table_name}$"])
+    source_config["classificationLanguage"] = language
+    source_config["confidence"] = 80
+    run_workflow(AutoClassificationWorkflow, config)
+
+    columns = metadata.get_table_columns(
+        f"{db_service.fullyQualifiedName.root}.{db_service.connection.config.database}.public.{table_name}",
+        fields=["tags"],
+    )
+    by_name = {column.name.root: column for column in columns}
+    for name, tag_fqns in expected.items():
+        assert [label.tagFQN.root for label in by_name[name].tags] == tag_fqns
+
+    if language is ClassificationLanguage.en:
+        recognizer_name = Name.SgFinRecognizer.value
+        tag = metadata.get_by_name(entity=Tag, fqn="PII.Sensitive", fields=["recognizers"])
+        configured_recognizer = next(
+            recognizer for recognizer in tag.recognizers if recognizer.name.root == recognizer_name
+        )
+        label = by_name["sg_nric"].tags[0]
+        assert f"Detected by `{recognizer_name}`" in (label.reason or "")
+        assert label.metadata is not None
+        evidence = label.metadata.recognizer
+        assert evidence.recognizerId == configured_recognizer.id
+        assert evidence.recognizerName == recognizer_name
+        assert evidence.score == 1.0
+        assert evidence.patterns
+        assert any(pattern.name == "Nric (medium)" for pattern in evidence.patterns)
+        assert all(0 < pattern.score <= 1.0 for pattern in evidence.patterns)
+        assert all(
+            f"Detected by `{recognizer_name}`" not in (label.reason or "")
+            and (label.metadata is None or label.metadata.recognizer.recognizerId != configured_recognizer.id)
+            for label in by_name["sg_nric_typo"].tags
+        )

@@ -3402,6 +3402,10 @@ om:ordinalPosition a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ordinalPosition" .
 
+om:outcomes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "outcomes" .
+
 om:outputPort a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "outputPort" .
