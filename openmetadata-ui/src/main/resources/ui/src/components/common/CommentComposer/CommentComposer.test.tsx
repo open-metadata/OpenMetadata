@@ -294,9 +294,7 @@ describe('CommentComposer', () => {
   });
 
   it('respects a custom placeholder', () => {
-    render(
-      <CommentComposer placeHolder="Reply here" onSave={mockOnSave} />
-    );
+    render(<CommentComposer placeHolder="Reply here" onSave={mockOnSave} />);
 
     expect(screen.getByTestId('feed-editor')).toHaveAttribute(
       'data-placeholder',
@@ -305,9 +303,7 @@ describe('CommentComposer', () => {
   });
 
   it('exposes the placeholder to the editor chrome via a CSS variable', () => {
-    render(
-      <CommentComposer placeHolder="Reply here" onSave={mockOnSave} />
-    );
+    render(<CommentComposer placeHolder="Reply here" onSave={mockOnSave} />);
 
     const holder = document.querySelector(
       '[style*="--comment-composer-placeholder"]'
@@ -326,9 +322,7 @@ describe('CommentComposer', () => {
     it('starts with the format bar hidden', () => {
       render(<CommentComposer onSave={jest.fn()} />);
 
-      expect(editorRoot()).toHaveClass(
-        COLLAPSED_CLASS
-      );
+      expect(editorRoot()).toHaveClass(COLLAPSED_CLASS);
       expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
         'aria-label',
         'label.show-formatting'
@@ -340,9 +334,7 @@ describe('CommentComposer', () => {
 
       fireEvent.click(screen.getByTestId('formatting-toggle'));
 
-      expect(editorRoot()).not.toHaveClass(
-        COLLAPSED_CLASS
-      );
+      expect(editorRoot()).not.toHaveClass(COLLAPSED_CLASS);
       expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
         'aria-label',
         'label.hide-formatting'
@@ -350,9 +342,7 @@ describe('CommentComposer', () => {
 
       fireEvent.click(screen.getByTestId('formatting-toggle'));
 
-      expect(editorRoot()).toHaveClass(
-        COLLAPSED_CLASS
-      );
+      expect(editorRoot()).toHaveClass(COLLAPSED_CLASS);
     });
   });
 
