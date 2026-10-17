@@ -228,6 +228,27 @@ class EmailFirstIdentityIT {
     assertEquals(user.getId(), after.getId());
   }
 
+  /**
+   * The principal-claims OIDC login finds the account by name and saves it back when the login
+   * changes it, here by filling the display name. The copy it loads must carry the stored profile.
+   */
+  @Test
+  void testLoginByNameDoesNotEraseStoredUserFields(TestNamespace ns) {
+    String localPart = ("byname" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    URI picture = URI.create("https://idp.test.om.org/" + localPart + ".png");
+    User user = provisionWithPicture(localPart + "@x.test.om.org", picture);
+    UserRepository userRepository = Entity.getUserRepository();
+
+    User forLogin = userRepository.getUserByNameForAuthUpdate(user.getName());
+    assertEquals(picture, forLogin.getProfile().getImages().getImage());
+
+    forLogin.setDisplayName("Name From The Provider");
+    UserUtil.addOrUpdateUser(forLogin);
+
+    assertEquals(
+        picture, storedPicture(user.getEmail()), "Saving the login's copy erased the profile");
+  }
+
   @Test
   void testSignInStoresAndRefreshesTheProviderPicture(TestNamespace ns) {
     String localPart = ("picture" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);

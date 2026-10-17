@@ -97,7 +97,6 @@ import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
@@ -1195,16 +1194,6 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return displayNameFilled || pictureChanged;
   }
 
-  /**
-   * Loads the account fresh and with every field a PUT writes back: {@code createOrUpdate} compares
-   * the whole entity, so a field the lookup left out would be stored as deleted.
-   */
-  private static User findUserForUpdate(String userName) {
-    UserRepository userRepository = Entity.getUserRepository();
-    return userRepository.getByName(
-        null, userName, userRepository.getAuthUpdateFields(), Include.NON_DELETED, false);
-  }
-
   private boolean isUserAdmin(String email, String username) {
     return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
@@ -1217,7 +1206,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
     try {
-      User user = findUserForUpdate(userName);
+      User user = Entity.getUserRepository().getUserByNameForAuthUpdate(userName);
 
       boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;

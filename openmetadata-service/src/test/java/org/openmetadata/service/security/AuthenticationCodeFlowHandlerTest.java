@@ -867,6 +867,7 @@ class AuthenticationCodeFlowHandlerTest {
                 new EntityUtil.Fields(Set.of(invocation.getArgument(0, String.class).split(","))));
     when(userRepository.getAuthUpdateFields())
         .thenReturn(new EntityUtil.Fields(Set.of("profile", "roles", "teams")));
+    when(userRepository.getUserByNameForAuthUpdate(anyString())).thenCallRealMethod();
     return userRepository;
   }
 
