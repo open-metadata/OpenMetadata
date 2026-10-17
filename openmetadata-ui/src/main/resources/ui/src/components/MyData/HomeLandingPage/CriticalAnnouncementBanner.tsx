@@ -30,12 +30,18 @@ export interface CriticalAnnouncementBannerProps {
   onDismiss: () => void;
 }
 
-// FeaturedIcon's light theme fills solid red under `dark-mode`; the design
-// tints the circle instead, the way the Critical surface reads elsewhere.
+// The surface sits outside the `dark-mode` island: inside it the gray ramp is
+// re-tinted, so light gray-900 (the design's banner colour) would resolve to
+// the darker dark-mode step instead.
 const BANNER_CLASS =
-  'dark-mode tw:relative tw:flex tw:items-center tw:gap-4 tw:rounded-xl tw:bg-secondary tw:py-4 tw:pr-12 tw:pl-5 ' +
+  'tw:relative tw:rounded-xl tw:bg-utility-gray-900 ' +
   'tw:[.dark-mode_&]:border tw:[.dark-mode_&]:border-secondary tw:[.dark-mode_&]:bg-primary tw:[.dark-mode_&]:shadow-xs';
 
+const CONTENT_CLASS =
+  'dark-mode tw:flex tw:items-center tw:gap-4 tw:py-4 tw:pr-12 tw:pl-5';
+
+// FeaturedIcon's light theme fills solid red under `dark-mode`; the design
+// tints the circle instead, the way the Critical surface reads elsewhere.
 const ICON_CLASS = 'tw:dark:bg-utility-error-50 tw:dark:text-utility-error-500';
 
 // A global `h2` rule outranks Typography's size, so it is restated as
@@ -46,9 +52,9 @@ const TITLE_CLASS =
 /**
  * One critical system announcement as the Home page's top banner.
  *
- * `dark-mode` makes the banner a dark island in either theme, as the design
- * draws it: every token and core component inside resolves to its dark value,
- * so the surface, text, badge and icon need no colour of their own.
+ * `dark-mode` makes the banner's content a dark island in either theme, as the
+ * design draws it: every token and core component inside resolves to its dark
+ * value, so the text, badge and icon need no colour of their own.
  *
  * On a page that is itself dark the island would stand out as a lighter slab,
  * so there it takes the topic cards' surface and edge instead. `[.dark-mode_&]`
@@ -69,53 +75,55 @@ const CriticalAnnouncementBanner = ({
     <div
       className={classNames(BANNER_CLASS, className)}
       data-testid="critical-announcement-banner">
-      <FeaturedIcon
-        outlined
-        className={ICON_CLASS}
-        color="error"
-        icon={icon}
-        size="md"
-        theme="light"
-      />
+      <div className={CONTENT_CLASS}>
+        <FeaturedIcon
+          outlined
+          className={ICON_CLASS}
+          color="error"
+          icon={icon}
+          size="md"
+          theme="light"
+        />
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
-        <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2.5">
-          {/* A title with no break points (an FQN, a URL) must still wrap
+        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
+          <div className="tw:flex tw:flex-wrap tw:items-center tw:gap-2.5">
+            {/* A title with no break points (an FQN, a URL) must still wrap
               rather than push the badge past the banner's edge. */}
-          <Typography
-            as="h2"
-            className={TITLE_CLASS}
-            data-testid="critical-announcement-title"
-            size="text-lg"
-            weight="semibold">
-            {title}
-          </Typography>
-          <Badge color="error" size="sm">
-            {t('label.critical')}
-          </Badge>
+            <Typography
+              as="h2"
+              className={TITLE_CLASS}
+              data-testid="critical-announcement-title"
+              size="text-lg"
+              weight="semibold">
+              {title}
+            </Typography>
+            <Badge color="error" size="sm">
+              {t('label.critical')}
+            </Badge>
+          </div>
+
+          {description && (
+            <Typography
+              as="p"
+              className="tw:text-pretty tw:text-secondary"
+              data-testid="critical-announcement-description"
+              ellipsis={{ rows: 3, tooltip: description }}
+              size="text-sm">
+              {description}
+            </Typography>
+          )}
         </div>
 
-        {description && (
-          <Typography
-            as="p"
-            className="tw:text-pretty tw:text-secondary"
-            data-testid="critical-announcement-description"
-            ellipsis={{ rows: 3, tooltip: description }}
-            size="text-sm">
-            {description}
-          </Typography>
-        )}
+        <ButtonUtility
+          className="tw:absolute tw:top-3 tw:right-3"
+          color="tertiary"
+          data-testid="critical-announcement-dismiss"
+          icon={XClose}
+          size="sm"
+          tooltip={t('label.dismiss')}
+          onClick={onDismiss}
+        />
       </div>
-
-      <ButtonUtility
-        className="tw:absolute tw:top-3 tw:right-3"
-        color="tertiary"
-        data-testid="critical-announcement-dismiss"
-        icon={XClose}
-        size="sm"
-        tooltip={t('label.dismiss')}
-        onClick={onDismiss}
-      />
     </div>
   );
 };
