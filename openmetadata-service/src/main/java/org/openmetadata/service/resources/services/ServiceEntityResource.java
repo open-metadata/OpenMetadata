@@ -82,7 +82,7 @@ public abstract class ServiceEntityResource<
 
   protected ResultList<T> decryptOrNullify(
       SecurityContext securityContext, ResultList<T> services) {
-    if (services.getData() != null) {
+    if (!nullOrEmpty(services.getData())) {
       services.setData(
           services.getData().stream()
               .map(service -> decryptServiceForList(securityContext, service))
