@@ -32,9 +32,11 @@ import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -59,7 +61,26 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const domainListing = useDomainListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    listingPageSizeOptions
+  );
+  const domainListing = useDomainListingData({
+    enableNlq: isAiMode,
+    pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
+  });
+  const { resetPaging } = domainListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      resetPaging?.();
+    },
+    [resetPaging]
+  );
   const { permissions } = usePermissionProvider();
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
@@ -151,9 +172,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.Domains);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const isTreeView = view === PageViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
@@ -352,7 +370,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             <ViewToggle
               value={view}
               views={[PageViewMode.Table, PageViewMode.Card, PageViewMode.Tree]}
-              onChange={setView}
+              onChange={handleViewChange}
             />
             {deleteIconButton}
           </Box>

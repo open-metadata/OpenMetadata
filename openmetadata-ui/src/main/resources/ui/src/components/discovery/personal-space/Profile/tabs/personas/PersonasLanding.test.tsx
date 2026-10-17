@@ -63,7 +63,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button type="button" onClick={() => onPageChange(page - 1)}>
         previous
       </button>
-      <button type="button" onClick={() => onPageSizeChange(25)}>
+      <button type="button" onClick={() => onPageSizeChange(24)}>
         size
       </button>
     </div>
@@ -116,7 +116,7 @@ describe('PersonasLanding', () => {
     );
 
     expect(getAllPersonas).toHaveBeenCalledWith({
-      limit: 15,
+      limit: 12,
       fields: 'users',
       after: undefined,
       before: undefined,
@@ -184,7 +184,7 @@ describe('PersonasLanding', () => {
       <PersonasLanding onNavigate={mockOnNavigate} />
     );
 
-    expect(await screen.findByTestId('pagination')).toHaveTextContent('1/3');
+    expect(await screen.findByTestId('pagination')).toHaveTextContent('1/4');
 
     (getAllPersonas as jest.Mock).mockResolvedValue({
       data: PERSONAS,
@@ -192,7 +192,7 @@ describe('PersonasLanding', () => {
     });
     fireEvent.click(screen.getByText('next'));
 
-    expect(mockSetPage).toHaveBeenCalledWith(2, 'after', 'cursor-2', 15);
+    expect(mockSetPage).toHaveBeenCalledWith(2, 'after', 'cursor-2', 12);
 
     await waitFor(() =>
       expect(getAllPersonas).toHaveBeenLastCalledWith(
@@ -205,11 +205,11 @@ describe('PersonasLanding', () => {
 
     fireEvent.click(screen.getByText('next'));
 
-    expect(mockSetPage).toHaveBeenLastCalledWith(3, 'after', 'cursor-3', 15);
+    expect(mockSetPage).toHaveBeenLastCalledWith(3, 'after', 'cursor-3', 12);
 
     fireEvent.click(screen.getByText('previous'));
 
-    expect(mockSetPage).toHaveBeenLastCalledWith(1, undefined, undefined, 15);
+    expect(mockSetPage).toHaveBeenLastCalledWith(1, undefined, undefined, 12);
 
     await waitFor(() =>
       expect(getAllPersonas).toHaveBeenLastCalledWith(
@@ -221,7 +221,7 @@ describe('PersonasLanding', () => {
   it('resumes from a cursor in the hash on mount', async () => {
     mockPagingParams({
       page: 3,
-      pageSize: 25,
+      pageSize: 24,
       cursor: 'cursor-x',
       cursorType: 'before',
     });
@@ -230,7 +230,7 @@ describe('PersonasLanding', () => {
     await screen.findByTestId('persona-card-analyst');
 
     expect(getAllPersonas).toHaveBeenCalledWith({
-      limit: 25,
+      limit: 24,
       fields: 'users',
       after: undefined,
       before: 'cursor-x',
@@ -243,7 +243,7 @@ describe('PersonasLanding', () => {
 
     await screen.findByTestId('persona-card-analyst');
 
-    expect(mockSetPage).toHaveBeenCalledWith(1, undefined, undefined, 15);
+    expect(mockSetPage).toHaveBeenCalledWith(1, undefined, undefined, 12);
     expect(getAllPersonas).toHaveBeenCalledWith(
       expect.objectContaining({ after: undefined, before: undefined })
     );
@@ -258,6 +258,6 @@ describe('PersonasLanding', () => {
 
     fireEvent.click(await screen.findByText('size'));
 
-    expect(mockSetPage).toHaveBeenCalledWith(1, undefined, undefined, 25);
+    expect(mockSetPage).toHaveBeenCalledWith(1, undefined, undefined, 24);
   });
 });

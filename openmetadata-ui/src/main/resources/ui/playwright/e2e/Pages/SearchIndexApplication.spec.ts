@@ -47,7 +47,7 @@ interface AppRunRecordResponse {
  */
 const installSearchIndexApplication = async (page: Page) => {
   const getMarketPlaceResponse = page.waitForResponse(
-    '/api/v1/apps/marketplace?limit=15'
+    '/api/v1/apps/marketplace?limit=12'
   );
   await page.click('[data-testid="add-application"]');
 

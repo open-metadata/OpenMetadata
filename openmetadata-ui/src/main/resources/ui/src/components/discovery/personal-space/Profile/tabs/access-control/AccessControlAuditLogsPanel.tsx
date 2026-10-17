@@ -46,6 +46,7 @@ import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
 import { CSVExportWebsocketResponse } from '../../../../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -53,6 +54,7 @@ import {
 } from '../../../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../../../context/WebSocketProvider/WebSocketProvider';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
   exportAuditLogs,
@@ -127,10 +129,6 @@ async function walkToPageCursor(
   return { cursor, discoveredCursors };
 }
 
-function resolvePageSize(hash: number | undefined): number {
-  return hash || PAGE_SIZE_MEDIUM;
-}
-
 interface AccessControlAuditLogsPanelProps {
   /** Callback to inject action buttons into the page header. */
   onSetHeaderActions?: (actions: React.ReactNode) => void;
@@ -148,7 +146,8 @@ const AccessControlAuditLogsPanel: React.FC<
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
   const pageSize = resolvePageSize(hashPageSize);
 
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -240,9 +239,10 @@ const AccessControlAuditLogsPanel: React.FC<
   const handlePageSizeChange = useCallback(
     (size: number) => {
       pageCursorsRef.current = {};
+      savePageSize(size);
       setHashPage(1, undefined, undefined, size);
     },
-    [setHashPage]
+    [savePageSize, setHashPage]
   );
 
   const handleFiltersChange = useCallback(

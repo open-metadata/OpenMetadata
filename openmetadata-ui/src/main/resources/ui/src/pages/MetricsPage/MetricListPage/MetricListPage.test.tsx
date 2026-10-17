@@ -19,6 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -544,7 +545,7 @@ const setHierarchy = ({
   mockUseMetricHierarchy.mockImplementation(() => ({
     topLevelNodes,
     buildRows: () => rows,
-    paging: { total, offset: 0, limit: 20 },
+    paging: { total, offset: 0, limit: PAGE_SIZE_BASE },
     isPending,
     isFetching: isPending,
     error,
@@ -1012,7 +1013,7 @@ describe('MetricListPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('expands group banners once by default without expanding metric variants or overriding collapse', async () => {
+  it('expands group banners once per page scope without expanding metric variants', async () => {
     const groupRow = {
       id: 'group:group-1',
       isGroupRow: true,
@@ -1060,12 +1061,12 @@ describe('MetricListPage', () => {
         { row: groupRow, groupId: 'group-1', members: [groupedMetric] },
       ],
     });
+    // Card view pages at a different size, and useMetricHierarchy clears expansion when the size
+    // changes, so the default expansion is applied again for the new scope.
     fireEvent.click(cardViewButton);
 
-    expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('metric-group-profitability')).toHaveAttribute(
-      'aria-expanded',
-      'false'
+    await waitFor(() =>
+      expect(hierarchyActions.expandAll).toHaveBeenCalledTimes(2)
     );
   });
 
@@ -1131,7 +1132,11 @@ describe('MetricListPage', () => {
 
     await waitFor(() =>
       expect(mockUseMetricHierarchy).toHaveBeenLastCalledWith(
-        expect.objectContaining({ page: 2, pageSize: 20, query: '' })
+        expect.objectContaining({
+          page: 2,
+          pageSize: PAGE_SIZE_BASE,
+          query: '',
+        })
       )
     );
 

@@ -417,8 +417,8 @@ interface PaginationCardWithControlsProps extends PaginationProps {
 export const PaginationCardWithControls = ({
   page = 1,
   total = 10,
-  pageSize = 10,
-  pageSizeOptions = [10, 25, 50],
+  pageSize = 15,
+  pageSizeOptions = [15, 25, 50],
   className,
   minimal = false,
   onPageChange,

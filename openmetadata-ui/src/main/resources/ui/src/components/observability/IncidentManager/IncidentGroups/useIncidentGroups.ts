@@ -37,7 +37,6 @@ import {
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   DEFAULT_INCIDENT_GROUP_SORT,
-  INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUP_BY_PARAM,
   INCIDENT_GROUP_DETAIL_PARAM,
   INCIDENT_GROUP_FILTER_KEYS,
@@ -286,8 +285,7 @@ export const useIncidentGroups = () => {
     DEFAULT_INCIDENT_GROUP_SORT
   );
   const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
-    `${groupBy}|${sort.field}|${sort.type}|${domain}|${filtersSearch}`,
-    INCIDENT_GROUPS_PAGE_SIZE
+    `${groupBy}|${sort.field}|${sort.type}|${domain}|${filtersSearch}`
   );
 
   const listParams = {

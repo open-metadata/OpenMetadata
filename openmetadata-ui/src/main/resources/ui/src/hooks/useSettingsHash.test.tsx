@@ -13,7 +13,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
-import { useSettingsHash } from './useSettingsHash';
+import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
+import { useHashPagingParams, useSettingsHash } from './useSettingsHash';
 
 // Real MemoryRouter (no react-router mock): the hook drives navigation through
 // react-router and reads the live URL hash from `globalThis.location`, so tests
@@ -204,5 +205,57 @@ describe('useSettingsHash', () => {
     expect(second.result.current.state.subPath).toBe('roles-detail/Admin');
 
     act(() => second.result.current.clearHash());
+  });
+});
+
+describe('useHashPagingParams', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+    const { result, unmount } = renderHook(() => useSettingsHash(), {
+      wrapper,
+    });
+    act(() => result.current.clearHash());
+    unmount();
+  });
+
+  const renderPaging = (options?: number[]) =>
+    renderHook(
+      () => ({ paging: useHashPagingParams(options), hash: useSettingsHash() }),
+      { wrapper }
+    );
+
+  it('keeps the page, cursor and size of a link on the picker scale', () => {
+    globalThis.location.hash =
+      '#notification/events?page=3&pageSize=25&cursorType=after&cursor=abc';
+
+    const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+    expect(result.current.paging.page).toBe(3);
+    expect(result.current.paging.pageSize).toBe(25);
+    expect(result.current.paging.cursor).toBe('abc');
+  });
+
+  it('opens an off-scale link on page 1 and rewrites the hash to match', () => {
+    // An older link: its page 3 was counted at 10 per page, so at the saved 15 it would request an
+    // offset past the data and show an empty page with no pager to page back with.
+    globalThis.location.hash =
+      '#notification/events?page=3&pageSize=10&cursorType=after&cursor=abc';
+
+    const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+    expect(result.current.paging.page).toBe(1);
+    expect(result.current.paging.pageSize).toBeUndefined();
+    expect(result.current.paging.cursor).toBeUndefined();
+    expect(result.current.paging.cursorType).toBeUndefined();
+    expect(result.current.hash.state.params).toEqual({});
+  });
+
+  it('accepts any size when the caller declares no options', () => {
+    globalThis.location.hash = '#notification/events?page=2&pageSize=10';
+
+    const { result } = renderPaging();
+
+    expect(result.current.paging.page).toBe(2);
+    expect(result.current.paging.pageSize).toBe(10);
   });
 });

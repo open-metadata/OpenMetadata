@@ -32,6 +32,7 @@ import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -45,7 +46,11 @@ import {
 } from '../../../../../../generated/events/api/typedEvent';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { getAlertEventsFromId } from '../../../../../../rest/alertsAPI';
 import { getAlertStatusIcon } from '../../../../../../utils/Alerts/AlertsUtil';
 import {
@@ -86,9 +91,12 @@ function NotificationRecentEvents({
   const [filter, setFilter] = useState<AlertRecentEventFilters | Status>(
     AlertRecentEventFilters.ALL
   );
-  const { state: hashState, updateParams } = useSettingsHash();
-  const initialPage = Number(hashState.params.page) || 1;
-  const initialPageSize = Number(hashState.params.pageSize) || PAGE_SIZE_BASE;
+  const { updateParams } = useSettingsHash();
+  const { page: initialPage, pageSize: hashPageSize } = useHashPagingParams(
+    LIST_PAGE_SIZE_OPTIONS
+  );
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const initialPageSize = resolvePageSize(hashPageSize);
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -154,10 +162,11 @@ function NotificationRecentEvents({
     (size: number) => {
       setCurrentPage(1);
       setPageSize(size);
+      savePageSize(size);
       updateParams({ page: '1', pageSize: String(size) });
       getAlertRecentEvents(0, size);
     },
-    [updateParams, getAlertRecentEvents]
+    [savePageSize, updateParams, getAlertRecentEvents]
   );
 
   const showPagination = useMemo(

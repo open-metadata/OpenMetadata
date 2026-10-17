@@ -15,10 +15,7 @@ import { isEmpty, pick, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import {
-  NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import {
   EntityType,
@@ -97,7 +94,7 @@ export const ContractSchemaFormTab: React.FC<{
     handlePageSizeChange,
     handlePagingChange,
     showPagination,
-  } = usePaging(PAGE_SIZE_MEDIUM);
+  } = usePaging();
   const handleChangeTable = useCallback(
     (selectedRowKeys: Key[]) => {
       setSelectedKeys(selectedRowKeys as string[]);

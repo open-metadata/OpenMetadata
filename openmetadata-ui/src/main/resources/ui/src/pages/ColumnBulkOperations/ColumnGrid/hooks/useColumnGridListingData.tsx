@@ -23,10 +23,10 @@ import {
   ListingData,
 } from '../../../../components/common/atoms/shared/types';
 import { ExploreQuickFilterField } from '../../../../components/Explore/ExplorePage.interface';
-import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { ColumnGridItem } from '../../../../generated/api/data/columnGridResponse';
 import { TagLabel } from '../../../../generated/type/tagLabel';
+import { useSavedPageSize } from '../../../../hooks/paging/useSavedPageSize';
 import { getColumnGrid } from '../../../../rest/columnAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { ColumnGridFilters, ColumnGridRowData } from '../ColumnGrid.interface';
@@ -37,8 +37,6 @@ import {
   convertFilterValuesToOptions,
   MAX_REFETCH_CHAIN_PAGES,
 } from '../constants/ColumnGrid.constants';
-
-const PAGE_SIZE = PAGE_SIZE_MEDIUM;
 
 interface UseColumnGridListingDataProps {
   externalFilters?: ColumnGridFilters;
@@ -96,7 +94,8 @@ export const useColumnGridListingData = (
 
   // Local pagination state (cursor-based, not in URL)
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const [pageSize, setPageSize] = useState(savedPageSize);
 
   // URL state management (search and filters only, pagination is local)
   const urlState = useMemo(() => {
@@ -412,14 +411,18 @@ export const useColumnGridListingData = (
     setCurrentPage(page);
   }, []);
 
-  const handlePageSizeChange = useCallback((size: number) => {
-    setPageSize(size);
-    setCurrentPage(1);
-    cursorsByPageRef.current = new Map();
-    itemsByPageRef.current = new Map();
-    totalUniqueColumnsRef.current = 0;
-    totalOccurrencesRef.current = 0;
-  }, []);
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size);
+      savePageSize(size);
+      setCurrentPage(1);
+      cursorsByPageRef.current = new Map();
+      itemsByPageRef.current = new Map();
+      totalUniqueColumnsRef.current = 0;
+      totalOccurrencesRef.current = 0;
+    },
+    [savePageSize]
+  );
 
   /**
    * Refetch after bulk update (WebSocket job complete).

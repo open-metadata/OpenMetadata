@@ -15,12 +15,12 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
-import { queryClient } from '../../../queryClient';
 import {
   GRID_PAGE_SIZE_OPTIONS,
   LIST_PAGE_SIZE_OPTIONS,
-} from './ConnectionsPage.constants';
+} from '../../../constants/constants';
+import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
+import { queryClient } from '../../../queryClient';
 import { ConnectionsCategory, useConnectionsData } from './useConnectionsData';
 
 const mockGetServicesOverview = jest.fn();
@@ -50,7 +50,9 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
       .usePaging(defaultPageSize, pageSizeOptions);
     const { useCallback, useState } = jest.requireActual('react');
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize, setPageSize] = useState(defaultPageSize ?? 10);
+    const [pageSize, setPageSize] = useState(
+      defaultPageSize ?? pageSizeOptions?.[0] ?? 15
+    );
     const handlePageChange = useCallback(
       (page: number | ((page: number) => number)) => {
         setCurrentPage((current: number) =>
@@ -428,6 +430,19 @@ describe('useConnectionsData', () => {
       await goToPageThree(result, rerender);
 
       rerender({ ...defaultArgs, serviceTypes: ['Mysql'] });
+
+      await waitFor(() => expect(result.current.page).toBe(1));
+    });
+
+    it('returns to page 1 when the layout switches to the other page-size scale', async () => {
+      const { result, rerender } = renderConnections();
+      await goToPageThree(result, rerender);
+
+      const gridArgs = {
+        ...defaultArgs,
+        pageSizeOptions: GRID_PAGE_SIZE_OPTIONS,
+      };
+      rerender(gridArgs);
 
       await waitFor(() => expect(result.current.page).toBe(1));
     });

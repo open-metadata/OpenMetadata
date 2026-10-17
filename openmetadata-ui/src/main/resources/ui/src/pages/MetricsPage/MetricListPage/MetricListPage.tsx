@@ -93,6 +93,8 @@ import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
 import {
@@ -123,6 +125,7 @@ import {
   MetricTreeNode,
   VisibleMetricTableRow,
 } from '../../../utils/MetricEntityUtils/MetricHierarchyUtils';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
@@ -152,7 +155,6 @@ const METRIC_TABLE_PREFERENCE_KEY = 'metricList';
 const METRIC_STATIC_COLUMNS = ['name'];
 const METRIC_VIEW_STORAGE_KEY = 'metricsList.viewMode.v1';
 const METRIC_SEARCH_DEBOUNCE_MS = 500;
-const METRIC_PAGE_SIZE = 20;
 
 const DEFAULT_VISIBLE_METRIC_COLUMNS: MetricColumnId[] = [
   'description',
@@ -255,7 +257,6 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
-  const [page, setPage] = useState(1);
   const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
   const {
     preferences: { selectedEntityTableColumns },
@@ -263,6 +264,10 @@ const MetricListPage = () => {
   // Owned by TableV2's Customize menu; card view only reads it.
   const visibleColumns = getVisibleMetricColumns(selectedEntityTableColumns);
   const [viewMode, setViewMode] = useState<MetricViewMode>(getInitialViewMode);
+  const { savedPageSize: metricPageSize } = useSavedPageSize(
+    getViewPageSizeOptions(viewMode)
+  );
+  const [page, setPage] = usePageForSize(metricPageSize);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -306,14 +311,14 @@ const MetricListPage = () => {
         search: debouncedSearch,
         status: statusFilter,
         page,
-        size: METRIC_PAGE_SIZE,
+        size: metricPageSize,
       },
     ],
     queryFn: () =>
       searchQuery({
         query: debouncedSearch,
         pageNumber: page,
-        pageSize: METRIC_PAGE_SIZE,
+        pageSize: metricPageSize,
         searchIndex: SearchIndex.METRIC,
         trackTotalHits: true,
         queryFilter: statusFilter
@@ -346,7 +351,7 @@ const MetricListPage = () => {
   } = useMetricHierarchy({
     enabled: [hasViewPermission, isTreeMode].every(Boolean),
     page,
-    pageSize: METRIC_PAGE_SIZE,
+    pageSize: metricPageSize,
     query: debouncedSearch,
   });
 
@@ -409,7 +414,7 @@ const MetricListPage = () => {
     });
   }, [selectableMetricIds]);
 
-  const hierarchyExpansionScope = `${page}:${debouncedSearch}`;
+  const hierarchyExpansionScope = `${page}:${metricPageSize}:${debouncedSearch}`;
 
   useEffect(() => {
     const hasExpandableGroup = topLevelNodes.some(({ groupId }) => groupId);
@@ -452,7 +457,7 @@ const MetricListPage = () => {
   const totalMetrics = isTreeMode
     ? treePaging.total
     : searchResponse?.hits.total.value ?? 0;
-  const totalPages = Math.max(1, Math.ceil(totalMetrics / METRIC_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(totalMetrics / metricPageSize));
   const listingError =
     permissionError ?? (isTreeMode ? treeError : searchError);
   const listingErrorMessage = permissionError
@@ -530,10 +535,14 @@ const MetricListPage = () => {
     [setCurrentPage]
   );
 
-  const handleViewModeChange = useCallback((nextMode: MetricViewMode) => {
-    setViewMode(nextMode);
-    localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
-  }, []);
+  const handleViewModeChange = useCallback(
+    (nextMode: MetricViewMode) => {
+      setViewMode(nextMode);
+      setCurrentPage(1);
+      localStorage.setItem(METRIC_VIEW_STORAGE_KEY, nextMode);
+    },
+    [setCurrentPage]
+  );
 
   const handleImport = useCallback(() => {
     setIsMetricActionsOpen(false);
@@ -1050,7 +1059,7 @@ const MetricListPage = () => {
   );
 
   const renderPagination = () =>
-    totalMetrics > METRIC_PAGE_SIZE ? (
+    totalMetrics > metricPageSize ? (
       <Box
         aria-label={t('label.page')}
         className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"

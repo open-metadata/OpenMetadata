@@ -31,6 +31,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../../../../../constants/constants';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import RelationshipTypeTable from '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeTable';
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
 import {
@@ -78,7 +79,8 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
   const [deleteTarget, setDeleteTarget] = useState<RelationshipType>();
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const { savedPageSize, savePageSize } = useSavedPageSize();
+  const [pageSize, setPageSize] = useState(savedPageSize);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -181,6 +183,7 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
             onPageChange={setCurrentPage}
             onPageSizeChange={(next) => {
               setPageSize(next);
+              savePageSize(next);
               setCurrentPage(1);
             }}
           />

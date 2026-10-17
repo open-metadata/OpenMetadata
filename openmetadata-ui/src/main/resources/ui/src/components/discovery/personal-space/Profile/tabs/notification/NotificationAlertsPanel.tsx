@@ -37,6 +37,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -50,6 +51,7 @@ import {
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import {
   getAlertsFromName,
@@ -82,8 +84,9 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
@@ -327,6 +330,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };

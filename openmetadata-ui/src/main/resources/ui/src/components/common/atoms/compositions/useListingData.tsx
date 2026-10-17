@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useQuickFilterLabels } from '../../../../hooks/useQuickFilterLabels';
@@ -28,6 +29,7 @@ interface UseListingDataProps<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
   pageSize?: number;
+  pageSizeOptions?: number[];
   filterKeys: string[];
   filterConfigs?: ExploreQuickFilterField[];
   columns: ColumnConfig<T>[];
@@ -50,7 +52,8 @@ export const useListingData = <
   const {
     searchIndex,
     baseFilter = '',
-    pageSize = 10,
+    pageSize = PAGE_SIZE_BASE,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,
@@ -83,9 +86,47 @@ export const useListingData = <
     setCurrentPage,
     setPageSize,
     resetAll,
+    resetPaging,
   } = urlStateHook;
 
-  const effectivePageSize = urlState.pageSize || pageSize;
+  const isOffScaleUrlSize = Boolean(
+    pageSizeOptions && !pageSizeOptions.includes(urlState.pageSize)
+  );
+  const effectivePageSize = isOffScaleUrlSize
+    ? pageSize
+    : urlState.pageSize || pageSize;
+  const [pagedAtSize, setPagedAtSize] = useState(effectivePageSize);
+  const isPageFromOtherSize = pagedAtSize !== effectivePageSize;
+  const effectivePage =
+    isOffScaleUrlSize || isPageFromOtherSize ? 1 : urlState.currentPage;
+
+  // Keep-alive keeps a visited listing mounted while another is on screen, and
+  // every listing reads the same `q` param — so without this a hidden page
+  // re-queries its own index on each keystroke and throws the answer away.
+  const isRouteVisible = useIsRouteVisible();
+
+  useEffect(() => {
+    if (isRouteVisible && isOffScaleUrlSize) {
+      resetPaging();
+    }
+  }, [isRouteVisible, isOffScaleUrlSize, resetPaging]);
+
+  useEffect(() => {
+    if (!isRouteVisible || !isPageFromOtherSize) {
+      return;
+    }
+    if (urlState.currentPage > 1) {
+      setCurrentPage(1);
+    } else {
+      setPagedAtSize(effectivePageSize);
+    }
+  }, [
+    isRouteVisible,
+    isPageFromOtherSize,
+    effectivePageSize,
+    urlState.currentPage,
+    setCurrentPage,
+  ]);
 
   const dataFetching = useDataFetching<T>({
     searchIndex,
@@ -95,7 +136,7 @@ export const useListingData = <
   });
 
   const paginationState = usePaginationState({
-    currentPage: urlState.currentPage,
+    currentPage: effectivePage,
     totalEntities: dataFetching.totalEntities,
     pageSize: effectivePageSize,
     onPageChange: setCurrentPage,
@@ -113,10 +154,6 @@ export const useListingData = <
     onCustomAddClick,
   });
 
-  // Keep-alive keeps a visited listing mounted while another is on screen, and
-  // every listing reads the same `q` param — so without this a hidden page
-  // re-queries its own index on each keystroke and throws the answer away.
-  const isRouteVisible = useIsRouteVisible();
   const lastFetchedRef = useRef<string>('');
 
   useEffect(() => {
@@ -127,10 +164,10 @@ export const useListingData = <
     // against what was actually last fetched rather than just reacting to the
     // visibility flip.
     const signature = JSON.stringify([
-      urlState.currentPage,
+      effectivePage,
       urlState.searchQuery,
       urlState.filters,
-      urlState.pageSize,
+      effectivePageSize,
     ]);
     if (signature === lastFetchedRef.current) {
       return;
@@ -138,15 +175,15 @@ export const useListingData = <
     lastFetchedRef.current = signature;
 
     dataFetching.searchEntities(
-      urlState.currentPage,
+      effectivePage,
       urlState.searchQuery,
       urlState.filters
     );
   }, [
-    urlState.currentPage,
+    effectivePage,
     urlState.searchQuery,
     urlState.filters,
-    urlState.pageSize,
+    effectivePageSize,
     // `useNlq` is left out on purpose: flipping the NLQ toggle must not run a
     // query by itself. As on Explore, NLQ runs when the user submits.
     isRouteVisible,
@@ -203,16 +240,11 @@ export const useListingData = <
   // Refetch function to reload data with current filters
   const refetch = useCallback(() => {
     dataFetching.searchEntities(
-      urlState.currentPage,
+      effectivePage,
       urlState.searchQuery,
       urlState.filters
     );
-  }, [
-    urlState.currentPage,
-    urlState.searchQuery,
-    urlState.filters,
-    dataFetching,
-  ]);
+  }, [effectivePage, urlState.searchQuery, urlState.filters, dataFetching]);
 
   return {
     entities: dataFetching.entities,
@@ -240,6 +272,7 @@ export const useListingData = <
     handleClearAll: resetAll,
     handlePageChange,
     handlePageSizeChange,
+    resetPaging,
     refetch,
   };
 };

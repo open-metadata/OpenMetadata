@@ -24,11 +24,7 @@ import {
 import { GridView } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { Include } from '../../../../../../generated/type/include';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../../../hooks/authHooks';
@@ -44,12 +40,6 @@ import { getRuntimeDisabledReasonKey } from './Applications.utils';
 
 /** Two cards per row: half of the 24-column core grid. */
 export const CARD_SPAN = 12;
-
-export const PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
 
 export const ApplicationsGrid: FC<{
   isLoading: boolean;
@@ -77,7 +67,7 @@ export const ApplicationsPagination: FC<
     minimal
     page={page}
     pageSize={pageSize}
-    pageSizeOptions={PAGE_SIZE_OPTIONS}
+    pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
     total={totalPages}
     onPageChange={onPageChange}
     onPageSizeChange={onPageSizeChange}
@@ -105,7 +95,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
     isLoading,
     showPagination,
     ...pagination
-  } = useCursorPagedList(fetchPage);
+  } = useCursorPagedList(fetchPage, GRID_PAGE_SIZE_OPTIONS);
 
   useEffect(() => {
     onHeaderChange({

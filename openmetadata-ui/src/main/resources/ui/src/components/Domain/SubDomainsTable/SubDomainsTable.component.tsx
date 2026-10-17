@@ -23,7 +23,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { VIEW_MODE_PAGE } from '../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../../hooks/platform/usePersonaViewMode';
+import { getViewPageSizeOptions } from '../../../utils/PaginationUtils';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
@@ -47,9 +49,26 @@ const SubDomainsTable = ({
   onDeleteSubDomain,
 }: SubDomainsTableProps) => {
   const { t } = useTranslation();
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    listingPageSizeOptions
+  );
   const subdomainListing = useSubdomainListingData({
     parentDomainFqn: domainFqn,
+    pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
   });
+  const { resetPaging } = subdomainListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      resetPaging?.();
+    },
+    [resetPaging]
+  );
 
   const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
@@ -85,9 +104,6 @@ const SubDomainsTable = ({
     };
   }, [debouncedSearch]);
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.SubDomains);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
@@ -246,7 +262,7 @@ const SubDomainsTable = ({
             />
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

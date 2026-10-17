@@ -74,6 +74,7 @@ import {
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { twMerge } from 'tailwind-merge';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -149,8 +150,8 @@ type CustomPaginationProps = NonNullable<
  */
 type PaginationContract<T> =
   | {
-      customPaginationProps?: undefined;
-      pagination?: TableComponentProps<T>['pagination'];
+      customPaginationProps?: never;
+      pagination?: NonNullable<TableComponentProps<T>['pagination']>;
     }
   | { customPaginationProps: CustomPaginationProps; pagination: false };
 
@@ -161,7 +162,7 @@ type TableV2Props<T extends object> = Omit<
   PaginationContract<T> &
   TableV2ExtensionProps<T>;
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = PAGE_SIZE_BASE;
 const DEFAULT_INDENT_PX = 12;
 const EXPANDER_GUTTER_PX = 16;
 

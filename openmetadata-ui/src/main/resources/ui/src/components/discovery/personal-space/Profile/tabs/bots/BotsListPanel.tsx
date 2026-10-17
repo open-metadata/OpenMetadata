@@ -39,6 +39,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -51,7 +52,11 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { getBots } from '../../../../../../rest/botsAPI';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../../../utils/APIUtils';
@@ -91,7 +96,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { getResourceLimit } = useLimitStore();
-  const { state: hashState, updateParams } = useSettingsHash();
+  const { updateParams } = useSettingsHash();
 
   const [bots, setBots] = useState<Bot[]>([]);
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
@@ -100,12 +105,15 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [paging, setPaging] = useState<Paging>({ total: 0 });
-  const [currentPage, setCurrentPage] = useState(
-    Number(hashState.params.page) || 1
-  );
-  const [pageSize, setPageSize] = useState(
-    Number(hashState.params.pageSize) || PAGE_SIZE_BASE
-  );
+  const {
+    page: hashPage,
+    pageSize: hashPageSize,
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const [currentPage, setCurrentPage] = useState(hashPage);
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const [pageSize, setPageSize] = useState(resolvePageSize(hashPageSize));
   const [reloadKey, setReloadKey] = useState(0);
   const fetchRequestIdRef = useRef(0);
   const latestSearchRequest = useRef(0);
@@ -345,6 +353,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const handlePageSizeChange = useCallback(
     (newSize: number) => {
       setPageSize(newSize);
+      savePageSize(newSize);
       setCurrentPage(1);
       updateParams({
         page: '1',
@@ -353,7 +362,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
         pageSize: String(newSize),
       });
     },
-    [updateParams]
+    [savePageSize, updateParams]
   );
 
   const handleShowDeletedToggle = useCallback(
@@ -370,12 +379,15 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   );
 
   const initialFetchRef = useRef(true);
-  const initialParamsRef = useRef(hashState.params);
+  const initialCursorRef = useRef({
+    cursor: hashCursor,
+    cursorType: hashCursorType,
+  });
 
   useEffect(() => {
     if (initialFetchRef.current) {
       initialFetchRef.current = false;
-      const { cursor, cursorType } = initialParamsRef.current;
+      const { cursor, cursorType } = initialCursorRef.current;
       fetchBots(cursor && cursorType ? { [cursorType]: cursor } : undefined);
     } else {
       fetchBots();

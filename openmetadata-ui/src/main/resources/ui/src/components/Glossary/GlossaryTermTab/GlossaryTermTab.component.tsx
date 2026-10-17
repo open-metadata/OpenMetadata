@@ -621,7 +621,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
-  const { paging, handlePagingChange, pageSize } = usePaging(PAGE_SIZE_LARGE);
+  const { paging, handlePagingChange, pageSize, handlePageSizeChange } =
+    usePaging();
   const [currentPage, setCurrentPage] = useState(1);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
@@ -1953,8 +1954,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     };
   }, [isDraggingTerm, moveDraggedGlossaryTermToRoot]);
 
-  // Trigger new fetch when search term or status filter changes. Both reset
-  // pagination back to the first page.
+  // Trigger new fetch when the search term, status filter or page size
+  // changes. Each resets pagination back to the first page.
   useEffect(() => {
     if (
       activeGlossary &&
@@ -1968,7 +1969,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }));
       fetchAllTerms();
     }
-  }, [searchTerm, selectedStatus]);
+  }, [searchTerm, selectedStatus, pageSize]);
 
   // Check if this is due to search or filter returning no results
   const isSearchActive = hasActiveSearchTerm(searchTerm);
@@ -2089,6 +2090,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               pageSize={pageSize}
               paging={paging}
               pagingHandler={handleGlossaryTermPageChange}
+              onShowSizeChange={handlePageSizeChange}
             />
           </div>
         )}
