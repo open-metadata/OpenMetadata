@@ -145,7 +145,7 @@ class ProtobufParser:
         add_descriptor(PROTO_FILE_NAME)
         return descriptor_pool_.FindFileByName(PROTO_FILE_NAME)
 
-    def _get_message_descriptor(self, file_descriptor: FileDescriptor) -> Descriptor | None:
+    def get_message_descriptor(self, file_descriptor: FileDescriptor) -> Descriptor | None:
         """Select the root message represented by the topic schema."""
         message_types = file_descriptor.message_types_by_name
         message_descriptor = message_types.get(snake_to_camel(self.config.schema_name))
@@ -159,33 +159,36 @@ class ProtobufParser:
             )
         return message_descriptor
 
+    def compile_file_descriptor(self) -> FileDescriptor:
+        """Compile the configured schema into a file descriptor backed by its own pool."""
+        base_file_path = self.config.base_file_path
+        temporary_parent = Path(base_file_path).expanduser() if base_file_path and base_file_path.strip() else None
+        if temporary_parent:
+            temporary_parent.mkdir(parents=True, exist_ok=True)
+
+        with tempfile.TemporaryDirectory(prefix="protobuf_om_", dir=temporary_parent) as temporary_directory:
+            descriptor_set = self._compile_descriptor_set(Path(temporary_directory))
+        return self._get_file_descriptor(descriptor_set)
+
     def parse_protobuf_schema(self, cls: type[ProtobufField] = FieldModel) -> list[ProtobufField] | None:
         """
         Method to parse the protobuf schema
         """
 
         try:
-            base_file_path = self.config.base_file_path
-            temporary_parent = Path(base_file_path).expanduser() if base_file_path and base_file_path.strip() else None
-            if temporary_parent:
-                temporary_parent.mkdir(parents=True, exist_ok=True)
+            message_descriptor = self.get_message_descriptor(self.compile_file_descriptor())
+            if message_descriptor is None:
+                return None
 
-            with tempfile.TemporaryDirectory(prefix="protobuf_om_", dir=temporary_parent) as temporary_directory:
-                descriptor_set = self._compile_descriptor_set(Path(temporary_directory))
-                file_descriptor = self._get_file_descriptor(descriptor_set)
-                message_descriptor = self._get_message_descriptor(file_descriptor)
-                if message_descriptor is None:
-                    return None
-
-                return [
-                    cls.model_validate(
-                        {
-                            "name": message_descriptor.name,
-                            "dataType": "RECORD",
-                            "children": self.get_protobuf_fields(message_descriptor.fields, cls=cls),
-                        }
-                    )
-                ]
+            return [
+                cls.model_validate(
+                    {
+                        "name": message_descriptor.name,
+                        "dataType": "RECORD",
+                        "children": self.get_protobuf_fields(message_descriptor.fields, cls=cls),
+                    }
+                )
+            ]
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning("Unable to parse protobuf schema for %s: %s", self.config.schema_name, exc)
