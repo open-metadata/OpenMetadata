@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+    within
 } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { EntityType } from '../../../../enums/entity.enum';
 import { Task, TaskCategory } from '../../../../generated/entity/tasks/task';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useMyTasks } from '../../../../hooks/useMyTasks';
-import { EntityType } from '../../../../enums/entity.enum';
 import { MyTaskBucket } from '../../../../utils/myTaskBuckets';
 import { getEntityTasksPath } from '../../../../utils/TaskNavigationUtils';
 import MyTasksWidget from './MyTasksWidget';
