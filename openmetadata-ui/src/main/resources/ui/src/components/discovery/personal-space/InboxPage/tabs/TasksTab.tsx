@@ -70,6 +70,7 @@ import {
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
+import { useLinkedTaskId } from '../useLinkedTaskId';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
@@ -385,7 +386,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedTaskId, setSelectedTaskId] = useState<string>();
+  // A link from outside the inbox opens on its task. The task may sit past the
+  // loaded page, so the selection keeps it rather than falling back to the
+  // top row; the detail panel fetches it by id.
+  const linkedTaskId = useLinkedTaskId();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
+    linkedTaskId
+  );
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -586,9 +593,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && visibleTasks.some((task) => task.id === prev) ? prev : firstTaskId
+      prev &&
+      (prev === linkedTaskId || visibleTasks.some((task) => task.id === prev))
+        ? prev
+        : firstTaskId
     );
-  }, [visibleTasks, firstTaskId]);
+  }, [visibleTasks, firstTaskId, linkedTaskId]);
 
   // The Triage tab badge and the sidebar inbox bubble read one open-task query,
   // so a mutation here would otherwise sit behind its stale window — and the

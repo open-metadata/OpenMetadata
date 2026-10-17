@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
@@ -284,8 +285,15 @@ jest.mock('react-i18next', () => ({
 
 import TasksTab, { TasksTabProps } from './TasksTab';
 
-const renderTab = (props: Partial<TasksTabProps> = {}) =>
-  render(<TasksTab {...props} />);
+const renderTab = (
+  props: Partial<TasksTabProps> = {},
+  initialEntry = '/inbox/tasks'
+) =>
+  render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <TasksTab {...props} />
+    </MemoryRouter>
+  );
 
 describe('TasksTab', () => {
   beforeEach(() => {
@@ -496,6 +504,24 @@ describe('TasksTab', () => {
     renderTab();
 
     expect(screen.getByTestId('detail')).toHaveTextContent('t1');
+  });
+
+  // The landing page's My Tasks card links here; its task may sit past the
+  // loaded page, so the selection must not fall back to the top row.
+  it('opens on the task a link names, even past the loaded page', () => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 30,
+    };
+
+    renderTab({}, '/inbox/tasks?taskId=t-elsewhere');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t-elsewhere');
+
+    fireEvent.click(screen.getByTestId('task-t2'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t2');
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {

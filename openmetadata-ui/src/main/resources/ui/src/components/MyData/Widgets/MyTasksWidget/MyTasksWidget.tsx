@@ -34,7 +34,7 @@ import MyTasksSelectionBar from './MyTasksSelectionBar';
 import { MY_TASKS_TONE } from './MyTasksWidget.constants';
 import { BulkDecision, useBulkResolveTasks } from './useBulkResolveTasks';
 import { useMyTasksHeadline } from './useMyTasksHeadline';
-import { useMyTasksPath } from './useMyTasksPath';
+import { useMyTaskPath, useMyTasksPath } from './useMyTasksPath';
 
 export type MyTasksWidgetProps = WidgetCommonProps;
 
@@ -47,6 +47,7 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const tasksPath = useMyTasksPath();
+  const getTaskPath = useMyTaskPath();
   const [bucket, setBucket] = useState<MyTaskBucket>(MyTaskBucket.ALL);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
     new Set()
@@ -223,6 +224,7 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
             data-testid="my-task-rows">
             {visibleTasks.map((task) => (
               <MyTaskRow
+                href={getTaskPath(task)}
                 isSelected={selectedIds.has(task.id)}
                 key={task.id}
                 task={task}

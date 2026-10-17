@@ -26,13 +26,14 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { getShortRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getMyTaskBucket, MyTaskBucket } from '../../../../utils/myTaskBuckets';
-import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import { TOPIC_ROW_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import { MY_TASK_KIND_STYLES, TASK_ID_PREFIX } from './MyTasksWidget.constants';
 
 export interface MyTaskRowProps {
   task: Task;
   title: string;
+  /** Where the row's title opens the task. */
+  href: string;
   isSelected: boolean;
   onSelectedChange: (taskId: string, isSelected: boolean) => void;
 }
@@ -41,6 +42,7 @@ export interface MyTaskRowProps {
 const MyTaskRow: React.FC<MyTaskRowProps> = ({
   task,
   title,
+  href,
   isSelected,
   onSelectedChange,
 }) => {
@@ -76,9 +78,7 @@ const MyTaskRow: React.FC<MyTaskRowProps> = ({
         <span className="tw:sr-only">{t(kind.labelKey)}</span>
       </span>
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1.5">
-        <Link
-          className="tw:min-w-0 tw:no-underline!"
-          to={getTaskDetailPath(task)}>
+        <Link className="tw:min-w-0 tw:no-underline!" to={href}>
           <Typography
             className="tw:text-text-primary!"
             data-testid="my-task-title"

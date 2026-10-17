@@ -22,6 +22,7 @@ import {
   getWorkerAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForLandingPageWidget } from '../../../utils/customizeLandingPage';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
@@ -99,6 +100,33 @@ test.describe('Landing page my tasks', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await expect(
       widget.getByTestId('my-tasks-filter-approvals-count')
     ).toHaveText(String(approvals));
+  });
+
+  // The row used to link to an entity sub-route the app never registered, so
+  // it opened a blank page. A task about no asset opens the viewer's task list.
+  test('opens a task on a page that shows it', async ({
+    page,
+    approvalTask,
+  }) => {
+    const taskId = approvalTask.responseData?.id ?? '';
+    const { widget } = await openMyTasks(page);
+
+    await widget
+      .getByTestId(`my-task-row-${taskId}`)
+      .getByTestId('my-task-title')
+      .click();
+
+    await expect(page).toHaveURL(/\/users\/[^/]+\/task$/);
+    await waitForAllLoadersToDisappear(page);
+
+    // The task list opens with this task's detail, headed by its number.
+    const taskNumber = Number(
+      (approvalTask.responseData?.taskId ?? '').replace('TASK-', '')
+    );
+
+    await expect(
+      page.getByText(`#${taskNumber}`, { exact: true })
+    ).toBeVisible();
   });
 
   test('rejects a selected approval from the selection bar', async ({

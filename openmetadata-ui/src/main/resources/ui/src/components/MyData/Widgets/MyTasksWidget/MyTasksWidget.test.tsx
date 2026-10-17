@@ -21,7 +21,9 @@ import { ReactNode } from 'react';
 import { Task, TaskCategory } from '../../../../generated/entity/tasks/task';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useMyTasks } from '../../../../hooks/useMyTasks';
+import { EntityType } from '../../../../enums/entity.enum';
 import { MyTaskBucket } from '../../../../utils/myTaskBuckets';
+import { getEntityTasksPath } from '../../../../utils/TaskNavigationUtils';
 import MyTasksWidget from './MyTasksWidget';
 import { useBulkResolveTasks } from './useBulkResolveTasks';
 
@@ -68,13 +70,14 @@ jest.mock(
   })
 );
 
-jest.mock('../../../../utils/TaskUtils', () => ({
-  getTaskDetailPath: (task: Task) => `/tasks/${task.id}`,
-}));
-
 const task = (id: string, category: TaskCategory, commentCount = 0) =>
   ({
-    about: { id: `about-${id}`, name: `asset_${id}`, type: 'table' },
+    about: {
+      fullyQualifiedName: `svc.db.schema.asset_${id}`,
+      id: `about-${id}`,
+      name: `asset_${id}`,
+      type: 'table',
+    },
     category,
     commentCount,
     createdAt: 1_700_000_000_000,
@@ -201,12 +204,24 @@ describe('MyTasksWidget', () => {
     expect(screen.queryByTestId('my-tasks-page-limit')).not.toBeInTheDocument();
   });
 
-  it('links each row to its task and shows who raised it', () => {
+  // The entity pages have no per-task route; a link there renders nothing.
+  it('opens a task in the inbox in AI mode', () => {
+    renderWidget({}, true);
+
+    expect(
+      within(screen.getByTestId('my-task-row-1')).getByRole('link')
+    ).toHaveAttribute('href', '/inbox/tasks?taskId=1');
+  });
+
+  it("links each row to its asset's tasks and shows who raised it", () => {
     renderWidget();
 
     const row = screen.getByTestId('my-task-row-1');
 
-    expect(within(row).getByRole('link')).toHaveAttribute('href', '/tasks/1');
+    expect(within(row).getByRole('link')).toHaveAttribute(
+      'href',
+      getEntityTasksPath(EntityType.TABLE, 'svc.db.schema.asset_1')
+    );
     expect(row).toHaveTextContent('#001');
     expect(row).toHaveTextContent('testsuite-bot');
     expect(within(row).getByTestId('my-task-entity')).toHaveTextContent(
