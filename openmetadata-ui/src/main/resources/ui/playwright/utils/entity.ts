@@ -1597,7 +1597,10 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
 // Returns the followed-assets column, not the whole card: the owned column can
 // hold the same asset (following something you own is normal), and a card-wide
 // locator would then resolve to two nodes and fail strict mode on click.
-const loadFollowingWidget = async (page: Page): Promise<Locator> => {
+const loadFollowingWidget = async (
+  page: Page,
+  skeletonTimeout = 60_000
+): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
 
@@ -1608,7 +1611,7 @@ const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   // list that is correctly missing.
   await expect(
     followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
-  ).toBeHidden({ timeout: 60_000 });
+  ).toBeHidden({ timeout: skeletonTimeout });
 
   return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
@@ -1618,23 +1621,32 @@ export const validateFollowedEntityToWidget = async (
   entity: string | undefined,
   isFollowing: boolean
 ): Promise<Locator> => {
-  const followingWidget = await loadFollowingWidget(page);
-
   if (!entity) {
-    return followingWidget;
+    return loadFollowingWidget(page);
   }
 
-  const followedEntity = followingWidget.getByTestId(
-    `${FOLLOWED_ASSET_LIST}-${entity}`
-  );
+  // The card reads follows from search once per page load and never refetches,
+  // but the follow can land in the index after that read — a live index write
+  // that fails is re-applied by the server's SearchIndexRetryWorker 10-30s
+  // later. Waiting on the DOM alone would watch a list that cannot change, so
+  // each attempt reloads the landing page. The skeleton wait is capped so one
+  // stuck load cannot consume the retry budget.
+  await expect(async () => {
+    const followingWidget = await loadFollowingWidget(page, 15_000);
+    const followedEntity = followingWidget.getByTestId(
+      `${FOLLOWED_ASSET_LIST}-${entity}`
+    );
 
-  if (isFollowing) {
-    await expect(followedEntity).toBeVisible();
-  } else {
-    await expect(followedEntity).not.toBeVisible();
-  }
+    if (isFollowing) {
+      await expect(followedEntity).toBeVisible({ timeout: 5_000 });
+    } else {
+      await expect(followedEntity).not.toBeVisible({ timeout: 5_000 });
+    }
+  }).toPass({ timeout: 90_000, intervals: [2_000, 5_000, 10_000] });
 
-  return followingWidget;
+  return page
+    .getByTestId(FOLLOWING_WIDGET_KEY)
+    .getByTestId(FOLLOWED_ASSET_LIST);
 };
 
 const announcementForm = async (
