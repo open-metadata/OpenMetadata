@@ -73,11 +73,13 @@ shared semantic token or document them using the fixed-color and dark-override r
 ## Rules for contributors and AI agents
 
 1. Read the relevant `specs/` file before touching UI code.
-2. Use only tokens from `tokens.css` (`var(--om-*)`); never introduce a raw hex,
-   rgb/rgba, or px spacing value in a component style.
-3. Prefer semantic tokens (`--om-color-text-primary`, `--om-space-16`) over
-   palette/legacy tokens where one fits.
+2. Colours come from core `globals.css` only, via its generated `--tw-*` variables
+   (`--tw-text-color-primary`, `--tw-background-color-surface`,
+   `--tw-border-color-secondary`, `--tw-color-fg-brand-primary`, …). Never use
+   `--om-color-*` or raw `--color-*` (invalid in light mode). Non-colour values use
+   `tokens.css` (`var(--om-space-16)`, `--om-radius-*`, `--om-z-*`). Never introduce a
+   raw hex, rgb/rgba, or px spacing value in a component style.
+3. Prefer semantic tokens over palette/legacy tokens where one fits.
 4. Run `yarn token-audit` before committing. **Zero errors required.**
-5. If a needed value has no token, add it to `tokens.css` as an `--om-*` alias
-   (referencing the upstream `globals.css` token, or holding the raw value when
-   there is no upstream equivalent), not to the component.
+5. If a needed non-colour value has no token, add it to `tokens.css` as an `--om-*`
+   alias, not to the component. A missing colour role belongs in `globals.css`.

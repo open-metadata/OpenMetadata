@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) '../../../../styles/variables.less';
-
 .lineage-tab-content {
   .lineage-info-container {
     padding-top: var(--om-space-12);
   }
   .right-arrow-icon {
-    color: @grey-400;
+    color: var(--tw-color-fg-quaternary);
     font-size: var(--om-font-size-10) !important;
-  }
-  .no-data-placeholder {
-    color: @grey-500 !important;
-    font-size: var(--om-font-size-13) !important;
   }
   .right-arrow-icon-container {
     display: flex;
@@ -34,7 +28,7 @@
   .right-arrow-icon-dot {
     width: 2px;
     height: 2px;
-    background-color: @grey-500;
+    background-color: var(--tw-text-color-quaternary);
     border-radius: 50%;
   }
   .lineage-items-list.empty-state {
@@ -75,22 +69,22 @@
 }
 .lineage-items-list {
   .lineage-item-card {
-    border: 1px solid @grey-200;
+    border: 1px solid var(--tw-border-color-secondary);
     border-radius: var(--om-radius-lg);
     margin-bottom: var(--om-space-16);
     cursor: pointer;
     &:hover {
       cursor: pointer !important;
-      background-color: @grey-50;
+      background-color: var(--tw-background-color-secondary);
     }
     .item-name-text {
-      color: @grey-900;
+      color: var(--tw-text-color-primary);
       font-size: var(--om-font-size-sm);
       font-weight: var(--om-font-weight-semibold);
       padding-top: var(--om-space-8);
     }
     .item-direction-text {
-      color: @grey-900;
+      color: var(--tw-text-color-primary);
       font-size: var(--om-font-size-9);
       text-transform: uppercase;
       font-weight: var(--om-font-weight-semibold);
@@ -124,25 +118,25 @@
       width: fit-content;
     }
     .item-path-text {
-      color: @grey-500;
+      color: var(--tw-text-color-quaternary);
       font-size: var(--om-font-size-xs) !important;
     }
   }
 }
 .entity-type-icon {
-  color: @grey-500 !important;
+  color: var(--tw-text-color-quaternary) !important;
 }
 
 .item-entity-type-text,
 .item-owner-label-text {
-  color: @grey-500 !important;
+  color: var(--tw-text-color-quaternary) !important;
   font-size: var(--om-font-size-10) !important;
   line-height: 18px;
   align-content: center;
   font-weight: var(--om-font-weight-regular) !important;
 }
 .item-bullet-separator {
-  color: @grey-400 !important;
+  color: var(--tw-color-fg-quaternary) !important;
   align-content: center;
   margin-right: var(--om-space-4);
   line-height: 18px;

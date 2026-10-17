@@ -281,7 +281,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: 'Approved,Unprocessed',
+            statuses: 'Approved,Unprocessed,Draft',
             offset: 0,
           })
         );
@@ -293,13 +293,13 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             offset: 0,
           })
         );
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             limit: 0,
             offset: 0,
           })
@@ -310,7 +310,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             author: 'user-1',
           })
         );
@@ -323,7 +323,7 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
@@ -336,11 +336,11 @@ describe('ContextCenterMemoriesPage — permissions', () => {
       await waitFor(() => {
         expect(getListContextMemories).toHaveBeenCalledWith(
           expect.objectContaining({
-            statuses: `Approved,Unprocessed,${status}`,
+            statuses: `Approved,Unprocessed,Draft,${status}`,
             q: 'missing glossary fact',
             assets: 'asset-1',
             author: 'user-1',
-            sortBy: 'usageCount',
+            sortBy: 'appliedCount',
           })
         );
       });
@@ -372,11 +372,31 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     await waitFor(() => {
       expect(getListContextMemories).toHaveBeenCalledWith(
         expect.objectContaining({
-          statuses: 'Approved,Unprocessed,Rejected',
+          statuses: 'Approved,Unprocessed,Draft,Rejected',
           author: 'other-user',
         })
       );
     });
+  });
+
+  it('activates a count card from the keyboard', async () => {
+    renderPage();
+
+    const card = screen.getByTestId('memory-count-card-created-by-me');
+
+    expect(card).toHaveAttribute('role', 'button');
+    expect(card).toHaveAttribute('tabIndex', '0');
+    expect(card).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.keyDown(card, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({ author: 'user-1' })
+      );
+    });
+
+    expect(card).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('keeps the typed author results when the menu-open search resolves after them', async () => {

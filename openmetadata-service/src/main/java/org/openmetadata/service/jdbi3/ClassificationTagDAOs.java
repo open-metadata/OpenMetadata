@@ -559,16 +559,6 @@ public interface ClassificationTagDAOs {
         @Bind("tagFQNPrefix") String tagFQNPrefix,
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
 
-    @SqlUpdate(
-        "DELETE FROM tag_usage where tagFQNHash = :tagFqnHash AND targetFQNHash LIKE :targetFQNHash")
-    void deleteTagsByTagAndTargetEntity(
-        @BindFQN("tagFqnHash") String tagFqnHash,
-        @BindConcat(
-                value = "targetFQNHash",
-                parts = {":targetFQNHashPrefix", "%"},
-                hash = true)
-            String targetFQNHashPrefix);
-
     @SqlUpdate("DELETE FROM tag_usage where tagFQNHash = :tagFQNHash AND source = :source")
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
 
@@ -735,18 +725,23 @@ public interface ClassificationTagDAOs {
                 .withAppliedBy(r.getString("appliedBy"))
                 .withMetadata(JsonUtils.readValue(r.getString("metadata"), TagLabelMetadata.class));
         TagLabel.TagSource source = TagLabel.TagSource.values()[r.getInt("source")];
+        // json is null when the tag/term was deleted (orphan tag_usage row); keep the label as-is.
         if (source == TagLabel.TagSource.CLASSIFICATION) {
           Tag tag = JsonUtils.readValue(r.getString("json"), Tag.class);
-          label.setName(tag.getName());
-          label.setDisplayName(tag.getDisplayName());
-          label.setDescription(tag.getDescription());
-          label.setStyle(tag.getStyle());
+          if (tag != null) {
+            label.setName(tag.getName());
+            label.setDisplayName(tag.getDisplayName());
+            label.setDescription(tag.getDescription());
+            label.setStyle(tag.getStyle());
+          }
         } else if (source == TagLabel.TagSource.GLOSSARY) {
           GlossaryTerm glossaryTerm = JsonUtils.readValue(r.getString("json"), GlossaryTerm.class);
-          label.setName(glossaryTerm.getName());
-          label.setDisplayName(glossaryTerm.getDisplayName());
-          label.setDescription(glossaryTerm.getDescription());
-          label.setStyle(glossaryTerm.getStyle());
+          if (glossaryTerm != null) {
+            label.setName(glossaryTerm.getName());
+            label.setDisplayName(glossaryTerm.getDisplayName());
+            label.setDescription(glossaryTerm.getDescription());
+            label.setStyle(glossaryTerm.getStyle());
+          }
         } else {
           throw new IllegalArgumentException("Invalid source type " + source);
         }
@@ -1023,7 +1018,7 @@ public interface ClassificationTagDAOs {
 
         String targetFQNHash = FullyQualifiedName.buildHash(targetFQN);
         for (TagLabel tagLabel : tagLabels) {
-          if (tagLabel.getLabelType().equals(TagLabel.LabelType.DERIVED)) {
+          if (TagLabelUtil.isSystemGenerated(tagLabel)) {
             continue;
           }
           rows.add(

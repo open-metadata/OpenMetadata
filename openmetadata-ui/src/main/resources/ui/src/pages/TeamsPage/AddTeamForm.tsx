@@ -31,7 +31,6 @@ import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { DomainLabel } from '../../components/common/DomainLabel/DomainLabel.component';
 import DomainSelectableList from '../../components/common/DomainSelectableList/DomainSelectableList.component';
-import { DrawerPopupContainerProvider } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import RichTextEditor from '../../components/common/RichTextEditor/RichTextEditor';
 import {
   DISPLAY_NAME_FIELD_REGISTER_RULES,
@@ -155,136 +154,134 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
       width={750}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
-      <DrawerPopupContainerProvider>
-        <HookForm
-          className="tw:flex tw:flex-col tw:gap-4"
-          form={form}
-          id="add-team-form"
-          onSubmit={form.handleSubmit(handleSubmit)}>
-          {renderTextField(
-            'name',
-            t('label.name'),
-            t('label.enter-entity', { entity: t('label.name') }),
-            'name',
-            {
-              ...NAME_FIELD_REGISTER_RULES,
-              validate: (value) =>
-                !allTeam.some(
-                  (team) => toLower(team.name) === toLower(value)
-                ) ||
-                t('message.entity-already-exists', {
-                  entity: t('label.name'),
-                }),
-            }
-          )}
-          {renderTextField(
-            'displayName',
-            t('label.display-name'),
-            t('message.enter-display-name'),
-            'display-name',
-            {
-              ...DISPLAY_NAME_FIELD_REGISTER_RULES,
-              validate: (value) =>
-                Boolean(trim(value)) ||
-                t('message.field-text-is-required', {
-                  fieldText: t('label.display-name'),
-                }),
-              required: t('message.field-text-is-required', {
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
+        form={form}
+        id="add-team-form"
+        onSubmit={form.handleSubmit(handleSubmit)}>
+        {renderTextField(
+          'name',
+          t('label.name'),
+          t('label.enter-entity', { entity: t('label.name') }),
+          'name',
+          {
+            ...NAME_FIELD_REGISTER_RULES,
+            validate: (value) =>
+              !allTeam.some((team) => toLower(team.name) === toLower(value)) ||
+              t('message.entity-already-exists', {
+                entity: t('label.name'),
+              }),
+          }
+        )}
+        {renderTextField(
+          'displayName',
+          t('label.display-name'),
+          t('message.enter-display-name'),
+          'display-name',
+          {
+            ...DISPLAY_NAME_FIELD_REGISTER_RULES,
+            validate: (value) =>
+              Boolean(trim(value)) ||
+              t('message.field-text-is-required', {
                 fieldText: t('label.display-name'),
               }),
-            }
+            required: t('message.field-text-is-required', {
+              fieldText: t('label.display-name'),
+            }),
+          }
+        )}
+        {renderTextField(
+          'email',
+          t('label.email'),
+          t('label.enter-entity', { entity: t('label.email-lowercase') }),
+          'email',
+          {
+            pattern: {
+              value: EMAIL_REG_EX,
+              message: t('message.entity-is-not-valid', {
+                entity: t('label.email'),
+              }),
+            },
+          }
+        )}
+        <FormField control={form.control} name="teamType">
+          {({ field }) => (
+            <Select
+              data-testid="team-selector"
+              items={teamTypeItems}
+              label={t('label.team-type')}
+              placeholder={t('message.select-team')}
+              value={field.value ?? null}
+              onChange={(key) =>
+                key !== null && field.onChange(key as TeamType)
+              }>
+              {(item) => <Select.Item id={item.id} label={item.label} />}
+            </Select>
           )}
-          {renderTextField(
-            'email',
-            t('label.email'),
-            t('label.enter-entity', { entity: t('label.email-lowercase') }),
-            'email',
+        </FormField>
+        <FormFields
+          fields={[
             {
-              pattern: {
-                value: EMAIL_REG_EX,
-                message: t('message.entity-is-not-valid', {
-                  entity: t('label.email'),
-                }),
-              },
-            }
-          )}
-          <FormField control={form.control} name="teamType">
-            {({ field }) => (
-              <Select
-                data-testid="team-selector"
-                items={teamTypeItems}
-                label={t('label.team-type')}
-                placeholder={t('message.select-team')}
-                selectedKey={field.value ?? null}
-                onSelectionChange={(key) =>
-                  key !== null && field.onChange(key as TeamType)
-                }>
-                {(item) => <Select.Item id={item.id} label={item.label} />}
-              </Select>
-            )}
-          </FormField>
-          <FormFields
-            fields={[
-              {
-                name: 'isJoinable',
-                label: t('label.public-team'),
-                type: FieldTypes.SWITCH,
-                id: 'isJoinable-switch-button',
-                helperText: t('message.access-to-collaborate'),
-                props: { 'data-testid': 'isJoinable-switch-button' },
-              },
-            ]}
+              name: 'isJoinable',
+              label: t('label.public-team'),
+              type: FieldTypes.SWITCH,
+              id: 'isJoinable-switch-button',
+              helperText: t('message.access-to-collaborate'),
+              props: { 'data-testid': 'isJoinable-switch-button' },
+            },
+          ]}
+        />
+        <Box direction="col" gap={1}>
+          <FormItemLabel label={t('label.description')} />
+          <RichTextEditor
+            data-testid="description"
+            initialValue=""
+            onTextChange={setDescription}
           />
-          <Box direction="col" gap={1}>
-            <FormItemLabel label={t('label.description')} />
-            <RichTextEditor
-              data-testid="description"
-              initialValue=""
-              onTextChange={setDescription}
-            />
-          </Box>
-          <FormField control={form.control} name="domains">
-            {({ field }) => (
-              <Box direction="col" gap={1}>
-                <Box align="center" gap={2}>
-                  <FormItemLabel label={t('label.domain-plural')} />
-                  <DomainSelectableList
-                    hasPermission
-                    multiple
-                    selectedDomain={field.value}
-                    onUpdate={async (domains) =>
+        </Box>
+        <FormField control={form.control} name="domains">
+          {({ field }) => (
+            <Box direction="col" gap={1}>
+              <Box align="center" gap={2}>
+                <FormItemLabel label={t('label.domain-plural')} />
+                <DomainSelectableList
+                  hasPermission
+                  multiple
+                  selectedDomain={field.value}
+                  onUpdate={(domains) =>
+                    Promise.resolve(
                       field.onChange(
                         domains === undefined
                           ? undefined
                           : ([] as EntityReference[]).concat(domains)
                       )
-                    }>
-                    <Button
-                      aria-label={t('label.add-entity', {
-                        entity: t('label.domain'),
-                      })}
-                      color="primary"
-                      data-testid="add-domain"
-                      iconLeading={Plus}
-                      size="xs"
-                    />
-                  </DomainSelectableList>
-                </Box>
-                {selectedDomain.length > 0 && (
-                  <DomainLabel
-                    multiple
-                    domains={selectedDomain}
-                    entityFqn=""
-                    entityId=""
-                    entityType={EntityType.GLOSSARY}
-                    hasPermission={false}
+                    )
+                  }>
+                  <Button
+                    aria-label={t('label.add-entity', {
+                      entity: t('label.domain'),
+                    })}
+                    color="primary"
+                    data-testid="add-domain"
+                    iconLeading={Plus}
+                    size="xs"
                   />
-                )}
+                </DomainSelectableList>
               </Box>
-            )}
-          </FormField>
-        </HookForm>
-      </DrawerPopupContainerProvider>
+              {selectedDomain.length > 0 && (
+                <DomainLabel
+                  multiple
+                  domains={selectedDomain}
+                  entityFqn=""
+                  entityId=""
+                  entityType={EntityType.GLOSSARY}
+                  hasPermission={false}
+                />
+              )}
+            </Box>
+          )}
+        </FormField>
+      </HookForm>
     </SimpleModal>
   );
 };

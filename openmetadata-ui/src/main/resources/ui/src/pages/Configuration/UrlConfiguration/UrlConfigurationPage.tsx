@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -138,7 +137,7 @@ const UrlConfigurationPage = () => {
                 <Button
                   color="secondary"
                   data-testid="edit-button"
-                  iconLeading={<Icon component={IconEdit} size={12} />}
+                  iconLeading={<IconEdit className="tw:size-3 tw:shrink-0" />}
                   onClick={handleEditClick}>
                   {t('label.edit')}
                 </Button>

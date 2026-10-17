@@ -123,6 +123,7 @@ import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.compo
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import DataProductMetadataModal from '../DataProductMetadataModal/DataProductMetadataModal.component';
 import ODPSImportModal from '../ODPSImportModal/ODPSImportModal.component';
 import './data-products-details-page.less';
@@ -400,6 +401,13 @@ function DataProductActionButtons(
             entity: t('label.asset-plural'),
           })}
         </Button>
+      )}
+
+      {!isVersionsView && (
+        <ChangeRequestsIndicator
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+        />
       )}
 
       <Box align="center" gap={4}>
@@ -880,6 +888,7 @@ const DataProductsDetailsPage = ({
       feedCount,
       getEntityFeedCount,
       labelMap: tabLabelMap,
+      onUpdateEntityDetails: onRefresh,
     });
 
     return getDetailsTabWithNewLabel(
@@ -899,6 +908,7 @@ const DataProductsDetailsPage = ({
     feedCount,
     inputPortsCount,
     outputPortsCount,
+    onRefresh,
   ]);
 
   // `/dataProduct/:fqn` has no tab segment; resolve to the first rendered tab when the

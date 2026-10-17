@@ -490,20 +490,24 @@ public interface WorkflowDocStoreDAOs {
   }
 
   interface ContextMemoryDAO extends EntityDAO<ContextMemory> {
-    String MYSQL_PRESERVING_USAGE =
+    // Usage and outcome counters are server telemetry: a metadata write keeps the stored values
+    // (ADR:2026-10-10-memory-content-recency-and-usage-are-independent-of-review-writes).
+    String MYSQL_PRESERVING_TELEMETRY =
         "UPDATE context_memory SET json = JSON_SET(:json, '$.usageCount', "
             + "COALESCE(CAST(NULLIF(json ->> '$.usageCount', 'null') AS UNSIGNED), 0), "
-            + "'$.lastUsedAt', JSON_EXTRACT(json, '$.lastUsedAt')), nameHash = :nameHash ";
-    String POSTGRES_PRESERVING_USAGE =
+            + "'$.lastUsedAt', JSON_EXTRACT(json, '$.lastUsedAt'), "
+            + "'$.outcomes', JSON_EXTRACT(json, '$.outcomes')), nameHash = :nameHash ";
+    String POSTGRES_PRESERVING_TELEMETRY =
         "UPDATE context_memory SET json = :json::jsonb || jsonb_build_object("
             + "'usageCount', COALESCE((json->>'usageCount')::int, 0), "
-            + "'lastUsedAt', json->'lastUsedAt'), nameHash = :nameHash ";
+            + "'lastUsedAt', json->'lastUsedAt', "
+            + "'outcomes', json->'outcomes'), nameHash = :nameHash ";
 
     @ConnectionAwareSqlUpdate(
-        value = MYSQL_PRESERVING_USAGE + "WHERE id = :id",
+        value = MYSQL_PRESERVING_TELEMETRY + "WHERE id = :id",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
-        value = POSTGRES_PRESERVING_USAGE + "WHERE id = :id",
+        value = POSTGRES_PRESERVING_TELEMETRY + "WHERE id = :id",
         connectionType = POSTGRES)
     int updatePreservingUsage(
         @BindUUID("id") UUID id,
@@ -512,14 +516,14 @@ public interface WorkflowDocStoreDAOs {
 
     @ConnectionAwareSqlUpdate(
         value =
-            MYSQL_PRESERVING_USAGE
+            MYSQL_PRESERVING_TELEMETRY
                 + "WHERE id = :id "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
                 + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            POSTGRES_PRESERVING_USAGE
+            POSTGRES_PRESERVING_TELEMETRY
                 + "WHERE id = :id AND json->>'version' = :version "
                 + "AND (json->>'updatedAt')::bigint = :updatedAt",
         connectionType = POSTGRES)
@@ -545,6 +549,25 @@ public interface WorkflowDocStoreDAOs {
                 + "WHERE id = :id AND deleted = FALSE",
         connectionType = POSTGRES)
     int recordUsage(@BindUUID("id") UUID id, @Bind("usedAt") long usedAt);
+
+    // Absolute counts from one recount; an older recount never overwrites a newer one.
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = JSON_SET(json, '$.outcomes', CAST(:outcomes AS JSON)) "
+                + "WHERE id = :id AND deleted = FALSE "
+                + "AND COALESCE(CAST(NULLIF(json ->> '$.outcomes.countedAt', 'null') AS UNSIGNED), 0) "
+                + "<= :countedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_memory SET json = jsonb_set(json, '{outcomes}', :outcomes::jsonb, true) "
+                + "WHERE id = :id AND deleted = FALSE "
+                + "AND COALESCE((json->'outcomes'->>'countedAt')::bigint, 0) <= :countedAt",
+        connectionType = POSTGRES)
+    int recordOutcomes(
+        @BindUUID("id") UUID id,
+        @BindJson("outcomes") String outcomes,
+        @Bind("countedAt") long countedAt);
 
     @Override
     default String getTableName() {
