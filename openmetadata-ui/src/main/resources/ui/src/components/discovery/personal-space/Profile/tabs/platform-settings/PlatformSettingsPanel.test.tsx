@@ -78,9 +78,28 @@ jest.mock('./ProfilerSettingsForm', () => () => (
 jest.mock('./DataAssetRulesSettings', () => () => (
   <div data-testid="data-asset-rules-view" />
 ));
-jest.mock('./LearningResourcesSettings', () => () => (
-  <div data-testid="learning-resources-view" />
-));
+// Saves its state on click and shows what the panel handed back, so the test
+// can check the panel keeps it while a preview replaces the list.
+jest.mock(
+  './LearningResourcesSettings',
+  () =>
+    ({
+      savedState,
+      onSaveState,
+    }: {
+      savedState?: unknown;
+      onSaveState?: (state: unknown) => void;
+    }) =>
+      (
+        <div
+          data-saved={JSON.stringify(savedState ?? null)}
+          data-testid="learning-resources-view">
+          <button type="button" onClick={() => onSaveState?.({ page: 2 })}>
+            save-list-state
+          </button>
+        </div>
+      )
+);
 jest.mock(
   '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component',
   () => ({
@@ -257,6 +276,33 @@ describe('PlatformSettingsPanel', () => {
     lastHeader().onBreadcrumbAction('search');
 
     expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'search');
+  });
+
+  it('keeps the learning list state while a resource preview replaces the list', () => {
+    mockSubPath = 'learning-resources';
+    const { rerender } = renderPanel();
+    fireEvent.click(screen.getByText('save-list-state'));
+
+    mockSubPath = 'learning-resources/res-1';
+    rerender(
+      <MemoryRouter>
+        <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('learning-resources-view')).toBeNull();
+
+    mockSubPath = 'learning-resources';
+    rerender(
+      <MemoryRouter>
+        <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('learning-resources-view')).toHaveAttribute(
+      'data-saved',
+      JSON.stringify({ page: 2 })
+    );
   });
 
   it('opens a learning resource as a sub-page instead of a modal', () => {

@@ -31,7 +31,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
-import { CSSProperties, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PAGE_SIZE_BASE,
@@ -65,6 +65,7 @@ import { LearningResourceCard } from '../../../../../Learning/LearningResourceCa
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
+import { getInitialLearningListState } from './LearningResourceSettings.utils';
 
 const CARD_GRID_STYLE: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
@@ -108,15 +109,19 @@ const BadgeList = ({
 const LearningResourcesSettings = ({
   onNavigate,
   onSetHeaderActions,
+  savedState,
+  onSaveState,
 }: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
-  const [searchText, setSearchText] = useState('');
-  const [searchInput, setSearchInput] = useState('');
+  // Restored after previewing a resource, so the list is where the user left it.
+  const [initial] = useState(() => getInitialLearningListState(savedState));
+  const [searchText, setSearchText] = useState(initial.searchText);
+  const [searchInput, setSearchInput] = useState(initial.searchText);
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
-    {}
+    initial.filterState
   );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [currentPage, setCurrentPage] = useState(initial.currentPage);
+  const [pageSize, setPageSize] = useState(initial.pageSize);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -138,7 +143,9 @@ const LearningResourcesSettings = ({
   });
 
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
-  const [selectedView, setSelectedView] = useState<PageViewMode>();
+  const [selectedView, setSelectedView] = useState<PageViewMode | undefined>(
+    initial.selectedView
+  );
   const view = selectedView ?? personaView;
 
   const debouncedSearch = useMemo(
@@ -147,9 +154,34 @@ const LearningResourcesSettings = ({
   );
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
+  // A new search or filter starts from page 1 — but not on mount, which would
+  // undo a restored page.
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+
+      return;
+    }
     setCurrentPage(1);
   }, [searchText, filterState]);
+
+  useEffect(() => {
+    onSaveState?.({
+      searchText,
+      filterState,
+      currentPage,
+      pageSize,
+      selectedView,
+    });
+  }, [
+    searchText,
+    filterState,
+    currentPage,
+    pageSize,
+    selectedView,
+    onSaveState,
+  ]);
 
   const openResource = (resource: LearningResource) =>
     onNavigate({

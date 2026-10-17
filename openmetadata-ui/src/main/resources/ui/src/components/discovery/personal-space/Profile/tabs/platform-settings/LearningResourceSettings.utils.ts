@@ -22,6 +22,8 @@ import {
   LearningResource,
   LearningResourceType,
 } from '../../../../../../rest/learningResourceAPI';
+import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
+import type { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 
 export interface SelectItem {
   id: string;
@@ -120,4 +122,26 @@ export const toLearningResourcePayload = (
     provider: values.sourceProvider || undefined,
   },
   status: values.status?.id as CreateLearningResource['status'],
+});
+
+/** Learning Resources list state kept while one of its resources is open. */
+export interface LearningListState {
+  searchText: string;
+  filterState: Partial<
+    Record<'type' | 'category' | 'context' | 'status', string[]>
+  >;
+  currentPage: number;
+  pageSize: number;
+  selectedView?: PageViewMode;
+}
+
+/** The list state to start from: what was saved, else the defaults. */
+export const getInitialLearningListState = (
+  saved: unknown
+): LearningListState => ({
+  searchText: '',
+  filterState: {},
+  currentPage: 1,
+  pageSize: PAGE_SIZE_BASE,
+  ...(saved as Partial<LearningListState> | undefined),
 });

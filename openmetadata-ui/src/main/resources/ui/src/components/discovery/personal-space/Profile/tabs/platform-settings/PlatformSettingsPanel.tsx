@@ -151,6 +151,11 @@ const PlatformSettingsPanel = ({
   );
   const [showHint, setShowHint] = useState(false);
   const [pageActions, setPageActions] = useState<ReactNode>();
+  // Per-page state that survives the page unmounting while one of its items or
+  // forms is open, so returning restores it; cleared when the panel closes.
+  const [savedPageStates, setSavedPageStates] = useState<
+    Partial<Record<string, unknown>>
+  >({});
 
   const view = useMemo(
     () =>
@@ -165,6 +170,16 @@ const PlatformSettingsPanel = ({
       ? pages.find((page) => page.id === view.page)
       : undefined;
   const showsForm = isFormView(view);
+
+  const activePageId = view.type === 'page' ? view.page : undefined;
+  const savePageState = useCallback(
+    (state: unknown) => {
+      if (activePageId) {
+        setSavedPageStates((prev) => ({ ...prev, [activePageId]: state }));
+      }
+    },
+    [activePageId]
+  );
 
   const onNavigate = useCallback(
     (next: PlatformSettingsView) =>
@@ -252,6 +267,8 @@ const PlatformSettingsPanel = ({
       itemId: view.itemId,
       onNavigate,
       onSetHeaderActions: setPageActions,
+      savedState: savedPageStates[view.page],
+      onSaveState: savePageState,
     };
     const ContributedPage = activePage?.component;
 
