@@ -1002,7 +1002,11 @@ class DbtSource(DbtServiceSource):
                         logger.debug(f"Skipping DBT node: {key}.")
                         continue
 
-                    model_name = get_dbt_model_name(manifest_node)
+                    model_name = (
+                        get_source_physical_name(manifest_node)
+                        if resource_type == DbtCommonEnum.SOURCE.value
+                        else get_dbt_model_name(manifest_node)
+                    )
 
                     # snapshots can redirect output to a different schema/database via config.target_schema/target_database
                     if resource_type == "snapshot":
@@ -1144,12 +1148,15 @@ class DbtSource(DbtServiceSource):
             for node in dbt_node.depends_on.nodes:
                 try:
                     parent_node = manifest_entities[node]
-                    table_name = get_dbt_model_name(parent_node)
-
                     parent_resource_type = getattr(
                         parent_node.resource_type,
                         "value",
                         parent_node.resource_type,
+                    )
+                    table_name = (
+                        get_source_physical_name(parent_node)
+                        if parent_resource_type == DbtCommonEnum.SOURCE.value
+                        else get_dbt_model_name(parent_node)
                     )
                     if parent_resource_type == "snapshot":
                         parent_location = get_snapshot_effective_schema_and_database(parent_node)
