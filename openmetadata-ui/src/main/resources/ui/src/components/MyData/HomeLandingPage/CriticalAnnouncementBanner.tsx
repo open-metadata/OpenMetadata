@@ -32,13 +32,14 @@ export interface CriticalAnnouncementBannerProps {
 
 // The surface sits outside the `dark-mode` island: inside it the gray ramp is
 // re-tinted, so light gray-900 (the design's banner colour) would resolve to
-// the darker dark-mode step instead.
+// the darker dark-mode step instead. The content fills the surface, so a
+// short announcement stays centred when the rail matches the tallest one.
 const BANNER_CLASS =
-  'tw:relative tw:rounded-xl tw:bg-utility-gray-900 ' +
+  'tw:relative tw:flex tw:rounded-xl tw:bg-utility-gray-900 ' +
   'tw:[.dark-mode_&]:border tw:[.dark-mode_&]:border-secondary tw:[.dark-mode_&]:bg-primary tw:[.dark-mode_&]:shadow-xs';
 
 const CONTENT_CLASS =
-  'dark-mode tw:flex tw:items-center tw:gap-4 tw:py-4 tw:pr-12 tw:pl-5';
+  'dark-mode tw:flex tw:flex-1 tw:items-center tw:gap-4 tw:py-4 tw:pr-12 tw:pl-5';
 
 // FeaturedIcon's light theme fills solid red under `dark-mode`; the design
 // tints the circle instead, the way the Critical surface reads elsewhere.

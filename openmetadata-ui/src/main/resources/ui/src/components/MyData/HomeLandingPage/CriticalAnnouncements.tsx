@@ -142,12 +142,10 @@ const CriticalAnnouncements = ({
       className="tw:relative"
       data-testid="critical-announcements">
       {/* No heading: the banner names itself Critical. The pager keeps the
-      rail's place, top right, so the two carousels page alike — but out of
-      flow, in the page's top padding, so the banner starts where the greeting
-      it replaces would. */}
+      rail's place, right-aligned above it, so the two carousels page alike. */}
       {count > 1 && (
         <>
-          <div className="tw:absolute tw:right-0 tw:bottom-full tw:mb-1">
+          <div className="tw:mb-3 tw:flex tw:justify-end">
             <RailPager
               canScroll={canScroll}
               testIdPrefix="critical-announcement"

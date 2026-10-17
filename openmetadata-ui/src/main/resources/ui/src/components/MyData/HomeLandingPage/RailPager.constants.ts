@@ -14,9 +14,7 @@ import type { RailScrollState } from '../../../hooks/useRailPager';
 
 export type RailPagerSide = keyof RailScrollState;
 
-// A 24px circle (ButtonUtility `sm`): the touch-target minimum, and the most
-// the critical banner's pager fits in the page's top padding with room left
-// for its focus ring.
+// A 24px circle (ButtonUtility `sm`): the touch-target minimum.
 export const PAGER_BUTTON_CLASSES = 'tw:rounded-full';
 
 export const OPPOSITE_PAGER_SIDE: Record<RailPagerSide, RailPagerSide> = {
