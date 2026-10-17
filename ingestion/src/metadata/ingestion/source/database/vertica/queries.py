@@ -105,13 +105,22 @@ VERTICA_SUPPORTS_COLUMN_COMMENTS = textwrap.dedent(
     """
 )
 
-VERTICA_GET_PRIMARY_KEYS = textwrap.dedent(
+# Table and column comments of one batch of tables, fetched together so that a
+# batch costs a single query instead of a comments join per table (issue #29429).
+# For a COLUMN row object_name is the table and child_object the column, which is
+# what VERTICA_GET_COLUMNS joins on. Filtering happens in the database, so only
+# the batch is ever materialised client-side.
+VERTICA_BATCH_COMMENTS = textwrap.dedent(
     """
-        SELECT column_name
-        FROM v_catalog.primary_keys
-        WHERE lower(table_name) = '{table}'
-        AND constraint_type = 'p'
-        AND {schema_condition}
+        SELECT
+          object_type,
+          object_name   AS table_name,
+          child_object  AS column_name,
+          comment
+        FROM v_catalog.comments
+        WHERE object_type IN ('TABLE', 'COLUMN')
+          AND LOWER(object_schema) = LOWER(:schema)
+          AND object_name IN :tables
     """
 )
 

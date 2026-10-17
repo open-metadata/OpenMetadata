@@ -18,14 +18,17 @@ import traceback
 from collections.abc import Iterable
 from textwrap import dedent
 
-from sqlalchemy import sql, text, util
+from sqlalchemy import Table, sql, text, util
+from sqlalchemy.dialects import registry
 from sqlalchemy.engine import Inspector, reflection
 from sqlalchemy.engine.default import DefaultDialect
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.sql import sqltypes
 from sqlalchemy_vertica.base import VerticaDialect, ischema_names
+from sqlalchemy_vertica.dialect_vertica_python import VerticaDialect as VerticaPythonDialect
 
 from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.verticaConnection import (
     VerticaConnection,
 )
@@ -37,11 +40,16 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.source.database.vertica.comment_batch import (
+    COMMENT_BATCH_SIZE,
+    CommentBatch,
+    batched,
+    fetch_comment_batch,
+)
 from metadata.ingestion.source.database.vertica.queries import (
     VERTICA_GET_COLUMNS,
     VERTICA_GET_COLUMNS_WITHOUT_COMMENTS,
     VERTICA_GET_CURRENT_SCHEMA,
-    VERTICA_GET_PRIMARY_KEYS,
     VERTICA_GET_SERVER_VERSION,
     VERTICA_LIST_DATABASES,
     VERTICA_SCHEMA_COMMENTS,
@@ -137,26 +145,32 @@ def supports_column_comments(self, connection) -> bool:
 @reflection.cache
 def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: disable=too-many-locals,unused-argument
     """
-    Method to handle column details
+    Method to handle column details.
+
+    ``vertica_include_comments=False`` skips the per-table comments join, for callers that
+    attach comments themselves from a batch (see `VerticaSource`).
+
+    Primary keys are not looked up here: nothing reads a per-column primary-key flag,
+    since they are reflected through `get_pk_constraint`, so the query only cost a
+    catalog read per table (issue #29429).
     """
     if schema is not None:
         schema_condition = f"lower(table_schema) = '{schema.lower()}'"
     else:
         schema_condition = "1"
 
+    include_comments = kw.get("vertica_include_comments", True)
     columns_query = (
-        VERTICA_GET_COLUMNS if supports_column_comments(self, connection) else VERTICA_GET_COLUMNS_WITHOUT_COMMENTS
+        VERTICA_GET_COLUMNS
+        if include_comments and supports_column_comments(self, connection)
+        else VERTICA_GET_COLUMNS_WITHOUT_COMMENTS
     )
     sql_query = sql.text(dedent(columns_query.format(table=table_name.lower(), schema_condition=schema_condition)))
 
-    spk = sql.text(dedent(VERTICA_GET_PRIMARY_KEYS.format(table=table_name.lower(), schema_condition=schema_condition)))
-
-    pk_columns = [x[0] for x in connection.execute(spk)]
     columns = {}
     for row in connection.execute(sql_query):
         name = row.column_name
         dtype = row.data_type.lower()
-        primary_key = name in pk_columns
         default = row.column_default
         nullable = row.is_nullable
         comment = row.comment
@@ -169,7 +183,6 @@ def get_columns(self, connection, table_name, schema=None, **kw):  # pylint: dis
             schema,
             comment,
         )
-        column_info.update({"primary_key": primary_key})
         if columns.get(name) is None or comment:
             columns[name] = column_info
     return columns.values()
@@ -302,6 +315,8 @@ def get_table_comment(
     schema=None,
     **kw,  # pylint: disable=unused-argument
 ):
+    if not kw.get("vertica_include_comments", True):
+        return {"text": None}
     return get_table_comment_wrapper(
         self,
         connection,
@@ -336,6 +351,23 @@ def _get_default_schema_name(self, connection):  # pylint: disable=unused-argume
     return connection.scalar(text(VERTICA_GET_CURRENT_SCHEMA))
 
 
+class VerticaInspector(Inspector):
+    """Vertica inspector with comment-free DDL reflection."""
+
+    def get_all_table_ddls(self, connection, query, schema_name, **kw):
+        kw["vertica_include_comments"] = False
+        return get_all_table_ddls(self, connection, query, schema_name, **kw)
+
+
+# Table argument registration mutates the nested dictionaries inherited from PostgreSQL.
+VerticaDialect.construct_arguments = [
+    (construct, dict(arguments)) for construct, arguments in VerticaDialect.construct_arguments
+]
+registry.register("vertica", "sqlalchemy_vertica.dialect_vertica_python", "VerticaDialect")
+Table.argument_for("vertica", "include_comments", True)
+VerticaDialect.reflection_options = (*VerticaDialect.reflection_options, "vertica_include_comments")
+VerticaDialect.inspector = VerticaInspector
+
 VerticaDialect.get_columns = get_columns
 VerticaDialect._get_column_info = _get_column_info  # pylint: disable=protected-access
 VerticaDialect.get_view_definition = get_view_definition  # pyright: ignore[reportAttributeAccessIssue]
@@ -343,6 +375,13 @@ VerticaDialect.get_all_table_comments = get_all_table_comments
 VerticaDialect.get_table_comment = get_table_comment  # pyright: ignore[reportAttributeAccessIssue]
 VerticaDialect._get_server_version_info = _get_server_version_info  # pylint: disable=protected-access
 VerticaDialect._get_default_schema_name = _get_default_schema_name  # pylint: disable=protected-access
+
+# The reflection statements embed their literal values in the statement text or
+# use bound parameters, so SQLAlchemy's compiled-statement cache is safe to enable
+# and avoids recompiling every statement (matching the MSSQL dialect). SQLAlchemy
+# reads the flag from the concrete dialect class only, so it has to be set on the
+# one the vertica+vertica_python scheme builds, not on the base class it extends.
+VerticaPythonDialect.supports_statement_cache = True
 
 # get_schema_definition only reaches for table DDL when the inspector carries
 # these, and they are registered globally rather than per dialect. Vertica does
@@ -385,6 +424,9 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         self.schema_desc_map = {}
+        # The comment batch each worker thread is processing: at most one per thread,
+        # so this holds at most `threads` batches of COMMENT_BATCH_SIZE tables.
+        self._comment_batches: dict[int, CommentBatch] = {}
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -438,3 +480,74 @@ class VerticaSource(CommonDbSourceService, MultiDBSource):
                 except Exception as exc:
                     logger.debug(traceback.format_exc())
                     logger.error(f"Error trying to connect to database {new_database}: {exc}")
+
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
+        """
+        Yield the filtered tables and views as usual, but in batches: before the
+        tables of a batch are yielded, their table and column comments are fetched
+        with a single query, and the batch is released before the next one is loaded
+        (issue #29429). Tables are processed as they are yielded, so a batch is
+        consumed before the next one is fetched and only one is ever resident per
+        worker.
+        """
+        schema_name = self.context.get().database_schema
+        try:
+            for batch in batched(super().get_tables_name_and_type() or [], COMMENT_BATCH_SIZE):
+                self._load_comment_batch(schema_name, [table_name for table_name, _ in batch])
+                yield from batch
+        finally:
+            self._comment_batches.pop(self.context.get_current_thread_id(), None)
+
+    def _load_comment_batch(self, schema_name: str, table_names: list[str]) -> None:
+        thread_id = self.context.get_current_thread_id()
+        self._comment_batches.pop(thread_id, None)
+        connection = self.connection
+        if supports_column_comments(self.inspector.dialect, connection):
+            try:
+                self._comment_batches[thread_id] = fetch_comment_batch(connection, schema_name, table_names)
+            except SQLAlchemyError as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Could not fetch the comments of a batch of %d tables in schema %s, "
+                    "reading them table by table instead: %s",
+                    len(table_names),
+                    schema_name,
+                    exc,
+                )
+                _rollback_quietly(connection)
+
+    def _comment_batch_for(self, schema_name: str, table_name: str) -> CommentBatch | None:
+        batch = self._comment_batches.get(self.context.get_current_thread_id())
+        return batch if batch is not None and batch.covers(schema_name, table_name) else None
+
+    def _get_columns_internal(
+        self,
+        schema_name: str,
+        table_name: str,
+        db_name: str,
+        inspector: Inspector,
+        table_type: TableType = None,
+    ):
+        batch = self._comment_batch_for(schema_name, table_name)
+        if batch is None:
+            return super()._get_columns_internal(schema_name, table_name, db_name, inspector, table_type)
+        columns = inspector.get_columns(
+            table_name,
+            schema_name,
+            table_type=table_type,
+            db_name=db_name,
+            vertica_include_comments=False,
+        )
+        # Without a comment the join yielded NULL for a table column and '' for a view
+        # column; keep that so unchanged entities are not seen as changed.
+        missing_comment = "" if table_type == TableType.View else None
+        return [
+            {**column, "comment": batch.column_comment(table_name, column["name"]) or missing_comment}
+            for column in columns
+        ]
+
+    def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str | None:
+        batch = self._comment_batch_for(schema_name, table_name)
+        if batch is None:
+            return super().get_table_description(schema_name, table_name, inspector)
+        return batch.table_comment(table_name)

@@ -212,7 +212,7 @@ class TestVerticaGetColumnsFallback:
 
     @staticmethod
     def _connection():
-        """Answers the three statements get_columns issues, with the probe
+        """Answers the two statements get_columns issues, with the probe
         rejected the way a pre-10 server rejects it.
 
         Only the driver is stood in for. The dialect code under test runs for
@@ -224,8 +224,6 @@ class TestVerticaGetColumnsFallback:
             rendered = str(statement)
             if "child_object" in rendered:
                 raise ProgrammingError("SELECT child_object", {}, Exception("does not exist"))
-            if "primary_keys" in rendered:
-                return [("customer_id",)]
             return [_column_row("customer_id", "int"), _column_row("region", "varchar(40)")]
 
         connection.execute.side_effect = _execute
@@ -345,7 +343,7 @@ class TestVerticaGetColumnsWithComments:
 
     @staticmethod
     def _connection():
-        """Answers the three statements get_columns issues, with the probe
+        """Answers the two statements get_columns issues, with the probe
         accepted the way a Vertica 10 or later server accepts it.
 
         A comment comes back only for the template that joins the comments
@@ -362,8 +360,6 @@ class TestVerticaGetColumnsWithComments:
                     _column_row("customer_id", "int", comment=comment),
                     _column_row("region", "varchar(40)", comment=""),
                 ]
-            if "primary_keys" in rendered:
-                return [("customer_id",)]
             return []  # the probe, LIMIT 0
 
         connection.execute.side_effect = _execute
@@ -387,3 +383,32 @@ class TestVerticaGetColumnsWithComments:
         executed = [str(call.args[0]) for call in connection.execute.call_args_list]
         columns_statement = next(statement for statement in executed if "v_catalog.columns" in statement)
         assert "cm.child_object" in columns_statement
+
+
+class TestVerticaPerTableCatalogReads:
+    """Every statement get_columns issues runs once per table, so each one is a
+    full v_catalog derivation multiplied by the table count (issue #29429).
+    """
+
+    def test_get_columns_does_not_look_up_primary_keys(self):
+        """Nothing reads a per-column primary-key flag: primary keys reach the
+        table through get_pk_constraint. Looking them up here was a wasted
+        catalog read for every table.
+        """
+        connection = Mock()
+        connection.execute.return_value = [_column_row("customer_id", "int")]
+
+        columns = list(get_columns(VerticaDialect(), connection, "customers", schema="omd_test"))
+
+        executed = [str(call.args[0]) for call in connection.execute.call_args_list]
+        assert not [statement for statement in executed if "primary_keys" in statement]
+        assert "primary_key" not in columns[0]
+
+    def test_statement_cache_is_enabled(self):
+        """Without it SQLAlchemy recompiles every reflection statement and warns
+        that the dialect does not support caching. SQLAlchemy only honours the
+        flag declared on the concrete dialect class, which an inherited
+        ``supports_statement_cache`` attribute does not reveal, so this asks
+        SQLAlchemy's own verdict.
+        """
+        assert VerticaDialect()._supports_statement_cache is True  # pylint: disable=protected-access
