@@ -77,33 +77,41 @@ if TYPE_CHECKING:
 MYSQL_ERRORS = ErrorPack(
     when(Matchers.errno(1045)).diagnose(  # ER_ACCESS_DENIED_ERROR
         "Authentication failed",
-        fix="Check the username and password, and that this host is allowed to connect.",
+        fix="MySQL rejected the sign-in. Check Username and Password. MySQL also ties an account to "
+        "the machine it connects from, so the account may exist but not be allowed in from where "
+        "ingestion runs.",
     ),
     when(Matchers.errno(1044)).diagnose(  # ER_DBACCESS_DENIED_ERROR
         "No access to the database",
-        fix="Grant the user access to the configured databaseSchema.",
+        fix="The account signed in but cannot use the database named in Database Schema. Ask a "
+        "MySQL administrator to grant it access to that database.",
     ),
     when(Matchers.errno(1049)).diagnose(  # ER_BAD_DB_ERROR
         "Database not found",
-        fix="Verify the configured databaseSchema exists and the user can see it.",
+        fix="MySQL has no database with the name in Database Schema. Check the spelling - on Linux "
+        "servers MySQL database names are case-sensitive.",
     ),
     when(Matchers.errno(1142, 1143)).diagnose(  # ER_TABLEACCESS/COLUMNACCESS_DENIED
         "Query history table not accessible",
-        fix="Grant SELECT on the configured query history table "
-        "(mysql.general_log, or mysql.slow_log when useSlowLogs is set), or query "
-        "usage and lineage won't be collected.",
+        fix="The account cannot read the table MySQL keeps query history in (mysql.general_log, or "
+        "mysql.slow_log when Use Slow Logs is on). Ask an administrator to grant SELECT on it, "
+        "otherwise usage and lineage will not be collected.",
     ),
     when(Matchers.errno(2003)).diagnose(  # CR_CONN_HOST_ERROR (refused / DNS / connect timeout)
         "Cannot reach the MySQL host",
-        fix="Check hostPort, that the server is running, and that the network / IP allow-list permits the connection.",
+        fix="Could not reach MySQL. Check Host and Port, that the server is running, and that no "
+        "firewall or IP allow-list is blocking the machine ingestion runs on.",
     ),
     when(Matchers.errno(2013)).diagnose(  # CR_SERVER_LOST (read timeout / dropped mid-query)
         "Lost connection to MySQL",
-        fix="The server answered but the connection dropped or timed out; check server load and read timeouts.",
+        fix="MySQL accepted the connection and then dropped it. This is usually a server under load "
+        "or a read timeout too short for the query - check the server's load and timeout settings.",
     ),
     when(Matchers.errno(2026)).diagnose(  # CR_SSL_CONNECTION_ERROR
         "TLS/SSL connection error",
-        fix="Check the SSL/TLS configuration and the server certificate.",
+        fix="The encrypted connection to MySQL could not be established. Check the SSL/TLS settings "
+        "on this connection, and that the server's certificate is valid and trusted where "
+        "ingestion runs.",
     ),
     # MySQL 8's default caching_sha2_password won't send the password over a plain
     # connection: it needs TLS or RSA public-key exchange. The server may reject
@@ -111,13 +119,13 @@ MYSQL_ERRORS = ErrorPack(
     # no-errno "Couldn't receive server's public key" - match both.
     when(Matchers.errno(3159)).diagnose(
         "Secure connection required (MySQL 8 caching_sha2_password)",
-        fix="Enable TLS/SSL (or allow public-key retrieval); MySQL 8's default auth "
-        "plugin will not send the password over a plain connection.",
+        fix="MySQL 8 will not send the password over an unencrypted connection. Turn on SSL/TLS for "
+        "this connection, or allow the server's public key to be fetched, and try again.",
     ),
     when(Matchers.contains("Couldn't receive server's public key")).diagnose(
         "Secure connection required (MySQL 8 caching_sha2_password)",
-        fix="Enable TLS/SSL (or allow public-key retrieval); MySQL 8's default auth "
-        "plugin will not send the password over a plain connection.",
+        fix="MySQL 8 will not send the password over an unencrypted connection. Turn on SSL/TLS for "
+        "this connection, or allow the server's public key to be fetched, and try again.",
     ),
 )
 
