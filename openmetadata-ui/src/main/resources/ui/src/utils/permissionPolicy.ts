@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { Operation } from '../generated/entity/policies/policy';
+
 /**
  * Behavioral policy for permission resolution.
  *
@@ -34,26 +36,47 @@
  */
 export const PERMISSION_POLICY = {
   /**
-   * How a backend `conditionalAllow` is read at RESOURCE level — lists, route
-   * guards, create buttons: places with no specific entity yet, so the backend
-   * could not evaluate `isOwner()` / `hasDomain()` conditions.
+   * Operations where a backend `conditionalAllow` or `conditionalDeny` is
+   * read as PERMITTED at RESOURCE level — lists, route guards, sidebar
+   * gating: places with no specific entity yet, so the backend could not
+   * evaluate `isOwner()` / `hasDomain()` conditions and returned "depends on
+   * the entity" rather than a hard Allow/Deny.
    *
-   * 'strict'  (current) — conditionalAllow counts as DENIED. Byte-for-byte the
-   *            pre-refactor behavior.
-   * 'attempt' — conditionalAllow counts as PERMITTED ("can attempt"); the
-   *            backend still enforces per entity on every real read/write.
-   *            This is the fix for OpenMetadata#31783 (domain-scoped users
-   *            wrongly blocked from Services lists).
+   * Without an entity the backend evaluates no conditions: every rule with
+   * a condition contributes conditionalAllow or conditionalDeny (by its
+   * effect), and the highest-precedence value wins (deny > allow >
+   * conditionalDeny > conditionalAllow > notAllow). So a conditional answer
+   * means no unconditional rule matched and at least one conditional rule
+   * did — both values mean "depends on the entity" and are treated alike.
+   * E.g. the built-in DomainOnlyAccessPolicy (allow if hasDomain(), deny if
+   * !hasDomain()) reports conditionalDeny.
    *
-   * Flipping to 'attempt' is expected to fail
+   * An operation in this set treats either as "can attempt" — the backend
+   * still enforces the real condition per entity on every actual read/write,
+   * so this only unblocks navigation/listing, never the write itself. An
+   * operation NOT in this set stays strict: both count as DENIED, which is
+   * byte-for-byte the pre-refactor behavior.
+   *
+   * Only View-class operations belong here. This is the fix for
+   * OpenMetadata#31783, #33834 and #33356 (domain-scoped users wrongly blocked
+   * from opening the Services lists, the Glossary / Data Quality sections and
+   * specific entity pages, even though the entity-level check — which runs
+   * once the entity is actually loaded — correctly grants access via the same
+   * condition).
+   *
+   * Do NOT add Create/EditAll/Delete/Trigger-class operations here: some
+   * bulk-write endpoints (e.g. glossary-term/tag bulk asset add-remove) use
+   * this exact same entity-less resource-level check as REAL enforcement, not
+   * just UI gating — widening it to writes would grant real cross-domain
+   * bulk-write access. It would also flip
    * playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts:163
-   * ("AutoPilot trigger button is hidden with view-only permission", 8 service
-   * types) — that suite encodes the strict semantics and must be updated in the
-   * same change. A future refinement could distinguish view/list gates from
-   * action buttons rather than being all-or-nothing.
+   * ("AutoPilot trigger button is hidden with view-only permission").
    *
    * ENTITY-level reads are always strict and deliberately NOT configurable:
    * there the backend has already evaluated the conditions for that entity.
    */
-  resourceLevelConditionalAllow: 'strict' as 'strict' | 'attempt',
+  resourceLevelConditionalOperations: new Set<Operation>([
+    Operation.ViewBasic,
+    Operation.ViewAll,
+  ]),
 } as const;

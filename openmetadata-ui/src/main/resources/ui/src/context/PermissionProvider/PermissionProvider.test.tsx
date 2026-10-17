@@ -12,9 +12,12 @@
  */
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { CookieStorage } from 'cookie-storage';
+import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { REDIRECT_PATHNAME } from '../../constants/router.constants';
 import { ResourceEntity } from '../../enums/permissions.enum';
+import { Access } from '../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../generated/entity/policies/policy';
 import { permissionQueryKeys } from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { queryClient } from '../../queryClient';
 import {
@@ -26,6 +29,7 @@ import {
 import PermissionProvider, {
   usePermissionProvider,
 } from './PermissionProvider';
+import { OperationPermission } from './PermissionProvider.interface';
 
 jest.mock('../../rest/permissionAPI', () => ({
   getLoggedInUserPermissions: jest
@@ -217,3 +221,94 @@ describe('PermissionProvider on the React Query cache', () => {
     expect(getEntityPermissionByFqn).toHaveBeenCalledTimes(2);
   });
 });
+
+// OpenMetadata#31783/#33834/#33356: a resource-level check has no entity to evaluate a
+// hasDomain()-style condition against, so the backend answers
+// conditionalAllow, or conditionalDeny when a matching conditional rule has a
+// deny effect. The provider must count either as permitted for the View
+// operations only, and keep every other operation denied.
+const domainScopedDatabaseServicePermission = (access: Access) => ({
+  resource: ResourceEntity.DATABASE_SERVICE,
+  permissions: [
+    { operation: Operation.ViewAll, access },
+    { operation: Operation.EditAll, access },
+  ],
+});
+
+const ResourcePermissionProbe = () => {
+  const { permissions, getResourcePermission: fetchResource } =
+    usePermissionProvider();
+  const [fetched, setFetched] = useState<OperationPermission>();
+
+  return (
+    <>
+      <p data-testid="map-view-all">
+        {String(permissions[ResourceEntity.DATABASE_SERVICE]?.ViewAll)}
+      </p>
+      <p data-testid="map-edit-all">
+        {String(permissions[ResourceEntity.DATABASE_SERVICE]?.EditAll)}
+      </p>
+      <button
+        aria-label="fetch-resource"
+        data-testid="fetch-resource"
+        onClick={async () =>
+          setFetched(await fetchResource(ResourceEntity.DATABASE_SERVICE))
+        }
+      />
+      <p data-testid="fetched-view-all">{String(fetched?.ViewAll)}</p>
+      <p data-testid="fetched-edit-all">{String(fetched?.EditAll)}</p>
+    </>
+  );
+};
+
+describe.each([Access.ConditionalAllow, Access.ConditionalDeny])(
+  'PermissionProvider resource-level %s',
+  (access) => {
+    beforeEach(() => {
+      currentUser = { id: '123', name: 'Test User' };
+      queryClient.clear();
+      jest.clearAllMocks();
+    });
+
+    it('permits View but not EditAll in the logged-in user permission map', async () => {
+      (getLoggedInUserPermissions as jest.Mock).mockResolvedValueOnce({
+        data: [domainScopedDatabaseServicePermission(access)],
+      });
+
+      render(
+        <PermissionProvider>
+          <ResourcePermissionProbe />
+        </PermissionProvider>,
+        { wrapper: BrowserRouter }
+      );
+
+      expect(await screen.findByTestId('map-view-all')).toHaveTextContent(
+        'true'
+      );
+      expect(screen.getByTestId('map-edit-all')).toHaveTextContent('false');
+    });
+
+    it('permits View but not EditAll from getResourcePermission', async () => {
+      (getResourcePermission as jest.Mock).mockResolvedValueOnce(
+        domainScopedDatabaseServicePermission(access)
+      );
+
+      render(
+        <PermissionProvider>
+          <ResourcePermissionProbe />
+        </PermissionProvider>,
+        { wrapper: BrowserRouter }
+      );
+
+      const fetchButton = await screen.findByTestId('fetch-resource');
+
+      await act(async () => fetchButton.click());
+
+      expect(getResourcePermission).toHaveBeenCalledWith(
+        ResourceEntity.DATABASE_SERVICE
+      );
+      expect(screen.getByTestId('fetched-view-all')).toHaveTextContent('true');
+      expect(screen.getByTestId('fetched-edit-all')).toHaveTextContent('false');
+    });
+  }
+);
