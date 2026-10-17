@@ -103,6 +103,18 @@ public interface OntologyReferenceDAO {
       @Define("locking") String locking);
 
   @SqlQuery(
+      "SELECT p.json FROM ontology_property_entity p JOIN ontology_reference r "
+          + "ON r.sourceId = p.id AND r.ontologyId = p.ontologyId "
+          + "WHERE p.ontologyId = :ontologyId AND p.deleted = FALSE "
+          + "AND r.sourceType = 'ontologyProperty' AND r.role = 'INVERSE' AND r.iriHash IN (<iriHashes>) "
+          + "ORDER BY p.name, p.id LIMIT :limit <locking>")
+  List<String> incomingInverses(
+      @BindUUID("ontologyId") UUID ontologyId,
+      @BindList("iriHashes") List<String> iriHashes,
+      @Bind("limit") int limit,
+      @Define("locking") String locking);
+
+  @SqlQuery(
       "SELECT a.json FROM ontology_axiom_entity a WHERE a.ontologyId IN (<ontologyIds>) "
           + "AND a.deleted = FALSE AND a.axiomType = 'SUBCLASS_OF' AND EXISTS "
           + "(SELECT 1 FROM ontology_reference r WHERE r.sourceId = a.id "

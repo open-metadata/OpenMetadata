@@ -38,7 +38,7 @@ public final class OntologyActiveGraph {
     List<String> page;
     do {
       page = dao.ontologyStateDAO().listActive(after, PAGE_SIZE);
-      page.forEach(id -> refresh(UUID.fromString(id), storage));
+      page.forEach(id -> refreshDuringRebuild(UUID.fromString(id), storage));
       if (!page.isEmpty()) {
         after = page.getLast();
       }
@@ -47,7 +47,12 @@ public final class OntologyActiveGraph {
         .filter(iri -> iri.startsWith(GRAPH_PREFIX))
         .map(iri -> UUID.fromString(iri.substring(GRAPH_PREFIX.length())))
         .filter(id -> !isActive(id))
-        .forEach(id -> refresh(id, storage));
+        .forEach(id -> refreshDuringRebuild(id, storage));
+  }
+
+  private void refreshDuringRebuild(final UUID ontologyId, final RdfStorageInterface storage) {
+    dao.useHandle(
+        handle -> RdfLiveWriteStore.withWriterLock(handle, () -> refresh(ontologyId, storage)));
   }
 
   private Model currentModel(final UUID ontologyId) {

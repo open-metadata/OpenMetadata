@@ -15,6 +15,7 @@ import org.openmetadata.schema.OntologyEntityInterface;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -175,6 +176,9 @@ final class OntologyWorkingModel {
         for (final var value : values()) {
           if (expanded.add(value.getId())) {
             OntologyReferences.collect(value).forEach(ref -> iris.add(ref.getIri().toString()));
+            if (value instanceof OntologyProperty property) {
+              iris.add(property.getIri().toString());
+            }
             if (value instanceof OntologyAxiom axiom) {
               OntologyClassHierarchy.namedParents(axiom).stream()
                   .map(URI::toString)
@@ -198,6 +202,17 @@ final class OntologyWorkingModel {
                 .map(json -> JsonUtils.readValue(json, entities.getEntityClass()))
                 .forEach(value -> add(value, false));
           }
+          final var inverses =
+              dao.ontologyReferenceDAO()
+                  .incomingInverses(
+                      ontologyId,
+                      iris.stream().map(DigestUtils::sha256Hex).toList(),
+                      LIMIT + 1,
+                      locking);
+          requireBound(inverses.size());
+          inverses.stream()
+              .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
+              .forEach(value -> add(value, false));
         }
         if (!parents.isEmpty()) {
           final var rows =
