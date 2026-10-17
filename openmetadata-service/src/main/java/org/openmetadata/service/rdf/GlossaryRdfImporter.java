@@ -49,6 +49,7 @@ import org.apache.jena.shared.JenaException;
 import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.OntologyImportResult;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -1151,9 +1152,28 @@ public class GlossaryRdfImporter {
               "%d datatype attribute(s) require admin privileges and were not created",
               intents.size()));
     } else if (dryRun) {
-      result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + intents.size());
+      previewDatatypeProperties(intents);
     } else {
       persistDatatypeProperties(intents);
+    }
+  }
+
+  private void previewDatatypeProperties(List<DatatypeIntent> intents) {
+    Type type =
+        Entity.getEntityByName(Entity.TYPE, GLOSSARY_TERM, "customProperties", Include.NON_DELETED);
+    Set<String> names =
+        type.getCustomProperties().stream()
+            .map(CustomProperty::getName)
+            .collect(Collectors.toSet());
+    for (DatatypeIntent intent : intents) {
+      if (names.add(intent.name)) {
+        result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + 1);
+      } else {
+        addMessage(
+            String.format(
+                "Custom property %s skipped: name '%s' already exists or is repeated in this import",
+                intent.iri, intent.name));
+      }
     }
   }
 
@@ -1177,7 +1197,8 @@ public class GlossaryRdfImporter {
               .withName(intent.name)
               .withDescription(datatypeDescription(intent))
               .withPropertyType(propertyType);
-      typeRepository.addCustomProperty(uriInfo, user, glossaryTermTypeId, property);
+      // An RDF local name cannot identify an existing, globally shared property definition.
+      typeRepository.createCustomProperty(uriInfo, user, glossaryTermTypeId, property);
       result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + 1);
     } catch (BadRequestException | EntityNotFoundException ex) {
       addMessage(String.format("Custom property %s skipped: %s", intent.iri, ex.getMessage()));

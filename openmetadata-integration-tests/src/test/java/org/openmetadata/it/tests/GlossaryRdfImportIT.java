@@ -26,11 +26,17 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -40,11 +46,16 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.ontology.RelationshipTypeIds;
 
 /**
  * End-to-end test for the RDF vocabulary import endpoint
@@ -55,6 +66,9 @@ import org.openmetadata.schema.type.RelationProvenance;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class GlossaryRdfImportIT {
+
+  private final Set<String> customPropertyNames = new HashSet<>();
+  private final Set<UUID> relationshipTypeIds = new HashSet<>();
 
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
@@ -91,8 +105,76 @@ public class GlossaryRdfImportIT {
       """;
 
   @AfterEach
-  void cleanup(TestNamespace ns) {
+  void cleanup(TestNamespace ns) throws Exception {
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    customPropertyNames.forEach(this::deleteCustomProperty);
+    for (UUID id : relationshipTypeIds) {
+      deleteRelationshipType(id);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void skipsExistingCustomPropertyWithoutChangingItsDefinition(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossary" + dryRun);
+    String propertyName = "status" + ns.shortPrefix();
+    CustomProperty original =
+        new CustomProperty()
+            .withName(propertyName)
+            .withDisplayName("Business status")
+            .withDescription("Shared status maintained outside RDF imports")
+            .withPropertyType(getType("string").getEntityReference());
+    customPropertyNames.add(propertyName);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + getType("glossaryTerm").getId(),
+            original,
+            Type.class);
+
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            ontologyFor(glossary.getName()).replace("hasNpiNumber", propertyName),
+            dryRun);
+
+    CustomProperty actual =
+        getType("glossaryTerm").getCustomProperties().stream()
+            .filter(property -> propertyName.equals(property.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(original.getDisplayName(), actual.getDisplayName());
+    assertEquals(original.getDescription(), actual.getDescription());
+    assertEquals(original.getPropertyType().getId(), actual.getPropertyType().getId());
+    assertEquals(0, result.path("customPropertiesCreated").asInt(), result.toString());
+    assertTrue(result.path("messages").toString().contains(propertyName), result.toString());
+    assertTrue(result.path("messages").toString().contains("already exists"), result.toString());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void skipsDatatypePropertiesWhoseNamesCollideWithinTheImport(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossary" + dryRun);
+    String propertyName = "status" + ns.shortPrefix();
+    customPropertyNames.add(propertyName);
+    String ontology =
+        ontologyFor(glossary.getName()).replace("hasNpiNumber", propertyName)
+            + "\n<http://other.example/"
+            + propertyName
+            + "> a owl:DatatypeProperty ; rdfs:range xsd:string .";
+
+    JsonNode result = importRdfBody(glossary.getName(), ontology, dryRun);
+
+    assertEquals(1, result.path("customPropertiesCreated").asInt(), result.toString());
+    assertTrue(result.path("messages").toString().contains(propertyName), result.toString());
+    assertEquals(
+        dryRun ? 0 : 1,
+        getType("glossaryTerm").getCustomProperties().stream()
+            .filter(property -> propertyName.equals(property.getName()))
+            .count());
   }
 
   @Test
@@ -125,7 +207,8 @@ public class GlossaryRdfImportIT {
     assertEquals("HealthcareProvider", physician.getParent().getName());
     assertTrue(
         physician.getRelatedTerms().stream()
-            .anyMatch(relation -> "prescribes".equals(relation.getRelationType())),
+            .anyMatch(
+                relation -> relationshipTypeName(glossaryName).equals(relation.getRelationType())),
         "object property -> typed relatedTerm");
   }
 
@@ -648,6 +731,7 @@ public class GlossaryRdfImportIT {
     JsonNode second = importRdf(glossaryName, false);
     assertEquals(
         0, second.get("termsCreated").asInt(), "re-import creates no new terms: " + second);
+    assertEquals(0, second.path("customPropertiesCreated").asInt(), second.toString());
     assertTrue(second.get("termsUpdated").asInt() >= 3, "re-import updates the existing terms");
     assertEquals(200, termStatus(glossaryName + ".HealthcareProvider"), "term still resolves once");
   }
@@ -699,21 +783,34 @@ public class GlossaryRdfImportIT {
   }
 
   private JsonNode importRdf(String glossaryName, boolean dryRun) throws Exception {
-    String url =
-        String.format(
-            "%s/v1/glossaries/name/%s/importRdf?dryRun=%s&format=turtle",
-            SdkClients.getServerUrl(), glossaryName, dryRun);
+    String propertyName = "npi" + glossaryName.replaceAll("[^a-zA-Z0-9]", "");
+    customPropertyNames.add(propertyName);
+    return importRdfBody(
+        glossaryName, ontologyFor(glossaryName).replace("hasNpiNumber", propertyName), dryRun);
+  }
+
+  private String ontologyFor(String glossaryName) {
+    String name = relationshipTypeName(glossaryName);
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(name));
+    return ONTOLOGY.replace("hcp:prescribes", "hcp:" + name);
+  }
+
+  private String relationshipTypeName(String glossaryName) {
+    return "prescribes" + RelationshipTypeIds.stableId(glossaryName).toString().replace("-", "");
+  }
+
+  private void deleteRelationshipType(UUID id) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
-            .uri(URI.create(url))
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl() + "/v1/relationshipTypes/" + id + "?hardDelete=true"))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .header("Content-Type", "text/turtle")
-            .timeout(Duration.ofSeconds(60))
-            .PUT(HttpRequest.BodyPublishers.ofString(ONTOLOGY))
+            .timeout(Duration.ofSeconds(30))
+            .DELETE()
             .build();
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertEquals(200, response.statusCode(), "importRdf failed: " + response.body());
-    return OBJECT_MAPPER.readTree(response.body());
+    assertTrue(response.statusCode() == 200 || response.statusCode() == 404, response.body());
   }
 
   private HttpResponse<String> sendImportRdf(
@@ -735,11 +832,56 @@ public class GlossaryRdfImportIT {
   }
 
   private JsonNode importRdfBody(String glossaryName, String body) throws Exception {
+    return importRdfBody(glossaryName, body, false);
+  }
+
+  private JsonNode importRdfBody(String glossaryName, String body, boolean dryRun)
+      throws Exception {
     HttpResponse<String> response =
-        sendImportRdf(glossaryName, SdkClients.getAdminToken(), body, false);
+        sendImportRdf(glossaryName, SdkClients.getAdminToken(), body, dryRun);
     assertEquals(200, response.statusCode(), "import failed: " + response.body());
 
     return OBJECT_MAPPER.readTree(response.body());
+  }
+
+  private Type getType(String name) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/metadata/types/name/" + name + "?fields=customProperties",
+            null,
+            Type.class);
+  }
+
+  private void deleteCustomProperty(String name) {
+    // Other tests edit this shared type, so guard the property index and retry if it moves.
+    Awaitility.await("delete custom property " + name)
+        .atMost(Duration.ofSeconds(30))
+        .ignoreException(InvalidRequestException.class)
+        .untilAsserted(
+            () -> {
+              Type type = getType("glossaryTerm");
+              for (int index = 0; index < type.getCustomProperties().size(); index++) {
+                if (name.equals(type.getCustomProperties().get(index).getName())) {
+                  JsonNode patch =
+                      OBJECT_MAPPER.readTree(
+                          """
+                          [{"op":"test","path":"/customProperties/%1$d/name","value":"%2$s"},
+                           {"op":"remove","path":"/customProperties/%1$d"}]
+                          """
+                              .formatted(index, name));
+                  SdkClients.adminClient()
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.PATCH,
+                          "/v1/metadata/types/" + type.getId(),
+                          patch,
+                          Type.class);
+                  break;
+                }
+              }
+            });
   }
 
   private void setGlossaryOwner(String glossaryId, User owner) throws Exception {
