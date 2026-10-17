@@ -919,13 +919,30 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
-  private static void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
-    if (credentials.getCode() == null) {
+  private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
+    if (expectsAuthorizationCode() && credentials.getCode() == null) {
       LOG.warn(
           "Rejecting OIDC callback without an authorization code for session {}",
           SessionService.truncateId(session.getId()));
       throw new IllegalArgumentException("Authorization code is required");
     }
+  }
+
+  private boolean expectsAuthorizationCode() {
+    // The default and documented confidential mode is the authorization-code flow. Per OIDC, any
+    // response_type that includes "code" (plain or hybrid) returns an authorization code, so the
+    // callback must carry one. A response_type configured for pure implicit delivery is not a code
+    // flow and keeps its existing handling.
+    String responseType = client.getConfiguration().getResponseType();
+    if (nullOrEmpty(responseType)) {
+      return true;
+    }
+    for (String part : responseType.trim().split("\\s+")) {
+      if ("code".equalsIgnoreCase(part)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void validateAndSendTokenRequest(
