@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -50,6 +49,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
@@ -117,7 +117,7 @@ public class FeedTaskAuthzIT {
     Thread updated = MAPPER.readValue(originalJson, Thread.class);
     updated.setMessage("Should not stick");
     String updatedJson = MAPPER.writeValueAsString(updated);
-    JsonNode patch = JsonDiff.asJson(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
+    JsonNode patch = JsonDiff.of(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
 
     assertThrows(
         ForbiddenException.class,
@@ -154,7 +154,7 @@ public class FeedTaskAuthzIT {
   private Thread patchThreadAsAdmin(UUID threadId, String originalJson, Thread updated)
       throws Exception {
     String updatedJson = MAPPER.writeValueAsString(updated);
-    JsonNode patch = JsonDiff.asJson(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
+    JsonNode patch = JsonDiff.of(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
     return SdkClients.adminClient()
         .getHttpClient()
         .execute(HttpMethod.PATCH, "/v1/feed/" + threadId, patch, Thread.class);

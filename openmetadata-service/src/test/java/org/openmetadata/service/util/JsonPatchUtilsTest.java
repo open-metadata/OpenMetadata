@@ -343,6 +343,24 @@ class JsonPatchUtilsTest {
     assertEquals(1, operations.size());
   }
 
+  /** The write path turns this replace into an add, so the check must see the tag it adds. */
+  @Test
+  void replaceTagsOnEntityWithoutTagsMapsToTagOperation() {
+    when(resourceContextMock.getEntity())
+        .thenReturn(new Table().withName("untagged_table").withTags(null));
+    String patch =
+        """
+        [{"op": "replace", "path": "/tags", "value": [
+          {"tagFQN": "PII.Sensitive", "source": "Classification",
+           "labelType": "Manual", "state": "Confirmed"}]}]
+        """;
+
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch));
+
+    assertEquals(Set.of(MetadataOperation.EDIT_TAGS), operations);
+  }
+
   @Test
   void copyAndMoveReadFromAnotherPath() {
     String tokenPath = "/nodes/1/config/sinkConfig/credentials/token";

@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.fail;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
@@ -48,6 +47,7 @@ import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -1823,7 +1823,7 @@ public class FeedResourceIT {
 
   private Thread patchThread(UUID threadId, String originalJson, Thread updated) throws Exception {
     String updatedJson = MAPPER.writeValueAsString(updated);
-    JsonNode patch = JsonDiff.asJson(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
+    JsonNode patch = JsonDiff.of(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
 
     // Pass JsonNode directly so HTTP client uses JSON Patch media type
     return SdkClients.adminClient()
@@ -1843,7 +1843,7 @@ public class FeedResourceIT {
   private Post patchPost(UUID threadId, UUID postId, String originalJson, Post updated)
       throws Exception {
     String updatedJson = MAPPER.writeValueAsString(updated);
-    JsonNode patch = JsonDiff.asJson(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
+    JsonNode patch = JsonDiff.of(MAPPER.readTree(originalJson), MAPPER.readTree(updatedJson));
 
     return SdkClients.adminClient()
         .getHttpClient()
