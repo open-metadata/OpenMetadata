@@ -32,8 +32,8 @@ import {
 import MyTaskRow from './MyTaskRow';
 import MyTasksSelectionBar from './MyTasksSelectionBar';
 import { MY_TASKS_TONE } from './MyTasksWidget.constants';
-import { getMyTasksHeadline } from './MyTasksWidget.utils';
 import { BulkDecision, useBulkResolveTasks } from './useBulkResolveTasks';
+import { useMyTasksHeadline } from './useMyTasksHeadline';
 import { useMyTasksPath } from './useMyTasksPath';
 
 export type MyTasksWidgetProps = WidgetCommonProps;
@@ -54,6 +54,10 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
   const { tasks, total, counts, isLoading, isFetching, isError, refetch } =
     useMyTasks();
   const { resolveTasks, isResolving } = useBulkResolveTasks();
+  const { summary, status } = useMyTasksHeadline(
+    total,
+    counts[MyTaskBucket.INCIDENTS]
+  );
 
   const visibleTasks = useMemo(
     () => filterMyTasks(tasks, bucket),
@@ -106,11 +110,9 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
     }
   };
 
-  const { summary, status } = getMyTasksHeadline(
-    t,
-    total,
-    counts[MyTaskBucket.INCIDENTS]
-  );
+  // Categories are counted over the loaded page, so past it a category's
+  // count covers only that page; the page limit keeps that visible.
+  const isPartialCategory = bucket !== MyTaskBucket.ALL && tasks.length < total;
 
   // An empty list is good news, not a setup gap — nothing to configure.
   const emptyState: TopicEmptyStateConfig | undefined =
@@ -202,6 +204,18 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
                 total: bucket === MyTaskBucket.ALL ? total : counts[bucket],
               })}
             </Typography>
+            {isPartialCategory && (
+              <Typography
+                className="tw:text-text-tertiary!"
+                data-testid="my-tasks-page-limit"
+                size="text-xs">
+                {t('label.loaded-x-of-y-entity', {
+                  entity: t('label.task-plural'),
+                  loaded: tasks.length,
+                  total,
+                })}
+              </Typography>
+            )}
           </div>
 
           <ul

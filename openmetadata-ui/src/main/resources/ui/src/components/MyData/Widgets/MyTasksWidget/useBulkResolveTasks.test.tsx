@@ -22,6 +22,10 @@ import {
 import { queryClient } from '../../../../queryClient';
 import { resolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import {
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../../../discovery/personal-space/inbox.constants';
 import { useBulkResolveTasks } from './useBulkResolveTasks';
 
 jest.mock('react-i18next', () => ({
@@ -120,6 +124,27 @@ describe('useBulkResolveTasks', () => {
     expect(showErrorToast).toHaveBeenCalledWith(
       'message.count-tasks-not-resolved {"count":1}'
     );
+  });
+
+  // The inbox keeps its lists and status totals for 30s; a resolve from the
+  // card must not leave a visit inside that window showing the task as open.
+  it('marks the inbox task lists and status totals stale', async () => {
+    mockResolve.mockResolvedValue({} as Task);
+    const inboxList = [TASK_LIST_QUERY_KEY, 'me', 'open', ''];
+    const inboxCounts = [TASK_STATUS_COUNTS_QUERY_KEY, 'me', 'all'];
+    queryClient.setQueryData(inboxList, { pages: [] });
+    queryClient.setQueryData(inboxCounts, { open: 1 });
+    const { result } = renderHook(() => useBulkResolveTasks(), { wrapper });
+
+    await act(() =>
+      result.current.resolveTasks({
+        decision: 'approve',
+        tasks: [workflowTask('a')],
+      })
+    );
+
+    expect(queryClient.getQueryState(inboxList)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(inboxCounts)?.isInvalidated).toBe(true);
   });
 
   it('keeps going when one resolve fails', async () => {

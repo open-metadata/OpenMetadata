@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 
-import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import type { TopicStatus } from '../Common/TopicWidget/topics.types';
 
 /**
  * The card's header: the open total, then — when there are any — the incidents
  * that need a resolution first, which also earn the red status chip.
  */
-export const getMyTasksHeadline = (
-  t: TFunction,
+export const useMyTasksHeadline = (
   total: number,
   incidentCount: number
 ): { summary: string; status?: TopicStatus } => {
-  const openSummary: string = t('message.count-open-tasks-assigned-to-you', {
+  const { t } = useTranslation();
+  const openSummary = t('message.count-open-tasks-assigned-to-you', {
     count: total,
   });
 

@@ -12,7 +12,7 @@
  */
 import type { ReactNode } from 'react';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
-import { cx } from '@/utils/cx';
+import { cx, sortCx } from '@/utils/cx';
 
 export type RunHistoryStatus =
   | 'success'
@@ -47,13 +47,13 @@ export interface RunHistoryBarProps {
 // Height says as much as colour, so the strip still reads for a colour-blind
 // viewer: a failure is the only full-height bar, a run still waiting the
 // shortest. Spelled out rather than interpolated, which Tailwind cannot see.
-const STATUS_CLASSES: Record<RunHistoryStatus, string> = {
+const STATUS_CLASSES = sortCx<Record<RunHistoryStatus, string>>({
   success: 'tw:h-2.5 tw:bg-utility-success-500',
   failed: 'tw:h-4 tw:bg-utility-error-500',
   skipped: 'tw:h-2.5 tw:bg-utility-warning-500',
   running: 'tw:h-2.5 tw:bg-utility-blue-500',
   pending: 'tw:h-1.5 tw:bg-utility-gray-300',
-};
+});
 
 const EMPTY_SLOT_CLASS = 'tw:h-1 tw:bg-quaternary';
 const BAR_CLASS = 'tw:block tw:w-1 tw:shrink-0 tw:rounded-xs';

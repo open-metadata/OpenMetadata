@@ -18,7 +18,11 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import { MY_TASKS_QUERY_KEY } from '../../../../hooks/useMyTasks';
 import { resolveTask } from '../../../../rest/tasksAPI';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../discovery/personal-space/inbox.constants';
+import {
+  INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../../../discovery/personal-space/inbox.constants';
 import {
   buildResolveBody,
   getTaskResolveActions,
@@ -86,6 +90,12 @@ export const useBulkResolveTasks = () => {
         // The sidebar's inbox badge reads its own count query.
         queryClient.invalidateQueries({
           queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+        }),
+        // The inbox caches its lists and status totals; without these a visit
+        // inside their stale window would still show the tasks as open.
+        queryClient.invalidateQueries({ queryKey: [TASK_LIST_QUERY_KEY] }),
+        queryClient.invalidateQueries({
+          queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
         }),
       ]),
   });

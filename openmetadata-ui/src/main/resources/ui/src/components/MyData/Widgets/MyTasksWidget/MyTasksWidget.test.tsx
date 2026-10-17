@@ -176,6 +176,31 @@ describe('MyTasksWidget', () => {
     );
   });
 
+  // Categories are counted over the loaded page: "1 of 1" alone would read as
+  // every access request when 22 more tasks were never loaded.
+  it('keeps the page limit in view while a category is selected', () => {
+    renderWidget();
+
+    expect(screen.queryByTestId('my-tasks-page-limit')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('my-tasks-filter-access'));
+
+    expect(screen.getByTestId('my-tasks-showing')).toHaveTextContent(
+      'label.count-of-total-loaded {"count":1,"total":1}'
+    );
+    expect(screen.getByTestId('my-tasks-page-limit')).toHaveTextContent(
+      'label.loaded-x-of-y-entity {"entity":"label.task-plural","loaded":3,"total":25}'
+    );
+  });
+
+  it('drops the page limit once every task is loaded', () => {
+    renderWidget({ total: 3 });
+
+    fireEvent.click(screen.getByTestId('my-tasks-filter-access'));
+
+    expect(screen.queryByTestId('my-tasks-page-limit')).not.toBeInTheDocument();
+  });
+
   it('links each row to its task and shows who raised it', () => {
     renderWidget();
 

@@ -41,7 +41,11 @@ import {
   Task,
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
+import {
+  INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../../inbox.constants';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
 import InboxTaskListToolbar, {
@@ -75,14 +79,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
-
-// React Query cache key for the All/Open/Closed badge totals. Shared so a task
-// mutation can invalidate them (see handleResolved / handleTaskUpdated).
-export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
-// React Query cache key prefix for the task lists, one entry per scope, status
-// and search, so switching back to a list reads it from the cache.
-const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
