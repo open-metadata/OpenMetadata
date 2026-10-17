@@ -453,11 +453,19 @@ const OntologyExplorerPage: React.FC = () => {
       .catch((error) => {
         if (!controller.signal.aborted) {
           showErrorToast(error);
+          setMode('view');
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.delete('ontology');
+            next.delete(DRAFT_SEARCH_PARAM);
+
+            return next;
+          });
         }
       });
 
     return () => controller.abort();
-  }, [ontologyId]);
+  }, [ontologyId, setSearchParams]);
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [editSurface, setEditSurface] = useState<EditSurface>('graph');
   const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
