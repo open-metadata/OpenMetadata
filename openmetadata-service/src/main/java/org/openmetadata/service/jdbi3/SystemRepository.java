@@ -57,6 +57,7 @@ import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
 import org.openmetadata.schema.configuration.GlossarySettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -81,6 +82,7 @@ import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.StepValidation;
 import org.openmetadata.schema.system.ValidationResponse;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -541,6 +543,50 @@ public class SystemRepository implements DeploymentSettingPreparer {
     updateSettingIfCurrent(original, expectedJson);
     prepareFetchedSettings(original);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  /**
+   * Toggles a single semantics rule's {@code enabled} flag by name, using compare-and-set so a
+   * stale writer cannot silently overwrite rules added or edited by another writer since this
+   * caller last read the setting.
+   *
+   * <p>The caller does not send the full rule list — only the rule name and the new enabled
+   * state — so rules the caller never saw are preserved. If the stored {@code ENTITY_RULES_SETTINGS}
+   * row changed between the read and the write inside this method, the CAS update affects zero
+   * rows and a {@link PreconditionFailedException} (HTTP 412) is thrown; the caller should read
+   * the setting again and retry.
+   *
+   * @throws EntityNotFoundException when the setting or the named rule does not exist
+   * @throws PreconditionFailedException when the stored setting changed since it was read
+   */
+  public Response toggleEntityRuleEnabled(final String ruleName, final boolean enabled) {
+    final String expectedJson =
+        dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(SettingsType.ENTITY_RULES_SETTINGS.value());
+    }
+    final EntityRulesSettings settings =
+        JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+    final SemanticsRule rule = findRuleByName(settings, ruleName);
+    rule.setEnabled(enabled);
+    final Settings updated =
+        new Settings().withConfigType(SettingsType.ENTITY_RULES_SETTINGS).withConfigValue(settings);
+    replaceSettingIfCurrent(updated, expectedJson);
+    prepareFetchedSettings(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, updated, ENTITY_UPDATED)).toResponse();
+  }
+
+  private SemanticsRule findRuleByName(final EntityRulesSettings settings, final String ruleName) {
+    final List<SemanticsRule> rules = settings.getEntitySemantics();
+    if (nullOrEmpty(rules)) {
+      throw EntityNotFoundException.byName(ruleName);
+    }
+    for (final SemanticsRule rule : rules) {
+      if (ruleName.equals(rule.getName())) {
+        return rule;
+      }
+    }
+    throw EntityNotFoundException.byName(ruleName);
   }
 
   private void preserveEmailSettings(Settings updated, Settings stored) {
