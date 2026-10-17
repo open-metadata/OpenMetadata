@@ -984,8 +984,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     if not tag.tag_name:
                         continue
                     yield from self.register_tag(
-                        entity_fqn=fqn._build(*tag_fqn_builder(tag)),
                         definition=map_databricks_tag(tag.tag_name, tag.tag_value, UNITY_CATALOG_TAG_MAPPING),
+                        entity_fqn=fqn._build(*tag_fqn_builder(tag)),
                     )
             except Exception as exc:
                 logger.debug(traceback.format_exc())

@@ -281,14 +281,17 @@ class DagsterUnitTest(TestCase):
     @patch("metadata.ingestion.source.pipeline.dagster.client.DagsterClient.get_jobs")
     def test_yield_pipeline(self, get_jobs):
         self.dagster.metadata = Mock()
+        self.dagster.metadata.es_search_from_fqn.return_value = []
         details = GraphOrError(**EXPECTED_DAGSTER_DETAILS)
-        list(self.dagster.yield_tag_details(details))
+        tags = list(self.dagster.yield_tag_details(details))
+        assert all(record.left is None for record in tags)
         results = self.dagster.yield_pipeline_details(details)
         get_jobs.return_value = GraphOrError(**EXPECTED_DAGSTER_DETAILS)
         pipelines_list = []
         for result in results:
             pipelines_list.append(result.right)  # noqa: PERF401
 
+        assert len(pipelines_list) == len(EXPECTED_CREATED_PIPELINES)
         for _, (expected, original) in enumerate(zip(EXPECTED_CREATED_PIPELINES, pipelines_list)):  # noqa: B905
             self.assertEqual(expected, original)
 

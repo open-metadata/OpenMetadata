@@ -417,13 +417,13 @@ class PrefectSource(PipelineServiceSource):
         for entity_fqn, tags in attachments.items():
             for tag_name in sorted(tags):
                 yield from self.register_tag(
-                    entity_fqn=entity_fqn,
                     definition=TagDefinition(
                         classification_name=PREFECT_TAG_CATEGORY,
                         tag_name=tag_name,
                         tag_description="Prefect Tag",
                         classification_description="Tags associated with Prefect flows, deployments, and tasks",
                     ),
+                    entity_fqn=entity_fqn,
                 )
 
     def yield_pipeline(self, pipeline_details: PrefectFlow) -> Iterable[Either[CreatePipelineRequest]]:

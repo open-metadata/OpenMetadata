@@ -301,11 +301,11 @@ class AirflowApiSource(PipelineServiceSource):
     def yield_tag(self, pipeline_details: AirflowApiDagDetails) -> Iterable[Either[OMetaTagAndClassification]]:
         for tag_name in pipeline_details.tags or []:
             yield from self.register_tag(
-                entity_fqn=self.get_pipeline_fqn(pipeline_details),
                 definition=TagDefinition(
                     classification_name=AIRFLOW_TAG_CATEGORY,
                     tag_name=tag_name,
                     tag_description="Airflow Tag",
                     classification_description="Tags associated with airflow entities.",
                 ),
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
             )

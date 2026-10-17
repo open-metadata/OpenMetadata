@@ -47,7 +47,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_from_source
-from metadata.ingestion.api.models import Either, StackTraceError
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
 from metadata.ingestion.connections.connection import BaseConnection
@@ -182,6 +182,19 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
+    def register_tag(
+        self,
+        *,
+        definition: TagDefinition | None,
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Queue a definition and optional assignment, yielding preparation errors."""
+        if definition is None:
+            return
+        error = self.tags_registry.register(definition, entity_fqn=entity_fqn)
+        if error is not None:
+            yield Either(left=error, right=None)
+
     # Big union of types we want to fetch dynamically
     service_connection: DriveConnection.model_fields["config"].annotation  # noqa: F821
 
@@ -247,35 +260,6 @@ class DriveServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disable=t
         Prepare a worksheet request and pass it to the sink.
         Link to parent spreadsheet.
         """
-
-    def register_tag(
-        self, *, entity_fqn: str, definition: TagDefinition
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register an attachment, yielding individual registration failures."""
-        if not self.source_config.includeTags or not definition.tag_name or not definition.tag_name.strip():
-            return
-        if not (
-            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
-        ):
-            logger.warning(
-                "%s: Skipped invalid tag %r in classification %r",
-                entity_fqn,
-                definition.tag_name,
-                definition.classification_name,
-            )
-            return
-        try:
-            self.tags_registry.define(definition)
-            self.tags_registry.attach(entity_fqn=entity_fqn, tag=definition)
-        except Exception as exc:
-            yield Either(
-                right=None,
-                left=StackTraceError(
-                    name="Tags and Classifications",
-                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
-                    stackTrace=traceback.format_exc(),
-                ),
-            )
 
     def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
         """Return existing labels attached to an entity."""

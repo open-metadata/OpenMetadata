@@ -20,6 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.clients.aws_client import AWSClient
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -312,15 +313,15 @@ class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Comm
         """Register each LF-tag value and attach it to the source entity."""
         for value in tag.TagValues:
             try:
-                definition = self.define_tag(
-                    classification_name=tag.TagKey,
-                    tag_name=value,
-                    classification_description=ATHENA_TAG_CLASSIFICATION,
-                    tag_description=ATHENA_TAG,
+                yield from self.register_tag(
+                    definition=TagDefinition(
+                        classification_name=tag.TagKey,
+                        tag_name=value,
+                        classification_description=ATHENA_TAG_CLASSIFICATION,
+                        tag_description=ATHENA_TAG,
+                    ),
                     entity_fqn=entity_fqn,
                 )
-                if definition:
-                    self.attach_tag(entity_fqn=entity_fqn, tag=definition)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(

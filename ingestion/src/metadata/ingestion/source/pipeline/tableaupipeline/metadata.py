@@ -152,7 +152,7 @@ class TableaupipelineSource(PipelineServiceSource):
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
         super().__init__(config, metadata)
         self._current_flow_id: str | None = None
-        self._current_flow_lineage: TableauFlowLineage | None | object = _NOT_FETCHED
+        self._current_flow_lineage: TableauFlowLineage | object | None = _NOT_FETCHED
         self._current_flow_lineage_failed = False
         self._current_flow_tasks: list[Task] | None = None
         self._metadata_api_failed = False
@@ -261,13 +261,13 @@ class TableaupipelineSource(PipelineServiceSource):
             return
         for tag_name in pipeline_details.tags:
             yield from self.register_tag(
-                entity_fqn=self.get_pipeline_fqn(pipeline_details),
                 definition=TagDefinition(
                     classification_name=TABLEAU_TAG_CLASSIFICATION,
                     tag_name=tag_name,
                     tag_description="Tableau Tag",
                     classification_description="Tags associated with Tableau Prep flows",
                 ),
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
             )
 
     def get_owners(self, pipeline_details: TableauPipelineDetails) -> EntityReferenceList | None:

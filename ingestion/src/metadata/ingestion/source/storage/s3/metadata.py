@@ -208,13 +208,13 @@ class S3Source(StorageServiceSource):
                 tags_list = self._fetch_s3_tags(container_details)
                 for tag in tags_list:
                     yield from self.register_tag(
-                        entity_fqn=container_details.container_fqn,
                         definition=TagDefinition(
                             classification_name=tag.Key,
                             tag_name=tag.Value,
                             tag_description="S3 TAG VALUE",
                             classification_description="S3 TAG KEY",
                         ),
+                        entity_fqn=container_details.container_fqn,
                     )
         except Exception as exc:
             logger.debug("Failed to ingest tags due to: %s", exc)

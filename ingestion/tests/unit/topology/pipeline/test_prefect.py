@@ -110,6 +110,7 @@ def prefect_source() -> PrefectSource:
     workflow_source = WorkflowSource.model_validate(MOCK_CONFIG["source"])
     with patch.object(PipelineServiceSource, "test_connection"):
         source = PrefectSource(workflow_source, Mock())
+    source.metadata.es_search_from_fqn.return_value = []
     source.client = Mock(spec=PrefectClient)
     source.context = TopologyContextManager(source.topology)
     source.context.get().upsert("pipeline_service", "test_prefect")

@@ -188,6 +188,19 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
+    def register_tag(
+        self,
+        *,
+        definition: TagDefinition | None,
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Queue a definition and optional assignment, yielding preparation errors."""
+        if definition is None:
+            return
+        error = self.tags_registry.register(definition, entity_fqn=entity_fqn)
+        if error is not None:
+            yield Either(left=error, right=None)
+
     @retry_with_docker_host()
     def __init__(
         self,
@@ -380,35 +393,6 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
                 pipeline_name=self.get_pipeline_name(pipeline_details),
             ),
         )
-
-    def register_tag(
-        self, *, entity_fqn: str, definition: TagDefinition
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register an attachment, yielding individual registration failures."""
-        if not self.source_config.includeTags or not definition.tag_name or not definition.tag_name.strip():
-            return
-        if not (
-            fqn.is_valid_entity_name(definition.classification_name) and fqn.is_valid_entity_name(definition.tag_name)
-        ):
-            logger.warning(
-                "%s: Skipped invalid tag %r in classification %r",
-                entity_fqn,
-                definition.tag_name,
-                definition.classification_name,
-            )
-            return
-        try:
-            self.tags_registry.define(definition)
-            self.tags_registry.attach(entity_fqn=entity_fqn, tag=definition)
-        except Exception as exc:
-            yield Either(
-                right=None,
-                left=StackTraceError(
-                    name="Tags and Classifications",
-                    error=f"Failed to register tag [{definition.tag_name}] due to [{exc}]",
-                    stackTrace=traceback.format_exc(),
-                ),
-            )
 
     def get_tag_by_fqn(self, entity_fqn: str) -> list[TagLabel] | None:
         """Return the existing labels attached to an entity."""

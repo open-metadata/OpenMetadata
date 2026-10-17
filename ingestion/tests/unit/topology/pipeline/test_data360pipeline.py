@@ -12,7 +12,7 @@
 Test Salesforce Data 360 pipeline source using the topology
 """
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -73,10 +73,12 @@ def _build_source() -> Data360PipelineSource:
         patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
-        config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360PIPELINE_CONFIG)
+        metadata = MagicMock(spec=OpenMetadata)
+        metadata.es_search_from_fqn.return_value = []
+        metadata.get_by_name.return_value = None
         source = Data360PipelineSource.create(
             MOCK_DATA360PIPELINE_CONFIG["source"],
-            OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
+            metadata,
         )
     source.context.get().__dict__["pipeline_service"] = "local_data360pipeline"
     return source
@@ -271,9 +273,15 @@ class TestData360PipelineSourceMetadata:
         source = _build_source()
         details = DataTransformDetails(name="dt1", label="DT1", status="ACTIVE", creationType="Standard")
         results = list(source.yield_tag_details(details))
+        assert all(record.left is None for record in results)
         assert [
             (record.right.tag_request.classification.root, record.right.tag_request.name.root) for record in results
         ] == [("Data360", "ACTIVE"), ("Data360", "Standard")]
+        source.metadata.get_by_name.return_value = object()
+        [pipeline] = list(source.yield_pipeline_details(details))
+        assert pipeline.left is None
+        assert [tag.tagFQN.root for tag in pipeline.right.tags] == ["Data360.ACTIVE", "Data360.Standard"]
+        assert source.tags_registry.stats()["live_entities"] == 0
 
     def test_get_source_url_handles_my_domain(self):
         source = _build_source()

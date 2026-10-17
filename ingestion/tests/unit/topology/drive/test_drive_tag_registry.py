@@ -188,7 +188,8 @@ def test_one_registration_failure_keeps_other_native_tags_and_the_asset(source):
     published, assets, errors = consume(source, drive_stages(source, "file"))
     assert published == ["Valid"]
     assert len(errors) == 1
-    assert "Failed to register tag [Broken]" in errors[0].error
+    assert "DriveTags.Broken" in errors[0].error
+    assert errors[0].name == "my_service.my_file"
     assert [label.tagFQN.root for label in assets[0].tags] == ["DriveTags.Valid"]
     assert source.tags_registry.stats()["live_entities"] == 0
 

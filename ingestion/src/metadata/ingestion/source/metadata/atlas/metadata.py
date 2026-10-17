@@ -241,7 +241,8 @@ class AtlasSource(Source):
                             force=True,
                         )
 
-                    self.tags_registry.define(self._tag_definition(ATLAS_TABLE_TAG))
+                    if error := self.tags_registry.register(self._tag_definition(ATLAS_TABLE_TAG)):
+                        yield Either(left=error, right=None)
                     with closing(self.tags_registry.drain()) as definitions:
                         for definition in definitions:
                             yield Either(left=None, right=definition)
@@ -289,8 +290,8 @@ class AtlasSource(Source):
             for tag_name in tag_names:
                 try:
                     tag = self._tag_definition(tag_name)
-                    self.tags_registry.define(tag)
-                    self.tags_registry.attach(entity_fqn=table_fqn, tag=tag)
+                    if error := self.tags_registry.register(tag, entity_fqn=table_fqn):
+                        yield Either(left=error, right=None)
                 except Exception as exc:
                     yield Either(
                         right=None,

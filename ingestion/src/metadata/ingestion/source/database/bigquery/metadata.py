@@ -17,7 +17,6 @@ import os
 import threading
 import traceback
 from collections.abc import Iterable
-from typing import Literal
 
 from google import auth
 from google.cloud.bigquery.schema import SchemaField
@@ -100,6 +99,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_LIFE_CYCLE_QUERY,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
+from metadata.ingestion.source.database.bigquery.tags import map_bigquery_tag
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
@@ -634,34 +634,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
             logger.debug(traceback.format_exc())
 
-    def _register_tag(
-        self,
-        classification_name: str,
-        tag_name: str,
-        tag_type: Literal["Dataset", "Table", "Policy"],
-        entity_fqn: str | None = None,
-    ) -> Iterable[Either[OMetaTagAndClassification]]:
-        """Register a BigQuery tag definition and its optional asset attachment."""
-        try:
-            definition = self.define_tag(
-                classification_name=classification_name,
-                tag_name=tag_name,
-                tag_description=f"Bigquery {tag_type} {'Tag' if tag_type == 'Policy' else 'Label'}",
-                classification_description=f"BigQuery {tag_type} Classification",
-                entity_fqn=entity_fqn,
-            )
-            if definition and entity_fqn:
-                self.attach_tag(entity_fqn=entity_fqn, tag=definition)
-        except Exception as exc:
-            yield Either(
-                right=None,
-                left=StackTraceError(
-                    name="Tags and Classifications",
-                    error=f"Failed to register BigQuery tag [{classification_name}.{tag_name}]: {exc}",
-                    stackTrace=traceback.format_exc(),
-                ),
-            )
-
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """Register dataset labels and available policy tag definitions."""
         try:
@@ -672,7 +644,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 schema_name,
             )
             for key, value in (dataset_obj.labels or {}).items():
-                yield from self._register_tag(key, value, "Dataset", schema_fqn)
+                yield from self.register_tag(
+                    definition=map_bigquery_tag(classification_name=key, tag_name=value, tag_type="Dataset"),
+                    entity_fqn=schema_fqn,
+                )
 
             if not self.service_connection.includePolicyTags:
                 return
@@ -680,7 +655,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             self._prefetch_policy_tags()
             for classification_name in self._taxonomy_cache.values():
                 for tag_name in self._taxonomy_to_tags.get(classification_name, []):
-                    yield from self._register_tag(classification_name, tag_name, "Policy")
+                    yield from self.register_tag(
+                        definition=map_bigquery_tag(
+                            classification_name=classification_name, tag_name=tag_name, tag_type="Policy"
+                        )
+                    )
         except Exception as exc:
             yield Either(
                 right=None,
@@ -844,7 +823,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             table_name,
         )
         for key, value in (table_obj.labels or {}).items():
-            yield from self._register_tag(key, value, "Table", table_fqn)
+            yield from self.register_tag(
+                definition=map_bigquery_tag(classification_name=key, tag_name=value, tag_type="Table"),
+                entity_fqn=table_fqn,
+            )
         if self.service_connection.includePolicyTags:
             yield from self._register_column_policy_tags(table_obj.schema, table_fqn)
 
@@ -876,11 +858,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             if field.policy_tags and field.policy_tags.names:
                 policy_tag = self._get_policy_tag(field.policy_tags.names[0])
                 if policy_tag:
-                    yield from self._register_tag(
-                        policy_tag["taxonomy"],
-                        policy_tag["display_name"],
-                        "Policy",
-                        fqn._build(*fqn.split(table_fqn), *column_path),
+                    yield from self.register_tag(
+                        definition=map_bigquery_tag(
+                            classification_name=policy_tag["taxonomy"],
+                            tag_name=policy_tag["display_name"],
+                            tag_type="Policy",
+                        ),
+                        entity_fqn=fqn._build(*fqn.split(table_fqn), *column_path),
                     )
             if field.fields:
                 yield from self._register_column_policy_tags(field.fields, table_fqn, column_path)

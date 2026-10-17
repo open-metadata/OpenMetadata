@@ -21,7 +21,7 @@ import sqlalchemy.types as sqltypes
 from sqlalchemy import create_engine
 
 from metadata.core.connections.lifetime import Borrowed
-from metadata.domain.tags import TagDefinition
+from metadata.domain.tags import TagAssignment
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -179,8 +179,8 @@ def test_tag_post_processing_releases_schema_before_database():
     source.context.get().upsert("database_schema", "my_schema")
     database = "svc.my_db"
     schema = "svc.my_db.my_schema"
-    source.attach_tag(entity_fqn=database, tag=TagDefinition("Class", "parent", "", ""))
-    source.attach_tag(entity_fqn=schema, tag=TagDefinition("Class", "child", "", ""))
+    assert source.tags_registry.attach(TagAssignment("Class", "parent", database)) is None
+    assert source.tags_registry.attach(TagAssignment("Class", "child", schema)) is None
 
     list(source._run_node_post_process(source.topology.table))
     assert [label.tagFQN.root for label in source.tags_registry.labels_for(database)] == ["Class.parent"]
@@ -569,14 +569,8 @@ class SnowflakeUnitTest(TestCase):
 
             _, schema_fqn, table_fqn = self._setup_tag_context(source)
 
-            source.tags_registry.attach(
-                entity_fqn=schema_fqn,
-                tag=TagDefinition("SCHEMA_CLASSIFICATION", "SCHEMA_TAG", "", ""),
-            )
-            source.tags_registry.attach(
-                entity_fqn=table_fqn,
-                tag=TagDefinition("TABLE_CLASSIFICATION", "TABLE_TAG", "", ""),
-            )
+            assert source.tags_registry.attach(TagAssignment("SCHEMA_CLASSIFICATION", "SCHEMA_TAG", schema_fqn)) is None
+            assert source.tags_registry.attach(TagAssignment("TABLE_CLASSIFICATION", "TABLE_TAG", table_fqn)) is None
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertIsNotNone(schema_labels)
@@ -673,18 +667,9 @@ class SnowflakeUnitTest(TestCase):
 
             database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
 
-            source.tags_registry.attach(
-                entity_fqn=database_fqn,
-                tag=TagDefinition("DATABASE_TAG", "DB_VALUE", "", ""),
-            )
-            source.tags_registry.attach(
-                entity_fqn=schema_fqn,
-                tag=TagDefinition("SCHEMA_TAG", "SCHEMA_VALUE", "", ""),
-            )
-            source.tags_registry.attach(
-                entity_fqn=table_fqn,
-                tag=TagDefinition("TABLE_TAG", "TABLE_VALUE", "", ""),
-            )
+            assert source.tags_registry.attach(TagAssignment("DATABASE_TAG", "DB_VALUE", database_fqn)) is None
+            assert source.tags_registry.attach(TagAssignment("SCHEMA_TAG", "SCHEMA_VALUE", schema_fqn)) is None
+            assert source.tags_registry.attach(TagAssignment("TABLE_TAG", "TABLE_VALUE", table_fqn)) is None
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertIsNotNone(schema_labels)
@@ -709,18 +694,9 @@ class SnowflakeUnitTest(TestCase):
         for source in self.sources.values():
             database_fqn, schema_fqn, table_fqn = self._setup_tag_context(source)
 
-            source.tags_registry.attach(
-                entity_fqn=database_fqn,
-                tag=TagDefinition("ENV", "dev", "", ""),
-            )
-            source.tags_registry.attach(
-                entity_fqn=schema_fqn,
-                tag=TagDefinition("ENV", "staging", "", ""),
-            )
-            source.tags_registry.attach(
-                entity_fqn=table_fqn,
-                tag=TagDefinition("ENV", "production", "env classification", "production tag"),
-            )
+            assert source.tags_registry.attach(TagAssignment("ENV", "dev", database_fqn)) is None
+            assert source.tags_registry.attach(TagAssignment("ENV", "staging", schema_fqn)) is None
+            assert source.tags_registry.attach(TagAssignment("ENV", "production", table_fqn)) is None
 
             schema_labels = source.get_schema_tag_labels(schema_name="TEST_SCHEMA")
             self.assertEqual(len(schema_labels), 1)
