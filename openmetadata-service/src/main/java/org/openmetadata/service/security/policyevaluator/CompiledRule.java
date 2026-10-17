@@ -42,7 +42,19 @@ public class CompiledRule extends Rule {
   private static final Set<MetadataOperation> EXPLICIT_ALLOW_OPERATIONS =
       Set.of(MetadataOperation.EXECUTE_SPARQL_QUERY);
 
+  // Ownership condition functions that need a resolved entity to mean anything and have no
+  // collection-level fallback (unlike hasDomain, whose no-entity behavior is handled by search
+  // post-filtering, and tags/certification, which are separate concerns left untouched here). On a
+  // collection/bare request (no entity) such a condition is indeterminate - e.g. isOwner() has no
+  // entity whose owners it can check. A DENY rule carrying one is deferred (not fired) so it can't
+  // block the owner on a list; the per-entity check still enforces it when a concrete entity is
+  // accessed. Subject-scoped conditions (inAnyTeam, hasAnyRole, ...) are absent here and keep
+  // evaluating normally.
+  private static final Set<String> OWNERSHIP_CONDITION_FUNCTIONS =
+      Set.of("isOwner", "isReviewer", "noOwner", "matchTeam");
+
   @JsonIgnore private Expression expression;
+  @JsonIgnore private Boolean conditionNeedsEntity;
 
   public CompiledRule(Rule rule) {
     super();
@@ -301,6 +313,15 @@ public class CompiledRule extends Rule {
     return matched;
   }
 
+  private boolean conditionIsOwnershipScoped() {
+    if (conditionNeedsEntity == null) {
+      String condition = getCondition();
+      conditionNeedsEntity =
+          condition != null && OWNERSHIP_CONDITION_FUNCTIONS.stream().anyMatch(condition::contains);
+    }
+    return conditionNeedsEntity;
+  }
+
   private boolean matchExpression(
       PolicyContext policyContext,
       SubjectContext subjectContext,
@@ -308,6 +329,17 @@ public class CompiledRule extends Rule {
     Expression expr = getExpression();
     if (expr == null) {
       return true;
+    }
+    // A collection/bare request resolves no entity, so an ownership condition can't be evaluated.
+    // Defer only DENY rules (treat as non-matching) so an ownership deny can't block the owner on a
+    // list; enforcement falls to the per-entity check when a concrete entity is accessed. ALLOW
+    // rules
+    // are left to evaluate normally (isOwner() stays false with no entity, so an isOwner()-gated
+    // allow still grants nothing on a collection - no bypass introduced).
+    if (getEffect() == Effect.DENY
+        && resourceContext.getEntity() == null
+        && conditionIsOwnershipScoped()) {
+      return false;
     }
     RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
     SimpleEvaluationContext context =
