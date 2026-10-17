@@ -622,7 +622,7 @@ journals descendants 100 at a time. `EntityFqnMutationCapture` and the locked pr
 are removed.
 
 - **Enumerating members:**
-  `EntityPrefixMembers`
+  [`EntityPrefixMembers`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/EntityPrefixMembers.java)
   pages the committed members of a prefix fact by keyset over the hash index, one bounded index
   range per page, and derives each member's former locator. The set is a superset: rows already
   under the new prefix are included, and expansion refreshes by ID.
@@ -652,7 +652,7 @@ consumers.
 Relationship `insert`, `bulkInsertTo`, tag `applyTag` and tag batch application name every row
 they write. Their capture now runs the source statement unchanged and buffers the membership row
 taken from the call's arguments in the existing pre-commit buffer
-(`BufferedMembership`).
+([`BufferedMembership`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/BufferedMembership.java)).
 At commit, the buffer inserts one header per membership kind for the whole transaction, all
 snapshot rows in multi-row statements, and the consumer rows. The previous path paid, per call:
 - a guard upsert;
@@ -661,7 +661,7 @@ snapshot rows in multi-row statements, and the consumer rows. The previous path 
 - a `SAVEPOINT`/`RELEASE` pair.
 
 Some upserts keep the guarded before/after path in
-`RelationshipUpsertCapture`,
+[`RelationshipUpsertCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/RelationshipUpsertCapture.java),
 because their former row can carry a dependency the arguments do not name:
 - **Lineage** (`UPSTREAM`), or any JSON naming a pipeline: the old pipeline must be invalidated.
 - **Ontology upserts:** relationship and type IDs.

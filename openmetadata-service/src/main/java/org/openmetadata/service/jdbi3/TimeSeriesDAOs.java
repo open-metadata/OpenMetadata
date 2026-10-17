@@ -40,9 +40,11 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -56,6 +58,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -905,6 +908,25 @@ public interface TimeSeriesDAOs {
   }
 
   interface EntityExtensionTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Transaction
+    @BatchChunkSize(100)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :extension, :jsonSchema, :json) ON DUPLICATE KEY UPDATE json = VALUES(json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlBatch(
+        value =
+            "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
+                + "VALUES (:entityFQNHash, :extension, :jsonSchema, CAST(:json AS JSONB)) "
+                + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json",
+        connectionType = POSTGRES)
+    void upsertMany(
+        @BindFQN("entityFQNHash") String fqn,
+        @Bind("extension") String extension,
+        @Bind("jsonSchema") String jsonSchema,
+        @BindJson("json") List<String> values);
+
     @Override
     default String getTimeSeriesTableName() {
       return "entity_extension_time_series";

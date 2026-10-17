@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -39,7 +38,6 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
-import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -611,30 +609,23 @@ public interface ClassificationTagDAOs {
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, '%s.', '%s.'), tagFQNHash = REPLACE(tagFQNHash, '%s.', '%s.') WHERE source = %s AND tagFQNHash LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              FullyQualifiedName.buildHash(oldPrefix),
-              FullyQualifiedName.buildHash(newPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldPrefix));
-      updateTagPrefixInternal(update);
+      updateTagPrefixInternal(
+          source,
+          oldPrefix,
+          newPrefix,
+          FullyQualifiedName.buildHash(oldPrefix),
+          FullyQualifiedName.buildHash(newPrefix));
     }
 
     default void updateTargetFQNHashPrefix(
         int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
-              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
-      updateTagPrefixInternal(update);
+      updateTargetFQNHashPrefixInternal(
+          source,
+          FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
+          FullyQualifiedName.buildHash(newTargetFQNHashPrefix));
     }
 
+    @Transaction
     default void rename(int source, String oldFQN, String newFQN) {
       renameInternal(source, oldFQN, newFQN, newFQN); // First rename tagFQN from oldFQN to newFQN
       updateTagPrefix(
@@ -665,8 +656,42 @@ public interface ClassificationTagDAOs {
         @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
         @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
-    @SqlUpdate("<update>")
-    void updateTagPrefixInternal(@Define("update") String update);
+    // Rewrite only the leading prefix: REPLACE also rewrote later segments that merely contain it
+    // ("Sales.PreSales.x" became "Revenue.PreRevenue.x") while the hash kept the original segment.
+    @SqlUpdate(
+        """
+        UPDATE tag_usage SET tagFQN = CASE
+            WHEN LEFT(tagFQN, CHAR_LENGTH(:oldPrefix) + 1) = CONCAT(:oldPrefix, '.')
+              THEN CONCAT(:newPrefix, SUBSTRING(tagFQN, CHAR_LENGTH(:oldPrefix) + 1))
+            ELSE tagFQN END,
+          tagFQNHash = CONCAT(:newHashPrefix, SUBSTRING(tagFQNHash, CHAR_LENGTH(:oldHashPrefix) + 1))
+        WHERE source = :source AND tagFQNHash LIKE :hashPrefixPattern
+        """)
+    void updateTagPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @BindConcat(
+                value = "hashPrefixPattern",
+                original = "oldHashPrefix",
+                parts = {":oldHashPrefix", ".%"})
+            String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix);
+
+    @SqlUpdate(
+        """
+        UPDATE tag_usage
+        SET targetFQNHash = CONCAT(:newHashPrefix, SUBSTRING(targetFQNHash, CHAR_LENGTH(:oldHashPrefix) + 1))
+        WHERE source = :source AND targetFQNHash LIKE :hashPrefixPattern
+        """)
+    void updateTargetFQNHashPrefixInternal(
+        @Bind("source") int source,
+        @BindConcat(
+                value = "hashPrefixPattern",
+                original = "oldHashPrefix",
+                parts = {":oldHashPrefix", ".%"})
+            String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)

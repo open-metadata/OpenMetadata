@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
-import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -81,14 +80,12 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.pipelines.PipelineResource;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -511,36 +508,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
   }
 
   private void bulkUpsertPipelineStatuses(String fqn, List<PipelineStatus> pipelineStatuses) {
-    String entityFQNHash = FullyQualifiedName.buildHash(fqn);
-    String sql;
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      sql =
-          "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
-              + "VALUES (:entityFQNHash, :extension, :jsonSchema, :json) "
-              + "ON DUPLICATE KEY UPDATE json = VALUES(json)";
-    } else {
-      sql =
-          "INSERT INTO entity_extension_time_series(entityFQNHash, extension, jsonSchema, json) "
-              + "VALUES (:entityFQNHash, :extension, :jsonSchema, cast(:json as jsonb)) "
-              + "ON CONFLICT (entityFQNHash, extension, timestamp) DO UPDATE SET json = EXCLUDED.json";
-    }
-    Entity.getJdbi()
-        .useTransaction(
-            handle -> {
-              PreparedBatch batch = handle.prepareBatch(sql);
-              for (PipelineStatus pipelineStatus : pipelineStatuses) {
-                batch
-                    .bind("entityFQNHash", entityFQNHash)
-                    .bind("extension", PIPELINE_STATUS_EXTENSION)
-                    .bind("jsonSchema", "pipelineStatus")
-                    .bind(
-                        "json",
-                        JsonStorageUtils.sanitizeNulCharacters(
-                            JsonUtils.pojoToJson(pipelineStatus)))
-                    .add();
-              }
-              batch.execute();
-            });
+    daoCollection
+        .entityExtensionTimeSeriesDao()
+        .upsertMany(
+            fqn,
+            PIPELINE_STATUS_EXTENSION,
+            "pipelineStatus",
+            pipelineStatuses.stream().map(JsonUtils::pojoToJson).toList());
   }
 
   /**
