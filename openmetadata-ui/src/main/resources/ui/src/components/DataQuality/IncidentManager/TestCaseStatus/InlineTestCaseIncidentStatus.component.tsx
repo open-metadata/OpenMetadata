@@ -420,7 +420,7 @@ const InlineTestCaseIncidentStatus = ({
       return (
         <Box className="tw:p-2 tw:text-center">
           <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.no-username-available', { user: '' })}
+            {t('label.no-entity-found', { entity: t('label.user-plural') })}
           </Typography>
         </Box>
       );

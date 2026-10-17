@@ -101,6 +101,10 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "$ref": "../connectionBasicType.json#/definitions/supportsAutoPartitionDetection"
+    },
     "supportsQueryComment": {
       "title": "Supports Query Comment",
       "$ref": "../connectionBasicType.json#/definitions/supportsQueryComment"

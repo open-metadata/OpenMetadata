@@ -415,6 +415,18 @@ export const isLoginConfigurationApplicable = (
   provider === AuthProvider.LDAP ||
   provider === AuthProvider.Openmetadata;
 
+/**
+ * Whether the server, rather than the browser, completes sign-in. The server then applies the
+ * identity provider's display name and picture to the user itself, and the name it hands the
+ * browser is the OpenMetadata username, not a display name.
+ * ADR:2026-10-17-the-server-applies-the-sso-profile-on-server-driven-logins
+ */
+export const isServerDrivenLogin = (
+  clientType?: ClientType,
+  provider?: AuthProvider
+): boolean =>
+  clientType === ClientType.Confidential || provider === AuthProvider.Saml;
+
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
