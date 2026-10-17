@@ -119,6 +119,11 @@ const DomainDetailPage = () => {
     };
   }, [activeDomain?.followers, currentUserId]);
 
+  const handleDomainRefresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: domainCacheKey }),
+    [queryClient, domainCacheKey]
+  );
+
   const handleDomainUpdate = async (updatedData: Domain) => {
     if (activeDomain) {
       const jsonPatch = compare(activeDomain, updatedData);
@@ -278,6 +283,7 @@ const DomainDetailPage = () => {
         isFollowing={isFollowing}
         isFollowingLoading={isFollowingLoading}
         onDelete={handleDomainDelete}
+        onRefresh={handleDomainRefresh}
         onUpdate={handleDomainUpdate}
         onUpdateVote={handleUpdateVote}
       />

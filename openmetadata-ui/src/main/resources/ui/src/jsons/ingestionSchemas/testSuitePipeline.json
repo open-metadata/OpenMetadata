@@ -3778,6 +3778,9 @@
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        },
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
@@ -10117,13 +10120,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/60/definitions/neo4jType",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jType",
                           "default": "Neo4j"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/60/definitions/neo4jScheme",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jScheme",
                           "default": "neo4j"
                         },
                         "hostPort": {

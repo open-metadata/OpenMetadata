@@ -24,6 +24,7 @@ import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import AddMetricForm, { METRIC_FORM_DEFAULTS } from './AddMetricForm';
 import { MetricFormValues } from './AddMetricForm.types';
 import { transformMetricFormData } from './AddMetricForm.utils';
+import { useMetricIntakeForm } from './useMetricIntakeForm';
 
 /**
  * Encapsulates the "create metric" drawer — form, submit, and the drawer chrome
@@ -36,15 +37,24 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
   const navigate = useNavigate();
   const [parentMetricFqn, setParentMetricFqn] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
+  const [loadIntake, setLoadIntake] = useState(false);
+  const intake = useMetricIntakeForm(loadIntake);
   const form = useForm<MetricFormValues>({
     defaultValues: METRIC_FORM_DEFAULTS,
   });
 
   const handleCreate = useCallback(
     async (data: MetricFormValues) => {
+      if (!intake.isLoaded) {
+        throw new Error(t('label.intake-form'));
+      }
       setIsLoading(true);
       try {
-        const payload = transformMetricFormData(data, parentMetricFqn);
+        const payload = transformMetricFormData(
+          data,
+          parentMetricFqn,
+          intake.customProperties
+        );
         const metric = await createMetric(payload);
         form.reset(METRIC_FORM_DEFAULTS);
         navigate(
@@ -61,7 +71,14 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
         setIsLoading(false);
       }
     },
-    [form, navigate, parentMetricFqn]
+    [
+      form,
+      navigate,
+      parentMetricFqn,
+      intake.isLoaded,
+      intake.customProperties,
+      t,
+    ]
   );
 
   const {
@@ -78,6 +95,7 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
     form: (
       <AddMetricForm
         form={form}
+        intake={intake}
         parentMetricFqn={parentMetricFqn}
         onSubmit={(data: MetricFormValues): Promise<void> =>
           submitAndClose(data, handleCreate, closeDrawer, onSuccess)
@@ -86,16 +104,18 @@ export const useMetricCreateDrawer = (onSuccess?: () => void) => {
     ),
     onSubmit: (data: MetricFormValues): Promise<void> =>
       submitAndClose(data, handleCreate, closeDrawer, onSuccess),
-    loading: isLoading,
+    loading: isLoading || !intake.isLoaded,
   });
 
   const openDrawer = useCallback(
     (nextParentMetricFqn?: string) => {
+      setLoadIntake(true);
+      void intake.retry();
       setParentMetricFqn(nextParentMetricFqn);
       form.reset(METRIC_FORM_DEFAULTS);
       openFormDrawer();
     },
-    [form, openFormDrawer]
+    [form, openFormDrawer, intake.retry]
   );
 
   return { formDrawer, openDrawer, closeDrawer };
