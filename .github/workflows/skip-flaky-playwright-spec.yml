@@ -1,0 +1,168 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Unblocks the merge queue when a flaky Playwright spec keeps ejecting PRs: appends a
+# file-scope test.skip() to each named spec and pushes it straight to main as
+# GH-Bot-collate, which bypasses the merge-rules ruleset. Re-enable a spec by deleting
+# the two appended lines in a normal PR.
+name: Skip flaky Playwright spec
+on:
+  workflow_dispatch:
+    inputs:
+      specs:
+        description: "Spec file(s), comma-separated. A name (Glossary.spec.ts) or a longer path when the name is ambiguous (Features/Topic.spec.ts)"
+        required: true
+        type: string
+      reason:
+        description: "Why it is skipped (goes in the commit message), e.g. a failing run URL"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Serialized so two runs never race each other's push to main.
+concurrency:
+  group: skip-flaky-playwright-spec
+
+jobs:
+  skip:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Append test.skip to the specs
+        id: skip
+        env:
+          SPECS: ${{ inputs.specs }}
+        run: |
+          set -euo pipefail
+          E2E_DIR=openmetadata-ui/src/main/resources/ui/playwright/e2e
+          MARKER=skip-flaky-playwright-spec
+          skipped=()
+          for name in ${SPECS//,/ }; do
+            name="${name#./}"
+            if [[ ! "$name" =~ ^[A-Za-z0-9_./-]+\.spec\.ts$ || "$name" == *..* ]]; then
+              echo "::error::'$name' is not a .spec.ts file name"
+              exit 1
+            fi
+            matches=()
+            while IFS= read -r f; do
+              [[ "/$f" == */"$name" ]] && matches+=("$f")
+            done < <(git ls-files "$E2E_DIR")
+            if (( ${#matches[@]} != 1 )); then
+              echo "::error::'$name' matched ${#matches[@]} specs under $E2E_DIR (${matches[*]:-none}); pass a longer path"
+              exit 1
+            fi
+            spec="${matches[0]}"
+            if grep -q "$MARKER" "$spec"; then
+              echo "::notice::$spec is already skipped"
+              continue
+            fi
+            # A file-scope skip covers every describe (serial included) and top-level
+            # test, and Playwright applies it after the file loads, so appending it at
+            # the end is safe even when `test` is a later `base.extend()`.
+            if grep -qE '^\s*test[.(]' "$spec"; then id=test
+            elif grep -qE '^\s*base[.(]' "$spec"; then id=base
+            else
+              echo "::error::$spec calls neither test nor base; skip it by hand"
+              exit 1
+            fi
+            printf '\n// eslint-disable-next-line playwright/no-skipped-test -- flaky in the merge queue; delete these two lines to re-enable\n%s.skip(true, '"'"'Flaky: skipped by the %s workflow'"'"');\n' "$id" "$MARKER" >> "$spec"
+            skipped+=("${spec#openmetadata-ui/src/main/resources/ui/}")
+          done
+          echo "specs=${skipped[*]:-}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        if: steps.skip.outputs.specs != ''
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+          cache: "yarn"
+          cache-dependency-path: openmetadata-ui/src/main/resources/ui/yarn.lock
+
+      - name: Install dependencies
+        if: steps.skip.outputs.specs != ''
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile --ignore-scripts
+
+      # A spec that fails to load breaks its whole shard, which is worse than the
+      # flake, so prove each edited file still loads and every one of its tests is
+      # skipped before pushing.
+      - name: Verify the specs load fully skipped
+        if: steps.skip.outputs.specs != ''
+        working-directory: openmetadata-ui/src/main/resources/ui
+        env:
+          SPECS: ${{ steps.skip.outputs.specs }}
+        run: |
+          set -euo pipefail
+          # A load error exits 1 but still writes the JSON report, so let node print it.
+          # shellcheck disable=SC2086
+          npx playwright test --list --reporter=json $SPECS > "$RUNNER_TEMP/list.json" || true
+          node -e '
+            const report = require(process.argv[1]);
+            const specs = process.argv.slice(2).map((s) => s.replace(/^playwright\/e2e\//, ""));
+            const tests = [];
+            const walk = (suite) => {
+              (suite.specs || []).forEach((s) => s.tests.forEach((t) => tests.push({ file: s.file, t })));
+              (suite.suites || []).forEach(walk);
+            };
+            report.suites.forEach(walk);
+            if (report.errors.length) throw new Error(report.errors.map((e) => e.message).join("\n"));
+            for (const spec of specs) {
+              const own = tests.filter((x) => x.file === spec);
+              const live = own.filter((x) => !x.t.annotations.some((a) => a.type === "skip"));
+              if (live.length) throw new Error(`${spec}: ${live.length} of ${own.length} tests not skipped`);
+              console.log(own.length
+                ? `${spec}: all ${own.length} tests skipped`
+                : `::warning::${spec} is in no default project (e.g. nightly), so its load was not checked`);
+            }
+          ' "$RUNNER_TEMP/list.json" $SPECS
+
+      - name: Generate GH-Bot-collate token
+        if: steps.skip.outputs.specs != ''
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.GH_BOT_ID }}
+          private-key: ${{ secrets.GH_BOT_PK }}
+          permission-contents: write
+
+      - name: Commit and push to main
+        if: steps.skip.outputs.specs != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          SPECS: ${{ steps.skip.outputs.specs }}
+          REASON: ${{ inputs.reason }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name 'gh-bot-collate[bot]'
+          git config user.email '147071663+gh-bot-collate[bot]@users.noreply.github.com'
+          git add openmetadata-ui/src/main/resources/ui/playwright/e2e
+          printf 'test(playwright): skip flaky %s\n\n%s\n\nRequested by @%s via %s\n' \
+            "$SPECS" "$REASON" "$ACTOR" "$RUN_URL" | git commit -F -
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          for attempt in 1 2 3; do
+            git push origin HEAD:main && exit 0
+            git pull --rebase origin main
+          done
+          echo "::error::Could not push to main after 3 attempts"
+          exit 1
