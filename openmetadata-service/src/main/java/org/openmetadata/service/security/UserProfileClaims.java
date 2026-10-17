@@ -17,6 +17,8 @@ import org.openmetadata.schema.type.Profile;
  * Keeps how an account is presented, its display name and picture, in step with what the identity
  * provider asserts at sign-in. Only values the provider actually sent are applied: a claim the
  * token leaves out never clears what the account already has.
+ *
+ * <p>ADR:2026-10-17-the-server-applies-the-sso-profile-on-server-driven-logins
  */
 @Slf4j
 public final class UserProfileClaims {
