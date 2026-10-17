@@ -17,6 +17,7 @@ import {
   MessageTextSquare01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
+import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,6 +42,11 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { getEncodedFqn, getSafeHttpUrl } from '../../../../utils/StringUtils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import {
+  TOPIC_BLUE_TILE_CLASSES,
+  TOPIC_ROW_CLASSES,
+  TOPIC_ROW_TILE_CLASSES,
+} from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -202,15 +208,22 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
 
             return (
               <li
-                className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3"
+                className={classNames(
+                  'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
+                  TOPIC_ROW_CLASSES
+                )}
                 data-testid={`context-page-${page.id}`}
                 key={page.id}>
                 <div
                   aria-hidden
-                  className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-600">
+                  className={classNames(
+                    'tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg',
+                    TOPIC_BLUE_TILE_CLASSES,
+                    TOPIC_ROW_TILE_CLASSES
+                  )}>
                   <Articles size={16} />
                 </div>
-                <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+                <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
                   <Typography
                     className="tw:min-w-0 tw:text-text-primary!"
                     ellipsis={{ rows: 1 }}

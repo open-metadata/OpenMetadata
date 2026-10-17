@@ -257,7 +257,7 @@ describe('useDataQualitySummary', () => {
     rerender({
       filters: {
         ...DEFAULT_DATA_QUALITY_FILTERS,
-        range: DataQualityRange.LAST_30_DAYS,
+        range: DataQualityRange.LAST_90_DAYS,
       },
     });
 

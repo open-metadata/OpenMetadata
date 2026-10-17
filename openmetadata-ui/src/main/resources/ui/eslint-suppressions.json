@@ -717,7 +717,7 @@
   },
   "playwright/utils/importUtils.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 20
+      "count": 19
     }
   },
   "playwright/utils/incidentManager.ts": {

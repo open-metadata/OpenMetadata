@@ -81,6 +81,7 @@ import {
 import SchemaModal from '../../components/Modals/SchemaModal/SchemaModal';
 import { ENTITY_TYPE_OPTIONS } from '../../constants/BulkImport.constant';
 import {
+  PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
@@ -99,7 +100,7 @@ import { getGlossariesList, getGlossaryTerms } from '../../rest/glossaryAPI';
 import { getTypeByFQN } from '../../rest/metadataTypeAPI';
 import { getMetrics } from '../../rest/metricsAPI';
 import { searchQuery } from '../../rest/searchAPI';
-import { getAllClassifications, getTags } from '../../rest/tagAPI';
+import { getTags } from '../../rest/tagAPI';
 import { formatTeamsResponse, formatUsersResponse } from '../APIUtils';
 import {
   getCustomPropertyReferenceSearchIndex,
@@ -109,7 +110,11 @@ import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
 import { getTermQuery } from '../SearchPureUtils';
-import { removeOuterEscapes } from '../StringUtils';
+import {
+  escapeESReservedCharacters,
+  getEncodedFqn,
+  removeOuterEscapes,
+} from '../StringUtils';
 import { isSystemClassificationTagFqn } from './CSV.utils';
 import {
   convertCustomPropertyStringToEntityExtension,
@@ -804,31 +809,32 @@ const loadBulkEditDataProductOptions = async (searchText: string) => {
 };
 
 const loadBulkEditTagOptions = async (searchText: string) => {
-  const [classifications, tags] = await Promise.all([
-    getAllClassifications({ limit: 1 }),
-    getTags({ disabled: false, limit: 50 }),
-  ]);
-
-  if (!classifications.data.length && !tags.data.length) {
-    return [];
-  }
-
-  return getFilteredBulkEditPickerOptions(
-    tags.data
-      .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
-      .map((tag) =>
-        getBulkEditPickerOption({
-          color: tag.style?.color,
-          description: tag.description,
-          displayName: tag.displayName,
-          fullyQualifiedName: tag.fullyQualifiedName,
-          kind: 'tag',
-          name: tag.name,
+  // Search the catalog rather than filtering only the first page of tags.
+  const tags = searchText.trim()
+    ? (
+        await searchQuery({
+          pageNumber: 1,
+          pageSize: PAGE_SIZE_LARGE,
+          query: `*${getEncodedFqn(escapeESReservedCharacters(searchText))}*`,
+          queryFilter: getTermQuery({ disabled: 'false' }),
+          searchIndex: SearchIndex.TAG,
         })
-      )
-      .filter((option): option is BulkEditPickerOption => Boolean(option)),
-    searchText
-  );
+      ).hits.hits.map(({ _source }) => _source)
+    : (await getTags({ disabled: false, limit: PAGE_SIZE_LARGE })).data;
+
+  return tags
+    .filter((tag) => !isSystemClassificationTagFqn(getBulkEditTagFqn(tag)))
+    .map((tag) =>
+      getBulkEditPickerOption({
+        color: tag.style?.color,
+        description: tag.description,
+        displayName: tag.displayName,
+        fullyQualifiedName: tag.fullyQualifiedName,
+        kind: 'tag',
+        name: tag.name,
+      })
+    )
+    .filter((option): option is BulkEditPickerOption => Boolean(option));
 };
 
 const loadBulkEditGlossaryTermOptions = async (searchText: string) => {
@@ -1141,6 +1147,8 @@ const InlineBulkEditReferencePickerEditor = ({
 
   const selectedSet = useMemo(() => new Set(draft), [draft]);
   const hasOptions = options.length > 0;
+  // A draft can outlive a search with no matches; keep Update reachable.
+  const showFooter = options.length + draft.length > 0;
 
   const handleToggleOption = (option: BulkEditPickerOption) => {
     setDraft((previous) =>
@@ -1164,6 +1172,7 @@ const InlineBulkEditReferencePickerEditor = ({
             className={`bulk-edit-picker-option${
               isSelected ? ' selected' : ''
             }`}
+            data-testid={`bulk-edit-picker-option-${option.value}`}
             key={option.value}
             type="button"
             onClick={() => handleToggleOption(option)}>
@@ -1251,7 +1260,7 @@ const InlineBulkEditReferencePickerEditor = ({
               optionsOrEmptyContent
             )}
           </div>
-          {hasOptions && (
+          {showFooter && (
             <div className="bulk-edit-picker-footer">
               <button
                 className="bulk-edit-picker-clear"
@@ -2238,8 +2247,9 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   };
 };
 
-const getCsvTagsEditor: CSVEditorFactory = ({ entityType, options }) => {
-  if (options.usePlainTextEditor && entityType === EntityType.METRIC) {
+const getCsvTagsEditor: CSVEditorFactory = ({ options }) => {
+  // Commit the picker draft and close together so the CSV export sees the selected tags.
+  if (options.usePlainTextEditor) {
     return getInlineBulkEditReferencePickerEditor('tags');
   }
 
