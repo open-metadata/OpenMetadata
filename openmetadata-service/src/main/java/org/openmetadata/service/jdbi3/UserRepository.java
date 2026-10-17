@@ -1503,8 +1503,32 @@ public class UserRepository extends EntityRepository<User> {
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
+      rejectEmailOutsideSignInDomains(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
+      }
+    }
+
+    /**
+     * Rows that create a user get the sign-in email-domain check the REST create paths apply.
+     * Rows that update an existing user don't, because an update never changes the stored email.
+     * Runs before the write, so a dry run reports the row as well.
+     * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+     */
+    private void rejectEmailOutsideSignInDomains(CSVPrinter printer, CSVRecord csvRecord, User user)
+        throws IOException {
+      if (!processRecord
+          || ((UserRepository) Entity.getEntityRepository(USER)).isUpdateForImport(user)) {
+        return;
+      }
+      Optional<String> rejection =
+          UserUtil.emailDomainRejection(
+              user,
+              SecurityConfigurationManager.getCurrentAuthConfig(),
+              SecurityConfigurationManager.getCurrentAuthzConfig());
+      if (rejection.isPresent()) {
+        importFailure(printer, rejection.get(), csvRecord);
+        processRecord = false;
       }
     }
 

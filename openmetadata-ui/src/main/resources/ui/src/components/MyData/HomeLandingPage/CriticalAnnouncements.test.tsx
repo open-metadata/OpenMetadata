@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import {
   AnnouncementEntity,
@@ -44,9 +50,9 @@ jest.mock('../../platform/ai-shell/context/useRouteActivation', () => ({
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { current?: number; total?: number }) =>
-      options?.total === undefined
-        ? key
-        : `${options.current} of ${options.total}`,
+      key === 'label.current-of-total'
+        ? `${options?.current} of ${options?.total}`
+        : key,
   }),
 }));
 
@@ -82,16 +88,68 @@ const respondWith = (announcements: AnnouncementEntity[]) =>
     paging: { total: announcements.length },
   });
 
-const renderBanner = () => {
+const renderBanner = (fallback?: React.ReactNode) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
 
   return render(
     <QueryClientProvider client={client}>
-      <CriticalAnnouncements />
+      <CriticalAnnouncements fallback={fallback} />
     </QueryClientProvider>
   );
+};
+
+const RAIL_TESTID = 'critical-announcement-rail';
+const NEXT_BTN = 'critical-announcement-next';
+const PREV_BTN = 'critical-announcement-previous';
+
+const titles = () =>
+  screen
+    .getAllByTestId('critical-announcement-title')
+    .map((title) => title.textContent);
+
+/**
+ * jsdom reports every layout box as 0, so the rail would always look
+ * unscrollable. Give it a real geometry and a spy-able `scrollBy`.
+ */
+const stubRailGeometry = ({
+  clientWidth = 400,
+  scrollWidth = 800,
+  scrollLeft = 0,
+}: {
+  clientWidth?: number;
+  scrollWidth?: number;
+  scrollLeft?: number;
+} = {}) => {
+  const rail = screen.getByTestId(RAIL_TESTID);
+  Object.defineProperty(rail, 'clientWidth', {
+    configurable: true,
+    value: clientWidth,
+  });
+  Object.defineProperty(rail, 'scrollWidth', {
+    configurable: true,
+    value: scrollWidth,
+  });
+  Object.defineProperty(rail, 'scrollLeft', {
+    configurable: true,
+    value: scrollLeft,
+    writable: true,
+  });
+  rail.scrollBy = jest.fn();
+  // Re-run the scroll-state sync now that the box has a size.
+  fireEvent.scroll(rail);
+
+  return rail;
+};
+
+const scrollRailTo = (rail: HTMLElement, scrollLeft: number) => {
+  Object.defineProperty(rail, 'scrollLeft', {
+    configurable: true,
+    value: scrollLeft,
+    writable: true,
+  });
+  fireEvent.scroll(rail);
 };
 
 const storageKey = getDismissedAnnouncementsStorageKey(
@@ -135,16 +193,32 @@ describe('CriticalAnnouncements', () => {
 
     renderBanner();
 
-    expect(
-      await screen.findByTestId('critical-announcement-title')
-    ).toHaveTextContent('Title newest');
+    await screen.findByText('Title newest');
+
+    expect(titles()).toEqual(['Title newest', 'Title older']);
     expect(mockListAnnouncements).toHaveBeenCalledTimes(2);
     expect(mockListAnnouncements).toHaveBeenLastCalledWith(
       expect.objectContaining({ after: 'cursor-2' })
     );
+  });
+
+  it('shows its fallback in the slot while no critical announcement is live', async () => {
+    respondWith([]);
+
+    renderBanner(<div data-testid="greeting" />);
+
+    expect(await screen.findByTestId('greeting')).toBeInTheDocument();
+  });
+
+  it('takes the slot from its fallback while one is live', async () => {
+    respondWith([makeCritical('c1', 1)]);
+
+    renderBanner(<div data-testid="greeting" />);
+
     expect(
-      screen.getByTestId('critical-announcement-position')
-    ).toHaveTextContent('1 of 2');
+      await screen.findByTestId('critical-announcements')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('greeting')).not.toBeInTheDocument();
   });
 
   it('renders nothing when no critical announcement is live', async () => {
@@ -171,9 +245,8 @@ describe('CriticalAnnouncements', () => {
       screen.getByTestId('critical-announcement-description')
     ).toHaveTextContent('Body of a');
     expect(screen.getByText('label.critical')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('critical-announcement-position')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(NEXT_BTN)).not.toBeInTheDocument();
+    expect(screen.queryByTestId(PREV_BTN)).not.toBeInTheDocument();
   });
 
   it('leaves the description out when the announcement has none', async () => {
@@ -189,45 +262,110 @@ describe('CriticalAnnouncements', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('pages through several, newest first, wrapping at either end', async () => {
+  it('lists several newest first, with no heading over them', async () => {
     respondWith([makeCritical('older', 3), makeCritical('newest', 1)]);
 
     renderBanner();
 
-    expect(
-      await screen.findByTestId('critical-announcement-title')
-    ).toHaveTextContent('Title newest');
-    expect(
-      screen.getByTestId('critical-announcement-position')
-    ).toHaveTextContent('1 of 2');
-    // The arrows carry no tooltip, but keep their accessible names.
-    expect(
-      screen.getByRole('button', { name: 'label.previous' })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'label.next' })
-    ).toBeInTheDocument();
+    await screen.findByText('Title newest');
 
-    fireEvent.click(screen.getByTestId('critical-announcement-next'));
+    expect(titles()).toEqual(['Title newest', 'Title older']);
+    expect(
+      screen.queryByText('label.critical-announcement-plural')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId(NEXT_BTN)).toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId('critical-announcement-title')).toHaveTextContent(
-      'Title older'
+  it('slides the rail a page at a time on next and previous', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400 });
+
+    fireEvent.click(screen.getByTestId(NEXT_BTN));
+
+    expect(rail.scrollBy).toHaveBeenCalledWith({
+      behavior: 'smooth',
+      left: 360,
+    });
+
+    // `scrollBy` is a spy, so move the rail by hand before paging back.
+    scrollRailTo(rail, 400);
+    fireEvent.click(screen.getByTestId(PREV_BTN));
+
+    expect(rail.scrollBy).toHaveBeenLastCalledWith({
+      behavior: 'smooth',
+      left: -360,
+    });
+  });
+
+  it('disables previous at the first banner and next at the last', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+
+    expect(screen.getByTestId(PREV_BTN)).toBeDisabled();
+    expect(screen.getByTestId(NEXT_BTN)).not.toBeDisabled();
+
+    scrollRailTo(rail, 400);
+
+    expect(screen.getByTestId(PREV_BTN)).not.toBeDisabled();
+    expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
+  });
+
+  it('announces which banner is showing as the rail pages', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+    const position = screen.getByTestId('critical-announcement-position');
+
+    expect(position).toHaveAttribute('aria-live', 'polite');
+    expect(position).toHaveTextContent('1 of 2');
+
+    scrollRailTo(rail, 400);
+
+    expect(position).toHaveTextContent('2 of 2');
+  });
+
+  it('hands focus to previous when next is disabled under it', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+    act(() => screen.getByTestId(NEXT_BTN).focus());
+
+    scrollRailTo(rail, 400);
+
+    expect(screen.getByTestId(NEXT_BTN)).toBeDisabled();
+    expect(screen.getByTestId(PREV_BTN)).toHaveFocus();
+  });
+
+  it('leaves focus alone once it has moved off the pager', async () => {
+    respondWith([makeCritical('first', 1), makeCritical('second', 2)]);
+
+    renderBanner();
+
+    await screen.findByText('Title first');
+    const rail = stubRailGeometry({ clientWidth: 400, scrollWidth: 800 });
+    const [dismissButton] = screen.getAllByTestId(
+      'critical-announcement-dismiss'
     );
-    expect(
-      screen.getByTestId('critical-announcement-position')
-    ).toHaveTextContent('2 of 2');
+    act(() => screen.getByTestId(NEXT_BTN).focus());
+    act(() => dismissButton.focus());
 
-    fireEvent.click(screen.getByTestId('critical-announcement-next'));
+    scrollRailTo(rail, 400);
 
-    expect(screen.getByTestId('critical-announcement-title')).toHaveTextContent(
-      'Title newest'
-    );
-
-    fireEvent.click(screen.getByTestId('critical-announcement-previous'));
-
-    expect(screen.getByTestId('critical-announcement-title')).toHaveTextContent(
-      'Title older'
-    );
+    expect(dismissButton).toHaveFocus();
   });
 
   it('dismissing shows the next one and remembers the dismissal per user', async () => {
@@ -236,14 +374,10 @@ describe('CriticalAnnouncements', () => {
     const { unmount } = renderBanner();
 
     await screen.findByText('Title first');
-    fireEvent.click(screen.getByTestId('critical-announcement-dismiss'));
+    fireEvent.click(screen.getAllByTestId('critical-announcement-dismiss')[0]);
 
-    expect(screen.getByTestId('critical-announcement-title')).toHaveTextContent(
-      'Title second'
-    );
-    expect(
-      screen.queryByTestId('critical-announcement-position')
-    ).not.toBeInTheDocument();
+    expect(titles()).toEqual(['Title second']);
+    expect(screen.queryByTestId(NEXT_BTN)).not.toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem(storageKey) ?? '[]')).toEqual([
       'first',
     ]);
@@ -255,20 +389,6 @@ describe('CriticalAnnouncements', () => {
       await screen.findByTestId('critical-announcement-title')
     ).toHaveTextContent('Title second');
     expect(screen.queryByText('Title first')).not.toBeInTheDocument();
-  });
-
-  it('steps back to the neighbour when the last one in the carousel is dismissed', async () => {
-    respondWith([makeCritical('first', 1), makeCritical('last', 2)]);
-
-    renderBanner();
-
-    await screen.findByText('Title first');
-    fireEvent.click(screen.getByTestId('critical-announcement-next'));
-    fireEvent.click(screen.getByTestId('critical-announcement-dismiss'));
-
-    expect(screen.getByTestId('critical-announcement-title')).toHaveTextContent(
-      'Title first'
-    );
   });
 
   it('disappears once every live announcement is dismissed', async () => {
@@ -295,9 +415,7 @@ describe('CriticalAnnouncements', () => {
 
     onActivate?.('dirty');
 
-    expect(
-      await screen.findByTestId('critical-announcement-position')
-    ).toHaveTextContent('1 of 2');
+    await waitFor(() => expect(titles()).toEqual(['Title a', 'Title b']));
   });
 
   it('only warms the cache on a plain revisit', async () => {
