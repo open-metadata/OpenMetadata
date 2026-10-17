@@ -13,6 +13,7 @@
 
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { installServerLoadReducers } from '../../../support/fixtures/serverLoad';
 import { test as base } from '../../../support/fixtures/userPages';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
@@ -83,6 +84,8 @@ const test = base.extend<{ personaData: PersonaFixture; userPage: Page }>({
   userPage: [
     async ({ browser, personaData }, use) => {
       const page = await browser.newPage();
+      // browser.newPage() bypasses the `context` fixture that installs these.
+      await installServerLoadReducers(page.context());
       await personaData.user.signIn(page);
       await use(page);
       await page.close();
