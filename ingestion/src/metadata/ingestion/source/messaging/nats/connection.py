@@ -19,13 +19,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import nats
+from metadata.clients.nats_client import (
+    build_connect_options,
+    build_tls_context,
+    cleanup_temp_secrets,
+    write_temp_secret,
+)
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
-)
-from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
-    BasicAuth,
-    NkeyAuth,
-    TokenAuth,
 )
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     NatsConnection as NatsConnectionConfig,
@@ -41,28 +42,10 @@ from metadata.ingestion.connections.test_connections import test_connection_step
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.secure_tempfile import (
-    remove_secret_temp_file,
-    write_secret_temp_file,
-)
 
 logger = ingestion_logger()
 
 _JS_STREAM_LIST = "$JS.API.STREAM.LIST"
-_RESERVED_CONNECT_OPTIONS = frozenset(
-    {
-        "servers",
-        "user",
-        "password",
-        "token",
-        "nkeys_seed",
-        "nkeys_seed_str",
-        "tls",
-        "user_credentials",
-        "signature_cb",
-        "user_jwt_cb",
-    }
-)
 
 
 class NatsApiError(ConnectionError):
@@ -74,21 +57,11 @@ class SchemaKvBucketNotConfiguredError(ConnectionError):
 
 
 def _write_temp_cert(secret_value: str, temp_files: list[str]) -> str:
-    """
-    Materialise a certificate for the connection's lifetime.
-
-    ``ssl.SSLContext.load_cert_chain`` only takes paths, and the context outlives
-    this call, so the file is tracked in ``temp_files`` and removed by
-    :func:`_cleanup_temp_certs` on teardown rather than by a ``with`` block.
-    """
-    path = str(write_secret_temp_file(secret_value, suffix=".pem"))
-    temp_files.append(path)
-
-    return path
+    return write_temp_secret(secret_value, temp_files)
 
 
 def _cleanup_temp_certs(temp_files: list[str]) -> None:
-    temp_files[:] = [path for path in temp_files if not remove_secret_temp_file(path)]
+    cleanup_temp_secrets(temp_files)
 
 
 @dataclass
@@ -126,40 +99,17 @@ class NatsClient:
 
 
 def _build_tls_context(ssl_cfg: ValidateSslClientConfig, temp_files: list[str]) -> ssl.SSLContext:
-    ctx = ssl.create_default_context()
-    if ssl_cfg.caCertificate:
-        ctx.load_verify_locations(cadata=ssl_cfg.caCertificate.get_secret_value())
-    if bool(ssl_cfg.sslCertificate) != bool(ssl_cfg.sslKey):
-        raise ValueError("Both the TLS client certificate and key must be configured together")
-    if ssl_cfg.sslCertificate and ssl_cfg.sslKey:
-        cert_path = _write_temp_cert(ssl_cfg.sslCertificate.get_secret_value(), temp_files)
-        key_path = _write_temp_cert(ssl_cfg.sslKey.get_secret_value(), temp_files)
-        ctx.load_cert_chain(certfile=cert_path, keyfile=key_path)
-    return ctx
+    return build_tls_context(ssl_cfg, temp_files)
 
 
 def _build_connect_opts(connection: NatsConnectionConfig, temp_cert_files: list[str]) -> dict:
-    opts = dict(connection.additionalConfig or {})
-    reserved = _RESERVED_CONNECT_OPTIONS.intersection(opts)
-    if reserved:
-        raise ValueError(f"Additional NATS config contains reserved connection options: {', '.join(sorted(reserved))}")
-    servers = [server.strip() for server in connection.natsServers.split(",")]
-    if any(not server for server in servers):
-        raise ValueError("NATS servers must be non-empty comma-separated URLs")
-    opts["servers"] = servers
-
-    if isinstance(connection.authType, BasicAuth):
-        opts["user"] = connection.authType.username
-        opts["password"] = connection.authType.password.get_secret_value()
-    elif isinstance(connection.authType, TokenAuth):
-        opts["token"] = connection.authType.token.get_secret_value()
-    elif isinstance(connection.authType, NkeyAuth):
-        opts["nkeys_seed_str"] = connection.authType.nkeySeed.get_secret_value()
-
-    if connection.tlsConfig and connection.tlsConfig.root:
-        opts["tls"] = _build_tls_context(connection.tlsConfig.root, temp_cert_files)
-
-    return opts
+    return build_connect_options(
+        servers=connection.natsServers,
+        auth=connection.authType,
+        tls_config=connection.tlsConfig,
+        additional_config=connection.additionalConfig,
+        temp_files=temp_cert_files,
+    )
 
 
 def get_connection(connection: NatsConnectionConfig) -> NatsClient:

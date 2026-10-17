@@ -1,0 +1,18 @@
+{
+  "title": "NKey Seed",
+  "description": "NKey seed authentication for NATS.",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
+  "type": "object",
+  "properties": {
+    "nkeySeed": {
+      "title": "NKey Seed",
+      "description": "NKey seed for NATS authentication.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "required": [
+    "nkeySeed"
+  ],
+  "additionalProperties": false
+}
