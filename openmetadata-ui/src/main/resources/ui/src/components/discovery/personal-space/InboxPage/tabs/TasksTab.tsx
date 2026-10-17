@@ -35,6 +35,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
   listTasks,
@@ -603,11 +604,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // The Triage tab badge and the sidebar inbox bubble read one open-task query,
   // so a mutation here would otherwise sit behind its stale window — and the
   // sidebar never unmounts, so it would not refetch until a navigation or a tab
-  // refocus.
-  const syncInboxCountBadge = useCallback(() => {
+  // refocus. The home page's My Tasks card caches the same open tasks, so a
+  // return home within its TTL would still offer actions on a resolved one.
+  const syncOpenTaskReaders = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
+    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(
@@ -631,7 +634,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       // The transition may shift the task across buckets, so re-sync the counts.
       invalidateTaskLists();
       refreshStatusCounts();
-      syncInboxCountBadge();
+      syncOpenTaskReaders();
     },
     [
       status,
@@ -639,7 +642,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       setTotal,
       invalidateTaskLists,
       refreshStatusCounts,
-      syncInboxCountBadge,
+      syncOpenTaskReaders,
     ]
   );
 
@@ -649,8 +652,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const handleTaskUpdated = useCallback(() => {
     invalidateTaskLists(true);
     refreshStatusCounts();
-    syncInboxCountBadge();
-  }, [invalidateTaskLists, refreshStatusCounts, syncInboxCountBadge]);
+    syncOpenTaskReaders();
+  }, [invalidateTaskLists, refreshStatusCounts, syncOpenTaskReaders]);
 
   // A comment change doesn't affect the task's bucket or visibility, so patch the
   // row in place instead of refetching the list.

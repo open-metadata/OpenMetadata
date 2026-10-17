@@ -153,13 +153,18 @@ describe('useBulkResolveTasks', () => {
       .mockResolvedValueOnce({} as Task);
     const { result } = renderHook(() => useBulkResolveTasks(), { wrapper });
 
-    await act(() =>
-      result.current.resolveTasks({
+    let outcome:
+      | Awaited<ReturnType<typeof result.current.resolveTasks>>
+      | undefined;
+    await act(async () => {
+      outcome = await result.current.resolveTasks({
         decision: 'approve',
         tasks: [workflowTask('a'), workflowTask('b')],
-      })
-    );
+      });
+    });
 
+    // The failed one is handed back so the card can keep it selected.
+    expect(outcome?.unresolvedIds).toEqual(['a']);
     expect(showSuccessToast).toHaveBeenCalledWith(
       'message.count-tasks-resolved {"count":1}'
     );

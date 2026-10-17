@@ -65,11 +65,16 @@ export const useBulkResolveTasks = () => {
             : Promise.reject(new Error(NEEDS_INPUT));
         })
       );
-      const resolved = results.filter(
-        (result) => result.status === 'fulfilled'
-      ).length;
+      // Handed back so the card keeps them selected for a retry.
+      const unresolvedIds = tasks
+        .filter((_, index) => results[index].status === 'rejected')
+        .map(({ id }) => id);
 
-      return { resolved, unresolved: results.length - resolved };
+      return {
+        resolved: tasks.length - unresolvedIds.length,
+        unresolved: unresolvedIds.length,
+        unresolvedIds,
+      };
     },
     onSuccess: ({ resolved, unresolved }) => {
       if (resolved > 0) {

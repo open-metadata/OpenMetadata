@@ -104,10 +104,14 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
 
   const handleResolve = async (decision: BulkDecision) => {
     try {
-      await resolveTasks({ decision, tasks: selectedTasks });
-      setSelectedIds(new Set());
+      const { unresolvedIds } = await resolveTasks({
+        decision,
+        tasks: selectedTasks,
+      });
+      // The hook has already said what failed; those stay selected for a retry.
+      setSelectedIds(new Set(unresolvedIds));
     } catch {
-      // The hook has already said what failed; the selection stays for a retry.
+      // A request that failed outright leaves the whole selection for a retry.
     }
   };
 

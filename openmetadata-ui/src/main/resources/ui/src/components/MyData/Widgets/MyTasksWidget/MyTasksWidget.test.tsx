@@ -106,7 +106,7 @@ const MY_TASKS = {
   total: 25,
 };
 
-const mockResolveTasks = jest.fn().mockResolvedValue(undefined);
+const mockResolveTasks = jest.fn().mockResolvedValue({ unresolvedIds: [] });
 
 const renderWidget = (
   myTasks: Partial<typeof MY_TASKS> = {},
@@ -276,6 +276,21 @@ describe('MyTasksWidget', () => {
 
     await waitFor(() =>
       expect(screen.queryByTestId('my-tasks-selection-bar')).toBeNull()
+    );
+  });
+
+  it('keeps the tasks that failed to resolve selected for a retry', async () => {
+    mockResolveTasks.mockResolvedValueOnce({ unresolvedIds: ['3'] });
+    renderWidget();
+
+    select('2');
+    select('3');
+    fireEvent.click(screen.getByTestId('my-tasks-bulk-approve'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('my-tasks-selected-count')).toHaveTextContent(
+        'label.n-selected {"count":1}'
+      )
     );
   });
 
