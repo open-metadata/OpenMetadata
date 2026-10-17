@@ -198,8 +198,9 @@ const RelationshipTypeRow = ({
           ) : null}
           <Typography
             as="span"
-            className="tw:font-semibold tw:text-primary"
-            data-testid={`relation-name-${relationshipType.name}`}>
+            className="tw:text-primary"
+            data-testid={`relation-name-${relationshipType.name}`}
+            weight="medium">
             {relationshipType.name}
           </Typography>
         </div>
