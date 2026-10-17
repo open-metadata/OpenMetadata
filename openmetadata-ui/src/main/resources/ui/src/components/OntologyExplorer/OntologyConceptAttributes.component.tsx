@@ -40,7 +40,6 @@ import {
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
-  InspectorEmptyText,
   InspectorForm,
   InspectorList,
   InspectorRemoveButton,
@@ -611,16 +610,12 @@ export const OntologyConceptAttributes: React.FC<
           label={t('label.properties')}
           onAdd={canAdd ? () => setIsAdding(true) : undefined}
         />
-        {propertyCount === 0 ? (
-          <InspectorEmptyText>
-            {t('message.no-concept-properties')}
-          </InspectorEmptyText>
-        ) : (
+        {propertyCount > 0 ? (
           <InspectorList>
             {attributes.map(renderAttributeRow)}
             {inheritedAttributes.map(renderInheritedAttributeRow)}
           </InspectorList>
-        )}
+        ) : null}
         {showEditControls && isAdding ? renderInspectorForm() : null}
       </InspectorSection>
     );

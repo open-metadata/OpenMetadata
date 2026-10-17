@@ -68,6 +68,7 @@ import {
   exportUserOfTeam,
   getTeamByName,
   getTeams,
+  getTeamsAssetCounts,
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
@@ -180,6 +181,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
+  const [teamAssetCounts, setTeamAssetCounts] = useState<
+    Record<string, number>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isChildTeamsLoading, setIsChildTeamsLoading] = useState(false);
   const [showDeletedTeam, setShowDeletedTeam] = useState(false);
@@ -327,11 +331,20 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, [fqn, onRename]);
 
+  const fetchTeamAssetCounts = useCallback(async () => {
+    try {
+      setTeamAssetCounts(await getTeamsAssetCounts());
+    } catch {
+      // Same as the Teams settings page: without the aggregation, counts show 0.
+    }
+  }, []);
+
   const fetchChildTeams = useCallback(async () => {
     if (!team?.fullyQualifiedName) {
       return;
     }
     setIsChildTeamsLoading(true);
+    void fetchTeamAssetCounts();
     try {
       const { data } = await getTeams({
         parentTeam: team.fullyQualifiedName,
@@ -339,7 +352,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         fields: [
           TabSpecificField.USER_COUNT,
           TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.OWNS,
           TabSpecificField.PARENTS,
         ],
       });
@@ -350,7 +362,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     } finally {
       setIsChildTeamsLoading(false);
     }
-  }, [team?.fullyQualifiedName, showDeletedTeam]);
+  }, [team?.fullyQualifiedName, showDeletedTeam, fetchTeamAssetCounts]);
 
   // Lazy-load a row's sub-teams on first expand and graft them into the tree,
   // so the hierarchy is revealed without fetching every level upfront.
@@ -366,7 +378,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           fields: [
             TabSpecificField.USER_COUNT,
             TabSpecificField.CHILDREN_COUNT,
-            TabSpecificField.OWNS,
             TabSpecificField.PARENTS,
           ],
         });
@@ -903,8 +914,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   // Child team columns
   const childTeamColumns = useMemo(
-    () => getChildTeamColumns(t, onNavigate),
-    [t, onNavigate]
+    () => getChildTeamColumns(t, onNavigate, teamAssetCounts),
+    [t, onNavigate, teamAssetCounts]
   );
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(

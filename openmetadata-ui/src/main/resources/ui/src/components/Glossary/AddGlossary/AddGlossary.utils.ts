@@ -12,8 +12,12 @@
  */
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateGlossary } from '../../../generated/api/data/createGlossary';
-import { EntityReference } from '../../../generated/entity/type';
+import {
+  CustomProperty,
+  EntityReference,
+} from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { serializeIntakeFormExtension } from '../../../utils/IntakeFormExtensionUtils';
 import {
   EntityReferenceOption,
   GlossaryFormValues,
@@ -57,11 +61,16 @@ export const getOwnersOrCurrentUser = (
 
 export const transformGlossaryFormData = (
   values: GlossaryFormValues,
-  currentUserId?: string
+  currentUserId?: string,
+  customProperties: CustomProperty[] = []
 ): CreateGlossary => {
   const domains = toEntityReferences(values.domains)
     .map((domain) => domain.fullyQualifiedName)
     .filter((fqn): fqn is string => Boolean(fqn));
+  const extension = serializeIntakeFormExtension(
+    values.extensionFormValues,
+    customProperties
+  );
 
   return {
     name: values.name.trim(),
@@ -75,6 +84,7 @@ export const transformGlossaryFormData = (
     tags: values.tags ?? [],
     mutuallyExclusive: Boolean(values.mutuallyExclusive),
     domains: domains.length > 0 ? domains : undefined,
+    ...(Object.keys(extension).length > 0 ? { extension } : {}),
   };
 };
 

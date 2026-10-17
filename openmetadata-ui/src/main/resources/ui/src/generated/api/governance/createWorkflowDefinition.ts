@@ -50,6 +50,7 @@ export interface CreateWorkflowDefinition {
  * Configuration for the Workflow Definition
  */
 export interface WorkflowConfiguration {
+    lifecycle?: LifecycleConfiguration;
     /**
      * If True, all the stage status will be stored in the database.
      */
@@ -57,211 +58,106 @@ export interface WorkflowConfiguration {
 }
 
 /**
- * Governance Workflow Edge.
+ * Optional presentation metadata for guided lifecycle workflows. Executable nodes and edges
+ * remain authoritative; editors must verify that the metadata compiles to the saved graph
+ * before editing it as stages.
  */
-export interface EdgeDefinition {
-    /**
-     * Defines if the edge will follow a path depending on the source node result.
-     */
-    condition?: string;
-    /**
-     * Element from which the edge will start.
-     */
-    from: string;
-    /**
-     * Element on which the edge will end.
-     */
-    to: string;
+export interface LifecycleConfiguration {
+    entityType: EntityType;
+    gates:      LifecycleGate[];
+    version:    number;
+}
+
+export enum EntityType {
+    DataProduct = "dataProduct",
+    Domain = "domain",
+    Glossary = "glossary",
+    GlossaryTerm = "glossaryTerm",
+    Metric = "metric",
 }
 
 /**
- * Checks if an Entity attributes fit given rules.
- *
- * Sets any Entity attribute field to the configured value.
- *
- * EndEvent.
- *
- * StartEvent.
- *
- * Defines a Task for a given User to approve.
- *
- * Runs the Policy Agent to enforce data access on supported connectors, or falls back to a
- * manual grant step.
- *
- * Creates (or updates) a service-scoped AI Automation from a seed template and runs it.
+ * A stage of the guided lifecycle: the fields and conditions an asset needs before it can
+ * leave the stage, and who is asked to complete them.
  */
-export interface CheckEntityAttributesTaskDefinition {
+export interface LifecycleGate {
     /**
-     * Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual',
-     * 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node
-     * authors declare only the branches their delegate actually emits, and each declared branch
-     * must have a matching outgoing edge in the workflow.
+     * Fields the asset must fill in before it can leave the stage.
      */
-    branches?: string[];
-    config?:   NodeConfiguration;
+    checks: LifecycleFieldCheck[];
     /**
-     * Description of the Node.
+     * JSON Logic condition the asset must also meet before it can leave the stage.
      */
-    description?: string;
+    conditions?: string;
+    stage:       EntityStatus;
     /**
-     * Display Name that identifies this Node.
+     * Who is asked to fill in the missing fields or get the conditions met. Without it the
+     * stage holds the asset and asks no one
+     * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
      */
-    displayName?:       string;
-    input?:             string[];
-    inputNamespaceMap?: InputNamespaceMap;
-    /**
-     * Name that identifies this Node.
-     */
-    name?:    string;
-    subType?: string;
-    type?:    string;
-    output?:  string[];
-    [property: string]: any;
-}
-
-export interface NodeConfiguration {
-    /**
-     * Define certain set of rules that you would like to check. If all the rules apply, this
-     * will be set as 'True' and will continue through the positive flow. Otherwise it will be
-     * set to 'False' and continue through the negative flow.
-     */
-    rules?: string;
-    /**
-     * Entity field name to set (e.g., 'status', 'description', 'displayName')
-     */
-    fieldName?: string;
-    /**
-     * Value to set for the field
-     */
-    fieldValue?: string;
-    /**
-     * In a workflow in Enforce approval mode, let reviewers approve or reject some of a change
-     * request's changes and leave the rest pending. Changes reviewers agree to approve are
-     * published and changes they agree to reject are dropped, while this task stays open with
-     * the remaining changes; the workflow leaves it through approve or reject once nothing is
-     * pending. A change is agreed once it reaches the approval or rejection threshold.
-     */
-    allowPartialDecisions?: boolean;
-    /**
-     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
-     * single reviewer can approve).
-     */
-    approvalThreshold?: number;
-    /**
-     * People/Teams assigned to the Task.
-     */
-    assignees?: Assignees;
-    /**
-     * Optional label describing how assignees are derived for the stage.
-     */
-    assigneeStrategy?: string;
-    /**
-     * Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date
-     * variable. The boundary timer interrupts the user task and exits the subprocess with the
-     * configured transitionId as the node's result, so an outgoing edge with that condition
-     * routes the workflow downstream (e.g. to auto-revoke or auto-close).
-     */
-    expiryTimer?: ExpiryTimer;
-    /**
-     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
-     * single reviewer can reject). This allows for scenarios where you want multiple approvals
-     * but a single rejection can veto.
-     */
-    rejectionThreshold?: number;
-    /**
-     * Human-readable stage label shown to task assignees.
-     */
-    stageDisplayName?: string;
-    /**
-     * Workflow stage identifier stored on the task while this user task is active.
-     */
-    stageId?: string;
-    /**
-     * Coarse task status mapped while this user task is active.
-     */
-    taskStatus?: TaskStatus;
-    /**
-     * Transitions available from this stage. Edge conditions should match these transition ids.
-     */
-    transitionMetadata?: TransitionMetadatum[];
-    /**
-     * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
-     * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
-     * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
-     * whatever the principal holds on the scope (a revoke takes back everything, not a specific
-     * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
-     * to decide what to tear down. When unset, the agent uses the accessType from the request
-     * payload.
-     */
-    accessType?: AccessType;
-    /**
-     * Maximum seconds to wait for the Policy Agent pipeline to complete.
-     *
-     * Seconds to wait before treating the run as timed out.
-     */
-    timeoutSeconds?: number;
-    /**
-     * If true, waits for the Policy Agent ingestion pipeline to finish before continuing.
-     *
-     * Set if this step should wait until the Automation run finishes.
-     */
-    waitForCompletion?: boolean;
-    /**
-     * If True, it will be created/updated and run. Otherwise it will only be created/updated.
-     */
-    shouldRun?: boolean;
-    /**
-     * Name of the seed AI Automation template to instantiate per service (e.g.
-     * DescriptionAutomation).
-     */
-    template?: string;
+    task?: Task;
 }
 
 /**
- * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
- * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
- * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
- * whatever the principal holds on the scope (a revoke takes back everything, not a specific
- * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
- * to decide what to tear down. When unset, the agent uses the accessType from the request
- * payload.
- *
- * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
- * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
- * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
- * whatever the principal currently holds at the scope (a revoke takes back everything, not
- * a specific level).
+ * A field the asset must fill in before it can leave the gate's stage.
  */
-export enum AccessType {
-    ColumnLevel = "ColumnLevel",
-    FullAccess = "FullAccess",
-    Masked = "Masked",
-    Revoke = "Revoke",
+export interface LifecycleFieldCheck {
+    field: string;
+    /**
+     * Number and boolean fields accept zero and false as filled-in values.
+     */
+    valueType?: ValueType;
 }
 
 /**
- * People/Teams assigned to the Task.
+ * Number and boolean fields accept zero and false as filled-in values.
  */
-export interface Assignees {
-    /**
-     * Add the Owners to the assignees List.
-     */
-    addOwners?: boolean;
-    /**
-     * Add the Reviewers to the assignees List.
-     */
-    addReviewers?: boolean;
-    /**
-     * List of specific candidates (users or teams) assigned to this task.
-     */
+export enum ValueType {
+    Boolean = "boolean",
+    Number = "number",
+}
+
+/**
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Stage the asset is in while the approval is pending.
+ *
+ * Stage the asset moves to once approved.
+ *
+ * The task applies while the asset is in this stage.
+ *
+ * The stage the asset moves to once the fields are filled in.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * Who is asked to fill in the missing fields or get the conditions met. Without it the
+ * stage holds the asset and asks no one
+ * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+ */
+export interface Task {
+    assignees:   TaskAssigneesEnum;
     candidates?: EntityReference[];
-    /**
-     * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
-     * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
-     * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
-     * excluding the requester so self-approval can never happen.
-     */
-    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
+}
+
+/**
+ * Who is asked to complete what the stage still needs.
+ */
+export enum TaskAssigneesEnum {
+    Candidates = "candidates",
+    Owners = "owners",
+    Reviewers = "reviewers",
 }
 
 /**
@@ -321,14 +217,286 @@ export interface EntityReference {
 }
 
 /**
+ * Governance Workflow Edge.
+ */
+export interface EdgeDefinition {
+    /**
+     * Defines if the edge will follow a path depending on the source node result.
+     */
+    condition?: string;
+    /**
+     * Element from which the edge will start.
+     */
+    from: string;
+    /**
+     * Element on which the edge will end.
+     */
+    to: string;
+}
+
+/**
+ * Checks if an Entity attributes fit given rules.
+ *
+ * Evaluates entity data completeness based on field presence and outputs quality bands.
+ *
+ * Sets any Entity attribute field to the configured value.
+ *
+ * EndEvent.
+ *
+ * StartEvent.
+ *
+ * Defines a Task for a given User to approve.
+ *
+ * Runs the Policy Agent to enforce data access on supported connectors, or falls back to a
+ * manual grant step.
+ *
+ * Creates (or updates) a service-scoped AI Automation from a seed template and runs it.
+ *
+ * Keeps one Metadata Completion task open on an asset while it is in this node's stage and
+ * any listed field is still empty or the stage's conditions are not met
+ * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage
+ * gate, not the task, decides whether the asset advances.
+ */
+export interface CheckEntityAttributesTaskDefinition {
+    /**
+     * Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual',
+     * 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node
+     * authors declare only the branches their delegate actually emits, and each declared branch
+     * must have a matching outgoing edge in the workflow.
+     */
+    branches?: string[];
+    config?:   NodeConfiguration;
+    /**
+     * Description of the Node.
+     *
+     * Description of what this completeness check does
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this Node.
+     *
+     * User-friendly display name for this node
+     */
+    displayName?:       string;
+    input?:             string[];
+    inputNamespaceMap?: InputNamespaceMap;
+    /**
+     * Name that identifies this Node.
+     *
+     * Unique name that identifies this node in the workflow
+     */
+    name?:    string;
+    subType?: string;
+    type?:    string;
+    /**
+     * Variables this node outputs for use in subsequent nodes
+     */
+    output?: string[];
+    [property: string]: any;
+}
+
+export interface NodeConfiguration {
+    /**
+     * Define certain set of rules that you would like to check. If all the rules apply, this
+     * will be set as 'True' and will continue through the positive flow. Otherwise it will be
+     * set to 'False' and continue through the negative flow.
+     */
+    rules?: string;
+    /**
+     * List of entity field paths to evaluate. Supports dot notation for nested fields (e.g.,
+     * 'owner.name', 'columns[].description')
+     */
+    fieldsToCheck?: string[];
+    /**
+     * Define quality levels based on completeness scores. Bands are evaluated from highest to
+     * lowest score.
+     */
+    qualityBands?: QualityBand[];
+    /**
+     * Entity field name to set (e.g., 'status', 'description', 'displayName')
+     */
+    fieldName?: string;
+    /**
+     * Value to set for the field
+     */
+    fieldValue?: string;
+    /**
+     * In a workflow in Enforce approval mode, let reviewers approve or reject some of a change
+     * request's changes and leave the rest pending. Changes reviewers agree to approve are
+     * published and changes they agree to reject are dropped, while this task stays open with
+     * the remaining changes; the workflow leaves it through approve or reject once nothing is
+     * pending. A change is agreed once it reaches the approval or rejection threshold.
+     */
+    allowPartialDecisions?: boolean;
+    /**
+     * Number of reviewers that must approve for the task to be completed. Default is 1 (any
+     * single reviewer can approve).
+     */
+    approvalThreshold?: number;
+    /**
+     * People/Teams assigned to the Task.
+     */
+    assignees?: Assignees;
+    /**
+     * Optional label describing how assignees are derived for the stage.
+     */
+    assigneeStrategy?: string;
+    /**
+     * Auto-fires from either a relative ISO 8601 duration variable or an absolute ISO 8601 date
+     * variable. The boundary timer interrupts the user task and exits the subprocess with the
+     * configured transitionId as the node's result, so an outgoing edge with that condition
+     * routes the workflow downstream (e.g. to auto-revoke or auto-close).
+     */
+    expiryTimer?: ExpiryTimer;
+    /**
+     * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+     * the asset from one stage to the next instead of listing the changes that led to it.
+     */
+    lifecycleMove?: LifecycleMove;
+    /**
+     * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
+     * single reviewer can reject). This allows for scenarios where you want multiple approvals
+     * but a single rejection can veto.
+     */
+    rejectionThreshold?: number;
+    /**
+     * Human-readable stage label shown to task assignees.
+     */
+    stageDisplayName?: string;
+    /**
+     * Workflow stage identifier stored on the task while this user task is active.
+     */
+    stageId?: string;
+    /**
+     * Coarse task status mapped while this user task is active.
+     */
+    taskStatus?: TaskStatus;
+    /**
+     * Transitions available from this stage. Edge conditions should match these transition ids.
+     */
+    transitionMetadata?: TransitionMetadatum[];
+    /**
+     * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+     * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+     * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+     * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+     * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+     * to decide what to tear down. When unset, the agent uses the accessType from the request
+     * payload.
+     */
+    accessType?: AccessType;
+    /**
+     * Maximum seconds to wait for the Policy Agent pipeline to complete.
+     *
+     * Seconds to wait before treating the run as timed out.
+     */
+    timeoutSeconds?: number;
+    /**
+     * If true, waits for the Policy Agent ingestion pipeline to finish before continuing.
+     *
+     * Set if this step should wait until the Automation run finishes.
+     */
+    waitForCompletion?: boolean;
+    /**
+     * If True, it will be created/updated and run. Otherwise it will only be created/updated.
+     */
+    shouldRun?: boolean;
+    /**
+     * Name of the seed AI Automation template to instantiate per service (e.g.
+     * DescriptionAutomation).
+     */
+    template?: string;
+    /**
+     * Assignees when the task goes to specific users or teams.
+     */
+    candidates?: EntityReference[];
+    /**
+     * JSON Logic condition the asset must also meet before it leaves the stage. The task only
+     * reports that it is not met.
+     */
+    conditions?: string;
+    /**
+     * Fields the task asks for; it lists only the ones still empty.
+     */
+    fields?: RequiredField[];
+    /**
+     * The task applies while the asset is in this stage.
+     */
+    stage?: EntityStatus;
+    /**
+     * The stage the asset moves to once the fields are filled in.
+     */
+    targetStage?: EntityStatus;
+    /**
+     * Who is asked to complete what the stage still needs.
+     */
+    taskAssignees?: TaskAssigneesEnum;
+}
+
+/**
+ * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+ * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+ * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+ * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+ * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+ * to decide what to tear down. When unset, the agent uses the accessType from the request
+ * payload.
+ *
+ * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
+ * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
+ * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
+ * whatever the principal currently holds at the scope (a revoke takes back everything, not
+ * a specific level).
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+    Revoke = "Revoke",
+}
+
+/**
+ * People/Teams assigned to the Task.
+ */
+export interface Assignees {
+    /**
+     * Resolve owners from the asset’s domains at execution time. For a domain, use its own
+     * owners.
+     */
+    addDomainOwners?: boolean;
+    /**
+     * Add the Owners to the assignees List.
+     */
+    addOwners?: boolean;
+    /**
+     * Add the Reviewers to the assignees List.
+     */
+    addReviewers?: boolean;
+    /**
+     * List of specific candidates (users or teams) assigned to this task.
+     */
+    candidates?: EntityReference[];
+    /**
+     * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+     * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+     * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+     * excluding the requester so self-approval can never happen. 'wait' creates an unassigned
+     * task when no eligible assignee is available, without auto-approval or an admin fallback.
+     */
+    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
+}
+
+/**
  * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
  * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
  * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
- * excluding the requester so self-approval can never happen.
+ * excluding the requester so self-approval can never happen. 'wait' creates an unassigned
+ * task when no eligible assignee is available, without auto-approval or an admin fallback.
  */
 export enum EmptyAssigneeStrategy {
     AssignAdmins = "assignAdmins",
     None = "none",
+    Wait = "wait",
 }
 
 /**
@@ -380,6 +548,47 @@ export enum ResolutionType {
     Rejected = "Rejected",
     Revoked = "Revoked",
     TimedOut = "TimedOut",
+}
+
+/**
+ * A field the asset must fill in, with the JSON Logic condition that is true once it is
+ * filled in.
+ */
+export interface RequiredField {
+    /**
+     * Path of the field, such as description, owners or extension.<property>.
+     */
+    field: string;
+    /**
+     * JSON Logic condition that is true once the field is filled in.
+     */
+    rules: string;
+}
+
+/**
+ * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+ * the asset from one stage to the next instead of listing the changes that led to it.
+ */
+export interface LifecycleMove {
+    /**
+     * Stage the asset is in while the approval is pending.
+     */
+    stage: EntityStatus;
+    /**
+     * Stage the asset moves to once approved.
+     */
+    targetStage: EntityStatus;
+}
+
+export interface QualityBand {
+    /**
+     * Minimum completeness percentage for this band
+     */
+    minimumScore: number;
+    /**
+     * Name for this quality band (e.g., 'gold', 'excellent', 'tier1')
+     */
+    name: string;
 }
 
 /**

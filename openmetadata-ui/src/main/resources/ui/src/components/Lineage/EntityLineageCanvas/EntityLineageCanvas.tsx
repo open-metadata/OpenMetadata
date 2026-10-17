@@ -111,6 +111,7 @@ const EntityLineageCanvas = ({
     selectedEdge,
     selectedNode,
     openDeleteModal,
+    renderAllNodes,
     setCanEditLineage,
     setIsCreatingEdge,
   } = useLineageStore();
@@ -304,6 +305,7 @@ const EntityLineageCanvas = ({
         nodeTypes={nodeTypes}
         nodes={flowNodes}
         nodesConnectable={false}
+        onlyRenderVisibleElements={!renderAllNodes}
         selectNodesOnDrag={false}
         onInit={onInitReactFlow}
         onNodeClick={handleNodeClick}

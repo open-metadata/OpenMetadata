@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useNavigate } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -221,6 +220,17 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
     expect(
       getDataProductClassBase().getRequestDataAccessButton
     ).toHaveBeenCalled();
+  });
+
+  it('reloads the data product once a task on it is decided', () => {
+    const onRefresh = jest.fn();
+    render(<DataProductsDetailsPage {...defaultProps} onRefresh={onRefresh} />);
+
+    expect(
+      getDataProductClassBase().getDataProductDetailPageTabs
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ onUpdateEntityDetails: onRefresh })
+    );
   });
 
   it('delegates the DAR banner to dataProductClassBase', () => {
@@ -440,27 +450,38 @@ describe('DataProductsDetailsPage — contract latest-result button', () => {
     setMockPermissions(ENTITY_PERMISSIONS);
   });
 
-  it('renders the aborted state with its status tint and opens the contract tab', async () => {
+  it('renders the aborted state as an orange badge linking to the contract tab', async () => {
     (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
       latestResult: { status: ContractExecutionStatus.Aborted },
     });
 
     render(<DataProductsDetailsPage {...defaultProps} />);
 
-    const button = await screen.findByTestId('data-contract-latest-result-btn');
+    const badge = await screen.findByTestId('data-contract-latest-result-btn');
 
-    expect(button.tagName).toBe('BUTTON');
-    expect(button).toHaveClass(
-      'tw:bg-(--om-legacy-color-fef6ee)!',
-      'tw:after:outline-(--om-legacy-color-f9dbaf)!'
+    expect(badge.tagName).toBe('A');
+    expect(badge).toHaveClass(
+      'tw:bg-utility-orange-50',
+      'tw:text-utility-orange-700'
     );
-
-    fireEvent.click(button);
-
-    expect((useNavigate as jest.Mock)()).toHaveBeenCalledWith(
-      '/data-product/test.dataproduct/contract',
-      { replace: true }
+    expect(badge).toHaveAttribute(
+      'href',
+      '/data-product/test.dataproduct/contract'
     );
+  });
+
+  it('keeps the selected version when linking to the contract tab from version history', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Failed },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} isVersionsView />);
+
+    const badge = await screen.findByTestId('data-contract-latest-result-btn');
+    const href = badge.getAttribute('href') ?? '';
+
+    expect(href).toContain('/versions/0.1');
+    expect(href.endsWith('/contract')).toBe(true);
   });
 
   it('does not render the button for a passing contract', async () => {

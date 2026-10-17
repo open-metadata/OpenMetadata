@@ -27,7 +27,10 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.flowable.bpmn.model.TimerEventDefinition;
+import org.flowable.bpmn.model.UserTask;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.TaskCategory;
@@ -35,6 +38,35 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class UserApprovalTaskTest {
+
+  @ParameterizedTest
+  @CsvSource({"none,true", "assignAdmins,true", "wait,false"})
+  void onlyExplicitWaitDisablesEntityOwnerFallback(
+      final String strategy, final String expectedFallback) {
+    final var definition =
+        JsonUtils.readValue(
+            USER_TASK_WITH_DATE_TIMER.replace("assignAdmins", strategy),
+            UserApprovalTaskDefinition.class);
+    final var task =
+        new UserApprovalTask(definition, new WorkflowConfiguration().withStoreStageStatus(false));
+    final var process = new Process();
+    task.addToWorkflow(new BpmnModel(), process);
+    final var subProcess = (SubProcess) process.getFlowElement("Review");
+    final var approval = (UserTask) subProcess.getFlowElement("Review.approvalTask");
+    final var createTask =
+        approval.getTaskListeners().stream()
+            .filter(listener -> CreateTask.class.getName().equals(listener.getImplementation()))
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals(
+        expectedFallback,
+        createTask.getFieldExtensions().stream()
+            .filter(field -> "useEntityOwnerFallbackExpr".equals(field.getFieldName()))
+            .findFirst()
+            .orElseThrow()
+            .getStringValue());
+  }
 
   @Test
   void expiryTimerUsesAbsoluteTimeDateWhenDateVariableIsConfigured() {

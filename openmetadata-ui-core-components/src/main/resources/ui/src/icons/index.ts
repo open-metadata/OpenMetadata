@@ -507,6 +507,7 @@ export { AppSlack } from './AppSlack';
 export { AppSupportColored } from './AppSupportColored';
 export { AppTelemetryColored } from './AppTelemetryColored';
 export { AppWeeklyInsightsDigestColored } from './AppWeeklyInsightsDigestColored';
+export { AskCollateSparkle } from './AskCollateSparkle';
 export { Auth0 } from './Auth0';
 export { Bronze } from './Bronze';
 export { ColumnCustomize } from './ColumnCustomize';
