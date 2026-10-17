@@ -1,5 +1,6 @@
 package org.openmetadata.service.ontology;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.apache.jena.rdf.model.Model;
@@ -25,14 +26,17 @@ public final class OntologyReleaseQuery {
   }
 
   public OntologySparqlQueryService.QueryResult query(
-      final UUID id, final SparqlQuery request, final Consumer<OntologyDefinition> authorize) {
+      final UUID id,
+      final SparqlQuery request,
+      final Consumer<List<? extends OntologyDefinition>> authorize) {
     return new OntologySparqlQueryService(
             (ontologyId, ignored) -> activeModel(ontologyId, authorize),
             new SparqlFederationGuard(null))
         .query(id, request);
   }
 
-  private Model activeModel(final UUID id, final Consumer<OntologyDefinition> authorize) {
+  private Model activeModel(
+      final UUID id, final Consumer<List<? extends OntologyDefinition>> authorize) {
     final UUID releaseId = ontologies.getState(id).getActiveReleaseId();
     if (releaseId == null) {
       throw new BadRequestException("Activate an approved ontology release before querying it");

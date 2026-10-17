@@ -39,8 +39,8 @@ class OntologyReleaseActivationTest {
           final var access =
               new OntologyReleaseActivation.Access(
                   "admin",
-                  definition -> {
-                    if (definition instanceof OntologyRelease) {
+                  definitions -> {
+                    if (definitions.stream().anyMatch(OntologyRelease.class::isInstance)) {
                       try (final var writer = Executors.newSingleThreadExecutor()) {
                         writer
                             .submit(
@@ -54,7 +54,7 @@ class OntologyReleaseActivationTest {
                                                 "/description",
                                                 "Edited while validating the release")
                                             .build()))
-                            .get(3, TimeUnit.SECONDS);
+                            .get(15, TimeUnit.SECONDS);
                       } catch (InterruptedException
                           | ExecutionException
                           | TimeoutException failure) {

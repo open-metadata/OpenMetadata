@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -1337,64 +1343,84 @@ describe('TaskTabNew Component', () => {
     });
   });
 
-  it('resolves a native ontology review without echoing its proposed content', async () => {
-    const { useAuth } = require('../../../../hooks/authHooks');
-    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
-    const { resolveTask } = require('../../../../rest/tasksAPI');
-    useAuth.mockReturnValue({ isAdminUser: true });
-    isTagsTaskType.mockReturnValue(false);
-    const task: Task = {
-      ...MOCK_TASK,
-      type: TaskEntityType.RequestApproval,
-      category: TaskCategory.Approval,
-      about: { id: 'release-id', type: 'ontologyRelease' },
-      ontologyReview: {
-        entityId: 'release-id',
-        entityVersion: 0.2,
-        ontologyId: 'ontology-id',
-        author: 'author',
-        contentDigest: 'a'.repeat(64),
-      },
-      payload: { proposedChanges: { description: 'Captured release' } },
-      availableTransitions: [
-        {
-          id: 'approve',
-          label: 'Approve',
-          resolutionType: TaskResolutionType.Approved,
-          targetStageId: 'approved',
-          targetTaskStatus: TaskEntityStatus.Approved,
+  it.each([true, false])(
+    'restricts native ontology resolution to assigned reviewers (assigned: %s)',
+    async (assigned) => {
+      const { useAuth } = require('../../../../hooks/authHooks');
+      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+      const { resolveTask } = require('../../../../rest/tasksAPI');
+      useAuth.mockReturnValue({ isAdminUser: true });
+      isTagsTaskType.mockReturnValue(false);
+      const task: Task = {
+        ...MOCK_TASK,
+        type: TaskEntityType.RequestApproval,
+        category: TaskCategory.Approval,
+        about: { id: 'release-id', type: 'ontologyRelease' },
+        assignees: assigned
+          ? [{ id: 'test-user-id', type: 'user', name: 'test-user' }]
+          : [],
+        ontologyReview: {
+          entityId: 'release-id',
+          entityVersion: 0.2,
+          ontologyId: 'ontology-id',
+          author: 'author',
+          contentDigest: 'a'.repeat(64),
         },
-      ],
-    };
-    (APIClient.get as jest.Mock).mockImplementation(async (path: string) => ({
-      data: path.endsWith('/diff')
-        ? { data: [], paging: { total: 0 } }
-        : { id: 'release-id', version: 0.2, name: 'Release' },
-    }));
-    await act(async () => {
-      renderWithQueryClient(
-        <MemoryRouter>
-          <TaskTabNew {...mockProps} task={task} />
-        </MemoryRouter>
+        payload: { proposedChanges: { description: 'Captured release' } },
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'Approve',
+            resolutionType: TaskResolutionType.Approved,
+            targetStageId: 'approved',
+            targetTaskStatus: TaskEntityStatus.Approved,
+          },
+        ],
+      };
+      (APIClient.get as jest.Mock).mockImplementation(async (path: string) => ({
+        data: path.endsWith('/diff')
+          ? { data: [], paging: { total: 0 } }
+          : { id: 'release-id', version: 0.2, name: 'Release' },
+      }));
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TaskTabNew {...mockProps} task={task} />
+          </MemoryRouter>
+        );
+      });
+
+      if (!assigned) {
+        const panel = await screen.findByTestId('ontology-review-panel');
+        await waitFor(() =>
+          expect(within(panel).queryByRole('status')).not.toBeInTheDocument()
+        );
+
+        expect(
+          screen.queryByTestId('workflow-task-action-primary')
+        ).not.toBeInTheDocument();
+        expect(resolveTask).not.toHaveBeenCalled();
+
+        return;
+      }
+
+      await waitFor(() =>
+        expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled()
       );
-    });
 
-    await waitFor(() =>
-      expect(screen.getByTestId('workflow-task-action-primary')).toBeEnabled()
-    );
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
+      });
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
-    });
-
-    await waitFor(() =>
-      expect(resolveTask).toHaveBeenCalledWith(task.id, {
-        transitionId: 'approve',
-        resolutionType: TaskResolutionType.Approved,
-        comment: undefined,
-      })
-    );
-  });
+      await waitFor(() =>
+        expect(resolveTask).toHaveBeenCalledWith(task.id, {
+          transitionId: 'approve',
+          resolutionType: TaskResolutionType.Approved,
+          comment: undefined,
+        })
+      );
+    }
+  );
 
   it('disables release approval when the submitted content is unavailable', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
@@ -1407,6 +1433,7 @@ describe('TaskTabNew Component', () => {
       type: TaskEntityType.RequestApproval,
       category: TaskCategory.Approval,
       about: { id: 'release-id', type: 'ontologyRelease' },
+      assignees: [{ id: 'test-user-id', type: 'user', name: 'test-user' }],
       availableTransitions: [
         {
           id: 'approve',

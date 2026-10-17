@@ -30,7 +30,7 @@ public final class OntologyReleaseComparison {
       final OntologyRelease base,
       final int limit,
       final String after,
-      final Consumer<OntologyDefinition> authorize) {
+      final Consumer<List<? extends OntologyDefinition>> authorize) {
     if (limit < 1 || limit > 1000) {
       throw new BadRequestException("A release comparison page requires a limit from 1 to 1000");
     }

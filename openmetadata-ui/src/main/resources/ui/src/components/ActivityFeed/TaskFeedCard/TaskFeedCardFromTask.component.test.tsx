@@ -382,13 +382,14 @@ describe('TaskFeedCardFromTask', () => {
     }
   );
 
-  it('requires a comment before rejecting a non-ontology approval task', async () => {
+  it('preserves quick actions for non-ontology approval tasks', async () => {
     await act(async () => {
       render(
         <TaskFeedCardFromTask
           task={{
             ...ontologyReview,
             about: { id: 'glossary-id', type: 'glossary' },
+            payload: MOCK_TASK.payload,
             availableTransitions: [
               {
                 id: 'reject',
@@ -404,6 +405,7 @@ describe('TaskFeedCardFromTask', () => {
       );
     });
 
-    expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+    expect(screen.getByTestId('reject-button')).toBeInTheDocument();
   });
 });

@@ -15,6 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
@@ -192,7 +193,8 @@ public final class OntologyReleaseResource
       @PathParam("memberId") final UUID memberId) {
     get(uriInfo, securityContext, id);
     final OntologyReleaseMember member = repository.getMember(id, kind, memberId);
-    authorizeMember(securityContext, member);
+    OntologyResourceAccess.requireView(
+        authorizer, securityContext, List.of(OntologyReleaseReader.definition(member)));
     return member;
   }
 
@@ -211,13 +213,10 @@ public final class OntologyReleaseResource
     get(uriInfo, securityContext, id);
     final ResultList<OntologyReleaseMember> members =
         repository.listMembers(id, kind, limit, after);
-    members.getData().forEach(member -> authorizeMember(securityContext, member));
-    return members;
-  }
-
-  private void authorizeMember(
-      final SecurityContext securityContext, final OntologyReleaseMember member) {
     OntologyResourceAccess.requireView(
-        authorizer, securityContext, OntologyReleaseReader.definition(member));
+        authorizer,
+        securityContext,
+        members.getData().stream().map(OntologyReleaseReader::definition).toList());
+    return members;
   }
 }

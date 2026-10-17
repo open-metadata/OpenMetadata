@@ -3,6 +3,7 @@ package org.openmetadata.service.ontology;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.openmetadata.schema.OntologyDefinition;
@@ -25,7 +26,7 @@ public final class OntologyReleaseActivation {
   private final Clock clock;
   private final Consumer<UUID> enqueue;
 
-  public record Access(String user, Consumer<OntologyDefinition> authorize) {}
+  public record Access(String user, Consumer<List<? extends OntologyDefinition>> authorize) {}
 
   public OntologyReleaseActivation(
       final OntologyRepository ontologies, final Clock clock, final Consumer<UUID> enqueue) {

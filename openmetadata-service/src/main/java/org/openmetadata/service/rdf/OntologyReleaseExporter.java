@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf;
 
+import java.util.List;
 import java.util.function.Consumer;
 import org.apache.jena.rdf.model.Model;
 import org.openmetadata.schema.OntologyDefinition;
@@ -18,7 +19,7 @@ public final class OntologyReleaseExporter {
   public String export(
       final OntologyRelease release,
       final RdfSerializationFormat format,
-      final Consumer<OntologyDefinition> authorize) {
+      final Consumer<List<? extends OntologyDefinition>> authorize) {
     final var closure = reader.read(release, authorize);
     final Model model = new OntologyReleaseProjection().build(release, closure);
     try {

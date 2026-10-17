@@ -82,8 +82,10 @@ class OntologyReleaseComparisonStorageTest {
                         previous,
                         1,
                         null,
-                        definition -> {
-                          if (restricted.equals(definition.getDescription())) {
+                        definitions -> {
+                          if (definitions.stream()
+                              .anyMatch(
+                                  definition -> restricted.equals(definition.getDescription()))) {
                             throw new ForbiddenException("Restricted definition");
                           }
                         }));

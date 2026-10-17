@@ -256,14 +256,8 @@ const TaskFeedCardFromTask = ({
         : transition.id === 'approve'
     );
 
-  const canQuickResolve = (resolutionType: TaskResolutionType) => {
-    if (task.status !== TaskEntityStatus.Open || isOntologyReviewTask(task)) {
-      return false;
-    }
-    const transition = getTransition(resolutionType);
-
-    return !transition?.requiresComment;
-  };
+  const canQuickResolve = () =>
+    task.status === TaskEntityStatus.Open && !isOntologyReviewTask(task);
 
   const updateTaskData = async (
     newValue: string,
@@ -392,7 +386,7 @@ const TaskFeedCardFromTask = ({
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
         <Box gap={2}>
-          {canQuickResolve(TaskResolutionType.Approved) && (
+          {canQuickResolve() && (
             <Button
               color="tertiary"
               data-testid="approve-button"
@@ -404,7 +398,7 @@ const TaskFeedCardFromTask = ({
               {t('label.approve')}
             </Button>
           )}
-          {canQuickResolve(TaskResolutionType.Rejected) && (
+          {canQuickResolve() && (
             <Button
               color="tertiary-destructive"
               data-testid="reject-button"

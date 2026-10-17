@@ -1,5 +1,6 @@
 package org.openmetadata.service.ontology;
 
+import java.util.List;
 import java.util.function.Consumer;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
@@ -15,7 +16,7 @@ public final class OntologyReleaseStructure {
   }
 
   public OntologyReleaseStructureReport report(
-      final OntologyRelease release, final Consumer<OntologyDefinition> authorize) {
+      final OntologyRelease release, final Consumer<List<? extends OntologyDefinition>> authorize) {
     return OntologyStructureValidator.validate(release, reader.read(release, authorize));
   }
 }

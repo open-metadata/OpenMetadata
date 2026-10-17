@@ -448,12 +448,13 @@ class ChangeRequestImportAndBulkIT {
                         .withToEntity(downstream.getEntityReference())));
     admin.dataProducts().bulkAddOutputPorts(source.getFullyQualifiedName(), assets(held));
     assertTrue(lineageEdgeExists(source, target), "the products' lineage follows their tables'");
-    deployHookWorkflowFor(
+    deployWorkflowAssigning(
         ns,
         Entity.TABLE,
         "\"dataProducts\"",
         "",
-        filterScopedTo(Entity.TABLE, held.getFullyQualifiedName()));
+        filterScopedTo(Entity.TABLE, held.getFullyQualifiedName()),
+        SharedEntities.get().USER1.getEntityReference());
 
     BulkOperationResult removal =
         admin.dataProducts().bulkRemoveAssets(source.getFullyQualifiedName(), assets(held));
