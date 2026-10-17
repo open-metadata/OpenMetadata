@@ -88,7 +88,9 @@ public class PaginatedWebAnalyticEventDataSource
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
+              .withSubmittedCount(batchSize)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   "Issues in Reading A Batch For Entities. No Relationship Issue , Json Processing or DB issue.")
               .withLastFailedCursor(lastFailedCursor)
@@ -174,7 +176,9 @@ public class PaginatedWebAnalyticEventDataSource
       IndexingError indexingError =
           new IndexingError()
               .withErrorSource(READER)
+              .withSubmittedCount(batchSize)
               .withSuccessCount(0)
+              .withFailedCount(batchSize)
               .withMessage(
                   String.format(
                       "Failed to read keyset batch for web analytics. Error: %s", e.getMessage()))

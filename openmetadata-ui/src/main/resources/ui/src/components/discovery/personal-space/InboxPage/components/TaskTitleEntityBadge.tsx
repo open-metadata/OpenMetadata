@@ -17,14 +17,15 @@ import { formatEntityType } from '../taskList.utils';
 
 /**
  * The kind of asset a composed task title names ("Test Case"), set after the
- * title as a badge rather than in brackets.
+ * title as a badge rather than in brackets. Inline, so it follows the title on
+ * its last line rather than taking a line of its own.
  */
 const TaskTitleEntityBadge: React.FC<{ entityType?: string }> = ({
   entityType,
 }) =>
   entityType ? (
     <Badge
-      className="tw:ml-2 tw:align-middle"
+      className="tw:ml-2 tw:inline-flex tw:align-middle"
       color="gray"
       data-testid="task-title-entity-type"
       size="sm"

@@ -13,7 +13,6 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
 
-import { noop } from 'lodash';
 import { lazy } from 'react';
 import {
   ReactComponent as DataProductIcon,
@@ -132,6 +131,8 @@ export interface DataProductDetailPageTabProps {
   handleAssetSave: () => void;
   feedCount: FeedCounts;
   getEntityFeedCount: () => void;
+  // Reloads the data product after a task on it is decided, so its status and fields are current.
+  onUpdateEntityDetails?: () => void;
   labelMap?: Record<EntityTabs, string>;
 }
 
@@ -178,6 +179,7 @@ type DataProductNonVersionTabsProps = Pick<
   | 'handleAssetClick'
   | 'handleAssetSave'
   | 'labelMap'
+  | 'onUpdateEntityDetails'
   | 'previewAsset'
   | 'setAssetModalVisible'
   | 'setPreviewAsset'
@@ -212,6 +214,7 @@ const getDataProductNonVersionTabs = ({
   handleAssetClick,
   handleAssetSave,
   labelMap,
+  onUpdateEntityDetails,
   previewAsset,
   setAssetModalVisible,
   setPreviewAsset,
@@ -240,7 +243,7 @@ const getDataProductNonVersionTabs = ({
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={dataProduct.owners}
           onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={noop}
+          onUpdateEntityDetails={onUpdateEntityDetails}
         />
       </ActivityFeedProvider>
     ),
@@ -382,6 +385,7 @@ export const getDataProductDetailTabs = ({
   feedCount,
   getEntityFeedCount,
   labelMap,
+  onUpdateEntityDetails,
 }: DataProductDetailPageTabProps) => {
   const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
 
@@ -411,6 +415,7 @@ export const getDataProductDetailTabs = ({
           handleAssetClick,
           handleAssetSave,
           labelMap,
+          onUpdateEntityDetails,
           previewAsset,
           setAssetModalVisible,
           setPreviewAsset,

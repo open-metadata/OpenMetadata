@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   Card,
+  DateRangePicker,
   Input,
   ProgressBar,
   SimpleModal,
@@ -32,8 +33,6 @@ import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component
 import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../components/common/Banner/Banner';
-import DatePicker from '../../components/common/DatePicker/DatePicker';
-import { getPopupContainer } from '../../components/common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
@@ -52,6 +51,7 @@ import { useWebSocketConnector } from '../../context/WebSocketProvider/WebSocket
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
 import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
+import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
 import {
   exportAuditLogs,
   getAuditLogExportJob,
@@ -65,10 +65,17 @@ import {
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
+import {
+  dateValueToEndOfDayMillis,
+  dateValueToMillis,
+  millisToPickerDateValue,
+} from '../../utils/date-time/calendarDate.utils';
 import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
+
+type CorePickerProps = Parameters<typeof DateRangePicker>[0];
 
 // Fallback cadence for the export modal when the completion websocket event is
 // delivered to a different server than the one holding this client's socket.
@@ -109,12 +116,15 @@ const AuditLogsPage = () => {
   const [pageSize, setPageSize] = useState(savedPageSize);
 
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportDateRange, setExportDateRange] = useState<
-    [DateTime, DateTime] | null
-  >(null);
+  const [exportDateRange, setExportDateRange] =
+    useState<CorePickerProps['value']>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportJob, setExportJob] = useState<ExportJob | null>(null);
   const exportJobRef = useRef<ExportJob | null>(null);
+  const exportRangePicker = useStagedPickerValue(
+    exportDateRange,
+    setExportDateRange
+  );
 
   const fetchAuditLogs = useCallback(
     async (
@@ -392,8 +402,8 @@ const AuditLogsPage = () => {
     setIsExporting(true);
     try {
       const response = await exportAuditLogs({
-        startTs: exportDateRange[0].startOf('day').valueOf(),
-        endTs: exportDateRange[1].endOf('day').valueOf(),
+        startTs: dateValueToMillis(exportDateRange.start),
+        endTs: dateValueToEndOfDayMillis(exportDateRange.end),
         q: searchTerm || undefined,
         ...filterParams,
       });
@@ -630,21 +640,12 @@ const AuditLogsPage = () => {
               size="text-md">
               {t('label.date-range')} <span className="tw:text-red-600">*</span>
             </Typography>
-            <DatePicker.RangePicker
-              allowClear
-              className="w-full"
+            <DateRangePicker
+              fullWidth
               data-testid="export-date-range-picker"
-              disabled={isExporting}
-              disabledDate={(current) => current > DateTime.now().endOf('day')}
-              getPopupContainer={getPopupContainer}
-              value={exportDateRange}
-              onChange={(dates) => {
-                if (dates?.[0] && dates?.[1]) {
-                  setExportDateRange([dates[0], dates[1]]);
-                } else {
-                  setExportDateRange(null);
-                }
-              }}
+              isDisabled={isExporting}
+              maxValue={millisToPickerDateValue(Date.now())}
+              {...exportRangePicker}
             />
           </div>
           {renderExportProgress()}
