@@ -13,7 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ComponentProps } from 'react';
-import DqDateRangeFilter from './DqDateRangeFilter';
+import DateRangeFilter from './DateRangeFilter';
 
 type MockDateRangePickerProps = Pick<
   ComponentProps<
@@ -33,6 +33,7 @@ type MockDateRangePickerProps = Pick<
 // and open/close triggers so we can assert the epoch-millis conversion and the
 // reset-on-close behaviour done by the component.
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   DateRangePicker: ({
     value,
     onApply,
@@ -72,7 +73,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 const START_TS = new Date('2024-01-15T00:00:00Z').getTime();
 const END_TS = new Date('2024-01-20T00:00:00Z').getTime();
 
-describe('DqDateRangeFilter', () => {
+describe('DateRangeFilter', () => {
   const onApply = jest.fn();
 
   beforeEach(() => {
@@ -80,26 +81,26 @@ describe('DqDateRangeFilter', () => {
   });
 
   it('should render the date range picker', () => {
-    render(<DqDateRangeFilter onApply={onApply} />);
+    render(<DateRangeFilter onApply={onApply} />);
 
     expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
   });
 
   it('should render with null value when no timestamps are provided', () => {
-    render(<DqDateRangeFilter onApply={onApply} />);
+    render(<DateRangeFilter onApply={onApply} />);
 
     expect(screen.getByTestId('picker-value')).toHaveTextContent('null');
   });
 
   it('should render with null value when only start timestamp is provided', () => {
-    render(<DqDateRangeFilter startTs={START_TS} onApply={onApply} />);
+    render(<DateRangeFilter startTs={START_TS} onApply={onApply} />);
 
     expect(screen.getByTestId('picker-value')).toHaveTextContent('null');
   });
 
   it('should build a staged value when both timestamps are provided', () => {
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     const value = screen.getByTestId('picker-value').textContent ?? '';
@@ -111,7 +112,7 @@ describe('DqDateRangeFilter', () => {
 
   it('should call onApply with epoch millis when applied with a valid range', () => {
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     fireEvent.click(screen.getByTestId('picker-apply'));
@@ -127,7 +128,7 @@ describe('DqDateRangeFilter', () => {
 
   it('should commit the end boundary as the last ms of the end day', () => {
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     fireEvent.click(screen.getByTestId('picker-apply'));
@@ -142,14 +143,14 @@ describe('DqDateRangeFilter', () => {
   });
 
   it('should treat an epoch-0 timestamp as a real date, not absent', () => {
-    render(<DqDateRangeFilter endTs={END_TS} startTs={0} onApply={onApply} />);
+    render(<DateRangeFilter endTs={END_TS} startTs={0} onApply={onApply} />);
 
     // A truthiness check would drop startTs=0 and leave the staged value null.
     expect(screen.getByTestId('picker-value')).not.toHaveTextContent('null');
   });
 
   it('should not call onApply when there is no staged range', () => {
-    render(<DqDateRangeFilter onApply={onApply} />);
+    render(<DateRangeFilter onApply={onApply} />);
 
     fireEvent.click(screen.getByTestId('picker-apply'));
 
@@ -158,7 +159,7 @@ describe('DqDateRangeFilter', () => {
 
   it('should not call onApply after clearing the staged range', () => {
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     fireEvent.click(screen.getByTestId('picker-clear'));
@@ -169,7 +170,7 @@ describe('DqDateRangeFilter', () => {
 
   it('should restore the committed range on cancel', () => {
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     // Stage a clear, then cancel — value should be rebuilt from props.
@@ -184,7 +185,7 @@ describe('DqDateRangeFilter', () => {
 
   it('should discard uncommitted selection on close (uncontrolled)', () => {
     render(
-      <DqDateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
+      <DateRangeFilter endTs={END_TS} startTs={START_TS} onApply={onApply} />
     );
 
     const committedValue = screen.getByTestId('picker-value').textContent ?? '';
@@ -207,7 +208,7 @@ describe('DqDateRangeFilter', () => {
   it('should forward onOpenChange and discard on close (controlled)', () => {
     const onOpenChange = jest.fn();
     render(
-      <DqDateRangeFilter
+      <DateRangeFilter
         endTs={END_TS}
         startTs={START_TS}
         onApply={onApply}
@@ -238,7 +239,7 @@ describe('DqDateRangeFilter', () => {
 
   it('should keep the [isOpen] force-close reset for the controlled path', () => {
     const { rerender } = render(
-      <DqDateRangeFilter
+      <DateRangeFilter
         isOpen
         endTs={END_TS}
         startTs={START_TS}
@@ -257,7 +258,7 @@ describe('DqDateRangeFilter', () => {
     // would NOT emit onOpenChange for this externally-driven close, so the effect
     // must still reset on its own.
     rerender(
-      <DqDateRangeFilter
+      <DateRangeFilter
         endTs={END_TS}
         isOpen={false}
         startTs={START_TS}
@@ -271,7 +272,7 @@ describe('DqDateRangeFilter', () => {
   });
 
   it('should leave the core trigger at its default size and width', () => {
-    render(<DqDateRangeFilter onApply={onApply} />);
+    render(<DateRangeFilter onApply={onApply} />);
 
     expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
       'data-full-width',
@@ -284,7 +285,7 @@ describe('DqDateRangeFilter', () => {
   });
 
   it('should pass the size and full width to the core trigger', () => {
-    render(<DqDateRangeFilter fullWidth size="sm" onApply={onApply} />);
+    render(<DateRangeFilter fullWidth size="sm" onApply={onApply} />);
 
     expect(screen.getByTestId('date-range-picker')).toHaveAttribute(
       'data-full-width',
@@ -294,5 +295,26 @@ describe('DqDateRangeFilter', () => {
       'data-size',
       'sm'
     );
+  });
+
+  it('offers a clear button only while a range is set, when onClear is given', () => {
+    const onClear = jest.fn();
+    const { rerender } = render(
+      <DateRangeFilter onApply={jest.fn()} onClear={onClear} />
+    );
+
+    expect(screen.queryByTestId('clear-date-filter')).not.toBeInTheDocument();
+
+    rerender(
+      <DateRangeFilter
+        endTs={1_700_086_400_000}
+        startTs={1_700_000_000_000}
+        onApply={jest.fn()}
+        onClear={onClear}
+      />
+    );
+    fireEvent.click(screen.getByTestId('clear-date-filter'));
+
+    expect(onClear).toHaveBeenCalledTimes(1);
   });
 });

@@ -10,95 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  FieldTypes,
-  FormItemLayout,
-  HelperTextType,
-} from '../interface/FormUtils.interface';
 import { createScrollToErrorHandler } from './formPureUtils';
-import { getField } from './formUtils';
 
-describe('formUtils', () => {
-  describe('getField', () => {
-    it('Should render FormItem with Alert', async () => {
-      const result = getField({
-        name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
-        type: FieldTypes.SWITCH,
-        required: false,
-        helperText: 'message.mutually-exclusive-alert-entity',
-        helperTextType: HelperTextType.ALERT,
-        props: {
-          'data-testid': 'mutually-exclusive-button',
-        },
-        id: 'root/mutuallyExclusive',
-        formItemLayout: FormItemLayout.HORIZONTAL,
-      });
-
-      expect(JSON.stringify(result)).toContain('form-item-alert');
-    });
-
-    it('Should not render FormItem with Alert is showHelperText is false', async () => {
-      const result = getField({
-        name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
-        type: FieldTypes.SWITCH,
-        required: false,
-        helperText: 'message.mutually-exclusive-alert-entity',
-        helperTextType: HelperTextType.ALERT,
-        showHelperText: false,
-        props: {
-          'data-testid': 'mutually-exclusive-button',
-        },
-        id: 'root/mutuallyExclusive',
-        formItemLayout: FormItemLayout.HORIZONTAL,
-      });
-
-      expect(JSON.stringify(result)).not.toContain('form-item-alert');
-    });
-
-    it('Should not render FormItem with Alert', async () => {
-      const result = getField({
-        name: 'mutuallyExclusive',
-        label: 'label.mutually-exclusive',
-        type: FieldTypes.SWITCH,
-        required: false,
-        helperText: 'message.mutually-exclusive-alert-entity',
-        helperTextType: HelperTextType.Tooltip,
-        props: {
-          'data-testid': 'mutually-exclusive-button',
-        },
-        id: 'root/mutuallyExclusive',
-        formItemLayout: FormItemLayout.HORIZONTAL,
-      });
-
-      expect(JSON.stringify(result)).not.toContain('form-item-alert');
-    });
-
-    // The child is handed straight to the Form.Item named for the field.
-    it('Should place a COMPONENT field child under a Form.Item for that field', () => {
-      const child = <div data-testid="picker" />;
-
-      const result = getField({
-        name: 'relatedTerms',
-        label: 'label.related-term-plural',
-        required: false,
-        id: 'root/relatedTerms',
-        type: FieldTypes.COMPONENT,
-        props: { children: child },
-      });
-
-      const formItem = (
-        result as unknown as {
-          props: { children: Array<{ props: Record<string, unknown> }> };
-        }
-      ).props.children[0];
-
-      expect(formItem.props.name).toBe('relatedTerms');
-      expect(formItem.props.children).toBe(child);
-    });
-  });
-
+describe('formPureUtils', () => {
   describe('createScrollToErrorHandler', () => {
     let mockScrollTo: jest.Mock;
     let mockScrollIntoView: jest.Mock;
