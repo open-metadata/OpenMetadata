@@ -184,7 +184,7 @@ public class IndependentOntologyApprovalIT extends BaseOntologyApprovalIT {
     OntologyRelease ontology = capture(createOntology(ns));
     Task task = submit(ns, Entity.ONTOLOGY_RELEASE, ontology.getFullyQualifiedName());
     assertNotNull(task.getOntologyReview());
-    assertEquals(ontology.getReviewRevision(), task.getOntologyReview().getReviewRevision());
+    assertEquals(ontology.getId(), task.getOntologyReview().getEntityId());
     assertEquals(EntityStatus.IN_REVIEW, current(ontology).getEntityStatus());
 
     Task resolved =
@@ -194,7 +194,7 @@ public class IndependentOntologyApprovalIT extends BaseOntologyApprovalIT {
 
     assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
     assertEquals(EntityStatus.APPROVED, current(ontology).getEntityStatus());
-    assertEquals(ontology.getReviewRevision(), current(ontology).getReviewRevision());
+    assertEquals(ontology.getReleaseRevision(), current(ontology).getReleaseRevision());
     assertThrows(
         OpenMetadataException.class,
         () ->
@@ -263,7 +263,7 @@ public class IndependentOntologyApprovalIT extends BaseOntologyApprovalIT {
     assertEquals(TaskEntityStatus.Cancelled, cancelled.getStatus());
     assertEquals(EntityStatus.DRAFT, current(ontology).getEntityStatus());
     assertNull(current(ontology).getReviewTask());
-    assertEquals(ontology.getReviewRevision(), current(ontology).getReviewRevision());
+    assertEquals(ontology.getReleaseRevision(), current(ontology).getReleaseRevision());
     assertThrows(
         OpenMetadataException.class,
         () ->

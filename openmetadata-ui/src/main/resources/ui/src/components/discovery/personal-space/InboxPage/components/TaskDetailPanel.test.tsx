@@ -722,11 +722,8 @@ describe('TaskDetailPanel', () => {
         entityId: 'release-id',
         entityVersion: 0.2,
         ontologyId: 'ontology-id',
-        reviewRevision: 1,
         author: 'author',
         contentDigest: 'a'.repeat(64),
-        workflowDefinitionDigest: 'b'.repeat(64),
-        workflowDefinitionVersion: 1,
       },
       availableTransitions: [
         {

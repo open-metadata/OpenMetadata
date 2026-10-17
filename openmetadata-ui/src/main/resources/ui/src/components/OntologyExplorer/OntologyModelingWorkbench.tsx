@@ -70,7 +70,7 @@ const renderModelingSurface = ({
 
       break;
     case 'axioms':
-      content = <OntologyAxiomPanel glossary={selectedGlossary} />;
+      content = <OntologyAxiomPanel />;
 
       break;
     case 'iri':

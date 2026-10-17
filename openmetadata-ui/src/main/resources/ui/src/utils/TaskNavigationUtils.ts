@@ -98,10 +98,12 @@ export const getEntityTasksPath = (
 };
 
 export const getTaskDetailPathFromTask = (task: TaskEntity) =>
-  isOntologyReviewTask(task) ? getTaskDetailPath(task) : getEntityTasksPath(
-    (task.about?.type as EntityType) ?? '',
-    task.about?.fullyQualifiedName ?? ''
-  );
+  isOntologyReviewTask(task)
+    ? getTaskDetailPath(task)
+    : getEntityTasksPath(
+        (task.about?.type as EntityType) ?? '',
+        task.about?.fullyQualifiedName ?? ''
+      );
 
 /**
  * Where a task's asset lives, for a task that may not name one: an incident

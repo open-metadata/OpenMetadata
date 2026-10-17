@@ -29,9 +29,6 @@
     "owners": {
       "$ref": "../../type/entityReferenceList.json"
     },
-    "reviewers": {
-      "$ref": "../../type/entityReferenceList.json"
-    },
     "version": {
       "$ref": "../../type/entityHistory.json#/definitions/entityVersion"
     },

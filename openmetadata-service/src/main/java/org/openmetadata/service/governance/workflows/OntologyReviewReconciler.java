@@ -107,7 +107,10 @@ public final class OntologyReviewReconciler implements Managed {
           OntologyApprovalWorkflow.validateCurrentReview(task);
           reconcileDecision(tasks, task, JsonUtils.readValue(json, Execution.class));
         } catch (BadRequestException | AuthorizationException | EntityNotFoundException exception) {
-          cancelObsoleteReview(tasks, task, exception.getMessage());
+          LOG.info(
+              "Ontology review {} awaits a valid review context: {}",
+              taskId,
+              exception.getMessage());
         }
       }
     }

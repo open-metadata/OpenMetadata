@@ -116,8 +116,20 @@ const ONTOLOGY_REASONING_PATH = '/ontology/reasoning';
 const ONTOLOGY_STRUCTURE_PATH = '/ontology/structure';
 const ONTOLOGY_SUBSETS_PATH = '/ontology/subsets';
 
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
+
 export const createOntology = async (request: CreateOntology) => {
   const response = await APIClient.post<Ontology>(ONTOLOGIES_PATH, request);
+
+  return response.data;
+};
+
+export const patchOntology = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<Ontology>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`,
+    patch,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
 
   return response.data;
 };
@@ -135,7 +147,7 @@ export const patchOntologyConcept = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<OntologyConcept>(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,
     patch,
-    { headers: { 'Content-Type': 'application/json-patch+json' } }
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
   );
 
   return response.data;
@@ -156,7 +168,7 @@ export const patchOntologyProperty = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<OntologyProperty>(
     `${ONTOLOGY_PROPERTIES_PATH}/${encodeURIComponent(id)}`,
     patch,
-    { headers: { 'Content-Type': 'application/json-patch+json' } }
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
   );
 
   return response.data;
@@ -444,11 +456,12 @@ export const deleteRelationshipType = async (id: string) => {
 
 export const listOntologyAxioms = async (
   ontologyId: string,
-  params?: ListParams
+  params?: ListParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<OntologyAxiom[]>>(
     ONTOLOGY_AXIOMS_PATH,
-    { params: { ...params, ontologyId } }
+    { params: { ...params, ontologyId }, signal }
   );
 
   return response.data;
@@ -468,6 +481,16 @@ export const createOntologyAxiom = async (request: CreateOntologyAxiom) => {
     CreateOntologyAxiom,
     AxiosResponse<OntologyAxiom>
   >(ONTOLOGY_AXIOMS_PATH, request);
+
+  return response.data;
+};
+
+export const patchOntologyAxiom = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<OntologyAxiom>(
+    `${ONTOLOGY_AXIOMS_PATH}/${encodeURIComponent(id)}`,
+    patch,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
 
   return response.data;
 };

@@ -20,6 +20,7 @@ import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -28,6 +29,20 @@ import org.openmetadata.sdk.services.ontology.OntologyPropertyService;
 @Execution(ExecutionMode.CONCURRENT)
 public class OntologyPropertyResourceIT
     extends BaseOntologyIT<OntologyProperty, CreateOntologyProperty> {
+  private void assertPropertyFieldRejected(OntologyProperty property, String field, Object value) {
+    final var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/" + field)
+        .set("value", JsonUtils.valueToTree(value));
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class, () -> entityService().patch(property.getId(), patch))
+            .getStatusCode());
+  }
+
   @Test
   void dataValuesRoundTripAndEditsCreateANewVersion(TestNamespace ns) {
     final List<OntologyLiteral> values =
@@ -78,20 +93,10 @@ public class OntologyPropertyResourceIT
             new OntologyLiteral()
                 .withValue("one")
                 .withDatatypeIri(URI.create("http://www.w3.org/2001/XMLSchema#integer"))));
-    assertEquals(
-        400,
-        assertThrows(
-                OpenMetadataException.class,
-                () -> entityService().update(created.getId().toString(), created))
-            .getStatusCode());
+    assertPropertyFieldRejected(created, "enumValues", created.getEnumValues());
     created.setEnumValues(
         List.of(new OntologyLiteral().withValue("Gold"), new OntologyLiteral().withValue("Gold")));
-    assertEquals(
-        400,
-        assertThrows(
-                OpenMetadataException.class,
-                () -> entityService().update(created.getId().toString(), created))
-            .getStatusCode());
+    assertPropertyFieldRejected(created, "enumValues", created.getEnumValues());
     assertEquals(List.of(), getEntity(created.getId().toString()).getEnumValues());
   }
 
@@ -172,12 +177,7 @@ public class OntologyPropertyResourceIT
     OntologyProperty property = createEntity(request.withKind(OntologyPropertyKind.DATA));
 
     property.setCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE));
-    assertEquals(
-        400,
-        assertThrows(
-                OpenMetadataException.class,
-                () -> entityService().update(property.getId().toString(), property))
-            .getStatusCode());
+    assertPropertyFieldRejected(property, "characteristics", property.getCharacteristics());
     assertEquals(
         Set.of(RelationshipCharacteristic.FUNCTIONAL),
         getEntity(property.getId().toString()).getCharacteristics());

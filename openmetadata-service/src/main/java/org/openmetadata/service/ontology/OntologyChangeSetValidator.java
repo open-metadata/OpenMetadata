@@ -37,7 +37,11 @@ public final class OntologyChangeSetValidator {
       throw new BadRequestException(
           "Ontology change set undoCursor must be between 0 and " + operations.size());
     }
-    validateOperations(operations, cursor, plannedTermIds(operations));
+    if (changeSet.getOntology() != null) {
+      NativeOntologyChanges.validate(changeSet, cursor);
+    } else {
+      validateOperations(operations, cursor, plannedTermIds(operations));
+    }
     changeSet.setOperations(operations);
     changeSet.setUndoCursor(cursor);
   }
@@ -150,13 +154,15 @@ public final class OntologyChangeSetValidator {
     return requirement;
   }
 
-  private static int payloadCount(final OntologyChangeOperation operation) {
+  static int payloadCount(final OntologyChangeOperation operation) {
     int count = operation.getTerm() == null ? 0 : 1;
     count += operation.getGlossary() == null ? 0 : 1;
     count += operation.getRelationship() == null ? 0 : 1;
     count += operation.getAttribute() == null ? 0 : 1;
     count += operation.getMapping() == null ? 0 : 1;
     count += operation.getAxiom() == null ? 0 : 1;
+    count += operation.getConcept() == null ? 0 : 1;
+    count += operation.getProperty() == null ? 0 : 1;
     return count;
   }
 
@@ -294,7 +300,12 @@ public final class OntologyChangeSetValidator {
               .RELATIONSHIP;
           case UPSERT_ATTRIBUTE, DELETE_ATTRIBUTE -> PayloadKind.ATTRIBUTE;
           case UPSERT_MAPPING, DELETE_MAPPING -> PayloadKind.MAPPING;
-          case UPSERT_AXIOM, DELETE_AXIOM -> throw new BadRequestException(
+          case UPSERT_CONCEPT,
+              DELETE_CONCEPT,
+              UPSERT_PROPERTY,
+              DELETE_PROPERTY,
+              UPSERT_AXIOM,
+              DELETE_AXIOM -> throw new BadRequestException(
               "Axioms must be authored in an ontology, not a glossary change set");
         };
     return payloadKind;

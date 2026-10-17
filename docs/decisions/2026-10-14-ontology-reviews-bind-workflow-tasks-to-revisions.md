@@ -1,7 +1,7 @@
 # Ontology releases use the existing approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v11 2026-10-15 (release-only decisions and mandatory review content)
+- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures)
 - **Deciders:** Harsha
 - **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `OntologyReviewPanel.test.tsx`, `OntologyReview.spec.ts`
 - **Related:** ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
@@ -16,8 +16,8 @@ An editable status or a governance-bot identity cannot establish approval.
 
 Use existing `RequestApproval` tasks and configured Flowable approval workflows for `OntologyRelease`
 only. Reject review submissions for working ontology definitions. The server captures release UUID,
-entity-history version, content revision/digest, author, owning ontology UUID and workflow version/
-digest in the task's immutable `ontologyReview` field. Runtime assignments, vote thresholds and
+entity-history version, sealed-content digest, author and owning ontology UUID in the task's immutable
+`ontologyReview` field. The task already identifies its workflow. Runtime assignments, vote thresholds and
 approval steps remain in Flowable; no ontology vote table or decision endpoint is added.
 
 Submission requires `CreateTask` plus `EditAll` on the owning ontology. Reject a second open review
@@ -26,11 +26,12 @@ before inserting a task and recheck under the ontology lock. An approved or reje
 Cancelling an undecided review returns its candidate to Draft and permits a new task; it never changes
 an approved release or the active pointer.
 
-The digest format is `ontology-review-v2`. Exclude owners, reviewers, operational status/audit fields
-and derived hierarchy fields. Current reviewer eligibility is checked on every vote, including earlier
+The digest format is `ontology-review-v3`. Hash only the release UUID, release revision and sealed
+manifest digest. Current reviewer eligibility is checked on every vote, including earlier
 voters; the author cannot approve their own release. Working edits and owner/reviewer changes do not
-reset an approved release. Preserve the submitted workflow fingerprint as evidence, while executing
-the actual runtime approval step rather than interpreting a new workflow definition mid-process.
+reset an approved release. Execute the actual runtime approval step rather than interpreting a new
+workflow definition mid-process. Do not duplicate Flowable's workflow identity or maintain a second
+review revision counter for immutable content.
 
 Resolution locks workflow, ontology state, active owning ontology and review target before consistent
 reads. MySQL checks that must observe a recent commit use locking reads; bypassing application caches
@@ -38,7 +39,7 @@ alone cannot refresh a repeatable-read database snapshot. Cancellation takes ont
 locking the release, preserving the same lock order as writers and capture.
 
 The submitted entity-history version must remain readable and match the target digest. A missing
-version blocks resolution and recovery closes the invalid review; current content cannot substitute
+version blocks resolution and leaves recovery pending; current content cannot substitute
 for lost evidence. The review UI loads that version and compares its members against captured
 `baseReleaseId`, showing before/after content and removed members. Missing or denied history, diff
 or selected member content disables approval. Feed cards link to review instead of offering native
@@ -65,8 +66,9 @@ gets five minutes to start before cancellation. Existing workflows are not timed
 
 Applying a valid receipt updates task resolution, release decision, durable release event and marker
 in one retained entity transaction with fresh reads. A crash after the engine commit leaves the marker
-for retry. Missing or archived targets and ineligible reviewers cancel the pending review. Cancellation
-terminates the workflow instance tree; its marker stays until execution cleanup finishes. Closed
+for retry. Missing or archived targets and ineligible reviewers leave recovery pending for repair;
+validation or authorization failures never irreversibly cancel a review. Explicit workflow failure or
+cancellation terminates the workflow instance tree; its marker stays until execution cleanup finishes. Closed
 reviews cannot be reopened or mutated, and active review tasks cannot be deleted. Repeated cancellation
 returns the first result without rewriting its actor, timestamp or comment.
 

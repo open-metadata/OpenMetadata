@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
-import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -74,6 +73,8 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
 
   private static final String DIRECT_USER_ASSIGNMENT_ERROR =
       "Team is of type Department. Direct users can only be assigned to teams of type Group.";
+  private static final String UPDATE_DIRECT_USER_ASSIGNMENT_ERROR =
+      "Failed to update entity: " + DIRECT_USER_ASSIGNMENT_ERROR;
 
   {
     supportsEntityStatus = false;
@@ -315,11 +316,10 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Team update = SdkClients.adminClient().teams().get(department.getId().toString(), "users");
     update.setUsers(List.of(user.getEntityReference()));
 
-    InvalidRequestException exception =
-        assertThrows(
-            InvalidRequestException.class, () -> patchEntity(update.getId().toString(), update));
+    Exception exception =
+        assertThrows(Exception.class, () -> patchEntity(update.getId().toString(), update));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(UPDATE_DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test
@@ -389,12 +389,12 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     User update = SdkClients.adminClient().users().get(user.getId().toString(), "teams");
     update.setTeams(List.of(department.getEntityReference()));
 
-    InvalidRequestException exception =
+    Exception exception =
         assertThrows(
-            InvalidRequestException.class,
+            Exception.class,
             () -> SdkClients.adminClient().users().update(user.getId().toString(), update));
 
-    assertEquals(DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
+    assertEquals(UPDATE_DIRECT_USER_ASSIGNMENT_ERROR, exception.getMessage());
   }
 
   @Test

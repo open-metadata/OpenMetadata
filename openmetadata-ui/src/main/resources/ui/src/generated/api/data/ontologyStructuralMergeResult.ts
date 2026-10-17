@@ -81,14 +81,18 @@ export enum OperationType {
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
+    DeleteConcept = "DELETE_CONCEPT",
     DeleteMapping = "DELETE_MAPPING",
+    DeleteProperty = "DELETE_PROPERTY",
     DeleteRelationship = "DELETE_RELATIONSHIP",
     DeleteTerm = "DELETE_TERM",
     UpdateRelationship = "UPDATE_RELATIONSHIP",
     UpdateTerm = "UPDATE_TERM",
     UpsertAttribute = "UPSERT_ATTRIBUTE",
     UpsertAxiom = "UPSERT_AXIOM",
+    UpsertConcept = "UPSERT_CONCEPT",
     UpsertMapping = "UPSERT_MAPPING",
+    UpsertProperty = "UPSERT_PROPERTY",
 }
 
 /**

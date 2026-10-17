@@ -23,10 +23,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
@@ -43,14 +45,35 @@ public final class OntologyChangeOperationExecutor {
   private final GlossaryTermRepository termRepository;
   private final GlossaryRepository glossaryRepository;
   private final Clock clock;
+  private final NativeOntologyChangeExecutor nativeExecutor;
 
   public OntologyChangeOperationExecutor(
       final GlossaryRepository glossaryRepository,
       final GlossaryTermRepository termRepository,
       final Clock clock) {
+    this(glossaryRepository, termRepository, clock, null);
+  }
+
+  public OntologyChangeOperationExecutor(
+      final GlossaryRepository glossaryRepository,
+      final GlossaryTermRepository termRepository,
+      final Clock clock,
+      final NativeOntologyChangeExecutor nativeExecutor) {
+    this.nativeExecutor = nativeExecutor;
     this.glossaryRepository = glossaryRepository;
     this.termRepository = termRepository;
     this.clock = clock;
+  }
+
+  public <R> R inScope(final OntologyChangeSet changeSet, final Supplier<R> work) {
+    return changeSet.getOntology() == null ? work.get() : nativeExecutor().inScope(changeSet, work);
+  }
+
+  private NativeOntologyChangeExecutor nativeExecutor() {
+    if (nativeExecutor == null) {
+      throw new BadRequestException("Native definition operations require an ontology scope");
+    }
+    return nativeExecutor;
   }
 
   public OperationOutcome execute(
@@ -67,8 +90,12 @@ public final class OntologyChangeOperationExecutor {
           case DELETE_ATTRIBUTE -> deleteAttribute(uriInfo, user, operation);
           case UPSERT_MAPPING -> upsertMapping(uriInfo, user, operation);
           case DELETE_MAPPING -> deleteMapping(uriInfo, user, operation);
-          case UPSERT_AXIOM, DELETE_AXIOM -> throw new BadRequestException(
-              "Axioms must be authored in an ontology, not a glossary change set");
+          case UPSERT_CONCEPT,
+              DELETE_CONCEPT,
+              UPSERT_PROPERTY,
+              DELETE_PROPERTY,
+              UPSERT_AXIOM,
+              DELETE_AXIOM -> nativeExecutor().execute(uriInfo, user, operation);
         };
     return outcome;
   }

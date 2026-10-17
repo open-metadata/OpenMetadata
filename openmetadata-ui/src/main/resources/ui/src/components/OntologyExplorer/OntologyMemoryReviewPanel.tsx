@@ -19,12 +19,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import {
   OntologyChangeOperation,
   OntologyChangeSet,
   OntologyChangeSetState,
   OperationType,
 } from '../../generated/entity/data/ontologyChangeSet';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { getContextMemoryById } from '../../rest/contextMemoryAPI';
 import {
   applyOntologyChangeSet,
@@ -42,6 +44,7 @@ interface OntologyMemoryReviewPanelProps {
   canDiscard: boolean;
   canSubmit: boolean;
   initialDraftId?: string;
+  ontologyId?: string;
   onApplied: () => void;
 }
 
@@ -62,6 +65,14 @@ const STATE_LABEL_KEYS: Partial<Record<OntologyChangeSetState, string>> = {
 const LINK_CLASS_NAME = 'tw:text-link tw:hover:underline';
 const SOURCE_MEMORY_QUERY_KEY = 'ontologyDraftSourceMemory';
 const SOURCE_MEMORY_STALE_TIME_MS = 60_000;
+const DEFINITION_LABELS: Partial<Record<OperationType, string>> = {
+  [OperationType.UpsertConcept]: 'label.concept',
+  [OperationType.DeleteConcept]: 'label.concept',
+  [OperationType.UpsertProperty]: 'label.property',
+  [OperationType.DeleteProperty]: 'label.property',
+  [OperationType.UpsertAxiom]: 'label.axiom',
+  [OperationType.DeleteAxiom]: 'label.axiom',
+};
 
 function stateLabel(state: OntologyChangeSetState, t: TFunction): string {
   const key = STATE_LABEL_KEYS[state];
@@ -69,7 +80,24 @@ function stateLabel(state: OntologyChangeSetState, t: TFunction): string {
   return key ? t(key) : state;
 }
 
-function operationTypeLabel(type: OperationType, t: TFunction): string {
+function operationTypeLabel(
+  operation: OntologyChangeOperation,
+  t: TFunction
+): string {
+  const type = operation.operationType;
+  const definitionLabel = DEFINITION_LABELS[type];
+  if (definitionLabel) {
+    const upsertAction = operation.targetId
+      ? 'label.edit-entity'
+      : 'label.new-entity';
+
+    return t(
+      type.startsWith('DELETE_') ? 'label.delete-entity' : upsertAction,
+      {
+        entity: t(definitionLabel),
+      }
+    );
+  }
   switch (type) {
     case OperationType.CreateGlossary:
       return t('label.new-entity', { entity: t('label.glossary') });
@@ -100,12 +128,33 @@ function sourceMemoryIds(changeSet: OntologyChangeSet): string[] {
   ];
 }
 
+function nativeDefinition(operation: OntologyChangeOperation) {
+  return operation.concept ?? operation.property ?? operation.axiom;
+}
+
+function scopeName(changeSet: OntologyChangeSet): string {
+  const scope = changeSet.ontology
+    ? [changeSet.ontology]
+    : changeSet.glossaries ?? [];
+
+  return scope.map(getEntityName).join(', ');
+}
+
 function operationName(operation: OntologyChangeOperation): string {
+  const definition = nativeDefinition(operation);
+  if (definition) {
+    return getEntityName(definition);
+  }
   if (operation.operationType === OperationType.CreateGlossary) {
     return operation.glossary?.displayName || operation.glossary?.name || '';
   }
 
-  return operation.term?.displayName || operation.term?.name || '';
+  return (
+    operation.term?.displayName ||
+    operation.term?.name ||
+    operation.targetId ||
+    ''
+  );
 }
 
 function changeSetName(changeSet: OntologyChangeSet): string {
@@ -132,7 +181,8 @@ function reviewableDrafts(drafts: OntologyChangeSet[]): OntologyChangeSet[] {
 // The deep-linked draft is fetched alongside the first page so it remains reachable.
 async function loadMemoryDrafts(
   initialDraftId?: string,
-  after?: string
+  after?: string,
+  ontologyId?: string
 ): Promise<{ drafts: OntologyChangeSet[]; after?: string }> {
   const [linked, page] = await Promise.all([
     initialDraftId && !after
@@ -151,7 +201,10 @@ async function loadMemoryDrafts(
 
   return {
     after: page.paging.after,
-    drafts: reviewableDrafts([...(linked ? [linked] : []), ...page.data]),
+    drafts: reviewableDrafts([
+      ...(linked ? [linked] : []),
+      ...page.data,
+    ]).filter((draft) => !ontologyId || draft.ontology?.id === ontologyId),
   };
 }
 
@@ -182,9 +235,7 @@ function DraftList({
                 {changeSetName(changeSet)}
               </span>
               <span className="tw:text-xs tw:text-tertiary">
-                {changeSet.glossaries
-                  .map((glossary) => glossary.displayName || glossary.name)
-                  .join(', ')}
+                {scopeName(changeSet)}
                 {' · '}
                 {stateLabel(changeSet.state, t)}
               </span>
@@ -199,7 +250,9 @@ function DraftList({
 function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
   const { t } = useTranslation();
   const description =
-    operation.term?.description || operation.glossary?.description;
+    nativeDefinition(operation)?.description ||
+    operation.term?.description ||
+    operation.glossary?.description;
 
   return (
     <li className="tw:rounded-lg tw:border tw:border-secondary tw:p-4">
@@ -207,13 +260,20 @@ function OperationCard({ operation }: { operation: OntologyChangeOperation }) {
         {operationName(operation)}
       </Typography>
       <Typography as="p" className="tw:text-tertiary" size="text-xs">
-        {operationTypeLabel(operation.operationType, t)}
+        {operationTypeLabel(operation, t)}
       </Typography>
       {description ? (
         <Typography as="p" className="tw:mt-2" size="text-sm">
           {description}
         </Typography>
       ) : null}
+      {nativeDefinition(operation) && (
+        <pre
+          className="tw:overflow-auto tw:text-xs"
+          data-testid="ontology-memory-definition">
+          {JSON.stringify(nativeDefinition(operation), null, 2)}
+        </pre>
+      )}
       {operation.rationale ? (
         <Typography as="p" className="tw:mt-2" size="text-sm">
           {operation.rationale}
@@ -316,12 +376,10 @@ function DraftDetail({
 
       <div>
         <Typography as="h3" size="text-sm" weight="semibold">
-          {t('label.glossary')}
+          {t(changeSet.ontology ? 'label.ontology' : 'label.glossary')}
         </Typography>
         <Typography as="p" size="text-sm">
-          {changeSet.glossaries
-            .map((glossary) => glossary.displayName || glossary.name)
-            .join(', ')}
+          {scopeName(changeSet)}
         </Typography>
       </div>
 
@@ -370,11 +428,30 @@ function DraftDetail({
   );
 }
 
+function useDraftPermissions(
+  ontology: OntologyChangeSet['ontology'],
+  defaults: Pick<
+    OntologyMemoryReviewPanelProps,
+    'canApply' | 'canSubmit' | 'canDiscard'
+  >
+) {
+  const { canEditAll } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY,
+    { id: ontology?.id ?? '' },
+    { enabled: Boolean(ontology) }
+  );
+
+  return ontology
+    ? { canApply: canEditAll, canSubmit: canEditAll, canDiscard: canEditAll }
+    : defaults;
+}
+
 const OntologyMemoryReviewPanel = ({
   canApply,
   canDiscard,
   canSubmit,
   initialDraftId,
+  ontologyId,
   onApplied,
 }: OntologyMemoryReviewPanelProps) => {
   const { t } = useTranslation();
@@ -387,8 +464,18 @@ const OntologyMemoryReviewPanel = ({
   const [isSaving, setIsSaving] = useState(false);
   const [nextCursor, setNextCursor] = useState<string>();
   const selected = selectedDraft(changeSets, selectedId);
+  const permissions = useDraftPermissions(selected?.ontology, {
+    canApply,
+    canSubmit,
+    canDiscard,
+  });
   const lease = useOntologyEditLease({
-    isActive: Boolean(selected && (canSubmit || canApply || canDiscard)),
+    isActive: Boolean(
+      selected &&
+        (permissions.canSubmit ||
+          permissions.canApply ||
+          permissions.canDiscard)
+    ),
     resourceId: selected?.id,
     resourceType: 'ontologyChangeSet',
   });
@@ -396,7 +483,11 @@ const OntologyMemoryReviewPanel = ({
   const loadChangeSets = useCallback(async () => {
     setIsLoading(true);
     try {
-      const page = await loadMemoryDrafts(initialDraftId);
+      const page = await loadMemoryDrafts(
+        initialDraftId,
+        undefined,
+        ontologyId
+      );
       setChangeSets(page.drafts);
       setNextCursor(page.after);
       setSelectedId((current) =>
@@ -409,7 +500,7 @@ const OntologyMemoryReviewPanel = ({
     } finally {
       setIsLoading(false);
     }
-  }, [initialDraftId]);
+  }, [initialDraftId, ontologyId]);
 
   useEffect(() => {
     void loadChangeSets();
@@ -421,7 +512,7 @@ const OntologyMemoryReviewPanel = ({
     }
     setIsLoadingMore(true);
     try {
-      const page = await loadMemoryDrafts(undefined, nextCursor);
+      const page = await loadMemoryDrafts(undefined, nextCursor, ontologyId);
       setChangeSets((current) =>
         reviewableDrafts([...current, ...page.drafts])
       );
@@ -538,9 +629,9 @@ const OntologyMemoryReviewPanel = ({
 
             {selected ? (
               <DraftDetail
-                canApply={canApply}
-                canDiscard={canDiscard}
-                canSubmit={canSubmit}
+                canApply={permissions.canApply}
+                canDiscard={permissions.canDiscard}
+                canSubmit={permissions.canSubmit}
                 changeSet={selected}
                 isLeaseOwned={lease.isOwned}
                 isSaving={isSaving}

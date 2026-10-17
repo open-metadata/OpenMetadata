@@ -1,19 +1,22 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReference;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.ontology.OntologyLayerValidator;
+import org.openmetadata.service.util.FreshReadScope;
 
 @Repository
 public class OntologyRepository extends OntologyEntityRepository<Ontology> {
@@ -25,14 +28,13 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
         Ontology.class,
         Entity.getCollectionDAO().ontologyEntityDAO(),
         COLLECTION_PATH,
-        "iri,namespace,layer,prefixes,imports");
+        "iri,namespace,layer,prefixes");
   }
 
   @Override
   protected void validateDefinition(final Ontology entity) {
     requireAbsoluteIri(entity.getNamespace(), "namespace");
     OntologyLayerValidator.validatePrefixes(entity.getPrefixes());
-    validateImports(entity);
   }
 
   @Override
@@ -65,10 +67,23 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
     }
   }
 
-  private void validateImports(final Ontology ontology) {
-    if (!listOrEmpty(ontology.getImports()).isEmpty()) {
-      throw new BadRequestException("Cross-ontology imports are not supported in this release");
-    }
+  public <R> R applyWorkingChanges(
+      final UUID id, final long expectedRevision, final Supplier<R> work) {
+    return executeInTransaction(
+        () -> {
+          try (var ignored = FreshReadScope.enter()) {
+            final OntologyStateDAO states = daoCollection.ontologyStateDAO();
+            states.initialize(id);
+            if (states.lock(id).getWorkingRevision() != expectedRevision) {
+              throw new PreconditionFailedException(
+                  "Ontology changed since this draft was created");
+            }
+            final Ontology root =
+                JsonUtils.readValue(
+                    dao.findJsonByIdForUpdate(id, Include.NON_DELETED), Ontology.class);
+            return workingState.mutate(dao, List.of(root), work);
+          }
+        });
   }
 
   public OntologyState getState(final UUID id) {

@@ -194,12 +194,8 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
     if (nullOrEmpty(entity.getReviewers())) {
       throw new BadRequestException("Configure ontology reviewers before submitting for approval");
     }
-    final WorkflowDefinition workflow = requireReviewWorkflow(task);
-    final OntologyReviewTarget target =
-        OntologyReview.target(entity)
-            .withWorkflowDefinitionVersion(workflow.getVersion())
-            .withWorkflowDefinitionDigest(OntologyReview.workflowDigest(workflow));
-    task.setOntologyReview(target);
+    requireReviewWorkflow(task);
+    task.setOntologyReview(OntologyReview.target(entity));
     task.setAbout(entity.getEntityReference());
     task.setAssignees(entity.getReviewers());
     task.setReviewers(entity.getReviewers());

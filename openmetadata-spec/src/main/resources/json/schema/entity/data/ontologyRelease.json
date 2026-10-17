@@ -65,12 +65,6 @@
     "entityStatus": {
       "$ref": "../../type/status.json"
     },
-    "reviewRevision": {
-      "description": "Server-managed content revision. Every governed edit invalidates the previous review.",
-      "type": "integer",
-      "minimum": 1,
-      "existingJavaType": "java.lang.Long"
-    },
     "reviewAuthor": {
       "description": "Author of the current governed content revision; assigned by the server.",
       "type": "string"
@@ -102,7 +96,7 @@
       ]
     },
     "contentDigest": {
-      "description": "SHA-256 of the sealed manifest, including ordered member identities, payload digests, and the pinned import closure.",
+      "description": "SHA-256 of the sealed manifest, including ordered member identities and payload digests.",
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },

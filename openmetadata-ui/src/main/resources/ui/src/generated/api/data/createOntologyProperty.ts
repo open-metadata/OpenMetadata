@@ -38,7 +38,6 @@ export interface CreateOntologyProperty {
     propertyChain?: string[];
     provider?:      ProviderType;
     range?:         string[];
-    reviewers?:     EntityReference[];
     unit?:          string;
 }
 

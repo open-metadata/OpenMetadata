@@ -46,10 +46,8 @@ public class IndependentOntologyRetentionIT extends BaseOntologyApprovalIT {
         release.getContentDigest(),
         client.ontologyReleases().get(release.getId()).getContentDigest());
     assertTrue(client.ontologyReleases().structure(release.getId()).getValid());
-    var archived =
-        client.ontologyConcepts().get(concept.getId().toString(), "owners,reviewers", "deleted");
+    var archived = client.ontologyConcepts().get(concept.getId().toString(), "owners", "deleted");
     assertTrue(archived.getDeleted());
-    assertFalse(archived.getReviewers().isEmpty());
     var member =
         client
             .getHttpClient()
@@ -154,9 +152,15 @@ public class IndependentOntologyRetentionIT extends BaseOntologyApprovalIT {
                 .create(reviewRequest(ns, Entity.ONTOLOGY_RELEASE, draft.getFullyQualifiedName())));
     new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(task.getId());
     assertEquals(
-        EntityStatus.DRAFT, client.ontologyReleases().get(release.getId()).getEntityStatus());
+        EntityStatus.IN_REVIEW, client.ontologyReleases().get(release.getId()).getEntityStatus());
+    assertEquals(TaskEntityStatus.Open, client.tasks().get(task.getId().toString()).getStatus());
+    client.ontologies().restore(ontology.getId());
     assertEquals(
-        TaskEntityStatus.Cancelled, client.tasks().get(task.getId().toString()).getStatus());
+        TaskEntityStatus.Approved,
+        SdkClients.user1Client()
+            .tasks()
+            .resolve(task.getId().toString(), decision(TaskResolutionType.Approved))
+            .getStatus());
   }
 
   private static OntologyConcept concept(Ontology ontology) {

@@ -20,8 +20,10 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
@@ -55,6 +57,33 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
         UPDATE_FIELDS);
   }
 
+  @Override
+  protected EntityReference getParentReference(final OntologyChangeSet entity) {
+    return entity.getOntology();
+  }
+
+  @Override
+  protected String getInheritableFields(final String parentType) {
+    return Entity.ONTOLOGY.equals(parentType) ? "owners" : super.getInheritableFields(parentType);
+  }
+
+  @Override
+  public EntityInterface<?> getParentEntity(final OntologyChangeSet entity, final String fields) {
+    return entity.getOntology() == null
+        ? null
+        : Entity.getEntity(entity.getOntology(), fields, Include.ALL);
+  }
+
+  @Override
+  protected void applyInheritance(
+      final OntologyChangeSet entity, final Fields fields, final EntityInterface<?> parent) {
+    if (entity.getOntology() != null) {
+      inheritOwners(entity, fields, parent);
+    } else {
+      super.applyInheritance(entity, fields, parent);
+    }
+  }
+
   public List<OntologyChangeSet> findOpenBySourceMemoryId(final UUID memoryId) {
     return daoCollection
         .ontologyChangeSetDAO()
@@ -84,7 +113,13 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
     // Discarding must always succeed: a draft whose glossary was deleted, or whose planned
     // glossary has since been created elsewhere, would otherwise be impossible to clean up.
     if (entity.getState() != OntologyChangeSetState.DISCARDED) {
-      entity.setGlossaries(validateGlossaries(entity, update));
+      if (entity.getOntology() != null) {
+        entity.setOntology(
+            Entity.getEntityReferenceById(
+                Entity.ONTOLOGY, entity.getOntology().getId(), Include.NON_DELETED));
+      } else {
+        entity.setGlossaries(validateGlossaries(entity, update));
+      }
     }
     validateStateResult(entity);
   }
@@ -181,7 +216,15 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
 
   @Override
   public void storeRelationships(final OntologyChangeSet entity) {
-    for (final EntityReference glossary : entity.getGlossaries()) {
+    if (entity.getOntology() != null) {
+      addRelationship(
+          entity.getOntology().getId(),
+          entity.getId(),
+          Entity.ONTOLOGY,
+          Entity.ONTOLOGY_CHANGE_SET,
+          Relationship.CONTAINS);
+    }
+    for (final EntityReference glossary : listOrEmpty(entity.getGlossaries())) {
       // A glossary the draft plans to create does not exist yet; it is linked once applied.
       if (plannedGlossary(entity, glossary.getId()) == null) {
         storeGlossaryRelationship(entity, glossary);
@@ -336,7 +379,11 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
 
     @Override
     public void entitySpecificUpdate(final boolean consolidatingChanges) {
-      if (!original.getGlossaries().equals(updated.getGlossaries())) {
+      if (!listOrEmpty(original.getGlossaries()).equals(listOrEmpty(updated.getGlossaries()))
+          || !Objects.equals(
+              original.getOntology() == null ? null : original.getOntology().getId(),
+              updated.getOntology() == null ? null : updated.getOntology().getId())
+          || !Objects.equals(original.getBaseWorkingRevision(), updated.getBaseWorkingRevision())) {
         throw new BadRequestException("Ontology change set scope is immutable");
       }
       if (updated.getState() == OntologyChangeSetState.APPLIED

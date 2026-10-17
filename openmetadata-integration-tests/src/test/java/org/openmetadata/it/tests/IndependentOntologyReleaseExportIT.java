@@ -41,6 +41,7 @@ import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -84,9 +85,13 @@ public class IndependentOntologyReleaseExportIT extends BaseOntologyApprovalIT {
                 () ->
                     client
                         .ontologyProperties()
-                        .update(
+                        .patch(
                             declaration.getId(),
-                            declaration.withKind(OntologyPropertyKind.DATA).withRange(List.of())))
+                            JsonUtils.readTree(
+                                """
+                                [{"op":"replace","path":"/kind","value":"DATA"},
+                                 {"op":"replace","path":"/range","value":[]}]
+                                """)))
             .getStatusCode());
     client.ontologyAxioms().delete(assertion.getId().toString(), Map.of("hardDelete", "true"));
     client

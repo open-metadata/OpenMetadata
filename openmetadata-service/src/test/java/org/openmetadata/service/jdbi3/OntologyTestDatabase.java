@@ -114,7 +114,7 @@ final class OntologyTestDatabase {
           .filter(
               statement ->
                   statement.matches(
-                      "(?s).*CREATE TABLE IF NOT EXISTS (workflow_definition_entity|task_entity|custom_property_reference|ontology_axiom_entity|ontology_change_set_entity) \\(.*"))
+                      "(?s).*CREATE TABLE IF NOT EXISTS (workflow_definition_entity|task_entity|custom_property_reference|ontology_axiom_entity|ontology_change_set_entity|change_request) \\(.*"))
           .forEach(handle::execute);
     }
     migrateTableColumns(handle, dialect, "1.13.0", "entity_relationship", "relationType");

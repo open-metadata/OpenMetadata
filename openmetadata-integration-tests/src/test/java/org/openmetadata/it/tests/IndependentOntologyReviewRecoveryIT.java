@@ -186,7 +186,7 @@ public class IndependentOntologyReviewRecoveryIT extends BaseOntologyApprovalIT 
   }
 
   @Test
-  void archivingTheOntologyCancelsItsReleaseReview(TestNamespace ns) {
+  void archivingTheOntologyLeavesItsReleaseReviewRecoverable(TestNamespace ns) {
     OntologyRelease ontology = capture(createOntology(ns));
     Task task = submit(ns, Entity.ONTOLOGY_RELEASE, ontology.getFullyQualifiedName());
     SdkClients.adminClient().ontologies().delete(ontology.getOntology().getId().toString());
@@ -194,7 +194,14 @@ public class IndependentOntologyReviewRecoveryIT extends BaseOntologyApprovalIT 
     new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(task.getId());
 
     assertEquals(
-        TaskEntityStatus.Cancelled,
+        TaskEntityStatus.Open,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+    SdkClients.adminClient().ontologies().restore(ontology.getOntology().getId());
+    completeWorkflowOnly(task);
+    new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(task.getId());
+    assertEquals(EntityStatus.APPROVED, current(ontology).getEntityStatus());
+    assertEquals(
+        TaskEntityStatus.Approved,
         SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
   }
 

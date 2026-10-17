@@ -143,7 +143,8 @@ public final class OntologyReleaseManifest {
             member.getPayload());
     if (!Objects.equals(member.getPayloadDigest(), expected.getPayloadDigest())
         || !Objects.equals(member.getPayloadBytes(), expected.getPayloadBytes())
-        || !Objects.equals(member.getSourceVersion(), expected.getSourceVersion())) {
+        || (member.getPayload().hasNonNull("version")
+            && !Objects.equals(member.getSourceVersion(), expected.getSourceVersion()))) {
       throw new BadRequestException("Ontology release member integrity check failed");
     }
     if (previous != null

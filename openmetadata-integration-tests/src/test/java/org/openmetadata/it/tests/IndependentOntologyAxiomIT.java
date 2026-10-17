@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -53,13 +52,13 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
   private static final URI PROPERTY = URI.create("https://example.org/model/knows");
 
   @Test
-  void axiomsBelongToOntologiesAndInheritTheirReviewers(TestNamespace ns) {
+  void axiomsBelongToOntologiesAndHaveNoSeparateApproval(TestNamespace ns) {
     Ontology ontology = createModel(ns, "reviewedOntology");
     var service = SdkClients.adminClient().ontologyAxioms();
     OntologyAxiom axiom = service.create(axiomRequest(ontology));
     assertEquals(ontology.getId(), axiom.getOntology().getId());
-    var stored = service.get(axiom.getId().toString(), "reviewers");
-    assertEquals(SharedEntities.get().USER1.getId(), stored.getReviewers().getFirst().getId());
+    var stored = service.get(axiom.getId().toString());
+    assertEquals(ontology.getId(), stored.getOntology().getId());
     Ontology other = createModel(ns, "other");
     service.create(axiomRequest(other));
     var page = service.list(new ListParams().addFilter("ontologyId", ontology.getId().toString()));

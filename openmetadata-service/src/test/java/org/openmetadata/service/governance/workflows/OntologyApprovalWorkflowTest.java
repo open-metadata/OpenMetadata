@@ -23,7 +23,7 @@ class OntologyApprovalWorkflowTest {
   @Test
   void ontologyReviewCannotBeRetargetedOrConvertedToAnotherTaskType() {
     Task original = reviewTask();
-    assertRejected(original, task -> task.getOntologyReview().setReviewRevision(2L));
+    assertRejected(original, task -> task.getOntologyReview().setContentDigest("b".repeat(64)));
     assertRejected(original, task -> task.setOntologyReview(null));
     assertRejected(original, task -> task.setWorkflowDefinitionId(UUID.randomUUID()));
     assertRejected(original, task -> task.getAbout().setId(UUID.randomUUID()));
@@ -101,6 +101,6 @@ class OntologyApprovalWorkflowTest {
         .withAbout(new EntityReference().withId(entityId).withType(Entity.ONTOLOGY))
         .withWorkflowDefinitionId(UUID.randomUUID())
         .withOntologyReview(
-            new OntologyReviewTarget().withEntityId(entityId).withReviewRevision(1L));
+            new OntologyReviewTarget().withEntityId(entityId).withContentDigest("a".repeat(64)));
   }
 }

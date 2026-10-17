@@ -25,7 +25,10 @@ import { buildNativeOntologyGraph } from '../../../../utils/governance/ontology/
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import { LayoutType } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import { OntologyGraphHandle } from '../../../OntologyExplorer/OntologyExplorer.interface';
-import { buildOntologyTreeGroups } from '../../../OntologyExplorer/OntologyStudio.utils';
+import {
+  buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
+} from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 
@@ -135,7 +138,8 @@ const OntologyGraphView = ({ ontology }: { ontology: Ontology }) => {
           {surface === 'tree' ? (
             <OntologyTreeView
               groups={groups}
-              selectedNodeId={selectedId}
+              metrics={buildOntologyTreeMetrics(graph, FILTERS)}
+              onConnect={(node) => setSelectedId(node.id)}
               onSelect={(node) => setSelectedId(node.id)}
             />
           ) : (

@@ -180,7 +180,8 @@ public final class OntologyReleaseCapture {
       access.authorize().accept(entity);
       final OntologyReleaseMember member =
           OntologyReleaseManifest.member(
-              releaseId, kind, entity.getId(), JsonUtils.getObjectMapper().valueToTree(entity));
+                  releaseId, kind, entity.getId(), OntologyReleaseContent.project(entity))
+              .withSourceVersion(entity.getVersion());
       bytes += member.getPayloadBytes();
       if (bytes > OntologyReleaseManifest.MAX_RELEASE_BYTES) {
         throw new BadRequestException("Ontology release content exceeds the 64 MiB limit");

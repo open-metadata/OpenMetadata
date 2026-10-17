@@ -15,9 +15,9 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,10 +45,18 @@ public final class OntologyChangePreflight {
 
   public void validate(
       final OntologyChangeSet changeSet, final List<OntologyChangeOperation> operations) {
+    final Map<UUID, Boolean> activeSourceMemories =
+        Caffeine.newBuilder().maximumSize(1000).<UUID, Boolean>build().asMap();
+    if (changeSet.getOntology() != null) {
+      for (final OntologyChangeOperation operation : operations) {
+        validateSourceMemories(operation, activeSourceMemories);
+        NativeOntologyChanges.validateTarget(changeSet, operation, entityLoader);
+      }
+      return;
+    }
     final Set<UUID> scope = glossaryScope(changeSet);
     final List<GlossaryTerm> plannedTerms = plannedTerms(operations);
     final List<VersionGuard> versionGuards = new ArrayList<>();
-    final Map<UUID, Boolean> activeSourceMemories = new HashMap<>();
     for (final OntologyChangeOperation operation : operations) {
       validateSourceMemories(operation, activeSourceMemories);
       validateScope(operation, scope, plannedTerms);
@@ -116,7 +124,12 @@ public final class OntologyChangePreflight {
           operation, operation.getTargetId(), scope, plannedTerms);
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> validateRelationshipScope(
           operation, scope, plannedTerms);
-      case UPSERT_AXIOM, DELETE_AXIOM -> throw new BadRequestException(
+      case UPSERT_CONCEPT,
+          DELETE_CONCEPT,
+          UPSERT_PROPERTY,
+          DELETE_PROPERTY,
+          UPSERT_AXIOM,
+          DELETE_AXIOM -> throw new BadRequestException(
           "Axioms must be authored in an ontology, not a glossary change set");
     }
   }

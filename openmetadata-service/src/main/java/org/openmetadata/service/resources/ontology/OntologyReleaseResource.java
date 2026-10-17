@@ -99,9 +99,9 @@ public final class OntologyReleaseResource
   @Path("/{id}/diff")
   @Operation(
       operationId = "compareOntologyReleases",
-      summary = "Compare governed definitions and import pins across two sealed release closures",
+      summary = "Compare definitions from two sealed releases",
       description =
-          "Omitting the base compares with an empty ontology. Both closures must be readable and belong to the same ontology. Workflow-only changes are excluded; this does not compute logical equivalence or inferred impact.")
+          "Omitting the base compares with the captured base release, or an empty ontology for the first release. Both closures must be readable and belong to the same ontology. Workflow-only changes are excluded; this does not compute logical equivalence or inferred impact.")
   public OntologyReleaseDiff diff(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
@@ -110,8 +110,9 @@ public final class OntologyReleaseResource
       @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(1000) final int limit,
       @QueryParam("after") final String after) {
     final OntologyRelease release = get(uriInfo, securityContext, id);
+    final UUID effectiveBase = baseReleaseId == null ? release.getBaseReleaseId() : baseReleaseId;
     final OntologyRelease base =
-        baseReleaseId == null ? null : get(uriInfo, securityContext, baseReleaseId);
+        effectiveBase == null ? null : get(uriInfo, securityContext, effectiveBase);
     return comparison.compare(
         release,
         base,
@@ -124,7 +125,7 @@ public final class OntologyReleaseResource
   @Path("/{id}/structure")
   @Operation(
       operationId = "getOntologyReleaseStructure",
-      summary = "Check property declarations and axiom structure across a sealed import closure",
+      summary = "Check property declarations and axiom structure in a sealed release",
       description =
           "Returns structural diagnostics over frozen SQL members. It does not run the complete OWL 2 DL profile or logical checks, approve a release, or change publication state.")
   public OntologyReleaseStructureReport structure(

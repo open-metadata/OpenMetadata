@@ -105,20 +105,23 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
 
   @Override
   protected String getInheritableFields() {
-    return "owners,reviewers";
+    return Entity.ONTOLOGY_RELEASE.equals(entityType) ? "owners,reviewers" : "owners";
   }
 
   @Override
   protected boolean requiresParentForInheritance(final T entity, final Fields fields) {
     return entity.getOntology() != null
-        && (fields.contains("reviewers") || requiresParentForOwnersOrDomains(entity, fields));
+        && ((Entity.ONTOLOGY_RELEASE.equals(entityType) && fields.contains("reviewers"))
+            || requiresParentForOwnersOrDomains(entity, fields));
   }
 
   @Override
   protected void applyInheritance(
       final T entity, final Fields fields, final EntityInterface<?> parent) {
     inheritOwners(entity, fields, parent);
-    inheritReviewers(entity, fields, parent);
+    if (Entity.ONTOLOGY_RELEASE.equals(entityType)) {
+      inheritReviewers(entity, fields, getParentEntity(entity, "reviewers"));
+    }
   }
 
   @Override
@@ -176,7 +179,20 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
   @Override
   public EntityUpdater getUpdater(
       final T original, final T updated, final Operation operation, final ChangeSource source) {
+    if (operation.isPut() && Boolean.TRUE.equals(original.getDeleted())) {
+      useRestoredRevision(original);
+    }
     return new OntologyUpdater(original, updated, operation, source);
+  }
+
+  private void useRestoredRevision(final T original) {
+    final T current = find(original.getId(), Include.ALL);
+    if (!Boolean.TRUE.equals(current.getDeleted())) {
+      // PUT restores first, within the same ontology lock; compare the edit to that revision.
+      original.setVersion(current.getVersion());
+      original.setUpdatedAt(current.getUpdatedAt());
+      original.setDeleted(false);
+    }
   }
 
   protected class OntologyUpdater extends EntityUpdater {
@@ -194,7 +210,7 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
     @Override
     protected void entitySpecificUpdate(final boolean consolidatingChanges) {
       requireUnchangedIdentity();
-      setInheritedFields(updated, getFields("owners,reviewers"));
+      setInheritedFields(updated, getFields(getInheritableFields()));
       final JsonNode before = JsonUtils.getObjectMapper().valueToTree(original);
       final JsonNode after = JsonUtils.getObjectMapper().valueToTree(updated);
       for (final String field : definitionFields) {

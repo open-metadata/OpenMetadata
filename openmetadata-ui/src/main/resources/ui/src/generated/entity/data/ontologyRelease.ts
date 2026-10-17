@@ -21,8 +21,7 @@ export interface OntologyRelease {
     baseReleaseId?:     string;
     changeDescription?: ChangeDescription;
     /**
-     * SHA-256 of the sealed manifest, including ordered member identities, payload digests, and
-     * the pinned import closure.
+     * SHA-256 of the sealed manifest, including ordered member identities and payload digests.
      */
     contentDigest: string;
     deleted?:      boolean;
@@ -58,10 +57,6 @@ export interface OntologyRelease {
      */
     reviewAuthor?: string;
     reviewers?:    EntityReference[];
-    /**
-     * Server-managed content revision. Every governed edit invalidates the previous review.
-     */
-    reviewRevision?: number;
     /**
      * Current approval task, assigned by the existing workflow infrastructure. Clients cannot
      * set this field.

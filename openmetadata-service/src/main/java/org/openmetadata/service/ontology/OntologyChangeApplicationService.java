@@ -39,7 +39,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptRepository;
+import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
+import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
@@ -90,34 +94,38 @@ public final class OntologyChangeApplicationService {
     preflight.validate(changeSet, operations);
     final ApplicationExecution execution =
         new ApplicationExecution(uriInfo, changeSetId, user, new ArrayList<>());
-    final PutResponse<OntologyChangeSet> response = applyOperations(execution, operations);
+    final PutResponse<OntologyChangeSet> response =
+        applyOperations(execution, changeSet, operations);
     publishApplied(response.getEntity(), user);
     return response;
   }
 
   private PutResponse<OntologyChangeSet> applyOperations(
-      final ApplicationExecution execution, final List<OntologyChangeOperation> operations) {
-    PutResponse<OntologyChangeSet> response;
-    try {
-      response = transaction.execute(() -> applyAtomically(execution, operations));
-    } catch (OperationApplicationException failure) {
-      response = recordFailureAndInvalidateCaches(execution, operations, failure);
-    }
-    if (response.getEntity().getState() == OntologyChangeSetState.APPLIED) {
-      invalidateMutationCaches(execution);
-    }
-    return response;
-  }
-
-  private PutResponse<OntologyChangeSet> recordFailureAndInvalidateCaches(
       final ApplicationExecution execution,
-      final List<OntologyChangeOperation> operations,
-      final OperationApplicationException failure) {
+      final OntologyChangeSet changeSet,
+      final List<OntologyChangeOperation> operations) {
     PutResponse<OntologyChangeSet> response;
     try {
+      response =
+          transaction.execute(
+              () -> {
+                if (changeSet.getOntology() == null) {
+                  return applyAtomically(execution, operations);
+                }
+                return executor.inScope(
+                    changeSet,
+                    () -> {
+                      preflight.validate(changeSet, operations);
+                      return applyAtomically(execution, operations);
+                    });
+              });
+    } catch (OperationApplicationException failure) {
       response = recordFailure(execution, operations, failure);
     } finally {
       invalidateMutationCaches(execution);
+      if (changeSet.getOntology() != null) {
+        cacheInvalidator.invalidate(changeSet.getEntityReference());
+      }
     }
     return response;
   }
@@ -303,7 +311,13 @@ public final class OntologyChangeApplicationService {
         new OntologyChangeOperationExecutor(
             (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY),
             termRepository,
-            clock),
+            clock,
+            new NativeOntologyChangeExecutor(
+                (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY),
+                (OntologyConceptRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+                (OntologyPropertyRepository) Entity.getEntityRepository(Entity.ONTOLOGY_PROPERTY),
+                (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM),
+                clock)),
         new OntologyChangeEventPublisher(),
         work -> termRepository.executeInTransaction(work),
         OntologyChangeApplicationService::invalidateEntityCache);

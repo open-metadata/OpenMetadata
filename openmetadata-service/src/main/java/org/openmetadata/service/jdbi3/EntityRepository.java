@@ -1249,7 +1249,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // find() above does not hydrate tags, so this ancestor would contribute only the tags it
     // inherits in turn and never its own -- see fetchInheritableRelationships.
     fetchAndSetTags(List.of(entity), fields);
-    fetchAndSetReviewers(List.of(entity), fields);
     if (!requiresParentForInheritance(entity, fields)) {
       return entity;
     }
@@ -1316,7 +1315,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
     fetchAndSetTags(entities, fields);
-    fetchAndSetReviewers(entities, fields);
   }
 
   @SuppressWarnings("unchecked")
@@ -4703,11 +4701,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       T updated,
       boolean requireCurrentVersion,
       Set<String> patchedFields) {
+    Supplier<PutResponse<T>> write =
+        () -> applyPut(uriInfo, original, updated, requireCurrentVersion, patchedFields);
+    return Boolean.TRUE.equals(original.getDeleted())
+        ? executeEntityWrite(List.of(original), write)
+        : write.get();
+  }
+
+  private PutResponse<T> applyPut(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
-    final T beforeRestore = original;
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntity")) {
-        original = restoreForUpdate(original, updated);
+        restoreEntity(updated.getUpdatedBy(), original.getId());
       }
     }
 
@@ -4727,7 +4737,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         entityUpdater.update();
       }
     }
-    entityUpdater.includeRestoration(beforeRestore);
     EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFields")) {
       setInheritedFields(updated, new Fields(allowedFields));
@@ -4764,10 +4773,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private PutResponse<T> putForImportAndStore(UriInfo uriInfo, T original, T updated) {
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
-    final T beforeRestore = original;
     if (Boolean.TRUE.equals(original.getDeleted())) {
       try (var ignored = phase("putRestoreEntityImport")) {
-        original = restoreForUpdate(original, updated);
+        restoreEntity(updated.getUpdatedBy(), original.getId());
       }
     }
 
@@ -4776,7 +4784,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("putEntityUpdateImport")) {
       entityUpdater.updateForImport();
     }
-    entityUpdater.includeRestoration(beforeRestore);
     EventType change = entityUpdater.getChangeType();
     try (var ignored = phase("putSetInheritedFieldsImport")) {
       setInheritedFields(updated, new Fields(allowedFields));
@@ -4785,15 +4792,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     }
     return new PutResponse<>(Status.OK, withHref(uriInfo, updated), change);
-  }
-
-  private T restoreForUpdate(T original, T updated) {
-    // Restore writes its own version; the following update must compare against that revision.
-    PutResponse<T> restored = restoreEntity(updated.getUpdatedBy(), original.getId());
-    updated.setDeleted(false);
-    return restored == null
-        ? get(null, original.getId(), putFields, NON_DELETED, false)
-        : restored.getEntity();
   }
 
   /**
@@ -5977,7 +5975,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return work.get();
   }
 
-  private void flushInOneTransaction(List<T> entities, Runnable work) {
+  protected void flushInOneTransaction(List<T> entities, Runnable work) {
     executeEntityWrite(
         entities,
         () -> {
@@ -7613,9 +7611,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Repositories are instantiated directly rather than as JDBI SQL-object proxies, so an
     // annotation here would not create a transaction. The explicit boundary also drains deferred
     // credential/cache work only after the restore commits.
-    return executeEntityWrite(
-        List.of(find(id, ALL)),
-        () -> executeInTransaction(() -> restoreEntityInternal(updatedBy, id)));
+    return executeInTransaction(() -> restoreEntityInternal(updatedBy, id));
   }
 
   private PutResponse<T> restoreEntityInternal(String updatedBy, UUID id) {
@@ -7624,7 +7620,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
+    return executeEntityWrite(
+        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+  }
 
+  private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
     // If an entity being restored contains other **deleted** children entities, restore them
     restoreChildren(id, updatedBy);
 
@@ -11538,21 +11538,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return incrementalFieldsChanged() ? ENTITY_UPDATED : ENTITY_NO_CHANGE;
     }
 
-    private void includeRestoration(final T beforeRestore) {
-      if (Boolean.TRUE.equals(beforeRestore.getDeleted())) {
-        // The restore already persisted its version; combine its delta only in this request's
-        // event.
-        incrementalChangeDescription =
-            JsonUtils.deepCopy(incrementalChangeDescription, ChangeDescription.class);
-        incrementalChangeDescription.setPreviousVersion(beforeRestore.getVersion());
-        incrementalChangeDescription
-            .getFieldsUpdated()
-            .add(new FieldChange().withName(FIELD_DELETED).withOldValue(true).withNewValue(false));
-        updated.setIncrementalChangeDescription(incrementalChangeDescription);
-        entityChanged = true;
-      }
-    }
-
     public final <K> boolean recordChange(String field, K orig, K updated) {
       return recordChange(field, orig, updated, false, objectMatch, true);
     }
@@ -14402,15 +14387,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           entity.setUpdatedBy(userName);
           entity.setUpdatedAt(System.currentTimeMillis());
 
-          final T beforeRestore = original;
           if (Boolean.TRUE.equals(original.getDeleted())) {
-            original = restoreForUpdate(original, entity);
+            restoreEntity(entity.getUpdatedBy(), original.getId());
           }
 
           EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
           updater.setOverrideMetadata(overrideMetadata);
           updater.updateWithDeferredStore();
-          updater.includeRestoration(beforeRestore);
           updaters.add(updater);
         } catch (Exception e) {
           failedRequests.add(

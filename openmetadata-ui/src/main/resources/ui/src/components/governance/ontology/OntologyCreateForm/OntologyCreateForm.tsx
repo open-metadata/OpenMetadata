@@ -20,25 +20,28 @@ import { isAxiosError } from 'axios';
 import { Fragment, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Layer } from '../../../../generated/api/data/createOntology';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { createOntology } from '../../../../rest/ontologyAPI';
+import { createOntology, patchOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import {
   ontologyFormFields,
+  ontologyFormValues,
   OntologyFormValues,
+  ontologyPatch,
   ontologyRequest,
 } from './OntologyCreateForm.utils';
 
 interface OntologyCreateFormProps {
   canCreate: boolean;
+  ontology?: Ontology;
   currentUserId?: string;
   onSaved: (ontology: Ontology) => void;
 }
 
 const OntologyCreateForm = ({
   canCreate,
+  ontology,
   currentUserId,
   onSaved,
 }: OntologyCreateFormProps) => {
@@ -46,16 +49,7 @@ const OntologyCreateForm = ({
   const owners = useUserTeamOptions();
   const reviewers = useUserTeamOptions();
   const form = useForm<OntologyFormValues>({
-    defaultValues: {
-      name: '',
-      displayName: '',
-      description: '',
-      iri: '',
-      namespace: '',
-      layer: { id: Layer.L1, label: Layer.L1 },
-      owners: [],
-      reviewers: [],
-    },
+    defaultValues: ontologyFormValues(ontology),
   });
   const [isSaving, setIsSaving] = useState(false);
   const save = async (values: OntologyFormValues) => {
@@ -64,7 +58,11 @@ const OntologyCreateForm = ({
     }
     setIsSaving(true);
     try {
-      onSaved(await createOntology(ontologyRequest(values, currentUserId)));
+      onSaved(
+        ontology
+          ? await patchOntology(ontology.id, ontologyPatch(ontology, values))
+          : await createOntology(ontologyRequest(values, currentUserId))
+      );
     } catch (error) {
       showErrorToast(
         isAxiosError(error) ? error : t('server.unexpected-error')
@@ -80,11 +78,15 @@ const OntologyCreateForm = ({
       form={form}
       onSubmit={form.handleSubmit(save)}>
       <Box direction="col" gap={4}>
-        {ontologyFormFields(t, owners, reviewers, !canCreate || isSaving).map(
-          (field) => (
-            <Fragment key={field.name}>{getField(field)}</Fragment>
-          )
-        )}
+        {ontologyFormFields(
+          t,
+          owners,
+          reviewers,
+          !canCreate || isSaving,
+          Boolean(ontology)
+        ).map((field) => (
+          <Fragment key={field.name}>{getField(field)}</Fragment>
+        ))}
         <Button isDisabled={!canCreate} isLoading={isSaving} type="submit">
           {t('label.save')}
         </Button>

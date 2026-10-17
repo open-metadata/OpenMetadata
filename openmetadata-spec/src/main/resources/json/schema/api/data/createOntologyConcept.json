@@ -21,9 +21,6 @@
     "owners": {
       "$ref": "../../entity/data/ontologyConcept.json#/properties/owners"
     },
-    "reviewers": {
-      "$ref": "../../entity/data/ontologyConcept.json#/properties/reviewers"
-    },
     "provider": {
       "$ref": "../../entity/data/ontologyConcept.json#/properties/provider"
     },

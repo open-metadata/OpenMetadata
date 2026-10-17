@@ -16,7 +16,7 @@
 export interface OntologyReviewTarget {
     author: string;
     /**
-     * SHA-256 of ontology-review-v2 canonical content.
+     * SHA-256 of the ontology-review-v3 sealed release identity.
      */
     contentDigest: string;
     entityId:      string;
@@ -27,11 +27,5 @@ export interface OntologyReviewTarget {
     /**
      * Owning ontology ID used to serialize release review decisions.
      */
-    ontologyId:     string;
-    reviewRevision: number;
-    /**
-     * SHA-256 of the workflow definition, including its approval policy.
-     */
-    workflowDefinitionDigest:  string;
-    workflowDefinitionVersion: number;
+    ontologyId: string;
 }

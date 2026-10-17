@@ -14,13 +14,21 @@
  * Create or update an ontology authoring session.
  */
 export interface CreateOntologyChangeSet {
-    description: string;
-    displayName: string;
+    /**
+     * Expected native working revision when applying this proposal.
+     */
+    baseWorkingRevision?: number;
+    description:          string;
+    displayName:          string;
     /**
      * Fully qualified names of affected ontology models.
      */
-    glossaries:  string[];
+    glossaries?: string[];
     name:        string;
+    /**
+     * Fully qualified native ontology name. Mutually exclusive with glossaries.
+     */
+    ontology?:   string;
     operations?: OntologyChangeOperation[];
     owners?:     EntityReference[];
     provider?:   ProviderType;
@@ -38,6 +46,7 @@ export interface OntologyChangeOperation {
      * Version used for optimistic concurrency. Omitted for create operations.
      */
     baseVersion?: number;
+    concept?:     OntologyConcept;
     /**
      * Model confidence in this AI suggestion, from 0 to 1.
      */
@@ -50,6 +59,7 @@ export interface OntologyChangeOperation {
      */
     modelId?:      string;
     operationType: OperationType;
+    property?:     OntologyProperty;
     /**
      * Model explanation of the evidence behind this AI suggestion.
      */
@@ -138,6 +148,8 @@ export enum DataType {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Owning ontology entity. Glossaries do not own ontology definitions.
+ *
  * Reference to the data contract for this entity.
  *
  * Glossary that this term belongs to.
@@ -223,7 +235,6 @@ export interface OntologyAxiom {
     propertyIri?:                  string;
     provenance:                    Provenance;
     provider?:                     ProviderType;
-    reviewers?:                    EntityReference[];
     subjectIri:                    string;
     targetIri?:                    string;
     updatedAt?:                    number;
@@ -406,6 +417,101 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * A formal class, SKOS concept, or both, owned by an ontology independently of glossary
+ * terms.
+ */
+export interface OntologyConcept {
+    changeDescription?: ChangeDescription;
+    conceptMappings?:   ConceptMapping[];
+    conceptType:        OntologyConceptType;
+    deleted?:           boolean;
+    description?:       string;
+    displayName?:       string;
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
+     */
+    iri:  string;
+    name: string;
+    /**
+     * Owning ontology entity. Glossaries do not own ontology definitions.
+     */
+    ontology:  EntityReference;
+    owners?:   EntityReference[];
+    provider?: ProviderType;
+    /**
+     * Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not
+     * stored or independently editable.
+     */
+    subClasses?: string[];
+    /**
+     * Direct named superclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms.
+     * Not stored or independently editable.
+     */
+    superClasses?: string[];
+    synonyms?:     string[];
+    updatedAt?:    number;
+    updatedBy?:    string;
+    version?:      number;
+}
+
+/**
+ * Mapping from an ontology term to an external concept.
+ */
+export interface ConceptMapping {
+    /**
+     * External concept IRI to map this ontology term to.
+     */
+    conceptIri: string;
+    /**
+     * Type of mapping used for the external concept alignment.
+     */
+    mappingType: ConceptMappingType;
+    /**
+     * Optional external concept scheme IRI for the mapped concept.
+     */
+    schemeIri?: string;
+    /**
+     * Optional source label or catalog for the external concept.
+     */
+    source?: string;
+}
+
+/**
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
+ */
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
+}
+
+/**
+ * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
+ * round-trip with the typing they were authored with.
+ *
+ * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
+ * emits the term as an `owl:Class` and a `skos:Concept`.
+ */
+export enum OntologyConceptType {
+    Both = "BOTH",
+    OwlClass = "OWL_CLASS",
+    SkosConcept = "SKOS_CONCEPT",
 }
 
 /**
@@ -862,56 +968,110 @@ export interface Votes {
     upVotes?: number;
 }
 
-/**
- * Mapping from an ontology term to an external concept.
- */
-export interface ConceptMapping {
-    /**
-     * External concept IRI to map this ontology term to.
-     */
-    conceptIri: string;
-    /**
-     * Type of mapping used for the external concept alignment.
-     */
-    mappingType: ConceptMappingType;
-    /**
-     * Optional external concept scheme IRI for the mapped concept.
-     */
-    schemeIri?: string;
-    /**
-     * Optional source label or catalog for the external concept.
-     */
-    source?: string;
-}
-
-/**
- * Type of mapping used for the external concept alignment.
- *
- * Type of mapping used to align this term with an external concept.
- */
-export enum ConceptMappingType {
-    BroadMatch = "BROAD_MATCH",
-    CloseMatch = "CLOSE_MATCH",
-    ExactMatch = "EXACT_MATCH",
-    NarrowMatch = "NARROW_MATCH",
-    RelatedMatch = "RELATED_MATCH",
-    SameAs = "SAME_AS",
-}
-
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
     CreateGlossary = "CREATE_GLOSSARY",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
+    DeleteConcept = "DELETE_CONCEPT",
     DeleteMapping = "DELETE_MAPPING",
+    DeleteProperty = "DELETE_PROPERTY",
     DeleteRelationship = "DELETE_RELATIONSHIP",
     DeleteTerm = "DELETE_TERM",
     UpdateRelationship = "UPDATE_RELATIONSHIP",
     UpdateTerm = "UPDATE_TERM",
     UpsertAttribute = "UPSERT_ATTRIBUTE",
     UpsertAxiom = "UPSERT_AXIOM",
+    UpsertConcept = "UPSERT_CONCEPT",
     UpsertMapping = "UPSERT_MAPPING",
+    UpsertProperty = "UPSERT_PROPERTY",
+}
+
+/**
+ * A formal object, data, or annotation property owned by an ontology, independent of
+ * glossary relation types.
+ */
+export interface OntologyProperty {
+    changeDescription?: ChangeDescription;
+    characteristics?:   Characteristic[];
+    deleted?:           boolean;
+    description?:       string;
+    /**
+     * Semantic IRIs of properties disjoint with this property.
+     */
+    disjointWith?: string[];
+    displayName?:  string;
+    /**
+     * Semantic IRIs of the classes in the property domain.
+     */
+    domain?: string[];
+    /**
+     * Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent
+     * datatype denotes xsd:string. Empty means no enumeration constraint.
+     */
+    enumValues?:        Literal[];
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Semantic IRI of the inverse object property.
+     */
+    inverse?: string;
+    /**
+     * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
+     */
+    iri: string;
+    /**
+     * Identifier intent for a DATA property. This annotation does not assert functionality, an
+     * OWL key, or uniqueness in source data.
+     */
+    isIdentifier?: boolean;
+    kind:          Kind;
+    name:          string;
+    /**
+     * Owning ontology entity. Glossaries do not own ontology definitions.
+     */
+    ontology: EntityReference;
+    owners?:  EntityReference[];
+    /**
+     * Ordered object-property IRIs whose composition implies this property.
+     */
+    propertyChain?: string[];
+    provider?:      ProviderType;
+    /**
+     * Semantic IRIs of range classes or datatypes.
+     */
+    range?: string[];
+    /**
+     * Unit IRI or display symbol for a DATA property, retained as an annotation without
+     * implying conversion.
+     */
+    unit?:      string;
+    updatedAt?: number;
+    updatedBy?: string;
+    version?:   number;
+}
+
+export enum Characteristic {
+    Asymmetric = "ASYMMETRIC",
+    Functional = "FUNCTIONAL",
+    InverseFunctional = "INVERSE_FUNCTIONAL",
+    Irreflexive = "IRREFLEXIVE",
+    Reflexive = "REFLEXIVE",
+    Symmetric = "SYMMETRIC",
+    Transitive = "TRANSITIVE",
+}
+
+export enum Kind {
+    Annotation = "ANNOTATION",
+    Data = "DATA",
+    Object = "OBJECT",
 }
 
 /**
@@ -1120,19 +1280,6 @@ export interface GlossaryTerm {
      * Votes on the entity.
      */
     votes?: Votes;
-}
-
-/**
- * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
- * emits the term as an `owl:Class` and a `skos:Concept`.
- *
- * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
- * round-trip with the typing they were authored with.
- */
-export enum OntologyConceptType {
-    Both = "BOTH",
-    OwlClass = "OWL_CLASS",
-    SkosConcept = "SKOS_CONCEPT",
 }
 
 /**

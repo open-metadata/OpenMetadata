@@ -17,37 +17,21 @@
       "description": "Entity-history version submitted for review; reviewers read this frozen release header.",
       "$ref": "entityHistory.json#/definitions/entityVersion"
     },
-    "reviewRevision": {
-      "type": "integer",
-      "minimum": 1,
-      "existingJavaType": "java.lang.Long"
-    },
     "contentDigest": {
-      "description": "SHA-256 of ontology-review-v2 canonical content.",
+      "description": "SHA-256 of the ontology-review-v3 sealed release identity.",
       "type": "string",
       "pattern": "^[a-f0-9]{64}$"
     },
     "author": {
       "type": "string"
-    },
-    "workflowDefinitionVersion": {
-      "$ref": "entityHistory.json#/definitions/entityVersion"
-    },
-    "workflowDefinitionDigest": {
-      "description": "SHA-256 of the workflow definition, including its approval policy.",
-      "type": "string",
-      "pattern": "^[a-f0-9]{64}$"
     }
   },
   "required": [
     "entityId",
     "ontologyId",
     "entityVersion",
-    "reviewRevision",
     "contentDigest",
-    "author",
-    "workflowDefinitionVersion",
-    "workflowDefinitionDigest"
+    "author"
   ],
   "additionalProperties": false
 }

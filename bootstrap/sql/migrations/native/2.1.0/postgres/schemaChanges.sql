@@ -842,7 +842,7 @@ ALTER TABLE ontology_axiom_entity DROP COLUMN IF EXISTS entityStatus;
 
 -- Unreleased glossary axiom drafts cannot be applied to the independent ontology model.
 DELETE FROM entity_relationship WHERE
-  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb)) OR
-  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb));
-DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb);
-DELETE FROM ontology_change_set_entity WHERE json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb;
+  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb))) OR
+  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb)));
+DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb));
+DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb);
