@@ -887,28 +887,52 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
 
-    // Check if test suite already exists
+    // A non-null reference can point to a suite that was soft-deleted via the DQ API without
+    // clearing DataContract.testSuite; returning null would NPE in updateTestSuiteTests.
     if (contractHasTestSuite(dataContract)) {
-      return Entity.getEntityOrNull(
-          dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
-    } else {
-      // Create new test suite
-      LOG.debug(
-          "Test suite [{}] not found when initializing the Data Contract, creating a new one",
-          testSuiteName);
-      CreateTestSuite createTestSuite =
-          new CreateTestSuite()
-              .withName(testSuiteName)
-              .withDisplayName("Data Contract - " + dataContract.getName())
-              .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
-              .withDataContract(
-                  new EntityReference()
-                      .withId(dataContract.getId())
-                      .withFullyQualifiedName(dataContract.getFullyQualifiedName())
-                      .withType(Entity.DATA_CONTRACT));
-      TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-      return testSuiteRepository.create(null, newTestSuite);
+      TestSuite existing =
+          Entity.getEntityOrNull(
+              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
+      if (existing != null) {
+        return existing;
+      }
+      TestSuite softDeleted =
+          Entity.getEntityOrNull(
+              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+      if (softDeleted != null) {
+        // Restore (not re-create): entity tables have a UNIQUE constraint on fqnHash and the
+        // soft-deleted row keeps it, so a fresh insert would collide with the dangling reference.
+        LOG.info(
+            "Test suite {} referenced by data contract {} is soft-deleted; restoring it so the "
+                + "contract update can proceed",
+            softDeleted.getId(),
+            dataContract.getId());
+        testSuiteRepository.restoreEntity(dataContract.getUpdatedBy(), softDeleted.getId());
+        return Entity.getEntityOrNull(
+            dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
+      }
+      LOG.warn(
+          "Test suite {} referenced by data contract {} no longer exists; creating a new suite "
+              + "to replace the dangling reference",
+          dataContract.getTestSuite(),
+          dataContract.getId());
     }
+    // Create new test suite
+    LOG.debug(
+        "Test suite [{}] not found when initializing the Data Contract, creating a new one",
+        testSuiteName);
+    CreateTestSuite createTestSuite =
+        new CreateTestSuite()
+            .withName(testSuiteName)
+            .withDisplayName("Data Contract - " + dataContract.getName())
+            .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
+            .withDataContract(
+                new EntityReference()
+                    .withId(dataContract.getId())
+                    .withFullyQualifiedName(dataContract.getFullyQualifiedName())
+                    .withType(Entity.DATA_CONTRACT));
+    TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
+    return testSuiteRepository.create(null, newTestSuite);
   }
 
   private Boolean contractHasTestSuite(DataContract dataContract) {

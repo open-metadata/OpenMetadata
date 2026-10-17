@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { FC } from 'react';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
@@ -458,14 +459,102 @@ describe('CSV utils ClassBase', () => {
       expect(editor).toBeDefined();
     });
 
-    it('should return editor for entityType* column', () => {
+    it('should commit the picked entity type and close the cell', async () => {
       const editor = csvUtils.getEditor(
         'entityType*',
         EntityType.TABLE,
         multipleOwner
       );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
 
-      expect(editor).toBeDefined();
+      if (!editor) {
+        throw new Error('Expected entityType* editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { 'entityType*': EntityType.DATABASE },
+            column: { key: 'entityType*' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.database-schema' })
+      );
+
+      expect(onRowChange).toHaveBeenCalledWith(
+        { 'entityType*': EntityType.DATABASE_SCHEMA },
+        true
+      );
+      expect(screen.queryByTestId('inline-save-btn')).not.toBeInTheDocument();
+    });
+
+    it('should end the enum edit when the list closes without a new pick', async () => {
+      const editor = csvUtils.getEditor(
+        'entityType*',
+        EntityType.TABLE,
+        multipleOwner
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected entityType* editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { 'entityType*': EntityType.DATABASE },
+            column: { key: 'entityType*' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(
+        await screen.findByRole('option', { name: 'label.database' })
+      );
+
+      expect(onRowChange).not.toHaveBeenCalled();
+      expect(onClose).toHaveBeenCalledWith(false);
+    });
+
+    it('should commit the picked metric enum value and close the cell', async () => {
+      const editor = csvUtils.getEditor(
+        'metricType',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected metricType editor to be defined');
+      }
+
+      render(
+        <>
+          {editor({
+            row: { metricType: 'COUNT' },
+            column: { key: 'metricType' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof editor>[0])}
+        </>
+      );
+
+      fireEvent.click(await screen.findByRole('option', { name: 'SUM' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({ metricType: 'SUM' }, true);
+      expect(onClose).toHaveBeenCalledWith(true);
     });
 
     it('should return editor for code column', () => {
@@ -950,17 +1039,137 @@ describe('CSV utils ClassBase', () => {
 
       expect(await screen.findByText('Status')).toBeInTheDocument();
       expect(screen.getByText('Markets')).toBeInTheDocument();
-      expect(
-        document.querySelectorAll('.bulk-edit-custom-property-enum-select')
-      ).toHaveLength(2);
-      expect(
-        document.querySelectorAll(
-          '.bulk-edit-custom-property-enum-select.ant-select-multiple'
-        )
-      ).toHaveLength(1);
+      expect(screen.getByTestId('status-enum-select')).toBeInTheDocument();
+      expect(screen.getByTestId('markets-enum-select')).toBeInTheDocument();
+      // A multi-select enum shows each stored value as a chip.
+      expect(screen.getByText('US')).toBeInTheDocument();
+      expect(screen.getByText('EU')).toBeInTheDocument();
       expect(
         document.querySelector('.bulk-edit-custom-property-option')
       ).not.toBeInTheDocument();
+    });
+
+    it('should replace a single-value enum with the newly picked option', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: { multiSelect: false, values: ['Draft', 'Approved'] },
+            },
+          },
+        ],
+      });
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: 'status:Draft' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose,
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      // userEvent sends the mousedown that the editor's outside-press guard
+      // listens for; fireEvent.click would skip it.
+      await user.click(
+        within(await screen.findByTestId('status-enum-select')).getByRole(
+          'button'
+        )
+      );
+      await user.click(await screen.findByRole('option', { name: 'Approved' }));
+
+      // Picking inside the portalled list must not count as an outside press.
+      expect(onClose).not.toHaveBeenCalled();
+
+      await user.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { extension: 'status:Approved' },
+          true
+        );
+      });
+    });
+
+    it('should clear a single-value enum on its own', async () => {
+      mockGetTypeByFQN.mockResolvedValueOnce({
+        customProperties: [
+          {
+            name: 'status',
+            displayName: 'Status',
+            description: '',
+            propertyType: { name: 'enum' },
+            customPropertyConfig: {
+              config: { multiSelect: false, values: ['Draft', 'Approved'] },
+            },
+          },
+          {
+            name: 'priority',
+            displayName: 'Priority',
+            description: '',
+            propertyType: { name: 'string' },
+          },
+        ],
+      });
+      const editor = csvUtils.getEditor(
+        'extension',
+        EntityType.METRIC,
+        multipleOwner,
+        { usePlainTextEditor: true }
+      );
+      const onRowChange = jest.fn();
+
+      if (!editor) {
+        throw new Error('Expected extension editor to be defined');
+      }
+
+      await act(async () => {
+        render(
+          <>
+            {editor({
+              row: { extension: 'status:Draft;priority:High' },
+              column: { key: 'extension' },
+              onRowChange,
+              onClose: jest.fn(),
+            } as unknown as Parameters<typeof editor>[0])}
+          </>
+        );
+      });
+
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.click(await screen.findByTestId('status-enum-clear'));
+
+      expect(screen.queryByTestId('status-enum-clear')).not.toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /update/i }));
+
+      await waitFor(() => {
+        expect(onRowChange).toHaveBeenCalledWith(
+          { extension: 'priority:High' },
+          true
+        );
+      });
     });
 
     it('should refetch metric custom properties after an empty response', async () => {

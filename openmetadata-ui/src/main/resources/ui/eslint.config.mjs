@@ -37,6 +37,10 @@ import omPlaywright from './playwright/eslint-rules/index.mjs';
 // here in the PR that removes its last import (open-metadata/openmetadata-collate#6884).
 const MIGRATED_ANTD_COMPONENTS = [
   'AutoComplete',
+  'DatePicker',
+  'Form',
+  'Input',
+  'Select',
   'Checkbox',
   'InputNumber',
   'Radio',
@@ -49,6 +53,7 @@ const MIGRATED_ANTD_COMPONENTS = [
   'Badge',
   'Carousel',
   'Collapse',
+  'ConfigProvider',
   'Drawer',
   'Layout',
   'List',

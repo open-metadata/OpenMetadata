@@ -22,8 +22,18 @@ def test_connection_checks_catalog_schemas_tables_and_views(metadata, databend_c
         "GetSchemas",
         "GetTables",
         "GetViews",
+        "GetLineage",
     ]
-    assert all(step.passed for step in result.steps)
+    assert all(step.passed for step in result.steps if step.name != "GetLineage")
+
+
+def test_connection_lineage_step_is_optional_without_enterprise_license(metadata, databend_connection):
+    """The test container has no license, so lineage is unavailable but must not fail the test connection."""
+    result = get_test_connection_fn(databend_connection)(metadata)
+
+    lineage_step = next(step for step in result.steps if step.name == "GetLineage")
+    assert lineage_step.passed is False
+    assert lineage_step.mandatory is False
 
 
 def test_connection_without_database_schema_starts_in_default_database(metadata, databend_connection):
@@ -31,7 +41,7 @@ def test_connection_without_database_schema_starts_in_default_database(metadata,
 
     result = get_test_connection_fn(configured_connection)(metadata)
 
-    assert all(step.passed for step in result.steps)
+    assert all(step.passed for step in result.steps if step.name != "GetLineage")
 
 
 def test_connection_explains_missing_sslmode_for_http_endpoint(metadata, databend_connection):

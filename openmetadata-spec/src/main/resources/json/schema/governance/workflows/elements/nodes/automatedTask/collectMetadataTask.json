@@ -1,0 +1,132 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/automatedTask/collectMetadataTask.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CollectMetadataTaskDefinition",
+  "description": "Keeps one Metadata Completion task open on an asset while it is in this node's stage and any listed field is still empty or the stage's conditions are not met (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). The stage gate, not the task, decides whether the asset advances.",
+  "javaInterfaces": [
+    "org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface"
+  ],
+  "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.CollectMetadataTaskDefinition",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "default": "automatedTask"
+    },
+    "subType": {
+      "type": "string",
+      "default": "collectMetadataTask"
+    },
+    "name": {
+      "$ref": "../../../../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "config": {
+      "title": "MetadataCollectionConfiguration",
+      "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.MetadataCollectionConfiguration",
+      "type": "object",
+      "properties": {
+        "stage": {
+          "description": "The task applies while the asset is in this stage.",
+          "$ref": "../../../../../type/status.json"
+        },
+        "targetStage": {
+          "description": "The stage the asset moves to once the fields are filled in.",
+          "$ref": "../../../../../type/status.json"
+        },
+        "fields": {
+          "description": "Fields the task asks for; it lists only the ones still empty.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/requiredField"
+          }
+        },
+        "conditions": {
+          "description": "JSON Logic condition the asset must also meet before it leaves the stage. The task only reports that it is not met.",
+          "type": "string",
+          "minLength": 1
+        },
+        "taskAssignees": {
+          "description": "Who is asked to complete what the stage still needs.",
+          "type": "string",
+          "enum": [
+            "owners",
+            "reviewers",
+            "candidates"
+          ],
+          "default": "owners"
+        },
+        "candidates": {
+          "description": "Assignees when the task goes to specific users or teams.",
+          "type": "array",
+          "items": {
+            "$ref": "../../../../../type/entityReference.json"
+          }
+        }
+      },
+      "required": [
+        "stage",
+        "taskAssignees"
+      ],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "inputNamespaceMap": {
+      "type": "object",
+      "properties": {
+        "relatedEntity": {
+          "type": "string",
+          "default": "global"
+        }
+      },
+      "required": [
+        "relatedEntity"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "name",
+    "config"
+  ],
+  "additionalProperties": false,
+  "definitions": {
+    "requiredField": {
+      "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RequiredMetadataField",
+      "description": "A field the asset must fill in, with the JSON Logic condition that is true once it is filled in.",
+      "type": "object",
+      "properties": {
+        "field": {
+          "description": "Path of the field, such as description, owners or extension.<property>.",
+          "type": "string",
+          "minLength": 1
+        },
+        "rules": {
+          "description": "JSON Logic condition that is true once the field is filled in.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "field",
+        "rules"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -148,6 +148,11 @@ export interface Task {
      */
     updatedBy?: string;
     /**
+     * Whether to assign entity owners when this task is created without assignees. Approval
+     * workflows disable this for an explicit wait strategy.
+     */
+    useEntityOwnerFallback?: boolean;
+    /**
      * Metadata version of the entity.
      */
     version?: number;
@@ -732,6 +737,7 @@ export enum TaskType {
     GlossaryApproval = "GlossaryApproval",
     IncidentResolution = "IncidentResolution",
     MemoryConflictReview = "MemoryConflictReview",
+    MetadataCompletion = "MetadataCompletion",
     OwnershipUpdate = "OwnershipUpdate",
     PipelineReview = "PipelineReview",
     RecognizerFeedbackApproval = "RecognizerFeedbackApproval",
