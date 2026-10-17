@@ -567,6 +567,39 @@ const DomainTreeView = ({
     }
   }, [selectedFqn]);
 
+  // The tree swaps the right pane without changing the route, so the URL page
+  // position (`page` is the sub-domain listing's key) would carry over to the
+  // next domain instead of resetting like a route change does.
+  const clearPagingParams = useCallback(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const pagingKeys = ['currentPage', 'cursorType', 'cursorValue', 'page'];
+    if (!pagingKeys.some((key) => searchParams.has(key))) {
+      return;
+    }
+    pagingKeys.forEach((key) => searchParams.delete(key));
+    navigate(
+      { search: searchParams.toString(), hash: location.hash },
+      { replace: true }
+    );
+  }, [location.hash, location.search, navigate]);
+
+  // Keyed on the selection itself so every path that moves it (tree click,
+  // search/filter reselect, delete, sub-domain navigation) resets paging. The
+  // first selection, e.g. after a reload, keeps its page.
+  const lastSelectedFqnRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selectedFqn) {
+      return;
+    }
+    if (
+      lastSelectedFqnRef.current &&
+      lastSelectedFqnRef.current !== selectedFqn
+    ) {
+      clearPagingParams();
+    }
+    lastSelectedFqnRef.current = selectedFqn;
+  }, [selectedFqn, clearPagingParams]);
+
   const handleSelectionChange = useCallback(
     (keys: Selection) => {
       if (keys === 'all') {
@@ -583,25 +616,10 @@ const DomainTreeView = ({
         return;
       }
 
-      const searchParams = new URLSearchParams(location.search);
-      if (
-        searchParams.has('currentPage') ||
-        searchParams.has('cursorType') ||
-        searchParams.has('cursorValue')
-      ) {
-        searchParams.delete('currentPage');
-        searchParams.delete('cursorType');
-        searchParams.delete('cursorValue');
-        navigate(
-          { search: searchParams.toString(), hash: location.hash },
-          { replace: true }
-        );
-      }
-
       setSelectedFqn(nextFqn);
       updateExpansionForFqn(nextFqn);
     },
-    [location.hash, location.search, navigate, updateExpansionForFqn]
+    [updateExpansionForFqn]
   );
 
   const handleExpandedChange = useCallback(

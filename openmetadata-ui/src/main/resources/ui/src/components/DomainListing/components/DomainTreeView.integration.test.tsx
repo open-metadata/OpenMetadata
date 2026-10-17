@@ -288,6 +288,40 @@ describe('Domain tree pagination with the real URL paging hooks', () => {
     );
   });
 
+  it('starts on page one when a filter change selects another domain', async () => {
+    renderTree(
+      '/domain',
+      '?q=Domain&domainType=Aggregate&currentPage=3&pageSize=25',
+      true
+    );
+
+    expect(await screen.findByTestId('selected-domain')).toHaveTextContent(
+      'Domain1'
+    );
+
+    await act(async () =>
+      mockSetFilters([
+        {
+          key: 'domainType',
+          label: 'Domain type',
+          value: [{ key: 'Consumer-aligned', label: 'Consumer-aligned' }],
+        },
+      ])
+    );
+
+    expect(await screen.findByTestId('selected-domain')).toHaveTextContent(
+      'Domain2'
+    );
+
+    await openProducts();
+
+    expect(await screen.findByText('Domain2 product')).toBeInTheDocument();
+    expect(requests).toEqual([{ domain: 'Domain2', from: 0, size: 25 }]);
+    expect(new URLSearchParams(window.location.search).has('currentPage')).toBe(
+      false
+    );
+  });
+
   it.each([1, 75])(
     'starts the new domain on page one when it has %i products',
     async (total) => {
@@ -378,10 +412,10 @@ describe('Domain tree pagination with the real URL paging hooks', () => {
     expect(window.location.href).toBe(location);
   });
 
-  it.each(['cursorType=after', 'cursorValue=old'])(
-    'clears an isolated cursor parameter %s',
-    async (cursor) => {
-      renderTree('/domain', `?${cursor}&pageSize=25`);
+  it.each(['cursorType=after', 'cursorValue=old', 'page=3'])(
+    'clears an isolated paging parameter %s',
+    async (param) => {
+      renderTree('/domain', `?${param}&pageSize=25`);
       await screen.findByTestId('selected-domain');
 
       act(() => mockSelectDomain(new Set(['Domain2'])));
