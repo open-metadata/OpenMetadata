@@ -239,5 +239,7 @@ def is_blob(_type) -> bool:
             DataType.BYTES.value,
             DataType.BYTEA.value,
             DataType.TEXT.value,
+            DataType.BLOB.value,
+            DataType.CLOB.value,
         }
     return isinstance(_type, (HexByteString, LargeBinary, Text))
