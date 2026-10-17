@@ -50,7 +50,6 @@ jest.mock('../../hooks/authHooks', () => ({
 jest.mock('../../utils/DataInsightPureUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getDisabledDates: jest.fn().mockReturnValue(true),
   getDataInsightPathWithFqn: jest.fn().mockReturnValue(''),
 }));
 
@@ -61,14 +60,6 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
       <div>{secondPanel.children}</div>
     </>
   ))
-);
-
-jest.mock('../../constants/DataInsight.constants', () => ({
-  KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
-}));
-
-jest.mock('../../components/common/DatePicker/DatePicker', () =>
-  jest.fn().mockImplementation((props) => <input type="text" {...props} />)
 );
 
 const mockProps = {

@@ -33,6 +33,7 @@ import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
 import CoverageStat from '../Common/TopicWidget/CoverageStat';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -40,7 +41,7 @@ import {
 
 const TONE = {
   icon: Assets,
-  tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
+  tile: TOPIC_BLUE_TILE_CLASSES,
 };
 
 export type DataEstateWidgetProps = WidgetCommonProps;

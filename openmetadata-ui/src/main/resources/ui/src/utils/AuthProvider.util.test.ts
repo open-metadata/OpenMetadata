@@ -22,6 +22,7 @@ import {
   getUserManagerConfig,
   isRefreshableAuthError,
   isServerDrivenLogin,
+  validateAuthFieldsDetailed,
 } from './AuthProvider.util';
 
 const baseAuthConfig = (
@@ -188,6 +189,31 @@ describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-
 
   it('returns true for a normal 401 on any other endpoint', () => {
     expect(isRefreshableAuthError(401, '/tables/name/foo', {})).toBe(true);
+  });
+});
+
+describe('validateAuthFieldsDetailed — providerName is required only where the sign-in button shows it', () => {
+  it.each([
+    AuthProvider.Azure,
+    AuthProvider.Google,
+    AuthProvider.Auth0,
+    AuthProvider.Okta,
+  ])(
+    'accepts a %s configuration without providerName, as openmetadata.yaml seeds it',
+    (provider) => {
+      expect(
+        validateAuthFieldsDetailed(withScope({ provider, providerName: '' }))
+      ).toEqual({ valid: true, errors: [] });
+    }
+  );
+
+  it('still requires providerName for Custom OIDC, whose sign-in button shows it', () => {
+    const result = validateAuthFieldsDetailed(
+      withScope({ provider: AuthProvider.CustomOidc, providerName: '' })
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.map((error) => error.field)).toEqual(['providerName']);
   });
 });
 

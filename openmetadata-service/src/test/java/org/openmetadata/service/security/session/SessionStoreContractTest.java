@@ -186,6 +186,31 @@ public abstract class SessionStoreContractTest {
   }
 
   @Test
+  void updateIfVersion_movesSessionBetweenActiveAndRefreshing() {
+    String userId = UUID.randomUUID().toString();
+    UserSession active = sample(userId, SessionStatus.ACTIVE);
+    store.create(active);
+
+    UserSession refreshing =
+        active.toBuilder().version(1L).status(SessionStatus.REFRESHING).build();
+    assertTrue(store.updateIfVersion(refreshing, 0L));
+    assertEquals(List.of(), sessionIds(userId, SessionStatus.ACTIVE));
+    assertEquals(List.of(active.getId()), sessionIds(userId, SessionStatus.REFRESHING));
+
+    UserSession reactivated =
+        refreshing.toBuilder().version(2L).status(SessionStatus.ACTIVE).build();
+    assertTrue(store.updateIfVersion(reactivated, 1L));
+    assertEquals(List.of(active.getId()), sessionIds(userId, SessionStatus.ACTIVE));
+    assertEquals(List.of(), sessionIds(userId, SessionStatus.REFRESHING));
+  }
+
+  private List<String> sessionIds(String userId, SessionStatus status) {
+    return store.findByUserIdAndStatus(userId, status, 10).stream()
+        .map(UserSession::getId)
+        .toList();
+  }
+
+  @Test
   void findByUserIdAndStatus_respectsLimit() {
     String userId = UUID.randomUUID().toString();
     UserSession oldest =

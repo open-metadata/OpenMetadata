@@ -37,12 +37,16 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
@@ -54,8 +58,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * End-to-end regression for the {@link
- * org.openmetadata.service.cache.BundleWarmupBatcher} certification leak (issue introduced in
- * 620d1b6ad9). When the bundle warmup app pre-warms the Redis ReadBundle for a certified table:
+ * org.openmetadata.service.cache.BundleWarmupBatcher} certification handling.
+ *
+ * <p>When the bundle warmup app pre-warms the Redis ReadBundle for a certified table:
  *
  * <ul>
  *   <li>G1 — the warmed GET must return a populated {@link AssetCertification} (not null),
@@ -68,6 +73,15 @@ import org.openmetadata.sdk.network.HttpMethod;
  *       the warmed {@code tags}.
  * </ul>
  *
+ * <p>And for a tag-supporting, NON-certification entity (glossary term) carrying a {@code
+ * Certification.*} tag, the warmer must keep that tag in {@code tags} so a cache-hit GET matches
+ * the cache-miss GET (the canonical read path keeps it for non-cert entities):
+ *
+ * <ul>
+ *   <li>G4 — the warmed {@code tags} array for a glossary term MUST still surface the {@code
+ *       Certification.*} tag (cache-hit/cache-miss parity), alongside the non-cert tag.
+ * </ul>
+ *
  * <p>The test triggers the real {@code CacheWarmupApplication} against a live Postgres +
  * Elasticsearch + Redis stack and asserts on the observable API response.
  */
@@ -75,6 +89,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 class BundleWarmupCertificationIT {
 
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
+  private static final String CERTIFICATION_SILVER = "Certification.Silver";
   private static final String WARMUP_APP = "CacheWarmupApplication";
 
   @BeforeAll
@@ -162,7 +177,7 @@ class BundleWarmupCertificationIT {
           "baseline certification tag");
       assertTagsStrippedAndPiiPresent(baseline.getTags(), sensitive.getFullyQualifiedName());
 
-      triggerWarmupAndWaitForCompletion(client);
+      triggerWarmupAndWaitForCompletion(client, List.of("table"));
 
       Table warmed = client.tables().get(table.getId().toString(), "tags,certification");
       assertNotNull(
@@ -194,12 +209,93 @@ class BundleWarmupCertificationIT {
     assertTrue(hasPii, "Non-certification tag " + piiFqn + " must be preserved in tags: " + tags);
   }
 
-  private static void triggerWarmupAndWaitForCompletion(OpenMetadataClient client) {
+  private static void assertCertTagKeptAndPiiPresent(
+      List<TagLabel> tags, String certFqn, String piiFqn) {
+    assertNotNull(tags, "tags must be loaded from the bundle");
+    boolean hasCertTag = tags.stream().anyMatch(t -> certFqn.equals(t.getTagFQN()));
+    assertTrue(
+        hasCertTag,
+        "Certification.* tag "
+            + certFqn
+            + " must STAY in tags for non-certification entities: "
+            + tags);
+    boolean hasPii = tags.stream().anyMatch(t -> piiFqn.equals(t.getTagFQN()));
+    assertTrue(hasPii, "Non-certification tag " + piiFqn + " must be preserved in tags: " + tags);
+  }
+
+  @Test
+  void warmedGetOfGlossaryTermKeepsCertTagInTags(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    long ts = System.currentTimeMillis();
+
+    Classification pii =
+        client
+            .classifications()
+            .create(new CreateClassification().withName(ns.prefix("PII")).withDescription("PII"));
+    Tag sensitive =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName(ns.prefix("Sensitive"))
+                    .withClassification(pii.getName())
+                    .withDescription("Sensitive PII tag"));
+    TagLabel piiLabel =
+        new TagLabel()
+            .withTagFQN(sensitive.getFullyQualifiedName())
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+    TagLabel certLabel =
+        new TagLabel()
+            .withTagFQN(CERTIFICATION_SILVER)
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL);
+
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("warmup_cert_gloss_" + ts))
+                    .withDescription("glossary for cert warmup IT"));
+
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("warmup_cert_term_" + ts))
+                    .withDescription("term carrying a Certification tag")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withTags(List.of(certLabel, piiLabel)));
+
+    try {
+      GlossaryTerm baseline = client.glossaryTerms().get(term.getId().toString(), "tags");
+      assertCertTagKeptAndPiiPresent(
+          baseline.getTags(), CERTIFICATION_SILVER, sensitive.getFullyQualifiedName());
+
+      triggerWarmupAndWaitForCompletion(client, List.of("glossaryTerm"));
+
+      GlossaryTerm warmed = client.glossaryTerms().get(term.getId().toString(), "tags");
+      assertCertTagKeptAndPiiPresent(
+          warmed.getTags(), CERTIFICATION_SILVER, sensitive.getFullyQualifiedName());
+    } finally {
+      try {
+        client
+            .glossaries()
+            .delete(glossary.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      } catch (Exception ignored) {
+      }
+    }
+  }
+
+  private static void triggerWarmupAndWaitForCompletion(
+      OpenMetadataClient client, List<String> entities) {
     HttpClient http = client.getHttpClient();
     waitForAppJobCompletion(http);
 
     Map<String, Object> config = new HashMap<>();
-    config.put("entities", List.of("table"));
+    config.put("entities", entities);
     config.put("batchSize", 100);
     config.put("warmBundles", true);
     config.put("warmRelationships", false);
