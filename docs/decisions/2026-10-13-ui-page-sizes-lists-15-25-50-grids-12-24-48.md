@@ -32,7 +32,11 @@ matching entry.
   failures, Context Center memories). A size carried in the URL (`pageSize` param or settings
   hash) still wins, so a shared link opens at its own size, but only for the view it was opened
   in: a table/card switch drops it from the URL, and the new view (and any later switch back)
-  starts at the saved size for its scale. A size the current view does not offer is ignored. Fixed
+  starts at the saved size for its scale. A size the current view does not offer is ignored, and
+  so are the page and cursor counted at it: the view opens on page 1 at its saved size and drops
+  the link's paging from the URL or hash. Only the visible route rewrites the URL, since app mode
+  keeps hidden routes mounted on it. When the saved size changes while a view stays mounted, its
+  page returns to 1 before the next request. Fixed
   fetch batches that are not a paged view (e.g. loading all glossary terms, approval tasks) are
   out of scope.
 - `usePaging` treats a caller that declares no options as on the list scale, so a grid size left

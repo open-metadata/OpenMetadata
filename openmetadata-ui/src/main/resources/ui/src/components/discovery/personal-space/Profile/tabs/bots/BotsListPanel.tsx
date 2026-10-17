@@ -105,7 +105,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [paging, setPaging] = useState<Paging>({ total: 0 });
-  // Page and size from the hash, with a link's off-scale size (and the page counted at it) dropped.
   const {
     page: hashPage,
     pageSize: hashPageSize,

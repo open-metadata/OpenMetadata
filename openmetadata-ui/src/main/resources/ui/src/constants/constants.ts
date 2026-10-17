@@ -59,7 +59,6 @@ export const PAGE_SIZE = 10;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
-// Paged lists/tables step 15/25/50; paged card grids step 12/24/48 so rows of 2, 3 or 4 fill evenly.
 // ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
 export const LIST_PAGE_SIZE_OPTIONS = [
   PAGE_SIZE_BASE,

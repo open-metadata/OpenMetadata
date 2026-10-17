@@ -102,4 +102,47 @@ describe('useListingData with a page size from an old link', () => {
 
     expect(result.current.location.search).toBe('?page=2&size=25');
   });
+
+  it('returns to page 1 when the saved size changes, without requesting the old page', async () => {
+    const { result, rerender } = renderHook(
+      ({ pageSize }: { pageSize: number }) => ({
+        listing: useListingData({
+          searchIndex: SearchIndex.DOMAIN,
+          filterKeys: FILTER_KEYS,
+          columns: COLUMNS,
+          pageSize,
+          pageSizeOptions: LIST_OPTIONS,
+        }),
+        location: useLocation(),
+      }),
+      {
+        initialProps: { pageSize: 15 },
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <MemoryRouter initialEntries={['/domain?page=3']}>
+            {children}
+          </MemoryRouter>
+        ),
+      }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ pageNumber: 3, pageSize: 15 })
+      );
+    });
+
+    mockSearchQuery.mockClear();
+    rerender({ pageSize: 50 });
+
+    await waitFor(() => {
+      expect(result.current.location.search).toBe('');
+    });
+
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 1, pageSize: 50 })
+    );
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 3 })
+    );
+  });
 });

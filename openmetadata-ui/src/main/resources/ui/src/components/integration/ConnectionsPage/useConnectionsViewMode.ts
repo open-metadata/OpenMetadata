@@ -22,9 +22,6 @@ const isConnectionsViewMode = (
   value: string | null | undefined
 ): value is ConnectionsViewMode => value === 'grid' || value === 'list';
 
-// usePaging's URL params. Grid and list page on different scales, so a switch drops them and the
-// new view starts on page 1 at its saved size; a size from a link applies only to the view it was
-// opened in.
 const PAGING_PARAMS = ['currentPage', 'pageSize', 'cursorType', 'cursorValue'];
 
 export const useConnectionsViewMode = () => {

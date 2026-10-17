@@ -92,7 +92,6 @@ function NotificationRecentEvents({
     AlertRecentEventFilters.ALL
   );
   const { updateParams } = useSettingsHash();
-  // Page and size from the hash, with a link's off-scale size (and the page counted at it) dropped.
   const { page: initialPage, pageSize: hashPageSize } = useHashPagingParams(
     LIST_PAGE_SIZE_OPTIONS
   );

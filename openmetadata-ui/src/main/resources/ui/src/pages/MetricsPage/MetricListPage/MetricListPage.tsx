@@ -93,6 +93,7 @@ import type { TagLabel } from '../../../generated/type/tagLabel';
 import { TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
 import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useMetricHierarchy } from '../../../hooks/useMetricHierarchy';
@@ -256,7 +257,6 @@ const MetricListPage = () => {
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
-  const [page, setPage] = useState(1);
   const [selectedMetricIds, setSelectedMetricIds] = useState<string[]>([]);
   const {
     preferences: { selectedEntityTableColumns },
@@ -267,6 +267,7 @@ const MetricListPage = () => {
   const { savedPageSize: metricPageSize } = useSavedPageSize(
     getViewPageSizeOptions(viewMode)
   );
+  const [page, setPage] = usePageForSize(metricPageSize);
   const [isExporting, setIsExporting] = useState(false);
   const [isMetricActionsOpen, setIsMetricActionsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -413,7 +414,6 @@ const MetricListPage = () => {
     });
   }, [selectableMetricIds]);
 
-  // useMetricHierarchy clears expansion when page, size or query changes, so each must re-expand.
   const hierarchyExpansionScope = `${page}:${metricPageSize}:${debouncedSearch}`;
 
   useEffect(() => {
@@ -535,7 +535,6 @@ const MetricListPage = () => {
     [setCurrentPage]
   );
 
-  // Card and table views page at different sizes, so the current page may not exist in the other.
   const handleViewModeChange = useCallback(
     (nextMode: MetricViewMode) => {
       setViewMode(nextMode);

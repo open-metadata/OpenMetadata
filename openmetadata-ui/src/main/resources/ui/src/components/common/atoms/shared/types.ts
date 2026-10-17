@@ -44,7 +44,6 @@ export interface UrlStateHook {
   setPageSize: (pageSize: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
-  /** Drops the page and page size from the URL, so the listing starts on page 1 at its own size. */
   resetPaging: () => void;
 }
 
@@ -156,7 +155,6 @@ export interface ListingData<T> {
   handleClearAll: () => void;
   handlePageChange: (page: number) => void;
   handlePageSizeChange?: (pageSize: number) => void;
-  /** Starts over on page 1 at the listing's own size, e.g. when a table/card toggle changes scale. */
   resetPaging?: () => void;
   refetch: (options?: { silent?: boolean }) => void | Promise<void>;
 }

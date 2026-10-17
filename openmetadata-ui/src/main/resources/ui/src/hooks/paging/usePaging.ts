@@ -115,9 +115,6 @@ export const usePaging = (
   const [currentPage, setCurrentPage] = useState<number>(urlCurrentPage);
   const [storedPageSize, setStoredPageSize] =
     useState<number>(resolvedPageSize);
-  // The sync effect below corrects the stored size a render late. When the options change (a page
-  // switching between its list and grid scale), callers would fetch with the old scale's size in
-  // that render, so hand out the resolved size until the stored one catches up.
   const pageSize = pageSizeOptions.includes(storedPageSize)
     ? storedPageSize
     : resolvedPageSize;

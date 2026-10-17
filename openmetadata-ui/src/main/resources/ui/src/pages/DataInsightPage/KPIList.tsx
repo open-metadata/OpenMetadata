@@ -209,8 +209,6 @@ const KPIList = () => {
     }
   };
 
-  // fetchKpiList changes with the saved page size, so this refetches from page 1 when it changes;
-  // the page can stay mounted in app mode.
   useEffect(() => {
     setKpiPage(INITIAL_PAGING_VALUE);
     fetchKpiList();
@@ -258,8 +256,6 @@ const KPIList = () => {
         customPaginationProps={{
           currentPage: kpiPage,
           isLoading,
-          // The fetch asks for one page, so the row count never exceeds it; the cursors tell whether
-          // there are more KPIs to page to.
           showPagination: Boolean(kpiPaging.after || kpiPaging.before),
           pageSize: kpiPageSize,
           paging: kpiPaging,

@@ -50,7 +50,6 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     cursorType: hashCursorType,
     setPage: setHashPage,
   } = useHashPagingParams(GRID_PAGE_SIZE_OPTIONS);
-  // Personas render as a card grid, so they page on the grid scale.
   const { savePageSize, resolvePageSize } = useSavedPageSize(
     GRID_PAGE_SIZE_OPTIONS
   );

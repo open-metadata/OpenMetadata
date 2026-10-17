@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -29,7 +29,6 @@ interface UseListingDataProps<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
   pageSize?: number;
-  /** The sizes the current view offers; a URL size outside them falls back to `pageSize`. */
   pageSizeOptions?: number[];
   filterKeys: string[];
   filterConfigs?: ExploreQuickFilterField[];
@@ -90,15 +89,16 @@ export const useListingData = <
     resetPaging,
   } = urlStateHook;
 
-  // A size left in the URL by the other view's scale (25 from the table on the card view) is not
-  // one this view offers, so it falls back to the view's own size.
   const isOffScaleUrlSize = Boolean(
     pageSizeOptions && !pageSizeOptions.includes(urlState.pageSize)
   );
   const effectivePageSize = isOffScaleUrlSize
     ? pageSize
     : urlState.pageSize || pageSize;
-  const effectivePage = isOffScaleUrlSize ? 1 : urlState.currentPage;
+  const [pagedAtSize, setPagedAtSize] = useState(effectivePageSize);
+  const isPageFromOtherSize = pagedAtSize !== effectivePageSize;
+  const effectivePage =
+    isOffScaleUrlSize || isPageFromOtherSize ? 1 : urlState.currentPage;
 
   // Keep-alive keeps a visited listing mounted while another is on screen, and
   // every listing reads the same `q` param — so without this a hidden page
@@ -110,6 +110,23 @@ export const useListingData = <
       resetPaging();
     }
   }, [isRouteVisible, isOffScaleUrlSize, resetPaging]);
+
+  useEffect(() => {
+    if (!isRouteVisible || !isPageFromOtherSize) {
+      return;
+    }
+    if (urlState.currentPage > 1) {
+      setCurrentPage(1);
+    } else {
+      setPagedAtSize(effectivePageSize);
+    }
+  }, [
+    isRouteVisible,
+    isPageFromOtherSize,
+    effectivePageSize,
+    urlState.currentPage,
+    setCurrentPage,
+  ]);
 
   const dataFetching = useDataFetching<T>({
     searchIndex,

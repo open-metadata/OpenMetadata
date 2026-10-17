@@ -24,8 +24,7 @@ interface PageState {
  * Page state for the incident listings, which take a 1-based page. Any change
  * to the query — or to the page size — reads as the first page again. That
  * reset is derived rather than set from an effect, so the stale page is never
- * fetched on the way. The page size starts from the size the user last picked
- * on the list scale.
+ * fetched on the way.
  */
 export const useIncidentPaging = (queryKey: string) => {
   const { savedPageSize, savePageSize } = useSavedPageSize();

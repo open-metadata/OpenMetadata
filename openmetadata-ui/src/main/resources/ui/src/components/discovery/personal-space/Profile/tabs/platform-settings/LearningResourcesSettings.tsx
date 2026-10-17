@@ -123,7 +123,6 @@ const LearningResourcesSettings = ({
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
   const [selectedView, setSelectedView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
-  // Table and cards page on their own scales, each starting from the size last picked on it.
   const pageSizeOptions = getViewPageSizeOptions(view);
   const { savedPageSize: pageSize, savePageSize } =
     useSavedPageSize(pageSizeOptions);

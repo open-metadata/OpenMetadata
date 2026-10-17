@@ -18,12 +18,7 @@ import {
 } from '../../constants/constants';
 import { useCurrentUserPreferences } from '../currentUserStore/useCurrentUserStore';
 
-/**
- * The page size the user last picked on this picker's scale, and a setter that saves a new pick.
- * Lists (15/25/50) and card grids (12/24/48) each keep their own preference, so a page that
- * switches between the two views comes back to the size last chosen in each.
- * ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
- */
+// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
 export const useSavedPageSize = (
   pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
 ) => {
@@ -35,7 +30,6 @@ export const useSavedPageSize = (
   const saved = GRID_PAGE_SIZE_OPTIONS.includes(pageSizeOptions[0])
     ? globalGridPageSize
     : globalPageSize;
-  // A preference from an older build can hold a size neither scale offers.
   const savedPageSize = pageSizeOptions.includes(saved)
     ? saved
     : pageSizeOptions[0];
@@ -51,8 +45,6 @@ export const useSavedPageSize = (
     [setPreference]
   );
 
-  // A size from the URL or settings hash (a shared or reloaded link) wins, but only if this
-  // picker offers it: an old link's 10, or a grid's 24 on a list, falls back to the saved size.
   const resolvePageSize = useCallback(
     (requested?: number) =>
       requested && pageSizeOptions.includes(requested)

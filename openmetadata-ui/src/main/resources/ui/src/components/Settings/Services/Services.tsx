@@ -122,8 +122,6 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const { setFilters: setPagingUrlParams } = useTableFilters(NO_URL_FILTERS);
 
-  // Cards and table page at different sizes, so the page, cursor and size the other view left in
-  // the URL do not carry over: each view starts on page 1 at its own default size.
   const handleViewChange = useCallback(
     (view: ListViewOptions) => {
       setCurrentView(view);
@@ -377,9 +375,6 @@ const Services = ({ serviceName }: ServicesProps) => {
     }));
   }, [serviceName]);
 
-  // Shown whenever there are services, even a single page of them, so the page size can be changed.
-  // Hidden only on an empty first page: an empty later page (a stale link, deleted services) keeps it
-  // so the user can page back.
   const customPaginationTableProps = useMemo(
     () => ({
       showPagination: !isEmpty(serviceDetails) || currentPage > 1,

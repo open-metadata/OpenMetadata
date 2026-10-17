@@ -49,6 +49,7 @@ import {
 } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { usePageForSize } from '../../hooks/paging/usePageForSize';
 import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { LearningResource } from '../../rest/learningResourceAPI';
@@ -81,7 +82,6 @@ export const LearningResourcesPage: React.FC = () => {
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
     {}
   );
-  const [currentPage, setCurrentPage] = useState(1);
 
   const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
   const [selectedView, setView] = useState<PageViewMode>();
@@ -89,6 +89,7 @@ export const LearningResourcesPage: React.FC = () => {
   const pageSizeOptions = getViewPageSizeOptions(view);
   const { savedPageSize: pageSize, savePageSize } =
     useSavedPageSize(pageSizeOptions);
+  const [currentPage, setCurrentPage] = usePageForSize(pageSize);
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,

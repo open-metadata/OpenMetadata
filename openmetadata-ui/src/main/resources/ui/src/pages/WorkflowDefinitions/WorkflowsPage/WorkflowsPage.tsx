@@ -79,7 +79,6 @@ const WorkflowsPage = () => {
     total: 0,
   });
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
-  // Workflows render as a card grid, so they page on the grid scale.
   const { savedPageSize: pageSize, savePageSize } = useSavedPageSize(
     GRID_PAGE_SIZE_OPTIONS
   );

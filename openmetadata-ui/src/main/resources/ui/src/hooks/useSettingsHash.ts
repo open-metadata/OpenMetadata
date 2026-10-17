@@ -276,10 +276,6 @@ export const useSettingsHash = () => {
   return { state, setHash, clearHash, updateParams, goTo };
 };
 
-// A link can carry a size the picker no longer offers (pageSize=10 from before the page-size
-// scales). Its page and cursor were counted at that size, so they go too: the page opens on page 1
-// at the user's saved size instead of at an offset past the data, and the caller rewrites the hash.
-// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
 interface HashPaging {
   page: number;
   cursorType?: string;

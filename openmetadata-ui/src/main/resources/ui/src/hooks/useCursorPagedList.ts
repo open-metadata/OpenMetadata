@@ -28,8 +28,7 @@ export interface CursorPageParams {
  * Page-number pagination over a cursor-paged list endpoint. Moving forward
  * follows `after`, moving back follows `before`, so (like the other settings
  * lists) only adjacent pages are reachable by cursor. A new `fetchPage`
- * identity — e.g. a changed filter — restarts from page 1. It starts at, and
- * saves, the size last picked on the `pageSizeOptions` scale.
+ * identity — e.g. a changed filter — restarts from page 1.
  */
 export const useCursorPagedList = <T>(
   fetchPage: (params: CursorPageParams) => Promise<{

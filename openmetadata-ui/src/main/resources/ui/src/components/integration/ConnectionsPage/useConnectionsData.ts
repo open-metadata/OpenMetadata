@@ -187,8 +187,7 @@ export const useConnectionsData = ({
   // currentPage from the URL rather than resetting it, so without this, switching tab or filter
   // from page 3 stays on page 3: client mode slices past the end and shows an empty list beside a
   // non-zero count, and server mode asks for an offset the narrowed result set no longer has.
-  // Sort order is deliberately absent — reordering does not change which rows match. The page-size
-  // scale is present: grid and list page at different sizes, so a page number does not carry over.
+  // Sort order is deliberately absent — reordering does not change which rows match.
   const queryKey = [
     pageSizeOptions.join(','),
     category,

@@ -30,7 +30,6 @@ export interface UserPreferences {
   isSidebarCollapsed: boolean;
   selectedEntityTableColumns: Record<string, string[]>;
   globalPageSize: number;
-  /** The card-grid counterpart of `globalPageSize`, on the 12/24/48 scale. */
   globalGridPageSize: number;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];

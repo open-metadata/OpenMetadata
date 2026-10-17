@@ -73,8 +73,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     pageSize: listingPageSize,
     pageSizeOptions: listingPageSizeOptions,
   });
-  // Card and table views page at different sizes, so a switch starts over on page 1 at the new
-  // view's saved size; a size from a link applies only to the view it was opened in.
   const { resetPaging } = domainListing;
   const handleViewChange = useCallback(
     (nextView: PageViewMode) => {
