@@ -91,6 +91,7 @@ public abstract class ServiceEntityResource<
     return services;
   }
 
+  // Keep broken services discoverable: ADR:2026-10-17-service-list-connection-fallback.
   private T decryptServiceForList(SecurityContext securityContext, T service) {
     try {
       return decryptOrNullify(securityContext, service);
