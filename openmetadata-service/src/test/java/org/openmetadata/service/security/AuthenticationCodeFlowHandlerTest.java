@@ -596,6 +596,28 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
+  void getOrCreateEmailFirstOidcUser_selfSignup_takesThePictureTheProviderAsserts()
+      throws Exception {
+    AuthenticationCodeFlowHandler handler = createEmailFirstHandler(null);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      stubUserNotFoundAndEchoCreate(mockedEntity);
+      UserRepository userRepository = Entity.getUserRepository();
+      when(userRepository.getActiveUserByEmailForAuth(any(), any()))
+          .thenThrow(new EntityNotFoundException("user not found"));
+
+      User created =
+          invokeGetOrCreateEmailFirstOidcUser(
+              handler,
+              new OidcIdentityResolver.ResolvedOidcIdentity(
+                  null, "jdoe@example.com", "Jane Doe", PROVIDER_PICTURE, true));
+
+      assertEquals("Jane Doe", created.getDisplayName());
+      assertEquals(PROVIDER_PICTURE, created.getProfile().getImages().getImage());
+    }
+  }
+
+  @Test
   void getOrCreateOidcUser_selfSignup_rejectsDisallowedEmailDomain() throws Exception {
     AuthenticationCodeFlowHandler handler = createSelfSignupHandler(Set.of("allowed.com"));
 
