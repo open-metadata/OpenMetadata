@@ -719,15 +719,25 @@ jobs:
           mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
           # Dependency installation can execute repository-controlled package-manager
           # configuration even with lifecycle scripts disabled. Keep it off the runner.
-          docker run --rm --read-only \
-            --cap-drop ALL --security-opt no-new-privileges \
-            --user "$(id -u):$(id -g)" \
-            --tmpfs /tmp:rw,nosuid,size=4g \
-            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
-            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
-            --workdir "/workspace/$core_dir" \
-            node:22.22.2-bookworm-slim \
-            yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache
+          # Retry transient registry failures — yarn v1 does not retry HTTP errors.
+          for attempt in 1 2 3; do
+            docker run --rm --read-only \
+              --cap-drop ALL --security-opt no-new-privileges \
+              --user "$(id -u):$(id -g)" \
+              --tmpfs /tmp:rw,nosuid,size=4g \
+              --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+              --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
+              --workdir "/workspace/$core_dir" \
+              node:22.22.2-bookworm-slim \
+              yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache \
+                --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
           # Only temporary build output is writable; dependencies and source stay read-only.
           mkdir -p "$core_output/node_modules/.vite-temp"
