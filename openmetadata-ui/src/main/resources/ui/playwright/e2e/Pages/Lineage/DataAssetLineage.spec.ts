@@ -95,6 +95,14 @@ const columnLevelEntities = {
   searchIndex: SearchIndexClass,
   mlModel: MlModelClass,
 };
+const columnLevelSources = pickEntityMatrix(__filename, columnLevelEntities, {
+  table: TableClass,
+});
+// Table covers the column-menu path, Dashboard the API path.
+const columnLevelTargets = pickEntityMatrix(__filename, columnLevelEntities, {
+  table: TableClass,
+  dashboard: DashboardClass,
+});
 
 type EntityClassUnion =
   | TableClass
@@ -316,7 +324,7 @@ test.describe('Column Level Lineage', () => {
         browser
       );
 
-      Object.entries(columnLevelEntities).forEach(([key, EntityClass]) => {
+      Object.entries(columnLevelTargets).forEach(([key, EntityClass]) => {
         const lineageEntity = new EntityClass();
 
         entities.set(key, lineageEntity);
@@ -334,12 +342,8 @@ test.describe('Column Level Lineage', () => {
     await authenticateAdminPage(page);
   });
 
-  Object.entries(
-    pickEntityMatrix(__filename, columnLevelEntities, { table: TableClass })
-  ).forEach(([key, EntityClassSource]) => {
-    const entityKeys = Object.keys(columnLevelEntities);
-
-    entityKeys.forEach((targetKey) => {
+  Object.entries(columnLevelSources).forEach(([key, EntityClassSource]) => {
+    Object.keys(columnLevelTargets).forEach((targetKey) => {
       test(`Column lineage for ${key} -> ${targetKey}`, async ({ page }) => {
         test.slow();
         const sourceEntity = new EntityClassSource();
