@@ -23,7 +23,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +52,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
@@ -71,8 +71,6 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteReque
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Real SQL transactions and HTTP/TDB2, including two independent server routing instances. */
 @Tag("rdf")
@@ -83,7 +81,6 @@ public class RdfBlueGreenRebuildIT {
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final Path ROOT = RdfTestDatabase.repositoryRoot();
   private static GenericContainer<?> fuseki;
   private static String endpoint;
 
@@ -107,14 +104,9 @@ public class RdfBlueGreenRebuildIT {
   static void startServices() throws Exception {
     endpoint = System.getProperty("rdfRebuildFusekiEndpoint");
     if (endpoint == null) {
-      fuseki =
-          new GenericContainer<>(
-                  new ImageFromDockerfile().withFileFromPath(".", ROOT.resolve("docker/rdf-store")))
-              .withExposedPorts(3030)
-              .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
-              .waitingFor(Wait.forHttp("/$/ping"));
+      fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx1g");
       fuseki.start();
-      endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
+      endpoint = FusekiTestImage.serverUrl(fuseki);
     }
     for (Database database : Database.values()) {
       database.start();
@@ -374,32 +366,32 @@ public class RdfBlueGreenRebuildIT {
 
   @ParameterizedTest
   @EnumSource(Database.class)
-  void textSearchSurvivesPromotionLiveWritesAndTargetReuse(final Database database)
+  void namedGraphReadsFollowPromotionLiveWritesAndTargetReuse(final Database database)
       throws Exception {
     try (Fixture fixture = new Fixture(database, RdfRebuildStore.DEFAULT_LIMITS)) {
       final UUID id = UUID.randomUUID();
       final RdfStorageInterface live = fixture.other.routedStorage();
       write(live, id, "baseline");
-      assertTextMatch(live, id, "baseline", true);
+      assertNameMatch(live, id, "baseline", true);
 
       for (String expected : List.of("openmetadata_a", "openmetadata_b", "openmetadata_a")) {
         final BuildTarget target = fixture.primary.begin();
         assertEquals(expected, target.dataset());
         final RdfStorageInterface build = fixture.primary.buildStorage(target);
         build.clearGraph(GRAPH);
-        assertTextMatch(build, id, "snapshot", false);
-        assertTextMatch(build, id, "retained", false);
+        assertNameMatch(build, id, "snapshot", false);
+        assertNameMatch(build, id, "retained", false);
         append(build, id, "snapshot");
-        assertTextMatch(build, id, "snapshot", true);
-        assertTextMatch(live, id, "snapshot", false);
+        assertNameMatch(build, id, "snapshot", true);
+        assertNameMatch(live, id, "snapshot", false);
 
         fixture.primary.promote(target, "test");
-        assertTextMatch(live, id, "snapshot", true);
+        assertNameMatch(live, id, "snapshot", true);
         write(live, id, "updated");
-        assertTextMatch(live, id, "snapshot", false);
-        assertTextMatch(live, id, "updated", true);
+        assertNameMatch(live, id, "snapshot", false);
+        assertNameMatch(live, id, "updated", true);
         live.deleteEntity("table", id);
-        assertTextMatch(live, id, "updated", false);
+        assertNameMatch(live, id, "updated", false);
         append(live, id, "retained");
       }
     }
@@ -631,7 +623,7 @@ public class RdfBlueGreenRebuildIT {
             .withBaseUri(URI.create(BASE))
             .withRemoteEndpoint(URI.create(endpoint + "/" + dataset))
             .withUsername("admin")
-            .withPassword("admin")
+            .withPassword(FusekiTestImage.ADMIN_PASSWORD)
             .withWriteMaxRetries(0));
   }
 
@@ -684,11 +676,12 @@ public class RdfBlueGreenRebuildIT {
     }
   }
 
-  private static void assertTextMatch(
+  private static void assertNameMatch(
       final RdfStorageInterface storage, final UUID id, final String term, final boolean expected)
       throws Exception {
+    // Through the union default graph and through the named graph, as readers query it.
     final String pattern =
-        "?entity <http://jena.apache.org/text#query> (<%s> \"%s\") FILTER (?entity = <%sentity/table/%s>)"
+        "?entity <%s> \"%s\" FILTER (?entity = <%sentity/table/%s>)"
             .formatted(NAME, term, BASE, id);
     for (String body : List.of(pattern, "GRAPH <%s> { %s }".formatted(GRAPH, pattern))) {
       final String result = storage.executeSparqlQuery("ASK { " + body + " }", "json");

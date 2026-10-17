@@ -39,6 +39,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
@@ -46,8 +47,6 @@ import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
 @Tag("rdf")
@@ -66,16 +65,9 @@ public class RdfLiveWriteRecoveryIT {
   static void startServices() {
     endpoint = System.getProperty("rdfRebuildFusekiEndpoint");
     if (endpoint == null) {
-      fuseki =
-          new GenericContainer<>(
-                  new ImageFromDockerfile()
-                      .withFileFromPath(
-                          ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
-              .withExposedPorts(3030)
-              .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
-              .waitingFor(Wait.forHttp("/$/ping"));
+      fuseki = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx1g");
       fuseki.start();
-      endpoint = "http://" + fuseki.getHost() + ":" + fuseki.getMappedPort(3030);
+      endpoint = FusekiTestImage.serverUrl(fuseki);
     }
     for (RdfTestDatabase.Backend backend : RdfTestDatabase.Backend.values()) {
       DATABASES.put(backend, new RdfTestDatabase(backend));
@@ -528,7 +520,7 @@ public class RdfLiveWriteRecoveryIT {
                   .withBaseUri(URI.create(BASE))
                   .withRemoteEndpoint(URI.create(endpoint + "/openmetadata"))
                   .withUsername("admin")
-                  .withPassword("admin")
+                  .withPassword(FusekiTestImage.ADMIN_PASSWORD)
                   .withWriteMaxRetries(0));
       storage.clearGraph(GRAPH);
     }

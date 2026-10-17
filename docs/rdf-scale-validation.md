@@ -1,7 +1,7 @@
 # RDF catalog scale validation
 
 `scripts/rdf-catalog-scale.sh` exercises the full OpenMetadata application, PostgreSQL, and the
-shipped Apache Jena Fuseki image. It measures the acceptance criteria in
+published `openmetadata/fuseki` image pinned in `FusekiTestImage`. It measures the acceptance criteria in
 [#32057](https://github.com/open-metadata/OpenMetadata/issues/32057).
 
 RDF indexing now always runs on one server. The measurements below compared a single-server
@@ -10,6 +10,50 @@ for 200,555 records, because both feed Fuseki's single writer. The distributed m
 that evidence, so the harness now runs two single-server rebuilds, and the results and findings
 below that mention distributed recovery, partitions, coordinator or participant workers describe
 the revision that was measured.
+
+## Baseline on the published image, reasoning disabled (2026-10-15)
+
+Phase 1 of the [reasoning plan](plans/2026-10-07-fuseki-native-reasoning.md) recorded serving
+metrics on the published `openmetadata/fuseki:6.2.0-600514c` image, with reasoning disabled, at a
+scale this shared workstation could run: **20,000 tables, 200,000 lineage edges, 2,827,008
+triples** (the default fixture shape, a tenth of its size). The Fuseki image was the published one
+with its Java runtime replaced by the same Temurin 21.0.12.1 JDK, only so `jcmd` could read Native
+Memory Tracking; Fuseki ran with a 4 GiB heap in a 16 GiB, six-CPU container.
+
+**Hardware:** Apple M4 Max (16 cores, 128 GiB), Docker Desktop 28.1.1 (`linux/arm64` VM with 10 CPUs
+and 60.7 GiB), PostgreSQL 15 in an 8 GiB, two-CPU container, OpenMetadata on Microsoft Java 21.0.11
+with an 8 GiB heap. Other test runs shared the host: load average peaked at 47 during the first run
+and at 6 during the second, so the latency difference between the columns is mostly host load,
+not the direct-buffer limit.
+
+| Measurement | Default direct-buffer limit (the heap) | `-XX:MaxDirectMemorySize=256m` |
+|---|---:|---:|
+| Rebuild, application time | 87.5 s, 20,572 records, 0 failed | 77.9 s, 20,572 records, 0 failed |
+| Recovery rebuild under concurrent queries | 134.8 s, 0 failed | 88.1 s, 0 failed |
+| Cancellation scenario / restart and verification | 44.9 s / 9.0 s | 40.7 s / 4.7 s |
+| Entity lookup p50 / p95 / p99, after the first rebuild | 6.3 / 9.5 / 12.1 ms | 4.0 / 7.5 / 35.0 ms |
+| One-hop lineage p50 / p95 / p99 | 5.7 / 7.6 / 11.1 ms | 3.6 / 5.8 / 54.7 ms |
+| Three-hop lineage p50 / p95 / p99 | 6.9 / 9.7 / 15.7 ms | 4.5 / 7.7 / 33.8 ms |
+| Queries during recovery, p95 (entity / one-hop / three-hop) | 51.4 / 34.2 / 41.4 ms | 7.1 / 5.6 / 29.1 ms |
+| Host load average, peak | 47 | 6 |
+| Fuseki direct buffers (NMT "Other"), peak | 1,534 MiB | 254 MiB |
+| Fuseki off-heap besides direct buffers, peak | 275 MiB | 291 MiB |
+| Fuseki anonymous memory / RSS / cgroup memory, peak | 4.49 / 7.34 / 8.35 GiB | 3.55 / 6.87 / 7.87 GiB |
+| Fuseki disk, all datasets, peak | 4.38 GiB | 4.39 GiB |
+| OpenMetadata heap / RSS, peak | 2.70 / 3.38 GiB | 1.96 / 2.93 GiB |
+
+Every query returned rows without errors (100 samples per type after each phase; 28 and 18 during
+recovery), and the graph held 2,827,008 triples after each rebuild and after restart. RSS and cgroup memory include TDB2's memory-mapped files and page cache, so they exceed
+heap plus off-heap. The direct buffers are Fuseki's own: it allocates about 5 MiB of them per HTTP
+request and frees them at the next collection, so without a limit they reach the heap size between
+collections. The image now caps them at 256 MiB
+([decision](decisions/2026-10-15-reasoning-memory-budget-defaults.md)).
+
+Reproduce with the launcher below, setting `RDF_SCALE_TABLES=20000 RDF_SCALE_EDGES=200000` and the
+batch settings from the 2026-09-08 command, and sample Fuseki with
+`jcmd <pid> VM.native_memory summary` after adding `-XX:NativeMemoryTracking=summary` to
+`RDF_SCALE_FUSEKI_HEAP`. The worker's measurements are in the plan's
+[Starting sizes](plans/2026-10-07-fuseki-native-reasoning.md#starting-sizes).
 
 ## Validated result (2026-09-08)
 
@@ -154,7 +198,7 @@ scripts/rdf-catalog-scale.sh
 Set `JAVA_HOME` to a Java 21 runtime matching the host architecture. Both Maven and the launcher
 use it; `JAVA_BIN` overrides the launch executable when needed.
 
-The script builds the Maven dependencies and Fuseki image, starts isolated containers, and writes
+The script builds the Maven dependencies, starts isolated containers, and writes
 the application log, report, resource samples, and individual query timings under
 `.context/rdf-catalog-scale/`. It removes its containers when the test finishes. Existing local
 services are separate. The test requires the dedicated launcher and is disabled in ordinary
@@ -167,9 +211,9 @@ RDF_SCALE_TABLES=2000 RDF_SCALE_EDGES=20000 RDF_SCALE_QUERY_SAMPLES=10 \
   RDF_SCALE_OUTPUT=.context/rdf-scale-pilot scripts/rdf-catalog-scale.sh
 ```
 
-After building, `BUILD=false BUILD_IMAGE=false` reuses the compiled artifacts, classpath file, and
-image. Rebuild after source changes. `RDF_SCALE_FUSEKI_IMAGE` selects an existing image built from
-`docker/rdf-store`; it must include the OpenMetadata write extension and text dataset assemblers.
+After building, `BUILD=false` reuses the compiled artifacts and classpath file. Rebuild after
+source changes. `RDF_SCALE_FUSEKI_IMAGE` selects another build of the published image, such as
+`openmetadata-fuseki:local` from the fork; it is configured through the same environment.
 The restart test reserves host port 43030; set `RDF_SCALE_FUSEKI_PORT` if it is already in use.
 
 ## Workload and measurements
@@ -190,22 +234,22 @@ detail count, and the table count. It also records the complete knowledge-graph 
 The scenario executes these steps:
 
 1. Rebuild all entity types through the local RDF indexing application with blue/green promotion.
-2. Measure entity lookup, one-hop lineage, three-hop lineage, and Lucene text-search latency through
-   the authenticated OpenMetadata SPARQL API.
+2. Measure entity lookup, one-hop lineage, and three-hop lineage latency through the authenticated
+   OpenMetadata SPARQL API. Runs before 2026-10-14 also measured Lucene text search, which the
+   published image does not have.
 3. Start a second rebuild, wait for at least 100 successfully processed records, and cancel it
    through the application API. Assert `stopped`, an unchanged serving pointer, and unchanged graph
    counts. Wait for the cancelled workers to finish releasing their rebuild lease before retrying.
 4. Run a complete recovery rebuild while querying the serving dataset every five
    seconds. Verify promotion, zero failed records, exact counts, and successful query responses.
-5. Restart Fuseki and verify the serving pointer, counts, and all four query types again.
+5. Restart Fuseki and verify the serving pointer, counts, and all three query types again.
 
 Each completed query phase contains 100 samples per type by default. Concurrent sampling runs
-until the rebuild ends, bounded at 2,000 samples per type. Queries return at most 100 rows, and
-text search returns at most 20. These are bounded interactive queries; the three-hop query does
+until the rebuild ends, bounded at 2,000 samples per type. Queries return at most 100 rows. These are bounded interactive queries; the three-hop query does
 not compute unrestricted transitive closure. Integrity counts run before the query phases and
 warm the store, including after restart. Latencies are end-to-end API measurements, with no
 claimed cold-cache result. Entity and lineage queries rotate through deterministic table IDs
-across the catalog; text search repeats the fixture's description term.
+across the catalog.
 
 Resources are sampled approximately every two seconds, plus collection overhead. The JSONL file
 records application heap and RSS, Fuseki RSS and cgroup memory, PostgreSQL cgroup memory, allocated
