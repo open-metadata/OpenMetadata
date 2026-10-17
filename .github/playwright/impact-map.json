@@ -891,7 +891,8 @@
       ],
       "projects": ["chromium"],
       "specs": [
-        "playwright/e2e/Features/AppMode/**/*.spec.ts"
+        "playwright/e2e/Features/AppMode/**/*.spec.ts",
+        "playwright/e2e/Features/AIMode/AppModeSidebarPersonaCustomization.spec.ts"
       ]
     },
     {
