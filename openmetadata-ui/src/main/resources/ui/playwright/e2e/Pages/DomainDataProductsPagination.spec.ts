@@ -133,7 +133,7 @@ test.describe(
     }) => {
       await adminPage.setViewportSize({ width: 1920, height: 1080 });
       await adminPage.goto(
-        `/domain?q=${prefix}&domainType=Aggregate&pageSize=25&paginationTest=retained`,
+        `/domain?q=${prefix}&domainType.keyword=Aggregate&pageSize=25&paginationTest=retained`,
         { waitUntil: 'domcontentloaded' }
       );
       await adminPage.getByRole('radio', { name: 'tree', exact: true }).check();
@@ -210,7 +210,7 @@ test.describe(
           expect(url.searchParams.get('currentPage')).toBeNull();
           expect(url.searchParams.get('pageSize')).toBe('25');
           expect(url.searchParams.get('q')).toBe(prefix);
-          expect(url.searchParams.get('domainType')).toBe('Aggregate');
+          expect(url.searchParams.get('domainType.keyword')).toBe('Aggregate');
           expect(url.searchParams.get('paginationTest')).toBe('retained');
         } finally {
           adminPage.off('request', recordRequest);
