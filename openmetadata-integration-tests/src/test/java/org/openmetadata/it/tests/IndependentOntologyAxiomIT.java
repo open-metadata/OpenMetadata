@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -192,6 +193,39 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
         400,
         assertThrows(OpenMetadataException.class, () -> client.ontologyAxioms().create(request))
             .getStatusCode());
+  }
+
+  @Test
+  void incomingTransitiveInverseRejectsCardinalityBeforeItCanBlockCapture(TestNamespace ns) {
+    final var ontology = createModel(ns, "incomingInverse");
+    final var client = SdkClients.adminClient();
+    client.ontologyProperties().create(propertyRequest(ontology));
+    client
+        .ontologyProperties()
+        .create(
+            propertyRequest(ontology)
+                .withName("knownBy")
+                .withIri(URI.create("https://example.org/model/knownBy"))
+                .withInverse(PROPERTY)
+                .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE)));
+    final var request =
+        axiomRequest(ontology)
+            .withExpressions(
+                List.of(
+                    new OntologyExpression()
+                        .withKind(OntologyExpressionKind.RESTRICTION)
+                        .withPropertyIri(PROPERTY)
+                        .withRestrictionKind(OntologyRestrictionKind.EXACT)
+                        .withCardinality(1)
+                        .withFiller(namedClass(PARTY))));
+    final long revision = state(ontology).getWorkingRevision();
+    assertFalse(client.ontologyAxioms().validate(request).getValid());
+    assertEquals(
+        400,
+        assertThrows(OpenMetadataException.class, () -> client.ontologyAxioms().create(request))
+            .getStatusCode());
+    assertEquals(revision, state(ontology).getWorkingRevision());
+    assertEquals(5, capture(ontology).getMemberCount());
   }
 
   @Test

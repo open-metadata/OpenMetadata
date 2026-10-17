@@ -11,6 +11,7 @@ import jakarta.json.Json;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -21,11 +22,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.OntologyRestrictionKind;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.OntologyValidationException;
@@ -34,6 +39,50 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.EntityUtil;
 
 class OntologyHierarchyStorageTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void incomingInverseDeclarationsHaveTheSameRulesForPreviewSaveAndCapture(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var customer = concept(fixture, "Customer");
+          final var party = concept(fixture, "Party");
+          final var properties = new OntologyPropertyRepository();
+          final var property = properties.create(null, property(fixture, "p"));
+          final var inverse =
+              properties.create(null, property(fixture, "q").withInverse(property.getIri()));
+          properties.create(
+              null,
+              property(fixture, "r")
+                  .withInverse(inverse.getIri())
+                  .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE)));
+          final var axioms = new OntologyAxiomRepository();
+          final var restriction =
+              subclass(customer)
+                  .withExpressions(
+                      List.of(
+                          new OntologyExpression()
+                              .withKind(OntologyExpressionKind.RESTRICTION)
+                              .withPropertyIri(property.getIri())
+                              .withRestrictionKind(OntologyRestrictionKind.EXACT)
+                              .withCardinality(1)
+                              .withFiller(
+                                  new OntologyExpression()
+                                      .withKind(OntologyExpressionKind.NAMED_CLASS)
+                                      .withClassIri(party.getIri()))));
+          final long revision =
+              fixture.ontologies.getState(fixture.ontology.getId()).getWorkingRevision();
+          assertFalse(axioms.validate(restriction).getValid());
+          assertThrows(OntologyValidationException.class, () -> axioms.create(null, restriction));
+          assertEquals(0, fixture.rowCount("ontology_axiom_entity"));
+          assertEquals(
+              revision, fixture.ontologies.getState(fixture.ontology.getId()).getWorkingRevision());
+          assertEquals(6, fixture.capture(ignored -> {}).getMemberCount());
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,
@@ -264,6 +313,17 @@ class OntologyHierarchyStorageTest {
             .withVersion(0.1)
             .withUpdatedAt(1L)
             .withUpdatedBy("admin"));
+  }
+
+  private static OntologyProperty property(Fixture fixture, String name) {
+    return new OntologyProperty()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withOntology(fixture.ontology.getEntityReference())
+        .withKind(OntologyPropertyKind.OBJECT)
+        .withVersion(0.1)
+        .withUpdatedAt(1L)
+        .withUpdatedBy("admin");
   }
 
   private static OntologyAxiom subclass(OntologyConcept source, OntologyConcept... targets) {

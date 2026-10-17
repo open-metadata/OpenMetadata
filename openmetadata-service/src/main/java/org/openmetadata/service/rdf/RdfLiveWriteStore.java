@@ -27,6 +27,8 @@ public final class RdfLiveWriteStore {
   private static final long MAX_HEALTHY_LAG_MILLIS = Duration.ofSeconds(30).toMillis();
   private static final int MAX_ERROR_LENGTH = 8192;
   private static final int MAX_DELIVERY_ATTEMPTS = 10;
+  private static final String WRITER_LOCK =
+      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
       "UPDATE rdf_projection_health SET enqueuedWatermark = GREATEST(enqueuedWatermark, ?) "
           + "WHERE id = 'active'";
@@ -124,12 +126,21 @@ public final class RdfLiveWriteStore {
         handle -> {
           final boolean ownsWriter =
               handle
-                  .createQuery(
-                      "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE SKIP LOCKED")
+                  .createQuery(WRITER_LOCK + " SKIP LOCKED")
                   .mapTo(String.class)
                   .findOne()
                   .isPresent();
           return ownsWriter && processHead(handle, write);
+        });
+  }
+
+  /** Excludes queued writes from the projection read through its replacement during a rebuild. */
+  public static void withWriterLock(final Handle handle, final Runnable write) {
+    handle.useTransaction(
+        TransactionIsolationLevel.READ_COMMITTED,
+        transaction -> {
+          transaction.createQuery(WRITER_LOCK).mapTo(String.class).one();
+          write.run();
         });
   }
 

@@ -795,6 +795,53 @@ test(
       await expect(
         propertyEditor.getByRole('textbox', { name: 'Value', exact: true })
       ).toHaveValue(' active ');
+      for (const permanent of [false, true]) {
+        await test.step(`Delete the native property (permanent: ${permanent})`, async () => {
+          await author
+            .getByRole('button', { name: 'Delete', exact: true })
+            .click();
+          const modal = author.getByTestId('delete-modal');
+          if (permanent) {
+            await modal.getByTestId('hard-delete').click();
+          }
+          const deleted = author.waitForResponse(
+            (response) =>
+              new URL(response.url()).pathname ===
+                `/api/v1/ontologyProperties/${property.id}` &&
+              response.request().method() === 'DELETE'
+          );
+          await modal.getByTestId('confirm-button').click();
+          const response = await deleted;
+          expect(response.status()).toBe(200);
+          expect(new URL(response.url()).searchParams.get('hardDelete')).toBe(
+            String(permanent)
+          );
+          await expect(propertyEditor).not.toBeVisible();
+          const stored = await api.get(
+            `/api/v1/ontologyProperties/${property.id}?include=all`
+          );
+          if (permanent) {
+            expect(stored.status()).toBe(404);
+          } else {
+            expect(
+              (await okJson<OntologyProperty>(stored, 'Read deleted property'))
+                .deleted
+            ).toBe(true);
+            await okJson<OntologyProperty>(
+              await api.put('/api/v1/ontologyProperties/restore', {
+                data: { id: property.id },
+              }),
+              'Restore property before permanent deletion'
+            );
+            await author.reload();
+            await author.getByTestId('mode-tab-model').click();
+            await author.getByTestId('ontology-model-property').click();
+            await author
+              .getByRole('button', { name: 'Customer status', exact: true })
+              .click();
+          }
+        });
+      }
       const parent = await okJson<OntologyConcept>(
         await api.post('/api/v1/ontologyConcepts', {
           data: {
