@@ -31,7 +31,10 @@ import { TopicClass } from '../support/entity/TopicClass';
 import { WorksheetClass } from '../support/entity/WorksheetClass';
 import { UserClass } from '../support/user/UserClass';
 import { clickOutside, redirectToHomePage } from './common';
-import { addCustomPropertiesForEntity } from './customProperty';
+import {
+  addCustomPropertiesForEntity,
+  getCustomPropertyEditButton,
+} from './customProperty';
 import { waitForAllLoadersToDisappear } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
@@ -77,8 +80,10 @@ const checkElementVisibility = async (
     switch (type) {
       case 'direct': {
         await expect(
-          testUserPage.locator(`[data-testid="${testId}"]`).first()
-        ).toBeVisible();
+          testUserPage
+            .locator(`[data-testid="${testId}"]`)
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -143,7 +148,11 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).toBeVisible();
+        // A label string can legitimately appear more than once on the page, so
+        // assert that at least one visible match exists.
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).not.toHaveCount(0);
 
         break;
       }
@@ -220,7 +229,9 @@ const checkElementVisibility = async (
         break;
       }
       case 'label': {
-        await expect(testUserPage.getByText(testId).first()).not.toBeVisible();
+        await expect(
+          testUserPage.getByText(testId).filter({ visible: true })
+        ).toHaveCount(0);
 
         break;
       }
@@ -270,40 +281,31 @@ export const testCommonOperations = async (
     const tierLocator = testUserPage.getByTestId('Tier');
     if (await tierLocator.isVisible()) {
       await tierLocator.click();
-      await expect(testUserPage.getByTestId('cards')).not.toBeVisible();
+      await expect(
+        testUserPage.getByTestId('drop-down-menu')
+      ).not.toBeVisible();
     }
 
     const certLocator = testUserPage.getByTestId('certification-value');
     if (await certLocator.isVisible()) {
       await certLocator.click();
       await expect(
-        testUserPage.getByTestId('certification-cards')
+        testUserPage.getByTestId('drop-down-menu')
       ).not.toBeVisible();
     }
   }
 
   // Check custom properties
-  const customPropertiesLocator = testUserPage.locator(
-    '[data-testid="custom_properties"]'
-  );
+  const customPropertiesLocator = testUserPage.getByTestId('custom_properties');
   if (await customPropertiesLocator.isVisible()) {
     await customPropertiesLocator.click();
+    const visibleEditButtons = getCustomPropertyEditButton(
+      testUserPage.getByTestId('custom-properties-card')
+    ).filter({ visible: true });
     if (effect === 'allow') {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).toBeVisible();
+      await expect(visibleEditButtons).not.toHaveCount(0);
     } else {
-      await expect(
-        testUserPage
-          .locator('[data-testid="custom-properties-card"]')
-          .first()
-          .getByTestId('edit-icon')
-          .first()
-      ).not.toBeVisible();
+      await expect(visibleEditButtons).toHaveCount(0);
     }
   }
 };
@@ -452,9 +454,12 @@ export const testPipelineSpecificOperations = async (
   await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await expect(testUserPage.getByTestId('lineage-node-menu')).not.toHaveCount(
+      0
+    );
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
+    await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
 
@@ -526,9 +531,12 @@ export const testDashboardDataModelSpecificOperations = async (
   await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await expect(testUserPage.getByTestId('lineage-node-menu')).not.toHaveCount(
+      0
+    );
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
+    await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
 
@@ -537,7 +545,9 @@ export const testDashboardDataModelSpecificOperations = async (
 // after a vote action triggers the re-fetch of entity details.
 const testVotePreservesUsage = async (testUserPage: Page) => {
   await testUserPage.locator('[data-testid="up-vote-btn"]').click();
-  await expect(testUserPage.getByText('Usage').first()).toBeVisible();
+  await expect(
+    testUserPage.getByText('Usage').filter({ visible: true })
+  ).not.toHaveCount(0);
 };
 
 export const testDashboardSpecificOperations = async (
@@ -725,7 +735,7 @@ export const createCustomPropertyForEntity = async (
   adminUser: UserClass
 ) => {
   const page = await browser.newPage();
-  await adminUser.login(page);
+  await adminUser.signIn(page);
 
   // Map entity types to their correct API types (same as used in working tests)
   const entityTypeMapping: Record<string, string> = {

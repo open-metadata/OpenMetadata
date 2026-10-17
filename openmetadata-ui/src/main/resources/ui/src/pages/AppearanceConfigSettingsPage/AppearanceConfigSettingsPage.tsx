@@ -11,25 +11,28 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
+  Box,
   Button,
   Card,
-  Col,
-  Form,
-  FormProps,
-  Row,
-  Space,
+  FormField,
+  FormItemLabel,
+  Grid,
+  HintText,
+  HookForm,
+  Input,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share.svg';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
+import ColorPicker from '../../components/common/ColorPicker/ColorPicker.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -40,41 +43,40 @@ import { LogoConfiguration } from '../../generated/configuration/logoConfigurati
 import { UIThemePreference } from '../../generated/configuration/uiThemePreference';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { FieldProp, FieldTypes } from '../../interface/FormUtils.interface';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import { generatePalette } from '../../styles/colorPallet';
-import { getField } from '../../utils/formUtils';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { isValidUrl } from '../../utils/SSOUtils';
 import { getThemeConfig } from '../../utils/ThemeUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import './appearance-config-settings-page.less';
 
 const orEmpty = (value?: string): string => value ?? '';
 
+type AppearanceFormValues = Partial<
+  LogoConfiguration & UIThemePreference['customTheme']
+>;
+type ThemeColorName = keyof UIThemePreference['customTheme'];
+
+const toFormValues = (
+  config?: Partial<UIThemePreference>
+): AppearanceFormValues => ({
+  ...config?.customLogoConfig,
+  ...config?.customTheme,
+});
+
 const AppearanceConfigSettingsPage = () => {
   const navigate = useNavigate();
   const { applicationConfig, setApplicationConfig } = useApplicationStore();
   const { t } = useTranslation();
-  const [form] = Form.useForm();
+  const form = useForm<AppearanceFormValues>({
+    mode: 'onChange',
+    defaultValues: toFormValues(applicationConfig),
+  });
+  const formState = form.watch();
   const [loading, setLoading] = useState<boolean>(false);
   const [resetting, setResetting] = useState<boolean>(false);
-
-  const [formState, setFormState] = useState<
-    Partial<
-      UIThemePreference['customLogoConfig'] & UIThemePreference['customTheme']
-    >
-  >({
-    ...applicationConfig?.customLogoConfig,
-    ...applicationConfig?.customTheme,
-  });
-
-  // Track if hover color was manually edited by user
-  const isHoverColorManuallyEdited = useRef<boolean>(false);
-  const isSelectedColorManuallyEdited = useRef<boolean>(false);
-  // Track the last primary color to detect changes
-  const lastPrimaryColor = useRef<string>(
-    applicationConfig?.customTheme?.primaryColor ?? ''
-  );
 
   const breadcrumbs: TitleBreadcrumbProps['titleLinks'] = useMemo(
     () =>
@@ -85,10 +87,7 @@ const AppearanceConfigSettingsPage = () => {
     []
   );
 
-  const handleSave: FormProps['onFinish'] = async (
-    values: UIThemePreference['customLogoConfig'] &
-      UIThemePreference['customTheme']
-  ) => {
+  const handleSave = async (values: AppearanceFormValues) => {
     setLoading(true);
     try {
       const configValues = {
@@ -151,12 +150,6 @@ const AppearanceConfigSettingsPage = () => {
         ...configValues,
         customTheme: getThemeConfig(configValues.customTheme),
       });
-
-      // Reset the manual edit flag
-      isHoverColorManuallyEdited.current = false;
-      isSelectedColorManuallyEdited.current = false;
-
-      lastPrimaryColor.current = '';
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -164,276 +157,79 @@ const AppearanceConfigSettingsPage = () => {
     }
   };
 
-  const themeFormFields: FieldProp[] = [
-    {
-      name: 'primaryColor',
-      id: 'primaryColor',
-      label: 'Primary Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'primaryColor',
-      },
-    },
-    {
-      name: 'selectedColor',
-      id: 'selectedColor',
-      label: 'Selected Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'selectedColor',
-      },
-    },
-    {
-      name: 'hoverColor',
-      id: 'hoverColor',
-      label: 'Hover Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'hoverColor',
-      },
-    },
-    {
-      name: 'panelBackgroundColor',
-      id: 'panelBackgroundColor',
-      label: t('label.panel-background-color'),
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'panelBackgroundColor',
-      },
-    },
-    {
-      name: 'errorColor',
-      id: 'errorColor',
-      label: 'Error Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'errorColor',
-      },
-    },
-    {
-      name: 'successColor',
-      id: 'successColor',
-      label: 'Success Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'successColor',
-      },
-    },
-    {
-      name: 'warningColor',
-      id: 'warningColor',
-      label: 'Warning Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'warningColor',
-      },
-    },
-    {
-      name: 'infoColor',
-      id: 'infoColor',
-      label: 'Info Color',
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
-        },
-      ],
-      props: {
-        'data-testid': 'infoColor',
-      },
-    },
+  const themeFormFields: Array<{ name: ThemeColorName; label: string }> = [
+    { name: 'primaryColor', label: 'Primary Color' },
+    { name: 'selectedColor', label: 'Selected Color' },
+    { name: 'hoverColor', label: 'Hover Color' },
+    { name: 'panelBackgroundColor', label: t('label.panel-background-color') },
+    { name: 'errorColor', label: 'Error Color' },
+    { name: 'successColor', label: 'Success Color' },
+    { name: 'warningColor', label: 'Warning Color' },
+    { name: 'infoColor', label: 'Info Color' },
   ];
 
-  const customLogoFormFields: FieldProp[] = [
+  const customLogoFormFields: Array<{
+    name: keyof LogoConfiguration;
+    label: string;
+    placeholder: string;
+  }> = [
     {
       name: 'customLogoUrlPath',
       label: t('label.logo-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/customLogoUrlPath',
       placeholder: 'URL path for the login page logo',
-      props: {
-        'data-testid': 'customLogoUrlPath',
-        autoFocus: true,
-      },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.logo-url'),
-          }),
-        },
-      ],
     },
     {
       name: 'customMonogramUrlPath',
       label: t('label.monogram-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/customMonogramUrlPath',
       placeholder: 'URL path for the navbar logo',
-      props: {
-        'data-testid': 'customMonogramUrlPath',
-      },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.monogram-url'),
-          }),
-        },
-      ],
     },
     {
       name: 'customFaviconUrlPath',
       label: t('label.favicon-url'),
-      type: FieldTypes.TEXT,
-      required: false,
-      id: 'root/customFaviconUrlPath',
       placeholder: 'URL path for the favicon',
-      props: {
-        'data-testid': 'customFaviconUrlPath',
-      },
-      rules: [
-        {
-          type: 'url',
-          message: t('message.entity-is-not-valid-url', {
-            entity: t('label.favicon-url'),
-          }),
-        },
-      ],
     },
   ];
 
-  const handleValuesChange = (
-    changedValues: Partial<
-      UIThemePreference['customLogoConfig'] & UIThemePreference['customTheme']
-    >,
-    allValues: UIThemePreference['customLogoConfig'] &
-      UIThemePreference['customTheme']
-  ) => {
-    // Check if primary color changed
-    if (
-      'primaryColor' in changedValues &&
-      changedValues.primaryColor !== lastPrimaryColor.current
-    ) {
-      lastPrimaryColor.current = changedValues.primaryColor ?? '';
-
-      // Always auto-generate hover color when primary color changes
-      if (changedValues.primaryColor) {
-        const palette = generatePalette(changedValues.primaryColor);
-        const generatedHoverColor = palette[2]; // 2nd element (index 3)
-        const generatedSelectedColor = palette[8];
-
-        // Update form field
-        form.setFieldValue('hoverColor', generatedHoverColor);
-        form.setFieldValue('selectedColor', generatedSelectedColor);
-
-        // Update allValues with the generated hover color
-        allValues = {
-          ...allValues,
-          hoverColor: generatedHoverColor,
-          selectedColor: generatedSelectedColor,
-        };
-
-        // Reset manual edit flag since primary color changed
-        isHoverColorManuallyEdited.current = false;
-        isSelectedColorManuallyEdited.current = false;
+  // A new primary colour regenerates the hover and selected shades from its palette.
+  useEffect(() => {
+    const subscription = form.watch((values, { name }) => {
+      if (name === 'primaryColor' && values.primaryColor) {
+        const palette = generatePalette(values.primaryColor);
+        form.setValue('hoverColor', palette[2]);
+        form.setValue('selectedColor', palette[8]);
       }
-    }
+    });
 
-    // Check if hover color was manually changed (without primary color change)
-    if ('hoverColor' in changedValues && !('primaryColor' in changedValues)) {
-      isHoverColorManuallyEdited.current = true;
-    }
-    // Check if Selected color was manually changed (without primary color change)
-    if (
-      'selectedColor' in changedValues &&
-      !('primaryColor' in changedValues)
-    ) {
-      isSelectedColorManuallyEdited.current = true;
-    }
-
-    // Update form state
-    setFormState({ ...allValues });
-  };
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   useEffect(() => {
-    const configValues = {
-      ...applicationConfig?.customLogoConfig,
-      ...applicationConfig?.customTheme,
-    };
-    setFormState(configValues);
-    form.setFieldsValue(configValues);
-
-    // Reset tracking refs when loading saved config
-    lastPrimaryColor.current =
-      applicationConfig?.customTheme?.primaryColor ?? '';
-    isHoverColorManuallyEdited.current = false;
-    isSelectedColorManuallyEdited.current = false;
-  }, [applicationConfig]);
+    form.reset(toFormValues(applicationConfig));
+  }, [applicationConfig, form]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.theme')}>
-      <Row align="middle" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid tw:items-center"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col span={24}>
-              <Space className="w-full justify-between">
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box
+              className="layout-column tw:block"
+              style={{ maxWidth: '100%', flex: '0 0 100%' }}>
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal w-full justify-between"
+                gap={2}
+                itemClassName="layout-space-item">
                 <PageHeader
                   data={{
                     header: t('label.theme'),
@@ -441,148 +237,216 @@ const AppearanceConfigSettingsPage = () => {
                   }}
                 />
                 <Button
+                  color="primary"
                   data-testid="reset-button"
-                  loading={resetting}
-                  type="primary"
+                  isLoading={resetting}
                   onClick={handleReset}>
                   {t('label.reset')}
                 </Button>
-              </Space>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={24}>
-          <Form
-            form={form}
-            initialValues={{
-              ...applicationConfig?.customLogoConfig,
-              ...applicationConfig?.customTheme,
-            }}
-            layout="vertical"
-            onFinish={handleSave}
-            onValuesChange={handleValuesChange}>
+              </Box>
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <HookForm form={form} onSubmit={form.handleSubmit(handleSave)}>
             <div className="white-label-card-wrapper m-b-md">
-              <Card
-                className="white-label-config-card"
-                title={t('label.custom-logo')}>
-                <Row className="w-full" gutter={[16, 16]}>
-                  {customLogoFormFields.map((field) => {
-                    return (
-                      <Col className="w-full" key={field.id} span={24}>
-                        <Row gutter={[48, 16]}>
-                          <Col span={12}>{getField(field)}</Col>
-                          <Col>
-                            <BrandImage
-                              className="preview-image"
-                              height={70}
-                              isMonoGram={field.name !== 'customLogoUrlPath'}
-                              src={
-                                formState[field.name as keyof LogoConfiguration]
-                              }
-                              width={
-                                field.name !== 'customLogoUrlPath' ? 75 : 120
-                              }
-                            />
-                          </Col>
-                        </Row>
-                      </Col>
-                    );
-                  })}
-                </Row>
-              </Card>
-              <Card
-                className="white-label-config-card"
-                title={
-                  <Typography.Text>{t('label.custom-theme')}</Typography.Text>
-                }>
-                <Row className="w-full" gutter={[16, 16]}>
-                  {themeFormFields.map((field) => {
-                    const currentColor =
-                      formState[
-                        field.name as keyof UIThemePreference['customTheme']
-                      ];
-
-                    return (
-                      <Col className="w-full" key={field.id} span={24}>
-                        <Row gutter={[48, 16]}>
-                          <Col span={12}>{getField(field)}</Col>
-                          <Col style={{ placeSelf: 'center' }}>
-                            <Card className="theme-preview">
-                              <Button
-                                style={{
-                                  background: currentColor,
-                                  color: 'white',
-                                  width: '86px',
+              <Card className="white-label-config-card">
+                <Card.Header title={t('label.custom-logo')} />
+                <Card.Content>
+                  <Grid
+                    className="layout-row layout-grid w-full"
+                    style={{ ...getLayoutGutter(16, 16) }}>
+                    {customLogoFormFields.map((field) => {
+                      return (
+                        <Grid.Item
+                          className="layout-column w-full"
+                          key={field.name}
+                          span={24}>
+                          <Box
+                            className="layout-row"
+                            style={{ ...getLayoutGutter(48, 16) }}
+                            wrap="wrap">
+                            <Box
+                              className="layout-column tw:block"
+                              style={{ maxWidth: '50%', flex: '0 0 50%' }}>
+                              <FormField
+                                control={form.control}
+                                name={field.name}
+                                rules={{
+                                  validate: (value) =>
+                                    !value ||
+                                    isValidUrl(value) ||
+                                    t('message.entity-is-not-valid-url', {
+                                      entity: field.label,
+                                    }),
                                 }}>
-                                {startCase(
-                                  toString(field.name).replace('Color', '')
+                                {({ field: control, fieldState }) => (
+                                  <Input
+                                    hint={fieldState.error?.message}
+                                    id={`root/${field.name}`}
+                                    inputDataTestId={field.name}
+                                    isInvalid={fieldState.invalid}
+                                    label={field.label}
+                                    placeholder={field.placeholder}
+                                    value={control.value ?? ''}
+                                    onBlur={control.onBlur}
+                                    onChange={control.onChange}
+                                  />
                                 )}
-                              </Button>
+                              </FormField>
+                            </Box>
+                            <Box className="layout-column tw:block">
+                              <BrandImage
+                                className="preview-image"
+                                height={70}
+                                isMonoGram={field.name !== 'customLogoUrlPath'}
+                                src={formState[field.name]}
+                                width={
+                                  field.name !== 'customLogoUrlPath' ? 75 : 120
+                                }
+                              />
+                            </Box>
+                          </Box>
+                        </Grid.Item>
+                      );
+                    })}
+                  </Grid>
+                </Card.Content>
+              </Card>
+              <Card className="white-label-config-card">
+                <Card.Header
+                  title={<Typography>{t('label.custom-theme')}</Typography>}
+                />
+                <Card.Content>
+                  <Grid
+                    className="layout-row layout-grid w-full"
+                    style={{ ...getLayoutGutter(16, 16) }}>
+                    {themeFormFields.map((field) => {
+                      const currentColor = formState[field.name];
 
-                              <Button
-                                icon={<Icon component={ShareIcon} />}
-                                style={{
-                                  width: '56px',
-                                  color: currentColor,
-                                  borderColor: currentColor,
-                                }}
-                              />
-                              <Button
-                                style={{
-                                  color: currentColor,
-                                  borderColor: currentColor,
-                                  width: '86px',
-                                }}
-                                type="default">
-                                {startCase(
-                                  toString(field.name).replace('Color', '')
+                      return (
+                        <Grid.Item
+                          className="layout-column w-full"
+                          key={field.name}
+                          span={24}>
+                          <Box
+                            className="layout-row"
+                            style={{ ...getLayoutGutter(48, 16) }}
+                            wrap="wrap">
+                            <Box
+                              className="layout-column tw:block"
+                              style={{ maxWidth: '50%', flex: '0 0 50%' }}>
+                              <FormField
+                                control={form.control}
+                                name={field.name}
+                                rules={{
+                                  pattern: {
+                                    value: HEX_COLOR_CODE_REGEX,
+                                    message: t('message.hex-color-validation'),
+                                  },
+                                }}>
+                                {({ field: control, fieldState }) => (
+                                  <Box direction="col" gap={1}>
+                                    <FormItemLabel label={field.label} />
+                                    <ColorPicker
+                                      id={field.name}
+                                      label={field.label}
+                                      value={control.value ?? ''}
+                                      onBlur={control.onBlur}
+                                      onChange={control.onChange}
+                                    />
+                                    {fieldState.error && (
+                                      <HintText isInvalid>
+                                        {fieldState.error.message}
+                                      </HintText>
+                                    )}
+                                  </Box>
                                 )}
-                              </Button>
-                              <DomainIcon
-                                style={{
-                                  color: currentColor,
-                                }}
-                                width={32}
-                              />
-                              <Button
-                                style={{
-                                  color: currentColor,
-                                  padding: 0,
-                                }}
-                                type="link">
-                                {t('label.link')}
-                              </Button>
-                            </Card>
-                          </Col>
-                        </Row>
-                      </Col>
-                    );
-                  })}
-                </Row>
+                              </FormField>
+                            </Box>
+                            <Box
+                              className="layout-column tw:block"
+                              style={{ placeSelf: 'center' }}>
+                              <Card className="theme-preview">
+                                <Card.Content className="tw:flex tw:flex-row tw:gap-4">
+                                  {/* Colour swatches, not buttons: they preview an arbitrary
+                                      brand colour that core Button colours can't express. */}
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
+                                    style={{
+                                      background: currentColor,
+                                      borderColor: currentColor,
+                                      color: 'white',
+                                    }}>
+                                    {startCase(
+                                      toString(field.name).replace('Color', '')
+                                    )}
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
+                                    style={{
+                                      borderColor: currentColor,
+                                      color: currentColor,
+                                    }}>
+                                    <ShareIcon className="tw:size-3.5 tw:shrink-0" />
+                                  </span>
+                                  <span
+                                    className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
+                                    style={{
+                                      borderColor: currentColor,
+                                      color: currentColor,
+                                    }}>
+                                    {startCase(
+                                      toString(field.name).replace('Color', '')
+                                    )}
+                                  </span>
+                                  <DomainIcon
+                                    style={{
+                                      color: currentColor,
+                                    }}
+                                    width={32}
+                                  />
+                                  <span
+                                    className="tw:inline-flex tw:items-center tw:text-sm tw:font-semibold"
+                                    style={{ color: currentColor }}>
+                                    {t('label.link')}
+                                  </span>
+                                </Card.Content>
+                              </Card>
+                            </Box>
+                          </Box>
+                        </Grid.Item>
+                      );
+                    })}
+                  </Grid>
+                </Card.Content>
               </Card>
             </div>
 
-            <Space
-              className="w-full justify-end appearance-cta-buttons"
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal w-full justify-end appearance-cta-buttons"
               data-testid="cta-buttons"
-              size={16}>
+              gap={4}
+              itemClassName="layout-space-item">
               <Button
+                color="link-color"
                 data-testid="cancel-btn"
-                type="link"
                 onClick={() => navigate(-1)}>
                 {t('label.cancel')}
               </Button>
               <Button
+                color="primary"
                 data-testid="save-btn"
-                htmlType="submit"
-                loading={loading}
-                type="primary">
+                isLoading={loading}
+                type="submit">
                 {t('label.save')}
               </Button>
-            </Space>
-          </Form>
-        </Col>
-      </Row>
+            </Box>
+          </HookForm>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

@@ -1,6 +1,7 @@
 package org.openmetadata.service.llm;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -74,8 +75,10 @@ public abstract class LLMCompletionClient {
     List<T> result;
     try {
       result =
-          MAPPER.readValue(
-              cleaned, MAPPER.getTypeFactory().constructCollectionType(List.class, elementType));
+          MAPPER
+              .readerFor(MAPPER.getTypeFactory().constructCollectionType(List.class, elementType))
+              .with(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+              .readValue(cleaned);
     } catch (JsonProcessingException e) {
       throw new LLMCompletionException("Failed to parse LLM JSON array response", e);
     }

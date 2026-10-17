@@ -1,7 +1,9 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '../../../icons';
+import { forwardRef } from 'react';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -34,6 +36,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   showCheckbox?: boolean;
   /** Size of that checkbox. */
   checkboxSize?: 'xs' | 'sm';
+  /** If true, shows a radio on the left to indicate single selection state. */
+  showRadio?: boolean;
 }
 
 const DropdownItem = ({
@@ -44,6 +48,7 @@ const DropdownItem = ({
   unstyled,
   showCheckbox,
   checkboxSize = 'sm',
+  showRadio,
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
@@ -86,6 +91,14 @@ const DropdownItem = ({
               isFocusVisible={state.isFocusVisible}
               isSelected={state.isSelected}
               size={checkboxSize}
+            />
+          )}
+
+          {showRadio && (
+            <RadioButtonBase
+              isDisabled={state.isDisabled}
+              isFocusVisible={state.isFocusVisible}
+              isSelected={state.isSelected}
             />
           )}
 
@@ -156,10 +169,11 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
-  const { placement = 'bottom right', ...rest } = props;
+  const { placement = 'bottom right', offset = 4, ...rest } = props;
 
   return (
     <AriaPopover
+      offset={offset}
       placement={placement}
       {...rest}
       className={(state) =>
@@ -191,30 +205,36 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
   );
 };
 
-const DropdownDotsButton = (
-  props: AriaButtonProps & RefAttributes<HTMLButtonElement>
-) => {
-  const { t } = useCoreTranslation();
+// forwardRef so callers can anchor popovers to the button; React 18 drops a
+// plain `ref` prop on function components.
+const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
+  (props, ref) => {
+    const { t } = useCoreTranslation();
 
-  return (
-    <AriaButton
-      {...props}
-      aria-label={t('label.open-menu', 'Open menu')}
-      className={(state) =>
-        cx(
-          'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-          (state.isPressed || state.isHovered) && 'tw:text-fg-quaternary_hover',
-          (state.isPressed || state.isFocusVisible) &&
-            'tw:outline-2 tw:outline-offset-2',
-          typeof props.className === 'function'
-            ? props.className(state)
-            : props.className
-        )
-      }>
-      <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
-    </AriaButton>
-  );
-};
+    return (
+      <AriaButton
+        {...props}
+        aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
+        className={(state) =>
+          cx(
+            'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            (state.isPressed || state.isHovered) &&
+              'tw:text-fg-quaternary_hover',
+            (state.isPressed || state.isFocusVisible) &&
+              'tw:outline-2 tw:outline-offset-2',
+            typeof props.className === 'function'
+              ? props.className(state)
+              : props.className
+          )
+        }
+        ref={ref}>
+        <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
+      </AriaButton>
+    );
+  }
+);
+
+DropdownDotsButton.displayName = 'DropdownDotsButton';
 
 export type DropdownSectionHeaderProps = HTMLAttributes<HTMLElement> &
   RefAttributes<HTMLElement>;

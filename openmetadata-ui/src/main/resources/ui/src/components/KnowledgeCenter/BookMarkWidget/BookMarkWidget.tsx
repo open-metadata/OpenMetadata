@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box } from '@openmetadata/ui-core-components';
-import { Star01 } from '@untitledui/icons';
+import { Star01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';

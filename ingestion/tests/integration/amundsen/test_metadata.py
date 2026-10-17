@@ -8,12 +8,8 @@ from unittest.mock import patch
 
 from pydantic import AnyUrl
 
-from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
-    MetastoreConfig,
-    MetastoreHostPortConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeConnection,
+from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
+    CustomDatabaseConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
@@ -30,6 +26,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import Href
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.metadata.amundsen.metadata import AmundsenSource
 
@@ -71,6 +68,7 @@ EXPECTED_SERVICE = [
         fullyQualifiedName="hive",
         displayName="hive",
         serviceType="Hive",
+        entityStatus=EntityStatus.Unprocessed,
         description=None,
         connection=DatabaseConnection(
             config=HiveConnection(
@@ -107,19 +105,10 @@ EXPECTED_SERVICE = [
         name="delta",
         fullyQualifiedName="delta",
         displayName="delta",
-        serviceType="DeltaLake",
+        serviceType="CustomDatabase",
+        entityStatus=EntityStatus.Unprocessed,
         description=None,
-        connection=DatabaseConnection(
-            config=DeltaLakeConnection(
-                type="DeltaLake",
-                configSource=MetastoreConfig(
-                    connection=MetastoreHostPortConnection(metastoreHostPort="http://localhost:9083")
-                ),
-                connectionArguments=None,
-                supportsMetadataExtraction=True,
-                supportsDBTExtraction=True,
-            )
-        ),
+        connection=DatabaseConnection(config=CustomDatabaseConnection(type="CustomDatabase")),
         pipelines=None,
         version=2.5,
         updatedAt=1667892646744,
@@ -139,6 +128,7 @@ EXPECTED_SERVICE = [
         fullyQualifiedName="dynamo",
         displayName="dynamo",
         serviceType="DynamoDB",
+        entityStatus=EntityStatus.Unprocessed,
         description=None,
         connection=DatabaseConnection(
             config=DynamoDBConnection(

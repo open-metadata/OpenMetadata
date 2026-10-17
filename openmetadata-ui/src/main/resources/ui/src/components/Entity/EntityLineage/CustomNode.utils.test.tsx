@@ -12,21 +12,18 @@
  */
 import { fireEvent, render } from '@testing-library/react';
 import { ReactFlowProvider } from 'reactflow';
-import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { Column } from '../../../generated/entity/data/table';
+import { useLineageStore } from '../../../hooks/useLineageStore';
 import {
   ColumnContent,
   getCollapseHandle,
-  getColumnHandle,
   getExpandHandle,
 } from './CustomNode.utils';
 
-jest.mock('antd', () => ({
-  ...jest.requireActual('antd'),
-  Skeleton: {
-    Button: jest.fn().mockImplementation(() => <p data-testid="loader" />),
-  },
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Skeleton: jest.fn().mockImplementation(() => <p data-testid="loader" />),
 }));
 
 // Add mock before describe blocks
@@ -44,55 +41,31 @@ jest.mock('./TestSuiteSummaryWidget/TestSuiteSummaryWidget.component', () => ({
 }));
 
 const mockSetSelectedColumn = jest.fn();
-const mockOnColumnMouseEnter = jest.fn();
-const mockOnColumnMouseLeave = jest.fn();
+const mockSetTracedColumns = jest.fn();
 
-jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
-  useLineageProvider: jest.fn(() => ({
-    onColumnMouseEnter: mockOnColumnMouseEnter,
-    onColumnMouseLeave: mockOnColumnMouseLeave,
-    selectedColumn: '',
-  })),
-}));
+const mockLineageState = {
+  setSelectedColumn: mockSetSelectedColumn,
+  selectedColumn: '',
+  setTracedColumns: mockSetTracedColumns,
+  tracedColumns: new Set<string>(),
+  sceneBand: undefined,
+  columnEdges: [],
+};
 
 jest.mock('../../../hooks/useLineageStore', () => {
   return {
-    useLineageStore: jest.fn(() => ({
-      setSelectedColumn: mockSetSelectedColumn,
-      selectedColumn: '',
-      setTracedColumns: jest.fn(),
-      isEditMode: false,
-      tracedColumns: new Set(),
-    })),
+    useLineageStore: jest.fn((selector) =>
+      selector ? selector(mockLineageState) : mockLineageState
+    ),
   };
 });
 
 describe('Custom Node Utils', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it('getColumnHandle should return null when nodeType is NOT_CONNECTED', () => {
-    const result = getColumnHandle(
-      EntityLineageNodeType.NOT_CONNECTED,
-      true,
-      'test',
-      '123'
-    );
-
-    expect(result).toBeNull();
-  });
-
-  it('getColumnHandle should render handles when nodeType is not NOT_CONNECTED', () => {
-    const { getByTestId } = render(
-      <ReactFlowProvider>
-        <div data-testid="column-handle">
-          {getColumnHandle('CONNECTED', true)}
-        </div>
-      </ReactFlowProvider>
-    );
-
-    expect(getByTestId('column-handle')).toBeInTheDocument();
+    (
+      useLineageStore as unknown as { getState: () => typeof mockLineageState }
+    ).getState = () => mockLineageState;
   });
 
   describe('getExpandHandle', () => {
@@ -178,7 +151,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId, getByText } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -195,7 +167,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -219,7 +190,6 @@ describe('Custom Node Utils', () => {
       const { getAllByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             isLoading
             showDataObservabilitySummary
             column={mockColumn}
@@ -242,7 +212,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             showDataObservabilitySummary
             column={mockColumn}
             isLoading={false}
@@ -258,7 +227,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -277,7 +245,6 @@ describe('Custom Node Utils', () => {
       const { getByTestId } = render(
         <ReactFlowProvider>
           <ColumnContent
-            isConnectable
             column={mockColumn}
             isLoading={false}
             showDataObservabilitySummary={false}
@@ -294,6 +261,63 @@ describe('Custom Node Utils', () => {
       expect(onColumnHover).toHaveBeenCalledWith('test.column');
       expect(onColumnHover).toHaveBeenCalledWith(undefined);
       expect(onColumnSelect).toHaveBeenCalledWith('test.column');
+    });
+
+    it('does not render the column menu when onColumnLineageEdit is not passed', () => {
+      const { queryByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(queryByTestId('lineage-column-menu')).not.toBeInTheDocument();
+    });
+
+    it('renders the column menu and calls onColumnLineageEdit with the column fqn', async () => {
+      const onColumnLineageEdit = jest.fn();
+      const { getByTestId, findByText } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnLineageEdit={onColumnLineageEdit}
+          />
+        </ReactFlowProvider>
+      );
+
+      expect(getByTestId('lineage-column-menu')).toBeInTheDocument();
+
+      fireEvent.click(getByTestId('lineage-column-menu'));
+      fireEvent.click(await findByText('label.edit-upstream'));
+
+      expect(onColumnLineageEdit).toHaveBeenCalledWith(
+        'test.column',
+        LineageDirection.Upstream,
+        expect.anything()
+      );
+    });
+
+    it('does not select the column when the column menu trigger is clicked', () => {
+      const onColumnLineageEdit = jest.fn();
+      const { getByTestId } = render(
+        <ReactFlowProvider>
+          <ColumnContent
+            column={mockColumn}
+            isLoading={false}
+            showDataObservabilitySummary={false}
+            onColumnLineageEdit={onColumnLineageEdit}
+          />
+        </ReactFlowProvider>
+      );
+
+      fireEvent.click(getByTestId('lineage-column-menu'));
+
+      expect(mockSetSelectedColumn).not.toHaveBeenCalled();
     });
   });
 });

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -29,19 +28,19 @@ const RolesElement = ({ userData }: RolesElementProps) => {
     <Fragment>
       {userData.isAdmin && (
         <div className="mb-2 d-flex items-center gap-2">
-          <Icon component={IconUser} style={{ fontSize: '16px' }} />
+          <IconUser className="tw:size-4 tw:shrink-0" />
 
           <span>{TERM_ADMIN}</span>
         </div>
       )}
       {userData?.roles?.map((role) => (
         <div className="mb-2 d-flex items-center gap-2" key={role.id}>
-          <Icon component={IconUser} style={{ fontSize: '16px' }} />
-          <Typography.Text
+          <IconUser className="tw:size-4 tw:shrink-0" />
+          <Typography
             className="ant-typography-ellipsis-custom w-48"
             ellipsis={{ tooltip: true }}>
             {getEntityName(role)}
-          </Typography.Text>
+          </Typography>
         </div>
       ))}
       {!userData.isAdmin && isEmpty(userData.roles) && (

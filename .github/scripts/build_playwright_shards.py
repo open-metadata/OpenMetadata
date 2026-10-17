@@ -41,8 +41,15 @@ PROJECT_LANES = {
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
     "SearchRBAC": "search-rbac",
-    "DomainIsolation": "domain-isolation",
-    "search-nightly": "search",
+    # DomainIsolation and search-nightly share the single-worker global-state
+    # runner: each is a few minutes of tests behind ~3 minutes of environment
+    # setup. DomainIsolation toggles enableAccessControl inside each file's own
+    # beforeAll/afterAll, and SearchSettings restores defaults in its afterAll,
+    # so with one worker no setting leaks across files. SearchRBAC stays apart
+    # because it enables RBAC in a separate setup project, leaving a window in
+    # which another file could turn it off before SearchRBAC.spec.ts runs.
+    "DomainIsolation": "global-state",
+    "search-nightly": "global-state",
     "Reindex": "reindex",
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
@@ -53,12 +60,10 @@ PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
 }
 LANE_WORKERS = {
-    "domain-isolation": 1,
     "global-state": 1,
     "import-export": 2,
     "ingestion": 1,
     "reindex": 1,
-    "search": 1,
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
@@ -94,6 +99,15 @@ COMMON_MAX_SHARDS = 28
 # suite. 30 s preserves a reasonable margin so the first plan after re-enable
 # does not silently over-pack the shard.
 FALLBACK_TEST_MS = 30_000
+# A history run whose tests are, at the median, this much slower than the same
+# tests in the other runs measured a degraded runner, not the suite. Weights are
+# p75 across runs, so with 3-4 runs one such run sets most of them: run
+# 36754924437 was 1.48x slower and alone pushed chromium past COMMON_MAX_SHARDS,
+# failing planning (and ejecting the merge group) for content that fits in 26.
+# Healthy runs sit within ~0.9-1.05 of each other.
+MAX_HISTORY_RUN_SLOWDOWN = 1.3
+# Fewer shared tests than this and a run's slowdown is noise, so it is kept.
+MIN_SHARED_TESTS_FOR_SLOWDOWN = 100
 CHECKED_IN_TIMING_BASELINE = (
     Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
 )
@@ -328,17 +342,61 @@ def percentile_75(values: list[int]) -> int:
     return round(quartiles[2])
 
 
+def timed_tests(payload: dict[str, Any]) -> dict[str, int]:
+    return {
+        test["id"]: int(test["durationMs"])
+        for test in payload.get("tests", [])
+        if test.get("id") and int(test.get("durationMs", 0)) > 0
+    }
+
+
+def run_slowdown(run: dict[str, int], others: list[dict[str, int]]) -> float | None:
+    """Median ratio of a run's test durations to the other runs' median, or
+    None when too few tests are shared to tell."""
+    ratios = [
+        duration / statistics.median(other[test_id] for other in shared)
+        for test_id, duration in run.items()
+        if (shared := [other for other in others if test_id in other])
+    ]
+    if len(ratios) < MIN_SHARED_TESTS_FOR_SLOWDOWN:
+        return None
+    return statistics.median(ratios)
+
+
+def drop_slow_history_runs(
+    runs: list[tuple[Path, dict[str, Any]]],
+) -> list[tuple[Path, dict[str, Any]]]:
+    timed = [timed_tests(payload) for _, payload in runs]
+    kept = []
+    for index, run in enumerate(runs):
+        others = timed[:index] + timed[index + 1 :]
+        slowdown = run_slowdown(timed[index], others)
+        if slowdown is not None and slowdown > MAX_HISTORY_RUN_SLOWDOWN:
+            print(
+                f"::warning::Ignoring timing history {run[0]}: its tests ran "
+                f"{slowdown:.2f}x slower than the other runs "
+                f"(limit {MAX_HISTORY_RUN_SLOWDOWN}x), so it measured the runner, "
+                "not the suite.",
+                file=sys.stderr,
+            )
+        else:
+            kept.append(run)
+    return kept
+
+
 def load_history(
     paths: list[Path],
 ) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
     durations: dict[str, list[int]] = defaultdict(list)
     identity_durations: dict[tuple[str, str], list[int]] = defaultdict(list)
+    runs = []
     for path in paths:
         if not path.exists():
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("mode") != "full":
-            continue
+        if payload.get("mode") == "full":
+            runs.append((path, payload))
+    for _, payload in drop_slow_history_runs(runs):
         for test in payload.get("tests", []):
             test_id = test.get("id")
             duration = max(0, int(test.get("durationMs", 0)))
@@ -575,12 +633,10 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
         "advanced-search",
-        "domain-isolation",
         "global-state",
         "import-export",
         "ingestion",
         "reindex",
-        "search",
         "search-rbac",
     }:
         return (1, 8) if mode == "full" else (1, 2)
@@ -826,7 +882,7 @@ def main() -> None:
             f"{details}\n\n"
             "Common fixes:\n"
             "  * If this suite belongs on a dedicated lane (import-export, "
-            "domain-isolation, ingestion, reindex), verify the top-level "
+            "global-state, ingestion, reindex), verify the top-level "
             "describe still carries the correct `{ tag: '...' }` option — a "
             "recent edit (e.g. removing `.fixme` or `.skip`) may have dropped "
             "it, landing the suite on the wrong project. See FILE_LANE_HINTS "

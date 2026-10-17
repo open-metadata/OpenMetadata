@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Check } from '@untitledui/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -31,7 +31,7 @@ const OPTION_CLASS =
 /**
  * Inline Classic⇄AI interface switch for the classic navbar profile dropdown.
  * AI is always available in OSS (the app-mode shell ships in-tree, no
- * install-gate — see SettingsAppModePage), so this renders unconditionally.
+ * install-gate — see PersonaAppLayoutPage), so this renders unconditionally.
  * Switching writes the app mode and navigates home; the boot resolver takes
  * the user into the selected experience.
  */

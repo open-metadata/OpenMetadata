@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Input, Select } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { KeyboardEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -98,7 +98,7 @@ export function ConditionComposer({
       <Button
         color={tone === 'exclude' ? 'primary-destructive' : 'primary'}
         data-testid={`${tone}-add-button`}
-        iconLeading={<Plus size={14} />}
+        iconLeading={Plus}
         isDisabled={!trimmedValue}
         size="sm"
         type="button"

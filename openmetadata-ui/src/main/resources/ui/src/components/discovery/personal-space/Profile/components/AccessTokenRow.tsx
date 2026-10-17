@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  Card,
   FeaturedIcon,
   Select,
   Skeleton,
@@ -28,7 +29,7 @@ import {
   Plus,
   RefreshCcw02,
   Trash02,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   Dispatch,
@@ -57,17 +58,18 @@ import {
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
 const AccessTokenLoadingSkeleton = () => (
-  <Box
-    className="ai-profile-page__edit-card tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-5 tw:py-4"
+  <Card
+    className="ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col"
-    gap={3}>
-    <Skeleton height={16} variant="text" width="60%" />
-    <Skeleton height={44} variant="rounded" width="100%" />
-    <Box justify="end">
-      <Skeleton height={36} variant="rounded" width={120} />
-    </Box>
-  </Box>
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+      <Skeleton height={16} variant="text" width="60%" />
+      <Skeleton height={44} variant="rounded" width="100%" />
+      <Box justify="end">
+        <Skeleton height={36} variant="rounded" width={120} />
+      </Box>
+    </Card.Content>
+  </Card>
 );
 
 const AccessTokenEmptyState = ({
@@ -85,55 +87,55 @@ const AccessTokenEmptyState = ({
   isLoading: boolean;
   handleGenerate: () => void;
 }) => (
-  <Box
-    align="center"
-    className="ai-profile-page__edit-card tw:w-full tw:items-center tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:px-6 tw:py-10 tw:text-center"
+  <Card
+    className="ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col"
-    gap={3}
-    justify="center">
-    <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
-    <Typography className="tw:text-primary-900" weight="semibold">
-      {t('message.no-access-token-title')}
-    </Typography>
-    <Typography
-      className="tw:max-w-md tw:text-tertiary"
-      size="text-sm"
-      weight="regular">
-      {t('message.no-access-token-subtitle')}
-    </Typography>
-    <Box align="center" className="tw:mt-3" direction="row" gap={3}>
-      <Box align="center" direction="row" gap={2}>
-        <Typography
-          className="tw:whitespace-nowrap tw:text-tertiary"
-          size="text-sm"
-          weight="regular">
-          {`${t('label.expires-in')}:`}
-        </Typography>
-        <Select
-          aria-label={t('label.token-expiration')}
-          className="tw:min-w-28"
-          data-testid="token-expiry-select"
-          items={expiryOptions}
-          selectedKey={expiry}
+    size="lg"
+    variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:text-center">
+      <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
+      <Typography className="tw:text-primary" weight="semibold">
+        {t('message.no-access-token-title')}
+      </Typography>
+      <Typography
+        className="tw:max-w-md tw:text-tertiary"
+        size="text-sm"
+        weight="regular">
+        {t('message.no-access-token-subtitle')}
+      </Typography>
+      <Box align="center" className="tw:mt-3" direction="row" gap={3}>
+        <Box align="center" direction="row" gap={2}>
+          <Typography
+            className="tw:whitespace-nowrap tw:text-tertiary"
+            size="text-sm"
+            weight="regular">
+            {`${t('label.expires-in')}:`}
+          </Typography>
+          <Select
+            aria-label={t('label.token-expiration')}
+            className="tw:min-w-28"
+            data-testid="token-expiry-select"
+            items={expiryOptions}
+            selectedKey={expiry}
+            size="sm"
+            onSelectionChange={(key: Key | null) =>
+              key && setExpiry(key as JWTTokenExpiry)
+            }>
+            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
+          </Select>
+        </Box>
+        <Button
+          color="primary"
+          data-testid="generate-token"
+          icon={Plus}
+          isLoading={isLoading}
           size="sm"
-          onSelectionChange={(key: Key | null) =>
-            key && setExpiry(key as JWTTokenExpiry)
-          }>
-          {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-        </Select>
+          onClick={handleGenerate}>
+          {t('label.generate-token')}
+        </Button>
       </Box>
-      <Button
-        color="primary"
-        data-testid="generate-token"
-        icon={Plus}
-        isLoading={isLoading}
-        size="sm"
-        onClick={handleGenerate}>
-        {t('label.generate-token')}
-      </Button>
-    </Box>
-  </Box>
+    </Card.Content>
+  </Card>
 );
 
 const AccessTokenDetails = ({
@@ -163,10 +165,10 @@ const AccessTokenDetails = ({
   handleRegenerate: () => void;
   handleRevoke: () => void;
 }) => (
-  <Box
-    className="ai-profile-page__edit-card tw:w-full tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+  <Card
+    className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
     data-testid="access-token-row"
-    direction="col">
+    variant="muted">
     <Box
       align="center"
       className="tw:justify-between tw:border-b tw:border-secondary tw:px-4 tw:py-3.5"
@@ -174,7 +176,7 @@ const AccessTokenDetails = ({
       <Box align="center" gap={2}>
         <FeaturedIcon color="brand" icon={Key01} size="md" theme="light" />
         <Box direction="col">
-          <Typography className="tw:text-primary-900" weight="semibold">
+          <Typography className="tw:text-primary" weight="semibold">
             {t('label.collate-api-token')}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">
@@ -263,7 +265,7 @@ const AccessTokenDetails = ({
         {t('label.revoke')}
       </Button>
     </Box>
-  </Box>
+  </Card>
 );
 
 const AccessTokenRow: React.FC = () => {

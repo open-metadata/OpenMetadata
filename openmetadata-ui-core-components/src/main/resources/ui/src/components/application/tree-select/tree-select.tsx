@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ChevronDown, RefreshCw01, SearchLg, XClose } from '@untitledui/icons';
+import { ChevronDown, RefreshCw01, Search, XClose } from '../../../icons';
 import {
   DropdownSearchField,
   DropdownStagedFooter,
   DropdownStatusFooter,
+  selectedTriggerClassName,
   TriggerCountBadge,
 } from '../filter-select/filter-select.shared';
 import {
@@ -22,6 +23,7 @@ import {
   type RefObject,
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -40,6 +42,7 @@ import { cx } from '@/utils/cx';
 import { Tree } from '../tree/tree';
 import {
   TreeSelectEmptyItemContent,
+  TreeSelectLoadMoreItemContent,
   TreeSelectTreeItemContent,
 } from './tree-select-node';
 import type { TreeSelectNode, TreeSelectProps } from './tree-select.types';
@@ -54,8 +57,13 @@ import {
   useTreeSelectSelection,
 } from './use-tree-select-selection';
 
+/** Row id of a branch's load-more item; a real node is matched first. */
+const LOAD_MORE_SUFFIX = '__more';
+/** Row id of the root listing's load-more item. Null byte: no node can collide. */
+const ROOT_LOAD_MORE_ID = '\u0000root__more';
+
 /** `tw:w-80` on the chrome dropdown, needed before it renders to pick a side. */
-const DROPDOWN_CHROME_WIDTH = 320;
+export const DROPDOWN_CHROME_WIDTH = 320;
 /** Matches react-aria's default overlay `containerPadding`. */
 const VIEWPORT_PADDING = 12;
 
@@ -63,7 +71,7 @@ type DropdownPlacement = 'bottom left' | 'bottom right';
 
 // Left edge of the trigger, mirrored right when there is no room on screen.
 // Width is measured: `--trigger-width` is unset for a bare Popover + triggerRef.
-const useDropdownPlacement = (
+export const useDropdownPlacement = (
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   width?: number
@@ -188,11 +196,18 @@ const collectSelectableNodes = <T,>(
 ): TreeSelectNode<T>[] => {
   const result: TreeSelectNode<T>[] = [];
   for (const node of nodes) {
-    if (node.allowSelection !== false) {
+    if (node.allowSelection !== false && !hasExclusiveChildren(node)) {
       result.push(node);
     }
     if (node.children) {
-      result.push(...collectSelectableNodes(node.children));
+      result.push(
+        ...collectSelectableNodes(
+          node.children.filter(
+            (child) =>
+              !child.isParentMutuallyExclusive && !hasExclusiveChildren(child)
+          )
+        )
+      );
     }
   }
 
@@ -201,6 +216,8 @@ const collectSelectableNodes = <T,>(
 
 export const TreeSelect = <T = unknown,>({
   label,
+  id,
+  'aria-label': ariaLabel,
   placeholder,
   hint,
   tooltip,
@@ -233,10 +250,16 @@ export const TreeSelect = <T = unknown,>({
   fullWidthTrigger = false,
   onFetchError,
   renderSelectedItem,
+  isLoading = false,
+  maxVisibleItems,
+  selectedDisplayStrategy = 'all',
+  onFocus,
+  onBlur,
   bordered = false,
   showSelectAll = false,
   commitMode = 'immediate',
   offset,
+  placement,
   isOpen: controlledIsOpen,
   onOpenChange,
   renderTrigger,
@@ -249,6 +272,11 @@ export const TreeSelect = <T = unknown,>({
   filterNode,
 }: TreeSelectProps<T>): ReactElement => {
   const { t } = useCoreTranslation();
+  const treeId = useId();
+  const inputId = id ?? `${treeId}-input`;
+  const [pendingTreeFocus, setPendingTreeFocus] = useState<
+    'first' | 'last' | null
+  >(null);
   const [internalOpen, setInternalOpen] = useState(false);
   const isOpen = controlledIsOpen ?? internalOpen;
   const [expandedKeys, setExpandedKeys] = useState<Set<Key>>(
@@ -280,7 +308,7 @@ export const TreeSelect = <T = unknown,>({
   // Button and custom triggers put search, width and footer in the dropdown.
   const usesDropdownChrome = isButtonVariant || isCustomTrigger;
   const isStaged = commitMode === 'staged';
-  const { placement, triggerWidth } = useDropdownPlacement(
+  const { placement: autoPlacement, triggerWidth } = useDropdownPlacement(
     triggerRef,
     isOpen,
     usesDropdownChrome ? DROPDOWN_CHROME_WIDTH : undefined
@@ -304,14 +332,25 @@ export const TreeSelect = <T = unknown,>({
   }
 
   // The button badge excludes root ids, so it needs the tree while closed.
-  const { treeData, loading, loadingNodes, loadChildren } =
-    useTreeSelectData<T>({
-      fetchData,
-      searchTerm,
-      pageSize,
-      onFetchError,
-      enabled: hasOpened || isButtonVariant,
-    });
+  const {
+    treeData,
+    loading: dataLoading,
+    loadingNodes,
+    loadChildren,
+    loadMoreChildren,
+    hasMoreRoot,
+    rootTotal,
+    loadingMoreRoot,
+    loadMoreRoot,
+  } = useTreeSelectData<T>({
+    fetchData,
+    searchTerm,
+    pageSize,
+    onFetchError,
+    enabled: hasOpened || isButtonVariant,
+  });
+
+  const loading = dataLoading || isLoading;
 
   const visibleNodeIds = useMemo(
     () =>
@@ -346,9 +385,12 @@ export const TreeSelect = <T = unknown,>({
     }
   }, [value, setSelection]);
 
-  // Resync the draft on open, including a programmatic one via `isOpen`.
+  // Resync on open, including a programmatic one via `isOpen`. Staged mode
+  // drops the draft; a controlled immediate picker drops an optimistic pick the
+  // parent never echoed back (its save failed), which `value` alone cannot
+  // signal because the rejected parent keeps passing the same reference.
   useEffect(() => {
-    if (isOpen && isStaged) {
+    if (isOpen && (isStaged || value !== undefined)) {
       setSelection(toArray(value));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -436,7 +478,8 @@ export const TreeSelect = <T = unknown,>({
 
   const loadAllDescendants = useCallback(
     async (node: TreeSelectNode<T>): Promise<TreeSelectNode<T>> => {
-      if (node.children?.length) {
+      // A truncated branch is refetched whole; its page is only a subset.
+      if (node.children?.length && !node.hasMoreChildren) {
         const deepChildren = await Promise.all(
           node.children.map((child) => loadAllDescendants(child))
         );
@@ -450,7 +493,8 @@ export const TreeSelect = <T = unknown,>({
 
       // Fetch directly — do NOT call loadChildren here to avoid a duplicate
       // API request (loadChildren would re-fetch the same parentId).
-      const response = await fetchData({ parentId: node.id });
+      // `loadAll`: a cascade cannot select a page, so it opts out of paging.
+      const response = await fetchData({ parentId: node.id, loadAll: true });
 
       if (response.nodes.length > 0) {
         const deepChildren = await Promise.all(
@@ -476,7 +520,7 @@ export const TreeSelect = <T = unknown,>({
       const { isFullySelected } = getNodeSelectionState(
         getDescendantSelection(node),
         isNodeSelected(node.id),
-        multiple
+        multiple && cascadeSelection
       );
 
       // Both directions: a branch selected while collapsed keeps children out of the tree.
@@ -553,6 +597,91 @@ export const TreeSelect = <T = unknown,>({
   const resolvedEmptyBranchMessage =
     emptyBranchMessage ?? noDataMessage ?? t('label.no-data-found');
 
+  // Only once a page has landed; before that `remaining` is the whole branch.
+  const renderLoadMore = useCallback(
+    (node: TreeSelectNode<T>) => {
+      if (!node.hasMoreChildren) {
+        return null;
+      }
+
+      const loaded = node.children?.length ?? 0;
+      const remaining = node.childrenTotal
+        ? node.childrenTotal - loaded
+        : undefined;
+      const nextCount = Math.min(pageSize, remaining ?? pageSize);
+
+      if (nextCount <= 0) {
+        return null;
+      }
+
+      return (
+        <Tree.Item
+          id={`${node.id}${LOAD_MORE_SUFFIX}`}
+          key={`${node.id}${LOAD_MORE_SUFFIX}`}
+          textValue={t('label.show-count-more', { count: nextCount })}>
+          <TreeSelectLoadMoreItemContent
+            isLoading={loadingNodes.has(node.id)}
+            maxIndentLevel={maxIndentLevel}
+            nextCount={nextCount}
+            parentId={node.id}
+            remaining={remaining}
+            showExpandIcon={showExpandIcon}
+            onLoadMore={() => loadMoreChildren(node.id)}
+          />
+        </Tree.Item>
+      );
+    },
+    [
+      pageSize,
+      loadingNodes,
+      maxIndentLevel,
+      showExpandIcon,
+      loadMoreChildren,
+      t,
+    ]
+  );
+
+  // The root listing's own tail — the glossary level of a glossary/term tree.
+  const renderRootLoadMore = useCallback(() => {
+    if (!hasMoreRoot) {
+      return null;
+    }
+
+    const remaining = rootTotal ? rootTotal - treeData.length : undefined;
+    const nextCount = Math.min(pageSize, remaining ?? pageSize);
+
+    if (nextCount <= 0) {
+      return null;
+    }
+
+    return (
+      <Tree.Item
+        id={ROOT_LOAD_MORE_ID}
+        key={ROOT_LOAD_MORE_ID}
+        textValue={t('label.show-count-more', { count: nextCount })}>
+        <TreeSelectLoadMoreItemContent
+          isLoading={loadingMoreRoot}
+          maxIndentLevel={maxIndentLevel}
+          nextCount={nextCount}
+          parentId="root"
+          remaining={remaining}
+          showExpandIcon={showExpandIcon}
+          onLoadMore={loadMoreRoot}
+        />
+      </Tree.Item>
+    );
+  }, [
+    hasMoreRoot,
+    rootTotal,
+    treeData.length,
+    pageSize,
+    loadingMoreRoot,
+    maxIndentLevel,
+    showExpandIcon,
+    loadMoreRoot,
+    t,
+  ]);
+
   const renderNodes = useCallback(
     (
       nodes: TreeSelectNode<T>[],
@@ -565,7 +694,7 @@ export const TreeSelect = <T = unknown,>({
         const { isFullySelected, isPartiallySelected } = getNodeSelectionState(
           getDescendantSelection(node),
           isNodeSelected(node.id),
-          multiple
+          multiple && cascadeSelection
         );
 
         return (
@@ -590,21 +719,26 @@ export const TreeSelect = <T = unknown,>({
                 }
               }}
             />
-            {node.children?.length
-              ? renderNodes(node.children, node)
-              : node.children &&
-                node.isLeaf === false &&
-                !loadingNodes.has(node.id) && (
-                  <Tree.Item
-                    id={`${node.id}__empty`}
-                    key={`${node.id}__empty`}
-                    textValue={resolvedEmptyBranchMessage}>
-                    <TreeSelectEmptyItemContent
-                      message={resolvedEmptyBranchMessage}
-                      parentId={node.id}
-                    />
-                  </Tree.Item>
-                )}
+            {node.children?.length || node.hasMoreChildren ? (
+              <Fragment key={`${node.id}__children`}>
+                {renderNodes(node.children ?? [], node)}
+                {renderLoadMore(node)}
+              </Fragment>
+            ) : (
+              node.children &&
+              node.isLeaf === false &&
+              !loadingNodes.has(node.id) && (
+                <Tree.Item
+                  id={`${node.id}__empty`}
+                  key={`${node.id}__empty`}
+                  textValue={resolvedEmptyBranchMessage}>
+                  <TreeSelectEmptyItemContent
+                    message={resolvedEmptyBranchMessage}
+                    parentId={node.id}
+                  />
+                </Tree.Item>
+              )
+            )}
           </Tree.Item>
         );
       });
@@ -617,11 +751,13 @@ export const TreeSelect = <T = unknown,>({
       loadingNodes,
       disabled,
       multiple,
+      cascadeSelection,
       showCheckbox,
       showExpandIcon,
       showIcon,
       maxIndentLevel,
       handleNodeAction,
+      renderLoadMore,
     ]
   );
 
@@ -634,6 +770,51 @@ export const TreeSelect = <T = unknown,>({
     },
     [selectedData, toggleNodeSelection]
   );
+
+  const displayedNodes = useMemo(() => {
+    if (selectedDisplayStrategy === 'all') {
+      return selectedData;
+    }
+    const parents = new Map<string, string>();
+    const walk = (nodes: TreeSelectNode<T>[], parentId?: string) => {
+      nodes.forEach((node) => {
+        if (parentId) {
+          parents.set(node.id, parentId);
+        }
+        if (node.children) {
+          walk(node.children, node.id);
+        }
+      });
+    };
+    walk(treeData);
+    // Selected branches can arrive before their async options have loaded.
+    walk(selectedData);
+    selectedData.forEach((node) => {
+      if (node.parentId && !parents.has(node.id)) {
+        parents.set(node.id, node.parentId);
+      }
+    });
+    const selectedIds = new Set(selectedData.map((node) => node.id));
+
+    return selectedData.filter((node) => {
+      let parentId = parents.get(node.id);
+      while (parentId) {
+        if (selectedIds.has(parentId)) {
+          return false;
+        }
+        parentId = parents.get(parentId);
+      }
+
+      return true;
+    });
+  }, [selectedData, selectedDisplayStrategy, treeData]);
+  const visibleNodes = displayedNodes.slice(
+    0,
+    maxVisibleItems === undefined
+      ? displayedNodes.length
+      : Math.max(0, maxVisibleItems)
+  );
+  const hiddenNodes = displayedNodes.slice(visibleNodes.length);
 
   const displayValue = isOpen
     ? inputValue
@@ -797,6 +978,27 @@ export const TreeSelect = <T = unknown,>({
     setShowSelectedOnly(false);
   }, [onChange, multiple, selectedData, clearSearch, setOpen]);
 
+  // Wait for async rows before handing focus to React Aria's keyboard navigation.
+  useEffect(() => {
+    if (!isOpen) {
+      setPendingTreeFocus(null);
+
+      return;
+    }
+    if (!pendingTreeFocus || loading) {
+      return;
+    }
+    const rows = popoverRef.current?.querySelectorAll<HTMLElement>(
+      '[role="row"]:not([aria-disabled="true"])'
+    );
+    const row =
+      pendingTreeFocus === 'first' ? rows?.[0] : rows?.[rows.length - 1];
+    if (row) {
+      row.focus();
+      setPendingTreeFocus(null);
+    }
+  }, [isOpen, pendingTreeFocus, loading, filteredTreeData]);
+
   const treeDropdownContent = (
     <div
       className="tw:contents"
@@ -824,7 +1026,13 @@ export const TreeSelect = <T = unknown,>({
         </div>
       )}
       <div
-        className="tw:max-h-64 tw:overflow-y-auto tw:pl-[14px] tw:pr-1.5"
+        className={cx(
+          // With the row's 2px indent, a row's hover fill spans the search
+          // field's 12px inset on both sides.
+          'tw:max-h-64 tw:overflow-y-auto tw:pl-2.5 tw:pr-3',
+          // The staged footer brings its own top margin.
+          !showFooter && 'tw:pb-2'
+        )}
         onMouseDown={(event) => event.preventDefault()}>
         {loading ? (
           <div className="tw:flex tw:items-center tw:justify-center tw:gap-2 tw:px-4 tw:py-2 tw:text-xs tw:text-tertiary">
@@ -840,12 +1048,22 @@ export const TreeSelect = <T = unknown,>({
           </div>
         ) : (
           <Tree
-            aria-label={label ?? placeholder ?? 'Tree select'}
+            aria-label={ariaLabel ?? label ?? placeholder ?? t('label.select')}
             expandedKeys={filteredExpandedKeys}
+            id={treeId}
             selectionMode="none"
             onAction={(key) => {
-              const node = findNode(treeData, String(key));
+              const id = String(key);
+              const node = findNode(treeData, id);
+              // Keyboard activation lands here too, so the load-more row needs
+              // to answer it — its button alone is not reachable by arrow keys.
               if (!node) {
+                if (id === ROOT_LOAD_MORE_ID) {
+                  loadMoreRoot();
+                } else if (id.endsWith(LOAD_MORE_SUFFIX)) {
+                  loadMoreChildren(id.slice(0, -LOAD_MORE_SUFFIX.length));
+                }
+
                 return;
               }
               if (!hasExclusiveChildren(node)) {
@@ -853,7 +1071,9 @@ export const TreeSelect = <T = unknown,>({
               }
             }}
             onExpandedChange={handleExpandedChange}>
-            {renderNodes(filteredTreeData)}
+            {[...renderNodes(filteredTreeData), renderRootLoadMore()].filter(
+              Boolean
+            )}
           </Tree>
         )}
       </div>
@@ -893,7 +1113,7 @@ export const TreeSelect = <T = unknown,>({
       data-react-aria-top-layer="true"
       isOpen={isOpen}
       offset={offset}
-      placement={placement}
+      placement={placement ?? autoPlacement}
       // No DialogTrigger, so the pointerdown effect above owns dismissal.
       shouldCloseOnInteractOutside={() => false}
       // The input variant matches its trigger; measured, not `--trigger-width`.
@@ -922,7 +1142,10 @@ export const TreeSelect = <T = unknown,>({
 
   if (renderTrigger) {
     return (
-      <div className={cx('tw:relative tw:inline-flex', className)}>
+      <div
+        className={cx('tw:relative tw:inline-flex', className)}
+        onBlur={onBlur}
+        onFocus={onFocus}>
         <div
           className={cx('tw:flex tw:min-w-0', fullWidthTrigger && 'tw:w-full')}
           ref={triggerRef}>
@@ -944,12 +1167,16 @@ export const TreeSelect = <T = unknown,>({
     const triggerText = label ?? placeholder ?? '';
 
     return (
-      <div className={cx('tw:relative tw:inline-flex', className)}>
+      <div
+        className={cx('tw:relative tw:inline-flex', className)}
+        onBlur={onBlur}
+        onFocus={onFocus}>
         <div className="tw:flex" ref={triggerRef}>
           <Button
             className={cx(
               'tw:whitespace-nowrap',
               !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+              hasSelection && selectedTriggerClassName(bordered),
               triggerClassName
             )}
             color={bordered ? 'secondary' : 'tertiary'}
@@ -972,9 +1199,12 @@ export const TreeSelect = <T = unknown,>({
   }
 
   return (
-    <div className={cx('tw:flex tw:flex-col tw:gap-1.5', className)}>
+    <div
+      className={cx('tw:flex tw:flex-col tw:gap-1.5', className)}
+      onBlur={onBlur}
+      onFocus={onFocus}>
       {label && (
-        <Label isRequired={required} tooltip={tooltip}>
+        <Label htmlFor={inputId} isRequired={required} tooltip={tooltip}>
           {label}
         </Label>
       )}
@@ -997,25 +1227,25 @@ export const TreeSelect = <T = unknown,>({
             openTrigger();
             inputRef.current?.focus();
           }}>
-          <SearchLg className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
+          <Search className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary" />
 
           {renderSelectedItem
-            ? selectedData.map((node) => (
+            ? visibleNodes.map((node) => (
                 <Fragment key={node.id}>{renderSelectedItem(node)}</Fragment>
               ))
             : null}
 
           {!renderSelectedItem &&
             multiple &&
-            selectedData.map((node) => (
+            visibleNodes.map((node) => (
               <span
-                className="tw:flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+                className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                 key={node.id}>
                 <p className="tw:max-w-40 tw:truncate tw:text-sm tw:font-medium tw:text-secondary">
                   {node.label}
                 </p>
                 <button
-                  aria-label={`Remove ${node.label}`}
+                  aria-label={`${t('label.remove')} ${node.label}`}
                   className="tw:flex tw:cursor-pointer tw:rounded-[3px] tw:p-0.5 tw:text-fg-quaternary tw:outline-transparent tw:transition tw:duration-100 tw:ease-linear tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:disabled:cursor-not-allowed"
                   disabled={disabled}
                   type="button"
@@ -1028,12 +1258,28 @@ export const TreeSelect = <T = unknown,>({
               </span>
             ))}
 
+          {hiddenNodes.length > 0 && (
+            <span
+              className="tw:text-sm tw:text-secondary"
+              title={hiddenNodes.map((node) => node.label).join(', ')}>
+              +{hiddenNodes.length}
+            </span>
+          )}
+
           <FocusScope autoFocus={false} contain={false} restoreFocus={false}>
             <input
-              aria-label={label ?? placeholder}
+              aria-controls={isOpen ? treeId : undefined}
+              aria-expanded={isOpen}
+              aria-haspopup="grid"
+              aria-invalid={isInvalid || undefined}
+              aria-label={
+                ariaLabel ?? label ?? placeholder ?? t('label.select')
+              }
+              aria-required={required || undefined}
               autoFocus={autoFocus}
               className="tw:min-w-[6rem] tw:flex-1 tw:appearance-none tw:bg-transparent tw:text-sm tw:text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:disabled:cursor-not-allowed"
               disabled={disabled}
+              id={inputId}
               placeholder={
                 selectedData.length > 0
                   ? undefined
@@ -1041,12 +1287,22 @@ export const TreeSelect = <T = unknown,>({
               }
               readOnly={!searchable}
               ref={inputRef}
+              role="combobox"
               value={displayValue}
               onChange={(event) =>
                 searchable && setInputValue(event.target.value)
               }
               onFocus={openOnFocus}
               onKeyDown={(event) => {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  openTrigger();
+                  setPendingTreeFocus(
+                    event.key === 'ArrowDown' ? 'first' : 'last'
+                  );
+
+                  return;
+                }
                 if (event.key === 'Escape') {
                   dismiss();
 

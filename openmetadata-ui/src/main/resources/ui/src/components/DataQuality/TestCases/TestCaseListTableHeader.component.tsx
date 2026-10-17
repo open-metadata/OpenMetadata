@@ -16,7 +16,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,7 +88,7 @@ export const TestCaseListTableHeader = ({
         />
         <div className="tw:w-75" data-testid="searchbar-component">
           <Input
-            icon={SearchLg}
+            icon={Search}
             inputDataTestId="searchbar"
             placeholder={t('label.search-entity', {
               entity: t('label.test-case-lowercase'),

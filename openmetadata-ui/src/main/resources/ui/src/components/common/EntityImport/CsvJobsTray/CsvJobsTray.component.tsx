@@ -22,7 +22,7 @@ import {
   Trash01,
   UploadCloud01,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, kebabCase } from 'lodash';
 import {
@@ -34,6 +34,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { SOCKET_EVENTS } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
@@ -64,8 +65,6 @@ const TERMINAL_STATUSES: CsvAsyncJobStatus[] = [
   'FAILED',
   'CANCELLED',
 ];
-
-const ACTIVE_JOBS_POLL_INTERVAL_MS = 5000;
 
 // Fetch well beyond the handful the tray renders so a just-finished job cannot
 // fall outside the fetched window (which would silently skip its auto-open).
@@ -185,8 +184,6 @@ export const CsvJobsTray = () => {
     () => visibleJobs.filter((job) => TERMINAL_STATUSES.includes(job.status)),
     [visibleJobs]
   );
-
-  const hasActiveJobs = !isEmpty(activeJobs);
 
   useEffect(() => {
     // Nothing left to show (e.g. right after Clear completed): collapse the tray
@@ -333,39 +330,10 @@ export const CsvJobsTray = () => {
     };
   }, [fetchJobs]);
 
-  // The websocket only reaches sockets held by the server that ran the job, so in
-  // a multi-server deployment the completion event is often delivered to a peer.
-  // Polling while work is outstanding is what actually keeps the tray truthful;
-  // the socket subscription above is just the fast path.
-  useEffect(() => {
-    if (!hasActiveJobs) {
-      return;
-    }
-
-    // Self-scheduling rather than setInterval: the next poll is queued only once
-    // the previous one settles, so a slow response cannot stack up concurrent
-    // requests racing to set the same state.
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const scheduleNextPoll = () => {
-      timeoutId = setTimeout(async () => {
-        await fetchJobs();
-
-        if (!cancelled) {
-          scheduleNextPoll();
-        }
-      }, ACTIVE_JOBS_POLL_INTERVAL_MS);
-    };
-
-    scheduleNextPoll();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeoutId);
-    };
-  }, [hasActiveJobs, fetchJobs]);
-
+  // Progress and completion arrive over the CSV_IMPORT/EXPORT channels; the server-side
+  // WebSocketRelay (Redis pub/sub, or the DB-poll relay otherwise) delivers them to the pod
+  // holding this socket even when another pod ran the job, so the socket subscription above keeps
+  // the tray truthful on multi-pod without a fallback poll.
   const handleOpen = useCallback(() => {
     setOpen(true);
     fetchJobs();
@@ -484,8 +452,14 @@ export const CsvJobsTray = () => {
     );
   };
 
-  return (
-    <div className="csv-jobs-tray">
+  // Portal to body so the fixed tray shares the root stacking context with the
+  // modals (which also portal to body); otherwise an ancestor stacking context
+  // traps it below any open overlay regardless of its z-index.
+  // data-react-aria-top-layer exempts the tray from react-aria's ariaHideOutside,
+  // which otherwise marks every body sibling `inert` while a Modal is open — the
+  // tray is a toast-level surface (--om-z-toast) that must stay interactive above it.
+  return createPortal(
+    <div className="csv-jobs-tray" data-react-aria-top-layer="true">
       {open && (
         <div className="csv-jobs-tray-popover tw:w-100!">
           <div className="csv-jobs-tray-header">
@@ -606,6 +580,7 @@ export const CsvJobsTray = () => {
           </button>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 };

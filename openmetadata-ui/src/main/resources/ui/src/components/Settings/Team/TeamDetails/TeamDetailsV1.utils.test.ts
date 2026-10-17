@@ -19,6 +19,11 @@ const getUsersTabCount = (team: Team, isGroupType: boolean) =>
     (tab) => tab.key === TeamsPageTab.USERS
   )?.count;
 
+const tabKeys = (isGroupType: boolean, isOrganization: boolean) =>
+  getTabs({} as Team, isGroupType, isOrganization, 0, 0, false).map(
+    (tab) => tab.key
+  );
+
 describe('TeamDetailsV1.utils getTabs', () => {
   it('uses userCount (the subtree total) for the Users tab count', () => {
     // A non-Group team has no direct users but userCount reflects its inherited sub-group members.
@@ -33,5 +38,17 @@ describe('TeamDetailsV1.utils getTabs', () => {
     } as unknown as Team;
 
     expect(getUsersTabCount(team, true)).toBe(2);
+  });
+
+  // Custom properties are defined per entity type, so every team shape gets the tab -
+  // an Organization has them just as a Group does.
+  it.each([
+    ['organization', false, true],
+    ['group', true, false],
+    ['department', false, false],
+  ])('offers the custom properties tab for a %s', (_, isGroupType, isOrg) => {
+    expect(tabKeys(isGroupType, isOrg)).toContain(
+      TeamsPageTab.CUSTOM_PROPERTIES
+    );
   });
 });

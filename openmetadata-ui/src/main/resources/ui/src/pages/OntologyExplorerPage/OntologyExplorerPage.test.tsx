@@ -13,8 +13,17 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
+
+let mockSearchParams = new URLSearchParams();
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useSearchParams: () => [mockSearchParams, jest.fn()],
+}));
 
 interface ExplorerMockProps {
   conceptDraftId?: string;
@@ -23,6 +32,7 @@ interface ExplorerMockProps {
   isEditMode?: boolean;
   onConceptDraftClose?: () => void;
   onGlossariesChange?: (glossaries: Glossary[]) => void;
+  onRequestEdit?: () => void;
   onSelectedNodeChange?: (node: { glossaryId?: string } | null) => void;
   showHealth?: boolean;
   surface?: string;
@@ -87,6 +97,12 @@ jest.mock(
   })
 );
 
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showInfoToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(() => ({ permissions: {} })),
 }));
@@ -140,6 +156,14 @@ jest.mock('../../components/OntologyExplorer/OntologyAiAssistant', () => ({
   )),
 }));
 
+jest.mock(
+  '../../components/OntologyExplorer/OntologyMemoryReviewPanel',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="ontology-memory-review-panel" />),
+  })
+);
+
 jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="ontology-import-export" />),
@@ -182,19 +206,19 @@ describe('OntologyExplorerPage', () => {
   it('renders the dedicated Studio shell and graph by default', () => {
     render(<OntologyExplorerPage />);
 
-    expect(screen.getByTestId('heading')).toHaveTextContent(
-      'label.ontology-studio'
-    );
+    expect(
+      screen.getByRole('heading', { name: 'label.ontology-studio' })
+    ).toBeInTheDocument();
     expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-studio-shell').className).not.toContain(
       'tw:fixed'
     );
     expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
-      'aria-pressed',
+      'aria-selected',
       'true'
     );
     expect(
@@ -329,6 +353,63 @@ describe('OntologyExplorerPage', () => {
     expect(
       mockOntologyExplorer.mock.calls.at(-1)?.[0].defaultConceptGlossaryId
     ).toBe(glossary.id);
+  });
+
+  it('switches the graph and its drawers to Edit when a drawer asks to edit', () => {
+    render(<OntologyExplorerPage />);
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isAuthoringMode: false, isEditMode: false })
+    );
+
+    act(() => mockOntologyExplorer.mock.calls.at(-1)?.[0].onRequestEdit?.());
+
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        isAuthoringMode: true,
+        isEditMode: true,
+        surface: 'graph',
+      })
+    );
+    expect(showInfoToast).not.toHaveBeenCalled();
+  });
+
+  it('retries the lease and names the holder when Edit is asked for again', () => {
+    const retry = jest.fn();
+    mockUseOntologyEditLease.mockReturnValue({
+      isOwned: false,
+      lock: {
+        holder: { displayName: 'Jane Doe', id: 'u-1', type: 'user' },
+      } as never,
+      retry,
+      state: 'contended' as never,
+    });
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+    const explorerProps = mockOntologyExplorer.mock.calls.at(-1)?.[0];
+    act(() => {
+      explorerProps?.onGlossariesChange?.([
+        { description: 'd', id: 'g-1', name: 'Core' },
+      ]);
+      explorerProps?.onSelectedNodeChange?.({ glossaryId: 'g-1' });
+    });
+    act(() => mockOntologyExplorer.mock.calls.at(-1)?.[0].onRequestEdit?.());
+
+    expect(retry).toHaveBeenCalled();
+    expect(showInfoToast).toHaveBeenCalledWith('message.ontology-edit-held-by');
+
+    mockUseOntologyEditLease.mockReset();
+    mockUseOntologyEditLease.mockImplementation(() => ({
+      isOwned: true,
+      lock: undefined,
+      retry: jest.fn(),
+      state: 'owned' as const,
+    }));
   });
 
   it('prefills the inline draft from a selected node in all-glossaries mode', () => {
@@ -477,8 +558,61 @@ describe('OntologyExplorerPage', () => {
     render(<OntologyExplorerPage />);
 
     expect(screen.queryByTestId('mode-tab-edit')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(screen.getByTestId('mode-tab-view')).toBeVisible();
     expect(screen.getByTestId('mode-tab-query')).toBeVisible();
+  });
+
+  it('lets a user approve AI proposals only with edit rights on glossaries and change sets', () => {
+    mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
+    const mockPermissions = usePermissionProvider as jest.Mock;
+    mockPermissions.mockReturnValue({
+      permissions: { glossary: { EditAll: true } },
+    });
+
+    render(<OntologyExplorerPage />);
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        proposalPermissions: { canApprove: false, canReject: false },
+      })
+    );
+
+    mockPermissions.mockReturnValue({
+      permissions: {
+        glossary: { EditAll: true },
+        ontologyChangeSet: { EditAll: true },
+      },
+    });
+    render(<OntologyExplorerPage />);
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        proposalPermissions: { canApprove: true, canReject: true },
+      })
+    );
+
+    mockPermissions.mockReturnValue({ permissions: {} });
+  });
+
+  it('hides the Needs review tab from the Studio mode bar', () => {
+    render(<OntologyExplorerPage />);
+
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-memory-review-panel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('still opens a linked draft in Studio review without a tab', () => {
+    mockSearchParams = new URLSearchParams('draft=draft-16');
+
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
+
+    mockSearchParams = new URLSearchParams();
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {

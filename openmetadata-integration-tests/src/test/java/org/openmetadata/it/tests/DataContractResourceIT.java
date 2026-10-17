@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,7 +11,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -24,6 +28,12 @@ import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTableProfile;
+import org.openmetadata.schema.api.data.RefreshFrequency;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
@@ -32,27 +42,47 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
+import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
+import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueSeverity;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportReport;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleOutcome;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ContractExecutionStatus;
+import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.SystemProfile;
+import org.openmetadata.schema.type.TableProfile;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -63,7 +93,9 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.data.DataContractResource;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Integration tests for DataContract entity operations.
@@ -84,7 +116,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     supportsDataContract = false;
     supportsDomains = false;
     supportsPatchDomains = false;
-    supportsSearchIndex = false; // DataContract doesn't have a search index
+    supportsSearchIndex = true;
     supportsBulkAPI = false;
     supportsRecognizerFeedback = false;
     supportsConversations = false;
@@ -1212,7 +1244,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     DataContract contract = createEntity(request);
 
-    // Default status should be UNPROCESSED
+    // A new contract starts in Draft until it is reviewed
     assertEquals(EntityStatus.UNPROCESSED, contract.getEntityStatus());
   }
 
@@ -5193,13 +5225,15 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     String yamlContent =
         "apiVersion: v3.1.0\n" + "kind: DataContract\n" + "id: test\n" + "version: '1.0.0'\n";
 
-    assertThrows(
-        OpenMetadataException.class,
-        () ->
-            SdkClients.adminClient()
-                .dataContracts()
-                .validateODCSYaml(yamlContent, table.getId(), "table"),
-        "Validation should fail for missing required fields");
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(yamlContent, table.getId(), "table");
+
+    assertFalse(validation.getValid(), "Validation should fail for missing required fields");
+    ODCSImportIssue blocking = validation.getOdcsImportReport().getIssues().getFirst();
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, blocking.getSeverity());
+    assertEquals("status", blocking.getField());
   }
 
   @Test
@@ -6714,6 +6748,76 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertTrue(validation.getSchemaValidation().getFailedFields().contains("another_missing"));
   }
 
+  // Regression for the validate endpoints returning 500/404 instead of a structured
+  // ContractValidation. Before the fix, validateContractWithoutThrowing let an unguarded second
+  // validateSchemaFieldsAgainstEntity call throw (NPE for null entity, EntityNotFoundException
+  // for a missing entity id) and the endpoints returned 500/404. These inputs must now return
+  // 200 with a populated ContractValidation (valid=false).
+
+  @Test
+  void testValidateContractRequestNullEntityWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant A: entity omitted, non-empty schema -> before the fix: HTTP 500 (NPE).
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_null_entity"))
+            .withSchema(List.of(new Column().withName("a").withDataType(ColumnDataType.STRING)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getEntityErrors());
+    assertTrue(
+        validation.getEntityErrors().stream().anyMatch(e -> e.contains("entity")),
+        "entityErrors must include the @NotNull violation for the null entity: "
+            + validation.getEntityErrors());
+    assertNotNull(
+        validation.getConstraintErrors(),
+        "the previously-unguarded NPE must now be collected as a constraint error");
+    assertFalse(validation.getConstraintErrors().isEmpty());
+  }
+
+  @Test
+  void testValidateContractRequestMissingEntityIdWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant B: entity present but id does not resolve (supported type), non-empty schema ->
+    // before the fix: HTTP 404 (EntityNotFoundException). A random UUID of type "table" will not
+    // resolve.
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("validate_missing_entity_id"))
+            .withEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"))
+            .withSchema(List.of(new Column().withName("a").withDataType(ColumnDataType.STRING)));
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContract(request);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getConstraintErrors());
+    assertFalse(
+        validation.getConstraintErrors().isEmpty(),
+        "the EntityNotFoundException must be recorded as a constraint error, not returned as 404");
+  }
+
+  @Test
+  void testValidateContractRequestYamlNullEntityWithSchemaReturnsValidation(TestNamespace ns) {
+    // Variant A through the YAML endpoint (POST /v1/dataContracts/validate/yaml). Before the
+    // fix: HTTP 500 (NPE). The YAML body is a CreateDataContract with only name + schema.
+    String yaml =
+        "name: "
+            + ns.prefix("validate_yaml_null_entity")
+            + "\nschema:\n  - name: a\n    dataType: STRING\n";
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateContractYaml(yaml);
+
+    assertNotNull(validation);
+    assertFalse(validation.getValid());
+    assertNotNull(validation.getEntityErrors());
+    assertTrue(validation.getEntityErrors().stream().anyMatch(e -> e.contains("entity")));
+  }
+
   @Test
   void testValidateContractDoesNotCreateContract(TestNamespace ns) {
     Table table =
@@ -7328,6 +7432,233 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             });
   }
 
+  /**
+   * Regression guard for the contract-update NPE that fired when the contract's logical TestSuite
+   * was soft-deleted through the Data Quality API. {@code getOrCreateTestSuite} resolved the
+   * {@code DataContract.testSuite} reference with {@code Include.NON_DELETED}, got {@code null}
+   * for the soft-deleted suite, returned it, and {@code updateTestSuiteTests} dereferenced it — a
+   * permanent {@code NullPointerException} / HTTP 500 on every subsequent PUT/PATCH of the
+   * contract, even unrelated edits. The fix restores the soft-deleted suite (or re-creates it when
+   * the reference is fully dangling) and re-links the contract, so the update succeeds.
+   *
+   * <p>Reproduces the original trigger: create a contract with qualityExpectations (which mints a
+   * logical TestSuite + DQ pipeline), soft-delete that suite directly via the DQ API (which does
+   * <em>not</em> clear {@code DataContract.testSuite}), then PATCH the contract's display name.
+   * Pre-fix the PATCH returned HTTP 500; with the fix it returns 200 and the suite is restored.
+   */
+  @Test
+  void testUpdateContractAfterTestSuiteSoftDeleted(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+
+    // Create a test case referenced by the contract's qualityExpectations.
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_dangling_suite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "0")
+            .parameter("maxValue", "100")
+            .create();
+    TestCase deletedTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_deleted_before_suite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Create the contract with quality expectations; this mints a logical TestSuite and a DQ
+    // ingestion pipeline (postCreateOrUpdate) and links the contract's testSuite reference.
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_dangling_suite"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(
+                List.of(tc.getEntityReference(), deletedTest.getEntityReference()))
+            .withDescription(
+                "Guard: contract update must survive its test suite being soft-deleted");
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+    UUID suiteId = contract.getTestSuite().getId();
+
+    // Sanity: the suite is live and resolvable before the soft-delete.
+    TestSuite suite = client.testSuites().get(suiteId.toString(), "tests,pipelines");
+    assertNotNull(suite);
+    assertFalse(Boolean.TRUE.equals(suite.getDeleted()), "Suite must start non-deleted");
+    assertNotNull(suite.getPipelines());
+    assertEquals(1, suite.getPipelines().size());
+    UUID pipelineId = suite.getPipelines().getFirst().getId();
+
+    client.testCases().delete(deletedTest.getId().toString());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted());
+
+    // Soft-delete the suite through the standard Data Quality DELETE endpoint. This flips
+    // deleted=true on the suite (and its DQ pipeline) but leaves DataContract.testSuite pointing
+    // at it — the dangling reference the bug turns into a permanent HTTP 500.
+    client.testSuites().delete(suiteId.toString());
+
+    // Confirm the suite is now soft-deleted (NON_DELETED no longer finds it), while the contract
+    // still carries the reference. This pins the trigger condition the bug relies on.
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testSuites().get(suiteId.toString(), "tests,pipelines"),
+            "Soft-deleted suite must be invisible to the default NON_DELETED fetch");
+    assertTrue(
+        notFound.getMessage().contains("404") || notFound.getMessage().contains("not found"),
+        "Fetch of soft-deleted suite should surface a 404/not-found error, got: " + notFound);
+    DataContract preUpdate = getEntity(contract.getId().toString());
+    assertNotNull(
+        preUpdate.getTestSuite(),
+        "Contract must still carry the dangling testSuite reference after the suite is "
+            + "soft-deleted (the DELETE endpoint does not clear it)");
+
+    // PATCH the contract on a field unrelated to DQ (display name). Pre-fix this throws because
+    // getOrCreateTestSuite returns null into updateTestSuiteTests; with the fix it succeeds and
+    // re-links a live suite.
+    DataContract toPatch = getEntity(contract.getId().toString());
+    toPatch.setDisplayName("Updated after suite soft-delete");
+    DataContract updated = patchEntity(contract.getId().toString(), toPatch);
+    assertEquals(
+        "Updated after suite soft-delete",
+        updated.getDisplayName(),
+        "The contract PATCH must succeed after its test suite was soft-deleted");
+    assertNotNull(
+        updated.getTestSuite(),
+        "The updated contract must still carry a test suite reference (the fix re-links it)");
+    assertEquals(
+        suiteId,
+        updated.getTestSuite().getId(),
+        "The restored suite keeps the same id, so the contract reference stays stable");
+
+    // The suite is back as a live, non-deleted entity (the fix restored it).
+    TestSuite restoredSuite = client.testSuites().get(suiteId.toString(), "tests,pipelines");
+    assertNotNull(restoredSuite, "Restored suite must be visible again to NON_DELETED fetches");
+    assertFalse(
+        Boolean.TRUE.equals(restoredSuite.getDeleted()), "Restored suite must have deleted=false");
+    assertEquals(
+        List.of(pipelineId),
+        restoredSuite.getPipelines().stream().map(EntityReference::getId).toList());
+    assertFalse(client.ingestionPipelines().get(pipelineId.toString()).getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted(),
+        "Recovering the contract's suite must not restore independently deleted tests");
+    assertEquals(
+        List.of(tc.getId()),
+        restoredSuite.getTests().stream().map(EntityReference::getId).toList());
+
+    // A second update still succeeds — the recovery is not a one-shot side effect that leaves the
+    // contract stuck on the next edit.
+    DataContract toPatch2 = getEntity(contract.getId().toString());
+    toPatch2.setDescription("Second update after suite soft-delete");
+    DataContract updated2 = patchEntity(contract.getId().toString(), toPatch2);
+    assertEquals("Second update after suite soft-delete", updated2.getDescription());
+
+    // The test case referenced by the contract is still linked to the restored suite, so DQ
+    // validation works against the same tests.
+    TestSuite suiteWithTests = client.testSuites().get(suiteId.toString(), "tests");
+    assertNotNull(
+        suiteWithTests.getTests(),
+        "Restored suite must retain its test case associations (soft-delete keeps the rows)");
+    assertTrue(
+        suiteWithTests.getTests().stream().anyMatch(t -> tc.getId().equals(t.getId())),
+        "The DQ test case referenced by the contract's qualityExpectations must still be linked "
+            + "to the restored suite");
+
+    // Removing the qualityExpectations (the only previously-working escape hatch) must still
+    // clean the suite up — guard against a regression that flips the suite back from soft-deleted
+    // but then forgets to hard-delete it when the user drops the qualityExpectations.
+    DataContract toPatch3 = getEntity(contract.getId().toString());
+    toPatch3.setQualityExpectations(List.of());
+    DataContract droppedQE = patchEntity(contract.getId().toString(), toPatch3);
+    assertNull(
+        droppedQE.getTestSuite(),
+        "Removing all qualityExpectations must clear DataContract.testSuite");
+    OpenMetadataException suiteGone =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testSuites().get(suiteId.toString(), "tests,pipelines"),
+            "After dropping the contract's qualityExpectations the contract's suite must be gone");
+    assertTrue(
+        suiteGone.getMessage().contains("404") || suiteGone.getMessage().contains("not found"),
+        "Suite must be unretrievable once the qualityExpectations drop hard-deletes it");
+  }
+
+  /**
+   * Variant of {@link #testUpdateContractAfterTestSuiteSoftDeleted} for the harder-to-hit case
+   * where the suite is hard-deleted out-of-band (e.g. by an admin running a hard-delete on the DQ
+   * API), leaving a fully dangling reference. The fix must fall through to mint a brand-new
+   * logical suite and re-link the contract, rather than crashing on the missing row.
+   */
+  @Test
+  void testUpdateContractAfterTestSuiteHardDeleted(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_dangling_hard_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "0")
+            .parameter("maxValue", "100")
+            .create();
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_dangling_hard_delete"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(tc.getEntityReference()))
+            .withDescription(
+                "Guard: contract update must survive its test suite being hard-deleted");
+    DataContract contract = createEntity(request);
+    assertNotNull(contract.getTestSuite());
+    UUID suiteId = contract.getTestSuite().getId();
+
+    // Hard-delete the suite through the DQ DELETE endpoint (recursive hard-delete, since a logical
+    // suite does not own the test cases it aggregates).
+    java.util.Map<String, String> hardDeleteParams = new java.util.HashMap<>();
+    hardDeleteParams.put("hardDelete", "true");
+    client.testSuites().delete(suiteId.toString(), hardDeleteParams);
+
+    // The row is gone, but the contract still references it.
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.testSuites().get(suiteId.toString(), "tests,pipelines"),
+        "Hard-deleted suite must be gone entirely");
+    DataContract preUpdate = getEntity(contract.getId().toString());
+    assertNotNull(preUpdate.getTestSuite(), "The contract still carries the dangling reference");
+
+    // The fix must mint a brand-new suite (no fqnHash collision because the row is gone) and
+    // re-link the contract to it. Update must not crash.
+    DataContract toPatch = getEntity(contract.getId().toString());
+    toPatch.setDisplayName("Updated after suite hard-delete");
+    DataContract updated = patchEntity(contract.getId().toString(), toPatch);
+    assertEquals("Updated after suite hard-delete", updated.getDisplayName());
+    assertNotNull(updated.getTestSuite(), "The fix must re-link a new suite to the contract");
+    assertNotEquals(
+        suiteId,
+        updated.getTestSuite().getId(),
+        "Hard-deleted suite is gone, so the fix mints a new suite with a different id");
+
+    // The new suite is live and the contract references it consistently.
+    TestSuite newSuite =
+        client.testSuites().get(updated.getTestSuite().getId().toString(), "tests");
+    assertNotNull(newSuite);
+    assertFalse(Boolean.TRUE.equals(newSuite.getDeleted()));
+  }
+
   private void putPipelineStatus(
       OpenMetadataClient client, IngestionPipeline pipeline, PipelineStatusType statusType) {
     PipelineStatus status =
@@ -7338,5 +7669,1104 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     String path =
         "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
     client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // ODCS quality rules -> OpenMetadata test cases
+  // ---------------------------------------------------------------------------------------------
+
+  private static final List<Column> QUALITY_RULE_COLUMNS =
+      List.of(
+          new Column().withName("id").withDataType(ColumnDataType.BIGINT),
+          new Column().withName("status").withDataType(ColumnDataType.VARCHAR).withDataLength(32),
+          new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255),
+          new Column().withName("updated_at").withDataType(ColumnDataType.TIMESTAMP));
+
+  private static String odcsWithQualityRules(String contractName, String tableName) {
+    return """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - name: Row count range
+                metric: rowCount
+                mustBeBetween: [1, 1000]
+              - name: No blank emails
+                type: sql
+                query: SELECT COUNT(*) FROM ${object} WHERE email = ''
+                mustBe: 0
+            properties:
+              - name: id
+                logicalType: integer
+                quality:
+                  - name: Id is set
+                    metric: nullValues
+                    mustBe: 0
+                  - name: Id is unique
+                    metric: duplicateValues
+                    mustBe: 0
+              - name: status
+                logicalType: string
+                quality:
+                  - name: Known status
+                    type: library
+                    rule: validValues
+                    validValues: [open, closed]
+              - name: email
+                logicalType: string
+                quality:
+                  - name: Email format
+                    metric: invalidValues
+                    arguments:
+                      pattern: "^[^@]+@[^@]+$"
+                    mustBeLessOrEqualTo: 5
+                    unit: percent
+              - name: updated_at
+                logicalType: timestamp
+                quality:
+                  - name: Updated recently
+                    metric: freshness
+                    mustBeLessOrEqualTo: 24
+                    unit: hours
+        quality:
+          - name: Steward review
+            type: text
+          - name: GX check
+            type: custom
+            engine: greatExpectations
+            implementation: "type: expect_column_values_to_not_be_null"
+        """
+        .formatted(UUID.randomUUID(), contractName, tableName);
+  }
+
+  private static TestCase testCaseNamed(DataContract contract, String name) {
+    EntityReference reference =
+        contract.getQualityExpectations().stream()
+            .filter(candidate -> name.equals(candidate.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("No quality expectation named " + name));
+    return SdkClients.adminClient().testCases().get(reference.getId().toString(), "testDefinition");
+  }
+
+  private static String parameter(TestCase testCase, String name) {
+    return testCase.getParameterValues().stream()
+        .filter(parameter -> name.equals(parameter.getName()))
+        .map(TestCaseParameterValue::getValue)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private static List<String> qualityExpectationNames(DataContract contract) {
+    return contract.getQualityExpectations().stream()
+        .map(EntityReference::getName)
+        .sorted()
+        .toList();
+  }
+
+  @Test
+  void testODCSImportTurnsQualityRulesIntoTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_tests"), table.getName()),
+                table.getId(),
+                "table");
+
+    assertEquals(
+        List.of(
+            "odcs_email_format",
+            "odcs_id_is_set",
+            "odcs_id_is_unique",
+            "odcs_known_status",
+            "odcs_no_blank_emails",
+            "odcs_row_count_range"),
+        qualityExpectationNames(contract));
+    assertNotNull(contract.getTestSuite(), "Linked test cases must get the contract test suite");
+    assertEquals(9, contract.getOdcsQualityRules().size(), "Every rule stays on the contract");
+
+    TestCase rowCount = testCaseNamed(contract, "odcs_row_count_range");
+    assertEquals("tableRowCountToBeBetween", rowCount.getTestDefinition().getFullyQualifiedName());
+    assertEquals("1", parameter(rowCount, "minValue"));
+    assertEquals("1000", parameter(rowCount, "maxValue"));
+
+    TestCase knownStatus = testCaseNamed(contract, "odcs_known_status");
+    assertEquals(
+        "<#E::table::" + table.getFullyQualifiedName() + "::columns::status>",
+        knownStatus.getEntityLink());
+    assertEquals("true", parameter(knownStatus, "matchEnum"));
+
+    TestCase emailFormat = testCaseNamed(contract, "odcs_email_format");
+    assertEquals("5", parameter(emailFormat, "threshold"));
+    assertEquals("PERCENTAGE", parameter(emailFormat, "thresholdUnit"));
+
+    TestCase blankEmails = testCaseNamed(contract, "odcs_no_blank_emails");
+    assertTrue(
+        parameter(blankEmails, "sqlExpression").contains(table.getName()),
+        "The ${object} placeholder must be replaced with the table");
+  }
+
+  @Test
+  void testODCSImportFreshnessRuleSetsContractRefreshFrequency(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_fresh"), table.getName()),
+                table.getId(),
+                "table");
+
+    assertNotNull(contract.getSla());
+    assertEquals(24, contract.getSla().getRefreshFrequency().getInterval());
+    assertEquals("hour", contract.getSla().getRefreshFrequency().getUnit().value());
+    assertEquals(
+        FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"),
+        contract.getSla().getColumnName());
+  }
+
+  @Test
+  void testODCSImportPointsTheSlaElementAtTheTableColumn(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        slaProperties:
+          - property: freshness
+            value: 1
+            unit: d
+            element: %s.UPDATED_AT
+        """
+            .formatted(
+                ns.prefix("odcs_sla_element"), ns.prefix("odcs_sla_element"), table.getName());
+
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(yaml, table.getId(), "table", false);
+
+    assertEquals(
+        FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"),
+        contract.getSla().getColumnName());
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(contract.getId());
+    assertEquals("updated_at", exported.getSlaProperties().getFirst().getElement());
+  }
+
+  @Test
+  void testODCSImportCanKeepQualityRulesWithoutCreatingTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_no_tests"), table.getName()),
+                table.getId(),
+                "table",
+                false);
+
+    assertTrue(nullOrEmpty(contract.getQualityExpectations()));
+    assertNull(contract.getTestSuite());
+    assertEquals(9, contract.getOdcsQualityRules().size());
+  }
+
+  @Test
+  void testODCSReimportUpdatesTheSameTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_reimport"), table.getName());
+    DataContract first =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+
+    DataContract second =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                yaml.replace("mustBeBetween: [1, 1000]", "mustBeBetween: [1, 5000]"),
+                table.getId(),
+                "table");
+
+    assertEquals(
+        first.getQualityExpectations().stream().map(EntityReference::getId).sorted().toList(),
+        second.getQualityExpectations().stream().map(EntityReference::getId).sorted().toList());
+    assertEquals("5000", parameter(testCaseNamed(second, "odcs_row_count_range"), "maxValue"));
+  }
+
+  @Test
+  void testODCSMergeImportKeepsTheContractsOwnTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    TestCase ownTest =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("own_row_count"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    DataContract existing =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("odcs_merge_keep"))
+                .withEntity(table.getEntityReference())
+                .withQualityExpectations(List.of(ownTest.getEntityReference())));
+    String withoutRules =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        description:
+          purpose: Merged from ODCS
+        """
+            .formatted(UUID.randomUUID(), existing.getName());
+
+    DataContract merged =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(withoutRules, table.getId(), "table", "merge");
+
+    assertEquals(
+        List.of(ownTest.getId()),
+        merged.getQualityExpectations().stream().map(EntityReference::getId).toList());
+    assertEquals(existing.getTestSuite().getId(), merged.getTestSuite().getId());
+  }
+
+  @Test
+  void testODCSReplaceImportUnlinksRemovedRulesWithoutDeletingTheirTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String contractName = ns.prefix("odcs_replace_unlink");
+    DataContract first =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                odcsWithQualityRules(contractName, table.getName()), table.getId(), "table");
+    TestCase dropped = testCaseNamed(first, "odcs_id_is_unique");
+    String onlyRowCount =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - name: Row count range
+                metric: rowCount
+                mustBeBetween: [1, 1000]
+        """
+            .formatted(UUID.randomUUID(), contractName, table.getName());
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(onlyRowCount, table.getId(), "table", "replace");
+
+    assertEquals(List.of("odcs_row_count_range"), qualityExpectationNames(replaced));
+    assertEquals(
+        dropped.getId(),
+        SdkClients.adminClient().testCases().get(dropped.getId().toString()).getId(),
+        "Unlinked test cases keep their history");
+  }
+
+  @Test
+  void testODCSExportIncludesTheContractsOwnTestCasesOnce(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    TestCase ownTest =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("own_row_count"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("odcs_export_native"))
+                .withEntity(table.getEntityReference())
+                .withQualityExpectations(List.of(ownTest.getEntityReference())));
+    contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                odcsWithQualityRules(contract.getName(), table.getName()),
+                table.getId(),
+                "table",
+                "merge");
+
+    String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(contract.getId());
+    DataContract reimported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(exported, table.getId(), "table", "merge");
+
+    assertTrue(exported.contains(ownTest.getName()), "The contract's own test case is exported");
+    assertEquals(7, contract.getQualityExpectations().size());
+    assertEquals(
+        contract.getQualityExpectations().stream().map(EntityReference::getId).sorted().toList(),
+        reimported.getQualityExpectations().stream().map(EntityReference::getId).sorted().toList(),
+        "Re-importing the export must not create duplicate test cases");
+  }
+
+  @Test
+  void testODCSImportNeedsPermissionToCreateTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    OpenMetadataClient contractAuthor = contractAuthorWithoutTestPermissions(ns);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_no_permission"), table.getName());
+
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> contractAuthor.dataContracts().importFromODCSYaml(yaml, table.getId(), "table"));
+    DataContract withoutTests =
+        contractAuthor.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+
+    assertEquals(403, denied.getStatusCode());
+    assertTrue(nullOrEmpty(withoutTests.getQualityExpectations()));
+  }
+
+  @Test
+  void testODCSImportWritesNoTestCasesWhenTheTableAlreadyHasAContract(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_second_contract"), table.getName());
+    SdkClients.adminClient()
+        .dataContracts()
+        .importFromODCSYaml(yaml, table.getId(), "table", false);
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .dataContracts()
+                    .importFromODCSYaml(yaml, table.getId(), "table"));
+
+    assertEquals(400, rejected.getStatusCode());
+    assertNoOdcsTestCasesOn(table);
+  }
+
+  @Test
+  void testODCSImportWritesNoTestCasesWithoutPermissionForTheContract(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    OpenMetadataClient testAuthor = testAuthorWithoutContractPermissions(ns);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_no_contract_permission"), table.getName());
+
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> testAuthor.dataContracts().importFromODCSYaml(yaml, table.getId(), "table"));
+
+    assertEquals(403, denied.getStatusCode());
+    assertNoOdcsTestCasesOn(table);
+  }
+
+  @Test
+  void testODCSReplaceImportWithoutCreatingTestCasesKeepsTheContractsTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    TestCase ownTest =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.prefix("own_row_count"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    DataContract existing =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("odcs_replace_keep"))
+                .withEntity(table.getEntityReference())
+                .withQualityExpectations(List.of(ownTest.getEntityReference())));
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                odcsWithQualityRules(existing.getName(), table.getName()),
+                table.getId(),
+                "table",
+                "replace",
+                false);
+
+    assertEquals(
+        List.of(ownTest.getId()),
+        replaced.getQualityExpectations().stream().map(EntityReference::getId).toList());
+    assertEquals(existing.getTestSuite().getId(), replaced.getTestSuite().getId());
+    assertEquals(9, replaced.getOdcsQualityRules().size());
+  }
+
+  @Test
+  void testODCSImportLinksAnExistingTestCaseOnlyWhenItRunsTheSameTest(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    TestCase sameTest =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name("exact_rows")
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    TestCase otherParameters =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name("row_count_range")
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "1")
+            .parameter("maxValue", "50")
+            .create();
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - id: exact_rows
+                name: Exact rows
+                metric: rowCount
+                mustBe: 100
+              - id: row_count_range
+                name: Row count range
+                metric: rowCount
+                mustBeBetween: [1, 1000]
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("odcs_link_existing"), table.getName());
+
+    DataContract first =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+    DataContract second =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+
+    for (DataContract imported : List.of(first, second)) {
+      assertEquals(
+          List.of(sameTest.getId()),
+          imported.getQualityExpectations().stream().map(EntityReference::getId).toList());
+    }
+    TestCase untouched =
+        SdkClients.adminClient().testCases().get(otherParameters.getId().toString());
+    assertEquals("50", parameter(untouched, "maxValue"));
+  }
+
+  @Test
+  void testODCSReimportUpdatesATestCaseWhoseDefinitionWasDisabled(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    CreateTestDefinition createDefinition = new CreateTestDefinition();
+    createDefinition.setName(ns.prefix("odcs_custom_check"));
+    createDefinition.setDescription("A check only this test uses");
+    createDefinition.setEntityType(TestDefinitionEntityType.TABLE);
+    createDefinition.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+    TestDefinition definition = SdkClients.adminClient().testDefinitions().create(createDefinition);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            quality:
+              - name: Custom check
+                description: Checked before release
+                type: custom
+                engine: openmetadata
+                implementation: '{"name":"custom_check","testDefinition":"%s"}'
+        """
+            .formatted(
+                UUID.randomUUID(),
+                ns.prefix("odcs_disabled_definition"),
+                table.getName(),
+                definition.getFullyQualifiedName());
+    SdkClients.adminClient()
+        .dataContracts()
+        .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+    TestDefinition disabled =
+        SdkClients.adminClient().testDefinitions().get(definition.getId().toString());
+    disabled.setEnabled(false);
+    SdkClients.adminClient().testDefinitions().update(definition.getId().toString(), disabled);
+
+    DataContract reimported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                yaml.replace("Checked before release", "Checked before every release"),
+                table.getId(),
+                "table");
+
+    assertEquals(
+        "Checked before every release",
+        testCaseNamed(reimported, "custom_check").getDescription(),
+        "Only new test cases need an enabled definition, as with PUT /testCases");
+  }
+
+  @Test
+  void testODCSReimportKeepsTheReviewStatusOfItsTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_keep_status"), table.getName());
+    DataContract first =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(yaml, table.getId(), "table");
+    TestCase approved = testCaseNamed(first, "odcs_row_count_range");
+    approved.setEntityStatus(EntityStatus.APPROVED);
+    SdkClients.adminClient().testCases().update(approved.getId().toString(), approved);
+
+    DataContract second =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                yaml.replace("mustBeBetween: [1, 1000]", "mustBeBetween: [1, 5000]"),
+                table.getId(),
+                "table");
+
+    TestCase reimported = testCaseNamed(second, "odcs_row_count_range");
+    assertEquals("5000", parameter(reimported, "maxValue"));
+    assertEquals(EntityStatus.APPROVED, reimported.getEntityStatus());
+  }
+
+  @Test
+  void testODCSExportKeepsTheSlaFreshnessForAnImportWithoutTestCases(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_fresh_export"), table.getName()),
+                table.getId(),
+                "table");
+    String exported = SdkClients.adminClient().dataContracts().exportToODCSYaml(contract.getId());
+
+    DataContract replaced =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(exported, table.getId(), "table", "replace", false);
+
+    assertNotNull(replaced.getSla(), "The export must carry the SLA the freshness rule set");
+    assertEquals(24, replaced.getSla().getRefreshFrequency().getInterval());
+    assertEquals("hour", replaced.getSla().getRefreshFrequency().getUnit().value());
+    assertEquals(
+        FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"),
+        replaced.getSla().getColumnName());
+  }
+
+  private static void assertNoOdcsTestCasesOn(Table table) {
+    String tableFqn = table.getFullyQualifiedName();
+    for (String testCaseFqn :
+        List.of(
+            FullyQualifiedName.add(tableFqn, "odcs_row_count_range"),
+            FullyQualifiedName.add(FullyQualifiedName.add(tableFqn, "id"), "odcs_id_is_set"))) {
+      OpenMetadataException missing =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> SdkClients.adminClient().testCases().getByName(testCaseFqn),
+              testCaseFqn);
+      assertEquals(404, missing.getStatusCode());
+    }
+  }
+
+  private static OpenMetadataClient contractAuthorWithoutTestPermissions(TestNamespace ns) {
+    return userAllowedTo(
+        ns,
+        "contract_author",
+        allow(
+            "contracts",
+            Entity.DATA_CONTRACT,
+            MetadataOperation.CREATE,
+            MetadataOperation.EDIT_ALL,
+            MetadataOperation.VIEW_ALL));
+  }
+
+  private static OpenMetadataClient testAuthorWithoutContractPermissions(TestNamespace ns) {
+    return userAllowedTo(
+        ns,
+        "test_author",
+        allow("tests", Entity.TABLE, MetadataOperation.CREATE_TESTS, MetadataOperation.EDIT_TESTS),
+        allow(
+            "test_cases", Entity.TEST_CASE, MetadataOperation.CREATE, MetadataOperation.EDIT_ALL));
+  }
+
+  private static Rule allow(String name, String resource, MetadataOperation... operations) {
+    return new Rule()
+        .withName(name)
+        .withResources(List.of(resource))
+        .withOperations(List.of(operations))
+        .withEffect(Rule.Effect.ALLOW);
+  }
+
+  /** A user whose only role allows viewing everything plus the given rules. */
+  private static OpenMetadataClient userAllowedTo(TestNamespace ns, String kind, Rule... rules) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    List<Rule> policyRules = new ArrayList<>(List.of(rules));
+    policyRules.add(allow("view", "all", MetadataOperation.VIEW_ALL));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy().withName(ns.prefix(kind + "_policy")).withRules(policyRules));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix(kind + "_role"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = (kind + "_" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    String email = userName + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(
+            new CreateUser().withName(userName).withEmail(email).withRoles(List.of(role.getId())));
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // ODCS import report
+  // ---------------------------------------------------------------------------------------------
+
+  @Test
+  void testValidateODCSYamlReportsWhatTheImportLeavesOut(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        odcsWithQualityRules(ns.prefix("odcs_report"), table.getName())
+            .replace(
+                "      - name: status\n", "      - name: status\n        businessName: Status\n")
+            .replace(
+                "quality:\n  - name: Steward review",
+                "servers:\n  - server: prod\n    type: snowflake\nquality:\n  - name: Steward review");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+
+    ODCSImportReport report = validation.getOdcsImportReport();
+    assertTrue(validation.getValid());
+    assertTrue(report.getCanImport());
+    assertTrue(report.getCanCreateTestCases());
+    assertEquals("v3.1.0", report.getOdcsVersion());
+    List<String> reportedFields =
+        report.getIssues().stream().map(ODCSImportIssue::getField).toList();
+    assertTrue(reportedFields.contains("businessName"));
+    assertTrue(reportedFields.contains("servers"));
+    ODCSQualityRuleOutcome rowCount =
+        report.getQualityRules().stream()
+            .filter(rule -> "Row count range".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ODCSQualityRuleOutcome.Outcome.TEST_CASE, rowCount.getOutcome());
+    assertEquals("tableRowCountToBeBetween", rowCount.getTestDefinition());
+    assertEquals(
+        ODCSQualityRuleOutcome.Outcome.SLA,
+        report.getQualityRules().stream()
+            .filter(rule -> "Updated recently".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow()
+            .getOutcome());
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .testCases()
+                .getByName(table.getFullyQualifiedName() + ".odcs_row_count_range"),
+        "Validating must not create test cases");
+  }
+
+  @Test
+  void testValidateODCSYamlBlocksAnUnsupportedVersion(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        odcsWithQualityRules(ns.prefix("odcs_v9"), table.getName())
+            .replace("apiVersion: v3.1.0", "apiVersion: v9.0.0");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+
+    assertFalse(validation.getValid());
+    ODCSImportIssue blocking = validation.getOdcsImportReport().getIssues().getFirst();
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, blocking.getSeverity());
+    assertTrue(blocking.getMessage().contains("v9.0.0"));
+  }
+
+  @Test
+  void testValidateODCSYamlBlocksColumnsTheTableDoesNotHave(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        odcsWithQualityRules(ns.prefix("odcs_missing_col"), table.getName())
+            .replace("      - name: email\n", "      - name: e_mail\n");
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation.getOdcsImportReport().getIssues().stream()
+            .anyMatch(
+                issue ->
+                    issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
+                        && issue.getMessage().contains("e_mail")));
+  }
+
+  @Test
+  void testImportODCSReadsPastValuesItCannotRepresent(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    String yaml =
+        """
+        apiVersion: v3.2.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: "1.0.0"
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: id
+                logicalType: vector
+                physicalType: BIGINT
+        slaProperties:
+          - property: freshness
+            value: 30
+            unit: minutes
+          - property: latency
+            value: 30
+            unit: minutes
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("odcs_v32"), table.getName());
+
+    ContractValidation validation =
+        SdkClients.adminClient().dataContracts().validateODCSYaml(yaml, table.getId(), "table");
+    DataContract contract =
+        SdkClients.adminClient().dataContracts().importFromODCSYaml(yaml, table.getId(), "table");
+
+    assertTrue(validation.getOdcsImportReport().getCanImport());
+    List<String> warned =
+        validation.getOdcsImportReport().getIssues().stream()
+            .filter(issue -> issue.getSeverity() == ODCSImportIssueSeverity.WARNING)
+            .map(ODCSImportIssue::getPath)
+            .toList();
+    assertTrue(warned.contains("schema[0].properties[0].logicalType"));
+    assertTrue(warned.contains("slaProperties[0].unit"));
+    assertEquals(ColumnDataType.BIGINT, contract.getSchema().getFirst().getDataType());
+    assertNull(contract.getSla().getRefreshFrequency());
+    assertEquals(30, contract.getSla().getMaxLatency().getValue());
+  }
+
+  @Test
+  void testValidateODCSYamlBlocksWhenTestCasesCannotBeCreated(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    OpenMetadataClient contractAuthor = contractAuthorWithoutTestPermissions(ns);
+    String yaml = odcsWithQualityRules(ns.prefix("odcs_report_perm"), table.getName());
+
+    ODCSImportReport withTests =
+        contractAuthor
+            .dataContracts()
+            .validateODCSYaml(yaml, table.getId(), "table")
+            .getOdcsImportReport();
+    ODCSImportReport withoutTests =
+        contractAuthor
+            .dataContracts()
+            .validateODCSYaml(yaml, table.getId(), "table", false)
+            .getOdcsImportReport();
+
+    assertFalse(withTests.getCanCreateTestCases());
+    assertFalse(withTests.getCanImport());
+    assertEquals(ODCSImportIssueSeverity.BLOCKING, withTests.getIssues().getFirst().getSeverity());
+    assertTrue(
+        withTests.getQualityRules().stream()
+            .noneMatch(rule -> rule.getOutcome() == ODCSQualityRuleOutcome.Outcome.TEST_CASE));
+    assertTrue(withoutTests.getCanImport());
+  }
+
+  @Test
+  void testValidateODCSYamlReportsAMissingTable(TestNamespace ns) {
+    UUID missingTable = UUID.randomUUID();
+
+    ContractValidation validation =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validateODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_missing_table"), "missing"),
+                missingTable,
+                "table");
+
+    assertFalse(validation.getValid());
+    assertFalse(validation.getOdcsImportReport().getCanImport());
+    assertTrue(
+        validation.getOdcsImportReport().getIssues().stream()
+            .anyMatch(
+                issue ->
+                    issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
+                        && issue.getMessage().contains(missingTable.toString())));
+  }
+
+  @Test
+  void patchOwners_reindexesContract(TestNamespace ns) throws Exception {
+    DataContract contract = createEntity(createMinimalRequest(ns));
+    String ownerName = ("dc_owner_" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ownerName)
+                    .withEmail(ownerName + "@test.openmetadata.org"));
+    EntityReference ownerRef = owner.getEntityReference();
+
+    contract.setOwners(List.of(ownerRef));
+    SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
+
+    String assetFqn = contract.getEntity().getFullyQualifiedName();
+    Awaitility.await("contract doc reflects new owner and asset")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response = searchForEntity(contract.getId().toString());
+              assertTrue(response.contains(ownerRef.getId().toString()), "owner id indexed");
+              assertTrue(response.contains(assetFqn), "entity.fullyQualifiedName indexed");
+              assertTrue(response.contains("\"type\":\"table\""), "entity.type indexed");
+            });
+  }
+
+  @Test
+  void addResult_keepsOwnersInSearchDoc(TestNamespace ns) throws Exception {
+    DataContract contract = createEntity(createMinimalRequest(ns));
+    String ownerName = ("dc_result_owner_" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ownerName)
+                    .withEmail(ownerName + "@test.openmetadata.org"));
+    String ownerId = owner.getId().toString();
+    contract.setOwners(List.of(owner.getEntityReference()));
+    SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
+
+    String marker = "keep-owners-" + ns.uniqueShortId();
+    SdkClients.adminClient()
+        .dataContracts()
+        .addResult(
+            contract.getId(),
+            new DataContractResult()
+                .withDataContractFQN(contract.getFullyQualifiedName())
+                .withTimestamp(System.currentTimeMillis())
+                .withContractExecutionStatus(ContractExecutionStatus.Failed)
+                .withResult(marker)
+                .withExecutionTime(1L));
+
+    Awaitility.await("contract doc reflects the new result")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(searchForEntity(contract.getId().toString()).contains(marker)));
+    assertTrue(
+        searchForEntity(contract.getId().toString()).contains(ownerId),
+        "recording a result must not drop owners from the search doc");
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Contract validation: SLA checks and semantics rule counts
+  // ---------------------------------------------------------------------------------------------
+
+  private static final long HOUR_MILLIS = Duration.ofHours(1).toMillis();
+
+  @Test
+  void testSLARefreshFrequencyIsCheckedAgainstTheSlaColumnsNewestValue(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_refresh"))
+                .withEntity(table.getEntityReference())
+                .withSla(
+                    dailyRefresh()
+                        .withColumnName(
+                            FullyQualifiedName.add(table.getFullyQualifiedName(), "updated_at"))));
+    long now = System.currentTimeMillis();
+
+    addUpdatedAtProfile(
+        table, now - HOUR_MILLIS, Instant.ofEpochMilli(now - 2 * HOUR_MILLIS).toString());
+    DataContractResult fresh = SdkClients.adminClient().dataContracts().validate(contract.getId());
+    addUpdatedAtProfile(table, now, Instant.ofEpochMilli(now - 72 * HOUR_MILLIS).toString());
+    DataContractResult stale = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(Boolean.TRUE, fresh.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SLA_COLUMN_PROFILE,
+        fresh.getSlaValidation().getRefreshedAtSource());
+    assertEquals(ContractExecutionStatus.Success, fresh.getContractExecutionStatus());
+    assertEquals(Boolean.FALSE, stale.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Failed, stale.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAUsesTheLastWriteWhenTheNewestSystemProfileIsADelete(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_latest_delete"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh()));
+    long now = System.currentTimeMillis();
+    long writtenAt = now - HOUR_MILLIS;
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile().withTimestamp(now).withRowCount(10.0).withColumnCount(4.0))
+            .withSystemProfile(
+                List.of(
+                    new SystemProfile()
+                        .withTimestamp(writtenAt)
+                        .withOperation(DmlOperationType.INSERT)
+                        .withRowsAffected(10),
+                    new SystemProfile()
+                        .withTimestamp(now)
+                        .withOperation(DmlOperationType.DELETE)
+                        .withRowsAffected(1)));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SYSTEM_PROFILE,
+        result.getSlaValidation().getRefreshedAtSource());
+    assertEquals(writtenAt, result.getSlaValidation().getLastRefreshedAt());
+    assertEquals(Boolean.TRUE, result.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAUsesAnEarlierColumnProfileWhenTheLatestMaximumIsUnreadable(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_unreadable_max"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh().withColumnName("updated_at")));
+    long now = System.currentTimeMillis();
+    Instant refreshedAt = Instant.ofEpochMilli(now - 2 * HOUR_MILLIS);
+    addUpdatedAtProfile(table, now - HOUR_MILLIS, refreshedAt.toString());
+    addUpdatedAtProfile(table, now, "not a time");
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertEquals(
+        SlaValidation.RefreshedAtSource.SLA_COLUMN_PROFILE,
+        result.getSlaValidation().getRefreshedAtSource());
+    assertEquals(refreshedAt.toEpochMilli(), result.getSlaValidation().getLastRefreshedAt());
+    assertEquals(Boolean.TRUE, result.getSlaValidation().getRefreshFrequencyMet());
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testSLAIsNotEvaluatedWhenNothingRecordsARefresh(TestNamespace ns) {
+    Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("sla_unknown"))
+                .withEntity(table.getEntityReference())
+                .withSla(dailyRefresh()));
+
+    DataContractResult result = SdkClients.adminClient().dataContracts().validate(contract.getId());
+
+    assertNull(result.getSlaValidation().getRefreshFrequencyMet());
+    assertTrue(result.getSlaValidation().getMessage().startsWith("Not evaluated"));
+    assertEquals(ContractExecutionStatus.Success, result.getContractExecutionStatus());
+  }
+
+  @Test
+  void testDisabledSemanticsRuleIsCountedAsSkippedNotPassed(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("semantics_skipped"))
+                .withEntity(table.getEntityReference())
+                .withSemantics(
+                    List.of(
+                        new SemanticsRule()
+                            .withName("Has a name")
+                            .withDescription("The table has a name")
+                            .withRule("{ \"!!\": { \"var\": \"name\" } }")
+                            .withEnabled(true),
+                        new SemanticsRule()
+                            .withName("Has one owner")
+                            .withDescription("The table has exactly one owner")
+                            .withRule("{\"==\":[{\"size\":{\"var\":\"owners\"}},1]}")
+                            .withEnabled(false))));
+
+    SemanticsValidation semantics =
+        SdkClients.adminClient()
+            .dataContracts()
+            .validate(contract.getId())
+            .getSemanticsValidation();
+
+    assertEquals(2, semantics.getTotal());
+    assertEquals(1, semantics.getPassed());
+    assertEquals(0, semantics.getFailed());
+    assertEquals(1, semantics.getSkipped());
+  }
+
+  private static ContractSLA dailyRefresh() {
+    return new ContractSLA()
+        .withRefreshFrequency(
+            new RefreshFrequency().withInterval(1).withUnit(RefreshFrequency.Unit.DAY));
+  }
+
+  /** A profile of the table whose {@code updated_at} column's newest value is {@code newest}. */
+  private static void addUpdatedAtProfile(Table table, long profiledAt, String newest) {
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile()
+                    .withTimestamp(profiledAt)
+                    .withRowCount(10.0)
+                    .withColumnCount(4.0))
+            .withColumnProfile(
+                List.of(
+                    new ColumnProfile()
+                        .withName("updated_at")
+                        .withTimestamp(profiledAt)
+                        .withMax(newest)));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
   }
 }

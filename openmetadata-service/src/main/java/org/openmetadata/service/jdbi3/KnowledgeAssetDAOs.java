@@ -83,6 +83,23 @@ public interface KnowledgeAssetDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.extractionStats.sourceHash')) = :sourceHash "
+                + "AND id <> :excludeId AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json->'extractionStats'->>'sourceHash' = :sourceHash "
+                + "AND id <> :excludeId AND deleted = false "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = POSTGRES)
+    List<String> listByExtractedSourceHash(
+        @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
+    @ConnectionAwareSqlQuery(
+        value =
             "SELECT count(*) FROM context_file cf "
                 + "LEFT JOIN entity_relationship er "
                 + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
@@ -110,6 +127,34 @@ public interface KnowledgeAssetDAOs {
         @Bind("folderId") String folderId,
         @Bind("excludeId") String excludeId,
         @Bind("containsRelation") int containsRelation);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    int countByAssetId(@Bind("assetId") String assetId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    List<String> findByAssetId(@Bind("assetId") String assetId);
 
     // Same lookup as above but for soft-deleted (archived) files. A soft-deleted file keeps its
     // nameHash, so it still reserves the name against the unique constraint even though the live

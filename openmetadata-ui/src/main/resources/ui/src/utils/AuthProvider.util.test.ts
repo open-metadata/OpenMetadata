@@ -19,9 +19,9 @@ import {
 import { AuthProvider } from '../generated/settings/settings';
 import {
   getAuthConfig,
-  getCandidateUserManagerConfig,
   getUserManagerConfig,
   isRefreshableAuthError,
+  validateAuthFieldsDetailed,
 } from './AuthProvider.util';
 
 const baseAuthConfig = (
@@ -129,16 +129,6 @@ describe('getAuthConfig — every OIDC provider respects the server-provided res
   });
 });
 
-describe('getCandidateUserManagerConfig — SSO test-login popup respects responseType', () => {
-  it('should use the configured response_type instead of a hardcoded "id_token"', () => {
-    const config = getCandidateUserManagerConfig(
-      withScope({ responseType: ResponseType.Code })
-    );
-
-    expect(config.response_type).toBe('code');
-  });
-});
-
 describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-refactor Bug 2)', () => {
   it('returns false for any non-401 status', () => {
     expect(isRefreshableAuthError(403, '/tables/name/foo', {})).toBe(false);
@@ -183,7 +173,45 @@ describe('isRefreshableAuthError — 401 allow-list semantics (auth-coordinator-
     ).toBe(true);
   });
 
+  // A cold load with a time-valid JWT whose OpenMetadata session has ended
+  // (session expiry, per-user session limit) must reach the coordinator so the
+  // session can be re-established at the identity provider, not dropped on
+  // /signin.
+  it('returns true for a /users/loggedInUser 401 whose OpenMetadata session has ended', () => {
+    expect(
+      isRefreshableAuthError(401, '/users/loggedInUser', {
+        code: 401,
+        message: 'Not Authorized! Invalid session.',
+      })
+    ).toBe(true);
+  });
+
   it('returns true for a normal 401 on any other endpoint', () => {
     expect(isRefreshableAuthError(401, '/tables/name/foo', {})).toBe(true);
+  });
+});
+
+describe('validateAuthFieldsDetailed — providerName is required only where the sign-in button shows it', () => {
+  it.each([
+    AuthProvider.Azure,
+    AuthProvider.Google,
+    AuthProvider.Auth0,
+    AuthProvider.Okta,
+  ])(
+    'accepts a %s configuration without providerName, as openmetadata.yaml seeds it',
+    (provider) => {
+      expect(
+        validateAuthFieldsDetailed(withScope({ provider, providerName: '' }))
+      ).toEqual({ valid: true, errors: [] });
+    }
+  );
+
+  it('still requires providerName for Custom OIDC, whose sign-in button shows it', () => {
+    const result = validateAuthFieldsDetailed(
+      withScope({ provider: AuthProvider.CustomOidc, providerName: '' })
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.map((error) => error.field)).toEqual(['providerName']);
   });
 });

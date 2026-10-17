@@ -16,6 +16,7 @@ import { CreateContextMemory } from '../generated/api/context/createContextMemor
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { ListParams } from '../interface/API.interface';
 import { PagingResponse } from '../interface/common/paging.interface';
+import Fqn from '../utils/Fqn';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/contextCenter/memories';
@@ -27,9 +28,10 @@ export type ContextMemoryListParams = ListParams & {
   assets?: string;
   author?: string;
   pinned?: boolean;
-  sortBy?: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortBy?: 'updatedAt' | 'appliedCount' | 'usageCount' | 'updatedBy';
   sortOrder?: 'asc' | 'desc';
   offset?: number;
+  statuses?: string;
 };
 
 export const getListContextMemories = async (
@@ -94,7 +96,7 @@ export const getContextMemoryByName = async (
   fields?: string
 ): Promise<ContextMemory> => {
   const response = await APIClient.get<ContextMemory>(
-    `${BASE_URL}/name/${encodeURIComponent(name)}`,
+    `${BASE_URL}/name/${encodeURIComponent(Fqn.quoteName(name))}`,
     {
       params: fields ? { fields } : undefined,
     }

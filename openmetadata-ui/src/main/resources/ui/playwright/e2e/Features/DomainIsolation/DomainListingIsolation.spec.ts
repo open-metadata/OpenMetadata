@@ -23,6 +23,7 @@ import {
   searchDomainInListing,
 } from '../../../utils/domainIsolationUtils';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -43,7 +44,7 @@ const test = base.extend<{
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -52,7 +53,7 @@ const test = base.extend<{
   userAPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userA.login(page);
+      await userA.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -61,7 +62,7 @@ const test = base.extend<{
   userBPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userB.login(page);
+      await userB.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -93,6 +94,18 @@ test.describe('Domain isolation - domain listing page @domain-isolation', () => 
 
         await tenantA.create(apiContext);
         await tenantB.create(apiContext);
+
+        // The listing page is served entirely by `index=domain`, so a domain
+        // that exists but has not been indexed yet is simply not on the page.
+        // Nothing else in this setup waits on the indexer, which leaves every
+        // assertion here racing it. Wait as admin, before search RBAC is on,
+        // so this only ever gates on indexing.
+        await waitForSearchIndexed(apiContext, tenantA.data.name, 'domain', {
+          matchBy: 'nameOrDisplayName',
+        });
+        await waitForSearchIndexed(apiContext, tenantB.data.name, 'domain', {
+          matchBy: 'nameOrDisplayName',
+        });
 
         await assignDomainOnlyAccess(apiContext, userA, [tenantA]);
         await assignDomainOnlyAccess(apiContext, userB, [tenantB]);

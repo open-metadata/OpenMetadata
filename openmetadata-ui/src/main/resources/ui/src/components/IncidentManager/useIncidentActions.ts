@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
 import { Dispatch, SetStateAction, useCallback } from 'react';
 import { EntityReference } from '../../generated/tests/testCase';
 import {
@@ -23,9 +22,9 @@ import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/Incident
 import {
   getListTestCaseIncidentByStateId,
   transitionIncident,
-  updateTestCaseIncidentById,
 } from '../../rest/incidentManagerAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import { submitIncidentSeverity } from './IncidentManager.utils';
 
 export interface UseIncidentActionsProps {
   setTestCaseListData: Dispatch<SetStateAction<TestCaseIncidentStatusData>>;
@@ -43,28 +42,15 @@ export const useIncidentActions = ({
     record: TestCaseResolutionStatus,
     severity?: Severities
   ) => {
-    const updatedData = { ...record, severity };
-    const patch = compare(record, updatedData);
-    try {
-      await updateTestCaseIncidentById(record.id ?? '', patch);
-
-      setTestCaseListData((prev) => {
-        const testCaseList = prev.data.map((item) => {
-          if (item.id === updatedData.id) {
-            return updatedData;
-          }
-
-          return item;
-        });
-
-        return {
-          ...prev,
-          data: testCaseList,
-        };
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    if (!(await submitIncidentSeverity(record, severity))) {
+      return;
     }
+    setTestCaseListData((prev) => ({
+      ...prev,
+      data: prev.data.map((item) =>
+        item.id === record.id ? { ...record, severity } : item
+      ),
+    }));
   };
 
   const handleAssigneeUpdate = useCallback(

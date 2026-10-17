@@ -31,6 +31,7 @@ import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest
     .fn()
     .mockImplementation(({ children, ...props }) => (
@@ -63,8 +64,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
+  Plus: () => <span>Plus</span>,
+  SortAscending: () => <span>SortAscending</span>,
+  SortDescending: () => <span>SortDescending</span>,
+  XCircle: () => <span>XCircle</span>,
 }));
 
 const mockTableQueriesProp: TableQueriesProp = {

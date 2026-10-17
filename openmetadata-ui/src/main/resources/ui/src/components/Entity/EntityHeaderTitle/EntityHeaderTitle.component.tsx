@@ -10,21 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Badge,
   Button,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Copy01,
+  ExclamationCircleFilled,
+  LinkExternal01,
+  Star01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { MouseEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as ShareIcon } from '../../../assets/svg/copy-right.svg';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-link-grey.svg';
-import { ReactComponent as StarFilledIcon } from '../../../assets/svg/ic-star-filled.svg';
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -127,7 +129,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
           </div>
@@ -194,7 +199,7 @@ const EntityHeaderTitle = ({
           color="tertiary"
           data-testid="entity-follow-button"
           iconLeading={
-            <StarFilledIcon className="tw:size-3.5 tw:text-utility-brand-600" />
+            <Star01 className="tw:text-utility-brand-600" size={14} />
           }
           isDisabled={deleted}
           isLoading={isFollowingLoading}
@@ -243,15 +248,12 @@ const EntityHeaderTitle = ({
               })}
               data-testid="entity-header-name">
               {entityName}
-              {openEntityInNewPage && (
-                <IconExternalLink
-                  className="anticon vertical-middle m-l-xss"
-                  height={14}
-                  width={14}
-                />
-              )}
             </Typography>
           </Tooltip>
+          {/* Outside the ellipsis so a long name can't truncate the icon away. */}
+          {openEntityInNewPage && (
+            <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
+          )}
 
           <Tooltip
             placement="top right"
@@ -263,10 +265,11 @@ const EntityHeaderTitle = ({
               aria-label={t('label.copy-item', {
                 item: t('label.url-uppercase'),
               })}
-              className="copy-button tw:size-[22px] tw:rounded-md tw:border tw:border-solid tw:border-utility-gray-blue-100 tw:bg-surface tw:p-1 tw:hover:bg-surface"
               color="tertiary"
-              iconLeading={<ShareIcon className="tw:size-3.5" />}
+              data-testid="entity-header-copy-button"
+              iconLeading={Copy01}
               size="xs"
+              type="button"
               onClick={handleShareButtonClick}
             />
           </Tooltip>

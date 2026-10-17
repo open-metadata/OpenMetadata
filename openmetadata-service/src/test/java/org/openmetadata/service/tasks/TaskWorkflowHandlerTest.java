@@ -52,8 +52,10 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -416,14 +418,56 @@ class TaskWorkflowHandlerTest {
   }
 
   @Test
-  void testNonMetricWorkflowPreservesDirectResolutionFallback() {
+  void testRunningWorkflowRefusesToCloseATaskItHasNotFinishedCreating() {
     UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
     Task task =
         new Task()
             .withId(taskId)
-            .withWorkflowInstanceId(UUID.randomUUID())
+            .withWorkflowInstanceId(instanceId)
             .withStatus(TaskEntityStatus.Open)
             .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any())).thenReturn(null);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(1, 0)
+                      .resolveTask(
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
+
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
+    }
+  }
+
+  @Test
+  void testNonMetricWorkflowPreservesDirectResolutionFallback() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
     Task storedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Completed);
     EntityReference resolvedBy =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("alice");
@@ -440,6 +484,11 @@ class TaskWorkflowHandlerTest {
       when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      // An instance that has ended can no longer resolve its task, so the task closes directly.
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(false);
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
@@ -556,6 +605,34 @@ class TaskWorkflowHandlerTest {
                           && resolution.getResolvedAt() != null),
               isNull(),
               eq("alice"));
+    }
+  }
+
+  @Test
+  void testApprovedChangeRequestTaskLeavesTheEntityToTheCommitStep() throws Exception {
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY))
+            .withPayload(Map.of(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY, UUID.randomUUID()));
+
+    Method applyEntityChanges =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applyEntityChanges",
+            Task.class,
+            boolean.class,
+            String.class,
+            Object.class,
+            String.class);
+    applyEntityChanges.setAccessible(true);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      applyEntityChanges.invoke(TaskWorkflowHandler.getInstance(), task, true, null, null, "alice");
+
+      entityMock.verify(
+          () -> Entity.getEntity(any(EntityReference.class), anyString(), any(Include.class)),
+          never());
     }
   }
 

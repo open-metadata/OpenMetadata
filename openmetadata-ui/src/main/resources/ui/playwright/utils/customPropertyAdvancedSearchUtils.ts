@@ -12,6 +12,7 @@
  */
 import { expect, Page } from '@playwright/test';
 import { isObject, isUndefined } from 'lodash';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   CP_BASE_VALUES,
   MULTISELECT_OPERATORS,
@@ -620,7 +621,7 @@ export const verifySearchResults = async (
             },
             {
               intervals: [1000, 2000, 5000],
-              timeout: 30000,
+              timeout: ACTION_TIMEOUT,
             }
           )
           .toBe(true);
@@ -638,7 +639,7 @@ export const verifySearchResults = async (
     await expect(dashboardCard).toBeVisible({ timeout: 10000 });
   } else {
     await expect(dashboardCard).not.toBeVisible({
-      timeout: 30000,
+      timeout: ACTION_TIMEOUT,
     });
   }
 

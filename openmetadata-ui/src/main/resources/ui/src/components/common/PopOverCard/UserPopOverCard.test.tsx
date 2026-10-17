@@ -11,13 +11,19 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
 import UserPopOverCard from './UserPopOverCard';
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
-  Link: jest.fn().mockImplementation(({ children }) => children),
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, onClick, to: _to, ...rest }) => (
+      <button {...rest} type="button" onClick={onClick}>
+        {children}
+      </button>
+    )),
 }));
 
 jest.mock('../ProfilePicture/ProfilePicture', () => {
@@ -89,5 +95,21 @@ describe('UserPopOverCard Component', () => {
     render(<UserPopOverCard type={OwnerType.TEAM} userName="testUser" />);
 
     expect(screen.getByText('ProfilePicture')).toBeInTheDocument();
+  });
+
+  it('should invoke onTitleClick when the title is clicked', () => {
+    const onTitleClick = jest.fn();
+    render(
+      <UserPopOverCard
+        showUserName
+        displayName="Test User"
+        userName="testUser"
+        onTitleClick={onTitleClick}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('testUser'));
+
+    expect(onTitleClick).toHaveBeenCalledTimes(1);
   });
 });

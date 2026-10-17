@@ -84,8 +84,16 @@ describe('OntologyConceptDraftInspector', () => {
       screen.getByTestId('ontology-concept-draft-inspector')
     ).toBeVisible();
     expect(screen.getByTestId('ontology-draft-glossary-field')).toBeVisible();
-    expect(screen.getAllByText('label.field-required')).toHaveLength(3);
+    expect(screen.getAllByText('label.field-required')).toHaveLength(1);
     expect(screen.getByTestId('ontology-draft-save')).toBeDisabled();
+
+    const nameInput = within(
+      screen.getByTestId('ontology-draft-name-field')
+    ).getByRole('textbox');
+    fireEvent.change(nameInput, { target: { value: 'Term' } });
+    fireEvent.change(nameInput, { target: { value: '' } });
+
+    expect(screen.getAllByText('label.field-required')).toHaveLength(2);
   });
 
   it('updates the draft node when glossary and name are filled', async () => {
@@ -180,7 +188,7 @@ describe('OntologyConceptDraftInspector', () => {
       within(screen.getByTestId('attribute-name-input')).getByRole('textbox'),
       { target: { value: 'subscriptionId' } }
     );
-    fireEvent.click(screen.getByTestId('attribute-identifier-checkbox'));
+    fireEvent.click(screen.getByTestId('attribute-identifier-toggle'));
     fireEvent.click(screen.getByTestId('save-attribute'));
 
     expect(

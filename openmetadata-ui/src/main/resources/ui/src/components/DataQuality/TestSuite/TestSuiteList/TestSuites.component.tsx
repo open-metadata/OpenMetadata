@@ -10,15 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
-import { Col, Form, Row, Select, Space } from 'antd';
+import {
+  Box,
+  Button,
+  EmptyPlaceholderAction,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { useDataQualityProvider } from '../../../../pages/DataQuality/DataQualityProvider';
-import { getPopupContainer } from '../../../../utils/formPureUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -101,38 +105,39 @@ export const TestSuites = () => {
   }
 
   return (
-    <Row data-testid="test-suite-container" gutter={[16, 16]}>
-      <Col span={24}>
-        <Form className="new-form-style" layout="inline">
-          <Space align="center" className="w-full justify-between" size={16}>
-            <Form.Item className="m-0" label={t('label.owner')} name="owner">
-              <UserTeamSelectableList
-                hasPermission
-                owner={selectedOwner}
-                popoverProps={{
-                  getPopupContainer: getPopupContainer,
-                }}
-                onUpdate={(updatedUser) => handleOwnerSelect(updatedUser)}>
-                <Select
-                  data-testid="owner-select-filter"
-                  open={false}
-                  placeholder={t('label.owner')}
-                  value={ownerFilterValue}
-                />
-              </UserTeamSelectableList>
-            </Form.Item>
-          </Space>
-        </Form>
-      </Col>
+    <Grid
+      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      data-testid="test-suite-container"
+      rowGap="4">
+      <Grid.Item className="layout-column" span={24}>
+        <Box align="center" gap={2}>
+          <Typography as="span" size="text-sm">
+            {t('label.owner')}
+          </Typography>
+          <UserTeamSelectableList
+            hasPermission
+            owner={selectedOwner}
+            onUpdate={handleOwnerSelect}>
+            <Button
+              aria-label={t('label.owner')}
+              color="secondary"
+              data-testid="owner-select-filter"
+              iconTrailing={ChevronDown}
+              size="sm">
+              {ownerFilterValue?.label ?? t('label.owner')}
+            </Button>
+          </UserTeamSelectableList>
+        </Box>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <PieChartSummaryPanel
           isLoading={isTestCaseSummaryLoading}
           testSummary={testCaseSummary}
         />
-      </Col>
+      </Grid.Item>
 
-      <Col span={24}>
+      <Grid.Item className="layout-column" span={24}>
         <TestSuiteListPanel
           columnList={columnList}
           currentPage={currentPage}
@@ -152,7 +157,7 @@ export const TestSuites = () => {
           onSortChange={setSortDescriptor}
           onSubTabChange={handleSubTabChange}
         />
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };

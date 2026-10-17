@@ -346,11 +346,20 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
+     */
+    endSessionWithProvider?: boolean;
+    /**
      * Client ID.
      */
     id: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * OIDC max_age authentication request parameter: the maximum time in seconds since the user
+     * last actively authenticated at the identity provider. Leave empty so the identity
+     * provider can reuse its own session; '0' is treated as unset. To force re-authentication
+     * on every login, set prompt to 'login' instead.
      */
     maxAge?: string;
     /**
@@ -362,7 +371,9 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
-     * Prompt whether login/consent
+     * OIDC prompt authentication request parameter (for example 'login', 'consent' or
+     * 'select_account'). Leaving it empty is recommended: OpenMetadata sends prompt=none on its
+     * own when it re-authenticates a user silently.
      */
     prompt?: string;
     /**
@@ -390,7 +401,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**

@@ -29,7 +29,7 @@ import {
   CheckCircle,
   Clock,
   FilterLines,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
@@ -107,7 +107,9 @@ const EventHeader = ({ typedEvent }: { typedEvent: TypedEvent }) => {
           {startCase(changeEventData.entityType)}
         </span>
         <span className="tw:text-sm tw:font-normal tw:text-primary">
-          {changeEventData.id}
+          {isEmpty(typedEvent.data)
+            ? t('label.unreadable-event')
+            : changeEventData.id}
         </span>
       </Box>
       <span className="tw:text-sm tw:font-normal tw:text-tertiary">

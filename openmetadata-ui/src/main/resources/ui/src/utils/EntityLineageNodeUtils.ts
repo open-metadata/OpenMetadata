@@ -26,7 +26,6 @@ import {
   NODE_HEIGHT,
   NODE_WIDTH,
 } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -35,6 +34,7 @@ import type { SearchIndex } from '../generated/entity/data/searchIndex';
 import type { Table } from '../generated/entity/data/table';
 import type { Topic } from '../generated/entity/data/topic';
 import type { EntityReference } from '../generated/type/entityReference';
+import { LineagePlatformView } from '../hooks/lineage/types';
 import type {
   EdgeDetails,
   EntityChildren,
@@ -175,6 +175,24 @@ export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   return { hasUpstream, hasDownstream };
 };
 
+const groupEdgesByFqn = (
+  edges: EdgeDetails[],
+  endpoint: 'fromEntity' | 'toEntity'
+) => {
+  const grouped = new Map<string | undefined, EdgeDetails[]>();
+  edges.forEach((edge) => {
+    const fqn = edge[endpoint].fullyQualifiedName;
+    const group = grouped.get(fqn);
+    if (group) {
+      group.push(edge);
+    } else {
+      grouped.set(fqn, [edge]);
+    }
+  });
+
+  return grouped;
+};
+
 export function getUpstreamDownstreamNodesEdges(
   edges: EdgeDetails[],
   nodes: EntityReference[],
@@ -184,24 +202,34 @@ export function getUpstreamDownstreamNodesEdges(
   const upstreamEdges: EdgeDetails[] = [];
   const downstreamNodes: EntityReference[] = [];
   const upstreamNodes: EntityReference[] = [];
-  const activeNode = nodes.find(
-    (node) => node.fullyQualifiedName === currentNode
-  );
+
+  // Lookups are indexed up front: scanning every node and edge per visited
+  // node is quadratic and froze large lineage graphs (#34904).
+  const nodesByFqn = new Map<string | undefined, EntityReference>();
+  nodes.forEach((node) => {
+    if (!nodesByFqn.has(node.fullyQualifiedName)) {
+      nodesByFqn.set(node.fullyQualifiedName, node);
+    }
+  });
+  const edgesByFromFqn = groupEdgesByFqn(edges, 'fromEntity');
+  const edgesByToFqn = groupEdgesByFqn(edges, 'toEntity');
+
+  const activeNode = nodesByFqn.get(currentNode);
 
   if (!activeNode) {
     return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
   }
 
+  const visitedDownstream = new Set<EntityReference>();
+  const visitedUpstream = new Set<EntityReference>();
+
   function findDownstream(node: EntityReference) {
-    const directDownstream = edges.filter(
-      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    downstreamEdges.push(...directDownstream);
+    const directDownstream = edgesByFromFqn.get(node.fullyQualifiedName) ?? [];
+    directDownstream.forEach((edge) => downstreamEdges.push(edge));
     directDownstream.forEach((edge) => {
-      const toNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
-      );
-      if (!isUndefined(toNode) && !downstreamNodes.includes(toNode)) {
+      const toNode = nodesByFqn.get(edge.toEntity.fullyQualifiedName);
+      if (!isUndefined(toNode) && !visitedDownstream.has(toNode)) {
+        visitedDownstream.add(toNode);
         downstreamNodes.push(toNode);
         findDownstream(toNode);
       }
@@ -209,15 +237,12 @@ export function getUpstreamDownstreamNodesEdges(
   }
 
   function findUpstream(node: EntityReference) {
-    const directUpstream = edges.filter(
-      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    upstreamEdges.push(...directUpstream);
+    const directUpstream = edgesByToFqn.get(node.fullyQualifiedName) ?? [];
+    directUpstream.forEach((edge) => upstreamEdges.push(edge));
     directUpstream.forEach((edge) => {
-      const fromNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
-      );
-      if (!isUndefined(fromNode) && !upstreamNodes.includes(fromNode)) {
+      const fromNode = nodesByFqn.get(edge.fromEntity.fullyQualifiedName);
+      if (!isUndefined(fromNode) && !visitedUpstream.has(fromNode)) {
+        visitedUpstream.add(fromNode);
         upstreamNodes.push(fromNode);
         findUpstream(fromNode);
       }

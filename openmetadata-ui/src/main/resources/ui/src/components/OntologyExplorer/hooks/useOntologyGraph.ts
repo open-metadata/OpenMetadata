@@ -83,6 +83,7 @@ import {
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
   buildStudioMetricNodeStyle,
+  buildStudioProposedNodeStyle,
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
   CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
   getCanvasColor,
@@ -209,6 +210,12 @@ export function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   const idx = findBadgeIndex(originalTarget);
 
   return idx === 1;
+}
+
+// A proposal is not a concept yet, so it cannot end a drawn relationship;
+// clicking one drops the connection and opens its review instead.
+export function canEndRelationship(node: OntologyNode): boolean {
+  return !node.proposal;
 }
 
 export function stripNodePositionsForDataMode<T extends { style?: unknown }>(
@@ -510,7 +517,12 @@ function getStudioNodeKindStyle(
   }
 
   return {
-    stroke: ontNode?.type === 'glossaryTermIsolated' ? '#FEDF89' : '#E9EAEB',
+    stroke: getCanvasColor(
+      ontNode?.type === 'glossaryTermIsolated'
+        ? 'var(--tw-color-utility-warning-200)'
+        : 'var(--tw-color-border-secondary)',
+      '#E9EAEB'
+    ),
   };
 }
 
@@ -525,7 +537,7 @@ function buildStudioNodeStyle(
   const size = (datum.style?.size as [number, number] | undefined) ?? [150, 36];
   const label = d?.label ?? datum.id;
 
-  return {
+  const style = {
     ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
     ...kindStyle,
     label: false,
@@ -543,6 +555,15 @@ function buildStudioNodeStyle(
       haloFillOpacity: 1,
     }),
   };
+
+  // A selected proposal shows its own solid purple border, not the brand halo.
+  return ontNode?.proposal
+    ? {
+        ...style,
+        ...buildStudioProposedNodeStyle(getCanvasColor, Boolean(d?.isSelected)),
+        haloLineWidth: 0,
+      }
+    : style;
 }
 
 function computeHierarchyBadgeColor(
@@ -1758,10 +1779,15 @@ export function useOntologyGraph({
     // click was fully handled by the edit gesture (edit port, or a listener
     // that cancelled the event) and should not fall through to onNodeClick.
     const dispatchStudioEditClick = (
-      id: string,
+      node: OntologyNode,
       position: { x: number; y: number },
       e: IElementEvent
     ): boolean => {
+      if (!canEndRelationship(node)) {
+        container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
+
+        return false;
+      }
       const isEditPort = hasShapeClass(
         e.originalTarget,
         STUDIO_EDIT_PORT_CLASS_NAME
@@ -1770,7 +1796,7 @@ export function useOntologyGraph({
         clientX: e.clientX ?? position.x,
         clientY: e.clientY ?? position.y,
         isPort: isEditPort,
-        nodeId: id,
+        nodeId: node.id,
       };
       const editEvent = new CustomEvent(ONTOLOGY_EDIT_NODE_CLICK_EVENT, {
         cancelable: true,
@@ -1795,7 +1821,7 @@ export function useOntologyGraph({
         y: e.clientY ?? 0,
       });
       if (studioMode && isEditModeRef.current) {
-        const shouldStop = dispatchStudioEditClick(id, position, e);
+        const shouldStop = dispatchStudioEditClick(node, position, e);
         if (shouldStop) {
           return;
         }
@@ -1824,6 +1850,14 @@ export function useOntologyGraph({
       container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
     };
     const writeGraphSnapshot = () => {
+      // A viewport animation started before a rebuild can finish after the
+      // graph is torn down, when it no longer has a viewport to read.
+      let zoom: number;
+      try {
+        zoom = graph.getZoom();
+      } catch {
+        return;
+      }
       const positions = Object.fromEntries(
         graph.getNodeData().flatMap((node) => {
           try {
@@ -1838,7 +1872,7 @@ export function useOntologyGraph({
           }
         })
       );
-      container.dataset.graphZoom = String(graph.getZoom());
+      container.dataset.graphZoom = String(zoom);
       container.dataset.nodePositions = JSON.stringify(positions);
     };
 

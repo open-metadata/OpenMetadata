@@ -12,6 +12,7 @@
  */
 
 import { Browser, expect, Page } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../constant/common';
 import {
   GLOBAL_SETTING_PERMISSIONS,
   SETTING_PAGE_ENTITY_PERMISSION,
@@ -30,7 +31,6 @@ import {
   descriptionBoxReadOnly,
   fillDescriptionBox,
   getAuthContext,
-  getToken,
   redirectToHomePage,
   toastNotification,
   visitOwnProfilePage,
@@ -39,6 +39,7 @@ import { customFormatDateTime, getEpochMillisForFutureDays } from './dateTime';
 import { waitForAllLoadersToDisappear } from './entity';
 import { clickUpdateButtonIfVisible } from './explore';
 import { getCellByName } from './scopedLocators';
+import { waitForAggregation } from './searchAggregation';
 import { settingClick, SettingOptionsType, sidebarClick } from './sidebar';
 
 export const visitUserListPage = async (page: Page) => {
@@ -64,6 +65,17 @@ export const searchUserByEmail = async (
   await expect(page.getByTestId(userName)).toBeVisible();
 };
 
+/**
+ * A signed-in page for `user`, plus an API context authenticated as them.
+ *
+ * Signs in through the API rather than the form. The nine UI interactions
+ * `UserClass.login()` performs are not what any caller of this helper is
+ * testing, and every one of them is a step that can time out — swapping the
+ * mechanism here speeds up and de-flakes every call site without any of them
+ * changing. A spec that is genuinely testing the sign-in *form* should call
+ * `signInThroughForm(page, user)` from utils/formSignIn instead of coming
+ * through here; `UserClass.login()` in a spec is a lint error.
+ */
 export const performUserLogin = async (browser: Browser, user: UserClass) => {
   const context = await browser.newContext({
     storageState: {
@@ -73,8 +85,12 @@ export const performUserLogin = async (browser: Browser, user: UserClass) => {
   });
   await installServerLoadReducers(context);
   const page = await context.newPage();
-  await user.login(page);
-  const token = await getToken(page);
+  // `/`, not the default `/my-data`: callers of this helper assert where
+  // sign-in *lands* (PersonaAppLayout checks the persona's configured landing
+  // page), and the form path this replaced never chose a destination either.
+  const token = await user.signIn(page, undefined, undefined, {
+    landingPath: '/',
+  });
   const apiContext = await getAuthContext(token);
   const afterAction = async () => {
     await apiContext.dispose();
@@ -89,8 +105,8 @@ export const nonDeletedUserChecks = async (page: Page) => {
   await expect(
     page
       .locator('[data-testid="user-profile"] [data-testid="edit-user-persona"]')
-      .first()
-  ).toBeVisible();
+      .filter({ visible: true })
+  ).not.toHaveCount(0);
 
   await expect(page.locator('[data-testid="edit-teams-button"]')).toBeVisible();
   await expect(page.locator('[data-testid="edit-roles-button"]')).toBeVisible();
@@ -155,10 +171,7 @@ export const softDeleteUserProfilePage = async (
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
-  await page
-    .locator('.user-list-table')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
+  await waitForAllLoadersToDisappear(page.locator('.user-list-table'));
 
   await page.getByTestId(userName).click();
 
@@ -169,11 +182,7 @@ export const softDeleteUserProfilePage = async (
   });
   await page.click('[data-testid="user-profile-manage-btn"]');
 
-  await page.locator('.ant-popover:not(.ant-popover-hidden)').waitFor({
-    state: 'visible',
-  });
-
-  await page.getByText('Delete Profile').click();
+  await page.getByRole('dialog').getByText('Delete Profile').click();
 
   await page.getByTestId('delete-modal').waitFor();
 
@@ -193,17 +202,19 @@ export const restoreUserProfilePage = async (page: Page, fqn: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.getByText('Restore').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  const restoreModal = page.getByTestId('restore-user-modal');
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText('Restore user');
+  await expect(restoreModal).toBeVisible();
+  await expect(restoreModal.getByTestId('dialog-title')).toContainText(
+    'Restore user'
+  );
 
   await expect(
     page.locator('[data-testid="restore-modal-body"]')
   ).toContainText(`Are you sure you want to restore ${fqn}?`);
 
   const restoreResponse = page.waitForResponse('/api/v1/users/restore');
-  await page.click('.ant-modal-footer .ant-btn-primary');
+  await restoreModal.getByRole('button', { name: 'Restore' }).click();
 
   await restoreResponse;
 
@@ -236,16 +247,18 @@ export const editDisplayName = async (page: Page, editedUserName: string) => {
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="edit-displayname"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+  const profileEditModal = page.getByTestId('profile-edit-modal');
+
+  await expect(profileEditModal).toBeVisible();
 
   await page.getByTestId('displayName-input').click();
   await page.keyboard.press('Control+A');
   await page.keyboard.type(editedUserName);
   const saveResponse = page.waitForResponse('/api/v1/users/*');
-  await page.getByText('Save').click();
+  await profileEditModal.getByRole('button', { name: 'Save' }).click();
   await saveResponse;
 
-  await expect(page.locator('.ant-modal-wrap')).not.toBeVisible();
+  await expect(profileEditModal).not.toBeVisible();
 
   // Verify the updated display name
   const userName = await page.textContent('[data-testid="user-display-name"]');
@@ -396,7 +409,8 @@ export const restoreUser = async (
   await page.click(`[data-testid="restore-user-btn-${username}"]`);
 
   // Verify the modal content
-  const modalContent = page.locator('.ant-modal-body > p');
+  const restoreModal = page.getByTestId('restore-user-modal');
+  const modalContent = restoreModal.locator('p');
 
   await expect(modalContent).toContainText(
     `Are you sure you want to restore ${editedUserName}?`
@@ -404,7 +418,7 @@ export const restoreUser = async (
 
   // Click the confirm button in the modal
   const restoreUserResponse = page.waitForResponse('/api/v1/users/restore');
-  await page.click('.ant-modal-footer > .ant-btn-primary');
+  await restoreModal.getByRole('button', { name: 'Restore' }).click();
   await restoreUserResponse;
 
   await toastNotification(page, 'User restored successfully');
@@ -482,7 +496,7 @@ export const generateToken = async (page: Page) => {
 
   await page.click('[data-testid="token-expiry"]');
 
-  await page.locator('[title="1 hour"] div').click();
+  await page.getByRole('option', { name: '1 hour', exact: true }).click();
 
   await expect(page.locator('[data-testid="token-expiry"]')).toBeVisible();
 
@@ -507,23 +521,18 @@ export const revokeToken = async (page: Page, isBot?: boolean) => {
 
 export const updateExpiration = async (page: Page, expiry: number) => {
   await page.click('[data-testid="token-expiry"]');
-  await page.click(`text=${expiry} day${expiry > 1 ? 's' : ''}`);
+  await page
+    .getByRole('option', {
+      name: `${expiry} day${expiry > 1 ? 's' : ''}`,
+      exact: true,
+    })
+    .click();
 
   const expiryDate = customFormatDateTime(
     getEpochMillisForFutureDays(expiry as number),
     `ccc d'th' MMMM, yyyy`
   );
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown close animation delay
-  await page.waitForTimeout(100);
-
-  // Click outside to close any open dropdowns
-  await page.mouse.click(1, 1);
-
-  // Wait for any dropdown animations to complete
-  await page.locator('.ant-select-dropdown').waitFor({ state: 'hidden' });
-
-  // Now click the save button
   await page.click('[data-testid="save-edit"]');
 
   await expect(
@@ -588,7 +597,8 @@ export const checkDataConsumerPermissions = async (page: Page) => {
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 };
 
 export const checkStewardServicesPermissions = async (page: Page) => {
@@ -611,17 +621,12 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   // Perform search actions
   await page.click('[data-testid="search-dropdown-Data Assets"]');
 
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId('loader')
-    .first()
-    .waitFor({
-      state: 'detached',
-    });
+  await waitForAllLoadersToDisappear(page.getByTestId('drop-down-menu'));
 
-  const dataAssetDropdownRequest = page.waitForResponse(
-    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
-  );
+  const dataAssetDropdownRequest = waitForAggregation(page, {
+    field: 'entityType.keyword',
+    value: 'table',
+  });
 
   await page
     .getByTestId('drop-down-menu')
@@ -689,8 +694,8 @@ export const checkStewardPermissions = async (page: Page) => {
   await page.click('[data-testid="lineage"]');
   await waitForAllLoadersToDisappear(page);
 
-  // Check if edit lineage option is available
-  await expect(page.getByTestId('edit-lineage')).toBeVisible();
+  // Editors get the lineage node menu instead of an edit-mode toggle
+  await expect(page.getByTestId('lineage-node-menu')).not.toHaveCount(0);
 };
 
 export const addUser = async (
@@ -722,45 +727,31 @@ export const addUser = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const rolesCombobox = page
     .getByTestId('roles-dropdown')
     .getByRole('combobox');
-  await expect(rolesCombobox).toBeVisible({ timeout: 120000 });
+  await expect(rolesCombobox).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await rolesCombobox.click();
   const rolesSearchResponse = page.waitForResponse('/api/v1/roles/search?*');
   await rolesCombobox.fill(role);
   await rolesSearchResponse;
-  const roleOption = page
-    .locator('.ant-select-item-option-content')
-    .filter({ hasText: new RegExp(`^${role}$`) })
-    .first();
-  await expect(roleOption).toBeVisible({ timeout: 120000 });
+  const roleOption = page.getByRole('option', { name: role, exact: true });
+  await expect(roleOption).toBeVisible({ timeout: LONG_ACTION_TIMEOUT });
   await roleOption.click();
-  await clickOutside(page);
+  await page.keyboard.press('Escape');
 
   if (personas?.length) {
-    await page
-      .locator('[data-testid="personas-dropdown"] .ant-select-selector')
-      .click();
-    await page
+    const personasCombobox = page
       .getByTestId('personas-dropdown')
-      .getByRole('combobox')
-      .fill(personas[0]);
-    await page.locator('.ant-select-dropdown:visible').first().waitFor({
-      state: 'visible',
-    });
-    const personaOption = page
-      .locator('.ant-select-dropdown:visible')
-      .locator('.ant-select-item-option')
-      .filter({ hasText: personas[0] })
-      .first();
-    await personaOption.waitFor({ state: 'visible' });
-    await personaOption.click();
-    await clickOutside(page);
+      .getByRole('combobox');
+    await personasCombobox.click();
+    await personasCombobox.fill(personas[0]);
+    await page.getByRole('option', { name: personas[0], exact: true }).click();
+    await page.keyboard.press('Escape');
   }
 
   const saveResponse = page.waitForResponse('/api/v1/users');
@@ -790,9 +781,9 @@ export const checkForUserExistError = async (
 
   await fillDescriptionBox(page, 'Adding new user');
 
-  await page.click(':nth-child(2) > .ant-radio > .ant-radio-input');
-  await page.fill('input[name="password"]', password);
-  await page.fill('input[name="confirmPassword"]', password);
+  await page.getByTestId('password-create').click();
+  await page.getByTestId('password').fill(password);
+  await page.getByTestId('confirmPassword').fill(password);
 
   const saveResponse = page.waitForResponse('/api/v1/users');
   await page.click('[data-testid="save-user"]');
@@ -822,9 +813,10 @@ const resetPasswordModal = async (
   const saveResetPasswordResponse = page.waitForResponse(
     '/api/v1/users/changePassword'
   );
-  await page.click(
-    '.ant-modal-footer > .ant-btn-primary:has-text("Update Password")'
-  );
+  await page
+    .getByTestId('modal-container')
+    .getByRole('button', { name: 'Update Password' })
+    .click();
 
   await saveResetPasswordResponse;
 
@@ -847,7 +839,7 @@ export const resetPassword = async (
   await page.click('[data-testid="user-profile-manage-btn"]');
   await page.click('[data-testid="change-password-button"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+  await expect(page.getByTestId('modal-container')).toBeVisible();
 
   // Try with the wrong old password should throw an error
   await resetPasswordModal(page, oldWrongPassword, newPassword, false);
@@ -875,7 +867,7 @@ export const settingPageOperationPermissionCheck = async (page: Page) => {
       await apiResponse;
     }
 
-    await expect(page.locator('.ant-skeleton-button')).not.toBeVisible();
+    await expect(page.locator('.button-skeleton')).not.toBeVisible();
     await expect(page.getByTestId(id.button)).not.toBeVisible();
   }
 

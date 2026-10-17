@@ -12,8 +12,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.flipkart.zjsonpatch.JsonPatch;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
+import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -169,7 +173,7 @@ class EntityServiceBaseTest {
   }
 
   @Test
-  void updateFetchesFieldsContainingNestedEntityReferences() {
+  void updateFetchesFieldsContainingNestedEntityReferences() throws JsonProcessingException {
     GlossaryTerm original = glossaryTerm(ORIGINAL_ASSET_ID, AssetRealizationRole.PRIMARY_STORE);
     GlossaryTerm withoutRealizations = new GlossaryTerm().withId(TERM_ID).withName(TERM_NAME);
     GlossaryTerm updated = glossaryTerm(UPDATED_ASSET_ID, AssetRealizationRole.REPLICA);
@@ -181,12 +185,22 @@ class EntityServiceBaseTest {
     glossaryTermService.update(TERM_ID, updated);
 
     assertTrue(requestedFields(getOptions.getValue()).contains(REALIZED_IN));
-    JsonNode patchedOriginal =
-        JsonPatch.apply(patch.getValue(), glossaryTermService.objectMapper.valueToTree(original));
+    ObjectMapper mapper = glossaryTermService.objectMapper;
+    JsonNode patchedOriginal = applyPatch(mapper, patch.getValue(), mapper.valueToTree(original));
     assertEquals(1, patchedOriginal.path(REALIZED_IN).size());
     assertEquals(
         UPDATED_ASSET_ID.toString(),
         patchedOriginal.path(REALIZED_IN).get(0).path("asset").path("id").asText());
+  }
+
+  private static JsonNode applyPatch(ObjectMapper mapper, JsonNode patch, JsonNode document)
+      throws JsonProcessingException {
+    JsonPatch jsonPatch =
+        Json.createPatch(Json.createReader(new StringReader(patch.toString())).readArray());
+    return mapper.readTree(
+        jsonPatch
+            .apply(Json.createReader(new StringReader(document.toString())).readObject())
+            .toString());
   }
 
   private ArgumentCaptor<RequestOptions> stubGlossaryTermFetch(
@@ -334,6 +348,51 @@ class EntityServiceBaseTest {
 
     verify(mockHttpClient)
         .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + tableId), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByName() {
+    String fqn = "service.db.schema.table";
+
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class)))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn);
+
+    // by-FQN delete must hit the /name/{fqn} endpoint, never the by-id /{id} path.
+    verify(mockHttpClient)
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/name/" + fqn), isNull(), eq(Void.class));
+    verify(mockHttpClient, never())
+        .execute(eq(HttpMethod.DELETE), eq("/v1/tables/" + fqn), isNull(), eq(Void.class));
+  }
+
+  @Test
+  void testDeleteByNameWithParams() {
+    String fqn = "service.db.schema.table";
+    Map<String, String> params = Map.of("recursive", "true", "hardDelete", "true");
+
+    ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    when(mockHttpClient.execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            options.capture()))
+        .thenReturn(null);
+
+    tableService.deleteByName(fqn, params);
+
+    verify(mockHttpClient)
+        .execute(
+            eq(HttpMethod.DELETE),
+            eq("/v1/tables/name/" + fqn),
+            isNull(),
+            eq(Void.class),
+            any(RequestOptions.class));
+    RequestOptions captured = options.getValue();
+    assertEquals("true", captured.getQueryParams().get("recursive"));
+    assertEquals("true", captured.getQueryParams().get("hardDelete"));
   }
 
   // Note: restore method is not part of the base EntityServiceBase class

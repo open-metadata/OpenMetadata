@@ -38,8 +38,6 @@ import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.fasterxml.jackson.datatype.jsonp.JSONPModule;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
-import com.github.fge.jsonpatch.JsonPatchException;
-import com.github.fge.jsonpatch.diff.JsonDiff;
 import com.jayway.jsonpath.DocumentContext;
 import com.jayway.jsonpath.JsonPath;
 import com.networknt.schema.Schema;
@@ -84,7 +82,6 @@ import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
 import org.openmetadata.common.utils.CommonUtil;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
@@ -571,14 +568,14 @@ public final class JsonUtils {
   public static JsonPatch getJsonPatch(String v1, String v2) {
     JsonNode source = readTree(v1);
     JsonNode dest = readTree(v2);
-    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    JsonNode patchNode = JsonDiff.of(source, dest);
     return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
   public static JsonPatch getJsonPatch(Object v1, Object v2) {
     JsonNode source = valueToTree(v1);
     JsonNode dest = valueToTree(v2);
-    JsonNode patchNode = JsonDiff.asJson(source, dest);
+    JsonNode patchNode = JsonDiff.of(source, dest);
     return Json.createPatch(Json.createReader(new StringReader(patchNode.toString())).readArray());
   }
 
@@ -600,41 +597,6 @@ public final class JsonUtils {
     String stripped = path.startsWith("/") ? path.substring(1) : path;
     int slash = stripped.indexOf('/');
     fields.add(slash > 0 ? stripped.substring(0, slash) : stripped);
-  }
-
-  private static JsonNode applyJsonPatch(JsonPatch patch, JsonNode targetNode)
-      throws JsonPatchException, IOException {
-    // Convert jakarta.json.JsonPatch to com.github.fge.jsonpatch.JsonPatch
-    String patchString = patch.toString();
-    JsonNode patchNode;
-    try {
-      patchNode = OBJECT_MAPPER.readTree(patchString);
-    } catch (JsonProcessingException e) {
-      LOG.error("Failed to parse JsonPatch string: {}", patchString, e);
-      throw new RuntimeException("Invalid JsonPatch format", e);
-    }
-    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
-        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
-    return jacksonPatch.apply(targetNode);
-  }
-
-  public static <T extends EntityInterface> T applyJsonPatch(
-      T original, JsonPatch patch, Class<T> clz) {
-    try {
-      // Convert original entity to JsonNode
-      JsonNode originalNode = OBJECT_MAPPER.valueToTree(original);
-
-      // Apply the JSON Patch
-      JsonNode patchedNode = applyJsonPatch(patch, originalNode);
-
-      // Deserialize the patched JsonNode back to the entity class
-      return OBJECT_MAPPER.treeToValue(patchedNode, clz);
-    } catch (JsonPatchException | JsonProcessingException e) {
-      LOG.error("Failed to apply JSON Patch: {}", e.getMessage(), e);
-      throw new RuntimeException("Failed to apply JSON Patch", e);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
   }
 
   public static JsonValue readJson(String s) {
@@ -1044,15 +1006,6 @@ public final class JsonUtils {
       }
     }
     return JsonUtils.convertValue(result, clazz);
-  }
-
-  public static JsonPatch convertFgeToJavax(com.github.fge.jsonpatch.JsonPatch fgeJsonPatch) {
-    String jsonString = fgeJsonPatch.toString();
-
-    try (JsonReader reader = Json.createReader(new StringReader(jsonString))) {
-      JsonArray patchArray = reader.readArray();
-      return Json.createPatch(patchArray);
-    }
   }
 
   public static List<String> getJsonDataResources(Pattern pattern) throws IOException {

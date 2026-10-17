@@ -19,7 +19,7 @@ import {
   AlertTriangle,
   CheckCircle,
   InfoCircle,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type { FC, HTMLAttributes, ReactNode } from 'react';
 
 export type AlertVariant = 'success' | 'warning' | 'error' | 'brand' | 'gray';

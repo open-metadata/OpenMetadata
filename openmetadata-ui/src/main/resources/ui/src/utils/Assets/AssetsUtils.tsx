@@ -46,6 +46,7 @@ import {
   getDataModelByFqn,
   patchDataModelDetails,
 } from '../../rest/dataModelsAPI';
+import { getDataProductByName } from '../../rest/dataProductAPI';
 import { getDomainByName, patchDomains } from '../../rest/domainAPI';
 import {
   getDriveAssetByFqn,
@@ -176,6 +177,7 @@ const GET_ENTITY_API_MAP: Partial<
   [EntityType.API_ENDPOINT]: getApiEndPointByFQN,
   [EntityType.METRIC]: getMetricByFqn,
   [EntityType.DOMAIN]: getDomainByName,
+  [EntityType.DATA_PRODUCT]: getDataProductByName,
   [EntityType.DIRECTORY]: (fqn: string, params?: ListParams) =>
     getDriveAssetByFqn<Directory>(
       fqn,
@@ -274,6 +276,8 @@ export function getEntityTypeString(type: string) {
       return t('label.tag-lowercase');
     case AssetsOfEntity.TEAM:
       return t('label.team-lowercase');
+    case AssetsOfEntity.METRIC:
+      return t('label.metric-lowercase');
     default:
       return t('label.data-product-lowercase');
   }
@@ -330,7 +334,7 @@ export const getEntityIconWithBg = (
       {Icon && (
         <Icon
           className={classNames(
-            style?.iconClass ?? 'tw:text-gray-500',
+            style?.iconClass ?? 'tw:text-quaternary',
             iconClassName
           )}
           height={size}

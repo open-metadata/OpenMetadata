@@ -24,6 +24,7 @@ import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import * as jsoncParser from 'jsonc-eslint-parser';
 import tseslint from 'typescript-eslint';
+import openMetadataAntd from './eslint-rules/openmetadata-antd.mjs';
 import openMetadataI18n from './eslint-rules/openmetadata-i18n.mjs';
 import openMetadataImports from './eslint-rules/openmetadata-imports.mjs';
 import openMetadataPerformance from './eslint-rules/openmetadata-performance.mjs';
@@ -31,6 +32,57 @@ import openMetadataPermissions from './eslint-rules/openmetadata-permissions.mjs
 import openMetadataPlaywright from './eslint-rules/openmetadata-playwright.mjs';
 import openMetadataUiPatterns from './eslint-rules/openmetadata-ui-patterns.mjs';
 import omPlaywright from './playwright/eslint-rules/index.mjs';
+
+// antd components with no remaining imports anywhere in src. Add a component
+// here in the PR that removes its last import (open-metadata/openmetadata-collate#6884).
+const MIGRATED_ANTD_COMPONENTS = [
+  'AutoComplete',
+  'DatePicker',
+  'Form',
+  'Input',
+  'Select',
+  'Checkbox',
+  'InputNumber',
+  'Radio',
+  'Slider',
+  'TimePicker',
+  'TreeSelect',
+  'Upload',
+  'Alert',
+  'Avatar',
+  'Badge',
+  'Carousel',
+  'Collapse',
+  'ConfigProvider',
+  'Drawer',
+  'Layout',
+  'List',
+  'Menu',
+  'Pagination',
+  'Progress',
+  'Steps',
+  'Tree',
+  'Table',
+  'Affix',
+  'Button',
+  'Card',
+  'Col',
+  'Divider',
+  'Dropdown',
+  'Empty',
+  'Image',
+  'Modal',
+  'Popover',
+  'Result',
+  'Row',
+  'Skeleton',
+  'Space',
+  'Spin',
+  'Switch',
+  'Tag',
+  'Tooltip',
+  'Typography',
+];
 
 export default [
   // Base recommended configs
@@ -55,6 +107,12 @@ export default [
       'playwright/output/**',
       'playwright/test-data/**',
     ],
+  },
+
+  // A disable directive that suppresses nothing silently hides whatever is added
+  // under it later, so fail lint and make the fix that left it stale delete it too.
+  {
+    linterOptions: { reportUnusedDisableDirectives: 'error' },
   },
 
   // Base config for JavaScript and TypeScript files
@@ -268,29 +326,6 @@ export default [
       'sonarjs/no-unthrown-error': 'error',
       'sonarjs/no-misleading-array-reverse': 'error',
 
-      // Design-system import discipline — warn while existing violations are
-      // migrated; promote to error once the backlog reaches zero.
-      //
-      // Safety: no-restricted-imports carries no auto-fixer, so 'warn' here
-      // does not trigger the eslint --fix footgun in ui-checkstyle.
-      'no-restricted-imports': [
-        'warn',
-        {
-          patterns: [
-            {
-              group: ['@untitledui/icons', '@untitledui/icons/*'],
-              message:
-                'Import icons from @openmetadata/ui-core-components/icons, not directly from @untitledui/icons.',
-            },
-            {
-              group: ['**/assets/**/*.svg'],
-              message:
-                'Do not import SVG icons directly from assets/ paths; use the designated abstraction instead.',
-            },
-          ],
-        },
-      ],
-
       // Accessibility. eslint-plugin-jsx-a11y was already a devDependency but
       // had never been registered, so none of it ran.
       //
@@ -364,6 +399,9 @@ export default [
       // per-area, then promote to 'error' (and re-add a shade-restricted
       // fixer). See docs/colors.md + the dark-mode guidelines.
       'openmetadata-ui-patterns/no-non-adaptive-palette': 'warn',
+      // A Typography ellipsis tooltip inside a link/button renders a nested
+      // <button> (#30779). Report-only, so `eslint --fix` never edits it.
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'error',
       'sonarjs/no-collapsible-if': 'error',
       'sonarjs/no-extra-arguments': 'error',
       'sonarjs/no-redundant-jump': 'error',
@@ -451,6 +489,52 @@ export default [
   },
 
   {
+    // Charts go through @openmetadata/ui-core-components/charts; recharts and
+    // raw echarts imports are banned. Placed before the Metric block, which
+    // replaces this rule for Metric files (no charts there).
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Existing antd usage is frozen in eslint-suppressions.json; see
+    // eslint-rules/openmetadata-antd.mjs for how the ratchet works.
+    files: ['src/**/*.{js,jsx,ts,tsx}'],
+    plugins: { 'openmetadata-antd': openMetadataAntd },
+    rules: {
+      'openmetadata-antd/no-antd-import': [
+        'error',
+        { components: MIGRATED_ANTD_COMPONENTS },
+      ],
+      'openmetadata-antd/no-migrated-antd-import': [
+        'error',
+        { components: MIGRATED_ANTD_COMPONENTS },
+      ],
+    },
+  },
+  {
     files: [
       'src/components/Metric/**/*.{js,jsx,ts,tsx}',
       'src/components/DataAssets/DataAssetsHeader/DataAssetsHeader.component.tsx',
@@ -507,6 +591,60 @@ export default [
               allowTypeImports: true,
               message:
                 'Metric workflows use icons from @openmetadata/ui-core-components/icons.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // The Applications settings in the profile modal are core-ui only.
+  {
+    files: [
+      'src/components/discovery/personal-space/Profile/tabs/applications/**/*.{ts,tsx}',
+    ],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'antd',
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components.',
+            },
+            {
+              name: '@ant-design/icons',
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components/icons.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['antd/*', '@ant-design/icons/*'],
+              allowTypeImports: true,
+              message:
+                'Application settings use @openmetadata/ui-core-components.',
+            },
+            // Flat config replaces a rule's options wholesale, so the repo-wide
+            // chart ban (recharts/echarts) is re-stated here; otherwise it would
+            // be dropped for these files, unlike the Metric block which is chart-free.
+            {
+              group: ['recharts', 'recharts/*'],
+              message:
+                'Use @openmetadata/ui-core-components/charts; recharts was removed.',
+            },
+            {
+              group: [
+                'echarts',
+                'echarts/*',
+                'echarts-for-react',
+                'echarts-for-react/*',
+              ],
+              message:
+                'Import charts and chart types from @openmetadata/ui-core-components/charts.',
             },
           ],
         },
@@ -691,10 +829,10 @@ export default [
       // A facet aggregation wait must name the value it is waiting for, not just
       // the endpoint or field: a dropdown fires one aggregation when it opens and
       // one per typed search, so a wait that names neither can resolve off the
-      // wrong one and run the test ahead of the request it queued (#31859). Warn
-      // rather than error while the remaining 27 call sites are migrated to
-      // playwright/utils/searchAggregation.ts.
-      'openmetadata-playwright/require-aggregation-wait-helper': 'warn',
+      // wrong one and run the test ahead of the request it queued (#31859).
+      // playwright/utils/searchAggregation.ts matches GET params and POST bodies.
+      'openmetadata-playwright/require-aggregation-wait-helper': 'error',
+      'openmetadata-playwright/no-form-sign-in': 'error',
 
       // Playwright rules — promoted to error behind the suppressions ratchet
       // (see eslint-suppressions.json): existing violations are snapshotted,
@@ -803,6 +941,19 @@ export default [
     ],
     rules: {
       'openmetadata-ui-patterns/no-raw-title-attribute': 'off',
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
+    },
+  },
+
+  // Classic-mode-only surfaces left out of the #30779 fix, which targeted the
+  // AI-mode UI. Remove an entry once that file is fixed.
+  {
+    files: [
+      'src/components/Settings/Users/UserProfileIcon/UserProfileIcon.component.tsx',
+      'src/utils/EntitySummaryPanelUtils.tsx',
+    ],
+    rules: {
+      'openmetadata-ui-patterns/no-nested-ellipsis-tooltip-trigger': 'off',
     },
   },
 

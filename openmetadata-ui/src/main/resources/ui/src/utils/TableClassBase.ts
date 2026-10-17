@@ -84,6 +84,7 @@ const SIZEABLE_WIDGET_KEYS: TableWidgetKeys[] = [
   DetailPageWidgetKeys.DATA_PRODUCTS,
   DetailPageWidgetKeys.TAGS,
   DetailPageWidgetKeys.GLOSSARY_TERMS,
+  DetailPageWidgetKeys.CUSTOM_PROPERTIES,
   DetailPageWidgetKeys.TABLE_CONSTRAINTS,
   DetailPageWidgetKeys.PARTITIONED_KEYS,
   DetailPageWidgetKeys.TABLE_ALIASES,
@@ -321,6 +322,20 @@ class TableClassBase {
       {
         fullyQualifiedName: DetailPageWidgetKeys.TABLE_CONSTRAINTS,
         name: i18n.t('label.table-constraints'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.PARTITIONED_KEYS,
+        name: i18n.t('label.table-partition-plural'),
+        data: {
+          gridSizes: ['small'] as GridSizes[],
+        },
+      },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.TABLE_ALIASES,
+        name: i18n.t('label.alias-plural'),
         data: {
           gridSizes: ['small'] as GridSizes[],
         },

@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Switch, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { ColumnsType } from '../../../common/Table/Table.interface';
@@ -383,15 +386,14 @@ export const DatabaseSchemaTable = ({
       defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
       extraTableFilters={
         <>
-          <span>
-            <Switch
-              checked={showDeletedSchemas}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleShowDeletedSchemas}
+              isSelected={showDeletedSchemas}
+              size="sm"
+              onChange={handleShowDeletedSchemas}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
           {getBulkEditButton(
             getDerivedPermissionFlags(

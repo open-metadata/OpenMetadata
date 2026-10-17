@@ -12,16 +12,17 @@
  */
 
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Badge,
+  Box,
   Card,
-  Col,
-  Collapse,
   Divider,
-  Row,
-  Space,
-  Spin,
-  Tag,
+  Grid,
   Typography,
-} from 'antd';
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -39,6 +40,7 @@ import {
   RuleInfo,
   TeamPermission,
 } from '../../../../../rest/permissionAPI';
+import { getLayoutGutter } from '../../../../../utils/common/layout.utils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import {
   getEntityDetailsPath,
@@ -47,10 +49,8 @@ import {
   getTeamsWithFqnPath,
 } from '../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import Loader from '../../../../common/Loader/Loader';
 import './UserPermissions.style.less';
-
-const { Panel } = Collapse;
-const { Title, Text } = Typography;
 
 interface UserPermissionsProps {
   username: string;
@@ -98,40 +98,71 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
   const renderRule = (rule: RuleInfo, index: number) => (
     <div className="rule-item m-b-sm" key={index}>
-      <Space className="w-full" direction="vertical">
-        <Space>
-          <Text strong>{rule.name}</Text>
-          <Tag color={rule.effect === 'ALLOW' ? 'success' : 'error'}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space w-full"
+        direction="col"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography weight="semibold">{rule.name}</Typography>
+          <Badge
+            className="tw:inline-flex tw:mr-2 tw:mb-1"
+            color={rule.effect === 'ALLOW' ? 'success' : 'error'}
+            size="sm"
+            type="color">
             {rule.effect}
-          </Tag>
-        </Space>
+          </Badge>
+        </Box>
         {!isEmpty(rule.operations) && (
           <div>
-            <Text type="secondary">{t('label.operation-plural')}: </Text>
+            <Typography color="secondary">
+              {t('label.operation-plural')}:{' '}
+            </Typography>
             {rule.operations.map((op) => (
-              <Tag className="m-r-xs" key={op}>
+              <Badge
+                className="tw:inline-flex tw:mb-1 m-r-xs"
+                color="gray"
+                key={op}
+                size="sm"
+                type="color">
                 {op}
-              </Tag>
+              </Badge>
             ))}
           </div>
         )}
         {!isEmpty(rule.resources) && (
           <div>
-            <Text type="secondary">{t('label.resource-plural')}: </Text>
+            <Typography color="secondary">
+              {t('label.resource-plural')}:{' '}
+            </Typography>
             {rule.resources.map((res) => (
-              <Tag className="m-r-xs" key={res}>
+              <Badge
+                className="tw:inline-flex tw:mb-1 m-r-xs"
+                color="gray"
+                key={res}
+                size="sm"
+                type="color">
                 {res}
-              </Tag>
+              </Badge>
             ))}
           </div>
         )}
         {rule.condition && (
           <div>
-            <Text type="secondary">{t('label.condition')}: </Text>
-            <Text code>{rule.condition}</Text>
+            <Typography color="secondary">{t('label.condition')}: </Typography>
+            <Typography>
+              <code>{rule.condition}</code>
+            </Typography>
           </div>
         )}
-      </Space>
+      </Box>
     </div>
   );
 
@@ -141,30 +172,52 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
       policy.effect === 'ALLOW' ? 'success' : nonAllowPolicyColor;
 
     return (
-      <Collapse ghost className="policy-collapse" key={index}>
-        <Panel
-          header={
-            <Space>
-              <Link
-                to={getEntityLink(
-                  'policy',
-                  policy.policy.fullyQualifiedName || ''
-                )}>
-                {getEntityName(policy.policy)}
-              </Link>
-              <Tag color={policyTagColor}>{policy.effect}</Tag>
-              <Text type="secondary">
-                <span>{policy.rules.length}</span>
-                {t('label.rule-lowercase-plural')}
-              </Text>
-            </Space>
-          }
-          key={index}>
-          <div className="rules-container">
-            {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
-          </div>
-        </Panel>
-      </Collapse>
+      <Accordion allowsMultipleExpanded className="policy-collapse" key={index}>
+        <AccordionItem id={String(index)} key={index}>
+          <Box align="center" gap={2}>
+            <AccordionHeader
+              aria-label={t('label.entity-detail-plural', {
+                entity: getEntityName(policy.policy),
+              })}
+              className="tw:w-auto"
+            />
+            <Box className="tw:min-w-0 tw:flex-1">
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
+                <Link
+                  to={getEntityLink(
+                    'policy',
+                    policy.policy.fullyQualifiedName || ''
+                  )}>
+                  {getEntityName(policy.policy)}
+                </Link>
+                <Badge
+                  className="tw:inline-flex tw:mr-2"
+                  color={policyTagColor}
+                  size="sm"
+                  type="color">
+                  {policy.effect}
+                </Badge>
+                <Typography color="secondary">
+                  <span>{policy.rules.length}</span>
+                  {t('label.rule-lowercase-plural')}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+          <AccordionPanel>
+            <div className="rules-container">
+              {policy.rules.map((rule, ruleIndex) =>
+                renderRule(rule, ruleIndex)
+              )}
+            </div>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     );
   };
 
@@ -174,26 +227,34 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     }
 
     return (
-      <Card className="m-b-md" title={t('label.direct-role-plural')}>
-        {permissionInfo?.directRoles.map(
-          (rolePermission: DirectRolePermission) => (
-            <div className="m-b-md" key={rolePermission.role.id}>
-              <Space className="m-b-sm">
-                <Text strong>{t('label.role')}: </Text>
-                <Link
-                  to={getEntityLink(
-                    'role',
-                    rolePermission.role.fullyQualifiedName || ''
-                  )}>
-                  {getEntityName(rolePermission.role)}
-                </Link>
-              </Space>
-              {rolePermission.policies.map((policy, policyIndex) =>
-                renderPolicy(policy, policyIndex)
-              )}
-            </div>
-          )
-        )}
+      <Card className="m-b-md">
+        <Card.Header title={t('label.direct-role-plural')} />
+        <Card.Content>
+          {permissionInfo?.directRoles.map(
+            (rolePermission: DirectRolePermission) => (
+              <div className="m-b-md" key={rolePermission.role.id}>
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal m-b-sm"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Typography weight="semibold">{t('label.role')}: </Typography>
+                  <Link
+                    to={getEntityLink(
+                      'role',
+                      rolePermission.role.fullyQualifiedName || ''
+                    )}>
+                    {getEntityName(rolePermission.role)}
+                  </Link>
+                </Box>
+                {rolePermission.policies.map((policy, policyIndex) =>
+                  renderPolicy(policy, policyIndex)
+                )}
+              </div>
+            )
+          )}
+        </Card.Content>
       </Card>
     );
   };
@@ -203,9 +264,20 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     index: number
   ) => (
     <div className="m-b-md" key={index}>
-      <Space className="w-full" direction="vertical">
-        <Space>
-          <Text strong>{t('label.role') + ': '}</Text>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space w-full"
+        direction="col"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
+          <Typography weight="semibold">{t('label.role') + ': '}</Typography>
           <Link
             to={getEntityLink(
               'role',
@@ -214,17 +286,23 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
             {getEntityName(rolePermission.role)}
           </Link>
           {rolePermission.isDefaultRole && (
-            <Tag color="blue">{t('label.default-role')}</Tag>
+            <Badge
+              className="tw:inline-flex tw:mr-2"
+              color="blue"
+              size="sm"
+              type="color">
+              {t('label.default-role')}
+            </Badge>
           )}
-        </Space>
-        <Text type="secondary">
+        </Box>
+        <Typography color="secondary">
           {t('label.inherited-from')}:{' '}
           <span>{rolePermission.inheritedFrom}</span>
-        </Text>
+        </Typography>
         {rolePermission.policies.map((policy, policyIndex) =>
           renderPolicy(policy, policyIndex)
         )}
-      </Space>
+      </Box>
     </div>
   );
 
@@ -234,83 +312,110 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     }
 
     return (
-      <Card className="m-b-md" title={t('label.team-permission-plural')}>
-        {permissionInfo?.teamPermissions.map(
-          (teamPermission: TeamPermission) => (
-            <div
-              className="team-permission m-b-lg"
-              key={teamPermission.team.id}>
-              <Space className="w-full" direction="vertical">
-                <Space>
-                  <Text strong>{t('label.team')}: </Text>
-                  <Link
-                    to={getEntityLink(
-                      'team',
-                      teamPermission.team.fullyQualifiedName || ''
-                    )}>
-                    {getEntityName(teamPermission.team)}
-                  </Link>
-                  <Tag>{teamPermission.teamType}</Tag>
-                  {teamPermission.hierarchyLevel > 0 && (
-                    <>
-                      <Tag color="orange">
-                        {t('label.level')}{' '}
-                        <span>{teamPermission.hierarchyLevel}</span>
-                        {t('label.inherited')}
-                      </Tag>
-                    </>
-                  )}
-                </Space>
+      <Card className="m-b-md">
+        <Card.Header title={t('label.team-permission-plural')} />
+        <Card.Content>
+          {permissionInfo?.teamPermissions.map(
+            (teamPermission: TeamPermission) => (
+              <div
+                className="team-permission m-b-lg"
+                key={teamPermission.team.id}>
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space w-full"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    <Typography weight="semibold">
+                      {t('label.team')}:{' '}
+                    </Typography>
+                    <Link
+                      to={getEntityLink(
+                        'team',
+                        teamPermission.team.fullyQualifiedName || ''
+                      )}>
+                      {getEntityName(teamPermission.team)}
+                    </Link>
+                    <Badge
+                      className="tw:inline-flex tw:mr-2"
+                      color="gray"
+                      size="sm"
+                      type="color">
+                      {teamPermission.teamType}
+                    </Badge>
+                    {teamPermission.hierarchyLevel > 0 && (
+                      <>
+                        <Badge
+                          className="tw:inline-flex tw:mr-2"
+                          color="warning"
+                          size="sm"
+                          type="color">
+                          {t('label.level')}{' '}
+                          <span>{teamPermission.hierarchyLevel}</span>
+                          {t('label.inherited')}
+                        </Badge>
+                      </>
+                    )}
+                  </Box>
 
-                {!isEmpty(teamPermission.teamHierarchy) &&
-                  teamPermission.teamHierarchy.length > 1 && (
-                    <div>
-                      <Text type="secondary">
-                        {t('label.hierarchy') + ': '}
-                      </Text>
-                      {teamPermission.teamHierarchy.map((team, idx) => (
-                        <React.Fragment key={team.id}>
-                          <Link
-                            to={getEntityLink(
-                              'team',
-                              team.fullyQualifiedName || ''
-                            )}>
-                            {getEntityName(team)}
-                          </Link>
-                          {idx < teamPermission.teamHierarchy.length - 1 &&
-                            ' → '}
-                        </React.Fragment>
-                      ))}
+                  {!isEmpty(teamPermission.teamHierarchy) &&
+                    teamPermission.teamHierarchy.length > 1 && (
+                      <div>
+                        <Typography color="secondary">
+                          {t('label.hierarchy') + ': '}
+                        </Typography>
+                        {teamPermission.teamHierarchy.map((team, idx) => (
+                          <React.Fragment key={team.id}>
+                            <Link
+                              to={getEntityLink(
+                                'team',
+                                team.fullyQualifiedName || ''
+                              )}>
+                              {getEntityName(team)}
+                            </Link>
+                            {idx < teamPermission.teamHierarchy.length - 1 &&
+                              ' → '}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+
+                  {!isEmpty(teamPermission.rolePermissions) && (
+                    <div className="m-t-sm">
+                      <Typography className="m-b-sm" weight="semibold">
+                        {t('label.team-role-plural')}:{' '}
+                      </Typography>
+                      {teamPermission.rolePermissions.map(
+                        (rolePermission, roleIndex) =>
+                          renderRolePermission(rolePermission, roleIndex)
+                      )}
                     </div>
                   )}
 
-                {!isEmpty(teamPermission.rolePermissions) && (
-                  <div className="m-t-sm">
-                    <Text strong className="m-b-sm">
-                      {t('label.team-role-plural')}:{' '}
-                    </Text>
-                    {teamPermission.rolePermissions.map(
-                      (rolePermission, roleIndex) =>
-                        renderRolePermission(rolePermission, roleIndex)
-                    )}
-                  </div>
-                )}
-
-                {!isEmpty(teamPermission.directPolicies) && (
-                  <div className="m-t-sm">
-                    <Text strong className="m-b-sm">
-                      {t('label.direct-team-policy-plural')}:{' '}
-                    </Text>
-                    {teamPermission.directPolicies.map((policy, policyIndex) =>
-                      renderPolicy(policy, policyIndex)
-                    )}
-                  </div>
-                )}
-              </Space>
-              <Divider />
-            </div>
-          )
-        )}
+                  {!isEmpty(teamPermission.directPolicies) && (
+                    <div className="m-t-sm">
+                      <Typography className="m-b-sm" weight="semibold">
+                        {t('label.direct-team-policy-plural')}:{' '}
+                      </Typography>
+                      {teamPermission.directPolicies.map(
+                        (policy, policyIndex) =>
+                          renderPolicy(policy, policyIndex)
+                      )}
+                    </div>
+                  )}
+                </Box>
+                <Divider className="team-permission-divider tw:my-6" />
+              </div>
+            )
+          )}
+        </Card.Content>
       </Card>
     );
   };
@@ -321,44 +426,64 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     }
 
     return (
-      <Card
-        className="m-b-md"
-        title={t('label.other-inherited-permission-plural')}>
-        {permissionInfo?.inheritedPermissions.map(
-          (inherited: InheritedPermission) => (
-            <div
-              className="m-b-md"
-              key={`${inherited.permissionType}-${
-                inherited.source?.id ?? 'none'
-              }`}>
-              <Space className="w-full" direction="vertical">
-                <Space>
-                  <Text strong>{t('label.type') + ': '}</Text>
-                  <Tag color="purple">
-                    {t(`label.${inherited.permissionType.toLowerCase()}`) ||
-                      inherited.permissionType}
-                  </Tag>
-                </Space>
-                <Text>{inherited.description}</Text>
-                {inherited.source && (
-                  <div>
-                    <Text type="secondary">{t('label.source') + ': '}</Text>
-                    <Link
-                      to={getEntityLink(
-                        inherited.source.type || '',
-                        inherited.source.fullyQualifiedName || ''
-                      )}>
-                      {getEntityName(inherited.source)}
-                    </Link>
-                  </div>
-                )}
-                {inherited.policies.map((policy, policyIndex) =>
-                  renderPolicy(policy, policyIndex)
-                )}
-              </Space>
-            </div>
-          )
-        )}
+      <Card className="m-b-md">
+        <Card.Header title={t('label.other-inherited-permission-plural')} />
+        <Card.Content>
+          {permissionInfo?.inheritedPermissions.map(
+            (inherited: InheritedPermission) => (
+              <div
+                className="m-b-md"
+                key={`${inherited.permissionType}-${
+                  inherited.source?.id ?? 'none'
+                }`}>
+                <Box
+                  inline
+                  align="stretch"
+                  className="layout-space w-full"
+                  direction="col"
+                  gap={2}
+                  itemClassName="layout-space-item">
+                  <Box
+                    inline
+                    align="center"
+                    className="layout-space layout-space-horizontal"
+                    gap={2}
+                    itemClassName="layout-space-item">
+                    <Typography weight="semibold">
+                      {t('label.type') + ': '}
+                    </Typography>
+                    <Badge
+                      className="tw:inline-flex tw:mr-2"
+                      color="purple"
+                      size="sm"
+                      type="color">
+                      {t(`label.${inherited.permissionType.toLowerCase()}`) ||
+                        inherited.permissionType}
+                    </Badge>
+                  </Box>
+                  <Typography>{inherited.description}</Typography>
+                  {inherited.source && (
+                    <div>
+                      <Typography color="secondary">
+                        {t('label.source') + ': '}
+                      </Typography>
+                      <Link
+                        to={getEntityLink(
+                          inherited.source.type || '',
+                          inherited.source.fullyQualifiedName || ''
+                        )}>
+                        {getEntityName(inherited.source)}
+                      </Link>
+                    </div>
+                  )}
+                  {inherited.policies.map((policy, policyIndex) =>
+                    renderPolicy(policy, policyIndex)
+                  )}
+                </Box>
+              </div>
+            )
+          )}
+        </Card.Content>
       </Card>
     );
   };
@@ -371,74 +496,118 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
     const { summary } = permissionInfo;
 
     return (
-      <Card className="m-b-md" title={t('label.permission-summary')}>
-        <Row gutter={[16, 16]}>
-          <Col span={8}>
-            <Space direction="vertical">
-              <Text type="secondary">{t('label.total-role-plural')}</Text>
-              <Title level={4}>{summary.totalRoles}</Title>
-              <Text type="secondary">
-                <span>{summary.directRoles}</span> {t('label.direct-lowercase')}
-                {', '}
-                <span>{summary.inheritedRoles}</span> {t('label.inherited')}
-              </Text>
-            </Space>
-          </Col>
-          <Col span={8}>
-            <Space direction="vertical">
-              <Text type="secondary">{t('label.policy-plural')}</Text>
-              <Title level={4}>{summary.totalPolicies}</Title>
-              <Text type="secondary">
-                {summary.totalRules} {t('label.rule-lowercase-plural')}
-              </Text>
-            </Space>
-          </Col>
-          <Col span={8}>
-            <Space direction="vertical">
-              <Text type="secondary">{t('label.team-plural')}</Text>
-              <Title level={4}>{summary.teamCount}</Title>
-              <Text type="secondary">
-                {t('label.max-hierarchy-depth')}:{' '}
-                <span>{summary.maxHierarchyDepth}</span>
-              </Text>
-            </Space>
-          </Col>
-        </Row>
+      <Card className="m-b-md">
+        <Card.Header title={t('label.permission-summary')} />
+        <Card.Content>
+          <Grid
+            className="layout-row layout-grid"
+            style={{ ...getLayoutGutter(16, 16) }}>
+            <Grid.Item className="layout-column" span={8}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
+                <Typography color="secondary">
+                  {t('label.total-role-plural')}
+                </Typography>
+                <Typography as="h4">{summary.totalRoles}</Typography>
+                <Typography color="secondary">
+                  <span>{summary.directRoles}</span>{' '}
+                  {t('label.direct-lowercase')}
+                  {', '}
+                  <span>{summary.inheritedRoles}</span> {t('label.inherited')}
+                </Typography>
+              </Box>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={8}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
+                <Typography color="secondary">
+                  {t('label.policy-plural')}
+                </Typography>
+                <Typography as="h4">{summary.totalPolicies}</Typography>
+                <Typography color="secondary">
+                  {summary.totalRules} {t('label.rule-lowercase-plural')}
+                </Typography>
+              </Box>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={8}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
+                <Typography color="secondary">
+                  {t('label.team-plural')}
+                </Typography>
+                <Typography as="h4">{summary.teamCount}</Typography>
+                <Typography color="secondary">
+                  {t('label.max-hierarchy-depth')}:{' '}
+                  <span>{summary.maxHierarchyDepth}</span>
+                </Typography>
+              </Box>
+            </Grid.Item>
+          </Grid>
 
-        {!isEmpty(summary.effectiveOperations) && (
-          <div className="m-t-md">
-            <Text strong>{t('label.allowed-operation-plural') + ': '}</Text>
-            <div className="m-t-xs">
-              {summary.effectiveOperations.map((op) => (
-                <Tag className="m-r-xs m-b-xs" color="success" key={op}>
-                  {op}
-                </Tag>
-              ))}
+          {!isEmpty(summary.effectiveOperations) && (
+            <div className="m-t-md">
+              <Typography weight="semibold">
+                {t('label.allowed-operation-plural') + ': '}
+              </Typography>
+              <div className="m-t-xs">
+                {summary.effectiveOperations.map((op) => (
+                  <Badge
+                    className="tw:inline-flex m-r-xs m-b-xs"
+                    color="success"
+                    key={op}
+                    size="sm"
+                    type="color">
+                    {op}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {!isEmpty(summary.deniedOperations) && (
-          <div className="m-t-md">
-            <Text strong>{t('label.denied-operation-plural') + ': '}</Text>
-            <div className="m-t-xs">
-              {summary.deniedOperations.map((op) => (
-                <Tag className="m-r-xs m-b-xs" color="error" key={op}>
-                  {op}
-                </Tag>
-              ))}
+          {!isEmpty(summary.deniedOperations) && (
+            <div className="m-t-md">
+              <Typography weight="semibold">
+                {t('label.denied-operation-plural') + ': '}
+              </Typography>
+              <div className="m-t-xs">
+                {summary.deniedOperations.map((op) => (
+                  <Badge
+                    className="tw:inline-flex m-r-xs m-b-xs"
+                    color="error"
+                    key={op}
+                    size="sm"
+                    type="color">
+                    {op}
+                  </Badge>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </Card.Content>
       </Card>
     );
   };
 
   if (loading) {
     return (
-      <div className="user-permissions-loading">
-        <Spin size="large" />
-      </div>
+      <Box align="center" className="tw:min-h-100" justify="center">
+        <Loader />
+      </Box>
     );
   }
 

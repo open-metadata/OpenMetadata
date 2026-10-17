@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Space, Tooltip, Typography } from 'antd';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { Fragment } from 'react';
+import { FC, Fragment } from 'react';
 import { ReactComponent as IconArray } from '../assets/svg/data-type-icon/array.svg';
 import { ReactComponent as IconBinary } from '../assets/svg/data-type-icon/binary.svg';
 import { ReactComponent as IconBitmap } from '../assets/svg/data-type-icon/bitmap.svg';
@@ -156,21 +155,25 @@ export const getConstraintIcon = ({
   const icon = isConstraintDeleted ? config.deletedIcon : config.icon;
   const dataTestId = config.dataTestId;
 
+  const ConstraintIcon = icon;
+
   return (
     <Tooltip
-      className={classNames(className)}
+      arrow
+      excludeTriggerFromTabOrder
       placement="bottom"
       title={title}
-      trigger="hover">
-      <Icon
-        alt={title}
-        className={classNames({
+      triggerClassName={classNames('tw:inline-flex', className)}>
+      <ConstraintIcon
+        aria-label={title}
+        className={classNames('tw:shrink-0', {
           'diff-added': isConstraintAdded,
           'diff-removed': isConstraintDeleted,
         })}
-        component={icon}
         data-testid={`constraint-icon-${dataTestId}`}
-        style={{ fontSize: width }}
+        height={width}
+        role="img"
+        width={width}
       />
     </Tooltip>
   );
@@ -235,38 +238,57 @@ export const getColumnDataTypeIcon = ({
     [DataType.XML]: IconXML,
   };
 
-  const icon = dataTypeIcons[dataType as keyof typeof dataTypeIcons] || null;
+  const DataTypeIcon = dataTypeIcons[dataType as keyof typeof dataTypeIcons];
 
-  return <Icon alt={dataType} component={icon} style={{ fontSize: width }} />;
+  // antd's <Icon component={null}> rendered nothing; rendering the component
+  // directly means an unknown dataType has to be guarded here instead.
+  if (!DataTypeIcon) {
+    return null;
+  }
+
+  return (
+    <DataTypeIcon
+      aria-label={dataType}
+      className="tw:shrink-0"
+      height={width}
+      role="img"
+      width={width}
+    />
+  );
 };
 
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
-  expandIconClass?: string
+  expandIconClass?: string,
+  DragIcon: FC<{ className?: string }> = IconDrag
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
-    expandIcon: ({ expanded, onExpand, expandable, record }) =>
-      expandable ? (
+    expandIcon: ({ expanded, onExpand, expandable, record }) => {
+      const ExpandIcon = expanded ? IconDown : IconRight;
+
+      return expandable ? (
         <>
-          {isDraggable && <IconDrag className="drag-icon" />}
-          <Icon
+          {isDraggable && <DragIcon className="drag-icon" />}
+          <ExpandIcon
             className={classNames(
-              'table-expand-icon vertical-baseline',
+              'table-expand-icon vertical-baseline tw:size-3 tw:shrink-0',
               expandIconClass
             )}
-            component={expanded ? IconDown : IconRight}
             data-testid="expand-icon"
-            onClick={(e) => onExpand(record, e)}
+            onClick={(e: React.MouseEvent<SVGSVGElement>) =>
+              onExpand(record, e as unknown as React.MouseEvent<HTMLElement>)
+            }
           />
         </>
       ) : (
         isDraggable && (
           <>
-            <IconDrag className="drag-icon" />
+            <DragIcon className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )
-      ),
+      );
+    },
   };
 
   return expandableConfig;
@@ -343,10 +365,13 @@ export const tableConstraintRendererBasedOnType = (
       className="d-flex constraint-columns tw:bg-(--om-legacy-color-f8f8f8) tw:dark:bg-transparent"
       data-testid={`${constraintType}-container`}
       key={constraintType}>
-      <Space
-        className="constraint-icon-container"
-        direction="vertical"
-        size={0}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space constraint-icon-container"
+        direction="col"
+        gap={0}
+        itemClassName="layout-space-item">
         {columns?.map((column, index) => (
           <Fragment key={column}>
             {(columns?.length ?? 0) - 1 !== index || isSingleColumn ? (
@@ -357,15 +382,21 @@ export const tableConstraintRendererBasedOnType = (
             ) : null}
           </Fragment>
         ))}
-      </Space>
+      </Box>
 
-      <Space direction="vertical" size={16}>
+      <Box
+        inline
+        align="stretch"
+        className="layout-space"
+        direction="col"
+        gap={4}
+        itemClassName="layout-space-item">
         {columns?.map((column) => (
-          <Typography.Text ellipsis={{ tooltip: true }} key={column}>
+          <Typography ellipsis={{ tooltip: true }} key={column}>
             {column}
-          </Typography.Text>
+          </Typography>
         ))}
-      </Space>
+      </Box>
     </div>
   );
 };

@@ -18,24 +18,69 @@
   min-height: calc(var(--om-space-40) * 14);
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(min-content, 1fr);
+  // Row 2 must be `minmax(0, 1fr)` so the ReflexContainer stage inside
+  // can't propagate its intrinsic height up through the grid chain.
+  // `minmax(min-content, 1fr)` lets a tall details pane blow the Card
+  // out thousands of pixels past the viewport.
+  grid-template-rows: auto minmax(0, 1fr);
   min-width: 0;
 
   .kg-content {
     display: grid;
-    grid-template-rows: auto minmax(min-content, 1fr) auto;
+    // Row 2 (the stage) is `minmax(0, 1fr)` so a tall ReflexContainer child
+    // can't inflate the grid chain past the Card's bounded height. The old
+    // `minmax(min-content, 1fr)` was fine when the stage was a simple grid
+    // with a clamped `.kg-details`, but react-reflex lets the details pane
+    // size to its content and that intrinsic minimum would push the container
+    // thousands of pixels past the viewport.
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     min-height: 0;
+    // Grid items default to min-width:auto, so the absolutely-sized G6 canvas
+    // inside .knowledge-graph-body becomes this column's intrinsic minimum and
+    // props the stage open past its grid area. The next fit then measures that
+    // inflated width and re-sizes the canvas to it, so the graph only converges
+    // on the real width after several redraws -- drifting the whole scene
+    // sideways each time. Same reason min-height:0 is already here, one axis over.
+    min-width: 0;
   }
 
+  // Canvas and details share the stage via a horizontal ReflexContainer
+  // (`.kg-stage-main`); overlays like the right-side inspector sit as siblings
+  // of that container inside `.kg-stage` and get positioned via CSS below.
   .kg-stage {
     display: grid;
-    grid-template-rows: minmax(calc(var(--om-space-40) * 8), 1fr) auto;
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     min-height: 0;
+    min-width: 0;
     position: relative;
+    // Belt-and-braces with `.kg-content`'s `minmax(0, 1fr)` stage row: pin
+    // the stage to its grid cell so the ReflexContainer's details pane can
+    // never size the stage to its intrinsic table height.
+    height: 100%;
+    overflow: hidden;
   }
 
-  &.kg-details-open .kg-stage {
-    grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto;
+  .kg-stage-main {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
+  }
+
+  // react-reflex's base styles set `overflow: auto` on every `.reflex-element`;
+  // the canvas pane embeds a G6-managed `<canvas>` that paints larger than the
+  // viewport, so `overflow: auto` would let that canvas prop the pane open.
+  // Lock the pane to `overflow: hidden` and give `.knowledge-graph-body` the
+  // full height so G6 only ever sees the stable visible size.
+  .kg-stage-canvas-pane.reflex-element {
+    overflow: hidden;
+  }
+
+  .kg-stage-canvas-pane > .knowledge-graph-body {
+    height: 100%;
   }
 
   .kg-toolbar-header > div {
@@ -58,13 +103,14 @@
   .knowledge-graph-body {
     flex: 1;
     min-height: calc(var(--om-space-40) * 8);
+    min-width: 0;
     position: relative;
     overflow: hidden;
     isolation: isolate;
-    background-color: var(--om-color-bg-primary);
+    background-color: var(--tw-background-color-primary);
     background-image: radial-gradient(
       circle,
-      var(--om-color-border-secondary) var(--om-space-1),
+      var(--tw-border-color-secondary) var(--om-space-1),
       transparent var(--om-space-1)
     );
     background-size: var(--om-space-24) var(--om-space-24);
@@ -93,14 +139,14 @@
   }
 
   .kg-band-direct {
-    fill: var(--om-color-brand-25);
-    stroke: var(--om-color-brand-200);
+    fill: var(--tw-color-utility-brand-50);
+    stroke: var(--tw-color-utility-brand-200);
     opacity: 0.9;
   }
 
   .kg-band-extended {
     fill: none;
-    stroke: var(--om-color-gray-300);
+    stroke: var(--tw-border-color-tertiary);
   }
 
   // Font size is a scaled SVG attribute, so the label tracks the zoom.
@@ -111,32 +157,39 @@
   }
 
   .kg-band-label-direct {
-    fill: var(--om-color-brand-600);
+    fill: var(--tw-color-fg-brand-primary);
   }
 
   .kg-band-label-extended {
-    fill: var(--om-color-text-quaternary);
+    fill: var(--tw-text-color-quaternary);
   }
 
-  // Design: the list takes a little over a third of the pane, capped so the
-  // graph above keeps room for the subject and its direct neighbours.
+  // The ReflexContainer that wraps canvas + details owns the panel height now;
+  // `.kg-details` only has to grow to fill its ReflexElement cell. Flex +
+  // `min-height: 0` on children stays load-bearing: without them the inner
+  // `tw:flex-1 tw:overflow-auto` table body cannot resolve its height, and
+  // the drawer expands to its content and squeezes the canvas out.
+  .kg-stage-details-pane {
+    min-height: 0;
+  }
+
+  .kg-stage-details-pane > .kg-details,
   .kg-details {
-    height: ~'clamp(calc(var(--om-space-40) * 5.5), 36vh, calc(var(--om-space-40) * 8.5))';
-    max-height: calc(var(--om-space-40) * 8.5);
-    min-height: calc(var(--om-space-40) * 5.5);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
     overflow: hidden;
+
+    > * {
+      min-height: 0;
+    }
   }
 
   .kg-details-tabs [role='tablist'] {
-    background: var(--om-color-bg-secondary);
+    background: var(--tw-background-color-secondary);
     border-radius: var(--om-radius-md);
     padding: var(--om-space-2);
     gap: var(--om-space-2);
-  }
-
-  .kg-details-table th span {
-    text-transform: uppercase;
-    letter-spacing: var(--om-letter-spacing-wide);
   }
 
   &.kg-details-open .knowledge-graph-body {
@@ -174,15 +227,15 @@
     min-width: 0;
     height: 100%;
     overflow: hidden;
-    background: var(--om-color-bg-primary);
-    border-left: var(--om-space-1) solid var(--om-color-border-secondary);
+    background: var(--tw-background-color-surface);
+    border-left: var(--om-space-1) solid var(--tw-border-color-secondary);
     z-index: var(--om-z-10);
   }
 
   .kg-inspector-header {
     flex-shrink: 0;
     padding: var(--om-space-14) var(--om-space-14) var(--om-space-12);
-    border-bottom: var(--om-space-1) solid var(--om-color-border-secondary);
+    border-bottom: var(--om-space-1) solid var(--tw-border-color-secondary);
   }
 
   .kg-inspector-body {
@@ -207,16 +260,21 @@
     height: var(--om-space-32);
   }
 
+  // Row-sized tile is just the raw entity icon — no border, no fill — so a
+  // listing of related items reads as a plain list, not a stack of mini
+  // cards. The md tile still owns the bordered-box look in drawer headers.
   .kg-inspector-tile-sm {
-    width: var(--om-space-26);
-    height: var(--om-space-26);
-    border-radius: var(--om-radius-sm);
+    width: var(--om-space-20);
+    height: var(--om-space-20);
+    border: 0;
+    background: transparent !important;
+    border-radius: 0;
   }
 
   .kg-inspector-statement {
     padding: var(--om-space-12);
-    background: var(--om-color-bg-secondary);
-    border: var(--om-space-1) solid var(--om-color-border-secondary);
+    background: var(--tw-background-color-secondary);
+    border: var(--om-space-1) solid var(--tw-border-color-secondary);
     border-radius: var(--om-radius-lg);
   }
 
@@ -232,32 +290,53 @@
     font-weight: var(--om-font-weight-semibold);
     letter-spacing: var(--om-letter-spacing-wide);
     text-transform: uppercase;
-    color: var(--om-color-text-quaternary);
+    color: var(--tw-text-color-quaternary);
   }
 
+  // Card-style click target: a bordered row so a listing of relationships
+  // reads as discrete items. The native `<button>` chrome is stripped and
+  // replaced with a clean rounded border + hover + focus-visible outline.
   .kg-inspector-row {
-    padding: var(--om-space-6) var(--om-space-8);
+    padding: var(--om-space-10) var(--om-space-12);
+    background: transparent;
+    border: var(--om-space-1) solid var(--tw-border-color-secondary);
+    border-radius: var(--om-radius-lg);
+    outline: none;
+    cursor: pointer;
+    transition: background-color 100ms ease-out, border-color 100ms ease-out;
+
+    &:hover:not(:disabled) {
+      background: var(--tw-background-color-secondary_hover);
+      border-color: var(--tw-border-color-primary);
+    }
+
+    &:focus-visible {
+      outline: var(--om-space-2) solid var(--tw-border-color-brand);
+      outline-offset: var(--om-space-2);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
   }
 
   .kg-stage:has(.kg-inspector) {
-    grid-template-columns: ~'minmax(0, 1fr) min(calc(var(--om-space-44) * 8), 36%)';
+    // One-third stage width gives the drawer breathing space for member rows
+    // and keeps the canvas with the dominant 2/3 share.
+    grid-template-columns: ~'minmax(0, 2fr) minmax(0, 1fr)';
 
-    .knowledge-graph-body {
+    .kg-stage-main {
       grid-column: 1;
       grid-row: 1;
-    }
-
-    .kg-details {
-      grid-column: 1;
-      grid-row: 2;
     }
   }
 
   .kg-inspector-actions {
     flex-shrink: 0;
     padding: var(--om-space-12) var(--om-space-14);
-    background: var(--om-color-bg-primary);
-    border-top: var(--om-space-1) solid var(--om-color-border-secondary);
+    background: var(--tw-background-color-surface);
+    border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
 
     > * {
       flex: 1;
@@ -265,9 +344,14 @@
   }
 
   @media (max-width: 900px) {
+    // At this width the inspector drops below the stage into row 3. The
+    // stage's own `overflow: hidden` would clip the inspector + its action
+    // footer when the viewport is short; let the stage scroll instead so
+    // the inspector always reaches its max-height.
     .kg-stage:has(.kg-inspector) {
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto auto;
+      overflow: auto;
     }
 
     .kg-inspector {
@@ -275,53 +359,18 @@
       grid-row: 3;
       max-height: 40vh;
       border-left: 0;
-      border-top: var(--om-space-1) solid var(--om-color-border-secondary);
+      border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
     }
   }
 
+  // Position the Lineage-style Card (elevated, hosts the zoom/fit/refresh row)
+  // at the canvas's bottom-right. Card owns the surface, border and spacing;
+  // the only responsibility left here is where it floats.
   .knowledge-graph-action-buttons {
     position: absolute;
     bottom: var(--om-space-16);
     right: var(--om-space-16);
     z-index: var(--om-z-1001);
-    display: inline-flex;
-    background: var(--om-color-bg-primary);
-    border-radius: var(--om-radius-sm);
-    border: var(--om-space-1) solid var(--om-color-border-primary);
-    overflow: hidden;
-
-    .kg-control-btn {
-      width: var(--om-space-32);
-      height: var(--om-space-32);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
-      border: none;
-      border-right: var(--om-space-1) solid var(--om-color-border-primary);
-      cursor: pointer;
-      padding: 0;
-      color: var(--om-color-text-tertiary);
-      transition: background-color var(--om-duration-150) ease;
-
-      &:last-child {
-        border-right: none;
-      }
-
-      &:hover {
-        background-color: var(--om-color-bg-secondary);
-      }
-
-      &:focus-visible {
-        outline: var(--om-space-2) solid var(--om-color-border-brand);
-        outline-offset: calc(-1 * var(--om-space-2));
-      }
-
-      svg {
-        width: var(--om-space-14);
-        height: var(--om-space-14);
-      }
-    }
   }
 }
 
@@ -331,15 +380,33 @@
   position: fixed;
   inset: 0;
   padding: var(--om-space-16);
-  background: var(--om-color-bg-primary);
+  background: var(--tw-background-color-primary);
+  // Keep `overflow: auto` as a short-viewport safety net: once the toolbar +
+  // canvas floor + drawer min stack past the viewport, the page can still
+  // scroll to reach the drawer footer. The canvas row uses `minmax(0, 1fr)`
+  // so this fallback only kicks in on genuinely tight viewports.
   overflow: auto;
   z-index: var(--om-z-900);
 
   .knowledge-graph-container {
-    flex: 1 0 auto;
-    height: 100%;
-    min-height: min-content;
+    flex: 1 1 0;
+    min-height: 0;
     width: 100%;
+  }
+
+  // The embedded view needs a sensible canvas floor so the KG tab looks right
+  // inside the entity page, but in fullscreen the viewport IS the floor —
+  // honouring the default 320px (or the details-open 160px) min-height here
+  // overflows a narrow viewport + 2x zoom and pushes the canvas past the
+  // container bottom (fails the geometry poll in the narrow-layouts test).
+  //
+  // The second selector is load-bearing: `.knowledge-graph-container.kg-details-open
+  // .knowledge-graph-body` sits at specificity (0,3,0); without re-matching it
+  // under the fullscreen parent (bringing us to (0,4,0)), the details-open
+  // floor wins and the canvas can still overflow once the drawer is open.
+  .knowledge-graph-body,
+  .knowledge-graph-container.kg-details-open .knowledge-graph-body {
+    min-height: 0;
   }
 
   .knowledge-graph-canvas {
@@ -351,8 +418,8 @@
 .kg-edge-tooltip {
   z-index: var(--om-z-1500);
   pointer-events: none;
-  background: var(--om-color-bg-primary);
-  border: var(--om-space-1) solid var(--om-color-border-primary);
+  background: var(--tw-background-color-surface);
+  border: var(--om-space-1) solid var(--tw-border-color-primary);
   border-radius: var(--om-radius-md);
   padding: var(--om-space-6) var(--om-space-10);
   box-shadow: var(--om-shadow-lg);
@@ -361,7 +428,7 @@
   line-height: var(--om-line-height-normal);
 
   &__direction {
-    color: var(--om-color-text-tertiary);
+    color: var(--tw-text-color-tertiary);
     margin-bottom: var(--om-space-4);
     white-space: nowrap;
     overflow: hidden;
@@ -369,7 +436,7 @@
   }
 
   &__label {
-    color: var(--om-color-text-primary);
+    color: var(--tw-text-color-primary);
     font-weight: var(--om-font-weight-medium);
     word-break: break-word;
   }

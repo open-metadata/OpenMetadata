@@ -15,6 +15,7 @@ import { AxiosResponse, isAxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { EntityLifecycleStages } from '../generated/api/governance/entityLifecycleStages';
 import { Category, Type } from '../generated/entity/type';
 import { CustomProperty } from '../generated/type/customProperty';
 import { Paging } from '../generated/type/paging';
@@ -25,6 +26,15 @@ import { CustomPropertiesForAssets } from './metadataTypeAPI.interface';
 export type FieldData = {
   name: string;
   type: string;
+};
+
+export const getEntityLifecycleStages = async (indices?: readonly string[]) => {
+  const response = await APIClient.get<EntityLifecycleStages>(
+    '/metadata/types/lifecycleStages',
+    indices?.length ? { params: { index: indices.join(',') } } : undefined
+  );
+
+  return response.data;
 };
 
 export const getTypeListByCategory = async (category: Category) => {
@@ -61,6 +71,29 @@ export const getCustomPropertiesByEntityType = async (entityType: string) => {
     entityType
   )}/customProperties`;
   const response = await APIClient.get<CustomProperty[]>(path);
+
+  return response.data;
+};
+
+export interface WorkflowTriggerFieldsConfig {
+  common: string[];
+  entitySpecific: Record<string, string[]>;
+}
+
+export const getWorkflowTriggerFields =
+  async (): Promise<WorkflowTriggerFieldsConfig> => {
+    const response = await APIClient.get<WorkflowTriggerFieldsConfig>(
+      '/metadata/types/fields/workflowTriggerFields'
+    );
+
+    return response.data;
+  };
+
+/** Entity types an Enforce-mode workflow targets, suspended or not. */
+export const getApprovalEnforcedEntityTypes = async (): Promise<string[]> => {
+  const response = await APIClient.get<string[]>(
+    '/metadata/types/workflows/approvalEnforcedEntityTypes'
+  );
 
   return response.data;
 };

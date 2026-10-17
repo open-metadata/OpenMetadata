@@ -12,6 +12,7 @@
  */
 import { Button } from '@/components/base/buttons/button';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
+import { sizes } from '@/components/base/select/select';
 import { Skeleton } from '@/components/base/skeleton/skeleton';
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { Typography } from '@/components/foundations/typography';
@@ -19,21 +20,34 @@ import {
   DropdownSearchField,
   DropdownStagedFooter,
   DropdownStatusFooter,
+  selectedTriggerClassName,
   TriggerCountBadge,
 } from './filter-select.shared';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { ChevronDown, ChevronUp, XClose } from '@untitledui/icons';
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  RefreshCw01,
+  XClose,
+} from '../../../icons';
 import {
   useEffect,
+  useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type FC,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
+  type UIEvent,
 } from 'react';
 import { Button as AriaButton, type Selection } from 'react-aria-components';
 import type {
@@ -41,7 +55,11 @@ import type {
   FilterSelectProps,
   FilterSelectTriggerVariant,
 } from './filter-select.types';
-import { TreeSelect } from '../tree-select/tree-select';
+import {
+  DROPDOWN_CHROME_WIDTH,
+  TreeSelect,
+  useDropdownPlacement,
+} from '../tree-select/tree-select';
 
 const optionText = (option: FilterSelectOption): string =>
   option.textValue ??
@@ -59,6 +77,9 @@ export const TriggerButton = ({
   className,
   icon,
   bordered,
+  isDisabled,
+  labelledBy,
+  size = 'sm',
 }: {
   hasSelection: boolean;
   isOpen?: boolean;
@@ -71,7 +92,13 @@ export const TriggerButton = ({
   className?: string;
   icon?: FC<{ className?: string }>;
   bordered?: boolean;
+  isDisabled?: boolean;
+  /** Id of an external label; the trigger's own text still names the value. */
+  labelledBy?: string;
+  size?: 'sm' | 'md';
 }) => {
+  const textId = useId();
+  const ariaLabelledBy = labelledBy ? `${labelledBy} ${textId}` : undefined;
   const countBadge =
     count !== undefined && count > 0 ? (
       <TriggerCountBadge count={count} />
@@ -80,20 +107,25 @@ export const TriggerButton = ({
   if (variant === 'button') {
     return (
       <Button
+        aria-labelledby={ariaLabelledBy}
         className={cx(
           'tw:whitespace-nowrap',
           // The borderless trigger hugs its label like the legacy quick
           // filters (4px padding, 14px chevron), so a full toolbar of them
           // fits on one row beside same-sized toolbar controls.
           !bordered && 'tw:p-1 tw:*:data-icon:size-3.5',
+          hasSelection && selectedTriggerClassName(bordered),
           className
         )}
         color={bordered ? 'secondary' : 'tertiary'}
         data-testid={testId}
         iconLeading={icon}
         iconTrailing={isOpen ? ChevronUp : ChevronDown}
+        isDisabled={isDisabled}
         size={bordered ? 'md' : 'sm'}>
-        <span data-testid={`search-dropdown-${label}`}>{text}</span>
+        <span data-testid={`search-dropdown-${label}`} id={textId}>
+          {text}
+        </span>
         {countBadge}
       </Button>
     );
@@ -102,19 +134,27 @@ export const TriggerButton = ({
   if (variant === 'input') {
     return (
       <AriaButton
+        aria-labelledby={ariaLabelledBy}
         className={cx(
-          // Sized like the toolbar selects this trigger replaces: 32px tall,
-          // filling the width its container gives it (constrain via className).
-          'tw:flex tw:h-8 tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-3 tw:shadow-xs tw:outline-brand',
+          // Sized and outlined like the core Select, so it stands as tall as a
+          // Select, Input or Button of the same size: an outline, unlike a
+          // border, adds no height. Fills the width its container gives it
+          // (constrain via className).
+          'tw:flex tw:w-full tw:min-w-24 tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-lg tw:bg-surface tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2 tw:focus-visible:outline-brand',
+          sizes[size].root,
+          isOpen && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
+          isDisabled && 'tw:cursor-not-allowed tw:bg-disabled_subtle',
           className
         )}
-        data-testid={testId}>
+        data-testid={testId}
+        isDisabled={isDisabled}>
         <span
           className={cx(
             'tw:flex-1 tw:truncate tw:text-left tw:text-sm tw:font-medium',
             hasSelection ? 'tw:text-secondary' : 'tw:text-placeholder'
           )}
-          data-testid={`search-dropdown-${label}`}>
+          data-testid={`search-dropdown-${label}`}
+          id={textId}>
           {hasSelection ? text : placeholder ?? text}
         </span>
         {countBadge}
@@ -130,20 +170,24 @@ export const TriggerButton = ({
 
   return (
     <AriaButton
+      aria-labelledby={ariaLabelledBy}
       className={cx(
         'tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:gap-1 tw:whitespace-nowrap tw:rounded-lg tw:bg-surface tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:text-secondary tw:shadow-xs-skeuomorphic tw:outline-brand',
         borderAfter,
         'tw:after:outline-primary',
         className
       )}
-      data-testid={testId}>
-      <span data-testid={`search-dropdown-${label}`}>{text}</span>
+      data-testid={testId}
+      isDisabled={isDisabled}>
+      <span data-testid={`search-dropdown-${label}`} id={textId}>
+        {text}
+      </span>
       {countBadge}
       <ChevronDown
         className={cx(
           'tw:size-5 tw:shrink-0 tw:transition-transform tw:duration-200',
           isOpen && 'tw:rotate-180',
-          'tw:text-fg-quaternary'
+          hasSelection ? 'tw:text-fg-brand-primary' : 'tw:text-fg-quaternary'
         )}
       />
     </AriaButton>
@@ -233,83 +277,140 @@ const OptionRow = ({
   option,
   hideCounts,
   showCheckbox,
+  showRadio,
   isNullOption,
+  isExpanded,
+  onToggleExpand,
 }: {
   option: FilterSelectOption;
   hideCounts?: boolean;
   showCheckbox: boolean;
+  showRadio?: boolean;
   /** The pinned "No <X>" row, which the design mutes relative to real options. */
   isNullOption?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: (expand?: boolean) => void;
 }) => {
   const iconComponent = isReactComponent(option.icon)
     ? (option.icon as FC<{ className?: string }>)
     : undefined;
   const iconNode = iconComponent ? undefined : (option.icon as ReactNode);
+  const hasIndicator = showCheckbox || Boolean(showRadio);
+  const hasDetails = option.details !== undefined;
+
+  // Pressing the chevron or the details must not select the row underneath.
+  const stopRowPress = {
+    onClick: (event: ReactMouseEvent) => event.stopPropagation(),
+    onMouseDown: (event: ReactMouseEvent) => event.stopPropagation(),
+    onMouseUp: (event: ReactMouseEvent) => event.stopPropagation(),
+    onPointerDown: (event: ReactPointerEvent) => event.stopPropagation(),
+    // A menu item also selects on pointer up (press-drag-release).
+    onPointerUp: (event: ReactPointerEvent) => event.stopPropagation(),
+  };
 
   return (
     <Dropdown.Item
       checkboxSize="xs"
-      // Multi select: the checkbox alone conveys selection — suppress the
-      // selected background, keeping the hover/focus tint. Single select keeps
+      // A checkbox or radio alone conveys selection — suppress the selected
+      // background, keeping the hover/focus tint. Plain single select keeps
       // Dropdown.Item's selected style, which matches the sidebar selected item.
       className={(state) =>
         cx(
-          showCheckbox &&
+          hasIndicator &&
             state.isSelected &&
             (state.isFocused
               ? 'tw:[&>div]:bg-primary_hover!'
               : 'tw:[&>div]:bg-transparent!'),
-          !showCheckbox &&
+          !hasIndicator &&
             state.isSelected &&
-            'tw:[&_svg]:text-fg-brand-secondary_alt!'
+            'tw:[&_svg]:text-fg-brand-secondary_alt!',
+          // A multi-line row keeps its indicator on the first line.
+          hasDetails && 'tw:[&>div]:items-start'
         )
       }
       data-testid={option.value}
       icon={iconComponent}
       id={option.value}
       showCheckbox={showCheckbox}
+      showRadio={showRadio}
       textValue={optionText(option)}>
-      {(state) => (
-        <span
-          className={cx(
-            'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
-            // Real options read at full strength whether or not they are
-            // selected; only the pinned null row is muted. Single select has no
-            // checkbox, so its selected row goes brand instead.
-            !showCheckbox && state.isSelected
-              ? 'tw:text-brand-secondary'
-              : isNullOption
-              ? 'tw:text-secondary'
-              : 'tw:text-primary'
-          )}>
-          {iconNode !== undefined && (
-            <span aria-hidden="true" className="tw:flex tw:shrink-0">
-              {iconNode}
-            </span>
-          )}
-          <Typography
-            className="not-prose tw:grow tw:truncate"
-            title={optionText(option)}>
-            {option.label}
-          </Typography>
-          {!hideCounts && option.count !== undefined && (
+      {(state) => {
+        const row = (
+          <span
+            className={cx(
+              'tw:relative tw:flex tw:w-full tw:min-w-0 tw:items-center tw:justify-between tw:gap-2 tw:text-sm tw:font-normal',
+              // Real options read at full strength whether or not they are
+              // selected; only the pinned null row is muted. Plain single select
+              // has no indicator, so its selected row goes brand instead.
+              !hasIndicator && state.isSelected
+                ? 'tw:text-brand-secondary'
+                : isNullOption
+                ? 'tw:text-secondary'
+                : 'tw:text-primary'
+            )}>
+            {iconNode !== undefined && (
+              <span aria-hidden="true" className="tw:flex tw:shrink-0">
+                {iconNode}
+              </span>
+            )}
             <Typography
-              className={cx(
-                'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
-                !showCheckbox && state.isSelected
-                  ? 'tw:border-utility-brand-200 tw:text-brand-secondary'
-                  : 'tw:border-secondary',
-                showCheckbox && state.isSelected && 'tw:text-tertiary',
-                !state.isSelected && 'tw:text-placeholder'
-              )}
-              data-testid="filter-count"
-              size="text-xs"
-              weight="regular">
-              {option.count.toLocaleString()}
+              className="not-prose tw:grow tw:truncate"
+              title={optionText(option)}>
+              {option.label}
             </Typography>
-          )}
-        </span>
-      )}
+            {!hideCounts && option.count !== undefined && (
+              <Typography
+                className={cx(
+                  'not-prose tw:shrink-0 tw:rounded-md tw:border tw:px-1.5 tw:tabular-nums',
+                  !hasIndicator && state.isSelected
+                    ? 'tw:border-utility-brand-200 tw:text-brand-secondary'
+                    : 'tw:border-secondary',
+                  hasIndicator && state.isSelected && 'tw:text-tertiary',
+                  !state.isSelected && 'tw:text-placeholder'
+                )}
+                data-testid="filter-count"
+                size="text-xs"
+                weight="regular">
+                {option.count.toLocaleString()}
+              </Typography>
+            )}
+            {hasDetails && (
+              <span
+                aria-hidden="true"
+                className="tw:flex tw:size-5 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded tw:text-fg-quaternary tw:hover:bg-tertiary"
+                data-testid={`${option.value}-expand`}
+                {...stopRowPress}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleExpand?.();
+                }}>
+                <ChevronRight
+                  className={cx(
+                    'tw:size-4 tw:transition-transform tw:duration-150',
+                    isExpanded && 'tw:rotate-90'
+                  )}
+                />
+              </span>
+            )}
+          </span>
+        );
+
+        return hasDetails ? (
+          <span className="tw:flex tw:w-full tw:min-w-0 tw:flex-col">
+            {row}
+            {isExpanded && (
+              <span
+                className="tw:block tw:cursor-default tw:pt-1.5 tw:pr-7 tw:text-xs tw:text-secondary"
+                data-testid={`${option.value}-details`}
+                {...stopRowPress}>
+                {option.details}
+              </span>
+            )}
+          </span>
+        ) : (
+          row
+        );
+      }}
     </Dropdown.Item>
   );
 };
@@ -335,6 +436,8 @@ const FilterSelect = ({
   emptyState,
   helperText,
   hideCounts,
+  isClearable = true,
+  isDisabled,
   isLoading,
   isOpen: controlledIsOpen,
   nullOption,
@@ -344,13 +447,19 @@ const FilterSelect = ({
   resolveMissingLabel,
   searchable,
   selectionMode = 'multiple',
+  showRadio,
   showSelectAll,
+  size = 'sm',
+  trigger,
   triggerDisplay = 'count',
   triggerIcon,
   triggerVariant = 'chip',
   typography = 'medium',
   onOpenChange,
   onSearch,
+  onLoadMore,
+  isLoadingMore,
+  'aria-labelledby': ariaLabelledBy,
 }: FilterSelectProps) => {
   const { t } = useCoreTranslation();
   const [internalOpen, setInternalOpen] = useState(false);
@@ -363,9 +472,38 @@ const FilterSelect = ({
   const popoverContentRef = useRef<HTMLDivElement>(null);
 
   const isMulti = selectionMode === 'multiple';
+  const hasAnyDetails = options.some((option) => option.details !== undefined);
+  // Rows the user expanded or collapsed; any other row opens with its selection.
+  const [toggledRows, setToggledRows] = useState<Map<string, boolean>>(
+    () => new Map()
+  );
+  const isRadio = !isMulti && Boolean(showRadio);
   const isStaged = commitMode === 'staged';
   const isChips =
     isMulti && triggerVariant === 'input' && triggerDisplay === 'chips';
+  const hasCustomTrigger = trigger !== undefined && trigger !== null;
+
+  // What the popover hangs off; undefined leaves it on MenuTrigger's button.
+  const anchorRef = isChips
+    ? chipsFieldRef
+    : hasCustomTrigger
+    ? triggerWrapRef
+    : undefined;
+  // Placement measures that element. MenuTrigger's button sits in a
+  // `display: contents` wrapper with no box of its own, so take the button.
+  const placementRef = useRef<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    placementRef.current =
+      anchorRef?.current ??
+      (triggerWrapRef.current?.firstElementChild as HTMLElement | null);
+  }, [isOpen, anchorRef]);
+  // Left-aligned to the trigger, right-aligned when it would overflow the
+  // viewport — the same rule as TreeSelect.
+  const { placement } = useDropdownPlacement(
+    placementRef,
+    isOpen,
+    DROPDOWN_CHROME_WIDTH
+  );
   const current = isStaged ? staged : selectedValues;
 
   // A persisted selection (e.g. restored from the URL) may be absent from the
@@ -467,6 +605,33 @@ const FilterSelect = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedValuesKey]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setToggledRows(new Map());
+    }
+  }, [isOpen]);
+
+  const isRowExpanded = (value: string, toggled = toggledRows) =>
+    toggled.get(value) ?? selectedValues.includes(value);
+
+  const toggleExpanded = (value: string, expand?: boolean) =>
+    setToggledRows((prev) =>
+      new Map(prev).set(value, expand ?? !isRowExpanded(value, prev))
+    );
+
+  // MenuItem takes no key handlers, so ArrowRight / ArrowLeft are read here
+  // off whichever row holds focus.
+  const handleDetailsKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const isExpandKey = event.key === 'ArrowRight' || event.key === 'ArrowLeft';
+    const row = (event.target as HTMLElement).closest?.('[role^="menuitem"]');
+    // FilterSelect sets each row's test id to its option value.
+    const value = row?.getAttribute('data-testid');
+    const option = options.find((item) => item.value === value);
+    if (isExpandKey && value && option?.details !== undefined) {
+      toggleExpanded(value, event.key === 'ArrowRight');
+    }
+  };
+
   const handleOpenChange = (open: boolean) => {
     setInternalOpen(open);
     onOpenChange?.(open);
@@ -498,13 +663,15 @@ const FilterSelect = ({
 
     // 'all' is react-aria's select-all sentinel (e.g. ⌘A) — resolve it to the
     // displayed rows merged with values selected but currently filtered out.
+    // The null row is an explicit choice and is not included, matching
+    // handleSelectAll and the showSelectAll JSDoc so both "Select all"
+    // gestures commit the same set.
     const next =
       keys === 'all'
         ? Array.from(
             new Set([
               ...current,
               ...displayedOptions.map((option) => option.value),
-              ...(displayedNullOption ? [displayedNullOption.value] : []),
             ])
           )
         : Array.from(keys, String);
@@ -538,6 +705,14 @@ const FilterSelect = ({
     );
   };
 
+  // Single select closes on any commit, a clear included.
+  const handleClear = () => {
+    onChange([]);
+    if (!isMulti) {
+      handleOpenChange(false);
+    }
+  };
+
   const handleApply = () => {
     onChange(staged);
     handleOpenChange(false);
@@ -553,10 +728,22 @@ const FilterSelect = ({
       return;
     }
     const closeOnOutsidePointerDown = (event: Event) => {
-      const target = event.target as Node;
+      const target = event.target as Element;
+      // React Aria's MenuTrigger only ever *opens* on press start, so pressing
+      // the trigger of an open filter must close it here — and the press must
+      // not reach the trigger, or it reopens in the same gesture. Matched on
+      // the trigger button (`aria-expanded`) so chip remove buttons inside the
+      // chips field keep the popover open.
+      const isTriggerPress = Boolean(
+        triggerWrapRef.current?.contains(target.closest('[aria-expanded]'))
+      );
+      if (isTriggerPress) {
+        event.stopPropagation();
+      }
       if (
-        triggerWrapRef.current?.contains(target) ||
-        popoverContentRef.current?.contains(target)
+        !isTriggerPress &&
+        (triggerWrapRef.current?.contains(target) ||
+          popoverContentRef.current?.contains(target))
       ) {
         return;
       }
@@ -646,10 +833,22 @@ const FilterSelect = ({
     };
   }, [isOpen]);
 
+  // Scroll doesn't bubble, so the capture listener sees the menu's own scroll.
+  // Loads the next page 40px before the end: ADR:2026-10-10-data-product-picker-pages-50-and-loads-near-the-end
+  const handleMenuScroll = (event: UIEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement;
+    const isNearEnd =
+      target.scrollTop + target.clientHeight >= target.scrollHeight - 40;
+    if (target.getAttribute('role') === 'menu' && isNearEnd) {
+      onLoadMore?.();
+    }
+  };
+
   const showFooter = isStaged;
   // Immediate mode has nothing to apply, so it gets a quiet footer instead:
   // what is selected, and a way to drop it all without closing the menu.
-  const showStatusFooter = isMulti && !isStaged;
+  // A value that can't be cleared has nothing for the footer to offer.
+  const showStatusFooter = (isMulti || isRadio) && !isStaged && isClearable;
   const showSelectAllRow =
     isMulti && Boolean(showSelectAll) && displayedOptions.length > 0;
   // The null row is a synthetic filter, not a search result: an unmatched
@@ -658,40 +857,54 @@ const FilterSelect = ({
   const isEmpty = !isLoading && displayedOptions.length === 0;
   const showMenu = !isLoading && (!isEmpty || Boolean(displayedNullOption));
 
-  return (
-    <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
-      <span className="tw:contents" ref={triggerWrapRef}>
-        {isChips ? (
-          <ChipsField
-            chips={chips}
-            className={className}
-            fieldRef={chipsFieldRef}
-            isOpen={isOpen}
-            placeholder={placeholder ?? label}
-            testId={testId}
-            onRemove={(value) =>
-              onChange(selectedValues.filter((selected) => selected !== value))
-            }
-          />
-        ) : (
-          <TriggerButton
-            bordered={bordered}
-            className={cx(
-              typography === 'regular' && 'tw:font-normal',
-              className
-            )}
-            count={isMulti ? selectedValues.length : undefined}
-            hasSelection={selectedValues.length > 0}
-            icon={triggerIcon}
-            isOpen={isOpen}
-            label={label}
-            placeholder={placeholder}
-            testId={testId}
-            text={triggerText}
-            variant={triggerVariant}
-          />
-        )}
-      </span>
+  const content = (
+    <>
+      {hasCustomTrigger ? (
+        <span
+          className={cx('tw:inline-flex tw:max-w-full', className)}
+          ref={triggerWrapRef}
+          onClickCapture={() => handleOpenChange(!isOpen)}>
+          {trigger}
+        </span>
+      ) : (
+        <span className="tw:contents" ref={triggerWrapRef}>
+          {isChips ? (
+            <ChipsField
+              chips={chips}
+              className={className}
+              fieldRef={chipsFieldRef}
+              isOpen={isOpen}
+              placeholder={placeholder ?? label}
+              testId={testId}
+              onRemove={(value) =>
+                onChange(
+                  selectedValues.filter((selected) => selected !== value)
+                )
+              }
+            />
+          ) : (
+            <TriggerButton
+              bordered={bordered}
+              className={cx(
+                typography === 'regular' && 'tw:font-normal',
+                className
+              )}
+              count={isMulti ? selectedValues.length : undefined}
+              hasSelection={selectedValues.length > 0}
+              icon={triggerIcon}
+              isDisabled={isDisabled}
+              isOpen={isOpen}
+              label={label}
+              labelledBy={ariaLabelledBy}
+              placeholder={placeholder}
+              size={size}
+              testId={testId}
+              text={triggerText}
+              variant={triggerVariant}
+            />
+          )}
+        </span>
+      )}
       <Dropdown.Popover
         // A filter popover is not a modal. React Aria's default blocks every
         // pointer event outside the overlay, so with one filter open the page
@@ -706,18 +919,33 @@ const FilterSelect = ({
         // hidden covers the same frame.
         className={(state) =>
           cx(
+            // DROPDOWN_CHROME_WIDTH mirrors this width for placement.
             'tw:w-80',
             state.isExiting && 'tw:hidden tw:animate-none',
             popoverClassName
           )
         }
         data-testid="drop-down-menu"
-        placement="bottom left"
+        placement={placement}
         style={popoverStyle}
-        triggerRef={isChips ? chipsFieldRef : undefined}>
-        <div className="tw:contents" ref={popoverContentRef}>
+        // A custom trigger has no MenuTrigger around it, so the popover takes
+        // its open state directly. React Aria's only close request here is
+        // from `isNonModal`'s close-on-ancestor-scroll, which fires when a
+        // page still settling scrolls just after opening. Dismissal is owned
+        // above, so like TreeSelect only the open request is honoured.
+        {...(hasCustomTrigger && {
+          isOpen,
+          onOpenChange: (open: boolean) => open && handleOpenChange(true),
+        })}
+        triggerRef={anchorRef}>
+        <div
+          className="tw:contents"
+          ref={popoverContentRef}
+          onKeyDownCapture={hasAnyDetails ? handleDetailsKeyDown : undefined}
+          onScrollCapture={onLoadMore && handleMenuScroll}>
           {searchable && (
             <DropdownSearchField
+              autoFocus={hasCustomTrigger}
               inputDataTestId="search-input"
               isDisabled={!isOpen}
               placeholder={t('label.search')}
@@ -764,7 +992,8 @@ const FilterSelect = ({
               // the caret out of the box mid-query.
               autoFocus={searchable ? false : undefined}
               className="tw:max-h-64 tw:overflow-y-auto"
-              disallowEmptySelection={false}
+              // A radio row cannot be unpicked by clicking it again.
+              disallowEmptySelection={isRadio}
               selectedKeys={selectedKeySet}
               selectionMode={selectionMode}
               // Closing is owned by this component (immediate single-select
@@ -778,17 +1007,35 @@ const FilterSelect = ({
                   hideCounts={hideCounts}
                   option={displayedNullOption}
                   showCheckbox={isMulti}
+                  showRadio={isRadio}
                 />
               )}
               {displayedOptions.map((option) => (
                 <OptionRow
                   hideCounts={hideCounts}
+                  isExpanded={isRowExpanded(option.value)}
                   key={option.value}
                   option={option}
                   showCheckbox={isMulti}
+                  showRadio={isRadio}
+                  onToggleExpand={(expand) =>
+                    toggleExpanded(option.value, expand)
+                  }
                 />
               ))}
             </Dropdown.Menu>
+          )}
+
+          {isLoadingMore && (
+            <div
+              aria-label={t('label.loading')}
+              className="tw:flex tw:justify-center tw:py-2"
+              role="status">
+              <RefreshCw01
+                aria-hidden="true"
+                className="tw:size-4 tw:animate-spin tw:text-fg-quaternary"
+              />
+            </div>
           )}
 
           {isEmpty && (
@@ -821,12 +1068,23 @@ const FilterSelect = ({
 
           {showStatusFooter && (
             <DropdownStatusFooter
+              clearLabel={isMulti ? undefined : t('label.clear')}
               count={selectedValues.length}
-              onClear={() => onChange([])}
+              onClear={handleClear}
             />
           )}
         </div>
       </Dropdown.Popover>
+    </>
+  );
+
+  // A custom trigger stays outside MenuTrigger: its press responder would
+  // otherwise bind to the first react-aria button inside the caller's trigger.
+  return hasCustomTrigger ? (
+    content
+  ) : (
+    <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
+      {content}
     </Dropdown.Root>
   );
 };

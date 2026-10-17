@@ -21,7 +21,7 @@ import {
   Clipboard,
   Eye,
   XCircle,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { isNil } from 'lodash';
 import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { EntityStatus } from '../generated/entity/data/glossaryTerm';

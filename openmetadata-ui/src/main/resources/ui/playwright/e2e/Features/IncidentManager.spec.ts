@@ -17,6 +17,7 @@ import {
   type Page,
 } from '@playwright/test';
 import { get } from 'lodash';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
@@ -34,12 +35,13 @@ import {
   verifyIncidentStatus,
   visitProfilerTab,
 } from '../../utils/incidentManager';
-import { makeRetryRequest } from '../../utils/serviceIngestion';
+
 import { sidebarClick } from '../../utils/sidebar';
 import { waitForTaskResolveResponse } from '../../utils/task';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
+import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
 
 let user1: UserClass;
 let user2: UserClass;
@@ -89,7 +91,7 @@ const openIncidentTaskTab = async (page: Page, waitForTaskPanel = false) => {
 
   if (waitForTaskPanel) {
     await expect(page.getByTestId('task-cta-buttons')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   }
 };
@@ -104,13 +106,18 @@ const waitForIncidentTask = async (page: Page, testCaseFqn?: string) => {
           const response = await apiContext.get('/api/v1/tasks', {
             params: {
               category: 'Incident',
+              // The test case's own task: the list is oldest first, so a
+              // database with more than 100 incidents never shows a new one.
+              ...(testCaseFqn ? { aboutEntity: testCaseFqn } : {}),
               limit: 100,
               fields: 'about,payload,assignees',
             },
           });
 
           if (!response.ok()) {
-            return false;
+            throw new Error(
+              `HTTP ${response.status()} querying ${response.url()}`
+            );
           }
 
           const body = await response.json();
@@ -149,44 +156,38 @@ const expectIncidentTableRowsToContain = async (page: Page, text: string) => {
   const rows = page.locator(
     '[data-testid="test-case-incident-manager-table"] tbody tr'
   );
-  const rowCount = await rows.count();
+  const allRows = await rows.all();
 
-  expect(rowCount).toBeGreaterThan(0);
+  expect(allRows.length).toBeGreaterThan(0);
 
-  for (let index = 0; index < rowCount; index++) {
-    await expect(rows.nth(index)).toContainText(text);
+  for (const row of allRows) {
+    await expect(row).toContainText(text);
   }
 };
 
 const openIncidentReassignModal = async (page: Page, testCaseName?: string) => {
-  const visibleReassignButton = page
-    .getByRole('button', { name: /^Re-?assign$/ })
-    .last();
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const editAssigneesButton = page
-    .locator('[data-testid="edit-assignees"]:visible')
-    .last();
+  const visibleReassignButton = page.getByRole('button', {
+    name: /^Re-?assign$/,
+  });
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  const editAssigneesButton = page.locator(
+    '[data-testid="edit-assignees"]:visible'
+  );
   const reassignModal = page
-    .locator('.ant-modal-wrap:visible')
+    .locator('[role="dialog"]:visible')
     .filter({ hasText: /Re-?assign Task/i });
   const reassignMenuItem = page
     .locator('.task-action-dropdown:visible')
-    .getByRole('menuitem', { name: /^Reassign$/ })
-    .last();
+    .getByRole('menuitem', { name: /^Reassign$/ });
   const incidentListRowAction = testCaseName
     ? page
         .locator('[data-testid="test-case-incident-manager-table"] tbody tr')
         .filter({ hasText: testCaseName })
-        .first()
         .locator('button')
         .last()
     : null;
@@ -262,16 +263,26 @@ const reassignIncidentTask = async (
 ) => {
   const reassignModal = await openIncidentReassignModal(page, testCaseName);
   const assigneeSelect = reassignModal.getByTestId('select-assignee');
-  const assigneeSelector = assigneeSelect.locator('.ant-select-selector');
-  const assigneeInput = assigneeSelect.locator('input').last();
+  const assigneeInput = assigneeSelect.getByRole('combobox');
   const assigneeOption = page.getByTestId(assignee.name.toLowerCase());
 
-  await expect(assigneeSelector).toBeVisible();
-  await assigneeSelector.click();
+  // Single-select core Autocomplete hides its input while an item is selected.
+  const selectedAssignee = assigneeSelect.getByTestId(
+    'autocomplete-selected-item'
+  );
+  if (await selectedAssignee.isVisible()) {
+    await selectedAssignee.getByRole('button').click();
+  }
+
+  await expect(assigneeInput).toBeVisible();
+  await assigneeInput.click();
   await assigneeInput.fill(assignee.displayName);
-  await expect(assigneeOption).toBeVisible({ timeout: 30_000 });
+  await expect(assigneeOption).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await assigneeOption.click();
+  // The open combobox popover aria-hides the rest of the dialog, Save included.
+  await reassignModal.getByTestId('dialog-title').click();
+  await expect(assigneeOption).toBeHidden();
 
   const updateAssignee = waitForTaskResolveResponse(page);
 
@@ -300,17 +311,16 @@ const openIncidentResolveDialog = async (
   page: Page,
   allowProgressTransition = true
 ) => {
-  const primaryActionButton = page
-    .locator(
-      '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
-    )
-    .last();
-  const actionTrigger = page
-    .locator(
-      '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
-    )
-    .last();
-  const resolveModal = page.locator('.ant-modal .ant-modal-content').last();
+  const primaryActionButton = page.locator(
+    '[data-testid="incident-task-action-primary"]:visible, [data-testid="workflow-task-action-primary"]:visible'
+  );
+  const actionTrigger = page.locator(
+    '[data-testid="incident-task-action-trigger"]:visible, [data-testid="workflow-task-action-trigger"]:visible'
+  );
+  // Menu popovers are role=dialog too; data-trigger tells them from modals.
+  const resolveModal = page.locator(
+    '[role="dialog"]:not([data-trigger]):visible'
+  );
   const modalTextareas = resolveModal.locator('textarea');
 
   if (await isVisible(resolveModal)) {
@@ -403,7 +413,7 @@ const openIncidentResolveDialog = async (
   await expect(resolveModal).toBeVisible({
     timeout: 10_000,
   });
-  await expect(modalTextareas.first()).toBeVisible({
+  await expect(modalTextareas).not.toHaveCount(0, {
     timeout: 10_000,
   });
 
@@ -469,13 +479,10 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     const pipeline = await table1.createTestSuitePipeline(apiContext);
 
-    await makeRetryRequest({
-      page,
-      fn: () =>
-        apiContext.post(
-          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-        ),
-    });
+    const deployResponse = await apiContext.post(
+      `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+    );
+    expect(deployResponse.ok(), await deployResponse.text()).toBe(true);
 
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,
@@ -495,6 +502,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    await disableAiAppMode(page);
+    await stubUserPreferencesAppMode(page, 'classic');
     await redirectToHomePage(page);
   });
 
@@ -606,11 +615,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testCase.fullyQualifiedName
       )}/test-case-results`;
       actorPage = await browser.newPage();
-      await user1.login(actorPage);
+      await user1.signIn(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(testCasePageUrl);
+      await actorPage.goto(testCasePageUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await waitForIncidentTask(actorPage, testCaseFqn);
@@ -720,7 +729,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(testCasePageUrl);
+      await actorPage.goto(testCasePageUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await verifyTestCaseLastRunBanner(actorPage, 'failed');
@@ -739,26 +748,25 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step('Resolve incident', async () => {
       const currentUrl = actorPage.url();
       actorPage = await browser.newPage();
-      await user3.login(actorPage);
+      await user3.signIn(actorPage);
       const testCaseResponse = actorPage.waitForResponse(
         '/api/v1/dataQuality/testCases/name/*?fields=*'
       );
-      await actorPage.goto(currentUrl);
+      await actorPage.goto(currentUrl, { waitUntil: 'domcontentloaded' });
 
       await testCaseResponse;
       await expect(actorPage.getByTestId('entity-page-header')).toBeVisible();
       await openIncidentTaskTab(actorPage, true);
       const resolveModal = await openIncidentResolveDialog(actorPage);
       const resolveTextareas = resolveModal.locator('textarea');
-      const resolveReasonSelect = resolveModal
-        .locator('.ant-select-selector')
-        .first();
+      const resolveReasonSelect = resolveModal.getByRole('button', {
+        name: /Root Cause/i,
+      });
       const textareaCount = await resolveTextareas.count();
 
       if (await resolveReasonSelect.isVisible().catch(() => false)) {
         await resolveReasonSelect.click();
-        await actorPage.keyboard.press('ArrowDown');
-        await actorPage.keyboard.press('Enter');
+        await actorPage.getByRole('option', { name: 'MissingData' }).click();
         await resolveTextareas.first().fill('test');
       } else if (textareaCount >= 2) {
         await resolveTextareas.nth(0).fill('Missing Data');
@@ -890,7 +898,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         table: table1,
         testCase: testCaseName,
       });
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await openIncidentTaskTab(page);
 
@@ -933,7 +941,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         table: table1,
       });
 
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
 
       await openIncidentTaskTab(page);
 
@@ -987,7 +995,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
   /**
    * Validate Incident tab in entity page
-   * @description Verifies incidents within entity details and the entity's lineage scene.
+   * @description Verifies incidents list within entity details, lineage incident counts, and navigation back to tab.
    */
   test('Validate Incident Tab in Entity details page', async ({ page }) => {
     const testCases = table1.testCasesResponseData;
@@ -1006,16 +1014,35 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       ).toBeVisible();
     }
     const lineageResponse = page.waitForResponse(
-      `**/api/v1/lineage/scene?*focusFqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
+      `/api/v1/lineage/getLineage?*fqn=${table1.entityResponseData?.['fullyQualifiedName']}*`
     );
 
     await page.click('[data-testid="lineage"]');
     await lineageResponse;
 
+    const incidentCountResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*limit=0*`
+    );
     const nodeFqn = get(table1, 'entityResponseData.fullyQualifiedName');
-    await expect(
-      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
-    ).toBeVisible();
+    await page.locator(`[data-testid="lineage-node-${nodeFqn}"]`).click();
+    await incidentCountResponse;
+
+    await expect(page.getByTestId('Incidents-label')).toBeVisible();
+    await expect(page.getByTestId('Incidents-value')).toContainText('3');
+
+    const incidentTabResponse = page.waitForResponse(
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*originEntityFQN=${table1.entityResponseData?.['fullyQualifiedName']}*`
+    );
+
+    await page.getByTestId('Incidents-value').locator('a').click();
+
+    await incidentTabResponse;
+
+    for (const testCase of testCases) {
+      await expect(
+        page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
+      ).toBeVisible();
+    }
   });
 
   /**
@@ -1098,13 +1125,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       testCaseFqn: table1.testCasesResponseData[2]?.['fullyQualifiedName'],
     };
     const testCase1 = table1.testCasesResponseData[0]?.['name'];
-    const incidentDetailsRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
-    await incidentDetailsRes;
-
     const assignmentStartedAt = Date.now();
+    // assignIncident navigates to Incident Manager itself; a second sidebar
+    // click while already there lands on the half-open Observability submenu.
     await assignIncident({
       page,
       testCaseName: assigneeTestCase.testCaseName,
@@ -1131,14 +1154,18 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await afterAction();
     }
 
-    await page.click('[data-testid="select-assignee"]');
-    const assigneeOption = page.locator(
-      `[data-testid="${assigneeTestCase.username}"]`
-    );
+    await page.getByTestId('select-assignee').click();
     await page
-      .getByTestId('select-assignee')
-      .locator('input')
+      .getByTestId('select-owner-tabs')
+      .getByRole('tab', { name: /Users/ })
+      .click();
+    await page
+      .getByTestId('owner-select-users-search-bar')
       .fill(assigneeTestCase.userDisplayName);
+    const assigneeOption = page
+      .getByTestId('owner-select-users-panel')
+      .getByTestId('owner-option')
+      .filter({ hasText: assigneeTestCase.userDisplayName });
     await expect(assigneeOption).toBeVisible();
 
     const assigneeFilterRes = page.waitForResponse(
@@ -1152,12 +1179,20 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       assigneeTestCase.userDisplayName
     );
 
-    const nonAssigneeFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
+    await expect(page.getByTestId('select-assignee')).toContainText(
+      assigneeTestCase.userDisplayName
     );
+    await page.getByTestId('select-assignee').click();
+    const nonAssigneeFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        !url.searchParams.has('assignee')
+      );
+    });
     await page
-      .getByTestId('select-assignee')
-      .getByLabel('close-circle')
+      .getByTestId('owner-select-users-panel')
+      .getByTestId('remove-owner')
       .click();
     await nonAssigneeFilterRes;
 
@@ -1165,20 +1200,29 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     const statusFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseResolutionStatusType=Assigned*'
     );
-    await page.click(`[title="Assigned"]`);
+    await page.getByTestId('drop-down-menu').getByTestId('Assigned').click();
     await statusFilterRes;
 
     await expectIncidentTableRowsToContain(page, 'Assigned');
 
-    const nonStatusFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await page.getByTestId('status-select').getByLabel('close-circle').click();
+    const nonStatusFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        !url.searchParams.has('testCaseResolutionStatusType')
+      );
+    });
+    await page.getByTestId('incident-clear-filters').click();
     await nonStatusFilterRes;
 
     await page.click('[data-testid="test-case-select"]');
-    const testCaseOption = page.locator(`[title="${testCase1}"]`);
-    await page.getByTestId('test-case-select').locator('input').fill(testCase1);
+    const testCaseOption = page
+      .getByTestId('drop-down-menu')
+      .getByTestId(table1.testCasesResponseData[0]?.['fullyQualifiedName']);
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId('search-input')
+      .fill(testCase1);
     await expect(testCaseOption).toBeVisible();
 
     const testCaseFilterRes = page.waitForResponse(
@@ -1194,20 +1238,43 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       page.locator(`[data-testid="test-case-${testCase1}"]`)
     ).toBeVisible();
 
-    const nonTestCaseFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
-    );
-    await page
-      .getByTestId('test-case-select')
-      .getByLabel('close-circle')
-      .click();
+    const nonTestCaseFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        !url.searchParams.has('testCaseFQN')
+      );
+    });
+    await page.getByTestId('incident-clear-filters').click();
     await nonTestCaseFilterRes;
 
-    await page.getByTestId('date-picker-menu').click();
-    const timeSeriesFilterRes = page.waitForResponse(
-      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
+    await page.getByTestId('sort-field-dropdown-trigger').click();
+    const dateFieldResponse = page.waitForResponse(
+      '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*dateField=updatedAt*'
     );
-    await page.getByRole('menuitem', { name: 'Yesterday' }).click();
+    await page.getByTestId('drop-down-menu').getByTestId('updatedAt').click();
+    await dateFieldResponse;
+
+    await page
+      .getByRole('group', { name: 'Date Range', exact: true })
+      .getByRole('button')
+      .click();
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Today', exact: true })
+      .click();
+    const timeSeriesFilterRes = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        url.searchParams.has('startTs') &&
+        url.searchParams.has('endTs')
+      );
+    });
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Apply', exact: true })
+      .click();
     await timeSeriesFilterRes;
 
     for (const testCase of table1.testCasesResponseData) {
@@ -1215,5 +1282,22 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         page.locator(`[data-testid="test-case-${testCase?.['name']}"]`)
       ).toBeVisible();
     }
+    const clearFiltersResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.endsWith('/testCaseIncidentStatus/search/list') &&
+        [
+          'assignee',
+          'testCaseFQN',
+          'testCaseResolutionStatusType',
+          'startTs',
+          'endTs',
+          'dateField',
+        ].every((param) => !url.searchParams.has(param))
+      );
+    });
+    await page.getByTestId('incident-clear-filters').click();
+    await clearFiltersResponse;
+    await expect(page.getByTestId('incident-clear-filters')).not.toBeVisible();
   });
 });

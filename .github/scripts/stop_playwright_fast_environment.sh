@@ -95,5 +95,11 @@ if [[ -n "${PW_RUNTIME_ROOT:-}" && "$PW_RUNTIME_ROOT" == /dev/shm/openmetadata-p
   unlink_seeded_state \
     "${PW_ENTITY_STATE_LINK:-}" \
     "$PW_RUNTIME_ROOT/data/playwright-state/entity-response-data.json"
+  unlink_seeded_state \
+    "${PW_LINEAGE_STATE_LINK:-}" \
+    "$PW_RUNTIME_ROOT/data/playwright-state/lineage-data.json"
+  unlink_seeded_state \
+    "${PW_SHARED_INFRA_STATE_LINK:-}" \
+    "$PW_RUNTIME_ROOT/data/playwright-state/shared-infra.json"
   sudo rm -rf "$PW_RUNTIME_ROOT"
 fi

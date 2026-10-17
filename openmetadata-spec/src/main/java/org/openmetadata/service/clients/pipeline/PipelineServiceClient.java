@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -70,7 +71,7 @@ public abstract class PipelineServiceClient implements PipelineServiceClientInte
   // the UI calls on every load, so the retry budget has to stay small. It exists to absorb a single
   // blip, not to wait out a restart — the next poll covers that.
   private static final long DEFAULT_BACKOFF_MILLIS = 1_000L;
-  private static final String DISABLED_STATUS = "disabled";
+  private static final String DISABLED_STATUS = PipelineServiceClientPlatform.DISABLED.value();
 
   /** Reported for a standing misconfiguration that no amount of retrying can clear. */
   protected static final int CONFIGURATION_ERROR = 422;

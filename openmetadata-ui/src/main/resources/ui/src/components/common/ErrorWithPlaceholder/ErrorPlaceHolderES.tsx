@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -127,7 +129,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
           className="border-none"
           size={size}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.no-data-available-entity"
               renderElement={<b />}
@@ -135,8 +137,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 entity: activeDomain,
               }}
             />
-          </Typography.Paragraph>
-          <Typography.Paragraph style={{ marginBottom: '0' }}>
+          </Typography>
+          <Typography as="p" style={{ marginBottom: '0' }}>
             <Transi18next
               i18nKey="message.add-data-asset-domain"
               renderElement={<b />}
@@ -144,8 +146,8 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 domain: activeDomain,
               }}
             />
-          </Typography.Paragraph>
-          <Typography.Paragraph>
+          </Typography>
+          <Typography as="p">
             <Transi18next
               i18nKey="message.refer-to-our-doc"
               renderElement={
@@ -161,7 +163,7 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                 doc: t('label.doc-plural-lowercase'),
               }}
             />
-          </Typography.Paragraph>
+          </Typography>
         </ErrorPlaceHolder>
       </div>
     );
@@ -183,12 +185,16 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
 
           <p>{t('message.elasticsearch-setup')}</p>
         </div>
-        <Row gutter={16}>
+        <Grid className="layout-row layout-grid" style={getLayoutGutter(16)}>
           {stepsData.map((data) => (
-            <Col key={data.step} span={6}>
-              <Space
-                className="justify-between h-full border rounded-4 p-sm"
-                direction="vertical">
+            <Grid.Item className="layout-column" key={data.step} span={6}>
+              <Box
+                inline
+                align="stretch"
+                className="layout-space justify-between h-full border rounded-4 p-sm"
+                direction="col"
+                gap={2}
+                itemClassName="layout-space-item">
                 <div>
                   <div className="d-flex m-b-xs">
                     <div className="flex-center rounded-full h-10 w-10 border-2-primary text-primary text-lg font-bold">
@@ -212,10 +218,10 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
                     {`${t('label.click-here')} >>`}
                   </a>
                 </p>
-              </Space>
-            </Col>
+              </Box>
+            </Grid.Item>
           ))}
-        </Row>
+        </Grid>
       </div>
     );
   }, [errorMessage]);
