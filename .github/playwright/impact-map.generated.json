@@ -8287,14 +8287,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyModelingWorkbench.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/OntologyStudio.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyQueryResults.tsx"
       ],
       "specs": [
