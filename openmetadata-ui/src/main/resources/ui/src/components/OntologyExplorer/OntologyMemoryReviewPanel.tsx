@@ -70,8 +70,8 @@ const DEFINITION_LABELS: Partial<Record<OperationType, string>> = {
   [OperationType.DeleteConcept]: 'label.concept',
   [OperationType.UpsertProperty]: 'label.property',
   [OperationType.DeleteProperty]: 'label.property',
-  [OperationType.UpsertAxiom]: 'label.axiom',
-  [OperationType.DeleteAxiom]: 'label.axiom',
+  [OperationType.UpsertAxiom]: 'label.constraint',
+  [OperationType.DeleteAxiom]: 'label.constraint',
 };
 
 function stateLabel(state: OntologyChangeSetState, t: TFunction): string {

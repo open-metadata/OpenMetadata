@@ -68,8 +68,9 @@ const OntologyDefinitionList = <
   children,
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
-  const entityLabel = t(`label.${definitionType}`);
-  const pluralLabel = t(`label.${definitionType}-plural`);
+  const label = definitionType === 'axiom' ? 'constraint' : definitionType;
+  const entityLabel = t(`label.${label}`);
+  const pluralLabel = t(`label.${label}-plural`);
   const [pagination, setPagination] = useState<
     Pick<ListParams, 'after' | 'before'>
   >({});

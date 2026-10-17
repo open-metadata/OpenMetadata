@@ -132,7 +132,7 @@ const OntologyStudioWorkspace = ({
           {Object.entries({
             graph: 'graph',
             model: 'model',
-            releases: 'release-plural',
+            releases: 'ontology-release',
             review: 'needs-review',
             query: 'query',
           }).map(([id, label]) => (

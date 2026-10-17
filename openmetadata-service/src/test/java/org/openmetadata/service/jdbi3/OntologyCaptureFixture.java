@@ -88,7 +88,10 @@ final class OntologyCaptureFixture {
                   .withExpectedWorkingRevision(
                       ontologies.getState(ontology.getId()).getWorkingRevision()),
               new OntologyReleaseCapture.Access(
-                  "admin", definition -> authorize.accept(definition.getEntityReference())));
+                  "admin",
+                  definitions ->
+                      definitions.forEach(
+                          definition -> authorize.accept(definition.getEntityReference()))));
       lastCaptureId = release.getId();
       return release;
     }

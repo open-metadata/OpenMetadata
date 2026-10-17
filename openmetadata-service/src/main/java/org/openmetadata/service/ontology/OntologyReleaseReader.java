@@ -26,8 +26,8 @@ public final class OntologyReleaseReader {
   }
 
   public List<OntologyReleaseMember> read(
-      final OntologyRelease release, final Consumer<OntologyDefinition> authorize) {
-    authorize.accept(release);
+      final OntologyRelease release, final Consumer<List<? extends OntologyDefinition>> authorize) {
+    authorize.accept(List.of(release));
     final List<OntologyReleaseMember> members = new ArrayList<>();
     long bytes = 0;
     for (final MemberKind kind : MemberKind.values()) {
@@ -39,10 +39,10 @@ public final class OntologyReleaseReader {
         for (final var member : page) {
           bytes += member.getPayloadBytes();
           requireBounds(members.size() + 1, bytes);
-          authorize.accept(definition(release, member));
           members.add(member);
         }
         if (!page.isEmpty()) {
+          authorize.accept(page.stream().map(member -> definition(release, member)).toList());
           after = page.getLast().getMemberId().toString();
         }
       } while (page.size() == PAGE_SIZE);

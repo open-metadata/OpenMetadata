@@ -153,10 +153,10 @@ import EntityPopOverCard from '../../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.interface';
+import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
-import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -1188,18 +1188,15 @@ export const TaskTabNew = ({
     }
   };
 
-  const { hasWorkflowAccess: canResolveWorkflow, showsWorkflowActions } = computeWorkflowTaskAccess(
-    {
+  const { hasWorkflowAccess: canResolveWorkflow, showsWorkflowActions } =
+    computeWorkflowTaskAccess({
       isRequestApproval: task.type === TaskEntityType.RequestApproval,
       hasChangeRequest: Boolean(changeRequestId),
       isAssignee,
       isPartOfAssigneeTeam: Boolean(isPartOfAssigneeTeam),
       hasEditAccess,
       isCreator,
-    }
-  );
-
-  const hasWorkflowAccess = reviewReady && canResolveWorkflow;
+    });
 
   const workflowTransitionActions = useMemo(() => {
     if (
@@ -1210,6 +1207,7 @@ export const TaskTabNew = ({
       return null;
     }
 
+    const hasWorkflowAccess = reviewReady && canResolveWorkflow;
     const menuItems: TaskActionSplitButtonItem[] =
       task.availableTransitions.map((transition) => ({
         key: transition.id,
@@ -1283,7 +1281,7 @@ export const TaskTabNew = ({
       </Box>
     );
   }, [
-    hasWorkflowAccess,
+    canResolveWorkflow,
     showsWorkflowActions,
     isActionLoading,
     isWorkflowDrivenTask,

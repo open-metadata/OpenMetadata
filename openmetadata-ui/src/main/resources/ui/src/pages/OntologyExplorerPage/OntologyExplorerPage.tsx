@@ -408,15 +408,26 @@ const OntologyExplorerPage: React.FC = () => {
   } = useOntologyAiCapability();
   const initialDraftId = useLinkedDraftId();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selectedOntology, setSelectedOntology] = useState<Ontology>();
+  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
   const [isCreatingOntology, setIsCreatingOntology] = useState(false);
+  const [mode, setMode] = useState<StudioMode>(() =>
+    studioModeFor(initialDraftId)
+  );
   const ontologyId = searchParams.get('ontology');
+  const selectedOntology =
+    loadedOntology?.id === ontologyId ? loadedOntology : undefined;
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
   const selectOntology = (ontology?: Ontology) => {
-    setSelectedOntology(ontology);
+    setLoadedOntology(ontology);
     setIsCreatingOntology(false);
+    if ((ontology?.id ?? null) !== ontologyId) {
+      setMode('view');
+    }
     setSearchParams((current) => {
       const next = new URLSearchParams(current);
+      if ((ontology?.id ?? null) !== current.get('ontology')) {
+        next.delete(DRAFT_SEARCH_PARAM);
+      }
       if (ontology) {
         next.set('ontology', ontology.id);
       } else {
@@ -428,16 +439,17 @@ const OntologyExplorerPage: React.FC = () => {
   };
   useEffect(() => {
     if (!ontologyId) {
-      setSelectedOntology(undefined);
+      setLoadedOntology(undefined);
 
-      return;
-    }
-    if (selectedOntology?.id === ontologyId) {
       return;
     }
     const controller = new AbortController();
     getOntology(ontologyId, 'owners,reviewers', controller.signal)
-      .then(setSelectedOntology)
+      .then((ontology) => {
+        if (!controller.signal.aborted) {
+          setLoadedOntology(ontology);
+        }
+      })
       .catch((error) => {
         if (!controller.signal.aborted) {
           showErrorToast(error);
@@ -445,10 +457,7 @@ const OntologyExplorerPage: React.FC = () => {
       });
 
     return () => controller.abort();
-  }, [ontologyId, selectedOntology?.id]);
-  const [mode, setMode] = useState<StudioMode>(() =>
-    studioModeFor(initialDraftId)
-  );
+  }, [ontologyId]);
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [editSurface, setEditSurface] = useState<EditSurface>('graph');
   const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
@@ -526,8 +535,18 @@ const OntologyExplorerPage: React.FC = () => {
     graphLeaseGlossary,
     glossaries
   );
+
+  function isGlossaryEditMode() {
+    return (
+      !ontologyId &&
+      !isCreatingOntology &&
+      mode === 'edit' &&
+      Boolean(leaseGlossary)
+    );
+  }
+
   const editLease = useOntologyEditLease({
-    isActive: mode === 'edit' && Boolean(leaseGlossary),
+    isActive: isGlossaryEditMode(),
     resourceId: leaseGlossary?.id,
     resourceType: EntityType.GLOSSARY,
   });
@@ -1051,9 +1070,12 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
-  const renderWorkspace = () => (
-    <>
-      {selectedOntology || isCreatingOntology ? (
+  const renderWorkspace = () => {
+    if (ontologyId && !selectedOntology) {
+      return <Typography role="status">{t('label.loading')}</Typography>;
+    }
+    if (selectedOntology || isCreatingOntology) {
+      return (
         <OntologyStudioWorkspace
           canCreate={canCreateOntology}
           initialDraftId={initialDraftId}
@@ -1061,14 +1083,16 @@ const OntologyExplorerPage: React.FC = () => {
           ontology={selectedOntology}
           onSaved={selectOntology}
         />
-      ) : (
-        <>
-          {renderSubModeNav()}
-          {renderMainSection()}
-        </>
-      )}
-    </>
-  );
+      );
+    }
+
+    return (
+      <>
+        {renderSubModeNav()}
+        {renderMainSection()}
+      </>
+    );
+  };
 
   return (
     <PageLayoutV1

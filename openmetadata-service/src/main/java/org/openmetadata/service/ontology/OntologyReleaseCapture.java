@@ -39,7 +39,7 @@ public final class OntologyReleaseCapture {
   private final Map<MemberKind, OntologyEntityRepository<?>> definitions;
   private final Clock clock;
 
-  public record Access(String user, Consumer<OntologyDefinition> authorize) {}
+  public record Access(String user, Consumer<List<? extends OntologyDefinition>> authorize) {}
 
   public OntologyReleaseCapture(
       final OntologyReleaseRepository releases,
@@ -73,9 +73,11 @@ public final class OntologyReleaseCapture {
           "Ontology changed; reload its working revision before capture");
     }
     final Ontology ontology =
-        ontologies.get(null, ontologyId, ontologies.getFields("*"), Include.NON_DELETED, false);
+        ontologies.get(
+            null, ontologyId, ontologies.getFields("owners,reviewers"), Include.NON_DELETED, false);
     final OntologyRelease release = header(ontology, state, access.user());
     final Members members = new Members(release.getId(), access);
+    access.authorize().accept(List.of(ontology));
     members.add(MemberKind.ONTOLOGY, ontology);
     definitions.forEach((kind, repository) -> members.add(repository, kind, ontologyId));
     OntologyStructureValidator.requireValid(release, members.values);
@@ -166,7 +168,8 @@ public final class OntologyReleaseCapture {
       do {
         requireTimeRemaining();
         final ResultList<T> page =
-            repository.listAfter(null, repository.getFields("*"), filter, PAGE_SIZE, after);
+            repository.listAfter(null, repository.getFields(""), filter, PAGE_SIZE, after);
+        access.authorize().accept(page.getData());
         page.getData().forEach(entity -> add(kind, entity));
         after = page.getPaging().getAfter();
       } while (after != null);
@@ -177,7 +180,6 @@ public final class OntologyReleaseCapture {
       if (values.size() >= OntologyReleaseManifest.MAX_MEMBERS) {
         throw new BadRequestException("An ontology release exceeds the 10000 member limit");
       }
-      access.authorize().accept(entity);
       final OntologyReleaseMember member =
           OntologyReleaseManifest.member(
                   releaseId, kind, entity.getId(), OntologyReleaseContent.project(entity))

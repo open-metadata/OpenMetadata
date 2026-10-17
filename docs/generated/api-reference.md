@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1922 endpoints** across 75 resource packages · 1912 carry a summary.
+**1981 endpoints** across 75 resource packages · 1971 carry a summary.
 
 ## (root)
 
@@ -381,6 +381,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/contextCenter/memories/{id}` | Delete a memory by id |
 | `GET` | `/v1/contextCenter/memories/{id}` | Get a memory by id |
 | `PATCH` | `/v1/contextCenter/memories/{id}` | Update a memory |
+| `PUT` | `/v1/contextCenter/memories/{id}/outcomes` | Record a memory's outcome counters |
 | `DELETE` | `/v1/contextCenter/memories/{id}/pin` | Unpin a memory |
 | `PUT` | `/v1/contextCenter/memories/{id}/pin` | Pin a memory |
 | `GET` | `/v1/contextCenter/memories/{id}/versions` | List context memory versions |
@@ -394,6 +395,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/csvAsyncJobs` | List CSV import and export jobs |
 | `GET` | `/v1/csvAsyncJobs/{jobId}` | Get a CSV import or export job |
 | `PUT` | `/v1/csvAsyncJobs/{jobId}/cancel` | Cancel a CSV import or export job |
+| `GET` | `/v1/csvAsyncJobs/{jobId}/import-result` | Get the result of a completed import job |
 | `GET` | `/v1/csvAsyncJobs/{jobId}/result` | Download the CSV produced by a completed export job |
 
 ## dashboards
@@ -1118,6 +1120,15 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/changeRequests` | List change requests for an asset or a requester |
+| `POST` | `/v1/changeRequests/preview/{entityType}/{id}` | Preview whether a PATCH would be held for approval, without saving it |
+| `GET` | `/v1/changeRequests/{id}` | Get a change request with its active revision |
+| `POST` | `/v1/changeRequests/{id}/cancel` | Cancel a pending change request (admin only) |
+| `GET` | `/v1/changeRequests/{id}/decisions` | List the review decisions recorded on a change request, oldest first |
+| `GET` | `/v1/changeRequests/{id}/events` | List the lifecycle history of a change request, in order |
+| `POST` | `/v1/changeRequests/{id}/override` | Publish a pending change request without review (admin only) |
+| `GET` | `/v1/changeRequests/{id}/revisions` | List every revision of a change request, oldest first |
+| `POST` | `/v1/changeRequests/{id}/withdraw` | Withdraw your own pending change request |
 | `GET` | `/v1/governance/intakeForms` | List IntakeForms |
 | `POST` | `/v1/governance/intakeForms` | Create a new IntakeForm |
 | `PUT` | `/v1/governance/intakeForms` | Create or update an IntakeForm |
@@ -1143,7 +1154,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/governance/workflowDefinitions/{id}` | Delete a Workflow Definition by Id |
 | `GET` | `/v1/governance/workflowDefinitions/{id}` | Get a Workflow Definition by Id |
 | `PATCH` | `/v1/governance/workflowDefinitions/{id}` | Update a Workflow Definition by Id |
-| `POST` | `/v1/governance/workflowDefinitions/{id}/redeploy` | Get a Workflow Definition by Id |
+| `POST` | `/v1/governance/workflowDefinitions/{id}/redeploy` | Redeploy a Workflow Definition |
 | `GET` | `/v1/governance/workflowDefinitions/{id}/versions` | List Workflow Definition versions |
 | `GET` | `/v1/governance/workflowDefinitions/{id}/versions/{version}` | Get a version of the Workflow Definition |
 | `GET` | `/v1/governance/workflowInstanceStates` | List the Workflow Instance States |
@@ -1334,6 +1345,22 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/ontologies` | List ontology definitions |
+| `POST` | `/v1/ontologies` | Create an ontology |
+| `PUT` | `/v1/ontologies` | Create or update an ontology |
+| `DELETE` | `/v1/ontologies/name/{fqn}` | Delete an ontology definition by name |
+| `GET` | `/v1/ontologies/name/{fqn}` | Get an ontology by name |
+| `PUT` | `/v1/ontologies/restore` | Restore an ontology |
+| `DELETE` | `/v1/ontologies/{id}` | Delete an ontology |
+| `GET` | `/v1/ontologies/{id}` | Get an ontology |
+| `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
+| `PUT` | `/v1/ontologies/{id}/activation` | Activate an approved ontology release or roll back to an older release |
+| `GET` | `/v1/ontologies/{id}/references` | Find working definitions that reference an exact IRI in this ontology |
+| `POST` | `/v1/ontologies/{id}/releases` | Capture immutable ontology release content |
+| `POST` | `/v1/ontologies/{id}/sparql` | Query the active ontology release |
+| `GET` | `/v1/ontologies/{id}/state` | Get ontology working and activation revisions |
+| `GET` | `/v1/ontologies/{id}/versions` | List ontology versions |
+| `GET` | `/v1/ontologies/{id}/versions/{version}` | Get an ontology version |
 | `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
 | `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
 | `POST` | `/v1/ontology/ai/memories/jobs` | Queue a reviewable glossary draft from published memories |
@@ -1380,6 +1407,17 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `POST` | `/v1/ontologyChangeSets/{id}/undo` | Move the draft cursor backward |
 | `GET` | `/v1/ontologyChangeSets/{id}/versions` | List change-set versions |
 | `GET` | `/v1/ontologyChangeSets/{id}/versions/{version}` | Get a change-set version |
+| `GET` | `/v1/ontologyConcepts` | List ontology concept definitions |
+| `POST` | `/v1/ontologyConcepts` | Create an ontology concept |
+| `PUT` | `/v1/ontologyConcepts` | Create or update an ontology concept |
+| `DELETE` | `/v1/ontologyConcepts/name/{fqn}` | Delete an ontology definition by name |
+| `GET` | `/v1/ontologyConcepts/name/{fqn}` | Get an ontology concept by name |
+| `PUT` | `/v1/ontologyConcepts/restore` | Restore an ontology concept |
+| `DELETE` | `/v1/ontologyConcepts/{id}` | Delete an ontology concept |
+| `GET` | `/v1/ontologyConcepts/{id}` | Get an ontology concept |
+| `PATCH` | `/v1/ontologyConcepts/{id}` | Patch an ontology concept |
+| `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |
+| `GET` | `/v1/ontologyConcepts/{id}/versions/{version}` | Get an ontology concept version |
 | `POST` | `/v1/ontologyEditLocks/acquire` | Acquire an authoring lease |
 | `PUT` | `/v1/ontologyEditLocks/renew` | Renew an authoring lease |
 | `DELETE` | `/v1/ontologyEditLocks/{resourceType}/{resourceId}` | Release an authoring lease |
@@ -1387,6 +1425,26 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyPacks` | List ontology library packs |
 | `GET` | `/v1/ontologyPacks/{packId}` | Get an ontology library pack |
 | `POST` | `/v1/ontologyPacks/{packId}/install` | Dry-run or install selected ontology pack modules |
+| `GET` | `/v1/ontologyProperties` | List ontology property definitions |
+| `POST` | `/v1/ontologyProperties` | Create an ontology property |
+| `PUT` | `/v1/ontologyProperties` | Create or update an ontology property |
+| `DELETE` | `/v1/ontologyProperties/name/{fqn}` | Delete an ontology definition by name |
+| `GET` | `/v1/ontologyProperties/name/{fqn}` | Get an ontology property by name |
+| `PUT` | `/v1/ontologyProperties/restore` | Restore an ontology property |
+| `DELETE` | `/v1/ontologyProperties/{id}` | Delete an ontology property |
+| `GET` | `/v1/ontologyProperties/{id}` | Get an ontology property |
+| `PATCH` | `/v1/ontologyProperties/{id}` | Patch an ontology property |
+| `GET` | `/v1/ontologyProperties/{id}/versions` | List ontology property versions |
+| `GET` | `/v1/ontologyProperties/{id}/versions/{version}` | Get an ontology property version |
+| `GET` | `/v1/ontologyReleases` | List sealed ontology releases |
+| `GET` | `/v1/ontologyReleases/{id}` | Get a sealed ontology release |
+| `GET` | `/v1/ontologyReleases/{id}/diff` | Compare definitions from two sealed releases |
+| `GET` | `/v1/ontologyReleases/{id}/events` | Read durable release capture and workflow decisions |
+| `GET` | `/v1/ontologyReleases/{id}/export` | Export the asserted content of a sealed ontology release |
+| `GET` | `/v1/ontologyReleases/{id}/members/{kind}` | Page through one release's immutable members |
+| `GET` | `/v1/ontologyReleases/{id}/members/{kind}/{memberId}` | Read an immutable release member |
+| `GET` | `/v1/ontologyReleases/{id}/structure` | Check property declarations and axiom structure in a sealed release |
+| `GET` | `/v1/ontologyReleases/{id}/versions/{version}` | Read the release header version submitted to an approval workflow |
 | `GET` | `/v1/relationshipTypes` | List relationship types |
 | `POST` | `/v1/relationshipTypes` | Create a relationship type |
 | `PUT` | `/v1/relationshipTypes` | Create or update a relationship type |
@@ -2287,6 +2345,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PATCH` | `/v1/metadata/types/name/{fqn}` | Update a type using name. |
 | `DELETE` | `/v1/metadata/types/name/{name}` | Delete a type by name |
 | `GET` | `/v1/metadata/types/name/{name}` | Get a type by name |
+| `GET` | `/v1/metadata/types/workflows/approvalEnforcedEntityTypes` | Get entity types whose edits are held for approval |
 | `DELETE` | `/v1/metadata/types/{id}` | Delete a type by id |
 | `GET` | `/v1/metadata/types/{id}` | Get a type |
 | `PATCH` | `/v1/metadata/types/{id}` | Update a type |
