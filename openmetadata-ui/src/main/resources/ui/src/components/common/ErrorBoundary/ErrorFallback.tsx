@@ -70,7 +70,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
       justify="center">
       <Box
         align="center"
-        className="tw:w-fit tw:min-w-[min(636px,100%)] tw:max-w-full tw:rounded-3xl tw:bg-surface tw:px-9 tw:py-17.5 tw:text-center"
+        className="tw:w-full tw:max-w-full tw:rounded-3xl tw:md:w-fit tw:md:min-w-159 tw:bg-surface tw:px-9 tw:py-17.5 tw:text-center"
         direction="col"
         gap={9}>
         <img
@@ -91,7 +91,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
             </Typography>
           </Box>
           <Button
-            className="tw:h-12.5 tw:gap-2.5 tw:rounded-md tw:px-5 tw:text-[17px]"
+            className="tw:h-12.5 tw:gap-2.5 tw:rounded-md tw:px-5 tw:text-lg"
             color="primary"
             data-testid="refresh-page-btn"
             iconLeading={RefreshCw01}

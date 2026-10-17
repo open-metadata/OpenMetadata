@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../constants/constants';
+import { useIsRouteVisible } from '../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { useTourProvider } from '../context/TourProvider/TourProvider';
 import { useApplicationStore } from './useApplicationStore';
 import { useWelcomeStore } from './useWelcomeStore';
@@ -20,12 +21,15 @@ import { useWelcomeStore } from './useWelcomeStore';
  * Whether the home route should show the first-login welcome screen, shared by
  * the classic and AI-mode homes so both apply the same rule: once per user
  * (tracked in `localStorage`), only while `isWelcomeVisible` is on, and never
- * on the tour, where it would hide the step targets.
+ * on the tour, where it would hide the step targets. Leaving the route dismisses
+ * it: by unmount on the classic home, and by the route turning hidden where
+ * KeepAliveRoutes keeps the AI-mode home mounted.
  */
 export const useFirstLoginWelcome = () => {
   const { currentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
   const { isTourPage } = useTourProvider();
+  const isRouteVisible = useIsRouteVisible();
 
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -56,6 +60,12 @@ export const useFirstLoginWelcome = () => {
 
     return () => updateWelcome(false);
   }, []);
+
+  useEffect(() => {
+    if (!isRouteVisible && showWelcome) {
+      setShowWelcome(false);
+    }
+  }, [isRouteVisible, showWelcome]);
 
   return { showWelcome, closeWelcome: () => updateWelcome(false) };
 };

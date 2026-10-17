@@ -21,27 +21,18 @@ import { split } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
-import { ALL_SERVICES_CATEGORY } from '../../../constants/ServiceType.constant';
 import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
-import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-
-// Figma 15448:9083 — a radial glow rising into the brand colour along the
-// bottom 65% of the panel; dark mode keeps it faint.
-const brandMix = (percent: number) =>
-  `color-mix(in srgb, var(--tw-color-brand-500) ${percent}%, transparent)`;
-const GLOW_SHAPE = 'ellipse 168% 168% at 56% -31%';
-const GLOW_LIGHT = `radial-gradient(${GLOW_SHAPE}, transparent 55%, ${brandMix(
-  50
-)} 77.5%, ${brandMix(75)} 88.75%, var(--tw-color-brand-500))`;
-const GLOW_DARK = `radial-gradient(${GLOW_SHAPE}, transparent 47%, ${brandMix(
-  8
-)} 60%, ${brandMix(20)} 73%, ${brandMix(20)})`;
+import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
+import {
+  WELCOME_GLOW_DARK,
+  WELCOME_GLOW_LIGHT,
+} from './WelcomeScreen.constants';
 
 interface WelcomeScreenProps {
   onClose: () => void;
@@ -52,10 +43,27 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { currentUser } = useApplicationStore();
-  const isAiMode = useIsAiMode();
+  // AI mode's Connections opens on every connector; classic keeps its
+  // database-services entry point. The hook also owns the create-permission
+  // check, so the button is absent for users who could not save a service.
+  const { addService, canAddService } = useAddServiceAction(
+    useIsAiMode() ? 'all' : ServiceCategory.DATABASE_SERVICES
+  );
   const greeting = t('label.welcome', {
     name: split(getEntityName(currentUser), ' ')[0] || t('label.user'),
   });
+
+  // Close before leaving: the AI-mode home is kept alive, so without this the
+  // welcome screen would still be there when the user comes back.
+  const handleConnect = () => {
+    onClose();
+    addService();
+  };
+
+  const handleTour = () => {
+    onClose();
+    navigate(ROUTES.TOUR);
+  };
 
   return (
     <div
@@ -63,8 +71,11 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       data-testid="welcome-screen">
       <div
         aria-hidden
-        className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-[65%]"
-        style={{ backgroundImage: theme === 'dark' ? GLOW_DARK : GLOW_LIGHT }}
+        className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"
+        style={{
+          backgroundImage:
+            theme === 'dark' ? WELCOME_GLOW_DARK : WELCOME_GLOW_LIGHT,
+        }}
       />
       <ButtonUtility
         className="tw:absolute tw:top-4 tw:right-4 tw:z-10"
@@ -81,15 +92,15 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
         justify="center">
         <img
           alt={greeting}
-          className="tw:w-full tw:max-w-[518px]"
+          className="tw:w-full tw:max-w-130"
           data-testid="welcome-screen-img"
           src={brandClassBase.getWelcomeScreenImg(theme)}
         />
         <Box align="center" direction="col" gap={12}>
           <Box align="center" direction="col" gap={6}>
-            <div className="tw:text-[40px] tw:leading-12 tw:text-primary">
+            <div className="tw:text-display-md tw:text-primary">
               <p className="tw:m-0">{`${greeting} 👋`}</p>
-              <h1 className="tw:m-0 tw:mt-2.5 tw:text-[40px] tw:leading-12 tw:font-bold tw:text-primary">
+              <h1 className="tw:m-0 tw:mt-2.5 tw:text-display-md tw:font-bold tw:text-primary">
                 <Transi18next
                   i18nKey="message.your-platform-is-ready"
                   renderElement={<span className="tw:text-utility-brand-600" />}
@@ -101,32 +112,29 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
               {t('message.welcome-screen-message')}
             </Typography>
           </Box>
-          <Box align="center" direction="row" gap={5}>
+          <Box
+            align="center"
+            className="tw:flex-wrap"
+            direction="row"
+            gap={5}
+            justify="center">
+            {canAddService && (
+              <Button
+                className="tw:h-14 tw:px-7.5 tw:text-lg"
+                color="primary"
+                data-testid="welcome-screen-connect-btn"
+                iconTrailing={ArrowRight}
+                size="xl"
+                onPress={handleConnect}>
+                {t('label.connect-a-data-source')}
+              </Button>
+            )}
             <Button
-              className="tw:h-14 tw:px-7.5 tw:text-[17px]"
-              color="primary"
-              data-testid="welcome-screen-connect-btn"
-              iconTrailing={ArrowRight}
-              size="xl"
-              onPress={() =>
-                navigate(
-                  // AI mode's Connections opens on every connector; classic
-                  // keeps its database-services entry point.
-                  connectionsRouterClassBase.getAddServicePath(
-                    isAiMode
-                      ? ALL_SERVICES_CATEGORY
-                      : ServiceCategory.DATABASE_SERVICES
-                  )
-                )
-              }>
-              {t('label.connect-a-data-source')}
-            </Button>
-            <Button
-              className="tw:h-14 tw:px-7.5 tw:text-[17px]"
+              className="tw:h-14 tw:px-7.5 tw:text-lg"
               color="secondary"
               data-testid="welcome-screen-tour-btn"
               size="xl"
-              onPress={() => navigate(ROUTES.TOUR)}>
+              onPress={handleTour}>
               {t('message.take-quick-product-tour')}
             </Button>
           </Box>

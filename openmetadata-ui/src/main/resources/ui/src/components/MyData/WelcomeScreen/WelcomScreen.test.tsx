@@ -15,8 +15,10 @@ import { MemoryRouter } from 'react-router-dom';
 import WelcomeScreen from './WelcomeScreen.component';
 
 const mockNavigate = jest.fn();
-const mockUseIsAiMode = jest.fn().mockReturnValue(false);
 const mockOnClose = jest.fn();
+const mockAddService = jest.fn();
+const mockUseAddServiceAction = jest.fn();
+const mockUseIsAiMode = jest.fn();
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -27,15 +29,29 @@ jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockUseIsAiMode(),
 }));
 
+jest.mock('../../integration/ConnectionsPage/useAddServiceAction', () => ({
+  useAddServiceAction: (category: string) => mockUseAddServiceAction(category),
+}));
+
 jest.mock('../../../context/UntitledUIThemeProvider/theme-provider', () => ({
   useTheme: () => ({ theme: 'light' }),
 }));
 
+const renderScreen = () =>
+  render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+
 describe('WelcomeScreen', () => {
-  beforeEach(() => mockNavigate.mockClear());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseIsAiMode.mockReturnValue(false);
+    mockUseAddServiceAction.mockReturnValue({
+      addService: mockAddService,
+      canAddService: true,
+    });
+  });
 
   it('should render the illustration and message', () => {
-    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+    renderScreen();
 
     expect(screen.getByTestId('welcome-screen-img')).toBeInTheDocument();
     expect(
@@ -44,35 +60,49 @@ describe('WelcomeScreen', () => {
   });
 
   it('should call onClose when the close button is clicked', () => {
-    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+    renderScreen();
 
     fireEvent.click(screen.getByTestId('welcome-screen-close-btn'));
 
     expect(mockOnClose).toHaveBeenCalled();
   });
 
-  it('should open add database service on connect a data source in classic mode', () => {
-    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+  it('should add a database service from classic mode', () => {
+    renderScreen();
 
     fireEvent.click(screen.getByTestId('welcome-screen-connect-btn'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/databaseServices/add-service');
+    expect(mockUseAddServiceAction).toHaveBeenCalledWith('databaseServices');
+    expect(mockOnClose).toHaveBeenCalled();
+    expect(mockAddService).toHaveBeenCalled();
   });
 
-  it('should open add service across all categories in AI mode', () => {
-    mockUseIsAiMode.mockReturnValueOnce(true);
-    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+  it('should add a service from any category in AI mode', () => {
+    mockUseIsAiMode.mockReturnValue(true);
+    renderScreen();
 
-    fireEvent.click(screen.getByTestId('welcome-screen-connect-btn'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/all/add-service');
+    expect(mockUseAddServiceAction).toHaveBeenCalledWith('all');
   });
 
-  it('should start the tour on take a product tour', () => {
-    render(<WelcomeScreen onClose={mockOnClose} />, { wrapper: MemoryRouter });
+  it('should hide connect a data source from users who cannot create services', () => {
+    mockUseAddServiceAction.mockReturnValue({
+      addService: mockAddService,
+      canAddService: false,
+    });
+    renderScreen();
+
+    expect(
+      screen.queryByTestId('welcome-screen-connect-btn')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('welcome-screen-tour-btn')).toBeInTheDocument();
+  });
+
+  it('should close the welcome screen and start the tour', () => {
+    renderScreen();
 
     fireEvent.click(screen.getByTestId('welcome-screen-tour-btn'));
 
+    expect(mockOnClose).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/tour');
   });
 });

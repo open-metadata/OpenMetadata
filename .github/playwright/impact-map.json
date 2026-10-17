@@ -1104,7 +1104,7 @@
       ]
     },
     {
-      "_comment": "The first-login welcome screen and the post-deploy upgrade screen (the chunk-load ErrorFallback), with the brand hooks and artwork they render. Tour.spec.ts covers the welcome screen's gating on the classic home and AppModeAiPersonaLandsAtRoot.spec.ts the AI-mode landing route it now also gates; no spec forces a chunk-load failure, so the upgrade screen is verified by unit tests and the PR's screenshots.",
+      "_comment": "The first-login welcome screen and the post-deploy upgrade screen (the chunk-load ErrorFallback), with the brand hooks and artwork they render. WelcomeScreen.spec.ts drives the welcome screen in classic and AI mode (shown once, close, both actions, stays dismissed on the kept-alive AI home); AppModeAiPersonaLandsAtRoot.spec.ts covers the AI-mode landing route the gate wraps. No spec forces a chunk-load failure, so the upgrade screen is covered by ErrorFallback.test.tsx.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/MyDataPage/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useFirstLoginWelcome.ts",
@@ -1118,7 +1118,7 @@
       ],
       "projects": ["chromium"],
       "specs": [
-        "playwright/e2e/Flow/Tour.spec.ts",
+        "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
       ]
     }

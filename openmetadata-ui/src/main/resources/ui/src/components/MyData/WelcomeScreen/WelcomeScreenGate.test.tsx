@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../../../constants/constants';
+import { RouteVisibilityProvider } from '../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import WelcomeScreenGate from './WelcomeScreenGate';
 
 const mockTour = { isTourPage: false };
@@ -65,6 +66,27 @@ describe('WelcomeScreenGate', () => {
     fireEvent.click(await screen.findByTestId('welcome'));
 
     expect(screen.getByTestId('home')).toBeInTheDocument();
+  });
+
+  it('dismisses the welcome screen once a kept-alive route is hidden', async () => {
+    const gate = (isVisible: boolean) => (
+      <RouteVisibilityProvider isVisible={isVisible}>
+        <WelcomeScreenGate>
+          <div data-testid="home">home</div>
+        </WelcomeScreenGate>
+      </RouteVisibilityProvider>
+    );
+    const { rerender } = render(gate(true));
+
+    expect(await screen.findByTestId('welcome')).toBeInTheDocument();
+
+    // Leaving the route: KeepAliveRoutes hides it instead of unmounting it.
+    rerender(gate(false));
+    // Coming back must show the home, not the welcome screen again.
+    rerender(gate(true));
+
+    expect(screen.getByTestId('home')).toBeInTheDocument();
+    expect(screen.queryByTestId('welcome')).not.toBeInTheDocument();
   });
 
   it('skips the welcome screen for a user who has already seen it', () => {
