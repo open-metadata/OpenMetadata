@@ -30,7 +30,7 @@ import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
@@ -140,6 +140,7 @@ const DomainTreeView = ({
   openAddDomainDrawer,
   onClearSearch,
 }: DomainTreeViewProps) => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -196,7 +197,7 @@ const DomainTreeView = ({
       return undefined;
     }
 
-    return domainBuildESQuery(filters);
+    return JSON.stringify(domainBuildESQuery(filters));
   }, [filters, hasActiveFilters]);
 
   useEffect(() => {
@@ -276,7 +277,7 @@ const DomainTreeView = ({
         const results: Domain[] = await searchDomains(
           encodedValue,
           1,
-          queryFilter
+          queryFilter ? JSON.parse(queryFilter) : undefined
         );
 
         const filteredResults =
@@ -542,8 +543,8 @@ const DomainTreeView = ({
   );
   // Keyed on `queryFilter`, not `hasActiveFilters`: swapping one active filter
   // for another leaves the boolean true, so the tree would keep showing the
-  // previous result set. `urlState` is memoised on the search params, so the
-  // filter object only changes identity when the URL does.
+  // previous result set. A serialized filter also keeps paging-only URL changes
+  // from rerunning the search and selecting its first result.
   useEffect(() => {
     if (searchQuery || hasActiveFilters) {
       searchDomain(searchQuery);
@@ -582,10 +583,25 @@ const DomainTreeView = ({
         return;
       }
 
+      const searchParams = new URLSearchParams(location.search);
+      if (
+        searchParams.has('currentPage') ||
+        searchParams.has('cursorType') ||
+        searchParams.has('cursorValue')
+      ) {
+        searchParams.delete('currentPage');
+        searchParams.delete('cursorType');
+        searchParams.delete('cursorValue');
+        navigate(
+          { search: searchParams.toString(), hash: location.hash },
+          { replace: true }
+        );
+      }
+
       setSelectedFqn(nextFqn);
       updateExpansionForFqn(nextFqn);
     },
-    [updateExpansionForFqn]
+    [location.hash, location.search, navigate, updateExpansionForFqn]
   );
 
   const handleExpandedChange = useCallback(
