@@ -31,7 +31,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyRelationship;
@@ -41,7 +40,7 @@ import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 
 public final class OntologyChangeOperationExecutor {
-  private static final String TERM_EDIT_FIELDS = "attributes,conceptMappings";
+  private static final String TERM_EDIT_FIELDS = "conceptMappings";
   private final GlossaryTermRepository termRepository;
   private final GlossaryRepository glossaryRepository;
   private final Clock clock;
@@ -86,8 +85,6 @@ public final class OntologyChangeOperationExecutor {
           case ADD_RELATIONSHIP -> addRelationship(uriInfo, user, operation);
           case UPDATE_RELATIONSHIP -> updateRelationship(uriInfo, user, operation);
           case DELETE_RELATIONSHIP -> deleteRelationship(uriInfo, user, operation);
-          case UPSERT_ATTRIBUTE -> upsertAttribute(uriInfo, user, operation);
-          case DELETE_ATTRIBUTE -> deleteAttribute(uriInfo, user, operation);
           case UPSERT_MAPPING -> upsertMapping(uriInfo, user, operation);
           case DELETE_MAPPING -> deleteMapping(uriInfo, user, operation);
           case UPSERT_CONCEPT,
@@ -127,9 +124,6 @@ public final class OntologyChangeOperationExecutor {
     prepareTerm(term, user);
     final boolean isUpdate =
         operation.getOperationType() == OntologyChangeOperationType.UPDATE_TERM;
-    if (!isUpdate) {
-      term.setSourceMemoryIds(operation.getSourceMemoryIds());
-    }
     termRepository.prepareInternal(term, isUpdate);
     if (!isUpdate) {
       requireNewTerm(term);
@@ -218,30 +212,7 @@ public final class OntologyChangeOperationExecutor {
         .withCreatedAt(relationship.getCreatedAt());
   }
 
-  // Fields the attribute/mapping operations mutate. Each operation edits exactly one sub-field of
-  // the stored term, so the store path is scoped to that field name only — see persistTerm.
-  private static final String FIELD_ATTRIBUTES = "attributes";
   private static final String FIELD_CONCEPT_MAPPINGS = "conceptMappings";
-
-  private OperationOutcome upsertAttribute(
-      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
-    final GlossaryTerm term = editableTerm(operation.getTargetId());
-    final OntologyAttribute attribute = operation.getAttribute();
-    final List<OntologyAttribute> attributes = new ArrayList<>(listOrEmpty(term.getAttributes()));
-    attributes.removeIf(existing -> existing.getId().equals(attribute.getId()));
-    attributes.add(attribute);
-    term.setAttributes(attributes);
-    return persistTerm(uriInfo, user, term, Set.of(FIELD_ATTRIBUTES));
-  }
-
-  private OperationOutcome deleteAttribute(
-      final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
-    final GlossaryTerm term = editableTerm(operation.getTargetId());
-    final List<OntologyAttribute> attributes = new ArrayList<>(listOrEmpty(term.getAttributes()));
-    attributes.removeIf(attribute -> attribute.getId().equals(operation.getAttribute().getId()));
-    term.setAttributes(attributes);
-    return persistTerm(uriInfo, user, term, Set.of(FIELD_ATTRIBUTES));
-  }
 
   private OperationOutcome upsertMapping(
       final UriInfo uriInfo, final String user, final OntologyChangeOperation operation) {
@@ -286,10 +257,7 @@ public final class OntologyChangeOperationExecutor {
       final Set<String> patchedFields) {
     prepareTerm(term, user);
     termRepository.prepareInternal(term, true);
-    // editableTerm loads only attributes,conceptMappings, so reviewers/relatedTerms/realizedIn are
-    // null on the term being stored. Route through the field-scoped update so only the edited
-    // field is compared and persisted; the whole-entity PUT path (patchedFields == null) would
-    // diff those null collections against the stored values and delete the relationship rows.
+    // A field-scoped update preserves relationships that this mapping edit did not load.
     return outcome(
         termRepository.createOrUpdate(uriInfo, term, user, null, patchedFields).getEntity());
   }

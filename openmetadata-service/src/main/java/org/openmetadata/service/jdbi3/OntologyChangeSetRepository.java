@@ -142,7 +142,7 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
       final OntologyChangeSet changeSet, final EntityReference reference, final boolean update) {
     final Glossary planned = plannedGlossary(changeSet, reference.getId());
     if (planned == null) {
-      return requireEditableGlossary(reference).getEntityReference();
+      return resolveGlossary(reference).getEntityReference();
     }
     if (!planned.getFullyQualifiedName().equals(reference.getFullyQualifiedName())
         || !planned.getName().equals(planned.getFullyQualifiedName())) {
@@ -176,17 +176,6 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
         .filter(glossary -> glossary != null && glossary.getId().equals(glossaryId))
         .findFirst()
         .orElse(null);
-  }
-
-  private static Glossary requireEditableGlossary(final EntityReference reference) {
-    final Glossary glossary = resolveGlossary(reference);
-    final boolean isReadOnly =
-        glossary.getOntologyConfiguration() != null
-            && Boolean.TRUE.equals(glossary.getOntologyConfiguration().getReadOnly());
-    if (isReadOnly) {
-      throw new BadRequestException("Reference ontology '" + glossary.getName() + "' is read-only");
-    }
-    return glossary;
   }
 
   private static Glossary resolveGlossary(final EntityReference reference) {

@@ -28,6 +28,22 @@ The main change contains native entities and publishing; it does not extend `Tag
 | Future Jena CHECK and reasoning | Consistency, classification and explained entailments | Remains in the [Fuseki reasoning plan](2026-10-07-fuseki-native-reasoning.md) |
 | Future source mappings | Map properties, keys and relationships to source records | Needs a separate connector/execution design |
 
+## Glossary boundary (2026-10-17)
+
+The unreleased glossary ontology model is retired: term attributes and inheritance, realizations,
+class kinds and ontology provenance, and glossary ontology configuration. Released term relations,
+the glossary Relations Graph, tagging, approvals, external IRIs/mappings and RDF vocabulary import
+remain. Native concepts, properties, axioms and approved releases own formal ontology authoring.
+
+The glossary IRI preview, subset and structural merge endpoints and their UI/SDK entry points are
+removed. Library import uses the released RDF vocabulary path without recording ontology
+configuration on glossaries. Glossary AI drafts can propose ordinary terms, relations and mappings;
+this cleanup does not implement native AI generation, library installation or import.
+
+Both database migrations remove retired fields from entity JSON and versions and reset incompatible
+development drafts. Compatible glossary drafts and native drafts remain. See
+ADR:2026-10-17-glossaries-do-not-own-ontology-models.
+
 ## Authoritative SQL storage
 
 JSON Schemas are the contract; regenerate Java, Python and TypeScript models from them. All DDL is
@@ -130,7 +146,7 @@ requires a later policy. Release exports and diagnostics work from SQL without a
 
 Main's redesigned Studio remains the entry point. Glossaries retain AI assistance, Context Center
 memory review (`?draft=`), edit leases, library, import/export, visual query builder, data-explore,
-graph authoring, workbench panels and health/isolated controls. The glossary Relations Graph remains
+relation graph authoring and health/isolated controls. Formal modeling surfaces are native-only. The glossary Relations Graph remains
 available. A native ontology selector adds Graph, Model, Releases, Review and Query surfaces without
 converting glossary terms into native definitions. The formal axiom editor selects a native ontology.
 
@@ -140,7 +156,7 @@ converting glossary terms into native definitions. The formal axiom editor selec
 | Publishing | Capture, whole-release workflow review, baseline diff, activation and rollback | Consistency checking through Jena CHECK |
 | Memory proposals | Typed concept/property/axiom change sets; source-memory links; existing review panel and change-set lease; atomic working-state application; next capture includes the changes | Automatic native AI proposal generation and native selection in Context Center's proposal action |
 | Edit leases | Existing glossary and change-set leases retained; native memory review uses the same lease | Native ontology/definition editor leases; version guards and working-state lock protect concurrent writes now |
-| Library | Existing glossary packs retained | Import a library pack into a native working model |
+| Library | Existing vocabulary import retained; glossary ontology installation metadata removed | Import a library pack into a native working model |
 | Import/export | Authorized sealed native release export | Native import and bulk authoring |
 | Query | Permission-checked queries over the SQL projection of the active release; no draft data or administrator requirement | Native visual query builder |
 | Data explore | Existing glossary data-explore retained | Native concept-to-asset links, tracked in the separate metadata-labels patch |

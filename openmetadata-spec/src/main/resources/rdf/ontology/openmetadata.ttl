@@ -716,25 +716,28 @@ om:mappedTo a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:hasPrimaryStore a owl:ObjectProperty, owl:FunctionalProperty ;
-    om:projectionStatus om:Stored ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has primary store" ;
-    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one. Projected for each realization with the PRIMARY_STORE role, alongside om:mappedTo." ;
+    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
 
 om:hasDerivedAsset a owl:ObjectProperty ;
-    om:projectionStatus om:Stored ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has derived asset" ;
-    rdfs:comment "Data asset deriving this concept's instances from another asset. Projected for each realization with the DERIVED role, alongside om:mappedTo." ;
+    rdfs:comment "Data asset deriving this concept's instances from another asset." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
 
 om:hasReplica a owl:ObjectProperty ;
-    om:projectionStatus om:Stored ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has replica" ;
-    rdfs:comment "Data asset replicating this concept's instances from another asset. Projected for each realization with the REPLICA role, alongside om:mappedTo." ;
+    rdfs:comment "Data asset replicating this concept's instances from another asset." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
@@ -2252,10 +2255,6 @@ om:attachments a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "attachments" .
 
-om:attributes a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "attributes" .
-
 om:authenticationMechanism a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "authenticationMechanism" .
@@ -2613,10 +2612,6 @@ om:driveFileId a rdf:Property ;
 om:editors a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "editors" .
-
-om:effectiveAttributes a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "effectiveAttributes" .
 
 om:effectiveDate a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3394,14 +3389,6 @@ om:ontology a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ontology" .
 
-om:ontologyConfiguration a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "ontologyConfiguration" .
-
-om:ontologySource a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "ontologySource" .
-
 om:openMetadataServerConnection a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "openMetadataServerConnection" .
@@ -3618,12 +3605,6 @@ om:rdfPredicate a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "rdfPredicate" .
 
-om:realizedIn a rdf:Property ;
-    om:projectionStatus om:InferenceOnly ;
-    owl:deprecated true ;
-    rdfs:label "realizedIn" ;
-    rdfs:comment "Not emitted by the metadata projection. Realizations are projected as om:mappedTo plus om:hasPrimaryStore, om:hasDerivedAsset, or om:hasReplica. Graphs written by earlier releases hold this as a JSON literal until the term is next written or the graph is rebuilt." .
-
 om:recognizers a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "recognizers" .
@@ -3819,10 +3800,6 @@ om:sourceHumanMessage a rdf:Property ;
 om:sourceId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourceId" .
-
-om:sourceMemoryIds a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "sourceMemoryIds" .
 
 om:sourcePythonClass a rdf:Property ;
     om:projectionStatus om:Stored ;

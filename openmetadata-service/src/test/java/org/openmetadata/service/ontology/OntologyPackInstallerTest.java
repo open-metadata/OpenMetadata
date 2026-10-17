@@ -25,8 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.InstallOntologyPack;
 import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.data.OntologyPackInstallResult;
-import org.openmetadata.schema.type.OntologyPackInstallation;
-import org.openmetadata.schema.type.OntologyPackModuleInstallation;
 import org.openmetadata.schema.type.RdfValidationReport;
 
 class OntologyPackInstallerTest {
@@ -48,8 +46,7 @@ class OntologyPackInstallerTest {
     assertEquals(8, result.getConceptCount());
     assertEquals(6, result.getRelationshipCount());
     assertFalse(result.getDryRun());
-    assertEquals("fhir", result.getInstallation().getPackId());
-    assertEquals(2, result.getInstallation().getModules().size());
+    assertNull(result.getInstallation());
     assertTrue(invocation.get().rdf().contains("FHIR Resource"));
     assertTrue(invocation.get().rdf().contains("Clinical Record"));
     assertEquals("Healthcare", invocation.get().targetGlossary());
@@ -94,24 +91,7 @@ class OntologyPackInstallerTest {
             (rdf, format, targetGlossary, dryRun) -> {
               invocation.set(new ImportInvocation(rdf, format, targetGlossary, dryRun));
               return importResult(dryRun);
-            },
-        (manifest, modules, targetGlossary, context) ->
-            new OntologyPackInstallation()
-                .withPackId(manifest.getId())
-                .withVersion(manifest.getVersion())
-                .withModules(
-                    modules.stream()
-                        .map(
-                            module ->
-                                new OntologyPackModuleInstallation()
-                                    .withModuleId(module.getId())
-                                    .withSha256(module.getSha256()))
-                        .toList())
-                .withInstalledAt(1L)
-                .withInstalledBy(context.user())
-                .withSourceUrl(manifest.getSourceUrl())
-                .withLicense(manifest.getLicense())
-                .withLicenseUrl(manifest.getLicenseUrl()));
+            });
   }
 
   private static OntologyImportResult importResult(final boolean dryRun) {

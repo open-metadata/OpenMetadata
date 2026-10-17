@@ -158,7 +158,6 @@ public final class OntologyChangeSetValidator {
     int count = operation.getTerm() == null ? 0 : 1;
     count += operation.getGlossary() == null ? 0 : 1;
     count += operation.getRelationship() == null ? 0 : 1;
-    count += operation.getAttribute() == null ? 0 : 1;
     count += operation.getMapping() == null ? 0 : 1;
     count += operation.getAxiom() == null ? 0 : 1;
     count += operation.getConcept() == null ? 0 : 1;
@@ -174,7 +173,6 @@ public final class OntologyChangeSetValidator {
           case GLOSSARY -> operation.getGlossary() != null;
           case TERM -> operation.getTerm() != null;
           case RELATIONSHIP -> operation.getRelationship() != null;
-          case ATTRIBUTE -> operation.getAttribute() != null;
           case MAPPING -> operation.getMapping() != null;
         };
     return isPresent;
@@ -255,12 +253,7 @@ public final class OntologyChangeSetValidator {
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> requireTarget(
           operation, operation.getRelationship().getFromTerm().getId(), "relationship source");
       case UPSERT_AXIOM -> throw invalid(operation, "axioms require an ontology");
-      case DELETE_TERM,
-          UPSERT_ATTRIBUTE,
-          DELETE_ATTRIBUTE,
-          UPSERT_MAPPING,
-          DELETE_MAPPING,
-          DELETE_AXIOM -> {}
+      case DELETE_TERM, UPSERT_MAPPING, DELETE_MAPPING, DELETE_AXIOM -> {}
     }
   }
 
@@ -298,7 +291,6 @@ public final class OntologyChangeSetValidator {
           case DELETE_TERM -> PayloadKind.NONE;
           case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> PayloadKind
               .RELATIONSHIP;
-          case UPSERT_ATTRIBUTE, DELETE_ATTRIBUTE -> PayloadKind.ATTRIBUTE;
           case UPSERT_MAPPING, DELETE_MAPPING -> PayloadKind.MAPPING;
           case UPSERT_CONCEPT,
               DELETE_CONCEPT,
@@ -322,7 +314,6 @@ public final class OntologyChangeSetValidator {
     GLOSSARY,
     TERM,
     RELATIONSHIP,
-    ATTRIBUTE,
     MAPPING
   }
 }

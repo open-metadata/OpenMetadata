@@ -43,7 +43,7 @@ import org.openmetadata.service.ontology.RelationshipTypeResolver;
 /** Loads a glossary from the database and serializes its ontology projection. */
 public final class GlossaryOntologyExporter {
   private static final String DEFAULT_TERM_FIELDS =
-      "attributes,conceptMappings,entityStatus,parent,realizedIn,relatedTerms,synonyms";
+      "conceptMappings,entityStatus,parent,relatedTerms,synonyms";
   private final URI publicBaseUri;
   private final OntologyAnnexDAO annexDAO;
   private final GlossaryOntologyModelBuilder modelBuilder;
@@ -94,19 +94,14 @@ public final class GlossaryOntologyExporter {
         includeRelations ? externalTermIris(terms) : Map.of();
     final RelationshipTypeResolver resolver =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
-    return new GlossaryOntologySource(
-        glossary, terms, List.of(), resolver.list(), externalTermIris);
+    return new GlossaryOntologySource(glossary, terms, resolver.list(), externalTermIris);
   }
 
   private Glossary glossary(final UUID glossaryId) {
     final GlossaryRepository repository =
         (GlossaryRepository) Entity.getEntityRepository(Entity.GLOSSARY);
     return repository.get(
-        null,
-        glossaryId,
-        repository.getFields("namespaces,ontologyConfiguration"),
-        Include.NON_DELETED,
-        false);
+        null, glossaryId, repository.getFields("namespaces"), Include.NON_DELETED, false);
   }
 
   @SuppressWarnings("unchecked")

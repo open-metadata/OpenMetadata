@@ -461,10 +461,14 @@ class ChangeRequestImportAndBulkIT {
 
     assertEquals(1, removal.getNumberOfRowsPendingApproval());
     assertKeepsProduct(source, target, held, "before approval");
-    ChangeRequest request = onlyPendingRequest(held.getId());
+    ChangeRequest request =
+        Awaitility.await("approval task linked to the pending removal")
+            .atMost(Duration.ofSeconds(120))
+            .pollInterval(Duration.ofSeconds(2))
+            .until(() -> onlyPendingRequest(held.getId()), pending -> pending.getTaskId() != null);
     resolveAs(
         SdkClients.user1Client(),
-        awaitOpenApprovalTask(held.getFullyQualifiedName()),
+        admin.tasks().get(request.getTaskId().toString()),
         "reject",
         TaskResolutionType.Rejected,
         null);

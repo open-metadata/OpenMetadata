@@ -11,50 +11,14 @@
  *  limitations under the License.
  */
 
-import { AxiomType } from '../../generated/api/data/createOntologyAxiom';
-import { PatternType } from '../../generated/api/data/instantiateOntologyPattern';
+import { AxiomType } from '../../../../generated/api/data/createOntologyAxiom';
 import {
   buildOntologyAxiomRequest,
-  buildOntologyPatternRequest,
   EMPTY_AXIOM_FORM,
-  EMPTY_PATTERN_FORM,
-} from './OntologyModelingWorkbench.utils';
+} from './OntologyAxiomEditor.utils';
 
-const term = (name: string) => ({
-  description: `${name} description`,
-  displayName: name,
-  name,
-});
-
-describe('OntologyModelingWorkbench utilities', () => {
-  it('builds the closed measured-KPI request without unrelated pattern payloads', () => {
-    const request = buildOntologyPatternRequest('glossary-id', {
-      ...EMPTY_PATTERN_FORM,
-      changeSetDescription: ' Review KPI ',
-      changeSetName: ' measured-kpi ',
-      dimension: term('Dimension'),
-      kpi: term('Revenue'),
-      metric: term('Amount'),
-      patternType: PatternType.MeasuredKpi,
-    });
-
-    expect(request).toEqual(
-      expect.objectContaining({
-        changeSetDescription: 'Review KPI',
-        changeSetName: 'measured-kpi',
-        glossaryId: 'glossary-id',
-        measuredKpi: {
-          dimension: term('Dimension'),
-          kpi: term('Revenue'),
-          metric: term('Amount'),
-        },
-      })
-    );
-    expect(request.productHierarchy).toBeUndefined();
-    expect(request.regulatoryControl).toBeUndefined();
-  });
-
-  it('builds a typed Draft axiom and omits empty optional values', () => {
+describe('Ontology axiom form utilities', () => {
+  it('builds an ontology-owned axiom and omits empty optional values', () => {
     const request = buildOntologyAxiomRequest('governed', {
       ...EMPTY_AXIOM_FORM,
       axiomType: AxiomType.SubclassOf,

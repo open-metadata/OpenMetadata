@@ -17,8 +17,6 @@
         "ADD_RELATIONSHIP",
         "UPDATE_RELATIONSHIP",
         "DELETE_RELATIONSHIP",
-        "UPSERT_ATTRIBUTE",
-        "DELETE_ATTRIBUTE",
         "UPSERT_MAPPING",
         "DELETE_MAPPING",
         "UPSERT_AXIOM",
@@ -57,9 +55,6 @@
     },
     "relationship": {
       "$ref": "ontologyRelationship.json"
-    },
-    "attribute": {
-      "$ref": "ontologyAttribute.json"
     },
     "mapping": {
       "$ref": "conceptMapping.json"

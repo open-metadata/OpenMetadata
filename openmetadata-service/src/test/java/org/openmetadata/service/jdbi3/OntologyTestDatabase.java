@@ -100,7 +100,7 @@ final class OntologyTestDatabase {
           .filter(
               statement ->
                   statement.matches(
-                      "(?s).*CREATE TABLE IF NOT EXISTS (entity_relationship|entity_extension|openmetadata_settings|tag_usage|tag|glossary_term_entity|change_event) \\(.*"))
+                      "(?s).*CREATE TABLE IF NOT EXISTS (entity_relationship|entity_extension|openmetadata_settings|tag_usage|tag|glossary_entity|glossary_term_entity|change_event) \\(.*"))
           .forEach(handle::execute);
     }
     for (String version : List.of("1.6.0", "2.0.0", "2.1.0")) {

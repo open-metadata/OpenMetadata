@@ -47,10 +47,10 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
 
 /**
- * End-to-end test for the native OWL/RDF ontology import endpoint
- * ({@code PUT /v1/glossaries/name/{name}/importRdf}). Verifies that an ontology is materialized as
+ * End-to-end test for the RDF vocabulary import endpoint
+ * ({@code PUT /v1/glossaries/name/{name}/importRdf}). Verifies that vocabulary is materialized as
  * real, editable glossary terms with hierarchy, synonyms, canonical IRIs, SKOS concept mappings,
- * governed relationship types and per-concept datatype attributes.
+ * governed relationship types and ordinary glossary custom properties.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -109,16 +109,12 @@ public class GlossaryRdfImportIT {
     assertTrue(result.get("conceptMappingsAdded").asInt() >= 1, "external closeMatch" + detail);
     assertTrue(
         result.get("customPropertiesCreated").asInt() >= 1,
-        "datatype property -> per-concept attribute" + detail);
+        "datatype property -> released glossary custom property" + detail);
 
     GlossaryTerm provider = getTerm(glossaryName + ".HealthcareProvider");
     assertNotNull(provider.getIri(), "canonical ontology IRI is persisted");
     assertTrue(provider.getSynonyms().contains("HCP"), "altLabel -> synonym");
     assertFalse(provider.getConceptMappings().isEmpty(), "SKOS closeMatch -> conceptMapping");
-    assertTrue(
-        provider.getAttributes().stream()
-            .anyMatch(attribute -> "hasNpiNumber".equals(attribute.getName())),
-        "OWL datatype property is attached to its domain concept");
     assertEquals(
         EntityStatus.APPROVED,
         provider.getEntityStatus(),
@@ -517,7 +513,8 @@ public class GlossaryRdfImportIT {
   }
 
   @Test
-  void nonAdminOwnerImportsTermsAndPerConceptAttributes(TestNamespace ns) throws Exception {
+  void nonAdminOwnerImportsTermsWithoutChangingGlobalCustomProperties(TestNamespace ns)
+      throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     User owner = UserTestFactory.createUser(ns, "ontologyOwner");
     setGlossaryOwner(glossary.getId().toString(), owner);
@@ -535,9 +532,10 @@ public class GlossaryRdfImportIT {
         0,
         result.get("relationTypesRegistered").asInt(),
         "a non-admin owner must not register global relation types: " + result);
-    assertTrue(
-        result.get("customPropertiesCreated").asInt() >= 1,
-        "per-concept attributes are part of terms the owner can edit: " + result);
+    assertEquals(
+        0,
+        result.get("customPropertiesCreated").asInt(),
+        "a non-admin owner must not register global custom properties: " + result);
   }
 
   @Test
@@ -785,7 +783,7 @@ public class GlossaryRdfImportIT {
   private GlossaryTerm getTerm(String fqn) throws Exception {
     String url =
         String.format(
-            "%s/v1/glossaryTerms/name/%s?fields=attributes,conceptMappings,parent,relatedTerms",
+            "%s/v1/glossaryTerms/name/%s?fields=conceptMappings,parent,relatedTerms",
             SdkClients.getServerUrl(), fqn);
     HttpResponse<String> response = get(url);
     assertEquals(200, response.statusCode(), "getTerm failed: " + response.body());

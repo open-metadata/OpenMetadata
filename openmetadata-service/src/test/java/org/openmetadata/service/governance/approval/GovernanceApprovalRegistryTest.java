@@ -50,7 +50,6 @@ import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinit
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.OntologyConfiguration;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -790,18 +789,16 @@ class GovernanceApprovalRegistryTest {
     }
 
     @Test
-    void putLeavingOutAStoredFieldClearsIt() {
-      Glossary original =
-          published().withOntologyConfiguration(new OntologyConfiguration().withReadOnly(true));
-      Glossary updated = edited(original).withOntologyConfiguration(null);
-      List<GatingRule> rules =
-          List.of(rule(WORKFLOW_A, List.of("ontologyConfiguration"), List.of()));
+    void omittedCustomPropertiesAreKeptByPutAndClearedByImportRow() {
+      Glossary original = published().withExtension(Map.of("businessKey", "value"));
+      Glossary updated = edited(original).withExtension(null);
+      List<GatingRule> rules = List.of(rule(WORKFLOW_A, List.of("extension"), List.of()));
 
+      storedFields = Set.of("extension");
       assertTrue(admitAsHuman(rules, original, updated, Edit.put()).isEmpty());
-      storedFields = Set.of("ontologyConfiguration");
       assertEquals(
-          Set.of("ontologyConfiguration"),
-          fields(admitAsHuman(rules, original, updated, Edit.put()).orElseThrow()));
+          Set.of("extension"),
+          fields(admitAsHuman(rules, original, updated, Edit.importRow()).orElseThrow()));
     }
 
     @Test

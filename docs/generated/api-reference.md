@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1981 endpoints** across 75 resource packages · 1971 carry a summary.
+**1977 endpoints** across 75 resource packages · 1967 carry a summary.
 
 ## (root)
 
@@ -1376,13 +1376,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontology/bulk/template` | Get the ontology bulk CSV template |
 | `GET` | `/v1/ontology/impacts/glossaryTerms/{id}/delete` | Preview glossary-term deletion impact |
 | `POST` | `/v1/ontology/impacts/glossaryTerms/{id}/delete` | Delete a glossary term using a fresh impact token |
-| `POST` | `/v1/ontology/modeling/iris/preview` | Preview a governed concept IRI |
 | `GET` | `/v1/ontology/patterns` | List ontology modeling patterns |
 | `POST` | `/v1/ontology/patterns/instantiate` | Create a Draft change set from a modeling pattern |
 | `POST` | `/v1/ontology/reasoning/explanations` | Explain a scoped asserted or materialized RDF statement |
-| `POST` | `/v1/ontology/structure/diff` | Compare source changes with an application ontology subset |
-| `POST` | `/v1/ontology/structure/merge` | Create a Draft from selected source structure changes |
-| `POST` | `/v1/ontology/subsets` | Create a Draft application ontology subset |
 | `GET` | `/v1/ontologyAxioms` | List ontology axioms |
 | `POST` | `/v1/ontologyAxioms` | Create an ontology axiom |
 | `PUT` | `/v1/ontologyAxioms` | Create or update an axiom |

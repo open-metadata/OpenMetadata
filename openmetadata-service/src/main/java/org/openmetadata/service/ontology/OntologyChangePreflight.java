@@ -115,12 +115,7 @@ public final class OntologyChangePreflight {
     switch (operation.getOperationType()) {
       case CREATE_GLOSSARY -> requireInScope(operation, operation.getGlossary().getId(), scope);
       case CREATE_TERM -> validateCreatedTermScope(operation, scope, plannedTerms);
-      case UPDATE_TERM,
-          DELETE_TERM,
-          UPSERT_ATTRIBUTE,
-          DELETE_ATTRIBUTE,
-          UPSERT_MAPPING,
-          DELETE_MAPPING -> requireTermInScope(
+      case UPDATE_TERM, DELETE_TERM, UPSERT_MAPPING, DELETE_MAPPING -> requireTermInScope(
           operation, operation.getTargetId(), scope, plannedTerms);
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> validateRelationshipScope(
           operation, scope, plannedTerms);

@@ -4284,8 +4284,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * use this overload with the edited field name — routing such a partial entity through {@link
    * #createOrUpdate(UriInfo, Object, String)} runs the whole-entity PUT diff with {@code
    * patchedFields == null}, which compares nulled-out relationship collections against the stored
-   * values and unconditionally deletes them (e.g. glossary-term attribute edits wiping
-   * reviewers/relatedTerms/realizedIn).
+   * values and unconditionally deletes them (e.g. glossary-term mapping edits wiping
+   * reviewers/relatedTerms).
    *
    * @param patchedFields field names to compare and persist; {@code null} diffs every field
    *     (whole-entity PUT semantics, identical to {@link #createOrUpdate(UriInfo, Object, String)})

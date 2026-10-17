@@ -51,7 +51,7 @@ import {
   EMPTY_AXIOM_FORM,
   isOntologyAxiomReady,
   OntologyAxiomFormState,
-} from '../../../OntologyExplorer/OntologyModelingWorkbench.utils';
+} from './OntologyAxiomEditor.utils';
 
 interface OntologyAxiomEditorProps {
   ontology: Ontology;

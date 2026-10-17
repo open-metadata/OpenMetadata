@@ -435,13 +435,13 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('offers only the graph and model surfaces in Edit (no term or bulk)', () => {
+  it('keeps glossary editing on the relations graph without ontology modeling', () => {
     render(<OntologyExplorerPage />);
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
     expect(screen.getByTestId('submode-tab-graph')).toBeInTheDocument();
-    expect(screen.getByTestId('submode-tab-model')).toBeInTheDocument();
+    expect(screen.queryByTestId('submode-tab-model')).not.toBeInTheDocument();
     expect(screen.queryByTestId('submode-tab-term')).not.toBeInTheDocument();
     expect(screen.queryByTestId('submode-tab-bulk')).not.toBeInTheDocument();
   });
@@ -637,21 +637,6 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByRole('textbox', { name: 'Concept search' })).toHaveValue(
       'Account'
     );
-  });
-
-  it('reloads the explorer after the Model workbench where concepts can change', () => {
-    render(<OntologyExplorerPage />);
-    const explorer = screen.getByTestId('ontology-explorer');
-
-    fireEvent.click(screen.getByTestId('mode-tab-edit'));
-    fireEvent.click(screen.getByTestId('submode-tab-model'));
-
-    expect(screen.queryByTestId('ontology-explorer')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('submode-tab-graph'));
-
-    expect(screen.getByTestId('ontology-explorer')).toBeVisible();
-    expect(screen.getByTestId('ontology-explorer')).not.toBe(explorer);
   });
 
   it('opens the ontology library from the dedicated header action', () => {

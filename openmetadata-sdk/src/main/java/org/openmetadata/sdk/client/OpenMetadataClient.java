@@ -59,15 +59,12 @@ import org.openmetadata.sdk.services.ontology.OntologyChangeSetService;
 import org.openmetadata.sdk.services.ontology.OntologyConceptService;
 import org.openmetadata.sdk.services.ontology.OntologyEditLockService;
 import org.openmetadata.sdk.services.ontology.OntologyImpactService;
-import org.openmetadata.sdk.services.ontology.OntologyModelingService;
 import org.openmetadata.sdk.services.ontology.OntologyPackService;
 import org.openmetadata.sdk.services.ontology.OntologyPatternService;
 import org.openmetadata.sdk.services.ontology.OntologyPropertyService;
 import org.openmetadata.sdk.services.ontology.OntologyReasoningService;
 import org.openmetadata.sdk.services.ontology.OntologyReleaseService;
 import org.openmetadata.sdk.services.ontology.OntologyService;
-import org.openmetadata.sdk.services.ontology.OntologyStructureService;
-import org.openmetadata.sdk.services.ontology.OntologySubsetService;
 import org.openmetadata.sdk.services.ontology.RelationshipTypeService;
 import org.openmetadata.sdk.services.policies.PolicyService;
 import org.openmetadata.sdk.services.search.SearchAPI;
@@ -157,13 +154,10 @@ public class OpenMetadataClient {
   private final OntologyChangeSetService ontologyChangeSets;
   private final OntologyEditLockService ontologyEditLocks;
   private final OntologyImpactService ontologyImpacts;
-  private final OntologyModelingService ontologyModeling;
   private final InferenceRuleService inferenceRules;
   private final OntologyPackService ontologyPacks;
   private final OntologyPatternService ontologyPatterns;
   private final OntologyReasoningService ontologyReasoning;
-  private final OntologyStructureService ontologyStructure;
-  private final OntologySubsetService ontologySubsets;
 
   // System settings
   private final SystemSettingsService settings;
@@ -304,13 +298,10 @@ public class OpenMetadataClient {
     this.ontologyChangeSets = new OntologyChangeSetService(httpClient);
     this.ontologyEditLocks = new OntologyEditLockService(httpClient);
     this.ontologyImpacts = new OntologyImpactService(httpClient);
-    this.ontologyModeling = new OntologyModelingService(httpClient);
     this.inferenceRules = new InferenceRuleService(httpClient);
     this.ontologyPacks = new OntologyPackService(httpClient);
     this.ontologyPatterns = new OntologyPatternService(httpClient);
     this.ontologyReasoning = new OntologyReasoningService(httpClient);
-    this.ontologyStructure = new OntologyStructureService(httpClient);
-    this.ontologySubsets = new OntologySubsetService(httpClient);
 
     // Initialize classification services
     this.classifications = new ClassificationService(httpClient);
@@ -554,10 +545,6 @@ public class OpenMetadataClient {
     return ontologyImpacts;
   }
 
-  public OntologyModelingService ontologyModeling() {
-    return ontologyModeling;
-  }
-
   public InferenceRuleService inferenceRules() {
     return inferenceRules;
   }
@@ -572,14 +559,6 @@ public class OpenMetadataClient {
 
   public OntologyReasoningService ontologyReasoning() {
     return ontologyReasoning;
-  }
-
-  public OntologyStructureService ontologyStructure() {
-    return ontologyStructure;
-  }
-
-  public OntologySubsetService ontologySubsets() {
-    return ontologySubsets;
   }
 
   public SystemSettingsService settings() {

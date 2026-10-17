@@ -23,7 +23,6 @@ import {
 import { AcquireOntologyEditLock } from '../generated/api/data/acquireOntologyEditLock';
 import { ActivateOntologyRelease } from '../generated/api/data/activateOntologyRelease';
 import { ApplyOntologyChangeSet } from '../generated/api/data/applyOntologyChangeSet';
-import { BuildOntologySubset } from '../generated/api/data/buildOntologySubset';
 import { CaptureOntologyRelease } from '../generated/api/data/captureOntologyRelease';
 import { CreateOntology } from '../generated/api/data/createOntology';
 import { CreateOntologyAxiom } from '../generated/api/data/createOntologyAxiom';
@@ -33,8 +32,6 @@ import { CreateOntologyProperty } from '../generated/api/data/createOntologyProp
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
-import { InstantiateOntologyPattern } from '../generated/api/data/instantiateOntologyPattern';
-import { MergeOntologyStructure } from '../generated/api/data/mergeOntologyStructure';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -51,8 +48,6 @@ import {
 import { OntologyImpactReport } from '../generated/api/data/ontologyImpactReport';
 import { OntologyInferenceExplanation } from '../generated/api/data/ontologyInferenceExplanation';
 import { OntologyInferenceExplanationRequest } from '../generated/api/data/ontologyInferenceExplanationRequest';
-import { OntologyIRIPreview } from '../generated/api/data/ontologyIriPreview';
-import { OntologyIRIPreviewRequest } from '../generated/api/data/ontologyIriPreviewRequest';
 import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMappingSuggestionList';
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
 import { OntologyMemoryDerivationRequest } from '../generated/api/data/ontologyMemoryDerivationRequest';
@@ -62,17 +57,11 @@ import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontolo
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackList } from '../generated/api/data/ontologyPackList';
 import { OntologyPackManifest } from '../generated/api/data/ontologyPackManifest';
-import { OntologyPatternInstantiationResult } from '../generated/api/data/ontologyPatternInstantiationResult';
-import { OntologyPatternList } from '../generated/api/data/ontologyPatternList';
 import { OntologyProfileReport } from '../generated/api/data/ontologyProfileReport';
 import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontologyRelationshipSuggestionList';
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
-import { OntologyStructuralDiff } from '../generated/api/data/ontologyStructuralDiff';
-import { OntologyStructuralDiffRequest } from '../generated/api/data/ontologyStructuralDiffRequest';
-import { OntologyStructuralMergeResult } from '../generated/api/data/ontologyStructuralMergeResult';
-import { OntologySubsetResult } from '../generated/api/data/ontologySubsetResult';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
 import type { Ontology } from '../generated/entity/data/ontology';
@@ -110,11 +99,7 @@ const ONTOLOGY_PACKS_PATH = '/ontologyPacks';
 const ONTOLOGY_AI_PATH = '/ontology/ai';
 const ONTOLOGY_BULK_PATH = '/ontology/bulk';
 const ONTOLOGY_IMPACTS_PATH = '/ontology/impacts/glossaryTerms';
-const ONTOLOGY_MODELING_PATH = '/ontology/modeling';
-const ONTOLOGY_PATTERNS_PATH = '/ontology/patterns';
 const ONTOLOGY_REASONING_PATH = '/ontology/reasoning';
-const ONTOLOGY_STRUCTURE_PATH = '/ontology/structure';
-const ONTOLOGY_SUBSETS_PATH = '/ontology/subsets';
 
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
@@ -619,67 +604,6 @@ export const getOntologyEditLock = async (
   const response = await APIClient.get<OntologyEditLock>(
     `${EDIT_LOCKS_PATH}/${resourceType}/${resourceId}`
   );
-
-  return response.data;
-};
-
-export const previewOntologyIri = async (
-  request: OntologyIRIPreviewRequest
-) => {
-  const response = await APIClient.post<
-    OntologyIRIPreviewRequest,
-    AxiosResponse<OntologyIRIPreview>
-  >(`${ONTOLOGY_MODELING_PATH}/iris/preview`, request);
-
-  return response.data;
-};
-
-export const listOntologyPatterns = async () => {
-  const response = await APIClient.get<OntologyPatternList>(
-    ONTOLOGY_PATTERNS_PATH
-  );
-
-  return response.data;
-};
-
-export const instantiateOntologyPattern = async (
-  request: InstantiateOntologyPattern
-) => {
-  const response = await APIClient.post<
-    InstantiateOntologyPattern,
-    AxiosResponse<OntologyPatternInstantiationResult>
-  >(`${ONTOLOGY_PATTERNS_PATH}/instantiate`, request);
-
-  return response.data;
-};
-
-export const buildOntologySubset = async (request: BuildOntologySubset) => {
-  const response = await APIClient.post<
-    BuildOntologySubset,
-    AxiosResponse<OntologySubsetResult>
-  >(ONTOLOGY_SUBSETS_PATH, request);
-
-  return response.data;
-};
-
-export const diffOntologyStructure = async (
-  request: OntologyStructuralDiffRequest
-) => {
-  const response = await APIClient.post<
-    OntologyStructuralDiffRequest,
-    AxiosResponse<OntologyStructuralDiff>
-  >(`${ONTOLOGY_STRUCTURE_PATH}/diff`, request);
-
-  return response.data;
-};
-
-export const mergeOntologyStructure = async (
-  request: MergeOntologyStructure
-) => {
-  const response = await APIClient.post<
-    MergeOntologyStructure,
-    AxiosResponse<OntologyStructuralMergeResult>
-  >(`${ONTOLOGY_STRUCTURE_PATH}/merge`, request);
 
   return response.data;
 };

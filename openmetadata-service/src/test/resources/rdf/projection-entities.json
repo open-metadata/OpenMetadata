@@ -59,17 +59,5 @@
         "outputs": [{"datasetFQN": "service.db.schema.output"}]
       }
     }
-  },
-  {
-    "type": "glossaryTerm",
-    "fields": {
-      "name": "Order",
-      "fullyQualifiedName": "Sales.Order",
-      "realizedIn": [
-        {"asset": {"id": "00000000-0000-0000-0000-0000000000d1", "type": "table"}, "role": "PRIMARY_STORE"},
-        {"asset": {"id": "00000000-0000-0000-0000-0000000000d2", "type": "table"}, "role": "DERIVED"},
-        {"asset": {"id": "00000000-0000-0000-0000-0000000000d3", "type": "table"}, "role": "REPLICA"}
-      ]
-    }
   }
 ]

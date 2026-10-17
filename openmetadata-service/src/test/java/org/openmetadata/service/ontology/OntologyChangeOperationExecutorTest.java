@@ -14,7 +14,6 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -45,7 +44,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
@@ -129,7 +127,7 @@ class OntologyChangeOperationExecutorTest {
   }
 
   @Test
-  void createTermPersistsItsSourceMemory() {
+  void createTermKeepsMemoryEvidenceOnTheDraftOperation() {
     final UUID memoryId = UUID.randomUUID();
     stubTermUpsertEchoesEntity();
     final OntologyChangeOperation operation =
@@ -139,7 +137,8 @@ class OntologyChangeOperationExecutorTest {
 
     executor.execute(uriInfo, USER, operation);
 
-    assertEquals(Set.of(memoryId), capturePersistedTerm().getSourceMemoryIds());
+    assertEquals(operation.getTerm().getId(), capturePersistedTerm().getId());
+    assertEquals(Set.of(memoryId), operation.getSourceMemoryIds());
   }
 
   @Test
@@ -153,70 +152,6 @@ class OntologyChangeOperationExecutorTest {
 
     assertThrows(BadRequestException.class, () -> executor.execute(uriInfo, USER, operation));
     verify(termRepository, never()).createOrUpdate(any(), any(), any());
-  }
-
-  @Test
-  void upsertAttributeReplacesExistingAttributeWithSameId() {
-    final UUID termId = UUID.randomUUID();
-    final UUID attributeId = UUID.randomUUID();
-    final GlossaryTerm stored =
-        term(termId).withAttributes(List.of(attribute(attributeId, "old-value")));
-    stubEditableTerm(termId, stored);
-    stubPersistTermEchoesEntity();
-    final OntologyChangeOperation operation =
-        operation(OntologyChangeOperationType.UPSERT_ATTRIBUTE, termId)
-            .withAttribute(attribute(attributeId, "new-value"));
-
-    final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
-
-    final FieldUpdate update = captureFieldUpdate();
-    final GlossaryTerm persisted = update.term;
-    assertEquals(Set.of("attributes"), update.patchedFields);
-    assertEquals(1, persisted.getAttributes().size());
-    assertEquals(attributeId, persisted.getAttributes().getFirst().getId());
-    assertEquals("new-value", persisted.getAttributes().getFirst().getName());
-    assertEquals(termId, outcome.entity().getId());
-    assertEquals(0.3, outcome.entityVersion());
-  }
-
-  @Test
-  void upsertAttributeScopesStoreToAttributesFieldOnly() {
-    // Regression guard for the data-loss bug where attribute/mapping edits routed a partial-entity
-    // load-mutate-store through the whole-entity PUT path (patchedFields == null), wiping the
-    // relationship-backed collections (reviewers, relatedTerms, realizedIn) the loader never
-    // populated. The executor must scope the store to only the edited field name.
-    final UUID termId = UUID.randomUUID();
-    stubEditableTerm(termId, term(termId));
-    stubPersistTermEchoesEntity();
-    final OntologyChangeOperation operation =
-        operation(OntologyChangeOperationType.UPSERT_ATTRIBUTE, termId)
-            .withAttribute(attribute(UUID.randomUUID(), "value"));
-
-    executor.execute(uriInfo, USER, operation);
-
-    final FieldUpdate update = captureFieldUpdate();
-    assertNotNull(update.patchedFields);
-    assertEquals(Set.of("attributes"), update.patchedFields);
-    // The unscoped 3-arg createOrUpdate (whole-entity PUT) must not be invoked.
-    verify(termRepository, never()).createOrUpdate(eq(uriInfo), any(GlossaryTerm.class), eq(USER));
-  }
-
-  @Test
-  void upsertAttributeAddsNewAttributeWhenTermHasNone() {
-    final UUID termId = UUID.randomUUID();
-    final UUID attributeId = UUID.randomUUID();
-    stubEditableTerm(termId, term(termId));
-    stubPersistTermEchoesEntity();
-    final OntologyChangeOperation operation =
-        operation(OntologyChangeOperationType.UPSERT_ATTRIBUTE, termId)
-            .withAttribute(attribute(attributeId, "value"));
-
-    executor.execute(uriInfo, USER, operation);
-
-    final FieldUpdate update = captureFieldUpdate();
-    assertEquals(Set.of("attributes"), update.patchedFields);
-    assertEquals(1, update.term.getAttributes().size());
-    assertEquals(attributeId, update.term.getAttributes().getFirst().getId());
   }
 
   @Test
@@ -289,24 +224,6 @@ class OntologyChangeOperationExecutorTest {
     assertEquals(Set.of("conceptMappings"), update.patchedFields);
     assertEquals(1, update.term.getConceptMappings().size());
     assertEquals(CONCEPT_B, update.term.getConceptMappings().getFirst().getConceptIri());
-  }
-
-  @Test
-  void deleteAttributeScopesStoreToAttributesFieldOnly() {
-    final UUID termId = UUID.randomUUID();
-    final UUID attributeId = UUID.randomUUID();
-    stubEditableTerm(termId, term(termId).withAttributes(List.of(attribute(attributeId, "value"))));
-    stubPersistTermEchoesEntity();
-    final OntologyChangeOperation operation =
-        operation(OntologyChangeOperationType.DELETE_ATTRIBUTE, termId)
-            .withAttribute(attribute(attributeId, "value"));
-
-    executor.execute(uriInfo, USER, operation);
-
-    final FieldUpdate update = captureFieldUpdate();
-    assertNotNull(update.patchedFields);
-    assertEquals(Set.of("attributes"), update.patchedFields);
-    verify(termRepository, never()).createOrUpdate(eq(uriInfo), any(GlossaryTerm.class), eq(USER));
   }
 
   @Test
@@ -440,10 +357,6 @@ class OntologyChangeOperationExecutorTest {
         .withName("term1")
         .withFullyQualifiedName("glossary.term1")
         .withVersion(0.3);
-  }
-
-  private static OntologyAttribute attribute(final UUID attributeId, final String name) {
-    return new OntologyAttribute().withId(attributeId).withName(name);
   }
 
   private static ConceptMapping mapping(
