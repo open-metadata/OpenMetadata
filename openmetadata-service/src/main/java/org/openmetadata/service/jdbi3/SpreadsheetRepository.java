@@ -191,7 +191,9 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
   @Override
   public void setFields(
       Spreadsheet spreadsheet, EntityUtil.Fields fields, RelationIncludes relationIncludes) {
-    spreadsheet.withService(getContainer(spreadsheet.getId()));
+    // A spreadsheet in a folder is CONTAINed by both the service and the folder, so the service
+    // lookup must name its type, as the bulk path's fetchAndSetService does.
+    spreadsheet.withService(getContainer(spreadsheet.getId(), Entity.DRIVE_SERVICE));
     spreadsheet.withDirectory(getDirectory(spreadsheet));
     spreadsheet.withWorksheets(
         fields.contains(WORKSHEETS_FIELD) ? getWorksheets(spreadsheet) : null);

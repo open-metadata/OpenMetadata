@@ -538,7 +538,7 @@ export const DataAssetsHeader = ({
     [permissions]
   );
   const {
-    canEditAll: editDomainPermission,
+    canEditDomains: editDomainPermission,
     canEditOwners: editOwnerPermission,
     canEditTier: editTierPermission,
     can,

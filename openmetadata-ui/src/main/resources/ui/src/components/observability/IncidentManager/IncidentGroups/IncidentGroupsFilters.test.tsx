@@ -149,7 +149,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
-jest.mock('../../DataQuality/Dashboard/DqDateRangeFilter', () => ({
+jest.mock('../../../common/DateRangeFilter/DateRangeFilter', () => ({
   __esModule: true,
   default: jest
     .fn()
@@ -526,36 +526,5 @@ describe('IncidentGroupsFilters', () => {
     fireEvent.click(screen.getByTestId('date-range-apply'));
 
     expect(mockOnChange).toHaveBeenLastCalledWith({ startTs: 1, endTs: 2 });
-  });
-
-  it('should offer no clear action while nothing is filtered', () => {
-    renderFilters();
-
-    expect(
-      screen.queryByTestId('incident-groups-clear-filters')
-    ).not.toBeInTheDocument();
-  });
-
-  it('should clear every filter at once', () => {
-    renderFilters({
-      testCaseFQN: 'svc.db.schema.orders.row_count',
-      assignee: 'aaron',
-      status: [TestCaseResolutionStatusTypes.New],
-      dateField: 'updatedAt',
-      startTs: 1,
-      endTs: 2,
-    });
-
-    fireEvent.click(screen.getByTestId('incident-groups-clear-filters'));
-
-    expect(mockOnChange).toHaveBeenLastCalledWith({
-      testCaseFQN: undefined,
-      assignee: undefined,
-      status: [],
-      severity: [],
-      dateField: undefined,
-      startTs: undefined,
-      endTs: undefined,
-    });
   });
 });

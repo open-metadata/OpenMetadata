@@ -926,6 +926,7 @@ const DomainTreeView = ({
           onActiveTabChange={setActiveTab}
           onDelete={handleDomainDelete}
           onNavigate={handleNavigate}
+          onRefresh={refreshAll}
           onUpdate={handleDomainUpdate}
         />
       );

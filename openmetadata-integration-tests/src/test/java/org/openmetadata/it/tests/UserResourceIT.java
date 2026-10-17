@@ -2435,6 +2435,34 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_updateUserEmailToAnotherDomainIsIgnored(TestNamespace ns) throws Exception {
+    // The allowed email domains are checked only when a user is created (UserRepository
+    // createNewEntity). That is complete only while no update can move an email to another
+    // domain, which this pins for both PATCH and PUT
+    String userName = ns.prefix("emailDomainUpdateUser");
+    String originalEmail = toValidEmail(userName);
+    User user = createEntity(new CreateUser().withName(userName).withEmail(originalEmail));
+    String otherDomainEmail =
+        originalEmail.substring(0, originalEmail.indexOf('@')) + "@other-domain.example";
+
+    user.setEmail(otherDomainEmail);
+    User patched = patchEntity(user.getId().toString(), user);
+    assertEquals(originalEmail.toLowerCase(), patched.getEmail().toLowerCase());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser().withName(userName).withEmail(otherDomainEmail));
+
+    assertEquals(
+        originalEmail.toLowerCase(),
+        getEntity(user.getId().toString()).getEmail().toLowerCase(),
+        "PUT must not move an existing user's email to another domain");
+  }
+
+  @Test
   void test_userWithIsBot(TestNamespace ns) {
 
     String botName = ns.prefix("simpleBot");

@@ -583,6 +583,11 @@ WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out
 -- of both the grid and the picker; this stops the rows accumulating.
+--
+-- MyTask and TotalAssets are the exception: their keys now hold the My Tasks and Total Data Assets
+-- topic cards and their seed files are back. Deleting the old rows is still right, because the
+-- loader re-inserts any seeded row it cannot find on the next boot, so they come back with the
+-- topic cards' name and description rather than the retired widgets'.
 DELETE FROM doc_store
 WHERE entityType = 'KnowledgePanel'
   AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
@@ -615,3 +620,11 @@ SET json = jsonb_set(
 WHERE name = 'tableDiff'
   AND jsonb_typeof(json->'parameterDefinition') = 'array'
   AND NOT ((json->'parameterDefinition')::jsonb @> '[{"name": "parallelQueries"}]'::jsonb);
+
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = jsonb_set(json::jsonb, '{sourceConfig,config,sampleDataCount}', '1000'::jsonb)::json
+WHERE json::jsonb -> 'sourceConfig' -> 'config' ->> 'type' = 'AutoClassification'
+  AND jsonb_typeof(json::jsonb -> 'sourceConfig' -> 'config' -> 'sampleDataCount') = 'number'
+  AND (json::jsonb -> 'sourceConfig' -> 'config' ->> 'sampleDataCount')::numeric > 1000;

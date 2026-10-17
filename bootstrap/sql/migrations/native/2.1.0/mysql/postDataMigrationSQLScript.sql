@@ -610,6 +610,11 @@ WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out
 -- of both the grid and the picker; this stops the rows accumulating.
+--
+-- MyTask and TotalAssets are the exception: their keys now hold the My Tasks and Total Data Assets
+-- topic cards and their seed files are back. Deleting the old rows is still right, because the
+-- loader re-inserts any seeded row it cannot find on the next boot, so they come back with the
+-- topic cards' name and description rather than the retired widgets'.
 DELETE FROM doc_store
 WHERE entityType = 'KnowledgePanel'
   AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
@@ -642,3 +647,11 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name = 'tableDiff'
   AND JSON_TYPE(JSON_EXTRACT(json, '$.parameterDefinition')) = 'ARRAY'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'parallelQueries'), '$.parameterDefinition');
+
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(json, '$.sourceConfig.config.sampleDataCount', 1000)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.sourceConfig.config.type')) = 'AutoClassification'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount')) = 'INTEGER'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount') > 1000;
