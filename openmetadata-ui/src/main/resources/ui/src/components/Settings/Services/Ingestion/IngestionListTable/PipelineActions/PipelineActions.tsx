@@ -109,7 +109,7 @@ function PipelineActions({
           color="secondary"
           data-testid={pipeline.enabled ? 'pause-button' : 'resume-button'}
           iconLeading={<StatusIcon height={12} width={12} />}
-          isDisabled={isDisabled || !pipeline.deployed}
+          isDisabled={isDisabled || !pipeline.deployed || isToggling}
           isLoading={isToggling}
           onPress={() => onPauseUnpauseClick(pipelineId)}>
           {label}
