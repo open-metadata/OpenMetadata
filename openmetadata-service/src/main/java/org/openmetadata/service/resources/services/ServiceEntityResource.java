@@ -13,12 +13,12 @@
 
 package org.openmetadata.service.resources.services;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -37,6 +37,7 @@ import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 
+@Slf4j
 public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
         R extends ServiceEntityRepository<T, S>,
@@ -81,8 +82,25 @@ public abstract class ServiceEntityResource<
 
   protected ResultList<T> decryptOrNullify(
       SecurityContext securityContext, ResultList<T> services) {
-    listOrEmpty(services.getData()).forEach(service -> decryptOrNullify(securityContext, service));
+    if (services.getData() != null) {
+      services.setData(
+          services.getData().stream()
+              .map(service -> decryptServiceForList(securityContext, service))
+              .toList());
+    }
     return services;
+  }
+
+  private T decryptServiceForList(SecurityContext securityContext, T service) {
+    try {
+      return decryptOrNullify(securityContext, service);
+    } catch (InvalidServiceConnectionException failure) {
+      LOG.warn(
+          "Failed to decrypt connection for {} service {}; returning it without a connection",
+          serviceType,
+          service.getId());
+      return nullifyConnection(service);
+    }
   }
 
   protected T unmask(T service) {
