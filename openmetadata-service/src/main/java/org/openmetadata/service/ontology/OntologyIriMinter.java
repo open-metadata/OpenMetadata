@@ -44,6 +44,11 @@ public final class OntologyIriMinter {
   private static final Set<String> SUPPORTED_PLACEHOLDERS =
       Set.of(GLOSSARY_PLACEHOLDER, TERM_PLACEHOLDER, UUID_PLACEHOLDER);
 
+  public static URI mint(final URI namespace, final UUID entityId) {
+    requireAbsoluteBaseIri(namespace);
+    return requireAbsoluteIri(join(namespace.toString(), entityId.toString()));
+  }
+
   public OntologyIriPreview preview(
       final Glossary glossary, final OntologyIriPreviewRequest request) {
     final OntologyConfiguration configuration = requireConfiguration(glossary);

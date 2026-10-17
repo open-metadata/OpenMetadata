@@ -703,6 +703,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/ontology/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Ontology*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RelationshipType*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/ontology*.json",
         "openmetadata-service/src/main/resources/json/data/ontology/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/*Ontology*",
         "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*"

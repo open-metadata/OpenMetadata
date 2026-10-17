@@ -15,22 +15,31 @@
  */
 export interface OntologyChangeSet {
     applicationResult?: OntologyChangeApplicationResult;
-    changeDescription?: ChangeDescription;
-    deleted?:           boolean;
-    description:        string;
-    displayName:        string;
-    fullyQualifiedName: string;
+    /**
+     * Native working revision against which all operations were proposed. Required for native
+     * scope.
+     */
+    baseWorkingRevision?: number;
+    changeDescription?:   ChangeDescription;
+    deleted?:             boolean;
+    description:          string;
+    displayName:          string;
+    fullyQualifiedName:   string;
     /**
      * Ontology models affected by this change set.
      */
-    glossaries:                    EntityReference[];
+    glossaries?:                   EntityReference[];
     href?:                         string;
     id:                            string;
     incrementalChangeDescription?: ChangeDescription;
     name:                          string;
-    operations:                    OntologyChangeOperation[];
-    owners?:                       EntityReference[];
-    provider?:                     ProviderType;
+    /**
+     * Native ontology scope. Mutually exclusive with glossaries.
+     */
+    ontology?:  EntityReference;
+    operations: OntologyChangeOperation[];
+    owners?:    EntityReference[];
+    provider?:  ProviderType;
     /**
      * Review task created when a suggester submits the change set.
      */
@@ -78,7 +87,11 @@ export interface OperationResult {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Native ontology scope. Mutually exclusive with glossaries.
+ *
  * Ancestor concept that declares this attribute. Only set when `inherited` is true.
+ *
+ * Owning ontology entity. Glossaries do not own ontology definitions.
  *
  * Reference to the data contract for this entity.
  *
@@ -221,6 +234,7 @@ export interface OntologyChangeOperation {
      * Version used for optimistic concurrency. Omitted for create operations.
      */
     baseVersion?: number;
+    concept?:     OntologyConcept;
     /**
      * Model confidence in this AI suggestion, from 0 to 1.
      */
@@ -233,6 +247,7 @@ export interface OntologyChangeOperation {
      */
     modelId?:      string;
     operationType: OperationType;
+    property?:     OntologyProperty;
     /**
      * Model explanation of the evidence behind this AI suggestion.
      */
@@ -318,13 +333,11 @@ export interface OntologyAxiom {
     deleted?:           boolean;
     description:        string;
     displayName:        string;
-    entityStatus:       EntityStatus;
     /**
      * Class expressions participating in the axiom, ordered from left to right.
      */
     expressions:        OntologyExpression[];
     fullyQualifiedName: string;
-    glossary:           EntityReference;
     href?:              string;
     id:                 string;
     /**
@@ -334,11 +347,11 @@ export interface OntologyAxiom {
     incrementalChangeDescription?: ChangeDescription;
     literal?:                      Literal;
     name:                          string;
+    ontology:                      EntityReference;
     owners?:                       EntityReference[];
     propertyIri?:                  string;
     provenance:                    Provenance;
     provider?:                     ProviderType;
-    reviewers?:                    EntityReference[];
     subjectIri:                    string;
     targetIri?:                    string;
     updatedAt?:                    number;
@@ -353,28 +366,6 @@ export enum AxiomType {
     EquivalentClass = "EQUIVALENT_CLASS",
     ObjectPropertyAssertion = "OBJECT_PROPERTY_ASSERTION",
     SubclassOf = "SUBCLASS_OF",
-}
-
-/**
- * General lifecycle stage for entities that reference this vocabulary. Specialized entities
- * can declare their own status schema and lifecycle policy. Entity types without an
- * entityStatus property have no lifecycle. When a create request omits the stage, the
- * server assigns the entity type's initial stage.
- *
- * Status of the Glossary.
- *
- * Approval status of the glossary term.
- *
- * Approval status of this relation edge.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -478,6 +469,101 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * A formal class, SKOS concept, or both, owned by an ontology independently of glossary
+ * terms.
+ */
+export interface OntologyConcept {
+    changeDescription?: ChangeDescription;
+    conceptMappings?:   ConceptMapping[];
+    conceptType:        OntologyConceptType;
+    deleted?:           boolean;
+    description?:       string;
+    displayName?:       string;
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
+     */
+    iri:  string;
+    name: string;
+    /**
+     * Owning ontology entity. Glossaries do not own ontology definitions.
+     */
+    ontology:  EntityReference;
+    owners?:   EntityReference[];
+    provider?: ProviderType;
+    /**
+     * Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not
+     * stored or independently editable.
+     */
+    subClasses?: string[];
+    /**
+     * Direct named superclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms.
+     * Not stored or independently editable.
+     */
+    superClasses?: string[];
+    synonyms?:     string[];
+    updatedAt?:    number;
+    updatedBy?:    string;
+    version?:      number;
+}
+
+/**
+ * Mapping from an ontology term to an external concept.
+ */
+export interface ConceptMapping {
+    /**
+     * External concept IRI to map this ontology term to.
+     */
+    conceptIri: string;
+    /**
+     * Type of mapping used for the external concept alignment.
+     */
+    mappingType: ConceptMappingType;
+    /**
+     * Optional external concept scheme IRI for the mapped concept.
+     */
+    schemeIri?: string;
+    /**
+     * Optional source label or catalog for the external concept.
+     */
+    source?: string;
+}
+
+/**
+ * Type of mapping used for the external concept alignment.
+ *
+ * Type of mapping used to align this term with an external concept.
+ */
+export enum ConceptMappingType {
+    BroadMatch = "BROAD_MATCH",
+    CloseMatch = "CLOSE_MATCH",
+    ExactMatch = "EXACT_MATCH",
+    NarrowMatch = "NARROW_MATCH",
+    RelatedMatch = "RELATED_MATCH",
+    SameAs = "SAME_AS",
+}
+
+/**
+ * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
+ * round-trip with the typing they were authored with.
+ *
+ * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
+ * emits the term as an `owl:Class` and a `skos:Concept`.
+ */
+export enum OntologyConceptType {
+    Both = "BOTH",
+    OwlClass = "OWL_CLASS",
+    SkosConcept = "SKOS_CONCEPT",
 }
 
 /**
@@ -602,6 +688,28 @@ export interface Glossary {
      * Votes on the entity.
      */
     votes?: Votes;
+}
+
+/**
+ * Status of the Glossary.
+ *
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Approval status of the glossary term.
+ *
+ * Approval status of this relation edge.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 export interface Namespace {
@@ -912,56 +1020,110 @@ export interface Votes {
     upVotes?: number;
 }
 
-/**
- * Mapping from an ontology term to an external concept.
- */
-export interface ConceptMapping {
-    /**
-     * External concept IRI to map this ontology term to.
-     */
-    conceptIri: string;
-    /**
-     * Type of mapping used for the external concept alignment.
-     */
-    mappingType: ConceptMappingType;
-    /**
-     * Optional external concept scheme IRI for the mapped concept.
-     */
-    schemeIri?: string;
-    /**
-     * Optional source label or catalog for the external concept.
-     */
-    source?: string;
-}
-
-/**
- * Type of mapping used for the external concept alignment.
- *
- * Type of mapping used to align this term with an external concept.
- */
-export enum ConceptMappingType {
-    BroadMatch = "BROAD_MATCH",
-    CloseMatch = "CLOSE_MATCH",
-    ExactMatch = "EXACT_MATCH",
-    NarrowMatch = "NARROW_MATCH",
-    RelatedMatch = "RELATED_MATCH",
-    SameAs = "SAME_AS",
-}
-
 export enum OperationType {
     AddRelationship = "ADD_RELATIONSHIP",
     CreateGlossary = "CREATE_GLOSSARY",
     CreateTerm = "CREATE_TERM",
     DeleteAttribute = "DELETE_ATTRIBUTE",
     DeleteAxiom = "DELETE_AXIOM",
+    DeleteConcept = "DELETE_CONCEPT",
     DeleteMapping = "DELETE_MAPPING",
+    DeleteProperty = "DELETE_PROPERTY",
     DeleteRelationship = "DELETE_RELATIONSHIP",
     DeleteTerm = "DELETE_TERM",
     UpdateRelationship = "UPDATE_RELATIONSHIP",
     UpdateTerm = "UPDATE_TERM",
     UpsertAttribute = "UPSERT_ATTRIBUTE",
     UpsertAxiom = "UPSERT_AXIOM",
+    UpsertConcept = "UPSERT_CONCEPT",
     UpsertMapping = "UPSERT_MAPPING",
+    UpsertProperty = "UPSERT_PROPERTY",
+}
+
+/**
+ * A formal object, data, or annotation property owned by an ontology, independent of
+ * glossary relation types.
+ */
+export interface OntologyProperty {
+    changeDescription?: ChangeDescription;
+    characteristics?:   Characteristic[];
+    deleted?:           boolean;
+    description?:       string;
+    /**
+     * Semantic IRIs of properties disjoint with this property.
+     */
+    disjointWith?: string[];
+    displayName?:  string;
+    /**
+     * Semantic IRIs of the classes in the property domain.
+     */
+    domain?: string[];
+    /**
+     * Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent
+     * datatype denotes xsd:string. Empty means no enumeration constraint.
+     */
+    enumValues?:        Literal[];
+    fullyQualifiedName: string;
+    href?:              string;
+    id:                 string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?:               string;
+    incrementalChangeDescription?: ChangeDescription;
+    /**
+     * Semantic IRI of the inverse object property.
+     */
+    inverse?: string;
+    /**
+     * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
+     */
+    iri: string;
+    /**
+     * Identifier intent for a DATA property. This annotation does not assert functionality, an
+     * OWL key, or uniqueness in source data.
+     */
+    isIdentifier?: boolean;
+    kind:          Kind;
+    name:          string;
+    /**
+     * Owning ontology entity. Glossaries do not own ontology definitions.
+     */
+    ontology: EntityReference;
+    owners?:  EntityReference[];
+    /**
+     * Ordered object-property IRIs whose composition implies this property.
+     */
+    propertyChain?: string[];
+    provider?:      ProviderType;
+    /**
+     * Semantic IRIs of range classes or datatypes.
+     */
+    range?: string[];
+    /**
+     * Unit IRI or display symbol for a DATA property, retained as an annotation without
+     * implying conversion.
+     */
+    unit?:      string;
+    updatedAt?: number;
+    updatedBy?: string;
+    version?:   number;
+}
+
+export enum Characteristic {
+    Asymmetric = "ASYMMETRIC",
+    Functional = "FUNCTIONAL",
+    InverseFunctional = "INVERSE_FUNCTIONAL",
+    Irreflexive = "IRREFLEXIVE",
+    Reflexive = "REFLEXIVE",
+    Symmetric = "SYMMETRIC",
+    Transitive = "TRANSITIVE",
+}
+
+export enum Kind {
+    Annotation = "ANNOTATION",
+    Data = "DATA",
+    Object = "OBJECT",
 }
 
 /**
@@ -1170,19 +1332,6 @@ export interface GlossaryTerm {
      * Votes on the entity.
      */
     votes?: Votes;
-}
-
-/**
- * Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which
- * emits the term as an `owl:Class` and a `skos:Concept`.
- *
- * Vocabulary a source ontology used to assert a concept. Preserved so imported ontologies
- * round-trip with the typing they were authored with.
- */
-export enum OntologyConceptType {
-    Both = "BOTH",
-    OwlClass = "OWL_CLASS",
-    SkosConcept = "SKOS_CONCEPT",
 }
 
 /**

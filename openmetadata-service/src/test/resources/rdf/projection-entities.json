@@ -1,5 +1,15 @@
 [
   {
+    "type": "task",
+    "fields": {
+      "ontologyReview": {
+        "entityId": "00000000-0000-0000-0000-000000000001",
+        "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "author": "author"
+      }
+    }
+  },
+  {
     "type": "table",
     "fields": {
       "name": "orders",

@@ -14,7 +14,6 @@
 import {
   AxiomType,
   CreateOntologyAxiom,
-  EntityStatus,
   OntologyExpression,
   Provenance,
 } from '../../generated/api/data/createOntologyAxiom';
@@ -218,16 +217,15 @@ export const buildOntologyPatternRequest = (
 };
 
 export const buildOntologyAxiomRequest = (
-  glossaryFqn: string,
+  ontologyFqn: string,
   form: OntologyAxiomFormState
 ): CreateOntologyAxiom => {
   const request: CreateOntologyAxiom = {
     axiomType: form.axiomType,
     description: form.description.trim(),
     displayName: form.displayName.trim(),
-    entityStatus: EntityStatus.Draft,
     expressions: form.expressions.length ? form.expressions : undefined,
-    glossary: glossaryFqn,
+    ontology: ontologyFqn,
     literal: literal(form),
     name: form.name.trim(),
     propertyIri: optional(form.propertyIri),

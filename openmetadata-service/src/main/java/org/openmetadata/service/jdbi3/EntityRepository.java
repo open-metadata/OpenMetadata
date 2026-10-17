@@ -692,6 +692,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     lockManager = manager;
   }
 
+  protected final void checkModificationsAllowed(final List<T> entities) {
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(entities);
+    }
+  }
+
   public boolean isSupportsOwners() {
     return supportsOwners;
   }
@@ -4399,9 +4405,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // 1. Batch lock manager check
-    if (lockManager != null) {
-      lockManager.checkModificationsAllowed(entities);
-    }
+    checkModificationsAllowed(entities);
 
     // 2. Set impersonatedBy and the creation audit for each entity
     for (T entity : entities) {
@@ -4415,6 +4419,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // the
     // handle is held).
     flushInOneTransaction(
+        entities,
         () -> {
           storeEntities(entities);
           storeExtensions(entities);
@@ -4440,9 +4445,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // 1. Batch lock manager check
-    if (lockManager != null) {
-      lockManager.checkModificationsAllowed(updates);
-    }
+    checkModificationsAllowed(updates);
 
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
@@ -4693,6 +4696,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private PutResponse<T> putAndStore(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
+    Supplier<PutResponse<T>> write =
+        () -> applyPut(uriInfo, original, updated, requireCurrentVersion, patchedFields);
+    return Boolean.TRUE.equals(original.getDeleted())
+        ? executeEntityWrite(List.of(original), write)
+        : write.get();
+  }
+
+  private PutResponse<T> applyPut(
       UriInfo uriInfo,
       T original,
       T updated,
@@ -5425,6 +5441,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @Transaction
   private DeleteResponse<T> delete(
       String deletedBy, T original, boolean recursive, boolean hardDelete) {
+    return executeEntityWrite(
+        List.of(original), () -> deleteContents(deletedBy, original, recursive, hardDelete));
+  }
+
+  private DeleteResponse<T> deleteContents(
+      String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
     try (DeleteLifecycle ignored = beginDeleteLifecycle(original, deletedBy)) {
       setFieldsForDelete(original);
@@ -5643,7 +5665,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
     AtomicReference<Set<UUID>> holders = new AtomicReference<>(Set.of());
-    flushInOneTransaction(() -> holders.set(cleanupFlushBody(deletedBy, entityInterface)));
+    flushInOneTransaction(
+        List.of(entityInterface), () -> holders.set(cleanupFlushBody(deletedBy, entityInterface)));
     removeCustomPropertyReferencesFromSearch(holders.get(), List.of(entityInterface.getId()));
     // Flowable commits on its own connection, so cancel only once the owning entity transaction
     // has committed: a rolled-back delete must not leave a live entity without its workflow. An
@@ -5907,7 +5930,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void createNewEntityFlush(T entity) {
     assignInitialEntityStatus(entity);
-    flushInOneTransaction(() -> createNewEntityFlushBody(entity));
+    flushInOneTransaction(List.of(entity), () -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
@@ -5945,6 +5968,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     } finally {
       scope.finish(committed);
     }
+  }
+
+  /** Adds entity-specific locking around a complete mutation, including cascades and imports. */
+  protected <R> R executeEntityWrite(List<T> entities, Supplier<R> work) {
+    return work.get();
+  }
+
+  protected void flushInOneTransaction(List<T> entities, Runnable work) {
+    executeEntityWrite(
+        entities,
+        () -> {
+          flushInOneTransaction(work);
+          return null;
+        });
   }
 
   /**
@@ -6209,7 +6246,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(() -> createManyEntitiesFlushBody(chunk));
+      flushInOneTransaction(chunk, () -> createManyEntitiesFlushBody(chunk));
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
@@ -7583,7 +7620,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
+    return executeEntityWrite(
+        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+  }
 
+  private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
     // If an entity being restored contains other **deleted** children entities, restore them
     restoreChildren(id, updatedBy);
 
@@ -7690,6 +7731,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) {
       return;
     }
+    executeEntityWrite(
+        entities,
+        () -> {
+          restoreSubtreeContents(entities, updatedBy);
+          return null;
+        });
+  }
+
+  private void restoreSubtreeContents(List<T> entities, String updatedBy) {
     dispatchToContainedChildren(
         entities,
         "bulkRestoreFindChildren",
@@ -7870,6 +7920,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     List<T> entities =
         allEntities.stream().filter(e -> !Boolean.TRUE.equals(e.getDeleted())).toList();
+    executeEntityWrite(
+        allEntities,
+        () -> {
+          softDeleteSubtreeContents(allEntities, entities, updatedBy);
+          return null;
+        });
+  }
+
+  private void softDeleteSubtreeContents(List<T> allEntities, List<T> entities, String updatedBy) {
     for (T entity : entities) {
       checkSystemEntityDeletion(entity);
     }
@@ -7988,6 +8047,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) {
       return;
     }
+    executeEntityWrite(
+        entities,
+        () -> {
+          hardDeleteSubtreeContents(entities, updatedBy);
+          return null;
+        });
+  }
+
+  private void hardDeleteSubtreeContents(List<T> entities, String updatedBy) {
     Runnable exitHardDeleteCascade = enterBulkHardDeleteCascade(entities);
     // Restored rather than cleared: this method recurses through dispatchToContainedChildren, so
     // an inner frame must not un-flag the outer cascade on its way out.
@@ -10188,10 +10256,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
+          List.of(original),
           () -> {
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
-            flushUpdateBody(useOptimisticStore, importMode);
+            flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
           });
       if (entityStored) {
         try (var ignored = phase("entityUpdateCacheEvict")) {

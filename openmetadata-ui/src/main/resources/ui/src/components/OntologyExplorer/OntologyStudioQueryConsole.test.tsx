@@ -22,6 +22,7 @@ import {
   replaceSavedSparqlQueries,
   replaceSparqlQueryTemplates,
   runGlossarySparqlQuery,
+  runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
 } from '../../rest/rdfAPI';
@@ -67,6 +68,7 @@ jest.mock('../../rest/rdfAPI', () => ({
   replaceSavedSparqlQueries: jest.fn(),
   replaceSparqlQueryTemplates: jest.fn(),
   runGlossarySparqlQuery: jest.fn(),
+  runOntologySparqlQuery: jest.fn(),
   runSparqlQuery: jest.fn(),
 }));
 
@@ -316,6 +318,38 @@ describe('OntologyStudioQueryConsole', () => {
 
     await waitFor(() => expect(mockRunSparqlQuery).toHaveBeenCalled());
 
+    expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
+  });
+
+  it('runs a native ontology query for a non-admin without requiring a glossary', async () => {
+    const run = runOntologySparqlQuery as jest.MockedFunction<
+      typeof runOntologySparqlQuery
+    >;
+    run.mockResolvedValue({
+      format: 'json',
+      body: '{}',
+      contentType: 'application/sparql-results+json',
+      durationMs: 1,
+    });
+    render(
+      <OntologyStudioQueryConsole
+        graphData={GRAPH_DATA}
+        relationTypes={RELATION_TYPES}
+        selectedGlossaryIds={[]}
+        selectedOntologyId="native"
+      />
+    );
+    fireEvent.click(
+      screen.getByTestId('ontology-query-suggestion-ontology-relatedTo-target')
+    );
+    await waitFor(() =>
+      expect(run).toHaveBeenCalledWith(
+        'native',
+        expect.objectContaining({ format: 'json' })
+      )
+    );
+
+    expect(mockRunSparqlQuery).not.toHaveBeenCalled();
     expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
   });
 

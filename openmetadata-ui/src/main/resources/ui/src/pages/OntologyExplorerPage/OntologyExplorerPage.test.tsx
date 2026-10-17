@@ -11,18 +11,54 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReactNode } from 'react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
+import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept';
+import {
+  getOntology,
+  listOntologies,
+  listOntologyConcepts,
+} from '../../rest/ontologyAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
 let mockSearchParams = new URLSearchParams();
+let mockUseRealRouter = false;
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useSearchParams: () => [mockSearchParams, jest.fn()],
+  useSearchParams: () =>
+    mockUseRealRouter
+      ? jest.requireActual('react-router-dom').useSearchParams()
+      : [mockSearchParams, jest.fn()],
+}));
+
+jest.mock('../../rest/ontologyAPI', () => ({
+  ...jest.requireActual('../../rest/ontologyAPI'),
+  getOntology: jest.fn(),
+  listOntologies: jest.fn(),
+  listOntologyConcepts: jest.fn(),
+}));
+
+jest.mock('../../rest/permissionAPI', () => ({
+  ...jest.requireActual('../../rest/permissionAPI'),
+  getEntityPermissionById: jest.fn().mockResolvedValue({ operations: [] }),
+}));
+
+jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => ({
+  __esModule: true,
+  default: () => <div data-testid="native-canvas" />,
 }));
 
 interface ExplorerMockProps {
@@ -62,7 +98,7 @@ const mockUseOntologyAiCapability = jest.fn(() => ({
   isLoading: false,
   isRdfEnabled: true,
 }));
-const mockUseOntologyEditLease = jest.fn(() => ({
+const mockUseOntologyEditLease = jest.fn((_options?: unknown) => ({
   isOwned: true,
   lock: undefined,
   retry: jest.fn(),
@@ -93,7 +129,8 @@ jest.mock(
 jest.mock(
   '../../components/OntologyExplorer/hooks/useOntologyEditLease',
   () => ({
-    useOntologyEditLease: () => mockUseOntologyEditLease(),
+    useOntologyEditLease: (options: unknown) =>
+      mockUseOntologyEditLease(options),
   })
 );
 
@@ -192,6 +229,8 @@ jest.mock(
 describe('OntologyExplorerPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseRealRouter = false;
+    mockSearchParams = new URLSearchParams();
     mockUseAuth.mockReturnValue({
       isAdminUser: true,
       isFirstTimeUser: false,
@@ -201,6 +240,113 @@ describe('OntologyExplorerPage', () => {
       isLoading: false,
       isRdfEnabled: true,
     });
+  });
+
+  const nativeOntology: Ontology = {
+    id: 'native-sales',
+    name: 'Native sales',
+    fullyQualifiedName: 'NativeSales',
+    iri: 'urn:NativeSales',
+    namespace: 'urn:NativeSales:',
+  };
+
+  const Location = () => (
+    <output data-testid="location">{useLocation().search}</output>
+  );
+
+  const renderNativeStudio = (search: string) => {
+    mockUseRealRouter = true;
+    (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    (listOntologies as jest.Mock).mockResolvedValue({
+      data: [nativeOntology],
+      paging: { total: 1 },
+    });
+    (listOntologyConcepts as jest.Mock).mockResolvedValue({
+      data: ['Party', 'Customer'].map((name) => ({
+        id: name,
+        name,
+        iri: `urn:${name}`,
+        fullyQualifiedName: `NativeSales.${name}`,
+        ontology: { id: nativeOntology.id, type: 'ontology' },
+        conceptType: OntologyConceptType.OwlClass,
+        superClasses: name === 'Customer' ? ['urn:Party'] : [],
+      })),
+      paging: { total: 2 },
+    });
+
+    return renderWithQueryClient(
+      <MemoryRouter initialEntries={[`/${search}`]}>
+        <OntologyExplorerPage />
+        <Location />
+      </MemoryRouter>
+    );
+  };
+
+  it('switches from a glossary draft to a native tree and releases the glossary lease', async () => {
+    renderNativeStudio('?draft=glossary-draft');
+    const glossary: Glossary = {
+      id: 'glossary-id',
+      name: 'Business glossary',
+      description: '',
+    };
+    act(() =>
+      mockOntologyExplorer.mock.calls
+        .at(-1)?.[0]
+        .onGlossariesChange?.([glossary])
+    );
+    fireEvent.click(screen.getByTestId('ontology-glossary-menu-trigger'));
+    fireEvent.click(
+      screen.getByRole('menuitemradio', { name: /Business glossary/ })
+    );
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(mockUseOntologyEditLease).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isActive: true })
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.select-entity' })
+    );
+    fireEvent.click(await screen.findByText(nativeOntology.name));
+    await screen.findByTestId('mode-tab-model');
+
+    expect(screen.getByTestId('mode-tab-graph')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '?ontology=native-sales'
+    );
+    expect(screen.getByTestId('location')).not.toHaveTextContent('draft=');
+    expect(mockUseOntologyEditLease).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isActive: false })
+    );
+
+    fireEvent.click(await screen.findByTestId('submode-tab-tree'));
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-tree-term-Customer')).toBeVisible()
+    );
+
+    expect(screen.getByTestId('ontology-tree-term-Party')).toBeVisible();
+  });
+
+  it('keeps a native draft deep link in its selected ontology review', async () => {
+    renderNativeStudio('?ontology=native-sales&draft=native-draft');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      )
+    );
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      'draft=native-draft'
+    );
+    expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+    expect(mockUseOntologyEditLease).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isActive: false })
+    );
   });
 
   it('renders the dedicated Studio shell and graph by default', () => {

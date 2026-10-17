@@ -26,11 +26,17 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindBean;
+import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
+import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
@@ -39,6 +45,24 @@ import org.openmetadata.service.util.jdbi.BindUUID;
 public interface RdfInfraDAOs {
   @CreateSqlObject
   OntologyDAO ontologyDAO();
+
+  @CreateSqlObject
+  OntologyEntityDAO ontologyEntityDAO();
+
+  @CreateSqlObject
+  OntologyConceptDAO ontologyConceptDAO();
+
+  @CreateSqlObject
+  OntologyPropertyDAO ontologyPropertyDAO();
+
+  @CreateSqlObject
+  OntologyStateDAO ontologyStateDAO();
+
+  @CreateSqlObject
+  OntologyReferenceDAO ontologyReferenceDAO();
+
+  @CreateSqlObject
+  OntologyReleaseDAO ontologyReleaseDAO();
 
   @CreateSqlObject
   RelationshipTypeDAO relationshipTypeDAO();
@@ -89,6 +113,83 @@ public interface RdfInfraDAOs {
       long renewedAt,
       long expiresAt) {}
 
+  interface OntologyEntityDAO extends EntityDAO<Ontology> {
+    @Override
+    default String getTableName() {
+      return "ontology_entity";
+    }
+
+    @Override
+    default Class<Ontology> getEntityClass() {
+      return Ontology.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface OntologyMemberDAO<T extends OntologyDefinition> extends EntityDAO<T> {
+    @SqlQuery(
+        "SELECT json FROM <table> WHERE ontologyId = :ontologyId AND deleted = FALSE "
+            + "AND iriHash IN (<iriHashes>) ORDER BY name, id LIMIT :limit <locking>")
+    List<String> findDeclarations(
+        @Define("table") String table,
+        @BindUUID("ontologyId") UUID ontologyId,
+        @BindList("iriHashes") List<String> iriHashes,
+        @Bind("limit") int limit,
+        @Define("locking") String locking);
+  }
+
+  interface OntologyConceptDAO extends OntologyMemberDAO<OntologyConcept> {
+    @Override
+    default String getTableName() {
+      return "ontology_concept_entity";
+    }
+
+    @Override
+    default Class<OntologyConcept> getEntityClass() {
+      return OntologyConcept.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface OntologyPropertyDAO extends OntologyMemberDAO<OntologyProperty> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_property_entity WHERE ontologyId = :ontologyId "
+                + "AND iriHash = md5(:iri) "
+                + "AND BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.iri')) = BINARY :iri "
+                + "AND deleted = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_property_entity WHERE ontologyId = :ontologyId "
+                + "AND iriHash = md5(:iri) AND json->>'iri' = :iri AND deleted = FALSE",
+        connectionType = POSTGRES)
+    String findByIri(@BindUUID("ontologyId") UUID ontologyId, @Bind("iri") String iri);
+
+    @Override
+    default String getTableName() {
+      return "ontology_property_entity";
+    }
+
+    @Override
+    default Class<OntologyProperty> getEntityClass() {
+      return OntologyProperty.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface RelationshipTypeDAO extends EntityDAO<RelationshipType> {
     @Override
     default String getTableName() {
@@ -122,7 +223,7 @@ public interface RdfInfraDAOs {
     List<String> listActive();
   }
 
-  interface OntologyAxiomDAO extends EntityDAO<OntologyAxiom> {
+  interface OntologyAxiomDAO extends OntologyMemberDAO<OntologyAxiom> {
     @Override
     default String getTableName() {
       return "ontology_axiom_entity";
@@ -137,34 +238,6 @@ public interface RdfInfraDAOs {
     default String getNameHashColumn() {
       return "fqnHash";
     }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.subjectIri')) = :iri "
-                + "AND axiomType IN ('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'DISJOINT_WITH') "
-                + "AND deleted = FALSE",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity WHERE json->>'subjectIri' = :iri "
-                + "AND axiomType IN ('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'DISJOINT_WITH') "
-                + "AND deleted = FALSE",
-        connectionType = POSTGRES)
-    int countClassSubjects(@Bind("iri") String iri);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.subjectIri')) = :iri "
-                + "AND axiomType = 'CLASS_ASSERTION' AND deleted = FALSE",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(*) FROM ontology_axiom_entity WHERE json->>'subjectIri' = :iri "
-                + "AND axiomType = 'CLASS_ASSERTION' AND deleted = FALSE",
-        connectionType = POSTGRES)
-    int countIndividualSubjects(@Bind("iri") String iri);
   }
 
   interface OntologyChangeSetDAO extends EntityDAO<OntologyChangeSet> {

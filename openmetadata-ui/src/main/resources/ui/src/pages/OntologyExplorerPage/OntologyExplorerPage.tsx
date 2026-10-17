@@ -34,6 +34,8 @@ import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import OntologyPicker from '../../components/governance/ontology/OntologyPicker/OntologyPicker';
+import OntologyStudioWorkspace from '../../components/governance/ontology/OntologyStudioWorkspace/OntologyStudioWorkspace';
 import { useOntologyAiCapability } from '../../components/OntologyExplorer/hooks/useOntologyAiCapability';
 import {
   OntologyEditLeaseState,
@@ -56,13 +58,15 @@ import { UIPermission } from '../../context/PermissionProvider/PermissionProvide
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { useAuth } from '../../hooks/authHooks';
 import { useIsAiMode } from '../../hooks/useAppMode';
+import { getOntology } from '../../rest/ontologyAPI';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
-import { showInfoToast } from '../../utils/ToastUtils';
+import { showErrorToast, showInfoToast } from '../../utils/ToastUtils';
 
 // 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.
 type StudioMode = 'view' | 'edit' | 'query' | 'ai' | 'review';
@@ -385,6 +389,13 @@ function useLinkedDraftId(): string | undefined {
 const studioModeFor = (linkedDraftId?: string): StudioMode =>
   linkedDraftId ? 'review' : 'view';
 
+const canCreateNativeOntology = (
+  isAdminUser: boolean | undefined,
+  permissions: Parameters<typeof checkPermission>[2]
+) =>
+  Boolean(isAdminUser) ||
+  checkPermission(Operation.Create, ResourceEntity.ONTOLOGY, permissions);
+
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -396,9 +407,65 @@ const OntologyExplorerPage: React.FC = () => {
     isLoading: isCapabilityLoading,
   } = useOntologyAiCapability();
   const initialDraftId = useLinkedDraftId();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [loadedOntology, setLoadedOntology] = useState<Ontology>();
+  const [isCreatingOntology, setIsCreatingOntology] = useState(false);
   const [mode, setMode] = useState<StudioMode>(() =>
     studioModeFor(initialDraftId)
   );
+  const ontologyId = searchParams.get('ontology');
+  const selectedOntology =
+    loadedOntology?.id === ontologyId ? loadedOntology : undefined;
+  const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
+  const selectOntology = (ontology?: Ontology) => {
+    setLoadedOntology(ontology);
+    setIsCreatingOntology(false);
+    if ((ontology?.id ?? null) !== ontologyId) {
+      setMode('view');
+    }
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      if ((ontology?.id ?? null) !== current.get('ontology')) {
+        next.delete(DRAFT_SEARCH_PARAM);
+      }
+      if (ontology) {
+        next.set('ontology', ontology.id);
+      } else {
+        next.delete('ontology');
+      }
+
+      return next;
+    });
+  };
+  useEffect(() => {
+    if (!ontologyId) {
+      setLoadedOntology(undefined);
+
+      return;
+    }
+    const controller = new AbortController();
+    getOntology(ontologyId, 'owners,reviewers', controller.signal)
+      .then((ontology) => {
+        if (!controller.signal.aborted) {
+          setLoadedOntology(ontology);
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) {
+          showErrorToast(error);
+          setMode('view');
+          setSearchParams((current) => {
+            const next = new URLSearchParams(current);
+            next.delete('ontology');
+            next.delete(DRAFT_SEARCH_PARAM);
+
+            return next;
+          });
+        }
+      });
+
+    return () => controller.abort();
+  }, [ontologyId, setSearchParams]);
   const [viewSurface, setViewSurface] = useState<ViewSurface>('graph');
   const [editSurface, setEditSurface] = useState<EditSurface>('graph');
   const [querySurface, setQuerySurface] = useState<QuerySurface>('console');
@@ -476,8 +543,18 @@ const OntologyExplorerPage: React.FC = () => {
     graphLeaseGlossary,
     glossaries
   );
+
+  function isGlossaryEditMode() {
+    return (
+      !ontologyId &&
+      !isCreatingOntology &&
+      mode === 'edit' &&
+      Boolean(leaseGlossary)
+    );
+  }
+
   const editLease = useOntologyEditLease({
-    isActive: mode === 'edit' && Boolean(leaseGlossary),
+    isActive: isGlossaryEditMode(),
     resourceId: leaseGlossary?.id,
     resourceType: EntityType.GLOSSARY,
   });
@@ -667,11 +744,12 @@ const OntologyExplorerPage: React.FC = () => {
             <Dropdown.Menu
               aria-label={t('label.glossary-plural')}
               selectedKeys={new Set([selectedGlossaryId ?? ALL_GLOSSARIES_KEY])}
-              onAction={(key) =>
+              onAction={(key) => {
+                selectOntology(undefined);
                 setSelectedGlossaryId(
                   key === ALL_GLOSSARIES_KEY ? undefined : String(key)
-                )
-              }>
+                );
+              }}>
               <Dropdown.Item
                 addon={`${glossaries.length} ${t(
                   'label.glossary-plural'
@@ -796,23 +874,43 @@ const OntologyExplorerPage: React.FC = () => {
         actions={
           <Box align="center" gap={2} wrap="wrap">
             {renderGlossaryMenu()}
-            <OntologyImportExportMenu
-              glossaries={glossaries}
-              glossary={selectedGlossary}
-              isAdminUser={Boolean(isAdminUser)}
-              relationCount={relationCount}
-              termCount={termCount}
+            <OntologyPicker
+              value={selectedOntology}
+              onChange={selectOntology}
             />
-            <Button
-              aria-haspopup="dialog"
-              color="secondary"
-              data-testid="ontology-library-trigger"
-              iconLeading={Grid01}
-              size="xs"
-              onPress={() => setIsLibraryOpen(true)}>
-              {t('label.library')}
-            </Button>
-            {renderPrimaryAction()}
+            {canCreateOntology && (
+              <Button
+                color="secondary"
+                data-testid="ontology-create"
+                size="xs"
+                onPress={() => {
+                  selectOntology(undefined);
+                  setIsCreatingOntology(true);
+                }}>
+                {t('label.add-entity', { entity: t('label.ontology') })}
+              </Button>
+            )}
+            {!selectedOntology && !isCreatingOntology && (
+              <>
+                <OntologyImportExportMenu
+                  glossaries={glossaries}
+                  glossary={selectedGlossary}
+                  isAdminUser={Boolean(isAdminUser)}
+                  relationCount={relationCount}
+                  termCount={termCount}
+                />
+                <Button
+                  aria-haspopup="dialog"
+                  color="secondary"
+                  data-testid="ontology-library-trigger"
+                  iconLeading={Grid01}
+                  size="xs"
+                  onPress={() => setIsLibraryOpen(true)}>
+                  {t('label.library')}
+                </Button>
+                {renderPrimaryAction()}
+              </>
+            )}
           </Box>
         }
         breadcrumb={
@@ -829,7 +927,11 @@ const OntologyExplorerPage: React.FC = () => {
         }
         className="tw:mx-2 tw:mt-2 tw:shrink-0"
         data-testid="ontology-studio-header"
-        footer={renderModeTabs()}
+        footer={
+          !selectedOntology && !isCreatingOntology
+            ? renderModeTabs()
+            : undefined
+        }
         subtitle={t('message.ontology-studio-description')}
         title={t('label.ontology-studio')}
         variant={isAiMode ? 'gradient' : 'flat'}
@@ -976,6 +1078,30 @@ const OntologyExplorerPage: React.FC = () => {
     );
   }
 
+  const renderWorkspace = () => {
+    if (ontologyId && !selectedOntology) {
+      return <Typography role="status">{t('label.loading')}</Typography>;
+    }
+    if (selectedOntology || isCreatingOntology) {
+      return (
+        <OntologyStudioWorkspace
+          canCreate={canCreateOntology}
+          initialDraftId={initialDraftId}
+          key={selectedOntology?.id ?? 'new'}
+          ontology={selectedOntology}
+          onSaved={selectOntology}
+        />
+      );
+    }
+
+    return (
+      <>
+        {renderSubModeNav()}
+        {renderMainSection()}
+      </>
+    );
+  };
+
   return (
     <PageLayoutV1
       fullHeight
@@ -992,9 +1118,7 @@ const OntologyExplorerPage: React.FC = () => {
         style={ONTOLOGY_STUDIO_STYLE}>
         {renderHeader()}
 
-        {renderSubModeNav()}
-
-        {renderMainSection()}
+        {renderWorkspace()}
 
         {isLibraryOpen ? (
           <OntologyLibrary
