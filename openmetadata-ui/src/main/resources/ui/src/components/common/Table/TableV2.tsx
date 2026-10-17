@@ -151,7 +151,7 @@ type CustomPaginationProps = NonNullable<
 type PaginationContract<T> =
   | {
       customPaginationProps?: never;
-      pagination?: TableComponentProps<T>['pagination'];
+      pagination?: NonNullable<TableComponentProps<T>['pagination']>;
     }
   | { customPaginationProps: CustomPaginationProps; pagination: false };
 
