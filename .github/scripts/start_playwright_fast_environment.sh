@@ -64,16 +64,29 @@ if [[ ! -f "$manifest" ]]; then
 fi
 
 current_fixture_compatibility_hash=$(python3 "$fingerprint_script" --kind fixture)
+current_fixture_base_hash=$(python3 "$fingerprint_script" --kind fixture-base)
 current_schema_hash=$(python3 "$fingerprint_script" --kind schema)
 current_seed_hash=$(python3 "$fingerprint_script" --kind seed)
 current_seed_version=$(sed -n 's:.*<version>\([^<]*\)</version>.*:\1:p' pom.xml | head -1)
 if [[ "$(jq -r .version "$manifest")" != "2" ||
-      "$(jq -r .compatibilityHash "$manifest")" != "$current_fixture_compatibility_hash" ||
-      "$(jq -r .schemaHash "$manifest")" != "$current_schema_hash" ||
       "$(jq -r .seedHash "$manifest")" != "$current_seed_hash" ]]; then
   jq . "$manifest" >&2
-  echo "The Playwright fixture does not match the fixture format, schema, seed, or setup code" >&2
+  echo "The Playwright fixture does not match the fixture format or seed" >&2
   exit 1
+fi
+# A fixture built before schema/migration-only changes is upgraded in place by
+# `openmetadata-ops.sh migrate` (the production upgrade path) before the
+# server starts; anything else that changed what is seeded needs a rebuild.
+migrate_fixture=false
+if [[ "$(jq -r .compatibilityHash "$manifest")" != "$current_fixture_compatibility_hash" ||
+      "$(jq -r .schemaHash "$manifest")" != "$current_schema_hash" ]]; then
+  if [[ "$(jq -r .baseHash "$manifest")" != "$current_fixture_base_hash" ]]; then
+    jq . "$manifest" >&2
+    echo "The Playwright fixture does not match the schema, seed, or setup code" >&2
+    exit 1
+  fi
+  migrate_fixture=true
+  echo "Restoring a fixture from $(jq -r .sourceSha "$manifest"); it will be migrated to this commit"
 fi
 if [[ "$(jq -r .seedVersion "$manifest")" != "$current_seed_version" ]]; then
   echo "The Playwright fixture seed version does not match the checked-out source" >&2
@@ -311,8 +324,7 @@ python3 "$workspace_root/.github/scripts/capture_playwright_server_output.py" \
 capture_pid=$!
 echo "$capture_pid" > "$PW_SERVER_CAPTURE_PID_FILE"
 
-(
-  cd "$runtime_root/server"
+export_server_environment() {
   export AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER="${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-10000}"
   export DB_DRIVER_CLASS=org.postgresql.Driver
   export DB_HOST=127.0.0.1
@@ -340,6 +352,23 @@ echo "$capture_pid" > "$PW_SERVER_CAPTURE_PID_FILE"
   fi
   export SERVER_ENABLE_VIRTUAL_THREAD=true
   export SERVER_H2_KEYSTORE_PATH="$workspace_root/openmetadata-service/src/test/resources/localhost-h2.p12"
+}
+
+if [[ "$migrate_fixture" == "true" ]]; then
+  if ! (
+    cd "$runtime_root/server"
+    export_server_environment
+    ./bootstrap/openmetadata-ops.sh migrate
+  ) > "$runtime_root/logs/fixture-migrate.log" 2>&1; then
+    tail -n 200 "$runtime_root/logs/fixture-migrate.log" >&2
+    echo "Could not migrate the restored Playwright fixture" >&2
+    exit 1
+  fi
+fi
+
+(
+  cd "$runtime_root/server"
+  export_server_environment
   exec ./bin/openmetadata-server-start.sh "$server_config"
 ) > "$PW_SERVER_OUTPUT_PIPE" 2>&1 &
 server_pid=$!

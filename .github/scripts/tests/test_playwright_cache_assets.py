@@ -74,7 +74,9 @@ def test_distribution_fingerprint_ignores_tests_but_tracks_runtime_and_bundle_mo
     )
     initialize_repository(tmp_path)
 
-    regular = fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven")
+    regular = fingerprints.fingerprint(
+        "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
+    )
     write(
         tmp_path,
         "openmetadata-ui/src/main/resources/ui/src/App.test.tsx",
@@ -90,15 +92,30 @@ def test_distribution_fingerprint_ignores_tests_but_tracks_runtime_and_bundle_mo
         "openmetadata-ui/src/main/resources/ui/playwright.config.ts",
         "export default { retries: 1 };",
     )
-    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven") == regular
+    assert (
+        fingerprints.fingerprint(
+            "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
+        )
+        == regular
+    )
 
     write(
         tmp_path,
         "openmetadata-ui/src/main/resources/ui/src/App.tsx",
         "export const App = 2;",
     )
-    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="regular", toolchain="maven") != regular
-    assert fingerprints.fingerprint("distribution", root=tmp_path, bundle_mode="coarse", toolchain="maven") != regular
+    assert (
+        fingerprints.fingerprint(
+            "distribution", root=tmp_path, bundle_mode="regular", toolchain="maven"
+        )
+        != regular
+    )
+    assert (
+        fingerprints.fingerprint(
+            "distribution", root=tmp_path, bundle_mode="coarse", toolchain="maven"
+        )
+        != regular
+    )
 
 
 def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
@@ -106,7 +123,11 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
 ) -> None:
     write(tmp_path, "pom.xml", "<version>1</version>")
     write(tmp_path, "bootstrap/sql/migrations/V1.sql", "select 1;")
-    write(tmp_path, "openmetadata-spec/src/main/resources/entity.json", "{}")
+    write(
+        tmp_path,
+        "openmetadata-spec/src/main/resources/json/schema/entity/table.json",
+        "{}",
+    )
     write(tmp_path, "ingestion/examples/sample_data/table.json", "{}")
     write(
         tmp_path,
@@ -121,27 +142,48 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
     write(tmp_path, ".dockerignore", "docker/development/docker-volume\n")
     initialize_repository(tmp_path)
 
-    initial = fingerprints.fingerprint("fixture", root=tmp_path)
-    write(tmp_path, "bootstrap/sql/migrations/V1.sql", "select 2;")
-    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
+    def keys() -> tuple[str, str]:
+        return (
+            fingerprints.fingerprint("fixture", root=tmp_path),
+            fingerprints.fingerprint("fixture-base", root=tmp_path),
+        )
 
-    changed_schema = fingerprints.fingerprint("fixture", root=tmp_path)
-    write(tmp_path, "pom.xml", "<version>2</version>")
-    assert fingerprints.fingerprint("fixture", root=tmp_path) != changed_schema
+    # Upgradable inputs: the exact fixture changes, the base it can be
+    # migrated from does not.
+    for relative, content in (
+        ("bootstrap/sql/migrations/V1.sql", "select 2;"),
+        (
+            "openmetadata-spec/src/main/resources/json/schema/entity/table.json",
+            '{"a":1}',
+        ),
+    ):
+        exact, base = keys()
+        write(tmp_path, relative, content)
+        assert keys()[0] != exact
+        assert keys()[1] == base
 
-    fixture_inputs = (
+    # Dependency pins change libraries, not seeded rows.
+    for relative, content in (
+        ("pom.xml", "<version>2</version>"),
         ("openmetadata-ui/src/main/resources/ui/package.json", "{}"),
         ("openmetadata-ui/src/main/resources/ui/yarn.lock", "playwright@2"),
+    ):
+        before = keys()
+        write(tmp_path, relative, content)
+        assert keys() == before
+
+    for relative, content in (
+        ("ingestion/examples/sample_data/table.json", '{"changed":true}'),
         ("openmetadata-ui/src/main/resources/ui/.nvmrc", "24\n"),
         ("docker/postgresql/Dockerfile_postgres", "FROM postgres:16\n"),
         ("docker/postgresql/postgres-script.sql", "select 2;\n"),
         ("docker/development/Dockerfile", "FROM eclipse-temurin:22\n"),
         (".dockerignore", "different-volume\n"),
-    )
-    for relative, content in fixture_inputs:
-        before = fingerprints.fingerprint("fixture", root=tmp_path)
+    ):
+        exact, base = keys()
         write(tmp_path, relative, content)
-        assert fingerprints.fingerprint("fixture", root=tmp_path) != before
+        assert keys()[0] != exact
+        assert keys()[1] != base
 
 
 def test_fixture_fingerprint_tracks_search_mappings(tmp_path: Path) -> None:
@@ -210,13 +252,21 @@ def test_fixture_fingerprint_ignores_playwright_config_but_tracks_setup_scripts(
 
 def test_fixture_fingerprint_tracks_ui_auth_storage_format(tmp_path: Path) -> None:
     storage_inputs = {
-        "openmetadata-ui/src/main/resources/ui/public/app-worker.js": ("const DB_NAME = 'AppDataStore';"),
+        "openmetadata-ui/src/main/resources/ui/public/app-worker.js": (
+            "const DB_NAME = 'AppDataStore';"
+        ),
         "openmetadata-ui/src/main/resources/ui/playwright/utils/tokenStorage.ts": (
             "export const DB_NAME = 'AppDataStore';"
         ),
-        "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts": ("export const storage = {};"),
-        "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts": ("export const send = () => undefined;"),
-        "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts": ("export const store = {};"),
+        "openmetadata-ui/src/main/resources/ui/src/utils/OidcTokenStorage.ts": (
+            "export const storage = {};"
+        ),
+        "openmetadata-ui/src/main/resources/ui/src/utils/SwMessenger.ts": (
+            "export const send = () => undefined;"
+        ),
+        "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorage.ts": (
+            "export const store = {};"
+        ),
         "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorageUtils.ts": (
             "export const APP_STATE_KEY = 'app_state';"
         ),
@@ -279,7 +329,11 @@ def test_ingestion_fingerprint_covers_every_dockerfile_ci_copy_input(
 
 def token(email: str, session_id: str, expiry: int = 4_000_000_000) -> str:
     payload = (
-        base64.urlsafe_b64encode(json.dumps({"email": email, "sessionId": session_id, "exp": expiry}).encode())
+        base64.urlsafe_b64encode(
+            json.dumps(
+                {"email": email, "sessionId": session_id, "exp": expiry}
+            ).encode()
+        )
         .decode()
         .rstrip("=")
     )
@@ -315,7 +369,9 @@ def storage_state(email: str) -> dict:
                                 "records": [
                                     {
                                         "key": "app_state",
-                                        "value": json.dumps({"primary": token(email, "expired")}),
+                                        "value": json.dumps(
+                                            {"primary": token(email, "expired")}
+                                        ),
                                     }
                                 ],
                                 "indexes": [],
@@ -328,7 +384,9 @@ def storage_state(email: str) -> dict:
     }
 
 
-def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(tmp_path: Path, monkeypatch) -> None:
+def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(
+    tmp_path: Path, monkeypatch
+) -> None:
     auth_dir = tmp_path / "auth"
     auth_dir.mkdir()
     states = {
@@ -347,7 +405,9 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(tmp_path:
     monkeypatch.setattr(auth_rotation, "login", fake_login)
     admin_token = auth_rotation.rotate_auth_state(auth_dir, "https://localhost:8585")
 
-    assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {"token": admin_token}
+    assert json.loads((auth_dir / "admin-api-token.json").read_text()) == {
+        "token": admin_token
+    }
     assert calls == [
         ("https://localhost:8585", auth_rotation.ADMIN_EMAIL, "admin"),
         (
@@ -358,10 +418,14 @@ def test_cached_auth_sessions_are_recreated_for_admin_and_seeded_users(tmp_path:
     ]
     for filename, email in states.items():
         state = json.loads((auth_dir / filename).read_text())
-        cookie = next(cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION")
+        cookie = next(
+            cookie for cookie in state["cookies"] if cookie["name"] == "OM_SESSION"
+        )
         assert cookie["value"] == f"fresh-{email.split('@')[0]}"
         assert cookie["secure"] is True
-        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])["primary"]
+        fresh_token = json.loads(auth_rotation.app_state_record(state)["value"])[
+            "primary"
+        ]
         assert auth_rotation.decode_jwt_payload(fresh_token)["email"] == email
         assert oct(os.stat(auth_dir / filename).st_mode & 0o777) == "0o600"
 
@@ -381,20 +445,110 @@ def test_ingestion_sidecar_validator_rejects_archive_tampering(tmp_path: Path) -
     ).strip()
     manifest = {
         "version": 1,
-        "sourceSha": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "sourceSha": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip(),
         "createdAt": "2026-07-22T00:00:00Z",
         "compatibilityHash": compatibility,
         "image": f"openmetadata-playwright-ingestion:{compatibility}",
         "imageId": f"sha256:{'1' * 64}",
         "archiveHash": hashlib.sha256(archive.read_bytes()).hexdigest(),
     }
-    archive.with_name("playwright-ingestion-image.manifest.json").write_text(json.dumps(manifest))
+    archive.with_name("playwright-ingestion-image.manifest.json").write_text(
+        json.dumps(manifest)
+    )
     validator = SCRIPTS / "validate_playwright_ingestion_image.sh"
     subprocess.run([validator, archive, compatibility], cwd=ROOT, check=True)
 
     archive.write_bytes(b"tampered")
     result = subprocess.run([validator, archive, compatibility], cwd=ROOT)
     assert result.returncode != 0
+
+
+def current_hash(kind: str) -> str:
+    return subprocess.check_output(
+        ["python3", str(SCRIPTS / "playwright_cache_fingerprint.py"), "--kind", kind],
+        cwd=ROOT,
+        text=True,
+    ).strip()
+
+
+def build_fixture(tmp_path: Path, **overrides: str) -> Path:
+    stage = tmp_path / "stage"
+    write(stage, "postgres/PG_VERSION", "15\n")
+    write(stage, "opensearch/nodes/0/state", "x")
+    for name in (
+        "auth/admin.json",
+        "auth/admin-api-token.json",
+        "entity-response-data.json",
+        "lineage-data.json",
+        "shared-infra.json",
+    ):
+        write(stage, f"playwright-state/{name}", "{}")
+    state_hash = subprocess.check_output(
+        "find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1",
+        cwd=stage / "playwright-state",
+        shell=True,
+        text=True,
+    ).strip()
+    seed_version = subprocess.check_output(
+        "sed -n 's:.*<version>\\([^<]*\\)</version>.*:\\1:p' pom.xml | head -1",
+        cwd=ROOT,
+        shell=True,
+        text=True,
+    ).strip()
+    manifest = {
+        "version": 2,
+        "sourceSha": "a" * 40,
+        "createdAt": "2026-10-13T00:00:00Z",
+        "compatibilityHash": current_hash("fixture"),
+        "baseHash": current_hash("fixture-base"),
+        "postgresImage": f"postgres@sha256:{'1' * 64}",
+        "opensearchImage": f"opensearch@sha256:{'2' * 64}",
+        "searchClusterAlias": "openmetadata",
+        "schemaHash": current_hash("schema"),
+        "seedHash": current_hash("seed"),
+        "seedVersion": seed_version,
+        "playwrightStateHash": state_hash,
+        **overrides,
+    }
+    (stage / "fixture-manifest.json").write_text(json.dumps(manifest))
+    archive = tmp_path / "playwright-fixture.tar.zst"
+    subprocess.run(["tar", "--zstd", "-C", stage, "-cf", archive, "."], check=True)
+    return archive
+
+
+def validate_fixture(archive: Path, allow_upgrade: bool) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [SCRIPTS / "validate_playwright_fixture.sh", archive, current_hash("fixture")],
+        cwd=ROOT,
+        env={**os.environ, "PW_FIXTURE_ALLOW_UPGRADE": str(allow_upgrade).lower()},
+        capture_output=True,
+        text=True,
+    )
+
+
+def test_fixture_validator_reuses_a_fixture_across_schema_and_migration_changes(
+    tmp_path: Path,
+) -> None:
+    exact = validate_fixture(build_fixture(tmp_path / "exact"), allow_upgrade=False)
+    assert exact.returncode == 0, exact.stderr
+    assert "fixture-mode=exact" in exact.stdout
+
+    # Built before a schema/migration change: same base, older exact hashes.
+    older = build_fixture(
+        tmp_path / "older", compatibilityHash="0" * 64, schemaHash="0" * 64
+    )
+    upgraded = validate_fixture(older, allow_upgrade=True)
+    assert upgraded.returncode == 0, upgraded.stderr
+    assert "fixture-mode=upgrade" in upgraded.stdout
+    # Main must rebuild the exact fixture rather than keep migrating an old one.
+    assert validate_fixture(older, allow_upgrade=False).returncode != 0
+
+    reseeded = build_fixture(
+        tmp_path / "reseeded", compatibilityHash="0" * 64, baseHash="0" * 64
+    )
+    assert validate_fixture(reseeded, allow_upgrade=True).returncode != 0
 
 
 def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
@@ -451,17 +605,23 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
     workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
-    assert "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]" in workflow
+    assert (
+        "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]"
+        in workflow
+    )
     assert "build:\n    needs: [check-changes, cache-keys]" in workflow
     assert "actions/cache/restore@v6" in workflow
     assert "actions/cache/save@v6" in workflow
-    assert "playwright-golden-fixture-v2-" in workflow
+    assert "playwright-golden-fixture-v3-" in workflow
     assert "playwright-ingestion-image-v2-" in workflow
     assert "playwright-distribution-v2-" in workflow
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
     assert "npx playwright test --project=bundle-smoke --reporter=line" in workflow
     assert "COARSE_BUNDLE: ${{ inputs.coarse_bundle }}" in workflow
-    assert "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}" in workflow
+    assert (
+        "PW_E2E_BUNDLE: ${{ needs.cache-keys.outputs.bundle_mode == 'coarse' }}"
+        in workflow
+    )
     assert "compression-level: 0" in workflow
     # CACHE_KEYS_RESULT / FIXTURE_RESTORE_RESULT are consumed by the summary
     # job that now lives in the postgres PR caller. Confirm the reusable
@@ -470,17 +630,51 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "cache_keys_result:" in workflow
     assert "restore_playwright_fixture_result:" in workflow
 
-    restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split("  prepare-playwright-fixture:", 1)[0]
-    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split("  playwright-ci:", 1)[0]
+    restore_job = workflow.split("  restore-playwright-fixture:", 1)[1].split(
+        "  prepare-playwright-fixture:", 1
+    )[0]
+    prepare_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
+        "  prepare-ingestion-image:", 1
+    )[0]
+    ingestion_job = workflow.split("  prepare-ingestion-image:", 1)[1].split(
+        "  playwright-ci:", 1
+    )[0]
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
-    assert "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}" in prepare_job
-    assert "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'" in prepare_job
+    assert (
+        "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}"
+        in prepare_job
+    )
+    # The ingestion image is built off the critical path; a missing image must
+    # not force the ~17 min fixture re-seed.
+    assert "ingestion_cache_hit" not in prepare_job
+    assert (
+        "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'"
+        in ingestion_job
+    )
+    assert "pack_playwright_ingestion_image.sh" in ingestion_job
+    assert (
+        "plan-playwright:\n" in workflow
+        and "    needs: [detect-changes]\n"
+        in workflow.split("  plan-playwright:", 1)[1].split(
+            "  restore-playwright-fixture:", 1
+        )[0]
+    )
+    assert "restore-keys: |\n            playwright-golden-fixture-v3-" in restore_job
+    assert (
+        'PW_FIXTURE_ALLOW_UPGRADE: ${{ !contains(fromJSON(\'["push","schedule"]\'), github.event_name) }}'
+        in restore_job
+    )
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
-    assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
+    assert (
+        workflow.count("npx playwright test --project=bundle-smoke --reporter=line")
+        == 2
+    )
 
     fixture_start = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
-    assert 'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
+    assert (
+        'jq -r .sourceSha "$manifest")" != "$(git rev-parse HEAD)' not in fixture_start
+    )
     assert "rotate_playwright_auth_state.py" in fixture_start
 
 
@@ -498,16 +692,20 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
 
     writers = workflow.count("uses: actions/cache/save@")
     assert writers == 5, f"cache writer count changed to {writers}; guard each one"
-    cache_steps = [step for step in workflow.split("      - name:") if "uses: actions/cache/save@" in step]
+    cache_steps = [
+        step
+        for step in workflow.split("      - name:")
+        if "uses: actions/cache/save@" in step
+    ]
     assert len(cache_steps) == writers
     assert all(guard in step for step in cache_steps)
 
     # cache-ui-dist is the documented exception: it wraps `actions/cache`, whose
     # save is a post-step, so a step-level `if:` would suppress the restore too
     # and cost every queue entry the ~5 min frontend build.
-    ui_dist_step = workflow.split("- name: Restore openmetadata-ui dist cache", 1)[1].split(
-        "- name: Build with Maven", 1
-    )[0]
+    ui_dist_step = workflow.split("- name: Restore openmetadata-ui dist cache", 1)[
+        1
+    ].split("- name: Build with Maven", 1)[0]
     assert "uses: ./.github/actions/cache-ui-dist" in ui_dist_step
     assert guard not in ui_dist_step
 

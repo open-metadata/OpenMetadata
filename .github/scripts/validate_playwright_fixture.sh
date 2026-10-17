@@ -58,6 +58,9 @@ current_compatibility_hash=$(
 current_schema_hash=$(
   python3 "$workspace_root/.github/scripts/playwright_cache_fingerprint.py" --kind schema
 )
+current_base_hash=$(
+  python3 "$workspace_root/.github/scripts/playwright_cache_fingerprint.py" --kind fixture-base
+)
 current_seed_hash=$(
   python3 "$workspace_root/.github/scripts/playwright_cache_fingerprint.py" --kind seed
 )
@@ -73,13 +76,25 @@ playwright_state_hash=$(
 
 if [[ "$current_compatibility_hash" != "$expected_compatibility_hash" ||
       "$(jq -r .version "$manifest")" != "2" ||
-      "$(jq -r .compatibilityHash "$manifest")" != "$expected_compatibility_hash" ||
-      "$(jq -r .schemaHash "$manifest")" != "$current_schema_hash" ||
       "$(jq -r .seedHash "$manifest")" != "$current_seed_hash" ||
       "$(jq -r .seedVersion "$manifest")" != "$current_seed_version" ||
       "$(jq -r .playwrightStateHash "$manifest")" != "$playwright_state_hash" ]]; then
   jq . "$manifest" >&2
   echo "Cached Playwright fixture failed compatibility or integrity validation" >&2
+  exit 1
+fi
+
+# exact: built from these sources. upgrade: built before schema/migration
+# changes only; the shard launcher runs `openmetadata-ops.sh migrate` on it.
+if [[ "$(jq -r .compatibilityHash "$manifest")" == "$expected_compatibility_hash" &&
+      "$(jq -r .schemaHash "$manifest")" == "$current_schema_hash" ]]; then
+  fixture_mode=exact
+elif [[ "${PW_FIXTURE_ALLOW_UPGRADE:-false}" == "true" &&
+        "$(jq -r .baseHash "$manifest")" == "$current_base_hash" ]]; then
+  fixture_mode=upgrade
+else
+  jq . "$manifest" >&2
+  echo "Cached Playwright fixture was built from different seed inputs" >&2
   exit 1
 fi
 
@@ -94,4 +109,5 @@ if ! jq -e '
   exit 1
 fi
 
-echo "Validated reusable Playwright fixture from $(jq -r .sourceSha "$manifest")"
+echo "Validated reusable Playwright fixture from $(jq -r .sourceSha "$manifest") ($fixture_mode)"
+echo "fixture-mode=$fixture_mode"
