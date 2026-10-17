@@ -18,8 +18,11 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
+import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
 import org.openmetadata.schema.type.OntologyReleaseEvent.EventType;
 import org.openmetadata.schema.type.OntologyState;
@@ -33,6 +36,64 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
+  @Test
+  void nonAdminQueriesOnlyTheActiveRelease(TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final var ontology = createOntology(ns);
+    final var concept =
+        client
+            .ontologyConcepts()
+            .create(
+                new CreateOntologyConcept()
+                    .withName("Published")
+                    .withOntology(ontology.getFullyQualifiedName())
+                    .withConceptType(OntologyConceptType.OWL_CLASS));
+    final var request =
+        new SparqlQuery()
+            .withQuery("SELECT ?class WHERE { ?class a <http://www.w3.org/2002/07/owl#Class> }");
+    final String path = "/v1/ontologies/" + ontology.getId() + "/sparql";
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    SdkClients.user2Client()
+                        .getHttpClient()
+                        .execute(HttpMethod.POST, path, request, JsonNode.class))
+            .getStatusCode());
+    final var release = capture(ontology);
+    approve(ns, release);
+    activate(client, ontology, release, 0);
+    client
+        .ontologyConcepts()
+        .create(
+            new CreateOntologyConcept()
+                .withName("WorkingOnly")
+                .withOntology(ontology.getFullyQualifiedName())
+                .withConceptType(OntologyConceptType.OWL_CLASS));
+
+    final var result =
+        SdkClients.user2Client()
+            .getHttpClient()
+            .execute(HttpMethod.POST, path, request, JsonNode.class);
+    assertEquals(1, result.path("results").path("bindings").size());
+    assertEquals(
+        concept.getIri().toString(),
+        result.path("results").path("bindings").get(0).path("class").path("value").asText());
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.user2Client()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.POST,
+                    path,
+                    new SparqlQuery()
+                        .withQuery(
+                            "SELECT * WHERE { SERVICE <http://localhost:9999/> { ?s ?p ?o } }"),
+                    JsonNode.class));
+  }
+
   @Test
   void approvalActivationAndRollbackAreSeparateAuditedTransitions(TestNamespace ns) {
     final var client = SdkClients.adminClient();

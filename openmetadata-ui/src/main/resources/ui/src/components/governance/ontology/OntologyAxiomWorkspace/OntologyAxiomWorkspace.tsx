@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { listOntologyAxioms } from '../../../../rest/ontologyAPI';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
-import OntologyAxiomPanel from '../../../OntologyExplorer/OntologyAxiomPanel';
+import OntologyDefinitionList from '../OntologyAuthoringWorkspace/OntologyDefinitionList';
+import OntologyAxiomEditor from '../OntologyAxiomEditor/OntologyAxiomEditor';
 
 const OntologyAxiomWorkspace = ({ ontology }: { ontology: Ontology }) => {
   const { permissions } = usePermissionProvider();
@@ -26,15 +27,20 @@ const OntologyAxiomWorkspace = ({ ontology }: { ontology: Ontology }) => {
   );
 
   return (
-    <Box direction="col" gap={4}>
-      {ontology && (
-        <OntologyAxiomPanel
-          canCreate={canCreate}
-          key={ontology.id}
+    <OntologyDefinitionList
+      canCreate={canCreate}
+      definitionType="axiom"
+      load={(params, signal) => listOntologyAxioms(ontology.id, params, signal)}
+      ontology={ontology}>
+      {(axiom, canEdit, onSaved) => (
+        <OntologyAxiomEditor
+          axiom={axiom}
+          canEdit={canEdit}
           ontology={ontology}
+          onSaved={onSaved}
         />
       )}
-    </Box>
+    </OntologyDefinitionList>
   );
 };
 

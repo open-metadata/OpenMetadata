@@ -56,11 +56,8 @@ def test_review_target_pins_the_submitted_entity_history_version():
         "entityId": "00000000-0000-0000-0000-000000000001",
         "ontologyId": "00000000-0000-0000-0000-000000000002",
         "entityVersion": 0.4,
-        "reviewRevision": 3,
         "contentDigest": "a" * 64,
         "author": "author",
-        "workflowDefinitionVersion": 0.1,
-        "workflowDefinitionDigest": "b" * 64,
     }
     stored = OntologyReviewTarget.model_validate(payload).model_dump(mode="json", exclude_none=True)
     assert stored == payload

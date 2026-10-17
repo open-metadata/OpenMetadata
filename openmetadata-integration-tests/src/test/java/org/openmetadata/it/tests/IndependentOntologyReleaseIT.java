@@ -230,6 +230,10 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
     assertNotNull(release.getSealedAt());
     assertNull(state(ontology).getActiveReleaseId());
     OntologyReleaseMember frozen = member(release, concept.getId());
+    assertEquals(concept.getVersion(), frozen.getSourceVersion());
+    for (String field : List.of("version", "owners", "reviewers", "href", "changeDescription")) {
+      assertTrue(frozen.getPayload().path(field).isMissingNode(), field);
+    }
     assertEquals("Captured definition", frozen.getPayload().path("description").asText());
     SdkClients.adminClient()
         .ontologyConcepts()

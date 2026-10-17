@@ -22,33 +22,6 @@ import org.openmetadata.sdk.services.ontology.OntologyService;
 @Execution(ExecutionMode.CONCURRENT)
 public class IndependentOntologyResourceIT extends BaseOntologyIT<Ontology, CreateOntology> {
   @Test
-  void importsAreExplicitlyUnsupported(TestNamespace ns) {
-    Ontology imported = createEntity(createRequest(ns.prefix("imported"), ns));
-    ns.trackRoot("ontology", imported);
-    assertEquals(
-        400,
-        assertThrows(
-                OpenMetadataException.class,
-                () ->
-                    createEntity(
-                        createMinimalRequest(ns)
-                            .withImports(List.of(imported.getEntityReference()))))
-            .getStatusCode());
-    Ontology root = createEntity(createMinimalRequest(ns));
-    ns.trackRoot("ontology", root);
-    assertEquals(
-        400,
-        assertThrows(
-                OpenMetadataException.class,
-                () ->
-                    patchEntity(
-                        root.getId().toString(),
-                        root.withImports(List.of(imported.getEntityReference()))))
-            .getStatusCode());
-    assertEquals(List.of(), getEntity(root.getId().toString()).getImports());
-  }
-
-  @Test
   void prefixesRequireUniqueNamesAndExactNamespaces(TestNamespace ns) {
     OntologyPrefix first =
         new OntologyPrefix().withPrefix("ex").withNamespace(URI.create("HTTPS://EXAMPLE.org/客户#"));

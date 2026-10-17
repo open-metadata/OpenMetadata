@@ -19,9 +19,11 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
@@ -30,6 +32,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -43,6 +46,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.RestoreEntity;
+import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityHistory;
@@ -62,7 +66,10 @@ import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
+import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
+import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
@@ -104,6 +111,59 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   }
 
   public static class OntologyList extends ResultList<Ontology> {}
+
+  @POST
+  @Path("/{id}/sparql")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces({
+    "application/sparql-results+json",
+    "application/sparql-results+xml",
+    "text/csv",
+    "text/tab-separated-values",
+    "text/turtle",
+    "application/rdf+xml",
+    "application/n-triples",
+    "application/ld+json"
+  })
+  @Operation(
+      operationId = "queryActiveOntologyRelease",
+      summary = "Query the active ontology release",
+      description =
+          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded.")
+  public Response query(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext context,
+      @PathParam("id") final UUID id,
+      @Valid final SparqlQuery request) {
+    getInternal(uriInfo, context, id, "", Include.NON_DELETED, null);
+    final var service =
+        new OntologyReleaseQuery(
+            repository,
+            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
+    try {
+      final var result =
+          SparqlQueryExecutionGuard.shared()
+              .execute(
+                  user(context),
+                  () ->
+                      service.query(
+                          id,
+                          request,
+                          definition ->
+                              OntologyResourceAccess.requireView(authorizer, context, definition)));
+      return Response.ok(result.body(), result.mediaType()).build();
+    } catch (SparqlFederationGuard.FederationDisallowedException exception) {
+      throw new ForbiddenException(exception.getMessage(), exception);
+    } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
+      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+    } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
+      throw new ServiceUnavailableException(
+          Response.status(Response.Status.SERVICE_UNAVAILABLE)
+              .entity(exception.getMessage())
+              .build(),
+          exception);
+    }
+  }
 
   @PUT
   @Path("/{id}/activation")

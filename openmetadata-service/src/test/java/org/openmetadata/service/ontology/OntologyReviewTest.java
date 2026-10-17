@@ -11,7 +11,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
-import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyReviewTarget;
@@ -30,8 +29,24 @@ class OntologyReviewTest {
                 List.of(new EntityReference().withId(UUID.randomUUID()).withType("team")));
     assertEquals(OntologyReview.digest(approved), OntologyReview.digest(reassigned));
     assertEquals(EntityStatus.APPROVED, reassigned.getEntityStatus());
-    assertEquals(approved.getReviewRevision(), reassigned.getReviewRevision());
     assertEquals(approved.getReviewTask(), reassigned.getReviewTask());
+  }
+
+  @Test
+  void reviewBindsOnlyTheSealedIdentity() {
+    OntologyRelease original = ontology().withReleaseRevision(2L).withContentDigest("sealed");
+    OntologyRelease annotated =
+        JsonUtils.deepCopy(original, OntologyRelease.class)
+            .withDescription("New header field")
+            .withSealedBy("renamed-author")
+            .withSourceWorkingRevision(123L);
+    assertEquals(OntologyReview.digest(original), OntologyReview.digest(annotated));
+    assertNotEquals(
+        OntologyReview.digest(original),
+        OntologyReview.digest(annotated.withContentDigest("different")));
+    assertNotEquals(
+        OntologyReview.digest(original),
+        OntologyReview.digest(annotated.withContentDigest("sealed").withReleaseRevision(3L)));
   }
 
   @Test
@@ -40,7 +55,6 @@ class OntologyReviewTest {
       OntologyRelease ontology = ontology().withEntityStatus(requested);
       OntologyReview.initialize(ontology);
       assertEquals(EntityStatus.DRAFT, ontology.getEntityStatus());
-      assertEquals(1L, ontology.getReviewRevision());
       assertEquals("author", ontology.getReviewAuthor());
     }
   }
@@ -81,7 +95,6 @@ class OntologyReviewTest {
             .withId(UUID.randomUUID())
             .withOntology(new EntityReference().withId(UUID.randomUUID()).withType("ontology"))
             .withVersion(0.1)
-            .withReviewRevision(1L)
             .withReviewAuthor("author");
     final OntologyReviewTarget target = OntologyReview.target(concept);
 
@@ -130,22 +143,6 @@ class OntologyReviewTest {
     assertEquals(OntologyReview.digest(original), OntologyReview.digest(reordered));
   }
 
-  @Test
-  void workflowFingerprintDetectsPolicyChangesWithinOneVersion() {
-    WorkflowDefinition original =
-        new WorkflowDefinition().withId(UUID.randomUUID()).withVersion(0.1).withSuspended(false);
-    WorkflowDefinition changed =
-        JsonUtils.deepCopy(original, WorkflowDefinition.class).withSuspended(true);
-    WorkflowDefinition audited =
-        JsonUtils.deepCopy(original, WorkflowDefinition.class)
-            .withUpdatedAt(123L)
-            .withUpdatedBy("admin");
-
-    assertNotEquals(
-        OntologyReview.workflowDigest(original), OntologyReview.workflowDigest(changed));
-    assertEquals(OntologyReview.workflowDigest(original), OntologyReview.workflowDigest(audited));
-  }
-
   private static OntologyRelease ontology() {
     return new OntologyRelease()
         .withId(UUID.randomUUID())
@@ -157,7 +154,6 @@ class OntologyReviewTest {
         .withOntologyIri(URI.create("https://example.org/sales"))
         .withUpdatedBy("author")
         .withEntityStatus(EntityStatus.DRAFT)
-        .withReviewRevision(1L)
         .withReviewAuthor("author");
   }
 }

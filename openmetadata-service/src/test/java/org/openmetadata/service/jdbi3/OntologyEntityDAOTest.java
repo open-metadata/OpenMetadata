@@ -190,14 +190,20 @@ class OntologyEntityDAOTest {
           final String jsonValue =
               dialect == ConnectionType.POSTGRES ? "CAST(:json AS JSONB)" : ":json";
           final var glossaryId = UUID.randomUUID().toString();
-          for (String operation : List.of("UPSERT_AXIOM", "DELETE_AXIOM", "UPSERT_TERM")) {
+          for (String operation :
+              List.of("UPSERT_AXIOM", "DELETE_AXIOM", "UPSERT_TERM", "NATIVE_UPSERT_AXIOM")) {
             final String id = UUID.randomUUID().toString();
+            final boolean nativeDraft = operation.startsWith("NATIVE_");
             final String json =
                 """
-                {"id":"%s","name":"%s","state":"DRAFT","updatedAt":1,
+                {"id":"%s","name":"%s",%s"state":"DRAFT","updatedAt":1,
                  "updatedBy":"admin","deleted":false,"operations":[{"operationType":"%s"}]}
                 """
-                    .formatted(id, operation, operation);
+                    .formatted(
+                        id,
+                        operation,
+                        nativeDraft ? "\"ontology\":{\"id\":\"" + glossaryId + "\"}," : "",
+                        operation.replace("NATIVE_", ""));
             handle
                 .createUpdate(
                     "INSERT INTO ontology_change_set_entity (fqnHash, json) VALUES (:hash, "
@@ -208,9 +214,10 @@ class OntologyEntityDAOTest {
                 .execute();
             handle
                 .createUpdate(
-                    "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) VALUES (:parent, :child, 'glossary', 'ontologyChangeSet', 0)")
+                    "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) VALUES (:parent, :child, :parentType, 'ontologyChangeSet', 0)")
                 .bind("parent", glossaryId)
                 .bind("child", id)
+                .bind("parentType", nativeDraft ? "ontology" : "glossary")
                 .execute();
             handle
                 .createUpdate(
@@ -224,20 +231,20 @@ class OntologyEntityDAOTest {
           migrate(handle, dialect);
           migrate(handle, dialect);
           assertEquals(
-              List.of("UPSERT_TERM"),
+              List.of("NATIVE_UPSERT_AXIOM", "UPSERT_TERM"),
               handle
-                  .createQuery("SELECT name FROM ontology_change_set_entity")
+                  .createQuery("SELECT name FROM ontology_change_set_entity ORDER BY name")
                   .mapTo(String.class)
                   .list());
           assertEquals(
-              1,
+              2,
               handle
                   .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE fromId = :id")
                   .bind("id", glossaryId)
                   .mapTo(Integer.class)
                   .one());
           assertEquals(
-              1,
+              2,
               handle
                   .createQuery(
                       "SELECT COUNT(*) FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet'")
@@ -275,7 +282,7 @@ class OntologyEntityDAOTest {
           assertEquals(TaskEntityStatus.Cancelled, cancelled.getStatus());
           assertEquals(EntityStatus.DRAFT, definition.getEntityStatus());
           assertNull(definition.getReviewTask());
-          assertEquals(1L, definition.getReviewRevision());
+          assertEquals(1L, definition.getReleaseRevision());
           assertEquals("admin", definition.getReviewAuthor());
           Task closedAgain =
               fixture
@@ -411,7 +418,7 @@ class OntologyEntityDAOTest {
                       .withUpdatedBy("admin"),
                   "review");
           final OntologyRelease changed =
-              fixture.definition().withVersion(0.2).withReviewRevision(2L).withDeleted(archived);
+              fixture.definition().withVersion(0.2).withDeleted(archived);
           dao.ontologyStateDAO().initialize(fixture.ontologyId());
           try (var executor = Executors.newSingleThreadExecutor()) {
             handle.begin();
@@ -446,8 +453,8 @@ class OntologyEntityDAOTest {
                       instanceof EntityNotFoundException);
             } else {
               assertEquals(
-                  changed.getReviewRevision(),
-                  assertDoesNotThrow(() -> review.get(10, TimeUnit.SECONDS)).getReviewRevision());
+                  changed.getVersion(),
+                  assertDoesNotThrow(() -> review.get(10, TimeUnit.SECONDS)).getVersion());
             }
           }
         });
@@ -512,6 +519,7 @@ class OntologyEntityDAOTest {
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
           try {
             new SystemRepository();
+            new WorkflowDefinitionRepository();
             new OntologyRepository();
             new OntologyReleaseRepository();
             assertion.accept(handle, reviewFixture(new TaskRepository()));
@@ -540,7 +548,6 @@ class OntologyEntityDAOTest {
             .withUpdatedBy("admin")
             .withUpdatedAt(1L)
             .withEntityStatus(EntityStatus.IN_REVIEW)
-            .withReviewRevision(1L)
             .withReviewAuthor("admin")
             .withReviewTask(taskId);
     Entity.getCollectionDAO().ontologyReleaseDAO().insert(definition, name);
@@ -658,7 +665,6 @@ class OntologyEntityDAOTest {
                     .withId(UUID.randomUUID())
                     .withOntology(reference(ontology()))
                     .withVersion(0.1)
-                    .withReviewRevision(1L)
                     .withReviewAuthor("author")),
             TaskResolutionType.Approved,
             "bob",

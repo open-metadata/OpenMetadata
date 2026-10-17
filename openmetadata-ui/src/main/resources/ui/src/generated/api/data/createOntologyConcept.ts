@@ -28,11 +28,10 @@ export interface CreateOntologyConcept {
     /**
      * Fully qualified name of the owning ontology.
      */
-    ontology:   string;
-    owners?:    EntityReference[];
-    provider?:  ProviderType;
-    reviewers?: EntityReference[];
-    synonyms?:  string[];
+    ontology:  string;
+    owners?:   EntityReference[];
+    provider?: ProviderType;
+    synonyms?: string[];
 }
 
 /**

@@ -1352,11 +1352,8 @@ describe('TaskTabNew Component', () => {
         entityId: 'release-id',
         entityVersion: 0.2,
         ontologyId: 'ontology-id',
-        reviewRevision: 1,
         author: 'author',
         contentDigest: 'a'.repeat(64),
-        workflowDefinitionDigest: 'b'.repeat(64),
-        workflowDefinitionVersion: 1,
       },
       payload: { proposedChanges: { description: 'Captured release' } },
       availableTransitions: [

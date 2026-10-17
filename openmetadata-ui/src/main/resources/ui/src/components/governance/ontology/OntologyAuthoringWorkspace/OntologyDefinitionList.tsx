@@ -20,17 +20,19 @@ import { useQuery } from '@tanstack/react-query';
 import { PagingResponse } from 'Models';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { ListParams } from '../../../../interface/API.interface';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
   canCreate: boolean;
-  definitionType: 'concept' | 'property';
+  definitionType: 'concept' | 'property' | 'axiom';
   load: (
     params: ListParams & { ontology?: string },
     signal?: AbortSignal
@@ -41,6 +43,17 @@ interface OntologyDefinitionListProps<T> {
     onSaved: (saved: T) => void
   ) => ReactNode;
 }
+
+const DEFINITION_RESOURCES = {
+  concept: ResourceEntity.ONTOLOGY_CONCEPT,
+  property: ResourceEntity.ONTOLOGY_PROPERTY,
+  axiom: ResourceEntity.ONTOLOGY_AXIOM,
+};
+const DEFINITION_ENTITIES = {
+  concept: EntityType.ONTOLOGY_CONCEPT,
+  property: EntityType.ONTOLOGY_PROPERTY,
+  axiom: EntityType.ONTOLOGY_AXIOM,
+};
 
 const OntologyDefinitionList = <
   T extends Pick<
@@ -61,11 +74,10 @@ const OntologyDefinitionList = <
     Pick<ListParams, 'after' | 'before'>
   >({});
   const [selected, setSelected] = useState<T | 'new'>();
+  const [isDeleting, setIsDeleting] = useState(false);
   const definition = selected === 'new' ? undefined : selected;
   const permission = useEntityPermissions(
-    definitionType === 'concept'
-      ? ResourceEntity.ONTOLOGY_CONCEPT
-      : ResourceEntity.ONTOLOGY_PROPERTY,
+    DEFINITION_RESOURCES[definitionType],
     { id: definition?.id ?? '' },
     {
       enabled: Boolean(definition),
@@ -79,7 +91,7 @@ const OntologyDefinitionList = <
         {
           ontology: ontology.fullyQualifiedName,
           limit: 25,
-          fields: 'owners,reviewers',
+          fields: 'owners',
           ...pagination,
         },
         signal
@@ -107,6 +119,31 @@ const OntologyDefinitionList = <
     );
   }
 
+  const renderDelete = () => (
+    <>
+      {definition && permission.canDelete && (
+        <Button color="primary-destructive" onPress={() => setIsDeleting(true)}>
+          {t('label.delete')}
+        </Button>
+      )}
+      {definition && isDeleting && (
+        <DeleteEntityModal
+          allowSoftDelete
+          visible
+          afterDeleteAction={() => {
+            setIsDeleting(false);
+            setSelected(undefined);
+            void page.refetch();
+          }}
+          entityId={definition.id}
+          entityName={getEntityName(definition)}
+          entityType={DEFINITION_ENTITIES[definitionType]}
+          onCancel={() => setIsDeleting(false)}
+        />
+      )}
+    </>
+  );
+
   const renderEditor = () => {
     if (!selected) {
       return null;
@@ -133,6 +170,7 @@ const OntologyDefinitionList = <
             void page.refetch();
           }
         )}
+        {renderDelete()}
       </Fragment>
     );
   };

@@ -713,6 +713,7 @@ class EntityRepositoryRestoreTest {
     // Per-entity FQN-keyed cleanup is skipped (covered by the ancestor's prefix cascade).
     verify(fieldRelationshipDAO, never()).deleteAllByPrefix(any());
     verify(tagUsageDAO, never()).deleteTagLabelsByTargetPrefix(any());
+    verify(tagUsageDAO, never()).deleteTagLabelsByFqn(any());
     // usage is id-keyed: cleared once, batched, never per-entity.
     verify(usageDAO, never()).delete(any(UUID.class));
     verify(usageDAO, times(1)).deleteByIds(anyList());

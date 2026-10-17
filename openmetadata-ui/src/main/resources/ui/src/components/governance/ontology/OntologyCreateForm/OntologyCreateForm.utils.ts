@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 import { FieldProp, FieldTypes } from '@openmetadata/ui-core-components';
+import { compare, Operation } from 'fast-json-patch';
+import { isUndefined, omitBy, pick } from 'lodash';
 import type { useTranslation } from 'react-i18next';
 import {
   CreateOntology,
   Layer,
 } from '../../../../generated/api/data/createOntology';
+import { Ontology } from '../../../../generated/entity/data/ontology';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { EntityReferenceOption } from '../../../Glossary/AddGlossary/AddGlossary.interface';
 import {
   getOwnersOrCurrentUser,
+  toEntityReferenceOption,
   toEntityReferences,
 } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { EntityReferencePicker } from '../../../Glossary/hooks/useEntityReferenceOptions';
@@ -34,6 +38,22 @@ export interface OntologyFormValues {
   owners: EntityReferenceOption[];
   reviewers: EntityReferenceOption[];
 }
+
+export const ontologyFormValues = (
+  ontology?: Ontology
+): OntologyFormValues => ({
+  name: ontology?.name ?? '',
+  displayName: ontology?.displayName ?? '',
+  description: ontology?.description ?? '',
+  iri: ontology?.iri ?? '',
+  namespace: ontology?.namespace ?? '',
+  layer: {
+    id: ontology?.layer ?? Layer.L1,
+    label: ontology?.layer ?? Layer.L1,
+  },
+  owners: (ontology?.owners ?? []).map(toEntityReferenceOption),
+  reviewers: (ontology?.reviewers ?? []).map(toEntityReferenceOption),
+});
 
 export const ontologyRequest = (
   values: OntologyFormValues,
@@ -52,11 +72,37 @@ export const ontologyRequest = (
   reviewers: toEntityReferences(values.reviewers),
 });
 
+export const ontologyPatch = (
+  ontology: Ontology,
+  values: OntologyFormValues
+): Operation[] => {
+  const fields = [
+    'displayName',
+    'description',
+    'namespace',
+    'layer',
+    'owners',
+    'reviewers',
+  ];
+
+  return [
+    { op: 'test', path: '/version', value: ontology.version },
+    ...compare(
+      omitBy(
+        pick(ontologyRequest(ontologyFormValues(ontology)), fields),
+        isUndefined
+      ),
+      omitBy(pick(ontologyRequest(values), fields), isUndefined)
+    ),
+  ];
+};
+
 export const ontologyFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
   owners: EntityReferencePicker,
   reviewers: EntityReferencePicker,
-  disabled: boolean
+  disabled: boolean,
+  editing = false
 ): FieldProp[] => {
   const iriRule = (value: string) =>
     !value.trim() ||
@@ -124,7 +170,10 @@ export const ontologyFormFields = (
 
   return fields.map((field) => ({
     ...field,
-    props: { ...field.props, isDisabled: disabled },
+    props: {
+      ...field.props,
+      isDisabled: disabled || (editing && ['name', 'iri'].includes(field.name)),
+    },
     rules: {
       ...field.rules,
       ...(field.required

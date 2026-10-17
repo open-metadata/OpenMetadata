@@ -875,10 +875,6 @@ PREPARE rdf_projection_health_watermark_stmt FROM @rdf_projection_health_waterma
 EXECUTE rdf_projection_health_watermark_stmt;
 DEALLOCATE PREPARE rdf_projection_health_watermark_stmt;
 
--- Flowable schema upgrades run after this migration and inherit the database default. Existing
--- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
-ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
@@ -1080,7 +1076,11 @@ DEALLOCATE PREPARE ontology_axiom_release_only_review_stmt;
 
 -- Unreleased glossary axiom drafts cannot be applied to the independent ontology model.
 DELETE FROM entity_relationship WHERE
-  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'))) OR
-  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations')));
-DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'));
-DELETE FROM ontology_change_set_entity WHERE JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations');
+  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations')))) OR
+  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'))));
+DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations')));
+DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_AXIOM"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_AXIOM"}', '$.operations'));
+
+-- Flowable schema upgrades run after this migration and inherit the database default. Existing
+-- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

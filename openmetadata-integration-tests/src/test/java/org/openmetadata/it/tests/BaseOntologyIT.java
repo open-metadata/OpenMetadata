@@ -149,6 +149,20 @@ abstract class BaseOntologyIT<T extends OntologyEntityInterface, K> extends Base
     assertEquals("Revised native definition", updated.getDescription());
 
     deleteEntity(entity.getId().toString());
+    final T deleted = getEntityIncludeDeleted(entity.getId().toString());
+    setFieldViaReflection(request, "setIri", URI.class, URI.create("urn:changed-identity"));
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .executeForString(HttpMethod.PUT, getResourcePath(), request))
+            .getStatusCode());
+    assertEquals(
+        deleted.getVersion(), getEntityIncludeDeleted(entity.getId().toString()).getVersion());
+    setFieldViaReflection(request, "setIri", URI.class, null);
     SdkClients.adminClient()
         .getHttpClient()
         .executeForString(HttpMethod.PUT, getResourcePath(), request);

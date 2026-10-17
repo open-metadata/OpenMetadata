@@ -145,7 +145,11 @@ const OntologyReleaseDetails = ({
           {t('label.activate-release')}
         </Button>
       </Box>
-      <OntologyReviewRelease key={release.id} releaseId={release.id} />
+      <OntologyReviewRelease
+        baseReleaseId={release.baseReleaseId}
+        key={release.id}
+        releaseId={release.id}
+      />
     </Box>
   );
 };

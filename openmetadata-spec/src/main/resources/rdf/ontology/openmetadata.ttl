@@ -3700,10 +3700,6 @@ om:reviewTask a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "reviewTask" .
 
-om:reviewRevision a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "reviewRevision" .
-
 om:reviewAuthor a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "reviewAuthor" .
@@ -4145,6 +4141,14 @@ om:releaseRevision a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "releaseRevision" .
 
+om:baseReleaseId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "baseReleaseId" .
+
+om:baseWorkingRevision a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "baseWorkingRevision" .
+
 om:sealedAt a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sealedAt" .
@@ -4168,14 +4172,6 @@ om:versionIri a rdf:Property ;
 om:enumValues a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "enumValues" .
-
-om:imports a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "imports" .
-
-om:dependencies a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "dependencies" .
 
 om:unit a rdf:Property ;
     om:projectionStatus om:Stored ;

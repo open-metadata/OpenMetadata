@@ -37,10 +37,9 @@ export interface OntologyConcept {
     /**
      * Owning ontology entity. Glossaries do not own ontology definitions.
      */
-    ontology:   EntityReference;
-    owners?:    EntityReference[];
-    provider?:  ProviderType;
-    reviewers?: EntityReference[];
+    ontology:  EntityReference;
+    owners?:   EntityReference[];
+    provider?: ProviderType;
     /**
      * Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not
      * stored or independently editable.

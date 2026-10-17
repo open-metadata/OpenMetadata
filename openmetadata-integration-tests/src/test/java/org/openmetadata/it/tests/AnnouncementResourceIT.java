@@ -13,12 +13,7 @@
 
 package org.openmetadata.it.tests;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
@@ -52,6 +47,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
@@ -569,9 +565,13 @@ public class AnnouncementResourceIT extends BaseEntityIT<Announcement, CreateAnn
 
     created.setCustomTypeName("x".repeat(200));
 
-    InvalidRequestException rejected =
+    // Asserted on the cause, not the thrown type: unlike create, the SDK's update() wraps every
+    // failure in a bare OpenMetadataException, so the typed 400 only survives underneath it.
+    OpenMetadataException error =
         assertThrows(
-            InvalidRequestException.class, () -> patchEntity(created.getId().toString(), created));
+            OpenMetadataException.class, () -> patchEntity(created.getId().toString(), created));
+    InvalidRequestException rejected =
+        assertInstanceOf(InvalidRequestException.class, error.getCause());
     assertTrue(rejected.getMessage().contains("64"));
     assertEquals("Release", getEntity(created.getId().toString()).getCustomTypeName());
   }

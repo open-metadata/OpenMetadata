@@ -48,9 +48,6 @@
     "owners": {
       "$ref": "../../type/entityReferenceList.json"
     },
-    "reviewers": {
-      "$ref": "../../type/entityReferenceList.json"
-    },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
     }

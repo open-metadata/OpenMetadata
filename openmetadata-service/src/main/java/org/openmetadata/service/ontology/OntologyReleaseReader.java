@@ -60,6 +60,10 @@ public final class OntologyReleaseReader {
 
   public static OntologyDefinition definition(
       final OntologyRelease release, final OntologyReleaseMember member) {
+    if (release.getEncodingVersion() == null
+        || !OntologyReleaseManifest.ENCODING_VERSION.equals(release.getEncodingVersion().value())) {
+      throw new BadRequestException("Unsupported ontology release encoding");
+    }
     final OntologyDefinition value = definition(member);
     if (value instanceof Ontology ontology) {
       if (!Objects.equals(release.getOntology().getId(), ontology.getId())
@@ -83,7 +87,7 @@ public final class OntologyReleaseReader {
           default -> throw new BadRequestException(
               "Unsupported ontology release member: " + member.getMemberKind());
         };
-    final var value = JsonUtils.getObjectMapper().convertValue(member.getPayload(), type);
+    final var value = JsonUtils.convertValueLenient(member.getPayload(), type);
     if (!Objects.equals(member.getMemberId(), value.getId())) {
       throw new BadRequestException("Ontology release member identity does not match its payload");
     }

@@ -3,8 +3,11 @@ package org.openmetadata.service.resources.ontology;
 import jakarta.ws.rs.core.SecurityContext;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -28,6 +31,18 @@ final class OntologyResourceAccess {
       final OntologyDefinition definition,
       final EntityRepository<T> repository) {
     final String type = repository.getEntityType();
+    try {
+      definition.setOwners(
+          repository
+              .get(null, definition.getId(), repository.getFields("owners"), Include.ALL, false)
+              .getOwners());
+    } catch (EntityNotFoundException exception) {
+      if (definition.getOntology() == null) {
+        throw exception;
+      }
+      final Ontology parent = Entity.getEntity(definition.getOntology(), "owners", Include.ALL);
+      definition.setOwners(parent.getOwners());
+    }
     authorizer.authorize(
         context,
         new OperationContext(type, MetadataOperation.VIEW_ALL),

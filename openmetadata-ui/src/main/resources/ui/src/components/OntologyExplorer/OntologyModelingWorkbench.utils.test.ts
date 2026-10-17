@@ -68,7 +68,7 @@ describe('OntologyModelingWorkbench utilities', () => {
     expect(request).toEqual(
       expect.objectContaining({
         description: 'Classification',
-        glossary: 'governed',
+        ontology: 'governed',
         subjectIri: 'https://example.org/Customer',
         targetIri: 'https://example.org/Party',
       })

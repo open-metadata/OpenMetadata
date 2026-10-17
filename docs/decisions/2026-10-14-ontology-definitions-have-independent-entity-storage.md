@@ -83,14 +83,14 @@ edit or deletion and enforce axiom read permissions.
 Native migration 2.1.0 replaces the unreleased axiom table's generated glossary owner column and
 index with `ontologyId`. Before adding the non-null generated owner column, delete only
 unreleased axiom rows without an ontology owner, their relationship/history rows and development
-change sets containing axiom operations. This is an explicit reset of development Studio axioms;
+glossary-scoped change sets containing axiom operations. This is an explicit reset of development Studio axioms;
 export any wanted draft axioms before upgrading and recreate them under an ontology.
 Existing native axiom rows survive replay. Glossaries, terms and configurable relations are not
 modified or converted. Axiom listings filter by that ID. Concept, property and axiom listings use
 `(ontologyId, deleted, name, id)` indexes to match the standard entity cursor order. Local property checks use only the owning ontology, with exact IRI
 comparison after hashed property lookup. The glossary relationship-type registry does not define
 ontology properties, and glossary export no longer reads independent axiom rows. Native imports
-are deferred and nonempty import requests are rejected.
+are deferred; native entity schemas expose no imports field.
 
 Nested expression and literal IRIs use the shared exact-IRI schema. Enumeration members retain
 string-distinct identifiers in generated clients and reject exact duplicates in the authoring
@@ -123,46 +123,6 @@ resolves a definition from an unrelated module. The working-reference API pages 
 source UUID and role and requires read authorization on each returned source definition. This is
 local reference impact, not transitive import resolution or proof of logical consistency.
 
-## Follow-up: metadata usage search
-
-Keep `tag_usage` authoritative for metadata annotations. Project the distinct UUIDs from native
-ontology labels into the keyword field `ontologyConceptIds` in asset search documents. Include
-annotated child fields in their parent asset's document and retain separate column documents when
-column indexing is enabled. Never derive this field from another label source, even when it carries
-the same FQN or metadata keys. Reindexing and live tag-update scripts produce the same projection.
-
-Reverse asset lists and counts use the existing search endpoint and its access controls. Query by
-concept UUID rather than FQN, preserving unresolved assignments after working-definition deletion
-or name reuse. The search projection is eventually consistent; SQL remains the assignment record.
-Published concept pages authorize the sealed definition before showing associated assets. Search
-failures have an explicit retry state and do not imply zero associations. Existing indexes require
-the normal mapping update and reindex to populate the new field. `ParseTagsTest`, `TaggableIndexTest`,
-`CustomIndexTest`, and `IndependentOntologyLabelsIT` guard this projection.
-
-Define the shared keyword field in `IndexMapping.readMapping`, used by index creation, updates,
-rebuilds, mapping lookup and version fingerprints. Language-specific JSON files retain their existing
-fields and analyzers; they do not repeat the ontology field. This field is independent of optional
-search hardening settings.
-
-## Follow-up: metadata CSV annotations
-
-Append an optional `ontologyAnnotations` column to metadata CSV formats. Its value is a JSON array
-of existing `TagLabel` objects carrying source `Ontology`, stable ontology/concept UUIDs, assignment
-state, label type and provenance. Export omits derived display fields and the computed `resolved`
-flag. Classification and glossary columns keep their existing meanings and positions.
-
-An omitted column preserves each target's current ontology annotations; an explicitly empty cell
-removes them. Import validates supplied identities through `OntologyLabelResolver`, including in
-dry runs, and persists through the existing repository/tag-usage mechanisms. The same codec serves
-entity, nested-column, bulk-column and search-result exports. The bulk edit grid displays concept
-names and suggestion state, retains the serialized annotations, and keeps this structured column
-read-only. CSV files can replace the column explicitly; malformed or forged assignments fail the row.
-
-Define the annotation header once in `OntologyAnnotationCsv`, applied by the existing documentation
-loader and CSV constructor to formats with a tag column. This also covers headers declared in Java.
-Row builders use `CsvUtil.addOntologyAnnotations`, alongside the existing classification and glossary
-helpers; the generic two-argument record writer stays unchanged.
-
 ## Amendment: validation cost and hierarchy
 
 Store named subclass relationships only as ontology-owned `OntologyAxiom` rows. Concept reads
@@ -176,9 +136,3 @@ through the reference index. These reads share the ontology state lock; MySQL re
 recently committed changes use locking reads, including both sides of the reference/axiom join.
 Cycle detection identifies every member of a strongly connected component without recursion.
 An invalid unrelated draft does not prevent repairs. Capture still validates the complete model.
-
-In the metadata follow-up, annotations reuse the existing `tag_usage` store and shared tag writers. Batch writes
-resolve identities and approved/active content together through existing chunked DAO queries.
-Cached assignments refresh their meaning from the active release on read. A column datatype
-change carries its existing annotation identity, assignment state and provenance forward, even
-when its concept is no longer active; it does not authorize a new assignment to an unapproved concept.

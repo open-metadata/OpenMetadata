@@ -33,7 +33,7 @@ class OntologyWorkflowDecisionTest {
         BadRequestException.class,
         () ->
             decision.requireTarget(JsonUtils.deepCopy(task, Task.class).withId(UUID.randomUUID())));
-    task.getOntologyReview().setReviewRevision(2L);
+    task.getOntologyReview().setContentDigest("b".repeat(64));
     assertThrows(BadRequestException.class, () -> decision.requireTarget(task));
   }
 
@@ -67,7 +67,7 @@ class OntologyWorkflowDecisionTest {
         .withOntologyReview(
             new OntologyReviewTarget()
                 .withEntityId(UUID.randomUUID())
-                .withReviewRevision(1L)
+                .withContentDigest("a".repeat(64))
                 .withContentDigest("reviewed"));
   }
 

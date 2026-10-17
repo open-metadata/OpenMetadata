@@ -69,8 +69,7 @@ export interface OntologyProperty {
     /**
      * Semantic IRIs of range classes or datatypes.
      */
-    range?:     string[];
-    reviewers?: EntityReference[];
+    range?: string[];
     /**
      * Unit IRI or display symbol for a DATA property, retained as an annotation without
      * implying conversion.

@@ -20,10 +20,10 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAxiomType;
-import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 
@@ -67,8 +67,12 @@ public class IndependentOntologyHierarchyIT extends BaseOntologyApprovalIT {
     }
     assertBadRequest(
         () ->
-            concepts.update(
-                party.getId(), party.withConceptType(OntologyConceptType.SKOS_CONCEPT)));
+            concepts.patch(
+                party.getId(),
+                JsonUtils.readTree(
+                    """
+                    [{"op":"replace","path":"/conceptType","value":"SKOS_CONCEPT"}]
+                    """)));
     assertBadRequest(() -> client.ontologyAxioms().create(subclass(party, customer.getIri())));
     assertBadRequest(
         () -> client.ontologyAxioms().create(subclass(customer, URI.create("urn:Unknown"))));

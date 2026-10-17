@@ -64,9 +64,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.handlers.IncidentTcrsSyncHandler;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -1589,12 +1589,16 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   @Override
-  protected void flushInOneTransaction(final Runnable work) {
-    executeInTransaction(
-        () -> {
-          work.run();
-          return null;
-        });
+  protected void flushInOneTransaction(final List<Task> tasks, final Runnable work) {
+    if (tasks.stream().anyMatch(OntologyApprovalWorkflow::isReview)) {
+      executeInTransaction(
+          () -> {
+            work.run();
+            return null;
+          });
+    } else {
+      super.flushInOneTransaction(tasks, work);
+    }
   }
 
   private void initializeWorkflowManagedTask(Task task, boolean update) {

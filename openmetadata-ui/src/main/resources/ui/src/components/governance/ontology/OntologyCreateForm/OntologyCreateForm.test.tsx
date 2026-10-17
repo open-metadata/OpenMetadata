@@ -22,6 +22,7 @@ import OntologyCreateForm from './OntologyCreateForm';
 
 jest.mock('../../../../rest/axiosClient', () => ({
   post: jest.fn(),
+  patch: jest.fn(),
   get: jest.fn(),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -41,6 +42,56 @@ describe('OntologyCreateForm', () => {
     jest.clearAllMocks();
     post.mockResolvedValue({ data: { id: 'ontology-id', name: 'Sales' } });
     get.mockResolvedValue({ data: { hits: { hits: [] } } });
+  });
+
+  it('edits ontology metadata while preserving its identity and reviewers', async () => {
+    const user = userEvent.setup();
+    const ontology = {
+      id: 'sales',
+      name: 'Sales',
+      fullyQualifiedName: 'Sales',
+      iri: 'urn:sales',
+      namespace: 'urn:sales:',
+      version: 0.3,
+      reviewers: [{ id: 'reviewer', type: 'user', name: 'Reviewer' }],
+    };
+    const saved = jest.fn();
+    const patch = APIClient.patch as jest.MockedFunction<
+      typeof APIClient.patch
+    >;
+    patch.mockResolvedValue({
+      data: { ...ontology, displayName: 'Sales model' },
+    });
+    renderWithQueryClient(
+      <OntologyCreateForm canCreate ontology={ontology} onSaved={saved} />
+    );
+
+    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
+      'Sales'
+    );
+    expect(screen.getByRole('textbox', { name: 'label.name' })).toBeDisabled();
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'label.display-name' }),
+      'Sales model'
+    );
+    fireEvent.submit(screen.getByTestId('ontology-create-form'));
+
+    await waitFor(() =>
+      expect(saved).toHaveBeenCalledWith(
+        expect.objectContaining({ displayName: 'Sales model' })
+      )
+    );
+
+    expect(patch).toHaveBeenCalledWith(
+      '/ontologies/sales',
+      expect.arrayContaining([
+        { op: 'test', path: '/version', value: 0.3 },
+        { op: 'add', path: '/displayName', value: 'Sales model' },
+      ]),
+      expect.anything()
+    );
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('requires ontology identity and assigns the creator as owner', async () => {

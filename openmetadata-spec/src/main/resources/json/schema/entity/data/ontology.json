@@ -78,15 +78,6 @@
         "$ref": "../../type/ontologyConfiguration.json#/definitions/prefix"
       },
       "default": []
-    },
-    "imports": {
-      "description": "Cross-ontology imports are not supported in this release.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/entityReference.json"
-      },
-      "maxItems": 0,
-      "default": []
     }
   },
   "required": [

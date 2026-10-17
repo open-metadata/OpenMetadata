@@ -38,9 +38,6 @@
     },
     "prefixes": {
       "$ref": "../../entity/data/ontology.json#/properties/prefixes"
-    },
-    "imports": {
-      "$ref": "../../entity/data/ontology.json#/properties/imports"
     }
   },
   "required": [

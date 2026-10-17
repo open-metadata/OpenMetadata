@@ -50,11 +50,8 @@ const target: OntologyReviewTarget = {
   entityId: 'release-id',
   entityVersion: 0.2,
   ontologyId: 'ontology-id',
-  reviewRevision: 1,
   contentDigest: 'a'.repeat(64),
   author: 'author',
-  workflowDefinitionVersion: 1,
-  workflowDefinitionDigest: 'b'.repeat(64),
 };
 const task: Task = {
   id: 'task-id',

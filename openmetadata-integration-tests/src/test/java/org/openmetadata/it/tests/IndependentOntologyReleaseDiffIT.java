@@ -19,6 +19,7 @@ import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -107,11 +108,20 @@ public class IndependentOntologyReleaseDiffIT extends BaseOntologyApprovalIT {
     SdkClients.user1Client()
         .tasks()
         .resolve(review.getId().toString(), decision(TaskResolutionType.Approved));
+    SdkClients.adminClient()
+        .ontologies()
+        .activate(
+            ontology.getId(),
+            new ActivateOntologyRelease()
+                .withReleaseId(base.getId())
+                .withExpectedActivationRevision(0L));
     final OntologyRelease approved = capture(ontology);
     assertEquals(base.getContentDigest(), approved.getContentDigest());
     final OntologyReleaseDiff unchanged = diff(approved, base, null);
     assertEquals(0, unchanged.getPaging().getTotal());
     assertEquals(0, unchanged.getData().size());
+    assertEquals(base.getId(), diff(approved, null, null).getBaseReleaseId());
+    assertEquals(0, diff(approved, null, null).getPaging().getTotal());
   }
 
   @Test

@@ -39,7 +39,6 @@ export interface OntologyAxiom {
     propertyIri?:                  string;
     provenance:                    Provenance;
     provider?:                     ProviderType;
-    reviewers?:                    EntityReference[];
     subjectIri:                    string;
     targetIri?:                    string;
     updatedAt?:                    number;

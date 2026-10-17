@@ -25,11 +25,7 @@ export interface Ontology {
     /**
      * Bot user that performed the action on behalf of the actual user.
      */
-    impersonatedBy?: string;
-    /**
-     * Cross-ontology imports are not supported in this release.
-     */
-    imports?:                      EntityReference[];
+    impersonatedBy?:               string;
     incrementalChangeDescription?: ChangeDescription;
     /**
      * Stable semantic identity of this ontology; independent of its name and catalog record IRI.
@@ -114,12 +110,21 @@ export interface FieldChange {
 }
 
 /**
- * This schema defines the EntityReference type used for referencing an entity.
+ * Governance layer of an ontology model.
+ */
+export enum Layer {
+    L1 = "L1",
+    L2 = "L2",
+    L3 = "L3",
+}
+
+/**
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -165,15 +170,6 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
-}
-
-/**
- * Governance layer of an ontology model.
- */
-export enum Layer {
-    L1 = "L1",
-    L2 = "L2",
-    L3 = "L3",
 }
 
 /**

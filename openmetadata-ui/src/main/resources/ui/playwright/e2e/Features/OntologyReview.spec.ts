@@ -13,8 +13,10 @@
 
 import { APIRequestContext, Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
+import { ContextMemory } from '../../../src/generated/entity/context/contextMemory';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
+import { OntologyChangeSet } from '../../../src/generated/entity/data/ontologyChangeSet';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
 import { OntologyRelease } from '../../../src/generated/entity/data/ontologyRelease';
@@ -22,7 +24,8 @@ import { Task } from '../../../src/generated/entity/tasks/task';
 import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
-import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { fillCodeEditor } from '../../utils/codeEditor';
+import { fullUuid, getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import { readGraphEdges, readNodePositions } from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -104,11 +107,8 @@ const selectOntology = async (page: Page, ontology: Ontology) => {
 
 const openPublication = async (page: Page, ontology: Ontology) => {
   await page.goto('/governance/ontology');
-  await expect(page.getByTestId('mode-tab-review')).toHaveText(
-    'Publish and version'
-  );
-  await page.getByTestId('mode-tab-review').click();
   await selectOntology(page, ontology);
+  await page.getByTestId('mode-tab-releases').click();
   await expect(
     page.getByRole('button', { name: 'Capture release', exact: true })
   ).toBeEnabled();
@@ -433,8 +433,7 @@ test.describe(
 
         const [firstRelease] = releases;
         await author.reload();
-        await author.getByTestId('mode-tab-review').click();
-        await selectOntology(author, ontology);
+        await author.getByTestId('mode-tab-releases').click();
         await expect(author.getByTestId('ontology-active-release')).toHaveText(
           'Active'
         );
@@ -452,6 +451,27 @@ test.describe(
           path: testInfo.outputPath('studio-release-rollback.png'),
           fullPage: true,
         });
+        await reviewer.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await reviewer.getByTestId('mode-tab-query').click();
+        await fillCodeEditor(
+          reviewer,
+          reviewer.getByTestId('ontology-sparql-editor'),
+          `SELECT ?description WHERE { <${concept.iri}> <http://www.w3.org/2000/01/rdf-schema#comment> ?description }`
+        );
+        const queried = reviewer.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname ===
+              `/api/v1/ontologies/${ontology.id}/sparql` &&
+            response.request().method() === 'POST'
+        );
+        await reviewer.getByTestId('ontology-sparql-run').click();
+        expect((await queried).ok()).toBeTruthy();
+        await expect(
+          reviewer.getByTestId('ontology-sparql-result')
+        ).toContainText('First published definition');
+        await expect(
+          reviewer.getByTestId('ontology-sparql-result')
+        ).not.toContainText('Second published definition');
         await deleteFixtureEntity(
           api,
           `/api/v1/ontologyConcepts/${concept.id}`
@@ -526,8 +546,7 @@ test(
     let ontology: Ontology | undefined;
     try {
       await author.goto('/governance/ontology');
-      await author.getByTestId('mode-tab-edit').click();
-      await author.getByTestId('ontology-add-ontology').click();
+      await author.getByTestId('ontology-create').click();
       const form = author.getByTestId('ontology-create-form');
       await form.getByRole('textbox', { name: 'Name', exact: true }).fill(name);
       await form
@@ -574,6 +593,7 @@ test(
       );
       expect(ontology.owners).toHaveLength(1);
 
+      await author.getByTestId('mode-tab-model').click();
       await author.getByTestId('ontology-add-concept').click();
       const editor = author.getByTestId('ontology-concept-editor');
       await editor
@@ -639,8 +659,7 @@ test(
       expect(updated.displayName).toBe('Customers');
       expect(updated.conceptMappings).toEqual([mapping]);
       await author.reload();
-      await author.getByTestId('mode-tab-edit').click();
-      await selectOntology(author, ontology);
+      await author.getByTestId('mode-tab-model').click();
       await author
         .getByRole('button', { name: 'Customers', exact: true })
         .click();
@@ -676,7 +695,7 @@ test(
       expect(withoutMapping.conceptMappings).toEqual([]);
       expect(withoutMapping.iri).toBe(concept.iri);
       await expect(mappingEditor).toHaveCount(0);
-      await author.getByTestId('ontology-modeling-tab-properties').click();
+      await author.getByTestId('ontology-model-property').click();
       await author.getByTestId('ontology-add-property').click();
       const propertyEditor = author.getByTestId('ontology-property-editor');
       await propertyEditor
@@ -740,9 +759,8 @@ test(
       expect(savedProperty.iri).toBe(property.iri);
       expect(savedProperty.enumValues).toEqual(property.enumValues);
       await author.reload();
-      await author.getByTestId('mode-tab-edit').click();
-      await selectOntology(author, ontology);
-      await author.getByTestId('ontology-modeling-tab-properties').click();
+      await author.getByTestId('mode-tab-model').click();
+      await author.getByTestId('ontology-model-property').click();
       await author
         .getByRole('button', { name: 'Customer status', exact: true })
         .click();
@@ -759,11 +777,15 @@ test(
         }),
         'Declare the superclass'
       );
-      await author.getByTestId('ontology-modeling-tab-axioms').click();
+      await author.getByTestId('ontology-model-axiom').click();
+      await author.getByTestId('ontology-add-axiom').click();
       const axiom = author.getByTestId('ontology-axiom-panel');
       await axiom
         .getByRole('textbox', { name: 'Name', exact: true })
         .fill('CustomerIsParty');
+      await axiom
+        .getByRole('textbox', { name: 'Display Name', exact: true })
+        .fill('Customer is a Party');
       await axiom
         .getByRole('textbox', { name: 'Description', exact: true })
         .fill('Customers are parties');
@@ -785,10 +807,8 @@ test(
         'Create the native subclass axiom'
       );
       expect(hierarchy.ontology.id).toBe(ontology.id);
-      await expect(
-        author.getByText('Constraint created successfully.', { exact: true })
-      ).toBeVisible();
-      await author.getByTestId('mode-tab-view').click();
+      await expect(author.getByText('Saved', { exact: true })).toBeVisible();
+      await author.getByTestId('mode-tab-graph').click();
       await expect(author.locator('.ontology-g6-container')).toBeVisible();
       expect(await readNodePositions(author)).toEqual(
         expect.objectContaining({
@@ -823,6 +843,154 @@ test(
           `/api/v1/ontologies/${ontology.id}?recursive=true`
         );
       }
+    }
+  }
+);
+
+test(
+  'reviews a native memory draft through its Context Center link and captures the applied definition',
+  { tag: ['@Features', '@Governance'] },
+  async ({ isolatedUserPage: page }) => {
+    const api = await getWorkerAdminAPIContext();
+    const name = `pw_native_memory_${uuid()}`;
+    const ontology = await okJson<Ontology>(
+      await api.post('/api/v1/ontologies', {
+        data: {
+          name,
+          iri: `urn:${name}`,
+          namespace: `urn:${name}:`,
+        },
+      }),
+      'Create native memory ontology'
+    );
+    let memory: ContextMemory | undefined;
+    let draft: OntologyChangeSet | undefined;
+    try {
+      memory = await okJson<ContextMemory>(
+        await api.post('/api/v1/contextMemories', {
+          data: {
+            name: `${name}_source`,
+            question: 'Who is a customer?',
+            answer: 'A customer buys products.',
+            entityStatus: 'Approved',
+          },
+        }),
+        'Create source memory'
+      );
+      const state = await okJson<OntologyState>(
+        await api.get(`/api/v1/ontologies/${ontology.id}/state`),
+        'Read working revision'
+      );
+      const conceptId = fullUuid();
+      const iri = `urn:${name}:Customer`;
+      draft = await okJson<OntologyChangeSet>(
+        await api.post('/api/v1/ontologyChangeSets', {
+          data: {
+            name: `${name}_draft`,
+            displayName: 'Native memory proposal',
+            description: 'A customer definition proposed from memory',
+            ontology: ontology.fullyQualifiedName,
+            baseWorkingRevision: state.workingRevision,
+            operations: [
+              {
+                id: fullUuid(),
+                operationType: 'UPSERT_CONCEPT',
+                state: 'ACTIVE',
+                sourceMemoryIds: [memory.id],
+                concept: {
+                  id: conceptId,
+                  name: 'Customer',
+                  fullyQualifiedName: `${ontology.fullyQualifiedName}.Customer`,
+                  ontology: { id: ontology.id, type: 'ontology' },
+                  iri,
+                  conceptType: 'OWL_CLASS',
+                  description: 'A customer buys products.',
+                },
+              },
+            ],
+          },
+        }),
+        'Create native memory draft'
+      );
+      await page.goto(`/governance/ontology?draft=${draft.id}`);
+      await expect(
+        page.getByTestId('ontology-memory-definition')
+      ).toContainText(iri);
+      const submitted = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/api/v1/ontologyChangeSets/${draft?.id}/submit` &&
+          response.request().method() === 'POST'
+      );
+      await page.getByTestId('ontology-memory-submit').click();
+      expect(
+        (
+          await okJson<OntologyChangeSet>(
+            await submitted,
+            'Submit native memory draft'
+          )
+        ).state
+      ).toBe('SUBMITTED');
+      const applied = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/api/v1/ontologyChangeSets/${draft?.id}/apply` &&
+          response.request().method() === 'POST'
+      );
+      await page.getByTestId('ontology-memory-apply').click();
+      expect(
+        (
+          await okJson<OntologyChangeSet>(
+            await applied,
+            'Apply native memory draft'
+          )
+        ).state
+      ).toBe('APPLIED');
+      await expect(
+        page.getByTestId(`ontology-memory-draft-${draft.id}`)
+      ).toBeHidden();
+      await selectOntology(page, ontology);
+      await page.getByTestId('mode-tab-model').click();
+      await page.getByRole('button', { name: 'Customer', exact: true }).click();
+      await expect(
+        page
+          .getByTestId('ontology-concept-editor')
+          .getByRole('textbox', { name: 'Description', exact: true })
+      ).toHaveValue('A customer buys products.');
+      await page.getByTestId('mode-tab-releases').click();
+      const captured = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname ===
+            `/api/v1/ontologies/${ontology.id}/releases` &&
+          response.request().method() === 'POST'
+      );
+      await page
+        .getByRole('button', { name: 'Capture release', exact: true })
+        .click();
+      expect(
+        (
+          await okJson<OntologyRelease>(
+            await captured,
+            'Capture memory-derived working model'
+          )
+        ).memberCount
+      ).toBe(2);
+    } finally {
+      if (draft)
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologyChangeSets/${draft.id}?hardDelete=true`
+        );
+      if (memory)
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/contextMemories/${memory.id}?hardDelete=true`
+        );
+      const archived = await deleteFixtureEntity(
+        api,
+        `/api/v1/ontologies/${ontology.id}?recursive=true`
+      );
+      expect(archived.ok()).toBeTruthy();
     }
   }
 );

@@ -25,7 +25,6 @@ export interface CreateOntologyAxiom {
     propertyIri?: string;
     provenance:   Provenance;
     provider?:    ProviderType;
-    reviewers?:   EntityReference[];
     subjectIri:   string;
     targetIri?:   string;
 }

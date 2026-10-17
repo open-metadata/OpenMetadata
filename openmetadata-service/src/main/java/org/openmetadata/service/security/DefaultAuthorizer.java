@@ -36,7 +36,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class DefaultAuthorizer implements Authorizer {
-  private static final DefaultAuthorizer DIRECT_AUTHORIZER = new DefaultAuthorizer();
+  private static final DefaultAuthorizer DIRECT_READ_AUTHORIZER = new DefaultAuthorizer();
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
@@ -136,12 +136,12 @@ public class DefaultAuthorizer implements Authorizer {
     }
   }
 
-  /** Authorize a resolved user on paths that do not carry the JAX-RS security context. */
+  /** Authorize a resolved user on read paths that do not carry the JAX-RS security context. */
   public static void authorizeUser(
       String userName,
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
-    DIRECT_AUTHORIZER.authorizeSubject(
+    DIRECT_READ_AUTHORIZER.authorizeSubject(
         subjectContextForUserName(userName), operationContext, resourceContext);
   }
 
