@@ -599,6 +599,9 @@ export enum AuthProvider {
  * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
  * pattern.
  *
+ * Regex to only include/exclude node and relationship properties (columns) that match the
+ * pattern, e.g. properties written back by graph algorithms.
+ *
  * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -3935,8 +3938,6 @@ export interface ServiceConnection {
  *
  * Db2 Connection Config
  *
- * DeltaLake Database Connection Config
- *
  * Druid Connection Config
  *
  * DynamoDB Connection Config
@@ -4038,6 +4039,8 @@ export interface ServiceConnection {
  * Salesforce Data 360 (formerly DataCloud) Connection Config
  *
  * SAP BW/4HANA Database Connection Config
+ *
+ * Neo4j Connection Config
  *
  * Kafka Connection Config
  *
@@ -4443,6 +4446,9 @@ export interface Connection {
      *
      * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      *
+     * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
+     * 7687.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -4577,6 +4583,8 @@ export interface Connection {
      * Password to connect to IOMETE.
      *
      * Password for the HANA database user.
+     *
+     * Password to connect to Neo4j.
      *
      * password to connect to the Amundsen Neo4j Connection.
      *
@@ -4717,6 +4725,9 @@ export interface Connection {
      *
      * HANA database username with access to BW metadata tables.
      *
+     * Username to connect to Neo4j. The user needs read access to the graph schema of the
+     * database.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -4788,7 +4799,7 @@ export interface Connection {
      *
      * Matillion Auth Configuration
      */
-    connection?: AirflowConnectionConnection;
+    connection?: ConnectionClass;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
@@ -4994,10 +5005,7 @@ export interface Connection {
     /**
      * Billing Project ID
      */
-    billingProjectId?: string;
-    /**
-     * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
-     */
+    billingProjectId?:    string;
     connectionArguments?: { [key: string]: any };
     /**
      * Cost per TiB for BigQuery usage
@@ -5054,6 +5062,8 @@ export interface Connection {
      * Mongo connection scheme options.
      *
      * Couchbase driver scheme options.
+     *
+     * Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.
      */
     scheme?: AirflowConnectionScheme;
     /**
@@ -5120,6 +5130,8 @@ export interface Connection {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
+     *
+     * Neo4j database to extract metadata from. If left blank, the user's home database is used.
      */
     databaseName?: string;
     /**
@@ -5317,14 +5329,6 @@ export interface Connection {
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
-     * Available sources to fetch the metadata.
-     *
-     * Available sources to fetch files.
-     *
-     * Available sources to fetch metadata.
-     */
-    configSource?: DeltaLakeConfigurationSource;
-    /**
      * Authentication mode to connect to hive.
      *
      * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
@@ -5383,6 +5387,13 @@ export interface Connection {
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
+    /**
+     * Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data
+     * dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped.
+     * When enabled, GTTs are ingested with TableType=Local so they can be distinguished from
+     * regular tables.
+     */
+    includeTemporaryTables?: boolean;
     /**
      * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
      * you need to enable thick connection mode. By default, we bring instant client 19 and
@@ -5593,6 +5604,12 @@ export interface Connection {
      */
     bucketName?: string;
     /**
+     * Available sources to fetch files.
+     *
+     * Available sources to fetch metadata.
+     */
+    configSource?: DataLakeConfigurationSource;
+    /**
      * Prefix of the data source.
      */
     prefix?: string;
@@ -5719,6 +5736,16 @@ export interface Connection {
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
      */
     abapSchema?: string;
+    /**
+     * Also ingest relationship types as tables in the `relationships` schema, with their
+     * properties as columns.
+     */
+    includeRelationships?: boolean;
+    /**
+     * Regex to only include/exclude node and relationship properties (columns) that match the
+     * pattern, e.g. properties written back by graph algorithms.
+     */
+    propertyFilterPattern?: FilterPattern;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -7134,12 +7161,6 @@ export enum CloudProvider {
 }
 
 /**
- * Available sources to fetch the metadata.
- *
- * Deltalake Metastore configuration.
- *
- * DeltaLake Storage Connection Config
- *
  * Available sources to fetch files.
  *
  * Local config source where no extra information needs to be sent.
@@ -7156,25 +7177,7 @@ export enum CloudProvider {
  *
  * Azure Credentials
  */
-export interface DeltaLakeConfigurationSource {
-    /**
-     * pySpark App Name.
-     */
-    appName?: string;
-    /**
-     * Metastore connection configuration, depending on your metastore type.
-     *
-     * Available sources to fetch files.
-     */
-    connection?: ConfigSourceConnection;
-    /**
-     * Bucket Name of the data source.
-     */
-    bucketName?: string;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:         string;
+export interface DataLakeConfigurationSource {
     securityConfig?: DbtSecurityConfigClass;
     /**
      * Account Name of your storage account
@@ -7200,50 +7203,6 @@ export interface DeltaLakeConfigurationSource {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Metastore connection configuration, depending on your metastore type.
- *
- * Available sources to fetch files.
- *
- * DataLake S3 bucket will ingest metadata of files in bucket
- */
-export interface ConfigSourceConnection {
-    /**
-     * Thrift connection to the metastore service. E.g., localhost:9083
-     */
-    metastoreHostPort?: string;
-    /**
-     * Driver class name for JDBC metastore. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g.,
-     * org.mariadb.jdbc.Driver
-     */
-    driverName?: string;
-    /**
-     * Class path to JDBC driver required for JDBC connection. The value will be mapped as
-     * spark.driver.extraClassPath sparks property.
-     */
-    jdbcDriverClassPath?: string;
-    /**
-     * JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive
-     */
-    metastoreDb?: string;
-    /**
-     * Password to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.
-     */
-    password?: string;
-    /**
-     * Username to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.
-     */
-    username?: string;
-    /**
-     * Local path for the local file with metastore data. E.g., /tmp/metastore.db
-     */
-    metastoreFilePath?: string;
-    securityConfig?:    AWSCredentials;
 }
 
 /**
@@ -7286,7 +7245,7 @@ export interface ConfigSourceConnection {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface AirflowConnectionConnection {
+export interface ConnectionClass {
     /**
      * Password for Superset.
      *
@@ -8317,10 +8276,18 @@ export enum RunMode {
  * Mongo connection scheme options.
  *
  * Couchbase driver scheme options.
+ *
+ * Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.
+ *
+ * Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts
+ * and accepts self-signed certificates.
  */
 export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
+    Bolt = "bolt",
+    BoltS = "bolt+s",
+    BoltSsc = "bolt+ssc",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
     Clickzetta = "clickzetta",
@@ -8348,6 +8315,9 @@ export enum AirflowConnectionScheme {
     MssqlPyodbc = "mssql+pyodbc",
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
+    Neo4J = "neo4j",
+    Neo4JS = "neo4j+s",
+    Neo4JSsc = "neo4j+ssc",
     OracleCxOracle = "oracle+cx_oracle",
     OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
@@ -8671,7 +8641,6 @@ export enum AirflowConnectionType {
     DatabricksPipeline = "DatabricksPipeline",
     Datalake = "Datalake",
     Db2 = "Db2",
-    DeltaLake = "DeltaLake",
     DomoDashboard = "DomoDashboard",
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
@@ -8717,6 +8686,7 @@ export enum AirflowConnectionType {
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nats = "Nats",
+    Neo4J = "Neo4j",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",

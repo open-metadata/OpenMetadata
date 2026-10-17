@@ -337,8 +337,10 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     );
   });
 
+  // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
+  // long unbreakable title would widen the list and push the detail off-screen.
   return (
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Box
         className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">
