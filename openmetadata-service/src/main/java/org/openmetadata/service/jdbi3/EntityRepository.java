@@ -1531,6 +1531,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity.getEntityStatus() == null ? defaultEntityStatus : entity.getEntityStatus();
   }
 
+  /** A published lifecycle playbook enrols every new entity it applies to at its first stage. */
+  protected boolean playbookOwnsStage(T entity) {
+    return workflowsOwnEntityStatus && stageOwnership.playbookOwnsStageOf(entityType, entity);
+  }
+
   /** Puts a new entity in the stage it starts in; every create path calls it before storing. */
   void assignInitialEntityStatus(T entity) {
     if (supportsEntityStatus) {
@@ -4910,11 +4915,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       boolean useOptimisticLocking,
       String impersonatedBy,
       ApprovedApplication approval) {
-    T updated = preparePatched(original, patch, user);
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
+    T updated = preparePatched(original, patch, user, impersonatedBy);
     Optional<StagedChange> staged =
         admitOrVerify(original, updated, user, impersonatedBy, approval, patchedFieldNames);
     return staged
@@ -4967,7 +4968,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   final Optional<StagedChange> previewPatch(T original, JsonPatch patch, String user) {
     return ApprovalGate.preview(
         original,
-        preparePatched(original, patch, user),
+        preparePatched(original, patch, user, null),
         user,
         Edit.patch(JsonUtils.extractPatchedFields(patch)));
   }
@@ -4975,10 +4976,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
   public final void validatePatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
-    preparePatched(original, patch, user);
+    preparePatched(original, patch, user, null);
   }
 
-  private T preparePatched(T original, JsonPatch patch, String user) {
+  private T preparePatched(T original, JsonPatch patch, String user, String impersonatedBy) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -4990,6 +4991,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
+    // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
+    // before prepare, so validation sees who makes this change rather than who made the last one.
+    updated.setImpersonatedBy(impersonatedBy);
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
@@ -12738,9 +12742,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 .findToBatchWithRelations(entityIds, entityType, outgoingRelations, ALL);
 
     Map<String, Map<UUID, EntityReference>> incomingRefsByType =
-        resolveRelationshipEntityReferencesByType(incomingRecords, true);
+        resolveRelationshipEntityReferencesByType(incomingRecords, true, NON_DELETED);
     Map<String, Map<UUID, EntityReference>> outgoingRefsByType =
-        resolveRelationshipEntityReferencesByType(outgoingRecords, false);
+        resolveRelationshipEntityReferencesByType(outgoingRecords, false, NON_DELETED);
 
     Map<UUID, List<EntityReference>> ownersByEntity = loadOwners ? new HashMap<>() : null;
     Map<UUID, List<EntityReference>> followersByEntity = loadFollowers ? new HashMap<>() : null;
@@ -12920,8 +12924,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return handledFields;
   }
 
+  /**
+   * Groups the target references of {@code records} under their source ids, keeping row order.
+   * Targets are resolved with one batched lookup per entity type rather than one read per row, so
+   * a page of teams owning thousands of assets costs a query per asset type. Rows whose target no
+   * longer exists are dropped.
+   */
+  protected Map<UUID, List<EntityReference>> resolveTargetsBySource(
+      List<CollectionDAO.EntityRelationshipObject> records, Include include) {
+    Map<String, Map<UUID, EntityReference>> refsByType =
+        resolveRelationshipEntityReferencesByType(records, false, include);
+    Map<UUID, List<EntityReference>> targetsBySource = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference target =
+          lookupRelationshipRef(
+              refsByType, record.getToEntity(), UUID.fromString(record.getToId()));
+      if (target != null) {
+        targetsBySource
+            .computeIfAbsent(UUID.fromString(record.getFromId()), k -> new ArrayList<>())
+            .add(target);
+      }
+    }
+    return targetsBySource;
+  }
+
   private Map<String, Map<UUID, EntityReference>> resolveRelationshipEntityReferencesByType(
-      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide) {
+      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide, Include include) {
     if (records == null || records.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -12948,7 +12976,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (Entry<String, Set<UUID>> entry : idsByType.entrySet()) {
       List<EntityReference> refs =
           Entity.getEntityReferencesByIds(
-              entry.getKey(), new ArrayList<>(entry.getValue()), NON_DELETED);
+              entry.getKey(), new ArrayList<>(entry.getValue()), include);
       refsByType.put(
           entry.getKey(),
           refs.stream()

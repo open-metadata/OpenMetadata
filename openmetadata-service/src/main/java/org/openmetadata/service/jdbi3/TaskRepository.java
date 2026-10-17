@@ -77,6 +77,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
 import org.openmetadata.service.tasks.TaskFieldValidator;
@@ -455,8 +456,9 @@ public class TaskRepository extends EntityRepository<Task> {
    * If no assignees are specified and the target entity has owners, set the entity owners as default
    * assignees. This ensures tasks about owned entities are automatically routed to the right people.
    */
-  private void setDefaultAssigneesFromEntityOwners(Task task) {
-    if (!nullOrEmpty(task.getAssignees())) {
+  void setDefaultAssigneesFromEntityOwners(Task task) {
+    if (!nullOrEmpty(task.getAssignees())
+        || Boolean.FALSE.equals(task.getUseEntityOwnerFallback())) {
       return;
     }
 
@@ -1060,8 +1062,31 @@ public class TaskRepository extends EntityRepository<Task> {
       validateUnderlyingEntityPermission(authorizer, securityContext, task);
     }
 
-    if (!closeTask) {
+    if (!closeTask && isWorkflowApproval(task)) {
+      requireAssigneeForWorkflowApproval(task, securityContext);
+    } else if (!closeTask) {
       enforceReviewerForApprovalStatusTask(task, securityContext);
+    }
+  }
+
+  /** A stage move or held change that a workflow asks its assignees to decide. */
+  private static boolean isWorkflowApproval(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && (task.getType() == TaskEntityType.RequestApproval
+            || ChangeRequestTasks.reviewsChangeRequest(task));
+  }
+
+  /**
+   * A workflow's approval is decided by its assignees and only by them: an admin or owner who is not
+   * assigned cannot decide it, and an assignee can, whether or not the asset also has reviewers. The
+   * workflow already chose who decides (reviewers, owners or named users), and its own status write
+   * is exempt from the reviewer rule. Bots keep access; the engine resolves tasks on its own path.
+   */
+  private void requireAssigneeForWorkflowApproval(Task task, SecurityContext securityContext) {
+    final String userName = securityContext.getUserPrincipal().getName();
+    final SubjectContext subject = SubjectContext.getSubjectContext(userName);
+    if (!subject.isBot() && !subject.isOwner(task.getAssignees())) {
+      throw new AuthorizationException(CatalogExceptionMessage.notTaskAssignee(userName));
     }
   }
 
@@ -1412,6 +1437,18 @@ public class TaskRepository extends EntityRepository<Task> {
 
   public Task findOpenTaskByEntityAndType(String entityFqn, TaskEntityType taskType) {
     return findTaskByEntityTypeAndStatuses(entityFqn, taskType, OPEN_TASK_STATUSES);
+  }
+
+  /** The entity's open tasks of a type, newest first, at most {@code limit} of them. */
+  public List<Task> listOpenTasksByEntityAndType(
+      String entityFqn, TaskEntityType taskType, int limit) {
+    List<String> statusValues = OPEN_TASK_STATUSES.stream().map(TaskEntityStatus::value).toList();
+    return daoCollection
+        .taskDAO()
+        .listByAboutAndTypeAndStatuses(entityFqn, taskType.value(), statusValues, limit)
+        .stream()
+        .map(json -> hydrateStoredTask(JsonUtils.readValue(json, Task.class)))
+        .toList();
   }
 
   public Task findTaskByEntityTypeAndStatus(

@@ -66,6 +66,11 @@ export interface NodeConfiguration {
      */
     expiryTimer?: ExpiryTimer;
     /**
+     * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+     * the asset from one stage to the next instead of listing the changes that led to it.
+     */
+    lifecycleMove?: LifecycleMove;
+    /**
      * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
      * single reviewer can reject). This allows for scenarios where you want multiple approvals
      * but a single rejection can veto.
@@ -94,6 +99,11 @@ export interface NodeConfiguration {
  */
 export interface Assignees {
     /**
+     * Resolve owners from the asset’s domains at execution time. For a domain, use its own
+     * owners.
+     */
+    addDomainOwners?: boolean;
+    /**
      * Add the Owners to the assignees List.
      */
     addOwners?: boolean;
@@ -109,7 +119,8 @@ export interface Assignees {
      * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
      * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
      * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
-     * excluding the requester so self-approval can never happen.
+     * excluding the requester so self-approval can never happen. 'wait' creates an unassigned
+     * task when no eligible assignee is available, without auto-approval or an admin fallback.
      */
     emptyAssigneeStrategy?: EmptyAssigneeStrategy;
 }
@@ -167,11 +178,13 @@ export interface EntityReference {
  * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
  * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
  * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
- * excluding the requester so self-approval can never happen.
+ * excluding the requester so self-approval can never happen. 'wait' creates an unassigned
+ * task when no eligible assignee is available, without auto-approval or an admin fallback.
  */
 export enum EmptyAssigneeStrategy {
     AssignAdmins = "assignAdmins",
     None = "none",
+    Wait = "wait",
 }
 
 /**
@@ -223,6 +236,41 @@ export enum ResolutionType {
     Rejected = "Rejected",
     Revoked = "Revoked",
     TimedOut = "TimedOut",
+}
+
+/**
+ * Set when the approval gates a lifecycle stage move: the task then asks to approve moving
+ * the asset from one stage to the next instead of listing the changes that led to it.
+ */
+export interface LifecycleMove {
+    /**
+     * Stage the asset is in while the approval is pending.
+     */
+    stage: EntityStatus;
+    /**
+     * Stage the asset moves to once approved.
+     */
+    targetStage: EntityStatus;
+}
+
+/**
+ * Stage the asset is in while the approval is pending.
+ *
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ *
+ * Stage the asset moves to once approved.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

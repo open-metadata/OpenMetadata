@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getPastDaysRange } from './calendarDate.utils';
+import {
+  dateValueToEndOfDayMillis,
+  getPastDaysRange,
+  millisToDateValue,
+} from './calendarDate.utils';
 
 describe('getPastDaysRange', () => {
   // A picked range runs from local midnight to the last millisecond of its end
@@ -27,5 +31,22 @@ describe('getPastDaysRange', () => {
     expect(end.toDateString()).toBe(now.toDateString());
     expect(new Date(endTs + 1).getHours()).toBe(0);
     expect(Math.round((endTs + 1 - startTs) / 86_400_000)).toBe(31);
+  });
+});
+
+describe('dateValueToEndOfDayMillis', () => {
+  it('should return the last millisecond of the picked day', () => {
+    const day = millisToDateValue(new Date(2026, 9, 15, 13, 45).getTime());
+    if (!day) {
+      throw new Error('Expected a calendar date');
+    }
+    const endTs = dateValueToEndOfDayMillis(day);
+    const end = new Date(endTs);
+
+    expect(end.toDateString()).toBe(new Date(2026, 9, 15).toDateString());
+    expect([end.getHours(), end.getMinutes(), end.getSeconds()]).toEqual([
+      23, 59, 59,
+    ]);
+    expect(new Date(endTs + 1).getDate()).toBe(16);
   });
 });

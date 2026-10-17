@@ -233,7 +233,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String notTaskAssignee(String name) {
-    return String.format("User '%s' is not an assignee of the pending approval task", name);
+    return String.format(
+        "User '%s' is not an assignee of this approval, so they cannot approve or reject it.",
+        name);
   }
 
   public static String pendingApprovalTaskExists(String entityFqn) {
@@ -275,8 +277,25 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} does not belong to domains [%s] to perform the %s operations.",
         user,
-        domains.stream().map(EntityReference::getName).collect(Collectors.joining(", ")),
+        domains.stream()
+            .map(CatalogExceptionMessage::domainLabel)
+            .collect(Collectors.joining(", ")),
         operations);
+  }
+
+  /**
+   * A domain reference reaching this message may come straight from a JSON Patch, which carries only
+   * the id and type — so name alone renders as "null" exactly when the caller most needs to know
+   * which domain was refused.
+   */
+  private static String domainLabel(EntityReference domain) {
+    if (domain.getFullyQualifiedName() != null) {
+      return domain.getFullyQualifiedName();
+    }
+    if (domain.getName() != null) {
+      return domain.getName();
+    }
+    return String.valueOf(domain.getId());
   }
 
   public static String taskOperationNotAllowed(String user, String operations) {

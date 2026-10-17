@@ -9109,6 +9109,11 @@
                       "default": true,
                       "title": "Supports Metadata Extraction"
                     },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
@@ -13763,6 +13768,12 @@
                       "type": "boolean",
                       "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                       "default": true
+                    },
+                    "includeTemporaryTables": {
+                      "title": "Include Temporary Tables",
+                      "type": "boolean",
+                      "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                      "default": false
                     },
                     "connectionOptions": {
                       "title": "Connection Options",
@@ -46722,6 +46733,11 @@
                       "default": true,
                       "title": "Supports Metadata Extraction"
                     },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
@@ -51376,6 +51392,12 @@
                       "type": "boolean",
                       "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                       "default": true
+                    },
+                    "includeTemporaryTables": {
+                      "title": "Include Temporary Tables",
+                      "type": "boolean",
+                      "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                      "default": false
                     },
                     "connectionOptions": {
                       "title": "Connection Options",
