@@ -808,15 +808,13 @@ class DbtSource(DbtServiceSource):
         # A freshness check tests the source table itself. Sources are graph roots with no
         # depends_on, so resolving upstreams the way a dbt test node does always yields an
         # empty list and leaves the test case with no table to attach to.
-        source_fqn = fqn.build(
-            self.metadata,
-            entity_type=Table,
-            service_name=self.config.serviceName,
+        source_fqn = self._build_table_fqn(
             database_name=get_corrected_name(manifest_node.database),
             schema_name=get_corrected_name(manifest_node.schema_),
             table_name=get_source_physical_name(manifest_node),
+            literal_table_name=True,
         )
-        table_entity = self._get_table_entity(table_fqn=source_fqn) if source_fqn else None
+        table_entity = self._get_table_entity(table_fqn=source_fqn, literal_table_name=True) if source_fqn else None
         if not table_entity:
             logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
             return
@@ -836,9 +834,33 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _search_table(self, fqn_search_string: str | None) -> Table | None:
+    def _build_table_fqn(
+        self,
+        database_name: str | None,
+        schema_name: str | None,
+        table_name: str,
+        *,
+        literal_table_name: bool = False,
+    ) -> str | None:
+        return fqn.build(
+            self.metadata,
+            entity_type=Table,
+            service_name=self.config.serviceName,
+            database_name=(database_name or "*") if literal_table_name else database_name,
+            schema_name=(schema_name or "*") if literal_table_name else schema_name,
+            table_name=table_name,
+            skip_es_search=literal_table_name,
+        )
+
+    def _search_table(self, fqn_search_string: str | None, *, literal_table_name: bool = False) -> Table | None:
         if not fqn_search_string:
             return None
+        if literal_table_name:
+            # A source identifier can contain search metacharacters; choosing the first
+            # wildcard match would attach its metadata and lineage to an arbitrary table.
+            parts = fqn.split(fqn_search_string)
+            parts[-1] = parts[-1].replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
+            fqn_search_string = fqn._build(*parts)
         table_entities = get_entity_from_es_result(
             entity_list=self.metadata.es_search_from_fqn(
                 entity_type=Table,
@@ -854,7 +876,7 @@ class DbtSource(DbtServiceSource):
         logger.debug("Found table entities from %s: %d entities", fqn_search_string, len(table_entities))
         return next(iter(filter(None, table_entities)), None) if table_entities else None
 
-    def _get_table_entity_in_mapped_database(self, table_fqn: str) -> Table | None:
+    def _get_table_entity_in_mapped_database(self, table_fqn: str, *, literal_table_name: bool = False) -> Table | None:
         """
         The manifest names a node's database the way the dbt adapter sees it: dbt-trino
         writes the Trino catalog, while the BigQuery connector ingests the same table under
@@ -875,9 +897,10 @@ class DbtSource(DbtServiceSource):
                     service_name=service_name,
                     database_name=mapped_database,
                     schema_name=schema_name,
-                    table_name=table_name,
+                    table_name=fqn.unquote_name(table_name) if literal_table_name else table_name,
                     skip_es_search=True,
-                )
+                ),
+                literal_table_name=literal_table_name,
             )
             if table_entity:
                 return table_entity
@@ -891,9 +914,11 @@ class DbtSource(DbtServiceSource):
         )
         return None
 
-    def _get_table_entity(self, table_fqn) -> Table | None:
+    def _get_table_entity(self, table_fqn, *, literal_table_name: bool = False) -> Table | None:
         try:
-            table_entity = self._get_table_entity_in_mapped_database(table_fqn) or self._search_table(table_fqn)
+            table_entity = self._get_table_entity_in_mapped_database(
+                table_fqn, literal_table_name=literal_table_name
+            ) or self._search_table(table_fqn, literal_table_name=literal_table_name)
             if table_entity:
                 logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")
                 return table_entity
@@ -910,9 +935,10 @@ class DbtSource(DbtServiceSource):
                     service_name="*",
                     database_name=database_name,
                     schema_name=schema_name,
-                    table_name=table_name,
+                    table_name=fqn.unquote_name(table_name) if literal_table_name else table_name,
+                    skip_es_search=literal_table_name,
                 )
-                table_entity = self._search_table(table_fqn)
+                table_entity = self._search_table(table_fqn, literal_table_name=literal_table_name)
                 if table_entity:
                     return table_entity
 
@@ -1045,19 +1071,20 @@ class DbtSource(DbtServiceSource):
                             )
                             or []
                         )
-                    table_fqn = fqn.build(
-                        self.metadata,
-                        entity_type=Table,
-                        service_name=self.config.serviceName,
+                    table_fqn = self._build_table_fqn(
                         database_name=get_corrected_name(node_database),
                         schema_name=get_corrected_name(node_schema),
                         table_name=model_name,
+                        literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
                     )
 
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    if table_entity := self._get_table_entity(table_fqn=table_fqn):
+                    if table_entity := self._get_table_entity(
+                        table_fqn=table_fqn,
+                        literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
+                    ):
                         logger.debug(
                             f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
                             f"with id {table_entity.id}"
@@ -1179,17 +1206,22 @@ class DbtSource(DbtServiceSource):
                     if check_ephemeral_node(parent_node):
                         upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
-                        parent_fqn = fqn.build(
-                            self.metadata,
-                            entity_type=Table,
-                            service_name=self.config.serviceName,
+                        parent_fqn = self._build_table_fqn(
                             database_name=get_corrected_name(parent_database),
                             schema_name=get_corrected_name(parent_schema),
                             table_name=table_name,
+                            literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        table_entity = self._get_table_entity(table_fqn=parent_fqn) if parent_fqn else None
+                        table_entity = (
+                            self._get_table_entity(
+                                table_fqn=parent_fqn,
+                                literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
+                            )
+                            if parent_fqn
+                            else None
+                        )
                         # catalogMapping and searchAcrossDatabases can resolve the parent under another
                         # database or service, so lineage and tests follow the table that was found
                         if parent_fqn and table_entity:

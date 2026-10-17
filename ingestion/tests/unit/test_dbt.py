@@ -5,6 +5,7 @@ Test dbt
 import fnmatch
 import json
 import logging
+import re
 import uuid
 from copy import deepcopy
 from datetime import datetime
@@ -2756,7 +2757,7 @@ class DbtUnitTest(TestCase):
 
         expected_fqn = "dbt_test.dev.snapshots.snap_orders"
 
-        def fake_get_table_entity(table_fqn):
+        def fake_get_table_entity(table_fqn, **_kwargs):
             if table_fqn == expected_fqn:
                 table = MagicMock()
                 table.id.root = uuid.uuid4()
@@ -5351,10 +5352,11 @@ class TestCatalogMapping:
         ]
 
         def _search(*_args, fqn_search_string, **_kwargs):
+            search_pattern = re.sub(r"\\(.)", r"[\1]", fqn_search_string)
             return [
                 table
                 for table in tables
-                if fnmatch.fnmatchcase(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+                if fnmatch.fnmatchcase(table.fullyQualifiedName.root.lower(), search_pattern.lower())
             ] or None
 
         metadata = MagicMock()
@@ -5844,5 +5846,63 @@ class TestDbtSourceIdentifiers:
         source.add_dbt_exposure("exposure.jaffle_shop.orders_dashboard", exposure, objects.dbt_manifest.sources)
 
         assert source.context.get().exposures["exposure.jaffle_shop.orders_dashboard"][DbtCommonEnum.UPSTREAM] == [
+            self.PHYSICAL_FQN
+        ]
+
+    @pytest.mark.parametrize(
+        "identifier, decoy",
+        [
+            ("raw_orders_*", "raw_orders_20261017"),
+            ("raw_orders_?", "raw_orders_1"),
+            ("raw.orders*", "raw.orders_20261017"),
+            (r"raw\orders*", r"raw\orders_20261017"),
+            (r"raw\orders", "raworders"),
+        ],
+    )
+    @pytest.mark.parametrize("literal_exists", [False, True])
+    @pytest.mark.parametrize(
+        "service, database, config",
+        [
+            ("trino_svc", "RAW_DB", {}),
+            ("other_svc", "RAW_DB", {"search_across_databases": True}),
+            ("other_svc", "mapped_db", {"catalog_mapping": {"RAW_DB": "mapped_db"}}),
+        ],
+    )
+    def test_source_identifier_is_literal_for_metadata_lineage_and_freshness(
+        self, identifier, decoy, literal_exists, service, database, config
+    ):
+        from metadata.utils import fqn
+
+        physical_fqn = fqn._build(service, database, "RAW", identifier)
+        decoy_fqn = fqn._build(service, database, "RAW", decoy)
+        source = self._source(decoy_fqn, self.MODEL_FQN, *([physical_fqn] if literal_exists else []), **config)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY]["identifier"] = identifier
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        links = self._links(source, self._objects(source, payload, dbt_sources=sources))
+
+        assert set(links) == {self.MODEL_FQN, *([physical_fqn] if literal_exists else [])}
+        assert links[self.MODEL_FQN].datamodel.upstream == ([physical_fqn] if literal_exists else [])
+        freshness = source.context.get().dbt_tests.get(self.SOURCE_KEY + "_freshness")
+        if literal_exists:
+            assert freshness[DbtCommonEnum.UPSTREAM.value] == [physical_fqn]
+        else:
+            assert freshness is None
+
+    @pytest.mark.parametrize("missing_location", ["database", "schema"])
+    def test_source_with_unspecified_location_still_resolves_literal_identifier(self, missing_location):
+        source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+        payload = self._payload()
+        payload["sources"][self.SOURCE_KEY][missing_location] = "None"
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        links = self._links(source, self._objects(source, payload, dbt_sources=sources))
+
+        assert set(links) == {self.PHYSICAL_FQN, self.MODEL_FQN}
+        assert links[self.MODEL_FQN].datamodel.upstream == [self.PHYSICAL_FQN]
+        assert source.context.get().dbt_tests[self.SOURCE_KEY + "_freshness"][DbtCommonEnum.UPSTREAM.value] == [
             self.PHYSICAL_FQN
         ]
