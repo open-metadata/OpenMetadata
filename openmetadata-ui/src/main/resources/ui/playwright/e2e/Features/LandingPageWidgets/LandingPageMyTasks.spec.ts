@@ -22,8 +22,8 @@ import {
   getWorkerAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForLandingPageWidget } from '../../../utils/customizeLandingPage';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 const MY_TASKS_KEY = 'KnowledgePanel.MyTask';
