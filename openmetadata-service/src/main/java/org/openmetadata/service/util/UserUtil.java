@@ -33,11 +33,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -876,6 +879,62 @@ public final class UserUtil {
       throw new IllegalArgumentException("Bot domain cannot be null or empty");
     }
     return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
+  }
+
+  /**
+   * Rejects a user that the sign-in email-domain rule would refuse, so an admin learns it when
+   * creating the user instead of at the user's first login (issue #19306). Called from the
+   * user-facing create paths only: users that server-side code creates, such as the bootstrap
+   * admins or support access, sign in with OpenMetadata-issued tokens and are not checked.
+   * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+   */
+  public static void validateEmailDomain(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    Optional<String> rejection = emailDomainRejection(user, authConfig, authorizerConfig);
+    if (rejection.isPresent()) {
+      throw new BadRequestException(rejection.get());
+    }
+  }
+
+  /**
+   * Why the sign-in email-domain rule would refuse this user, or empty when it would not. The rule
+   * applies only where login applies it: never to bots, and never under the native-password
+   * providers, whose sessions use OpenMetadata-issued tokens that login does not domain-check.
+   */
+  public static Optional<String> emailDomainRejection(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    List<String> allowedDomains = signInEmailDomains(user, authConfig, authorizerConfig);
+    String emailDomain = emailDomainOf(user.getEmail());
+    boolean isRefused =
+        !allowedDomains.isEmpty()
+            && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase);
+    return isRefused
+        ? Optional.of(CatalogExceptionMessage.invalidEmailDomain(emailDomain, allowedDomains))
+        : Optional.empty();
+  }
+
+  /** Empty when no sign-in email-domain rule applies to this user. */
+  private static List<String> signInEmailDomains(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    if (Boolean.TRUE.equals(user.getIsBot())
+        || authConfig == null
+        || authorizerConfig == null
+        || SecurityConfigurationManager.isNativePasswordProvider(authConfig.getProvider())) {
+      return List.of();
+    }
+    Set<String> allowedEmailDomains = authorizerConfig.getAllowedEmailDomains();
+    return SecurityUtil.configuredEmailDomains(
+        allowedEmailDomains == null ? List.of() : new ArrayList<>(allowedEmailDomains),
+        authorizerConfig.getPrincipalDomain(),
+        authorizerConfig.getAllowedDomains(),
+        authorizerConfig.getEnforcePrincipalDomain());
+  }
+
+  private static String emailDomainOf(String email) {
+    if (nullOrEmpty(email) || !email.contains("@")) {
+      return "";
+    }
+    return email.substring(email.indexOf('@') + 1);
   }
 
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
