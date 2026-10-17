@@ -29,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA,
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -209,6 +210,9 @@ const IngestionWorkflowForm = forwardRef<
   const isIncrementalExtractionSupported =
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
+  const isAutoPartitionDetectionSupported =
+    serviceData?.connection?.config?.supportsAutoPartitionDetection;
+
   const uiSchema = useMemo(() => {
     let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
     if (isElasticSearchPipeline) {
@@ -231,6 +235,8 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+        ...(!isAutoPartitionDetectionSupported &&
+          EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA),
       };
     }
 
@@ -256,6 +262,7 @@ const IngestionWorkflowForm = forwardRef<
     return commonSchema;
   }, [
     hideFooter,
+    isAutoPartitionDetectionSupported,
     isElasticSearchPipeline,
     isIncrementalExtractionSupported,
     pipeLineType,
