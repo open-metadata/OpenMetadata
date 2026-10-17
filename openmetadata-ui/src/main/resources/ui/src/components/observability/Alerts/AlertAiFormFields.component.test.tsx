@@ -52,8 +52,8 @@ import {
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import alertsClassBase from '../../../utils/AlertsClassBase';
 import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
+import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
