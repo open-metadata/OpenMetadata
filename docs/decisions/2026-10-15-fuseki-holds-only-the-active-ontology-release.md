@@ -1,9 +1,9 @@
 # Fuseki holds only the active ontology release
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain)
 - **Deciders:** Harsha
-- **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
+- **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md), ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
 
 ## Context
@@ -49,3 +49,14 @@ the upgrade and rebuild any dead-lettered projection. Raising release/projection
 measured capture, journal and Fuseki capacity evidence. Activation checks the existing 16 MiB
 encoded RDF journal limit before committing, including when RDF is disabled, so every activated
 release remains replayable during a later rebuild.
+
+## Amendment v2 — 2026-10-17: rebuild excludes live drain
+
+`OntologyActiveGraph.rebuild` refreshes each ontology graph while holding the
+`rdf_live_write_guard` 'drain' row lock through `RdfLiveWriteStore.withWriterLock`. It acquires the
+lock with blocking `FOR UPDATE` before reading the active release and holds it through graph
+replacement. Rebuilds must wait for this lock rather than skip a refresh.
+
+The live drain acquires the same row with `FOR UPDATE SKIP LOCKED` and defers delivery while a
+rebuild holds it. Activation can still commit and enqueue a write during that refresh; delivery
+then follows the rebuild's replacement, so an older release cannot overwrite the newer activation.
