@@ -40,9 +40,9 @@ import { getNameFromFQN } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
+import DateRangeFilter from '../common/DateRangeFilter/DateRangeFilter';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import DqDateRangeFilter from '../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { IncidentManagerProps } from './IncidentManager.interface';
 import IncidentManagerTable from './IncidentManagerTable.component';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';
@@ -325,7 +325,7 @@ const IncidentManager = ({
                 weight="medium">
                 {t('label.date-range')}
               </Typography>
-              <DqDateRangeFilter
+              <DateRangeFilter
                 fullWidth
                 endTs={filters.endTs}
                 startTs={filters.startTs}

@@ -19,11 +19,11 @@ import {
 import { useMemo } from 'react';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import {
   FilterDescriptor,
   FilterValue,
 } from '../../../DataQuality/TestCases/FilterChip.interface';
-import DqDateRangeFilter from '../../DataQuality/Dashboard/DqDateRangeFilter';
 
 // Leading icons for single-select filter options, per the 2.0 mock. Keyed by
 // option value so it naturally extends to other filters (e.g. status).
@@ -108,7 +108,7 @@ const DateChip = ({
   };
 
   return (
-    <DqDateRangeFilter
+    <DateRangeFilter
       endTs={range.endTs != null ? Number(range.endTs) : undefined}
       isOpen={isOpen}
       startTs={range.startTs != null ? Number(range.startTs) : undefined}

@@ -57,6 +57,8 @@ import {
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
   buildStudioMetricNodeStyle,
+  buildStudioProposedEdgeStyle,
+  buildStudioProposedNodeStyle,
   formatRelationLabel,
   getCanvasColor,
   getEdgeRelationLabelStyle,
@@ -95,13 +97,18 @@ export function getStudioNodeAccentColor(node: OntologyNode): string {
 }
 
 export function getOntologyEdgeId(edge: MergedEdge): string {
-  const identity =
-    edge.id ??
-    `${edge.from}-${edge.to}-${edge.relationType}-${
-      edge.edgeKind ?? 'ontology'
-    }`;
+  if (edge.id) {
+    return `edge-${edge.id}`;
+  }
+  // A proposal can repeat a relationship that already exists; G6 rejects two
+  // edges with one id, so a proposal is keyed by the operation proposing it.
+  if (edge.proposal) {
+    return `edge-proposal-${edge.proposal.operationId}`;
+  }
 
-  return `edge-${identity}`;
+  return `edge-${edge.from}-${edge.to}-${edge.relationType}-${
+    edge.edgeKind ?? 'ontology'
+  }`;
 }
 
 function getCardinalityEndLabels(
@@ -180,7 +187,11 @@ function findMirrorEdgeIndex(
     if (other.from !== edge.to || other.to !== edge.from) {
       continue;
     }
-    if (other.edgeKind !== edge.edgeKind) {
+    // A proposal never folds into a live edge, so each stays reviewable alone.
+    if (
+      other.edgeKind !== edge.edgeKind ||
+      other.proposal?.operationId !== edge.proposal?.operationId
+    ) {
       continue;
     }
     const isSymmetricMatch =
@@ -225,6 +236,7 @@ function buildMergedEdge(
 ): MergedEdge {
   return {
     ...buildOptionalEdgeFields(edge, match),
+    ...(edge.proposal && { proposal: edge.proposal }),
     from: edge.from,
     to: edge.to,
     relationType: edge.relationType,
@@ -856,6 +868,17 @@ function buildDataModeTermNodeData(
   };
 }
 
+// Metrics and AI-proposed terms are drawn apart from authorable concepts.
+function buildStudioKindStyle(node: OntologyNode, isSelected: boolean) {
+  if (node.proposal) {
+    return buildStudioProposedNodeStyle(getCanvasColor, isSelected);
+  }
+
+  return node.type === METRIC_NODE_TYPE
+    ? buildStudioMetricNodeStyle(getCanvasColor)
+    : {};
+}
+
 function buildDefaultNodeData(
   node: OntologyNode,
   state: NodeVisualState,
@@ -896,9 +919,7 @@ function buildDefaultNodeData(
         studioAccentColor: state.studioAccentColor ?? STUDIO_DEFAULT_ACCENT,
         studioEditMode: ctx.isEditMode,
       }),
-      ...(ctx.studioMode &&
-        node.type === METRIC_NODE_TYPE &&
-        buildStudioMetricNodeStyle(getCanvasColor)),
+      ...(ctx.studioMode && buildStudioKindStyle(node, state.isSelected)),
     },
     ...(!ctx.studioMode &&
       node.glossaryId && {
@@ -1264,6 +1285,19 @@ function buildEdgeVisibleStyle(
   };
 }
 
+function withProposedEdgeStyle(
+  edge: MergedEdge,
+  displayLabel: string | undefined,
+  style: Record<string, unknown>
+): Record<string, unknown> {
+  return edge.proposal
+    ? {
+        ...style,
+        ...buildStudioProposedEdgeStyle(getCanvasColor, displayLabel),
+      }
+    : style;
+}
+
 function buildG6EdgeForSingle(
   singleEdge: MergedEdge,
   i: number,
@@ -1363,6 +1397,7 @@ function buildG6EdgeForSingle(
       relationshipType: singleEdge.relationshipType,
       edgeKind: singleEdge.edgeKind,
       provenance: singleEdge.provenance,
+      proposal: singleEdge.proposal,
       status: singleEdge.status,
       edgeColor,
       isHighlighted,
@@ -1370,7 +1405,9 @@ function buildG6EdgeForSingle(
       isCrossTeam: info.isCrossTeam,
       isEdgeDimmed,
     },
-    style:
+    style: withProposedEdgeStyle(
+      singleEdge,
+      displayLabel,
       isPrimary || ctx.studioMode
         ? visibleStyle
         : {
@@ -1379,7 +1416,8 @@ function buildG6EdgeForSingle(
             lineWidth: 0,
             endArrow: false,
             ...commonStyle,
-          },
+          }
+    ),
   };
 }
 

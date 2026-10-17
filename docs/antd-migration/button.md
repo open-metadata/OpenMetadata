@@ -37,7 +37,7 @@ variants to handle.
 | `type="dashed"` | — | 0 occurrences anywhere — drop, no mapping needed |
 | `danger` | fold into `color`: `primary`+`danger` → `color="primary-destructive"`, `default`+`danger` → `color="secondary-destructive"`, `text`+`danger` → `color="tertiary-destructive"`, `link`+`danger` → `color="link-destructive"` | **not a rename** — the codemod must read the base `type` first, then branch to the `-destructive` variant; `danger` alone (no explicit `type`) implies antd's default `type="default"` base |
 | `size="small"` | `size="xs"` | approved 2026-07-30 — see Size mapping below |
-| `size="middle"` | `size="sm"` (core's own default) | approved 2026-07-30 — see Size mapping below |
+| `size="middle"` | `size="sm"` | approved 2026-07-30 — see Size mapping below |
 | `size="large"` | `size="md"` | approved 2026-07-30 — see Size mapping below |
 | `ghost` (boolean modifier) | `color="tertiary"` | approved 2026-07-30 — per-site mapping, no new core variant |
 | `type="ghost"` (string literal) | `color="tertiary"` | approved 2026-07-30 — same as above |
@@ -69,7 +69,7 @@ same pass, on every `<Button>` element:
 
 ### Size mapping — approved 2026-07-30
 
-Core has 6 sizes (`xxs | xs | sm | md | lg | xl`, default `'sm'`) vs antd's 3
+Core has 5 sizes (`xs | sm | md | lg | xl`, default `'md'`) vs antd's 3
 (`small | middle | large`). Approved mapping (2026-07-30, as proposed):
 
 | antd | core size |

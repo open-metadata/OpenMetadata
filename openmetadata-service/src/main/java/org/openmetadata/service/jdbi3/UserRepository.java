@@ -1211,35 +1211,9 @@ public class UserRepository extends EntityRepository<User> {
                       Include.ALL);
     }
 
-    // Map user to owned entities
-    Map<UUID, List<EntityReference>> userToOwns = new HashMap<>();
-
-    // Add directly owned entities
-    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
-      UUID userId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        userToOwns.computeIfAbsent(userId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
-      }
-    }
-
-    // Add team-owned entities
-    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : teamOwnsRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for team-owned entity: {}", record.getToId(), e);
-      }
-    }
+    Map<UUID, List<EntityReference>> userToOwns = resolveTargetsBySource(ownsRecords, Include.ALL);
+    Map<UUID, List<EntityReference>> teamToOwns =
+        resolveTargetsBySource(teamOwnsRecords, Include.ALL);
 
     // Combine user and team owned entities
     for (User user : users) {

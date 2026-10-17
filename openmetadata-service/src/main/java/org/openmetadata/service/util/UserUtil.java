@@ -951,6 +951,21 @@ public final class UserUtil {
     }
   }
 
+  /** Every admin user. */
+  public static List<EntityReference> getAdmins() {
+    final List<EntityReference> admins = new ArrayList<>();
+    final UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    final ListFilter filter = new ListFilter(NON_DELETED);
+    filter.addQueryParam("isAdmin", "true");
+    String after = null;
+    do {
+      final ResultList<User> page = users.listAfter(null, Fields.EMPTY_FIELDS, filter, 50, after);
+      page.getData().forEach(user -> admins.add(user.getEntityReference()));
+      after = page.getPaging().getAfter();
+    } while (after != null);
+    return admins;
+  }
+
   /** The email of every admin user. */
   public static Set<String> getAdminEmails() {
     Set<String> emails = new HashSet<>();

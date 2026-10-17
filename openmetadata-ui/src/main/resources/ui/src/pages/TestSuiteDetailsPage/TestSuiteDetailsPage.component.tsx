@@ -504,7 +504,7 @@ const TestSuiteDetailsPage = () => {
               entityFqn={testSuite?.fullyQualifiedName ?? ''}
               entityId={testSuite?.id ?? ''}
               entityType={EntityType.TEST_SUITE}
-              hasPermission={flags.canEditAll}
+              hasPermission={flags.canEditDomains}
               labelClassName="tw:text-secondary!"
               multiple={canAddMultipleDomains}
               textClassName="render-domain-lebel-style tw:text-secondary!"
