@@ -23,6 +23,7 @@ import {
   LIST_PAGE_SIZE_OPTIONS,
   pagingObject,
 } from '../../constants/constants';
+import { useIsRouteVisible } from '../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { CursorType } from '../../enums/pagination.enum';
 import { Paging } from '../../generated/type/paging';
 import { useTableFilters } from '../useTableFilters';
@@ -92,15 +93,26 @@ export const usePaging = (
   // every visited route mounted against it) plus one app-wide preference — so either can hand a
   // page a size its picker has no option for, which renders as an unselectable placeholder.
   const urlPageSize = Number(urlParams.pageSize) || processedPageSize;
-  const resolvedPageSize = !pageSizeOptions.includes(urlPageSize)
-    ? processedPageSize
-    : urlPageSize;
+  const isOffScaleUrlSize = !pageSizeOptions.includes(urlPageSize);
+  const resolvedPageSize = isOffScaleUrlSize ? processedPageSize : urlPageSize;
+  const urlCurrentPage = isOffScaleUrlSize
+    ? INITIAL_PAGING_VALUE
+    : Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
+  const isRouteVisible = useIsRouteVisible();
 
-  const initialCurrentPage =
-    Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
+  useEffect(() => {
+    if (isRouteVisible && isOffScaleUrlSize) {
+      updateUrlParams({
+        currentPage: null,
+        cursorType: null,
+        cursorValue: null,
+        pageSize: null,
+      });
+    }
+  }, [isRouteVisible, isOffScaleUrlSize, updateUrlParams]);
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
-  const [currentPage, setCurrentPage] = useState<number>(initialCurrentPage);
+  const [currentPage, setCurrentPage] = useState<number>(urlCurrentPage);
   const [storedPageSize, setStoredPageSize] =
     useState<number>(resolvedPageSize);
   // The sync effect below corrects the stored size a render late. When the options change (a page
@@ -112,28 +124,26 @@ export const usePaging = (
 
   // Keep pagination in sync when filters or other controls update paging params directly in the URL.
   useEffect(() => {
-    const nextCurrentPage =
-      Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
-
     setCurrentPage((currentPage) =>
-      currentPage === nextCurrentPage ? currentPage : nextCurrentPage
+      currentPage === urlCurrentPage ? currentPage : urlCurrentPage
     );
     setStoredPageSize((pageSize) =>
       pageSize === resolvedPageSize ? pageSize : resolvedPageSize
     );
-  }, [resolvedPageSize, urlParams.currentPage]);
+  }, [resolvedPageSize, urlCurrentPage]);
 
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({
-      cursorType: urlParams.cursorType,
-      cursorValue: urlParams.cursorValue,
-      currentPage: urlParams.currentPage,
+      cursorType: isOffScaleUrlSize ? undefined : urlParams.cursorType,
+      cursorValue: isOffScaleUrlSize ? undefined : urlParams.cursorValue,
+      currentPage: String(urlCurrentPage),
       pageSize: resolvedPageSize,
     }),
     [
+      isOffScaleUrlSize,
       urlParams.cursorType,
       urlParams.cursorValue,
-      urlParams.currentPage,
+      urlCurrentPage,
       resolvedPageSize,
     ]
   );

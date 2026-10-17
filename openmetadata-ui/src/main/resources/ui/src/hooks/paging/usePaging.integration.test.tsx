@@ -12,7 +12,8 @@
  */
 import { act, renderHook } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { RouteVisibilityProvider } from '../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { usePersistentStorage } from '../currentUserStore/useCurrentUserStore';
 import { usePaging } from './usePaging';
 
@@ -190,5 +191,43 @@ describe('usePaging (integration)', () => {
     const { result } = renderHook(() => usePaging(), { wrapper });
 
     expect(result.current.pageSize).toBe(15);
+  });
+
+  describe('a page size from an old link', () => {
+    const renderAt = (entry: string, isVisible = true) =>
+      renderHook(() => ({ paging: usePaging(), location: useLocation() }), {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <MemoryRouter initialEntries={[entry]}>
+            <RouteVisibilityProvider isVisible={isVisible}>
+              {children}
+            </RouteVisibilityProvider>
+          </MemoryRouter>
+        ),
+      });
+
+    it('opens on page 1 without its cursor and drops its paging from the URL', () => {
+      const { result } = renderAt(
+        '/schema?currentPage=3&pageSize=10&cursorType=after&cursorValue=abc'
+      );
+
+      expect(result.current.paging.currentPage).toBe(1);
+      expect(result.current.paging.pageSize).toBe(15);
+      expect(result.current.paging.pagingCursor.cursorValue).toBeUndefined();
+      expect(result.current.location.search).toBe('');
+    });
+
+    it('keeps the page of a link whose size is on the scale', () => {
+      const { result } = renderAt('/schema?currentPage=3&pageSize=25');
+
+      expect(result.current.paging.currentPage).toBe(3);
+      expect(result.current.paging.pageSize).toBe(25);
+      expect(result.current.location.search).toBe('?currentPage=3&pageSize=25');
+    });
+
+    it('leaves the URL alone while its route is hidden', () => {
+      const { result } = renderAt('/schema?currentPage=3&pageSize=10', false);
+
+      expect(result.current.location.search).toBe('?currentPage=3&pageSize=10');
+    });
   });
 });

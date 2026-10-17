@@ -68,6 +68,7 @@ import {
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
 import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { queryClient } from '../../../queryClient';
@@ -334,8 +335,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const [selectedStatuses, setSelectedStatuses] = useState<
     ContextMemoryStatus[]
   >(DEFAULT_MEMORY_LIST_STATUSES);
-  const [currentPage, setCurrentPage] = useState(1);
   const { savedPageSize: memoriesPerPage } = useSavedPageSize();
+  const [currentPage, setCurrentPage] = usePageForSize(memoriesPerPage);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
   const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);

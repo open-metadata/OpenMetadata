@@ -21,6 +21,7 @@ import {
 import { Link, MemoryRouter, useLocation } from 'react-router-dom';
 import { CreateMemoryModalProps } from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.interface';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getContextMemoryById,
   getContextMemoryByName,
@@ -41,11 +42,23 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
+jest.mock('../../../hooks/useApplicationStore', () => {
+  const state = {
     currentUser: { id: 'user-1', name: 'test.user', isAdmin: false },
-  }),
-}));
+    userProfilePics: {},
+    updateUserProfilePics: jest.fn(),
+  };
+  const useApplicationStore = jest.fn(
+    (selector?: (current: typeof state) => unknown) =>
+      selector ? selector(state) : state
+  );
+
+  return {
+    useApplicationStore: Object.assign(useApplicationStore, {
+      getState: () => state,
+    }),
+  };
+});
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   getListContextMemories: jest.fn().mockResolvedValue({
@@ -622,5 +635,60 @@ describe('ContextCenterMemoriesPage — needs review', () => {
     await screen.findByTestId('memory-reviews');
 
     expect(screen.queryByTestId('memory-search')).not.toBeInTheDocument();
+  });
+});
+
+describe('ContextCenterMemoriesPage — page size', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    usePersistentStorage
+      .getState()
+      .setUserPreference('test.user', { globalPageSize: 15 });
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 40 },
+    });
+  });
+
+  afterEach(() => {
+    usePersistentStorage.getState().clearUserPreference('test.user');
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 1 },
+    });
+  });
+
+  it('returns to page 1 when the saved page size changes, without requesting the old page', async () => {
+    renderPage();
+
+    await screen.findByText('Page 1 of 3');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next' })[0]);
+    await screen.findByText('Page 2 of 3');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next' })[0]);
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenLastCalledWith(
+        expect.objectContaining({ limit: 15, offset: 30 })
+      );
+    });
+
+    (getListContextMemories as jest.Mock).mockClear();
+
+    await act(async () => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('test.user', { globalPageSize: 50 });
+    });
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenLastCalledWith(
+        expect.objectContaining({ limit: 50, offset: 0 })
+      );
+    });
+
+    expect(getListContextMemories).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 100 })
+    );
   });
 });
