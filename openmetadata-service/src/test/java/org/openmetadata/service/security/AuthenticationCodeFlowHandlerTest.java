@@ -1805,6 +1805,46 @@ class AuthenticationCodeFlowHandlerTest {
     return user.getRoles().stream().map(EntityReference::getName).toList();
   }
 
+  @Test
+  void requireAuthorizationCode_noCode_throwsAndIsRejected() throws Exception {
+    UserSession session = UserSession.builder().id("pending-session").build();
+    // A callback that carries only a front-channel id token, with no authorization code.
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setIdToken("front.channel.token");
+
+    Method requireCode =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "requireAuthorizationCode", UserSession.class, OidcCredentials.class);
+    requireCode.setAccessible(true);
+
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              try {
+                requireCode.invoke(null, session, credentials);
+              } catch (InvocationTargetException e) {
+                throw e.getCause();
+              }
+            });
+
+    assertEquals("Authorization code is required", thrown.getMessage());
+  }
+
+  @Test
+  void requireAuthorizationCode_withCode_doesNotThrow() throws Exception {
+    UserSession session = UserSession.builder().id("pending-session").build();
+    OidcCredentials credentials = new OidcCredentials();
+    credentials.setCode("valid-authorization-code");
+
+    Method requireCode =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod(
+            "requireAuthorizationCode", UserSession.class, OidcCredentials.class);
+    requireCode.setAccessible(true);
+
+    assertDoesNotThrow(() -> requireCode.invoke(null, session, credentials));
+  }
+
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
       SessionService sessionService, OidcClient client) throws Exception {
     sun.misc.Unsafe unsafe = getUnsafe();
