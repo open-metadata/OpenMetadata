@@ -92,6 +92,12 @@ export const HoverCard = ({
     onHoverStart: () => schedule(true),
     onHoverEnd: () => schedule(false),
   });
+  // Focus moving from the trigger into the card (e.g. to a link inside it) must
+  // keep the card open; otherwise the trigger's blur closes it under the user.
+  const { focusWithinProps: cardFocusWithinProps } = useFocusWithin({
+    isDisabled,
+    onFocusWithinChange: (isFocused) => schedule(isFocused),
+  });
   // Only keyboard focus opens the card; a mouse click that focuses the trigger
   // is already covered by hover.
   const { focusWithinProps } = useFocusWithin({
@@ -121,7 +127,7 @@ export const HoverCard = ({
         triggerRef={triggerRef}
         onOpenChange={setIsOpen}>
         <div
-          {...cardHoverProps}
+          {...mergeProps(cardHoverProps, cardFocusWithinProps)}
           className={cx(
             'tw:rounded-xl tw:bg-overlay-surface tw:p-4 tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
             className

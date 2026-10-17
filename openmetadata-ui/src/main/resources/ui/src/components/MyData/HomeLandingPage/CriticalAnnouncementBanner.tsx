@@ -41,10 +41,6 @@ const BANNER_CLASS =
 const CONTENT_CLASS =
   'dark-mode tw:flex tw:flex-1 tw:items-center tw:gap-4 tw:py-4 tw:pr-12 tw:pl-5';
 
-// FeaturedIcon's light theme fills solid red under `dark-mode`; the design
-// tints the circle instead, the way the Critical surface reads elsewhere.
-const ICON_CLASS = 'tw:dark:bg-utility-error-50 tw:dark:text-utility-error-500';
-
 // A global `h2` rule outranks Typography's size, so it is restated as
 // important to keep the heading at the banner's scale.
 const TITLE_CLASS =
@@ -79,7 +75,6 @@ const CriticalAnnouncementBanner = ({
       <div className={CONTENT_CLASS}>
         <FeaturedIcon
           outlined
-          className={ICON_CLASS}
           color="error"
           icon={icon}
           size="md"
