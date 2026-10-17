@@ -1274,12 +1274,15 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('data-contract-latest-result-button');
-      expect(button).toHaveClass('failed');
+      expect(button).toHaveTextContent('label.entity-failed');
+      // Core Badge error palette: meets contrast in both themes.
+      expect(button).toHaveClass(
+        'tw:bg-utility-error-50',
+        'tw:text-utility-error-700'
+      );
     });
 
-    it('should tint the aborted contract button via legacy tokens that flip in dark', async () => {
+    it('should tint the aborted contract badge with the orange badge palette', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
@@ -1296,10 +1299,8 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(screen.getByTestId('data-contract-latest-result-btn')).toHaveClass(
-        'tw:text-(--om-legacy-color-b93815)!',
-        'tw:bg-(--om-legacy-color-fef6ee)!',
-        'tw:dark:text-utility-orange-700!',
-        'tw:dark:bg-utility-orange-50!'
+        'tw:bg-utility-orange-50',
+        'tw:text-utility-orange-700'
       );
     });
 
@@ -1323,12 +1324,14 @@ describe('DataAssetsHeader component', () => {
       ).toBeInTheDocument();
     });
 
-    it('should navigate to contract tab when button is clicked', async () => {
+    it('should link to the contract tab', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
         },
       });
+
+      mockGetEntityDetailsPath.mockReturnValue('/contract-tab');
 
       const mockDataContract = {
         ...MOCK_DATA_CONTRACT,
@@ -1345,15 +1348,14 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
-      fireEvent.click(button);
-
       expect(mockGetEntityDetailsPath).toHaveBeenCalledWith(
         EntityType.CONTAINER,
         'fullyQualifiedName',
         EntityTabs.CONTRACT
       );
-      expect(mockNavigate).toHaveBeenCalled();
+      expect(
+        screen.getByTestId('data-contract-latest-result-btn')
+      ).toHaveAttribute('href', '/contract-tab');
     });
 
     it('should not render data contract button when contract tab is not visible', async () => {
@@ -1470,7 +1472,9 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
+      expect(
+        within(button).getByTestId('contract-status-icon')
+      ).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

@@ -59,6 +59,16 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Badge: ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) =>
+    React.createElement('span', props, children),
+  HoverCard: ({
+    children,
+    content,
+  }: React.PropsWithChildren<{ content: React.ReactNode }>) =>
+    React.createElement(React.Fragment, null, children, content),
   Box: ({
     children,
     ...props
@@ -100,6 +110,7 @@ jest.mock('../../hooks/currentUserStore/useCurrentUserStore', () => ({
 jest.mock('../../constants/appMode.constants', () => ({
   AI_APP_MODE: 'ai',
   DEFAULT_APP_MODE: 'default',
+  CLASSIC_MODE_RELEASE_NOTES_URL: 'https://docs.example/releases',
 }));
 
 const getTrigger = () => screen.getByTestId('app-mode-switcher-trigger');
@@ -219,5 +230,23 @@ describe('AppModeSwitcher', () => {
 
     expect(container).not.toBeEmptyDOMElement();
     expect(getTrigger()).toBeInTheDocument();
+  });
+
+  it('marks Classic as deprecated inside the switcher only', () => {
+    render(<AppModeSwitcher />);
+
+    expect(
+      screen.queryByTestId('classic-deprecated-badge')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(getTrigger());
+
+    expect(screen.getByTestId('classic-deprecated-badge')).toHaveTextContent(
+      'label.deprecated'
+    );
+    expect(screen.getByTestId('classic-deprecation-card')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('classic-deprecation-release-notes')
+    ).toHaveAttribute('href', 'https://docs.example/releases');
   });
 });

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
@@ -121,17 +122,12 @@ export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];
 export const REFRESH_FREQUENCY_UNITS = ['hour', 'day', 'week', 'month', 'year'];
 export const RETENTION_UNITS = ['day', 'week', 'month', 'year'];
 
-// Latest-result button tints. `!` beats the secondary core Button's own
-// bg/text/hover utilities. Aborted's light hexes (legacy @orange-7/@orange-50)
-// have no upstream palette step, so they come from legacy tokens and flip to
-// the utility-orange pair in dark.
-export const CONTRACT_RESULT_BUTTON_CLASS: Partial<
-  Record<ContractExecutionStatus, string>
+// Header pill for the latest contract run, drawn with the core Badge palette
+// (utility-*-50 fill, -700 text, -200 outline) so it meets contrast in both themes.
+export const CONTRACT_RESULT_BADGE_COLOR: Partial<
+  Record<ContractExecutionStatus, BadgeColors>
 > = {
-  [ContractExecutionStatus.Failed]:
-    'tw:text-utility-error-600! tw:bg-utility-error-50!',
-  [ContractExecutionStatus.Aborted]:
-    'tw:text-(--om-legacy-color-b93815)! tw:bg-(--om-legacy-color-fef6ee)! tw:dark:text-utility-orange-700! tw:dark:bg-utility-orange-50!',
-  [ContractExecutionStatus.Running]:
-    'tw:text-utility-brand-700! tw:bg-utility-brand-50!',
+  [ContractExecutionStatus.Failed]: 'error',
+  [ContractExecutionStatus.Aborted]: 'orange',
+  [ContractExecutionStatus.Running]: 'brand',
 };

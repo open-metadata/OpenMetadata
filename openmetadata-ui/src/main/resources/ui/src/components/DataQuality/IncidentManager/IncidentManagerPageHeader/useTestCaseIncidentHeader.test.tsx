@@ -452,9 +452,9 @@ describe('useTestCaseIncidentHeader', () => {
 
     expect(result.current.hasEditStatusPermission).toBe(false);
     expect(result.current.hasEditOwnerPermission).toBe(false);
-    // hasEditDomainPermission is unaffected by field-level denial — it reads
-    // EditAll directly (getDerivedPermissionFlags.canEditAll), not through
-    // getPrioritizedEditPermission.
+    // hasEditDomainPermission is unaffected by denial of other fields: with no
+    // EditDomains key present it falls back to EditAll (canEditDomains), so an
+    // EditStatus/EditOwners denial does not touch it.
     expect(result.current.hasEditDomainPermission).toBe(true);
   });
 

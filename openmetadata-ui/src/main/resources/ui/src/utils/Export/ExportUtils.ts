@@ -156,7 +156,7 @@ export const downloadBlob = (
   document.body.removeChild(a);
 };
 
-export const exportPNGImageFromElement = async (exportData: ExportData) => {
+const capturePNGImageFromElement = async (exportData: ExportData) => {
   const {
     name,
     documentSelector = '',
@@ -292,5 +292,14 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
         })
       );
     }
+  }
+};
+
+export const exportPNGImageFromElement = async (exportData: ExportData) => {
+  await exportData.beforeCapture?.();
+  try {
+    await capturePNGImageFromElement(exportData);
+  } finally {
+    exportData.afterCapture?.();
   }
 };
