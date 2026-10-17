@@ -1,6 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Assignees__1.EmptyAssigneeStrategy.WAIT;
 import static org.openmetadata.service.governance.workflows.Workflow.APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_REJECT_CONDITION;
@@ -149,6 +150,15 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(nodeDefinition.getConfig().getStageDisplayName())
             .build();
 
+    FieldExtension lifecycleMoveExpr =
+        new FieldExtensionBuilder(false)
+            .fieldName("lifecycleMoveExpr")
+            .fieldValue(
+                nodeDefinition.getConfig().getLifecycleMove() != null
+                    ? JsonUtils.pojoToJson(nodeDefinition.getConfig().getLifecycleMove())
+                    : null)
+            .build();
+
     FieldExtension taskStatusExpr =
         new FieldExtensionBuilder()
             .fieldName("taskStatusExpr")
@@ -162,6 +172,16 @@ public class UserApprovalTask implements NodeInterface {
         new FieldExtensionBuilder(false)
             .fieldName("transitionMetadataExpr")
             .fieldValue(JsonUtils.pojoToJson(nodeDefinition.getConfig().getTransitionMetadata()))
+            .build();
+
+    FieldExtension useEntityOwnerFallbackExpr =
+        new FieldExtensionBuilder()
+            .fieldName("useEntityOwnerFallbackExpr")
+            .fieldValue(
+                Boolean.toString(
+                    nodeDefinition.getConfig().getAssignees() == null
+                        || nodeDefinition.getConfig().getAssignees().getEmptyAssigneeStrategy()
+                            != WAIT))
             .build();
 
     FieldExtension partialDecisionsExpr =
@@ -210,8 +230,10 @@ public class UserApprovalTask implements NodeInterface {
             taskCategoryExpr,
             stageIdExpr,
             stageDisplayNameExpr,
+            lifecycleMoveExpr,
             taskStatusExpr,
             transitionMetadataExpr,
+            useEntityOwnerFallbackExpr,
             partialDecisionsExpr);
 
     ServiceTask autoApproveTask =
@@ -322,8 +344,10 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension taskCategoryExpr,
       FieldExtension stageIdExpr,
       FieldExtension stageDisplayNameExpr,
+      FieldExtension lifecycleMoveExpr,
       FieldExtension taskStatusExpr,
       FieldExtension transitionMetadataExpr,
+      FieldExtension useEntityOwnerFallbackExpr,
       FieldExtension partialDecisionsExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
@@ -344,8 +368,10 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(taskCategoryExpr)
             .addFieldExtension(stageIdExpr)
             .addFieldExtension(stageDisplayNameExpr)
+            .addFieldExtension(lifecycleMoveExpr)
             .addFieldExtension(taskStatusExpr)
             .addFieldExtension(transitionMetadataExpr)
+            .addFieldExtension(useEntityOwnerFallbackExpr)
             .addFieldExtension(partialDecisionsExpr)
             .build();
 
@@ -590,6 +616,7 @@ public class UserApprovalTask implements NodeInterface {
     if (config != null) {
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
+      result.put("addDomainOwners", config.getOrDefault("addDomainOwners", false));
       result.put("emptyAssigneeStrategy", config.getOrDefault("emptyAssigneeStrategy", "none"));
 
       Set<String> users = new HashSet<>();
@@ -597,9 +624,19 @@ public class UserApprovalTask implements NodeInterface {
 
       Object candidatesObj = config.get("candidates");
       if (candidatesObj instanceof List<?> candidates) {
+        result.put(
+            "candidateIds",
+            candidates.stream()
+                .filter(
+                    candidate ->
+                        candidate instanceof Map<?, ?> reference && reference.get("id") != null)
+                .toList());
         for (Object candidate : candidates) {
           if (candidate instanceof Map) {
             Map<String, Object> candidateMap = (Map<String, Object>) candidate;
+            if (candidateMap.get("id") != null) {
+              continue;
+            }
             Object typeObj = candidateMap.get("type");
             Object fqnObj = candidateMap.get("fullyQualifiedName");
             String type = typeObj instanceof String value ? value : null;

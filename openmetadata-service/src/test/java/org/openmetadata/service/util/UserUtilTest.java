@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,12 +28,14 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -1091,6 +1094,154 @@ class UserUtilTest {
   void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
     assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
     assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
+  }
+
+  @Test
+  void emailDomainRejectionRefusesEmailOutsideAllowedEmailDomains() {
+    // allowedEmailDomains restricts on its own: the deprecated enforcePrincipalDomain is not needed
+    Optional<String> rejection =
+        UserUtil.emailDomainRejection(
+            userWithEmail("alice@gmail.com"), ssoLogin(), allowedEmailDomains("getcollate.io"));
+
+    assertTrue(rejection.isPresent());
+    assertTrue(rejection.get().contains("gmail.com"));
+    assertTrue(rejection.get().contains("getcollate.io"));
+  }
+
+  @Test
+  void emailDomainRejectionAcceptsAllowedEmailDomainIgnoringCase() {
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+
+    assertTrue(isAllowed("alice@getcollate.io", config));
+    assertTrue(isAllowed("alice@GetCollate.IO", config));
+  }
+
+  @Test
+  void emailDomainRejectionPrefersAllowedEmailDomainsOverDeprecatedSettings() {
+    AuthorizerConfiguration config =
+        allowedEmailDomains("partner.io")
+            .withEnforcePrincipalDomain(true)
+            .withPrincipalDomain("getcollate.io");
+
+    assertTrue(isAllowed("bob@partner.io", config));
+    assertFalse(isAllowed("alice@getcollate.io", config));
+  }
+
+  @Test
+  void emailDomainRejectionAppliesDeprecatedEnforcePrincipalDomain() {
+    AuthorizerConfiguration principalOnly = enforcingPrincipalDomain("getcollate.io", Set.of());
+    assertTrue(isAllowed("alice@getcollate.io", principalOnly));
+    assertFalse(isAllowed("alice@gmail.com", principalOnly));
+
+    // allowedDomains replaces principalDomain rather than extending it, as it does at login
+    AuthorizerConfiguration withAllowedDomains =
+        enforcingPrincipalDomain("getcollate.io", Set.of("partner.io"));
+    assertTrue(isAllowed("bob@partner.io", withAllowedDomains));
+    assertFalse(isAllowed("alice@getcollate.io", withAllowedDomains));
+  }
+
+  @Test
+  void emailDomainRejectionFallsBackToDefaultPrincipalDomainWhenBlank() {
+    // Same as the login rule: under enforcement a blank principalDomain means openmetadata.org
+    AuthorizerConfiguration blank = enforcingPrincipalDomain("", Set.of());
+
+    assertTrue(isAllowed("admin@openmetadata.org", blank));
+    assertFalse(isAllowed("alice@gmail.com", blank));
+  }
+
+  @Test
+  void emailDomainRejectionAllowsEveryDomainWhenNothingRestricts() {
+    AuthorizerConfiguration unrestricted =
+        new AuthorizerConfiguration()
+            .withPrincipalDomain("getcollate.io")
+            .withEnforcePrincipalDomain(false);
+
+    assertTrue(isAllowed("alice@gmail.com", unrestricted));
+    assertTrue(
+        UserUtil.emailDomainRejection(userWithEmail("alice@gmail.com"), ssoLogin(), null)
+            .isEmpty());
+    assertTrue(
+        UserUtil.emailDomainRejection(
+                userWithEmail("alice@gmail.com"), null, allowedEmailDomains("getcollate.io"))
+            .isEmpty());
+  }
+
+  @Test
+  void emailDomainRejectionSkipsBots() {
+    // Every app bot is created as <name>@openmetadata.org whatever the configured domains are
+    User bot = userWithEmail("searchIndexingApplicationBot@openmetadata.org").withIsBot(true);
+
+    assertTrue(
+        UserUtil.emailDomainRejection(bot, ssoLogin(), allowedEmailDomains("getcollate.io"))
+            .isEmpty());
+  }
+
+  @Test
+  void emailDomainRejectionFollowsWhetherTheProviderChecksDomainsAtLogin() {
+    // Native-password sessions use OpenMetadata-issued tokens, which login never domain-checks;
+    // LDAP and SAML check the domain when the user signs in
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+    User outsider = userWithEmail("alice@gmail.com");
+
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.BASIC), config).isEmpty());
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.OPENMETADATA), config)
+            .isEmpty());
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.LDAP), config).isPresent());
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.SAML), config).isPresent());
+  }
+
+  @Test
+  void emailDomainRejectionRefusesMalformedEmailWhenRestricted() {
+    assertFalse(isAllowed("no-at-sign", allowedEmailDomains("getcollate.io")));
+  }
+
+  @Test
+  void validateEmailDomainThrowsBadRequestWithTheReason() {
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                UserUtil.validateEmailDomain(userWithEmail("alice@gmail.com"), ssoLogin(), config));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), exception.getResponse().getStatus());
+    assertTrue(exception.getMessage().contains("gmail.com"));
+
+    assertDoesNotThrow(
+        () ->
+            UserUtil.validateEmailDomain(userWithEmail("alice@getcollate.io"), ssoLogin(), config));
+  }
+
+  private static boolean isAllowed(String email, AuthorizerConfiguration config) {
+    return UserUtil.emailDomainRejection(userWithEmail(email), ssoLogin(), config).isEmpty();
+  }
+
+  private static AuthenticationConfiguration ssoLogin() {
+    return login(AuthProvider.CUSTOM_OIDC);
+  }
+
+  private static AuthenticationConfiguration login(AuthProvider provider) {
+    return new AuthenticationConfiguration().withProvider(provider);
+  }
+
+  private static User userWithEmail(String email) {
+    return new User().withId(UUID.randomUUID()).withName(email.split("@")[0]).withEmail(email);
+  }
+
+  private static AuthorizerConfiguration allowedEmailDomains(String... domains) {
+    return new AuthorizerConfiguration().withAllowedEmailDomains(Set.of(domains));
+  }
+
+  private static AuthorizerConfiguration enforcingPrincipalDomain(
+      String principalDomain, Set<String> allowedDomains) {
+    return new AuthorizerConfiguration()
+        .withPrincipalDomain(principalDomain)
+        .withAllowedDomains(allowedDomains)
+        .withEnforcePrincipalDomain(true);
   }
 
   @Test

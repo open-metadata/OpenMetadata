@@ -411,3 +411,18 @@ describe('Select with a large collection', () => {
     });
   });
 });
+
+describe('Select borderless', () => {
+  it('drops the trigger border until keyboard focus', () => {
+    render(
+      <Select borderless aria-label="Index">
+        <Select.Item id="all" label="All" />
+      </Select>
+    );
+
+    expect(screen.getByRole('button', { name: /Index/ })).toHaveClass(
+      'tw:outline-0',
+      'tw:bg-transparent'
+    );
+  });
+});

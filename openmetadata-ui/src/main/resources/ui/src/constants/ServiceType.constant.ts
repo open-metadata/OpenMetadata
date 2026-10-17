@@ -225,6 +225,7 @@ export const ADVANCED_PROPERTIES = [
   'computeColumnMetrics',
   'includeViews',
   'useStatistics',
+  'enableAutoPartitionDetection',
   'confidence',
   'profileSampleConfig',
   'randomizedSample',

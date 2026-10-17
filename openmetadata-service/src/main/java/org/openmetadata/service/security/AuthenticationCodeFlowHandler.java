@@ -646,8 +646,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
       User user =
           identity.emailFirstFlow()
-              ? getOrCreateEmailFirstOidcUser(identity.email(), identity.displayName(), claims)
-              : getOrCreateOidcUser(identity.userName(), identity.email(), claims);
+              ? getOrCreateEmailFirstOidcUser(identity, claims)
+              : getOrCreateOidcUser(identity, claims);
       syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -1166,33 +1166,47 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private User getOrCreateEmailFirstOidcUser(
-      String email, String displayName, Map<String, Object> claims) {
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
     return EmailFirstUserProvisioner.forProvider(
             "OIDC",
             authorizerConfiguration,
             Entity.getUserRepository(),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()),
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()))
         .getOrCreate(
-            email,
-            displayName,
+            identity.email(),
+            identity.displayName(),
             SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
             Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
+  }
+
+  private static boolean applyTeamsAndPicture(User user, List<String> teams, URI picture) {
+    boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teams);
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, picture);
+    return teamsAssigned || pictureChanged;
+  }
+
+  private static boolean applyDisplayNameAndPicture(
+      User user, OidcIdentityResolver.ResolvedOidcIdentity identity) {
+    boolean displayNameFilled = UserProfileClaims.fillDisplayName(user, identity.displayName());
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, identity.picture());
+    return displayNameFilled || pictureChanged;
   }
 
   private boolean isUserAdmin(String email, String username) {
     return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+  private User getOrCreateOidcUser(
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
+    String userName = identity.userName();
+    String email = identity.email();
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
+      User user = Entity.getUserRepository().getUserByNameForAuthUpdate(userName);
 
       boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;
@@ -1212,7 +1226,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
-      needsUpdate = needsUpdate || teamsAssigned;
+      boolean profileChanged = applyDisplayNameAndPicture(user, identity);
+      needsUpdate = needsUpdate || teamsAssigned || profileChanged;
 
       if (needsUpdate) {
         UserUtil.addOrUpdateUser(user);
@@ -1245,6 +1260,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
                   userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
               .withIsAdmin(isAdmin)
               .withIsEmailVerified(true);
+      applyDisplayNameAndPicture(newUser, identity);
 
       // Assign default role if configured
       String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();

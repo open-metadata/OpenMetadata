@@ -26,9 +26,3 @@ export const CRITICAL_ANNOUNCEMENTS_GC_TIME_MS =
 // live critical is ever left behind. Live criticals are a handful, so this is
 // one request in practice.
 export const CRITICAL_ANNOUNCEMENTS_PAGE_SIZE = 25;
-
-// The same 28px circle as the announcements rail's pager, so the two read as
-// one control family; the glyph is sized down for the core chevrons' tight
-// 20-unit viewBox.
-export const CRITICAL_PAGER_BUTTON_CLASSES =
-  'tw:size-7 tw:shrink-0 tw:rounded-full tw:p-0 tw:*:data-icon:size-2.5';

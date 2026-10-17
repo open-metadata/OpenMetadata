@@ -1437,6 +1437,7 @@ export interface Connection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
+    supportsAutoPartitionDetection?:        boolean;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -2031,6 +2032,13 @@ export interface Connection {
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
+    /**
+     * Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data
+     * dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped.
+     * When enabled, GTTs are ingested with TableType=Local so they can be distinguished from
+     * regular tables.
+     */
+    includeTemporaryTables?: boolean;
     /**
      * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
      * you need to enable thick connection mode. By default, we bring instant client 19 and
@@ -4496,13 +4504,14 @@ export interface AirflowConnectionConnection {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -5090,15 +5099,16 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsProfiler?:             boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

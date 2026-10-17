@@ -113,6 +113,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -6459,7 +6460,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             awaitRequestTask(requestId, glossary).getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
+            new ResolveTask()
                 .withResolutionType(TaskResolutionType.Rejected)
                 .withComment("not this wording"));
 
@@ -6480,8 +6481,7 @@ public class WorkflowDefinitionResourceIT {
                 .tasks()
                 .resolve(
                     task.getId().toString(),
-                    new org.openmetadata.schema.api.tasks.ResolveTask()
-                        .withResolutionType(TaskResolutionType.Approved)));
+                    new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
     assertEquals("Pending", changeRequest(requestId).get("status").asText());
     assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
   }
@@ -7263,8 +7263,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
     awaitRequestStatus(requestId, "Applied");
     await("glossary marked Approved after the reviewer list changed")
@@ -7449,8 +7448,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
     awaitRequestStatus(requestId, "Applied");
     assertEquals("reviewed by an admin", descriptionOf(glossary));
   }
@@ -7832,7 +7830,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
+            new ResolveTask()
                 .withResolutionType(resolution)
                 .withComment("partial review")
                 .withChangeDecisions(List.of(changes)));
@@ -8000,8 +7998,7 @@ public class WorkflowDefinitionResourceIT {
         .tasks()
         .resolve(
             task.getId().toString(),
-            new org.openmetadata.schema.api.tasks.ResolveTask()
-                .withResolutionType(TaskResolutionType.Approved));
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
   }
 
   private Glossary glossaryById(Glossary glossary) {
@@ -10194,9 +10191,8 @@ public class WorkflowDefinitionResourceIT {
         (entityFqn, entityType) -> {
           try {
             LOG.info("Waiting for approval task for {}...", entityType);
-            org.openmetadata.schema.api.tasks.ResolveTask resolveTask =
-                new org.openmetadata.schema.api.tasks.ResolveTask()
-                    .withResolutionType(TaskResolutionType.Approved);
+            ResolveTask resolveTask =
+                new ResolveTask().withResolutionType(TaskResolutionType.Approved);
             // A follow-up update (e.g. adding data product assets) starts a new run that supersedes
             // the open task, so resolution retries against whichever task is current.
             await("approval task for " + entityType + " resolved")
@@ -10834,9 +10830,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("Created port trigger workflow: {}", portWorkflowName);
     waitForWorkflowDeployment(client, portWorkflowName);
 
-    org.openmetadata.schema.api.tasks.ResolveTask resolveApproved =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproved = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     // inputPorts add — ChangeEvent fieldsAdded[inputPorts] must trigger the workflow
     org.openmetadata.schema.type.api.BulkAssets inputPortAssets =
@@ -12228,9 +12222,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 9: Resolve the approval task to test workflow progression
     LOG.info("Resolving the approval task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolveTaskV2 =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveTaskV2 = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     OpenMetadataClient ownerClient =
         SdkClients.createClient(ownerUser.getName(), ownerUser.getEmail(), new String[] {});
@@ -12474,9 +12466,7 @@ public class WorkflowDefinitionResourceIT {
 
     OpenMetadataClient candidate1Client =
         SdkClients.createClient(candidate1.getName(), candidate1.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveApproval =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproval = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     Task intermediateTask =
         candidate1Client.tasks().resolve(approvalTask.getId().toString(), resolveApproval);
@@ -12765,9 +12755,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 10: Resolve the approval task to test workflow progression
     LOG.info("Resolving the approval task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolveTaskV2 =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveTaskV2 = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     OpenMetadataClient ownerClient =
         SdkClients.createClient(ownerUser.getName(), ownerUser.getEmail(), new String[] {});
@@ -14255,9 +14243,8 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("Approving Finance domain task");
     OpenMetadataClient owner1Client =
         SdkClients.createClient(owner1.getName(), owner1.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveFinanceTask =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveFinanceTask =
+        new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     owner1Client.tasks().resolve(financeTask.getId().toString(), resolveFinanceTask);
     LOG.debug("✓ Resolved Finance domain task");
 
@@ -14313,9 +14300,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 9: Resolve the PII.Sensitive tag task
     LOG.info("Resolving PII.Sensitive tag task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolvePiiTask =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolvePiiTask = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     owner1Client.tasks().resolve(piiTask.getId().toString(), resolvePiiTask);
     LOG.debug("✓ Resolved PII.Sensitive tag task");
 
@@ -14809,8 +14794,7 @@ public class WorkflowDefinitionResourceIT {
           .tasks()
           .resolve(
               originalTask.getId().toString(),
-              new org.openmetadata.schema.api.tasks.ResolveTask()
-                  .withResolutionType(TaskResolutionType.Approved));
+              new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
       await("surviving task must resolve and drive the workflow to Approved")
           .atMost(Duration.ofSeconds(45))
@@ -14871,8 +14855,7 @@ public class WorkflowDefinitionResourceIT {
           .tasks()
           .resolve(
               supersedingTask.getId().toString(),
-              new org.openmetadata.schema.api.tasks.ResolveTask()
-                  .withResolutionType(TaskResolutionType.Approved));
+              new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
       await("superseding task must resolve and drive the workflow to Approved")
           .atMost(Duration.ofSeconds(45))
@@ -15395,8 +15378,8 @@ public class WorkflowDefinitionResourceIT {
     // BPMN's approve/reject edge conditions match the projected id).
     OpenMetadataClient reviewerClient =
         SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
+    ResolveTask resolveRequest =
+        new ResolveTask()
             .withTransitionId("approve")
             .withResolutionType(TaskResolutionType.Approved);
     reviewerClient.tasks().resolve(task.getId().toString(), resolveRequest);
@@ -15613,5 +15596,490 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Failed to clean up column custom property {}: {}", propName, e.getMessage());
     }
+  }
+
+  /** Approves an owner gate, then a second owner gate that the first approval's stage write fed. */
+  private static final String TWO_OWNER_GATES_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "description": "Two consecutive owner approvals",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["domain"],
+            "events": ["Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"domain": %s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "ApproveFirst", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApproveFirst"}},
+          {"name": "ApproveSecond", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "SetApproved", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "Approved"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApproveSecond"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "ApproveFirst"},
+          {"from": "ApproveFirst", "to": "SetInReview", "condition": "approve"},
+          {"from": "ApproveFirst", "to": "end", "condition": "reject"},
+          {"from": "SetInReview", "to": "ApproveSecond"},
+          {"from": "ApproveSecond", "to": "SetApproved", "condition": "approve"},
+          {"from": "ApproveSecond", "to": "end", "condition": "reject"},
+          {"from": "SetApproved", "to": "end"}
+        ],
+        "config": {"storeStageStatus": false}
+      }""";
+
+  @Test
+  @Order(221)
+  void test_sameOwnerApprovesConsecutiveGates(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    Domain domain = createOwnedDomain(admin, ns, owner);
+    deployTwoOwnerGates(admin, ns, domain);
+    patchDomainDescription(admin, domain, "Ready for review");
+
+    Task first = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), null);
+    approveAs(ownerClient, first);
+    Task second = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), first.getId());
+    assertEquals(Set.of(owner.getId()), assigneeIds(second));
+
+    approveAs(ownerClient, second);
+    awaitDomainStatus(admin, domain, EntityStatus.APPROVED);
+  }
+
+  private static Domain createOwnedDomain(
+      OpenMetadataClient admin, TestNamespace ns, EntityReference owner) {
+    return admin
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(ns.shortPrefix("ownerGates"))
+                .withDescription("Domain approved by its owner at two gates")
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withOwners(List.of(owner)));
+  }
+
+  private void deployTwoOwnerGates(OpenMetadataClient admin, TestNamespace ns, Domain domain)
+      throws Exception {
+    // The trigger filter excludes what it matches, so only this domain starts the workflow.
+    String onlyThisDomain =
+        MAPPER.writeValueAsString(
+            MAPPER.writeValueAsString(
+                Map.of(
+                    "!=",
+                    List.of(Map.of("var", "fullyQualifiedName"), domain.getFullyQualifiedName()))));
+    String workflowName = "ownerGatesFlow_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    TWO_OWNER_GATES_WORKFLOW.formatted(workflowName, onlyThisDomain),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+  }
+
+  private static void patchDomainDescription(OpenMetadataClient admin, Domain domain, String text)
+      throws Exception {
+    admin
+        .domains()
+        .patch(
+            domain.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]"
+                    .formatted(text)));
+  }
+
+  private static void approveAs(OpenMetadataClient client, Task task) {
+    client
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+  }
+
+  private static void awaitDomainStatus(
+      OpenMetadataClient admin, Domain domain, EntityStatus status) {
+    await("domain %s to reach %s".formatted(domain.getName(), status))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    status, admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  /** A lifecycle playbook whose only gate never opens, so whatever it enrols stays put. */
+  private static final String HOLDING_PLAYBOOK =
+      """
+      {
+        "name": "%1$s",
+        "description": "Lifecycle playbook that holds its assets in the first stage",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["%2$s"],
+            "events": ["Created", "Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"%2$s": %3$s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "Gate", "type": "automatedTask", "subType": "checkEntityAttributesTask",
+           "config": {"rules": "{\\"==\\":[{\\"var\\":\\"name\\"},\\"never\\"]}"},
+           "inputNamespaceMap": {"relatedEntity": "global"}},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "Gate"},
+          {"from": "Gate", "to": "SetInReview", "condition": "true"},
+          {"from": "Gate", "to": "end", "condition": "false"},
+          {"from": "SetInReview", "to": "end"}
+        ],
+        "config": {
+          "storeStageStatus": true,
+          "lifecycle": {"version": 1, "entityType": "%2$s", "gates": []}
+        }
+      }""";
+
+  /** Approves through the owners and leaves the stage to the approval itself. */
+  private static final String APPROVAL_ONLY_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "description": "Single owner approval with no stage writes of its own",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["domain"],
+            "events": ["Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"domain": %s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "Approve", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "Approve"},
+          {"from": "Approve", "to": "end", "condition": "approve"},
+          {"from": "Approve", "to": "end", "condition": "reject"}
+        ],
+        "config": {"storeStageStatus": false}
+      }""";
+
+  @Test
+  @Order(222)
+  void test_lifecyclePlaybookEnrolsAssetsWithoutReviewersInDraft(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("playbookGlossary"))
+                    .withDescription("Glossary without reviewers"));
+    String termName = ns.shortPrefix("playbookTerm");
+    String metricName = ns.shortPrefix("playbookMetric");
+    // Names sort before the default approval workflows, so these playbooks own the stage.
+    deployHoldingPlaybook(
+        admin, "AGlossaryLifecycle_" + ns.shortPrefix(), "glossaryTerm", termName);
+    deployHoldingPlaybook(admin, "AMetricLifecycle_" + ns.shortPrefix(), "metric", metricName);
+
+    GlossaryTerm term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(termName)
+                    .withDescription("Term the playbook enrols")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+    Metric metric =
+        admin
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(metricName)
+                    .withDescription("Metric the playbook enrols")
+                    .withMetricType(MetricType.COUNT)
+                    .withUnitOfMeasurement(MetricUnitOfMeasurement.SIZE));
+    GlossaryTerm outsideThePlaybook =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("otherTerm"))
+                    .withDescription("Term no playbook applies to")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+    assertEquals(EntityStatus.DRAFT, metric.getEntityStatus());
+    assertEquals(EntityStatus.APPROVED, outsideThePlaybook.getEntityStatus());
+  }
+
+  @Test
+  @Order(223)
+  void test_approvalOnlyWorkflowApprovesTheEntity(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    // Domains have no default stage workflow, so this workflow's task is the only one opened.
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("approvalOnly"))
+                    .withDescription("Domain approved by its owner")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withOwners(List.of(owner)));
+    String onlyThisDomain =
+        MAPPER.writeValueAsString(
+            MAPPER.writeValueAsString(
+                Map.of(
+                    "!=",
+                    List.of(Map.of("var", "fullyQualifiedName"), domain.getFullyQualifiedName()))));
+    String workflowName = "approvalOnlyFlow_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    APPROVAL_ONLY_WORKFLOW.formatted(workflowName, onlyThisDomain),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+
+    admin
+        .domains()
+        .patch(
+            domain.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Ready for review\"}]"));
+    Task approval =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), created.getId());
+    ownerClient
+        .tasks()
+        .resolve(
+            approval.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("the approval to approve the domain")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED,
+                    admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  private void deployHoldingPlaybook(
+      OpenMetadataClient admin, String workflowName, String entityType, String entityName)
+      throws Exception {
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    HOLDING_PLAYBOOK.formatted(
+                        workflowName, entityType, onlyEntityNamed(entityName)),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+  }
+
+  /** The trigger filter excludes what it matches, so only the named entity starts the workflow. */
+  private static String onlyEntityNamed(String name) throws JsonProcessingException {
+    return MAPPER.writeValueAsString(
+        MAPPER.writeValueAsString(Map.of("!=", List.of(Map.of("var", "name"), name))));
+  }
+
+  private Task awaitOpenApprovalTaskOf(
+      OpenMetadataClient client, String entityFqn, UUID workflowDefinitionId) {
+    List<Task> found = new ArrayList<>();
+    await("an open approval task for " + entityFqn + " from its workflow")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              found.clear();
+              listOpenApprovalTasks(client, entityFqn).getData().stream()
+                  .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()))
+                  .findFirst()
+                  .ifPresent(found::add);
+              return !found.isEmpty();
+            });
+    return found.getFirst();
+  }
+
+  private Task awaitOpenApprovalTask(OpenMetadataClient client, String entityFqn, UUID previous) {
+    List<Task> found = new ArrayList<>();
+    await("an open approval task for " + entityFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              found.clear();
+              listOpenApprovalTasks(client, entityFqn).getData().stream()
+                  .filter(task -> !task.getId().equals(previous))
+                  .findFirst()
+                  .ifPresent(found::add);
+              return !found.isEmpty();
+            });
+    return found.getFirst();
+  }
+
+  @Test
+  void test_onlyTheAssigneesDecideAWorkflowApproval(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    User approver =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("approver_" + suffix)
+                    .withEmail("approver_" + suffix + "@example.com"));
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("reviewer_" + suffix)
+                    .withEmail("reviewer_" + suffix + "@example.com"));
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName("AssigneeOnlyApproval_" + suffix)
+                    .withDescription("Tags only the named approver can approve"));
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Named approver workflow",
+              "description": "Only the named approver decides a new tag",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["tag"],
+                  "events": ["Created"],
+                  "exclude": [],
+                  "filter": {"tag": "{\\\"!\\\":{\\\"in\\\":[\\\"%s\\\",{\\\"var\\\":\\\"fullyQualifiedName\\\"}]}}"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "SetInReview",
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}
+                },
+                {
+                  "name": "Approve",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user", "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "end", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "SetInReview"},
+                {"from": "SetInReview", "to": "Approve"},
+                {"from": "Approve", "to": "end", "condition": "approve"},
+                {"from": "Approve", "to": "end", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(
+                "wf_assigneeOnlyApproval_" + suffix,
+                classification.getName(),
+                approver.getId(),
+                approver.getFullyQualifiedName(),
+                approver.getName());
+    WorkflowDefinition workflow =
+        client
+            .workflowDefinitions()
+            .create(JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class));
+    trackWorkflow(workflow.getName(), workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflow.getName());
+
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("NeedsApproval")
+                    .withClassification(classification.getName())
+                    .withDescription("A tag whose reviewer is not the approver")
+                    .withReviewers(List.of(reviewer.getEntityReference())));
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), approver.getId());
+    ResolveTask approve = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
+
+    ForbiddenException refused =
+        assertThrows(
+            ForbiddenException.class,
+            () -> client.tasks().resolve(task.getId().toString(), approve));
+    assertEquals(403, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("is not an assignee of this approval"));
+
+    // The tag is In Review and has a reviewer, but the workflow named the approver: the assignee
+    // decides, whether or not they are also a reviewer.
+    SdkClients.createClient(approver.getName(), approver.getEmail(), new String[] {})
+        .tasks()
+        .resolve(task.getId().toString(), approve);
+    awaitApprovedApprovalTask(client, tag.getFullyQualifiedName());
   }
 }

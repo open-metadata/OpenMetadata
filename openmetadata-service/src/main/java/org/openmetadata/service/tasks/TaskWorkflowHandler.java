@@ -59,8 +59,10 @@ import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
@@ -320,6 +322,14 @@ public class TaskWorkflowHandler {
           throw TaskStateConflictException.of(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
+        // The task row commits before the workflow's own transaction, so a live instance without
+        // its runtime task has not finished creating it. Closing the task directly would leave the
+        // workflow waiting on a task nobody can resolve any more.
+        if (isWorkflowStillRunning(task)) {
+          throw TaskStateConflictException.of(
+              String.format(
+                  "The workflow is still preparing task '%s'; retry the resolution", taskId));
+        }
         LOG.warn(
             "[TaskWorkflowHandler] No active Flowable runtime task found for '{}'; applying direct task resolution fallback",
             taskId);
@@ -460,6 +470,10 @@ public class TaskWorkflowHandler {
     // resolution. Other types mutate the target entity only on positive resolutions.
     if (MemoryConflictResolution.decides(task)) {
       MemoryConflictResolution.decide(task, resolutionType, comment, user, resolvedPayload);
+    } else if (MetadataCollectionService.decides(task)) {
+      // A metadata completion task changes no entity: resolving it re-checks the fields it asks
+      // for.
+      MetadataCollectionService.requireFilledIn(task);
     } else if (approved && task.getAbout() != null) {
       applyEntityChanges(task, approved, newValue, resolvedPayload, user);
     } else {
@@ -1357,6 +1371,13 @@ public class TaskWorkflowHandler {
       return false;
     }
     return WorkflowHandler.getInstance().hasMultiApprovalSupport(task.getId());
+  }
+
+  private static boolean isWorkflowStillRunning(Task task) {
+    return task.getWorkflowInstanceId() != null
+        && ((WorkflowInstanceRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+            .isRunning(task.getWorkflowInstanceId());
   }
 
   private boolean isWorkflowManaged(Task task) {
