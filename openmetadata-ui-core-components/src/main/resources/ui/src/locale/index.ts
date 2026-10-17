@@ -19,6 +19,7 @@ import esES from './languages/es-es.json';
 import frFR from './languages/fr-fr.json';
 import glES from './languages/gl-es.json';
 import heHE from './languages/he-he.json';
+import itIT from './languages/it-it.json';
 import jaJP from './languages/ja-jp.json';
 import koKR from './languages/ko-kr.json';
 import mrIN from './languages/mr-in.json';
@@ -48,6 +49,7 @@ const CORE_BUNDLES: Record<string, ResourceKey> = {
   'fr-FR': frFR,
   'gl-ES': glES,
   'he-HE': heHE,
+  'it-IT': itIT,
   'ja-JP': jaJP,
   'ko-KR': koKR,
   'mr-IN': mrIN,
