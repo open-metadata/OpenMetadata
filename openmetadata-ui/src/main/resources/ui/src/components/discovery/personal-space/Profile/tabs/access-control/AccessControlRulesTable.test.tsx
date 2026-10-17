@@ -13,6 +13,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import {
   Effect,
+  Operation,
   Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
 import AccessControlRulesTable from './AccessControlRulesTable';
@@ -31,7 +32,7 @@ jest.mock(
 const ALLOW_RULE: Rule = {
   name: 'ViewTables',
   resources: ['table', 'topic'],
-  operations: ['ViewAll', 'ViewBasic'],
+  operations: [Operation.ViewAll, Operation.ViewBasic],
   effect: Effect.Allow,
   description: 'Lets everyone view tables',
   condition: "isOwner() && matchAnyTag('PII.Sensitive')",
@@ -40,7 +41,7 @@ const ALLOW_RULE: Rule = {
 const DENY_RULE: Rule = {
   name: 'DenyDelete',
   resources: ['all'],
-  operations: ['Delete'],
+  operations: [Operation.Delete],
   effect: Effect.Deny,
 };
 
