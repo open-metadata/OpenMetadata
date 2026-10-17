@@ -50,6 +50,21 @@ import type { Edge, LineageConfig } from '../../../interface/lineage.interface';
 
 export type { LineageConfig };
 
+export type LineageConfigDepthField =
+  | 'upstreamDepth'
+  | 'downstreamDepth'
+  | 'nodesPerLayer';
+
+export type LineageConfigFormValues = Record<LineageConfigDepthField, string>;
+
+export interface LineageConfigField {
+  name: LineageConfigDepthField;
+  label: string;
+  tooltip: string;
+  testId: string;
+  min: number;
+}
+
 export interface LineageConfigModalProps {
   visible: boolean;
   config: LineageConfig;
@@ -60,12 +75,11 @@ export interface LineageConfigModalProps {
 export interface NodeHandlesProps {
   nodeType: string;
   id: string;
-  isConnectable: boolean;
+  showEdgeHandles: boolean;
   expandCollapseHandles: ReactNode;
 }
 
 export interface ExpandCollapseHandlesProps {
-  isEditMode: boolean;
   hasOutgoers: boolean;
   hasIncomers: boolean;
   isDownstreamNode: boolean;

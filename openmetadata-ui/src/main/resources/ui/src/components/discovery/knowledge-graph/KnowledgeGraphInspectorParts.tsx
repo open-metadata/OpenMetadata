@@ -11,8 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle,
   ChevronRight,
   Database01,
 } from '@openmetadata/ui-core-components/icons';
@@ -81,8 +89,10 @@ interface StatementProps {
   statement: ReactNode;
   code?: string;
   codeTestId?: string;
-  color: string;
-  family: string;
+  /** Dot colour for the family row. Omit together with `family` to hide the row. */
+  color?: string;
+  /** Family label (e.g. "Ownership · outgoing"). Omit to hide the dot+family row. */
+  family?: string;
 }
 
 /** The grey card under the header: the statement, its identifier and its family. */
@@ -106,6 +116,53 @@ export const InspectorStatement = ({
         {code}
       </Typography>
     )}
+    {family && (
+      <Box align="center" gap={2}>
+        <span
+          aria-hidden="true"
+          className="kg-inspector-dot"
+          style={{ backgroundColor: color }}
+        />
+        <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+          {family}
+        </Typography>
+      </Box>
+    )}
+  </Box>
+);
+
+interface IdentityCardProps {
+  /** Short caps label above the identifier — e.g. "FULL PATH", "USERNAME", "FQN". */
+  fieldLabel: string;
+  /** Identifier value rendered in mono. */
+  value: string;
+  /** Dot colour matching the type palette. */
+  color: string;
+  /** Family label — e.g. "Table", "User", "Database Schema". */
+  family: string;
+  valueTestId?: string;
+}
+
+/**
+ * Identity card for an entity selection: a labelled identifier and a type pill.
+ * Replaces the sentence-shaped InspectorStatement for entity drawers.
+ */
+export const InspectorIdentityCard = ({
+  fieldLabel,
+  value,
+  color,
+  family,
+  valueTestId,
+}: IdentityCardProps) => (
+  <Box className="kg-inspector-statement" direction="col" gap={2}>
+    <span className="kg-inspector-section-title">{fieldLabel}</span>
+    <Typography
+      className="tw:break-all tw:font-mono tw:text-utility-purple-700"
+      data-testid={valueTestId}
+      size="text-xs"
+      weight="medium">
+      {value}
+    </Typography>
     <Box align="center" gap={2}>
       <span
         aria-hidden="true"
@@ -118,6 +175,86 @@ export const InspectorStatement = ({
     </Box>
   </Box>
 );
+
+interface KeyValueProps {
+  label: string;
+  value: ReactNode;
+  valueTestId?: string;
+}
+
+/** A plain `Label: value` row for drawer meta like "Team: Finance" or "System name: upstream". */
+export const InspectorKeyValue = ({
+  label,
+  value,
+  valueTestId,
+}: KeyValueProps) => (
+  <Box align="baseline" gap={2}>
+    <Typography className="tw:text-tertiary" size="text-sm">
+      {label + ':'}
+    </Typography>
+    <Typography
+      className="tw:break-all tw:text-primary"
+      data-testid={valueTestId}
+      size="text-sm">
+      {value}
+    </Typography>
+  </Box>
+);
+
+interface GapNoteProps {
+  tone: 'warning' | 'success';
+  text: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  actionHref?: string;
+  actionTestId?: string;
+}
+
+/** Full-width gap callout: an icon, a short status, and an optional CTA. */
+export const InspectorGapNote = ({
+  tone,
+  text,
+  actionLabel,
+  onAction,
+  actionHref,
+  actionTestId,
+}: GapNoteProps) => {
+  const Icon = tone === 'warning' ? AlertTriangle : CheckCircle;
+  const toneClass =
+    tone === 'warning'
+      ? 'tw:border-utility-warning-200 tw:bg-utility-warning-50 tw:text-utility-warning-700'
+      : 'tw:border-utility-success-200 tw:bg-utility-success-50 tw:text-utility-success-700';
+
+  return (
+    <Box
+      align="center"
+      className={classNames(
+        'tw:rounded-md tw:border tw:px-3 tw:py-2',
+        toneClass
+      )}
+      gap={2}
+      justify="between">
+      <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
+        <Icon aria-hidden="true" size={16} />
+        <Typography className="tw:text-current" size="text-sm" weight="medium">
+          {text}
+        </Typography>
+      </Box>
+      {actionLabel && (actionHref || onAction) && (
+        <Button
+          color="secondary"
+          data-testid={actionTestId}
+          href={actionHref}
+          rel={actionHref ? 'noopener noreferrer' : undefined}
+          size="sm"
+          target={actionHref ? '_blank' : undefined}
+          onPress={onAction}>
+          {actionLabel}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 interface SectionProps {
   title: string;
@@ -141,43 +278,72 @@ export const InspectorSection = ({ title, meta, children }: SectionProps) => (
   </Box>
 );
 
-interface RowProps {
+interface RelationshipRowProps {
   tile: ReactNode;
-  name: string;
-  detail: string;
+  subject: string;
+  predicate: string;
+  object: string;
   isDisabled?: boolean;
   onPress?: () => void;
 }
 
-/** A clickable row: tile, name over detail, chevron; the name and detail read as one accessible label. */
-export const InspectorRow = ({
+/**
+ * Full relationship row in the drawer: tile, then `subject → [predicate pill]
+ * → object` with a trailing chevron. Subject + object render as emphasised
+ * entity text; the predicate wears a bordered pill so the triple reads as the
+ * same statement the user picked out of the canvas. Wraps on narrow drawers.
+ */
+export const InspectorRelationshipRow = ({
   tile,
-  name,
-  detail,
+  subject,
+  predicate,
+  object,
   isDisabled,
   onPress,
-}: RowProps) => (
-  <Button
-    noTextPadding
-    className="kg-inspector-row tw:w-full tw:justify-start tw:*:data-text:flex-1"
-    color="tertiary"
-    iconTrailing={ChevronRight}
-    isDisabled={isDisabled}
-    size="sm"
-    onPress={onPress}>
-    <Box align="center" className="tw:min-w-0 tw:flex-1 tw:text-left" gap={2}>
-      {tile}
-      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={0}>
-        <Typography
-          className="tw:truncate tw:text-primary"
-          size="text-sm"
-          weight="medium">
-          {name}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {detail}
-        </Typography>
-      </Box>
+}: RelationshipRowProps) => (
+  <button
+    className={classNames(
+      'kg-inspector-row kg-inspector-rel-row',
+      'tw:flex tw:w-full tw:items-center tw:gap-2 tw:text-left'
+    )}
+    disabled={isDisabled}
+    type="button"
+    onClick={onPress}>
+    {tile}
+    <Box
+      align="center"
+      className="tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2 tw:gap-y-1"
+      wrap="wrap">
+      <Typography
+        className="tw:text-brand-secondary"
+        size="text-sm"
+        weight="medium">
+        {subject}
+      </Typography>
+      <ArrowRight
+        aria-hidden="true"
+        className="tw:shrink-0 tw:text-tertiary"
+        size={12}
+      />
+      <Badge color="gray" size="sm" type="pill-color">
+        {predicate}
+      </Badge>
+      <ArrowRight
+        aria-hidden="true"
+        className="tw:shrink-0 tw:text-tertiary"
+        size={12}
+      />
+      <Typography
+        className="tw:text-brand-secondary"
+        size="text-sm"
+        weight="medium">
+        {object}
+      </Typography>
     </Box>
-  </Button>
+    <ChevronRight
+      aria-hidden="true"
+      className="tw:shrink-0 tw:text-tertiary"
+      size={16}
+    />
+  </button>
 );
