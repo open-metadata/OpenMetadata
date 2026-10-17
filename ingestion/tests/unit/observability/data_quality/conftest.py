@@ -618,6 +618,26 @@ def test_case_column_to_match_set_ordered():
 
 
 @pytest.fixture
+def test_case_column_to_match_set_ordered_false():
+    """ordered='false' (string) must enable unordered matching (same set, shuffled order -> Success)."""
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_USER,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(
+                name="columnNames",
+                # All 11 User table columns listed in a different order than their
+                # DDL order so that ordered=True would fail but ordered=False should succeed.
+                value="age,id,name,first name,fullname,nickname,inserted_date,postal_code,lat,lon,is_active",
+            ),
+            TestCaseParameterValue(name="ordered", value="false"),
+        ],
+    )  # type: ignore
+
+
+@pytest.fixture
 def test_case_table_custom_sql_query():
     """Test case for test column_value_median_to_be_between"""
     return TestCase(
