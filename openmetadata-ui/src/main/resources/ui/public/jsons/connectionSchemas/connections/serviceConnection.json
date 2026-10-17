@@ -9109,6 +9109,11 @@
                       "default": true,
                       "title": "Supports Metadata Extraction"
                     },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
@@ -46721,6 +46726,11 @@
                       "type": "boolean",
                       "default": true,
                       "title": "Supports Metadata Extraction"
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
                     },
                     "supportsProfiler": {
                       "title": "Supports Profiler",
