@@ -15,11 +15,24 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
+import {
+  AlertType,
+  EventSubscription,
+} from '../../../generated/events/eventSubscription';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
+import {
+  createNotificationAlert,
+  getAlertsFromName,
+  updateNotificationAlert,
+} from '../../../rest/alertsAPI';
 import {
   createObservabilityAlert,
   getObservabilityAlertByFQN,
@@ -27,6 +40,10 @@ import {
 } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
+import {
+  getNotificationAlertDetailsPath,
+  getSettingPath,
+} from '../../../utils/RouterUtils';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -69,6 +86,7 @@ export function useAlertFormData({
   const [saving, setSaving] = useState(false);
 
   const isEditMode = useMemo(() => !isEmpty(fqn), [fqn]);
+  const isNotification = alertType === AlertType.Notification;
   const extraFormWidgets = useMemo(
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
     []
@@ -87,7 +105,9 @@ export function useAlertFormData({
     try {
       setLoadingState((state) => ({ ...state, alerts: true }));
 
-      const observabilityAlert = await getObservabilityAlertByFQN(fqn);
+      const observabilityAlert = isNotification
+        ? await getAlertsFromName(fqn)
+        : await getObservabilityAlertByFQN(fqn);
       const modifiedAlertData =
         alertsClassBase.getModifiedAlertDataForForm(observabilityAlert);
 
@@ -98,7 +118,7 @@ export function useAlertFormData({
     } finally {
       setLoadingState((state) => ({ ...state, alerts: false }));
     }
-  }, [fqn]);
+  }, [fqn, isNotification]);
 
   useEffect(() => {
     if (!fqn) {
@@ -109,14 +129,28 @@ export function useAlertFormData({
 
   const breadcrumb = useMemo(
     () => [
-      {
-        name: t('label.observability'),
-        url: '',
-      },
-      {
-        name: t('label.alert-plural'),
-        url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
-      },
+      ...(isNotification
+        ? [
+            { name: t('label.setting-plural'), url: ROUTES.SETTINGS },
+            {
+              name: t('label.notification-plural'),
+              url: getSettingPath(GlobalSettingsMenuCategory.NOTIFICATIONS),
+            },
+            {
+              name: t('label.alert-plural'),
+              url: getSettingPath(
+                GlobalSettingsMenuCategory.NOTIFICATIONS,
+                GlobalSettingOptions.ALERTS
+              ),
+            },
+          ]
+        : [
+            { name: t('label.observability'), url: '' },
+            {
+              name: t('label.alert-plural'),
+              url: observabilityRouterClassBase.getObservabilityAlertsListPath(),
+            },
+          ]),
       {
         name: fqn
           ? t('label.edit-entity', { entity: t('label.alert') })
@@ -124,7 +158,7 @@ export function useAlertFormData({
         url: '',
       },
     ],
-    [fqn, t]
+    [fqn, isNotification, t]
   );
 
   const handleSave = useCallback(
@@ -137,8 +171,12 @@ export function useAlertFormData({
           fqn,
           initialData,
           currentUser,
-          createAlertAPI: createObservabilityAlert,
-          updateAlertAPI: updateObservabilityAlert,
+          createAlertAPI: isNotification
+            ? createNotificationAlert
+            : createObservabilityAlert,
+          updateAlertAPI: isNotification
+            ? updateNotificationAlert
+            : updateObservabilityAlert,
           afterSaveAction: async (savedFqn: string) => {
             if (!isEditMode) {
               await getResourceLimit('eventsubscription', true, true);
@@ -151,9 +189,11 @@ export function useAlertFormData({
             }
 
             navigate(
-              observabilityRouterClassBase.getObservabilityAlertDetailsPath(
-                savedFqn
-              )
+              isNotification
+                ? getNotificationAlertDetailsPath(savedFqn)
+                : observabilityRouterClassBase.getObservabilityAlertDetailsPath(
+                    savedFqn
+                  )
             );
           },
           setInlineAlertDetails,
@@ -171,6 +211,7 @@ export function useAlertFormData({
       getResourceLimit,
       initialData,
       isEditMode,
+      isNotification,
       navigate,
       setInlineAlertDetails,
     ]

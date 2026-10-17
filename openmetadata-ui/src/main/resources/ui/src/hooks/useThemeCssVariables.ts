@@ -10,32 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ConfigProvider } from 'antd';
-import { FC, ReactNode, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { DEFAULT_THEME } from '../../constants/Appearance.constants';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { generatePalette } from '../../styles/colorPallet';
+import { useEffect } from 'react';
+import { DEFAULT_THEME } from '../constants/Appearance.constants';
+import { generatePalette } from '../styles/colorPallet';
+import { useApplicationStore } from './useApplicationStore';
 
-const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const { i18n } = useTranslation();
+// The LESS reads the brand and status colours through these variables
+// (`@primary-color: var(--ant-primary-color)`, `@success-color`, ...). The
+// antd stylesheet still supplies their defaults; only the configured ones are
+// written, as antd's ConfigProvider.config did.
+const THEME_COLOR_VARIABLES = {
+  primaryColor: '--ant-primary-color',
+  successColor: '--ant-success-color',
+  warningColor: '--ant-warning-color',
+  errorColor: '--ant-error-color',
+  infoColor: '--ant-info-color',
+} as const;
+
+/** Writes the configured theme into the app-wide CSS variables. */
+export const useThemeCssVariables = () => {
   const applicationConfig = useApplicationStore(
     (state) => state.applicationConfig
   );
+  const customTheme = applicationConfig?.customTheme;
+
+  useEffect(() => {
+    Object.entries(THEME_COLOR_VARIABLES).forEach(([key, variable]) => {
+      const color = customTheme?.[key as keyof typeof THEME_COLOR_VARIABLES];
+      if (color) {
+        document.documentElement.style.setProperty(variable, color);
+      } else {
+        // A cleared colour falls back to the stylesheet default again.
+        document.documentElement.style.removeProperty(variable);
+      }
+    });
+  }, [customTheme]);
 
   useEffect(() => {
     const palette = generatePalette(
-      applicationConfig?.customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
+      customTheme?.primaryColor ?? DEFAULT_THEME.primaryColor
     );
     // Use custom hover color if provided, otherwise use generated palette[1]
     const hoverColor =
-      applicationConfig?.customTheme?.hoverColor ||
-      palette[2] ||
-      DEFAULT_THEME.hoverColor;
+      customTheme?.hoverColor || palette[2] || DEFAULT_THEME.hoverColor;
     const selectedColor =
-      applicationConfig?.customTheme?.selectedColor ||
-      palette[8] ||
-      DEFAULT_THEME.hoverColor;
+      customTheme?.selectedColor || palette[8] || DEFAULT_THEME.hoverColor;
     palette.forEach((color, index) => {
       switch (index) {
         case 0:
@@ -77,18 +96,8 @@ const AntDConfigProvider: FC<{ children: ReactNode }> = ({ children }) => {
       selectedColor
     );
   }, [
-    applicationConfig?.customTheme?.primaryColor,
-    applicationConfig?.customTheme?.hoverColor,
-    applicationConfig?.customTheme?.selectedColor,
+    customTheme?.primaryColor,
+    customTheme?.hoverColor,
+    customTheme?.selectedColor,
   ]);
-
-  ConfigProvider.config({
-    theme: {
-      ...applicationConfig?.customTheme,
-    },
-  });
-
-  return <ConfigProvider direction={i18n.dir()}>{children}</ConfigProvider>;
 };
-
-export default AntDConfigProvider;
