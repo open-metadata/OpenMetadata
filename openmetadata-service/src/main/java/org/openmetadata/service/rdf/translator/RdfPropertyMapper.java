@@ -90,9 +90,16 @@ public class RdfPropertyMapper {
   private static final Set<String> DEDICATED_MAPPER_PROPERTIES =
       Set.of("tableConstraints", "profile", "pipelineStatus", "usageSummary");
 
-  // The generic field-mapping loop skips both groups, for the two different reasons above.
+  // An ontology axiom's logical content: its class expressions and asserted literal. They are
+  // projected in the OWL 2 RDF mapping into the axiom's own graph, not as JSON literals on the
+  // axiom record; see ADR:2026-10-14-ontology-entities-own-their-named-graphs. Only ontology
+  // axioms carry fields with these names.
+  private static final Set<String> OWNED_GRAPH_PROPERTIES = Set.of("expressions", "literal");
+
+  // The generic field-mapping loop skips all three groups, for the reasons above.
   private static final Set<String> IGNORED_PROPERTIES =
-      Stream.concat(NON_GRAPH_PROPERTIES.stream(), DEDICATED_MAPPER_PROPERTIES.stream())
+      Stream.of(NON_GRAPH_PROPERTIES, DEDICATED_MAPPER_PROPERTIES, OWNED_GRAPH_PROPERTIES)
+          .flatMap(Set::stream)
           .collect(Collectors.toUnmodifiableSet());
 
   // Lineage properties that need special handling
@@ -157,6 +164,10 @@ public class RdfPropertyMapper {
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
           OM_NS + "hasCustomProperty",
+          // JSON literals earlier releases wrote on ontology axioms; the next write of each axiom
+          // removes them.
+          OM_NS + "expressions",
+          OM_NS + "literal",
           // Concept realization roles. om:mappedTo itself comes from the MAPPED_TO relationship
           // and belongs to the relationship writers.
           RdfRealizationMapper.HAS_PRIMARY_STORE,

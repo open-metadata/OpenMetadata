@@ -29,7 +29,14 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
  */
 record RdfProjectionLoaders(
     BiFunction<String, UUID, EntityInterface<?>> entityLoader,
-    LineageDetailsLoader lineageDetailsLoader) {
+    LineageDetailsLoader lineageDetailsLoader,
+    OntologyGraphProjection.Sources ontologySources) {
+
+  RdfProjectionLoaders(
+      final BiFunction<String, UUID, EntityInterface<?>> entityLoader,
+      final LineageDetailsLoader lineageDetailsLoader) {
+    this(entityLoader, lineageDetailsLoader, OntologyGraphProjection.databaseSources());
+  }
 
   @FunctionalInterface
   interface LineageDetailsLoader {
@@ -42,7 +49,9 @@ record RdfProjectionLoaders(
 
   static RdfProjectionLoaders defaults() {
     return new RdfProjectionLoaders(
-        RdfProjectionLoaders::loadEntity, RdfProjectionLoaders::loadLineageDetails);
+        RdfProjectionLoaders::loadEntity,
+        RdfProjectionLoaders::loadLineageDetails,
+        OntologyGraphProjection.databaseSources());
   }
 
   private static EntityInterface<?> loadEntity(final String entityType, final UUID entityId) {

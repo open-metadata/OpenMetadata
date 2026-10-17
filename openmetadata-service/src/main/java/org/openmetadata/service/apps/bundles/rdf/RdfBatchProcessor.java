@@ -34,6 +34,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.rdf.OntologyGraphs;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfRepository.LineageEdgeData;
@@ -218,6 +219,14 @@ public class RdfBatchProcessor {
         relationshipFailures += glossResult.failureCount();
         if (glossResult.lastError() != null) {
           relationshipError = glossResult.lastError();
+        }
+      }
+      if (OntologyGraphs.ownsGraph(entityType)) {
+        RelationshipProcessingResult graphResult =
+            processOntologyGraphs(entityType, indexedEntities);
+        relationshipFailures += graphResult.failureCount();
+        if (graphResult.lastError() != null) {
+          relationshipError = graphResult.lastError();
         }
       }
       sinkTimeNanos += System.nanoTime() - relationshipStartNanos;
@@ -904,6 +913,20 @@ public class RdfBatchProcessor {
 
   private static String describeLineageError(LineageEdgeData edge, Throwable error) {
     return describeError("lineage " + edge.fromId() + "->" + edge.toId(), error);
+  }
+
+  /** Replaces the graphs the batch's ontology entities own; see {@link OntologyGraphs}. */
+  RelationshipProcessingResult processOntologyGraphs(
+      String entityType, List<? extends EntityInterface<?>> entities) {
+    try {
+      rdfRepository.writeOntologyGraphs(entities);
+      return RelationshipProcessingResult.OK;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to write ontology graphs for {} {} entities", entities.size(), entityType, e);
+      return new RelationshipProcessingResult(
+          entities.size(), describeBulkError(entityType, "ontologyGraphs", e));
+    }
   }
 
   RelationshipProcessingResult processGlossaryTermRelations(

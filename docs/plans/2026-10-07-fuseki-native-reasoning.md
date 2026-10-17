@@ -289,9 +289,10 @@ Extend the existing projection instead of exporting a whole glossary for every j
    `xsd:int`), use `owl:onDataRange` for data restrictions, emit declarations, and map DATE
    attributes into the OWL 2 datatype map (`xsd:date` is not in it). Gate this with OWLAPI round-trip
    and profile tests; today's writer test checks only predicate presence.
-2. **Own each axiom's triples.** Write each axiom into `graph/axiom/{id}` and replace it with a Graph
-   Store `PUT` through the existing bounded handler. Today's predicate-scoped deletes in the shared
-   knowledge graph leave restriction blank nodes and RDF lists behind.
+2. **Own each axiom's triples.** Write each axiom into `graph/axiom/{id}` and replace it whole, with
+   one SPARQL update that drops and re-inserts the graph, so blue/green capture and replay see it
+   ([ADR](../decisions/2026-10-14-ontology-entities-own-their-named-graphs.md)). Predicate-scoped
+   deletes in the shared knowledge graph leave restriction blank nodes and RDF lists behind.
 3. **Project property and attribute axioms and explicit assertions.** Preserve datatypes; verify
    round trips against OWLAPI.
 4. **Use one class-IRI rule on every path.** Use `term.iri` when set, otherwise the entity IRI. The
@@ -871,8 +872,17 @@ for individual reasoning requests.
 OWL 2 DL-valid, gated by OWL API 5.5.1 round-trip and OWL 2 DL profile tests in test scope:
 [semantic projection](#semantic-projection-into-jena) item 1, item 4 as an explicit class-IRI rule
 for OWL class axioms (the live projection keeps the entity IRI as the record's identity), and item 8
-for terms whose concept type is `SKOS_CONCEPT`. Per-axiom graphs, property and attribute axioms in
-the live projection, realization roles live, lifecycle activation, imports, and versions remain.
+for terms whose concept type is `SKOS_CONCEPT`. The second slice projects ontology entities live
+into graphs they own ([ADR](../decisions/2026-10-14-ontology-entities-own-their-named-graphs.md)):
+each axiom in `graph/axiom/{id}`, each relationship type's property axioms in
+`graph/relationshipType/{id}`, and each term's class, parent subclass axiom and attributes in
+`graph/glossaryTerm/{id}`, replaced whole on every write so edits leave no orphaned restriction or
+list triples (items 2 and 3). Axiom records no longer carry `om:expressions` JSON. Realizations
+reach the class IRI, so `?c rdfs:subClassOf* :Party . ?c om:mappedTo ?asset` works for authored
+IRIs too ([ADR](../decisions/2026-10-14-mapped-assets-are-reached-from-the-term-class-iri.md),
+items 4 and 5), and relationship types that OWL 2 DL cannot express are rejected when saved
+([ADR](../decisions/2026-10-14-relationship-types-reject-axioms-owl2-dl-cannot-express.md)).
+Lifecycle activation, imports, versions and candidate checks remain (items 6 and 7).
 [rdf-ontology-contract.md](../rdf-ontology-contract.md) describes the projection.
 
 1. Apply the [semantic projection](#semantic-projection-into-jena) steps. Share per-axiom semantics
@@ -1139,34 +1149,36 @@ triples. These are unnecessary for the confirmed catalog-and-mapping scope.
 
 ## Open decisions
 
-1. **Annex.** Recommendation: exclude annex content from DL input by default and report the
-   closure's coverage as partial with the annex triple count; include it later only after it passes
-   the profile check.
-2. **Column realizations.** Extend `AssetRealization` to column targets, or limit the first version
-   to tables and other entities.
-3. **Concept mappings.** Confirm that `owl:sameAs` mappings stay annotations unless both sides are
+Decided on 2026-10-14 unless marked open; the numbers stay stable for references.
+
+1. **Annex.** Decided: annex content stays out of DL input by default, and the closure's coverage
+   is reported as partial with the annex triple count; it may be included later only after it
+   passes the profile check.
+2. **Column realizations.** Decided: the first version realizes concepts in entities only;
+   `AssetRealization` is not extended to columns.
+3. **Concept mappings.** Decided: `owl:sameAs` mappings stay annotations unless both sides are
    individuals in the closure.
-4. **Term statuses.** Decide which glossary-term lifecycle states contribute classes.
-5. **Direct Fuseki writers.** Keep them unsupported for freshness, or add a Fuseki-side commit
+4. **Term statuses.** Decided: production reasoning uses Approved terms and Approved axioms only;
+   Draft and In Review changes are checked as isolated candidates.
+5. **Direct Fuseki writers.** Decided: they stay unsupported for freshness; no Fuseki-side commit
    counter.
-6. **Image of record.** Move OpenMetadata's tests, Compose files, and docs to the published
-   `openmetadata/fuseki` image and retire `docker/rdf-store/`, or keep both in sync. The published
-   image already closes anonymous `/sparql` and `/query` access, but drops the Lucene text index the
-   in-repo `config.ttl` configures. No OpenMetadata server or MCP code issues `text:query`, so only
-   hand-written queries would notice.
-7. **Licence.** No permissively licensed complete OWL 2 DL engine exists. If legal declines LGPL
-   distribution, ship ELK alone and narrow the coverage requirement: closures outside the EL
-   profile report `INCOMPLETE`.
-8. **HermiT ownership.** Name the engine owner, and agree with the `owlcs` maintainers how releases
-   of upstream fixes will be cut. Our build ships until an upstream release contains everything
-   we need.
-9. **Subclass from parent links.** The projection asserts `rdfs:subClassOf` for a parent link only
-   when both terms are OWL classes. Terms created in OpenMetadata have concept type `BOTH`, so their
-   parent links still become subclass axioms, and the importer does not record whether the source
-   used `skos:broader` or `rdfs:subClassOf` for the structural parent. Decide whether `BOTH` parent
-   links stay subsumption, or record the authored predicate and assert subclass only from it.
-10. **Characteristics on reserved relationship types.** The seeded `subClassOf`, `broader`,
-    `narrower`, `seeAlso`, and `synonym` types carry `TRANSITIVE` or `SYMMETRIC`, which the
-    projection now ignores because their predicates are RDFS or SKOS vocabulary. Decide whether to
-    remove them from the seed data (with a migration) or keep them as navigation hints, and whether
-    to reject property chains and disjointness that name reserved predicates at write time.
+6. **Image of record.** Decided: the published `openmetadata/fuseki` image is the image of record.
+   Moving OpenMetadata's tests, Compose files and docs to it, and retiring `docker/rdf-store/`, is
+   the follow-up. The published image already closes anonymous `/sparql` and `/query` access, but
+   drops the Lucene text index the in-repo `config.ttl` configures. No OpenMetadata server or MCP
+   code issues `text:query`, so only hand-written queries would notice.
+7. **Licence.** Decided: HermiT ships under the LGPL. ELK alone, with `INCOMPLETE` outside the EL
+   profile, remains the fallback only if that changes.
+8. **HermiT ownership.** Open. Name the engine owner, and agree with the `owlcs` maintainers how
+   releases of upstream fixes will be cut. Our build ships until an upstream release contains
+   everything we need.
+9. **Subclass from parent links.** Decided: a parent link between terms of concept type `BOTH`
+   stays `rdfs:subClassOf`, in the export and in the live term graphs; the importer does not record
+   the authored predicate. Only a `SKOS_CONCEPT` term on either side makes the link SKOS hierarchy
+   alone ([ADR](../decisions/2026-10-11-glossary-dates-are-xsd-datetime-and-skos-parents-are-not-superclasses.md)).
+10. **Characteristics on reserved relationship types.** Decided: the seeded `subClassOf`,
+    `broader`, `narrower`, `seeAlso`, and `synonym` types keep `TRANSITIVE` or `SYMMETRIC` as
+    navigation hints, with no migration; the projection ignores them. A property chain or property
+    disjointness that names a reserved predicate is rejected when a relationship type is saved,
+    as are OWL 2 DL simple-role violations
+    ([ADR](../decisions/2026-10-14-relationship-types-reject-axioms-owl2-dl-cannot-express.md)).

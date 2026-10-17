@@ -127,7 +127,8 @@ each entity removes it, and a full rebuild removes it everywhere.
 
 Each entry in a glossary term's `realizedIn` links the term to the asset twice: with
 `om:mappedTo`, written from the stored realization relationship, and with a predicate
-for the asset's role:
+for the asset's role. A term whose class IRI is its authored `iri` repeats both on that IRI
+in its own graph (see [Ontology graphs](#ontology-graphs-in-the-live-projection)):
 
 | Role | Predicate |
 |---|---|
@@ -187,7 +188,11 @@ valid input (`GlossaryOntologyModelBuilderTest`, `OntologyExpressionRdfWriterTes
 
   The characteristics stay on the relationship types for OpenMetadata's own navigation and
   validation. A property chain or property disjointness that names reserved vocabulary
-  cannot be expressed in OWL 2 DL; the projection omits that axiom and logs a warning.
+  cannot be expressed in OWL 2 DL, so saving such a type fails with 400; for one stored
+  before that check, the projection omits the axiom and logs a warning. Saving also fails
+  for a type that is transitive, chained, or the inverse of such a type and is also
+  functional, inverse-functional, irreflexive, asymmetric, or disjoint with another type,
+  and for disjointness with such a type (OWL 2 DL simple roles).
 - **Hierarchy.** Every parent link is `skos:broader`/`skos:narrower`. It is also
   `rdfs:subClassOf` only when both terms are OWL classes, that is, neither has concept type
   `SKOS_CONCEPT`. A thesaurus imported as SKOS no longer gains subclass axioms it never
@@ -203,8 +208,9 @@ valid input (`GlossaryOntologyModelBuilderTest`, `OntologyExpressionRdfWriterTes
   `xsd:dateTime`. An explicit `datatypeIri` is kept exactly; one outside the map fails the
   profile check instead of being rewritten.
 
-Not yet DL-checked: annex triples, which are merged unchanged, and attributes declared on a
-`SKOS_CONCEPT`-only term. Every non-deleted axiom is included regardless of lifecycle state.
+An attribute of a `SKOS_CONCEPT`-only term is a data property without `rdfs:domain`, since
+that term is an individual, not a class. Not yet DL-checked: annex triples, which are merged
+unchanged. Every non-deleted axiom is included regardless of lifecycle state.
 
 For ontology-scoped SPARQL with `inference=owl`, `skos:broader` is no longer transitive; use
 `skos:broader+`. With `rdfs` or `owl`, a `SKOS_CONCEPT` term no longer has its parent as a
@@ -214,7 +220,45 @@ The projection is computed per request, so the change applies as soon as the ser
 upgraded. Nothing is stored in Fuseki, so no rebuild is needed. Annex rows recorded by
 earlier imports are unchanged.
 
+## Ontology graphs in the live projection
+
+The live projection writes the OWL view of each ontology entity into a graph the entity owns,
+under the RDF base URI (ADR:2026-10-14-ontology-entities-own-their-named-graphs):
+
+| Graph | Content |
+|---|---|
+| `graph/axiom/{axiomId}` | The axiom in the OWL 2 RDF mapping, with declarations, as in the export |
+| `graph/relationshipType/{typeId}` | The type's object property: characteristics, domain, range, inverse, chain, disjointness, deprecation |
+| `graph/glossaryTerm/{termId}` | The term's `owl:Class`, `rdfs:subClassOf` its parent's class when both are OWL classes, its attributes as data properties, and, when the class IRI is not the entity IRI, `om:mappedTo` and the realization role on the class IRI |
+
+Every create, update, replay and reindex replaces the graph whole in one transaction, so
+editing an axiom leaves none of its old restriction or list triples. Deleting the entity
+drops its graph, and deleting an asset removes its copies on class IRIs. The axiom record in
+the knowledge graph keeps its type, subject, property, target and status, but no longer
+carries `om:expressions` or `om:literal`.
+
+Discovery reads the class hierarchy across these graphs at query time, never through
+`owl:sameAs` (ADR:2026-10-14-mapped-assets-are-reached-from-the-term-class-iri):
+
+```sparql
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX om: <https://open-metadata.org/ontology/>
+SELECT ?asset WHERE {
+  ?class rdfs:subClassOf* <https://example.org/model/Party> .
+  ?class om:mappedTo ?asset .
+}
+```
+
+The graphs follow the same class-IRI and hierarchy rules as the export, with all non-deleted
+axioms and terms included; lifecycle activation, imports and versions are not projected yet.
+Relations of the `subClassOf` type stay between entity IRIs in the knowledge graph.
+
 ## Upgrading an existing RDF store
+
+Ontology graphs appear as each axiom, relationship type and term is next written. A
+`RdfIndexApp` run writes all of them; with `recreateIndex=true` it also removes the
+`om:expressions` and `om:literal` JSON earlier releases stored on axiom records. No
+database migration is needed.
 
 Run a full `RdfIndexApp` rebuild with `recreateIndex=true` after upgrading to 2.0.2.
 This replaces untouched legacy lineage and extension triples, including orphaned

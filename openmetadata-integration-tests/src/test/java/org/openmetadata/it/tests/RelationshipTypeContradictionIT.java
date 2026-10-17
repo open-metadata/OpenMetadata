@@ -197,11 +197,16 @@ public class RelationshipTypeContradictionIT {
   /**
    * POST with {ASYMMETRIC, IRREFLEXIVE} and a *distinct* existing inverse must be accepted. A
    * cross-property inverse (A inverseOf B, B != A) only propagates asymmetry to B and is not
-   * contradictory; the new guard must reject only the self-inverse case and not over-reject.
+   * contradictory; the new guard must reject only the self-inverse case and not over-reject. The
+   * inverse is not transitive: an asymmetric inverse of a transitive type is not a simple role,
+   * which OWL 2 DL forbids (ADR:2026-10-14-relationship-types-reject-axioms-owl2-dl-cannot-express).
    */
   @Test
   void post_acceptsAsymmetricWithDistinctInverse_201(TestNamespace ns) {
-    RelationshipType target = createTransitive(ns, "distinctInverseTarget");
+    RelationshipType target =
+        SdkClients.adminClient()
+            .relationshipTypes()
+            .create(baseRequest(ns.prefix("distinctInverseTarget")));
     try {
       String name = ns.prefix("asymWithDistinctInverse");
       CreateRelationshipType request =

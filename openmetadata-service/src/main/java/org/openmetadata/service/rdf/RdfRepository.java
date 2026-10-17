@@ -545,6 +545,9 @@ public class RdfRepository {
           entity.getId());
       Model rdfModel = translator.toRdf(entity);
       storageService.storeEntity(entityType, entity.getId(), rdfModel);
+      if (OntologyGraphs.ownsGraph(entityType)) {
+        writeOntologyGraphs(List.of(entity));
+      }
       LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
     } catch (Exception e) {
       RdfProjectionHealth.markDegraded(e);
@@ -723,15 +726,60 @@ public class RdfRepository {
               + "/"
               + entityReference.getId();
 
-      String sparqlUpdate = buildEntityDeleteUpdate(entityUri);
-
-      storageService.executeSparqlUpdate(sparqlUpdate);
+      storageService.executeSparqlUpdate(buildEntityDeleteUpdate(entityUri));
+      // A separate request: Fuseki answers 400 to one request holding two pattern DELETEs.
+      storageService.executeSparqlUpdate(
+          buildOntologyGraphDeleteUpdate(
+              config.getBaseUri().toString(), entityReference.getType(), entityReference.getId()));
       LOG.debug("Deleted entity {} from RDF store", entityReference.getId());
     } catch (RuntimeException e) {
       RdfProjectionHealth.markDegraded(e);
       LOG.error("Failed to delete entity {} from RDF", entityReference.getId(), e);
       throw new IllegalStateException("Failed to delete entity from RDF", e);
     }
+  }
+
+  /**
+   * Replaces the graphs these ontology entities own, each in one transaction with its old content
+   * dropped. Entities of other types are ignored. See
+   * ADR:2026-10-14-ontology-entities-own-their-named-graphs.
+   */
+  public void writeOntologyGraphs(final List<? extends EntityInterface<?>> entities) {
+    if (!isEnabled() || entities == null || entities.isEmpty()) {
+      return;
+    }
+    final Map<String, Model> graphs =
+        new OntologyGraphProjection(config.getBaseUri(), projectionLoaders.ontologySources())
+            .graphs(entities);
+    try {
+      for (final String update :
+          OntologyGraphs.replaceUpdates(
+              graphs, RdfStorageInterface.resolveMaxUpdatePayloadBytes(config))) {
+        storageService.executeSparqlUpdate(update);
+      }
+    } catch (RuntimeException e) {
+      RdfProjectionHealth.markDegraded(e);
+      throw e;
+    } finally {
+      graphs.values().forEach(Model::close);
+    }
+  }
+
+  /**
+   * Drops the graph the entity owns, and removes the triples term graphs point at it with, such as
+   * a realization of a deleted asset on a term's class IRI.
+   */
+  static String buildOntologyGraphDeleteUpdate(
+      final String baseUri, final String entityType, final UUID entityId) {
+    final String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
+    final String incoming =
+        String.format(
+            "DELETE { GRAPH ?g { ?s ?p <%1$s> } } WHERE { GRAPH ?g { ?s ?p <%1$s> } "
+                + "FILTER(STRSTARTS(STR(?g), \"%2$s\")) }",
+            entityUri, OntologyGraphs.glossaryTermGraphPrefix(baseUri));
+    return OntologyGraphs.graphIri(baseUri, entityType, entityId)
+        .map(graph -> OntologyGraphs.dropUpdate(graph) + ";\n" + incoming)
+        .orElse(incoming);
   }
 
   public void addRelationship(EntityRelationship relationship) {
