@@ -23,6 +23,7 @@ import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { Key, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
+import { TAG_INPUT_COMBOBOX_PROPS } from '../../../../../constants/Form.constants';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
@@ -128,6 +129,7 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
         span={24}>
         <div className="tw:min-w-0 tw:flex-1">
           <Autocomplete
+            {...(options ? undefined : TAG_INPUT_COMBOBOX_PROPS)}
             multiple
             allowsCreation={!options}
             aria-label={startCase(props.name)}

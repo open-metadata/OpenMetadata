@@ -50,3 +50,15 @@ export const DISPLAY_NAME_FIELD_REGISTER_RULES = {
     message: DISPLAY_NAME_SIZE_MESSAGE,
   },
 };
+
+/**
+ * Spread onto a creatable `Autocomplete` that has no suggestion list
+ * (`hideDropdown`). An open react-aria combobox aria-hides the rest of the
+ * page, so a field with nothing to list must not open: it never opens on focus
+ * or typing, and react-stately closes an empty list that a click or arrow key
+ * opened. Without this, a fast type → Enter → move-on could leave it open.
+ */
+export const TAG_INPUT_COMBOBOX_PROPS = {
+  allowsEmptyCollection: false,
+  menuTrigger: 'manual',
+} as const;

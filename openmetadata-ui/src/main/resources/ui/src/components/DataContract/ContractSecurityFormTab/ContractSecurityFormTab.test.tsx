@@ -12,6 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -622,6 +623,28 @@ describe('ContractSecurityFormTab', () => {
       const form = container.querySelector('form');
 
       expect(form).toBeInTheDocument();
+    });
+
+    it('keeps a tag field collapsed so the rest of the form stays accessible', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const onSubmit = jest.fn((event: Event) => event.preventDefault());
+      const { container } = render(
+        <ContractSecurityFormTab {...commonProps} />
+      );
+      container.querySelector('form')?.addEventListener('submit', onSubmit);
+      const identities = within(
+        screen.getByTestId('identities-input-0')
+      ).getByRole('combobox');
+
+      await user.click(identities);
+      await user.type(identities, 'user1{Enter}');
+      await user.keyboard('{ArrowDown}');
+
+      expect(screen.getByText('user1')).toBeInTheDocument();
+      expect(identities).toHaveAttribute('aria-expanded', 'false');
+      // Role queries skip aria-hidden nodes, which an open combobox creates.
+      expect(screen.getByRole('button', { name: /next/i })).toBeInTheDocument();
+      expect(onSubmit).not.toHaveBeenCalled();
     });
 
     it('should have proper labels for form fields', () => {

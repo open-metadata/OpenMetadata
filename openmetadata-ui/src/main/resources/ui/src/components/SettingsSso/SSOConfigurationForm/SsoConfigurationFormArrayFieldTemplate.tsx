@@ -22,6 +22,7 @@ import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import { Key, KeyboardEvent, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TAG_INPUT_COMBOBOX_PROPS } from '../../../constants/Form.constants';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../constants/Services.constant';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSVPureUtils';
@@ -231,6 +232,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       </Grid.Item>
       <Grid.Item className="layout-column tw:mt-1" span={24}>
         <Autocomplete
+          {...(options ? undefined : TAG_INPUT_COMBOBOX_PROPS)}
           multiple
           allowsCreation={!options}
           aria-label={startCase(props.name)}
