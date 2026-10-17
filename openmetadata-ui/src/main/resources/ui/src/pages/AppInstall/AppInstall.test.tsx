@@ -146,10 +146,6 @@ jest.mock('../../rest/applicationMarketPlaceAPI', () => ({
 jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(),
 }));
-jest.mock('../../utils/SchedularUtils', () => ({
-  getIngestionFrequency: jest.fn(),
-}));
-
 jest.mock('../../utils/JSONSchemaFormUtils', () => ({
   formatFormDataForSubmit: jest.fn(() => mockFormatFormDataForSubmit()),
 }));

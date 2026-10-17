@@ -12,7 +12,6 @@
  */
 
 import { SlideoutMenu, Tabs } from '@openmetadata/ui-core-components';
-import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 
 import classNames from 'classnames';
 import { FC, useEffect, useState } from 'react';
@@ -64,46 +63,41 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
         }
       }}>
       <SlideoutMenu.Content role="region">
-        <DrawerPopupContainerProvider>
-          <div id="thread-panel">
-            <Tabs
-              className="tw:gap-4"
-              selectedKey={activeTab}
-              onSelectionChange={(key) => onTabChange(String(key))}>
-              <Tabs.List
-                className="tw:gap-8 tw:px-4"
-                size="sm"
-                type="underline">
-                <Tabs.Item id={PanelTab.TASKS}>
-                  {t('label.task-plural')}
-                </Tabs.Item>
-                <Tabs.Item id={PanelTab.CONVERSATIONS}>
-                  {t('label.conversation-plural')}
-                </Tabs.Item>
-              </Tabs.List>
-              <Tabs.Panel
-                className="tw:data-inert:hidden"
-                id={PanelTab.TASKS}
-                shouldForceMount={visitedTabs.has(PanelTab.TASKS)}>
-                <ActivityThreadPanelBody
-                  threadLink={threadLink}
-                  view="tasks"
-                  onCancel={onCancel}
-                />
-              </Tabs.Panel>
-              <Tabs.Panel
-                className="tw:data-inert:hidden"
-                id={PanelTab.CONVERSATIONS}
-                shouldForceMount={visitedTabs.has(PanelTab.CONVERSATIONS)}>
-                <ActivityThreadPanelBody
-                  threadLink={threadLink}
-                  view="conversations"
-                  onCancel={onCancel}
-                />
-              </Tabs.Panel>
-            </Tabs>
-          </div>
-        </DrawerPopupContainerProvider>
+        <div id="thread-panel">
+          <Tabs
+            className="tw:gap-4"
+            selectedKey={activeTab}
+            onSelectionChange={(key) => onTabChange(String(key))}>
+            <Tabs.List className="tw:gap-8 tw:px-4" size="sm" type="underline">
+              <Tabs.Item id={PanelTab.TASKS}>
+                {t('label.task-plural')}
+              </Tabs.Item>
+              <Tabs.Item id={PanelTab.CONVERSATIONS}>
+                {t('label.conversation-plural')}
+              </Tabs.Item>
+            </Tabs.List>
+            <Tabs.Panel
+              className="tw:data-inert:hidden"
+              id={PanelTab.TASKS}
+              shouldForceMount={visitedTabs.has(PanelTab.TASKS)}>
+              <ActivityThreadPanelBody
+                threadLink={threadLink}
+                view="tasks"
+                onCancel={onCancel}
+              />
+            </Tabs.Panel>
+            <Tabs.Panel
+              className="tw:data-inert:hidden"
+              id={PanelTab.CONVERSATIONS}
+              shouldForceMount={visitedTabs.has(PanelTab.CONVERSATIONS)}>
+              <ActivityThreadPanelBody
+                threadLink={threadLink}
+                view="conversations"
+                onCancel={onCancel}
+              />
+            </Tabs.Panel>
+          </Tabs>
+        </div>
       </SlideoutMenu.Content>
     </SlideoutMenu>
   );

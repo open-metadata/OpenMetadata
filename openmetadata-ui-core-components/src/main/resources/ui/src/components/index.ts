@@ -70,6 +70,7 @@ export * from './base/input/label';
 export * from './base/input/password-input';
 export * from './base/progress-indicators/progress-circles';
 export * from './base/progress-indicators/progress-indicators';
+export * from './base/progress-indicators/run-history-bar';
 export * from './base/progress-indicators/simple-circle';
 export * from './base/radio-buttons/radio-buttons';
 export * from './base/select/combobox';

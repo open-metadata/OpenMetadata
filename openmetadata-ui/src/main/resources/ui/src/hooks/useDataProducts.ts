@@ -15,6 +15,7 @@ import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { EntityReference } from '../generated/entity/type';
 import { getAllDataProductsWithAssetsCount } from '../rest/dataProductAPI';
 import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { getAggregations } from '../utils/ExplorePureUtils';
@@ -40,7 +41,8 @@ export interface DataProductSummary {
   name: string;
   fullyQualifiedName: string;
   domainName?: string;
-  ownerName?: string;
+  /** Every owner, users and teams alike; empty when the product has none. */
+  owners: EntityReference[];
   assetCount: number;
   /** Only ever compared, never formatted — so the epoch unit does not matter. */
   updatedAt: number;
@@ -70,7 +72,7 @@ interface DataProductSource {
   displayName?: string;
   fullyQualifiedName: string;
   domains?: Array<{ displayName?: string; name?: string }>;
-  owners?: Array<{ displayName?: string; name?: string }>;
+  owners?: EntityReference[];
   updatedAt?: number;
 }
 
@@ -163,7 +165,7 @@ export const useDataProducts = (
         fullyQualifiedName: source.fullyQualifiedName,
         id: source.id,
         name: source.displayName || source.name,
-        ownerName: firstName(source.owners),
+        owners: source.owners ?? [],
         updatedAt: source.updatedAt ?? 0,
       })),
     [listData, counts]

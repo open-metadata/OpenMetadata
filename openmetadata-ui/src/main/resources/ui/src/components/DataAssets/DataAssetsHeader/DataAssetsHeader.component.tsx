@@ -28,7 +28,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { get, isEmpty, isUndefined, toLower } from 'lodash';
+import { get, isEmpty, isUndefined } from 'lodash';
 import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,7 +49,6 @@ import {
   CustomizeEntityType,
   ENTITY_PAGE_TYPE_MAP,
 } from '../../../constants/Customize.constants';
-import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import {
   EXCLUDE_AUTO_PILOT_SERVICE_TYPES,
   SERVICE_TYPES,
@@ -84,7 +83,6 @@ import {
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
 } from '../../../utils/DataAssetsHeader.utils';
-import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -111,9 +109,11 @@ import { getGlossaryHomeCrumb } from '../../common/HeaderBreadcrumb/HeaderBreadc
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumbSkeleton from '../../common/Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
+import ChangeRequestsIndicator from '../../PendingChanges/ChangeRequestsIndicator.component';
 import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { TagChipTooltip } from '../../Tag/TagChipTooltip/TagChipTooltip';
@@ -538,7 +538,7 @@ export const DataAssetsHeader = ({
     [permissions]
   );
   const {
-    canEditAll: editDomainPermission,
+    canEditDomains: editDomainPermission,
     canEditOwners: editOwnerPermission,
     canEditTier: editTierPermission,
     can,
@@ -628,39 +628,20 @@ export const DataAssetsHeader = ({
         ContractExecutionStatus.Running,
       ].includes(dataContract?.latestResult?.status)
     ) {
-      const IconComponent = getDataContractStatusIcon(
-        dataContract?.latestResult?.status
-      );
-
       return (
-        <Button
-          className={classNames(
-            'data-contract-latest-result-button',
-            toLower(dataContract?.latestResult?.status),
-            CONTRACT_RESULT_BUTTON_CLASS[dataContract.latestResult.status]
+        <ContractLatestResultBadge
+          href={getEntityDetailsPath(
+            entityType,
+            dataAsset?.fullyQualifiedName ?? '',
+            EntityTabs.CONTRACT
           )}
-          color="secondary"
-          data-testid="data-contract-latest-result-btn"
-          iconLeading={IconComponent}
-          size="sm"
-          onPress={() => {
-            navigate(
-              getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.CONTRACT
-              )
-            );
-          }}>
-          {t(`label.entity-${toLower(dataContract?.latestResult?.status)}`, {
-            entity: t('label.contract'),
-          })}
-        </Button>
+          status={dataContract.latestResult.status}
+        />
       );
     }
 
     return null;
-  }, [dataContract, customizedPage?.tabs, entityType, dataAsset, navigate, t]);
+  }, [dataContract, customizedPage?.tabs, entityType, dataAsset]);
 
   const triggerTheAutoPilotApplication = useCallback(async () => {
     try {
@@ -1293,6 +1274,10 @@ export const DataAssetsHeader = ({
             {dataContractLatestResultButton}
             {sourceUrlButton}
             {tableClassBase.getRequestDataAccessButton()}
+            <ChangeRequestsIndicator
+              entityId={dataAsset.id ?? ''}
+              entityType={entityType}
+            />
             {headerActions}
             {renderManageButton()}
           </div>

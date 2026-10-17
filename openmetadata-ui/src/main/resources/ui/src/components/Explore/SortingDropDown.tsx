@@ -50,7 +50,7 @@ const SortingDropDown: React.FC<SortingDropdownProps> = ({
         hideFocusOutline
         color="tertiary"
         data-testid="sorting-dropdown-label"
-        iconTrailing={<ChevronDown size={14} />}
+        iconTrailing={ChevronDown}
         size="sm">
         {selectedField?.name}
       </Button>

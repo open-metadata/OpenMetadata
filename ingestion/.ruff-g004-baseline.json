@@ -1034,9 +1034,6 @@
       "d27504e6976da850f3db07937978cd7e2ddfaa9296455493d8c8d756ada02522": 1,
       "ff7a916bde08e5440eb178cf565f113352444c8f45e789347215e2160dc935e7": 1
     },
-    "ingestion/src/metadata/ingestion/source/database/athena/query_parser.py": {
-      "2104fab91c5d9c47d447c2f5656e456582eb23ef1cfb07861b9619bbcc68581a": 1
-    },
     "ingestion/src/metadata/ingestion/source/database/athena/utils.py": {
       "228fdd22d97c9d9ef36c3b2662bf575548c3e8cbd79d4899a64df235428c7f2e": 1
     },
@@ -1322,7 +1319,6 @@
       "d217bcf170aaf20d9a78b779479122f13e8798603228a611a8b92b9f598eaefe": 1,
       "d7fc75c409158f7153590d5036a41739494885ead4708016649b1853137726c4": 1,
       "d97883ae506506b171ad6e092231e81bf0a7490804d4cff0b280a34e3bafd49b": 1,
-      "dd2c3fe1aa7a99ffb6426d24780fd473ced62f114b604d874d48d6e9afb1c25e": 1,
       "e82fc183bac4dd339db909b54dbdfba2712eb00dcc4571748992885ceec708c5": 1,
       "eb8aebf1cce9e9846f61c7198e27b8da6680421e05486b177efee6a5a4a2f9a1": 1,
       "edfdaab09570c71df28d333f3a444f604b327f9b8c20677f27770272e66cf5ee": 1,
@@ -1334,14 +1330,6 @@
       "f8b27aa4c8fdec1d1cfb3ebce6dbb8c8f8e29e4c4811399225ebaa7d910d767e": 1,
       "fb990aac4e9fa07e0460c6e4ce1c8f394da71fc504fb7391661f8f43c5df978e": 1,
       "fbde94f68430954d787c9d4b82c9b84e6f4e38c0de4d239beb2e8827d978d249": 1
-    },
-    "ingestion/src/metadata/ingestion/source/database/deltalake/clients/pyspark.py": {
-      "5fe199ad8789ed621a64d2ca65ee4ee8c6cfbf65c0929c3dae3eafb7fcd9b642": 1,
-      "8df9996712b230b4ec453a8b4a4e751c925ed0ec755bdf90e010ddbfb0436afc": 1,
-      "8e681634f906433b29d8ebf74abc6a7c4b3d8c1ab2c0286c72bf6c3ad7cb4f9a": 1
-    },
-    "ingestion/src/metadata/ingestion/source/database/deltalake/metadata.py": {
-      "02495aeed04567a4ddad690f2f6bf30d6aa69b41ac6a860605964acd3de18a1c": 1
     },
     "ingestion/src/metadata/ingestion/source/database/domodatabase/metadata.py": {
       "297cc807e5b41caa170559b937d5d58c17fe8ad06bc46efba29fadf95a93f041": 1,
@@ -1427,7 +1415,6 @@
     "ingestion/src/metadata/ingestion/source/database/mssql/metadata.py": {
       "0cdae4e9136eac8b7950955b9c0a6dadcb63e50765f22720c7b7582f0b10ad07": 1,
       "38ecf83f97228f760468d7df742c1ea26597528b79b6da2588a926e7b446ef11": 1,
-      "c16d7d50332fc01123413a15a62aa01e60abb0861ed58798cf12a2c65b8d914e": 1,
       "ec4b878de4bb65df9cad645911f66d9bd983b30377325636e9b063a9cbef1005": 1
     },
     "ingestion/src/metadata/ingestion/source/database/mysql/metadata.py": {

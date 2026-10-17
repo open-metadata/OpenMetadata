@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
@@ -182,7 +182,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>4.4.0</version>
+      <version>${java-jwt.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Playwright Java for UI integration tests (*UIIT.java) -->
@@ -449,6 +449,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -499,6 +505,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -581,6 +593,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -631,6 +649,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -714,6 +738,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -765,6 +795,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -848,6 +884,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -898,6 +940,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -980,6 +1028,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1030,6 +1084,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1111,6 +1171,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1162,6 +1228,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1260,6 +1332,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1312,6 +1390,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1400,6 +1484,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1451,6 +1541,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>

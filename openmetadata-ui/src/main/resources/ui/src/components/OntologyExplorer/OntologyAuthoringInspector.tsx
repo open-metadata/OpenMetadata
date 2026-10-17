@@ -126,7 +126,6 @@ const SECTION_ADD_TEST_IDS: Record<SectionKey, string> = {
 };
 
 const EXTERNAL_SCHEME_SUGGESTIONS = ['schema', 'wikidata', 'fibo', 'snomed'];
-
 // Hierarchy edges are derived from the term's parent, so no relationship type declares their inverse.
 const HIERARCHY_INVERSES: Record<string, string> = {
   childOf: 'parentOf',
@@ -865,13 +864,9 @@ const OntologyAuthoringInspector = ({
             : undefined
         }
       />
-      {relations.length === 0 ? (
-        <InspectorEmptyText>
-          {t('message.no-concept-relationships')}
-        </InspectorEmptyText>
-      ) : (
+      {relations.length > 0 ? (
         <InspectorList>{relations.map(renderRelationRow)}</InspectorList>
-      )}
+      ) : null}
       {isEditable && openSection === 'relationships'
         ? renderRelationshipForm()
         : null}
@@ -890,11 +885,7 @@ const OntologyAuthoringInspector = ({
             : undefined
         }
       />
-      {conceptMappings.length === 0 ? (
-        <InspectorEmptyText>
-          {t('message.no-concept-mappings')}
-        </InspectorEmptyText>
-      ) : (
+      {conceptMappings.length > 0 ? (
         <InspectorList>
           {conceptMappings.map((mapping, index) => {
             const scheme = getMappingScheme(mapping.conceptIri);
@@ -936,7 +927,7 @@ const OntologyAuthoringInspector = ({
             );
           })}
         </InspectorList>
-      )}
+      ) : null}
       {isEditable && openSection === 'mappings' ? renderMappingForm() : null}
     </InspectorSection>
   );

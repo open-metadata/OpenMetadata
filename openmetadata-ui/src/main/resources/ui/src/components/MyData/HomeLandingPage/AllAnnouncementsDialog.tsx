@@ -31,21 +31,24 @@ import {
 import AnnouncementCard from './AnnouncementCard';
 import { compareAnnouncements } from './announcementLifecycle';
 
-export const ALL_ANNOUNCEMENTS_QUERY_KEY = [
+const ALL_ANNOUNCEMENTS_QUERY_KEY = [
   'landingPage',
   'announcements',
   'all',
+  'active',
 ] as const;
 const ALL_ANNOUNCEMENTS_TTL_MS = 60_000;
 
-// The rail shows only live announcements, so this list is the one place expired
-// and scheduled ones surface. It grows without bound as announcements expire,
-// so it is paged on the API's `after` cursor rather than capped at one fetch —
-// a cap would silently drop the oldest with nothing telling the user so.
+// Every live announcement — the full version of the rail, which shows two at a
+// time. Expired and scheduled ones stay out: the section itself only appears
+// while something is live, so it is no place for them; each asset's
+// Announcements drawer lists those. Paged on the API's `after` cursor rather
+// than capped at one fetch, so a busy estate never silently loses the rest.
 export const ALL_ANNOUNCEMENTS_PAGE_SIZE = 50;
 
 const fetchAnnouncementsPage = ({ pageParam }: { pageParam?: string }) =>
   listAnnouncements({
+    active: true,
     limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
     after: pageParam,
     system: false,
@@ -68,7 +71,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
   const { t } = useTranslation();
 
   // Deferred until the dialog is opened — most sessions never open it, and the
-  // rail's active-only query already covers the default view.
+  // rail's own query already covers the first few.
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
     useInfiniteQuery({
       enabled: open,
@@ -130,6 +133,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
                 announcement={announcement}
                 className="tw:w-full"
                 onDismiss={onDismiss}
+                onNavigate={onClose}
               />
             </li>
           ))}
@@ -159,8 +163,11 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
         }
       }}>
       <Modal>
-        <Dialog showCloseButton width={720} onClose={onClose}>
-          <Dialog.Header>
+        <Dialog showCloseButton dividers="scroll" width={720} onClose={onClose}>
+          {/* Bottom padding keeps a gap under the heading while the list
+            scrolls beneath it; the content's own bottom padding keeps the
+            last card off the dialog's edge, since there is no footer. */}
+          <Dialog.Header className="tw:pb-4">
             <div className="tw:flex tw:items-center tw:gap-3">
               <div className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-700">
                 <Announcement02 height={16} width={16} />
@@ -181,7 +188,7 @@ const AllAnnouncementsDialog: React.FC<AllAnnouncementsDialogProps> = ({
             </div>
           </Dialog.Header>
 
-          <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overscroll-contain">
+          <Dialog.Content className="tw:max-h-[60vh] tw:overflow-y-auto tw:overscroll-contain tw:pb-6 tw:sm:pb-6">
             {renderBody()}
           </Dialog.Content>
         </Dialog>

@@ -89,6 +89,24 @@ describe('HoverCard', () => {
     expect(screen.queryByText('Profile')).toBeNull();
   });
 
+  it('stays open while keyboard focus moves from the trigger into the card', () => {
+    renderCard({ openDelay: 0, closeDelay: 200 });
+
+    fireEvent.keyDown(document.body, { key: 'Tab' });
+    act(() => screen.getByText('Jane').focus());
+    advance(0);
+
+    act(() => screen.getByText('Profile').focus());
+    advance(500);
+
+    expect(screen.getByText('Profile')).toBeInTheDocument();
+
+    act(() => screen.getByText('Profile').blur());
+    advance(500);
+
+    expect(screen.queryByText('Profile')).toBeNull();
+  });
+
   it('never opens when disabled', () => {
     renderCard({ isDisabled: true, openDelay: 0 });
 

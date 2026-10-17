@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Card,
   EmptyPlaceholder,
   Typography,
@@ -29,7 +30,6 @@ import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
-import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -39,19 +39,17 @@ import {
   WorkflowStatus,
 } from '../../../../../generated/governance/workflows/workflowInstanceState';
 import {
-  getWorkflowInstancesForApplication,
-  getWorkflowInstanceStateById,
-} from '../../../../../rest/workflowAPI';
-import {
   getCurrentMillis,
   getEpochMillisForPastDays,
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
+import { getLatestWorkflowRun } from './WorkflowHistory.utils';
 
 interface WorkflowHistoryProps {
   glossaryTerm?: GlossaryTerm;
@@ -96,6 +94,7 @@ const WorkflowHistory = memo(
     const [workflowHistory, setWorkflowHistory] = useState<
       WorkflowInstanceState[]
     >([]);
+    const [workflowName, setWorkflowName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     // Collapse only when status is approved
@@ -118,42 +117,21 @@ const WorkflowHistory = memo(
 
       setIsLoading(true);
       try {
-        const startTs = getEpochMillisForPastDays(180);
-        const endTs = getCurrentMillis();
+        const timeRange = {
+          startTs: getEpochMillisForPastDays(180),
+          endTs: getCurrentMillis(),
+        };
         const entityLink = createGlossaryTermEntityLink(
           glossaryTerm.fullyQualifiedName
         );
 
-        // First, get workflow instances
-        const instancesResponse = await getWorkflowInstancesForApplication({
-          startTs,
-          endTs,
-          entityLink,
-          workflowDefinitionName:
-            GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
-        });
+        const latestRun = await getLatestWorkflowRun(entityLink, timeRange);
 
-        const instances = instancesResponse.data || [];
-
-        if (instances.length === 0) {
-          setWorkflowHistory([]);
-
-          return;
-        }
-
-        // Then fetch detailed states for each instance
-        const statesPromises = await getWorkflowInstanceStateById(
-          GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
-          instances[0]?.id ?? '',
-          {
-            startTs,
-            endTs,
-          }
-        );
-        const reverseStates = statesPromises.data.reverse();
-        setWorkflowHistory(reverseStates);
+        setWorkflowName(getEntityName(latestRun?.definition));
+        setWorkflowHistory(latestRun?.states ?? []);
       } catch (error) {
         showErrorToast(error as string);
+        setWorkflowName('');
         setWorkflowHistory([]);
       } finally {
         setIsLoading(false);
@@ -278,18 +256,37 @@ const WorkflowHistory = memo(
             aria-label={workflowHistoryLabel}
             className="tw:flex tw:w-full tw:cursor-pointer tw:flex-col tw:gap-2 tw:rounded-md tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
             onPress={toggleCollapse}>
-            <div className="workflow-header tw:flex tw:w-full tw:items-center tw:justify-between">
+            <Box
+              align="center"
+              className="workflow-header tw:w-full"
+              gap={2}
+              justify="between">
+              <Box className="tw:min-w-0" direction="col">
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="medium">
+                  {workflowHistoryLabel}
+                </Typography>
+                {workflowName && (
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:text-tertiary"
+                    data-testid="workflow-history-workflow-name"
+                    size="text-xs"
+                    title={workflowName}>
+                    {workflowName}
+                  </Typography>
+                )}
+              </Box>
               <Typography
                 as="span"
-                className="tw:text-primary"
-                size="text-sm"
-                weight="medium">
-                {workflowHistoryLabel}
-              </Typography>
-              <Typography as="span" className="tw:text-tertiary" size="text-sm">
+                className="tw:shrink-0 tw:text-tertiary"
+                size="text-sm">
                 {completedSteps}/{totalSteps}
               </Typography>
-            </div>
+            </Box>
             <div className="workflow-progress tw:w-full">
               <div className="workflow-steps">{workflowSteps}</div>
             </div>
@@ -304,6 +301,7 @@ const WorkflowHistory = memo(
     }, [
       isLoading,
       workflowHistory,
+      workflowName,
       completedSteps,
       totalSteps,
       workflowSteps,
