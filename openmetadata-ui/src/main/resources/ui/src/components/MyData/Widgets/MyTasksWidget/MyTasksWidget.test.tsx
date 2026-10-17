@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
