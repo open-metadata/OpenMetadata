@@ -167,6 +167,34 @@ test.describe(
   'Native ontology review',
   { tag: ['@Features', '@Governance'] },
   () => {
+    for (const status of [403, 404]) {
+      test(`returns to glossary Studio when an ontology deep link fails with ${status}`, async ({
+        freshUserPage: { page },
+      }) => {
+        const ontologyId = fullUuid();
+        const ontologyPath = `/api/v1/ontologies/${ontologyId}`;
+        await page.route(`**${ontologyPath}?*`, (route) =>
+          route.fulfill({ status, json: { message: 'Ontology unavailable' } })
+        );
+        const loading = page.waitForResponse(
+          (response) => new URL(response.url()).pathname === ontologyPath
+        );
+        await page.goto(
+          `/governance/ontology?ontology=${ontologyId}&draft=${fullUuid()}&source=context-center`
+        );
+
+        expect((await loading).status()).toBe(status);
+        await expect(page).toHaveURL(
+          /\/governance\/ontology\?source=context-center$/
+        );
+        await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
+          'aria-selected',
+          'true'
+        );
+        await expect(page.getByTestId('ontology-explorer')).toBeVisible();
+      });
+    }
+
     test('reviews frozen release contents and blocks approval when they cannot be loaded', async ({
       freshUserPage: { page, user },
     }, testInfo) => {
