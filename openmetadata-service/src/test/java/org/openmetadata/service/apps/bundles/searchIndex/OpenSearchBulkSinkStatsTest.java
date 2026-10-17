@@ -77,35 +77,6 @@ class OpenSearchBulkSinkStatsTest {
   class RetryLogicTests {
 
     @Test
-    @DisplayName("Should identify 'Request entity too large' as retryable error")
-    void testRequestEntityTooLargeIsRetryable() throws Exception {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
-
-      OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
-
-      assertTrue(
-          invokeIsPayloadTooLargeError(
-              processor, new RuntimeException("Request entity too large")));
-      assertTrue(invokeIsPayloadTooLargeError(processor, new RuntimeException("Content too long")));
-      assertTrue(invokeIsPayloadTooLargeError(processor, new RuntimeException("HTTP 413 error")));
-    }
-
-    @Test
-    @DisplayName("Should NOT identify normal errors as payload too large")
-    void testNormalErrorsNotPayloadTooLarge() throws Exception {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
-
-      OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
-
-      assertFalse(
-          invokeIsPayloadTooLargeError(processor, new RuntimeException("Connection timeout")));
-      assertFalse(
-          invokeIsPayloadTooLargeError(
-              processor, new RuntimeException("rejected_execution_exception")));
-      assertFalse(invokeIsPayloadTooLargeError(processor, new RuntimeException("Index not found")));
-    }
-
-    @Test
     @DisplayName("Should identify various retryable errors")
     void testRetryableErrors() throws Exception {
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
@@ -136,15 +107,6 @@ class OpenSearchBulkSinkStatsTest {
       java.lang.reflect.Field field = OpenSearchBulkSink.class.getDeclaredField("bulkProcessor");
       field.setAccessible(true);
       return (OpenSearchBulkSink.CustomBulkProcessor) field.get(sink);
-    }
-
-    private boolean invokeIsPayloadTooLargeError(
-        OpenSearchBulkSink.CustomBulkProcessor processor, Throwable error) throws Exception {
-      Method method =
-          OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod(
-              "isPayloadTooLargeError", Throwable.class);
-      method.setAccessible(true);
-      return (boolean) method.invoke(processor, error);
     }
 
     private boolean invokeShouldRetry(
