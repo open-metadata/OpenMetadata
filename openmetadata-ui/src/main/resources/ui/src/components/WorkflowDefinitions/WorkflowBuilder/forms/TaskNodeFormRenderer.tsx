@@ -18,6 +18,7 @@ import { NodeSubType } from '../../../../generated/governance/workflows/elements
 import { NodeType } from '../../../../generated/governance/workflows/elements/nodeType';
 import { CheckChangeDescriptionForm } from './CheckChangeDescriptionForm';
 import { CheckConditionForm } from './CheckConditionForm';
+import { CollectMetadataForm } from './CollectMetadataForm';
 import { DataCompletenessForm } from './DataCompletenessForm';
 import { EndNodeForm } from './EndNodeForm';
 import { RevertBackForm } from './RevertBackForm';
@@ -90,6 +91,15 @@ export const TaskNodeFormRenderer: React.FC<TaskNodeFormRendererProps> = ({
     ),
     [NodeSubType.DataCompletenessTask]: (
       <DataCompletenessForm
+        entityTypes={entityTypes}
+        node={node}
+        onClose={onClose}
+        onDelete={onDelete}
+        onSave={onSave}
+      />
+    ),
+    [NodeSubType.CollectMetadataTask]: (
+      <CollectMetadataForm
         entityTypes={entityTypes}
         node={node}
         onClose={onClose}

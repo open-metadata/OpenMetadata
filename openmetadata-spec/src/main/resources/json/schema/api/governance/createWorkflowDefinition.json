@@ -5,11 +5,16 @@
   "description": "Create Workflow Definition entity request",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.governance.CreateWorkflowDefinition",
-  "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
   "definitions": {
     "workflowConfiguration": {
       "type": "object",
       "properties": {
+        "lifecycle": {
+          "$ref": "../../governance/workflows/lifecycleConfiguration.json"
+        },
         "storeStageStatus": {
           "title": "Storage Workflow Stage Status",
           "description": "If True, all the stage status will be stored in the database.",
@@ -18,7 +23,9 @@
         }
       },
       "additionalProperties": false,
-      "required": ["storeStageStatus"]
+      "required": [
+        "storeStageStatus"
+      ]
     }
   },
   "properties": {
@@ -67,6 +74,9 @@
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/checkEntityAttributesTask.json"
           },
           {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/dataCompletenessTask.json"
+          },
+          {
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/setEntityAttributeTask.json"
           },
           {
@@ -83,6 +93,9 @@
           },
           {
             "$ref": "../../governance/workflows/elements/nodes/automatedTask/createAndRunAIAutomationTask.json"
+          },
+          {
+            "$ref": "../../governance/workflows/elements/nodes/automatedTask/collectMetadataTask.json"
           }
         ]
       }
@@ -94,8 +107,10 @@
         "$ref": "../../governance/workflows/elements/edge.json"
       }
     }
-
   },
-  "required": ["name", "description"],
+  "required": [
+    "name",
+    "description"
+  ],
   "additionalProperties": false
 }

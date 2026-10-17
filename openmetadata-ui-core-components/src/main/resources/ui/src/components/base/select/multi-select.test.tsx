@@ -22,11 +22,15 @@ const ITEMS: SelectItemType[] = [
   { id: 'topic', label: 'Topic' },
 ];
 
-const Example = () => {
-  const selected = useListData<SelectItemType>({ initialItems: [] });
+const Example = ({ showTagAvatars }: { showTagAvatars?: boolean }) => {
+  const selected = useListData<SelectItemType>({ initialItems: [ITEMS[0]] });
 
   return (
-    <MultiSelect items={ITEMS} label="Entities" selectedItems={selected}>
+    <MultiSelect
+      items={ITEMS}
+      label="Entities"
+      selectedItems={selected}
+      showTagAvatars={showTagAvatars}>
       {(item) => (
         <MultiSelect.Item id={item.id} textValue={item.label}>
           {item.label}
@@ -56,5 +60,17 @@ describe('MultiSelect', () => {
     );
 
     expect(popover?.style.width).toBe('321px');
+  });
+
+  it('shows an avatar on each chip unless told the items are not people', () => {
+    const { container, unmount } = render(<Example />);
+
+    expect(container.querySelectorAll('[data-avatar]')).toHaveLength(1);
+
+    unmount();
+    const hidden = render(<Example showTagAvatars={false} />);
+
+    expect(screen.getByText('Table')).toBeInTheDocument();
+    expect(hidden.container.querySelectorAll('[data-avatar]')).toHaveLength(0);
   });
 });

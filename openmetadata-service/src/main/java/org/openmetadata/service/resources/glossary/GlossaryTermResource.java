@@ -74,10 +74,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -97,6 +95,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -1022,20 +1021,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    authorizeBulkAssetsPermission(
-        securityContext,
-        permissionAssets(request.getAssets()),
-        MetadataOperation.EDIT_GLOSSARY_TERMS);
-    TagLabel label = glossaryLabel(id);
-    List<BulkResponse> held =
-        ApprovalGate.holdGatedAssets(
-            request.getAssets(),
-            Entity.FIELD_TAGS,
-            securityContext.getUserPrincipal().getName(),
-            Boolean.TRUE.equals(request.getDryRun()),
-            asset -> asset.setTags(ApprovalGate.withTag(asset.getTags(), label)));
     return ApprovalGate.bulkResponse(
-        ApprovalGate.withHeld(repository.bulkAddAndValidateGlossaryToAssets(id, request), held),
+        repository.bulkAddAndValidateGlossaryToAssets(
+            id, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -1097,52 +1085,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    authorizeBulkAssetsPermission(
-        securityContext,
-        permissionAssets(request.getAssets()),
-        MetadataOperation.EDIT_GLOSSARY_TERMS);
-    String termFqn = glossaryLabel(id).getTagFQN();
-    List<BulkResponse> held =
-        ApprovalGate.holdGatedAssets(
-            request.getAssets(),
-            Entity.FIELD_TAGS,
-            securityContext.getUserPrincipal().getName(),
-            Boolean.TRUE.equals(request.getDryRun()),
-            asset -> asset.setTags(ApprovalGate.withoutTag(asset.getTags(), termFqn)));
     return ApprovalGate.bulkResponse(
-        ApprovalGate.withHeld(repository.bulkRemoveGlossaryToAssets(id, request), held),
+        repository.bulkRemoveGlossaryToAssets(
+            id, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
-  }
-
-  private static TagLabel glossaryLabel(UUID termId) {
-    return new TagLabel()
-        .withTagFQN(
-            Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, termId, Include.NON_DELETED)
-                .getFullyQualifiedName())
-        .withSource(TagLabel.TagSource.GLOSSARY)
-        .withLabelType(TagLabel.LabelType.MANUAL);
-  }
-
-  /**
-   * Table columns are surfaced as {@code tableColumn} assets (e.g. on a glossary term's Assets page)
-   * but are edited through their parent table — they are not a resource with their own permissions.
-   * Present them as tables for the type-level permission check so a caller who may edit the table's
-   * glossary terms may edit its columns' too. The original references reach the repository unchanged,
-   * so the tag is still applied to / removed from the column itself. Package-private for unit tests.
-   */
-  List<EntityReference> permissionAssets(List<EntityReference> assets) {
-    if (nullOrEmpty(assets)) {
-      return assets;
-    }
-    return assets.stream()
-        .map(
-            asset ->
-                Entity.TABLE_COLUMN.equals(asset.getType())
-                    ? new EntityReference()
-                        .withType(Entity.TABLE)
-                        .withFullyQualifiedName(asset.getFullyQualifiedName())
-                    : asset)
-        .toList();
   }
 
   @GET
