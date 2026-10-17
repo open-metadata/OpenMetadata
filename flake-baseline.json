@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-16T03:43:04Z",
+  "generatedAt": "2026-10-17T03:35:44Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37406058596",
-      "sourceSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
-      "recordedAt": "2026-10-06T03:22:53Z"
-    },
     {
       "runId": "37564201661",
       "sourceSha": "2df41a00f37449606a076ee057fd5b8dca1ef82f",
@@ -53,6 +48,11 @@
       "runId": "38842001693",
       "sourceSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
       "recordedAt": "2026-10-16T03:43:04Z"
+    },
+    {
+      "runId": "38996045093",
+      "sourceSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
+      "recordedAt": "2026-10-17T03:35:44Z"
     }
   ],
   "entries": {
@@ -76,14 +76,14 @@
       "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
-    "Basic :: Flow/Metric.spec.ts :: Metric Entity Special Test Cases \u203a verify metric expression update": {
+    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database": {
       "observations": [
-        "37406058596"
+        "38996045093"
       ],
-      "project": "Basic",
-      "file": "Flow/Metric.spec.ts",
-      "title": "Metric Entity Special Test Cases \u203a verify metric expression update",
-      "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
+      "project": "ImportExport",
+      "file": "Features/BulkImport.spec.ts",
+      "title": "Bulk Import Export \u203a Database",
+      "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
       "hardFailure": false
     },
     "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service": {
@@ -146,16 +146,6 @@
       "lastSeenSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
       "hardFailure": false
     },
-    "chromium :: Features/RestoreEntityInheritedFields.spec.ts :: DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned": {
-      "observations": [
-        "37406058596"
-      ],
-      "project": "chromium",
-      "file": "Features/RestoreEntityInheritedFields.spec.ts",
-      "title": "DashboardDataModel \u203a Validate restore with Inherited domain and data products assigned",
-      "lastSeenSha": "0328cf7323da424c7f646fc6b6f43251073897d6",
-      "hardFailure": false
-    },
     "chromium :: Features/Tasks/TaskNavigation.spec.ts :: Task Navigation - Activity Feed Widget \u203a task link should contain correct entity FQN, not task ID": {
       "observations": [
         "38842001693"
@@ -194,6 +184,16 @@
       "file": "Pages/DataContracts.spec.ts",
       "title": "Data Contracts \u203a Add and update Security and SLA tabs",
       "lastSeenSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
+      "hardFailure": false
+    },
+    "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for Database Schema": {
+      "observations": [
+        "38996045093"
+      ],
+      "project": "chromium",
+      "file": "Pages/DataContracts.spec.ts",
+      "title": "Data Contracts \u203a Create Data Contract and validate for Database Schema",
+      "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
       "hardFailure": false
     },
     "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set": {
