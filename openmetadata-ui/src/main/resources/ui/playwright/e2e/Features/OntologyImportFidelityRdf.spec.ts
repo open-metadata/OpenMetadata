@@ -303,7 +303,7 @@ test.describe('Ontology import fidelity', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('imported glossary terms export as SKOS concepts regardless of their source vocabulary', async ({
+  test('imported glossary terms export as SKOS concepts and preserve their source OWL declarations', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -315,16 +315,18 @@ test.describe('Ontology import fidelity', { tag: ['@ontology-rdf'] }, () => {
 
       expect(response.ok(), await response.text()).toBe(true);
 
-      const turtle = await response.text();
-      for (const localName of ['PureConcept', 'PureClass']) {
-        const conceptTypes = turtle
-          .split(/\n\s*\n/)
-          .find((block) => block.includes(`<${NS}${localName}>`));
+      const blocks = (await response.text()).split(/\n\s*\n/);
+      const pureConcept = blocks.find((block) =>
+        block.startsWith(`<${NS}PureConcept>`)
+      );
+      const pureClass = blocks.find((block) =>
+        block.startsWith(`<${NS}PureClass>`)
+      );
 
-        expect(conceptTypes, `${localName} is exported`).toBeDefined();
-        expect(conceptTypes).toContain('skos:Concept');
-        expect(conceptTypes).not.toContain('owl:Class');
-      }
+      expect(pureConcept).toContain('skos:Concept');
+      expect(pureConcept).not.toContain('owl:Class');
+      expect(pureClass).toContain('skos:Concept');
+      expect(pureClass).toContain('owl:Class');
     } finally {
       await afterAction();
     }
