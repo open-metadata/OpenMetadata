@@ -261,7 +261,6 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.lock.HierarchicalLockManager;
-import org.openmetadata.service.rdf.RdfTagUpdater;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -269,7 +268,6 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.PropagationDescriptor;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
@@ -288,7 +286,6 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
-import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -5820,82 +5817,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return new ResultList<>(entities, errors, beforeCursor, afterCursor, total);
   }
 
-  /**
-   * Run {@code flushBody} as a single JDBI transaction, wrapped in deadlock retry. The
-   * {@code DeadlockRetry.execute} layer is OUTER (each replay opens a fresh handle) and
-   * {@code inTransaction} is INNER, matching the {@code DeadlockRetry} contract that the operation
-   * opens its own transaction. The handle-bound {@link CollectionDAO} is exposed through {@link
-   * RepositoryTransactionContext} for mutations that must share this transaction.
-   *
-   * <p>No network side effect (RDF/SPARQL, Elasticsearch, Redis L2) may run inside {@code flushBody}
-   * — a pooled connection is held for the whole body, so a network round trip there would pin the
-   * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
-   * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
-   * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
-   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
-   * cheap local Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens
-   * post-commit on the request thread (read-your-write safe).
-   *
-   * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
-   * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
-   * in favor of the async snapshot writer ({@code RdfUpdater.updateEntity}), so the scope always
-   * drains an empty closure list today. Left in place rather than torn out here — see the PR
-   * description for the follow-up to remove it along with {@code ownsRdf}/{@code rdfCheckpoint}.
-   */
-  private void runInTransactionWithRetry(Runnable flushBody) {
-    boolean ownsRetry = enterRetryableBoundary();
-    try {
-      if (!ownsRetry) {
-        flushBody.run();
-        return;
-      }
-      DeadlockRetry.execute(
-          () ->
-              Entity.getJdbi()
-                  .inTransaction(
-                      handle ->
-                          TransactionRollbackTracker.runAttempt(
-                              () -> {
-                                RepositoryTransactionContext.runWith(
-                                    handle.attach(CollectionDAO.class), flushBody);
-                                return null;
-                              })));
-    } finally {
-      exitRetryableBoundary(ownsRetry);
-    }
-  }
-
-  /**
-   * True while a retryable transaction boundary is already open on this thread.
-   *
-   * <p>JDBI joins a nested {@code inTransaction} to the handle already bound to the thread instead
-   * of opening a savepoint, so the inner and outer boundaries are one database transaction. A
-   * deadlock rolls that whole transaction back, which makes a nested {@link DeadlockRetry} actively
-   * harmful: it would replay only the inner body against a transaction the database has already
-   * discarded, committing a fragment of the unit of work while the outer writes stay lost. Only the
-   * outermost boundary retries, and it replays everything. Nesting is reachable — a hard delete runs
-   * {@link #entitySpecificCleanup} inside its own boundary, and those hooks cascade into full entity
-   * deletes of their own (ingestion pipelines for an app, residual test cases for a table).
-   */
-  private static final ThreadLocal<Boolean> RETRYABLE_BOUNDARY_OPEN =
-      ThreadLocal.withInitial(() -> Boolean.FALSE);
-
-  /** {@code true} when this call opened the outermost boundary and therefore owns the retry. */
-  private static boolean enterRetryableBoundary() {
-    if (Boolean.TRUE.equals(RETRYABLE_BOUNDARY_OPEN.get())) {
-      return false;
-    }
-    RETRYABLE_BOUNDARY_OPEN.set(Boolean.TRUE);
-    return true;
-  }
-
-  /** Package-private so a test can reset a boundary stranded by an earlier failure. */
-  static void exitRetryableBoundary(boolean ownsRetry) {
-    if (ownsRetry) {
-      RETRYABLE_BOUNDARY_OPEN.remove();
-    }
-  }
-
   protected T createNewEntity(T entity) {
     setCreationAudit(entity);
     createNewEntityFlush(entity);
@@ -5924,274 +5845,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  /**
-   * Run {@code flushBody} as one wrapped DB transaction with the post-commit side-effect collectors
-   * (tag RDF + domain/data-product lineage-ES + rename-cascade search + Redis-L2 cache) opened fresh
-   * for each deadlock-retry attempt and drained exactly once, synchronously on the request thread,
-   * after the final successful commit — so search/lineage stay read-your-write visible by the time
-   * the request returns. A rolled-back attempt clears its collector so a replay never double-enqueues.
-   * The collectors are (re-)opened inside the transactional runnable so each replay starts empty.
-   */
-  protected void flushInOneTransaction(Runnable flushBody) {
-    DeferralScope scope = new DeferralScope();
-    boolean committed = false;
-    try {
-      runInTransactionWithRetry(
-          () -> {
-            scope.reopenForAttempt();
-            flushBody.run();
-          });
-      committed = true;
-    } finally {
-      scope.finish(committed);
-    }
+  /** Commits the mutation before publishing deferred search, RDF and cache effects. */
+  protected void flushInOneTransaction(final Runnable flushBody) {
+    new RepositoryTransactionRunner(daoCollection).run(flushBody);
   }
 
-  /**
-   * Runs multi-repository work through the retained SQL-object root so every child DAO joins the
-   * callback handle. Opening this boundary directly on {@link Entity#getJdbi()} does not bind the
-   * on-demand DAO graph, allowing nested repository writes to commit independently of the outer
-   * unit of work.
-   */
+  /** Runs a multi-repository unit through the same transaction and retry boundary as entity flushes. */
   public final <R> R executeInTransaction(final Supplier<R> work) {
-    final DeferralScope scope = new DeferralScope();
-    boolean committed = false;
-    final boolean ownsRetry = enterRetryableBoundary();
-    try {
-      final R result =
-          ownsRetry ? retryingInTransaction(scope, work) : joinOpenTransaction(scope, work);
-      committed = true;
-      return result;
-    } finally {
-      exitRetryableBoundary(ownsRetry);
-      scope.finish(committed);
-    }
-  }
-
-  private <R> R retryingInTransaction(final DeferralScope scope, final Supplier<R> work) {
-    return DeadlockRetry.execute(
-        () ->
-            daoCollection.inTransaction(
-                ignored ->
-                    TransactionRollbackTracker.runAttempt(
-                        () -> {
-                          scope.reopenForAttempt();
-                          return work.get();
-                        })));
-  }
-
-  /** Nested boundary: the outermost one owns the retry, so this only joins its transaction. */
-  private <R> R joinOpenTransaction(final DeferralScope scope, final Supplier<R> work) {
-    return daoCollection.inTransaction(
-        ignored -> {
-          scope.reopenForAttempt();
-          return work.get();
-        });
-  }
-
-  /**
-   * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
-   * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
-   * a replayed body never inherits closures/keys captured by a rolled-back attempt. {@link
-   * #finish(boolean)} drains all three once on success (running the captured work post-commit on the
-   * request thread) or clears all three on failure. A scope only owns (and therefore drains) the
-   * collectors it actually opened — an inner flush nested under an outer scope leaves draining to the
-   * outer owner, so a retried inner flush never double-enqueues into the outer collector.
-   */
-  private final class DeferralScope {
-    private boolean opened;
-    private boolean ownsRdf;
-    private boolean ownsLineageEs;
-    private boolean ownsSearchWrite;
-    private boolean ownsCache;
-    private boolean ownsPostCommitActions;
-    private int rdfCheckpoint;
-    private int lineageEsCheckpoint;
-    private int searchWriteCheckpoint;
-    private int postCommitActionCheckpoint;
-
-    private void reopenForAttempt() {
-      if (opened) {
-        resetForReplay();
-      } else {
-        openCollectors();
-        opened = true;
-      }
-    }
-
-    /** First attempt: take ownership of any collector not already open and checkpoint the rest. */
-    private void openCollectors() {
-      rdfCheckpoint = RdfTagUpdater.checkpoint();
-      lineageEsCheckpoint = LineageUtil.checkpoint();
-      searchWriteCheckpoint = SearchRepository.searchWriteCheckpoint();
-      postCommitActionCheckpoint = PostCommitActionQueue.checkpoint();
-      ownsRdf = RdfTagUpdater.beginDeferral();
-      ownsLineageEs = LineageUtil.beginLineageDeferral();
-      ownsSearchWrite = SearchRepository.beginSearchWriteDeferral();
-      ownsCache = beginCacheInvalidationDeferral();
-      ownsPostCommitActions = PostCommitActionQueue.begin();
-    }
-
-    /**
-     * Deadlock replay: clear an owned collector outright, but for a collector owned by an outer
-     * scope only roll back this flush's own contributions (back to the entry checkpoint) so the
-     * inner replay never double-enqueues into the outer owner's collector. The cache collector
-     * de-duplicates by (type, id), so re-recording a key on replay is idempotent and needs no
-     * checkpoint.
-     */
-    private void resetForReplay() {
-      if (ownsRdf) {
-        RdfTagUpdater.clearDeferred();
-        RdfTagUpdater.beginDeferral();
-      } else {
-        RdfTagUpdater.rollbackToCheckpoint(rdfCheckpoint);
-      }
-      if (ownsLineageEs) {
-        LineageUtil.clearLineageDeferred();
-        LineageUtil.beginLineageDeferral();
-      } else {
-        LineageUtil.rollbackToCheckpoint(lineageEsCheckpoint);
-      }
-      if (ownsSearchWrite) {
-        SearchRepository.clearSearchWriteDeferred();
-        SearchRepository.beginSearchWriteDeferral();
-      } else {
-        SearchRepository.rollbackSearchWriteToCheckpoint(searchWriteCheckpoint);
-      }
-      if (ownsCache) {
-        clearCacheInvalidations();
-        beginCacheInvalidationDeferral();
-      }
-      if (ownsPostCommitActions) {
-        PostCommitActionQueue.clear();
-        PostCommitActionQueue.begin();
-      } else {
-        PostCommitActionQueue.rollbackToCheckpoint(postCommitActionCheckpoint);
-      }
-    }
-
-    private void finish(boolean committed) {
-      if (committed) {
-        drain();
-      } else {
-        clear();
-      }
-    }
-
-    /**
-     * Drain all post-commit externals synchronously on the request thread: Cache-L2 invalidation
-     * first (so the next GET-by-id/by-name rebuilds fresh from DB), then the RDF / lineage-ES /
-     * rename-cascade search rewrites. Running inline post-commit keeps search and lineage
-     * read-your-write visible by the time the request returns. Every collector's thread-local is
-     * removed UP FRONT and each run step is guarded, so one failing step (e.g. a Redis round trip in
-     * {@code drainCacheInvalidations}) can never strand a later collector's thread-local on a reused
-     * request thread, which would otherwise silently drop the next request's deferred writes.
-     */
-    private void drain() {
-      List<Runnable> rdfClosures = ownsRdf ? RdfTagUpdater.drainDeferredToList() : List.of();
-      List<LineageUtil.DeferredLineageEsWrite> lineageClosures =
-          ownsLineageEs ? LineageUtil.drainLineageDeferred() : List.of();
-      List<SearchRepository.DeferredSearchWrite> searchClosures =
-          ownsSearchWrite ? SearchRepository.drainSearchWriteDeferred() : List.of();
-      List<Runnable> postCommitActions =
-          ownsPostCommitActions ? PostCommitActionQueue.drain() : List.of();
-      if (ownsCache) {
-        runGuarded(EntityRepository::drainCacheInvalidations);
-      }
-      runGuarded(() -> RdfTagUpdater.runDeferredClosures(rdfClosures));
-      runGuarded(() -> runLineageEsClosures(lineageClosures));
-      runGuarded(() -> runSearchWriteClosures(searchClosures));
-      runGuarded(() -> PostCommitActionQueue.run(postCommitActions));
-    }
-
-    private void clear() {
-      if (ownsRdf) {
-        RdfTagUpdater.clearDeferred();
-      }
-      if (ownsLineageEs) {
-        LineageUtil.clearLineageDeferred();
-      }
-      if (ownsSearchWrite) {
-        SearchRepository.clearSearchWriteDeferred();
-      }
-      if (ownsCache) {
-        clearCacheInvalidations();
-      }
-      if (ownsPostCommitActions) {
-        PostCommitActionQueue.clear();
-      }
-    }
-  }
-
-  private static void runGuarded(Runnable drainStep) {
-    try {
-      drainStep.run();
-    } catch (Exception e) {
-      LOG.error("Post-commit deferral drain step failed", e);
-    }
-  }
-
-  /**
-   * Run the rename/move/domain-change cascade ES rewrites that were captured during the wrapped
-   * transaction, now that it has committed. A failure is recoverable from the committed DB rows, so
-   * — for the closures that carry an entity locator — enqueue that entity to the durable, entity-keyed
-   * search-index retry outbox instead of losing the cascade rewrite. Closures whose underlying {@code
-   * SearchRepository.update*} method already self-enqueues on failure carry a {@code null} locator,
-   * so the catch only logs and the inner enqueue stands.
-   */
-  private void runSearchWriteClosures(List<SearchRepository.DeferredSearchWrite> closures) {
-    for (SearchRepository.DeferredSearchWrite closure : closures) {
-      try {
-        closure.run();
-      } catch (Exception e) {
-        enqueueSearchWriteRetry(closure, e);
-      }
-    }
-  }
-
-  private void enqueueSearchWriteRetry(
-      SearchRepository.DeferredSearchWrite closure, Exception failure) {
-    LOG.warn(
-        "Deferred search-index cascade {} failed for {}; enqueuing retry",
-        closure.operation(),
-        entityType,
-        failure);
-    if (closure.entityId() != null || !nullOrEmpty(closure.entityFqn())) {
-      SearchIndexRetryQueue.enqueue(
-          closure.entityId(),
-          closure.entityFqn(),
-          closure.entityType() == null ? "" : closure.entityType(),
-          SearchIndexRetryQueue.failureReason(closure.operation(), failure));
-    }
-  }
-
-  private void runLineageEsClosures(List<LineageUtil.DeferredLineageEsWrite> closures) {
-    for (LineageUtil.DeferredLineageEsWrite closure : closures) {
-      try {
-        closure.run();
-      } catch (Exception e) {
-        enqueueLineageEsRetry(closure.toEntity(), e);
-      }
-    }
-  }
-
-  /**
-   * The DB lineage rows are committed but the post-commit ES {@code updateLineage}/{@code
-   * updateChildren} round trip failed. Enqueue the affected entity to the durable, entity-keyed
-   * search-index retry outbox so its document (which carries the lineage edges) is rebuilt from the
-   * source-of-truth DB rows on retry — matching the direct entity-index recovery path — instead of
-   * losing the edge with only a log line.
-   */
-  private void enqueueLineageEsRetry(EntityReference toEntity, Exception failure) {
-    LOG.warn("Deferred lineage-ES update failed for {}; enqueuing retry", entityType, failure);
-    if (toEntity != null) {
-      String toId = toEntity.getId() != null ? toEntity.getId().toString() : null;
-      SearchIndexRetryQueue.enqueue(
-          toId,
-          toEntity.getFullyQualifiedName(),
-          toEntity.getType(),
-          SearchIndexRetryQueue.failureReason("lineage", failure));
-    }
+    return new RepositoryTransactionRunner(daoCollection).execute(work);
   }
 
   private List<T> createManyEntities(List<T> entities) {

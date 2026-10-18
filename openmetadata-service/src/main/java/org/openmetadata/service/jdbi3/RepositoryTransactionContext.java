@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import java.util.Objects;
+import java.util.function.Supplier;
 
 final class RepositoryTransactionContext {
   private static final ThreadLocal<CollectionDAO> CURRENT_DAO = new ThreadLocal<>();
@@ -33,10 +34,19 @@ final class RepositoryTransactionContext {
   }
 
   static void runWith(CollectionDAO transactionDAO, Runnable operation) {
-    CollectionDAO previousDAO = CURRENT_DAO.get();
+    callWith(
+        transactionDAO,
+        () -> {
+          operation.run();
+          return null;
+        });
+  }
+
+  static <R> R callWith(final CollectionDAO transactionDAO, final Supplier<R> operation) {
+    final CollectionDAO previousDAO = CURRENT_DAO.get();
     CURRENT_DAO.set(Objects.requireNonNull(transactionDAO));
     try {
-      operation.run();
+      return operation.get();
     } finally {
       restore(previousDAO);
     }

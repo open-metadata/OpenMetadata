@@ -7,20 +7,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.transaction.DelegatingTransactionHandler;
-import org.jdbi.v3.core.transaction.TransactionHandler;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.TransactionCounter;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -101,6 +99,72 @@ class EntityTransactionBoundaryIT {
       assertEquals(0, published.get());
       PostCommitActionQueue.runOrDefer(published::incrementAndGet);
       assertEquals(1, published.get(), "Rollback must release the request thread's collector");
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void mixedBoundariesRollbackTogether(final boolean flushFirst) {
+    final UnregisteredChartRepository repository = new UnregisteredChartRepository();
+    final UUID first = UUID.randomUUID();
+    final UUID second = UUID.randomUUID();
+    final AtomicInteger published = new AtomicInteger();
+
+    try (var transactions = new TransactionCounter(Entity.getJdbi())) {
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              runBoundary(
+                  repository,
+                  flushFirst,
+                  () -> {
+                    insert(first);
+                    runBoundary(
+                        repository,
+                        !flushFirst,
+                        () -> {
+                          insert(second);
+                          PostCommitActionQueue.runOrDefer(published::incrementAndGet);
+                        });
+                    throw new IllegalStateException("Failure after nested write");
+                  }));
+
+      assertEquals(0, transactions.commits());
+      assertEquals(1, transactions.rollbacks());
+      assertNull(read(first));
+      assertNull(read(second));
+      assertEquals(0, published.get());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void mixedBoundariesPublishOnlyAfterTheirSingleCommit(final boolean flushFirst) {
+    final UnregisteredChartRepository repository = new UnregisteredChartRepository();
+    final UUID first = UUID.randomUUID();
+    final UUID second = UUID.randomUUID();
+    final List<String> published = new ArrayList<>();
+
+    try (var transactions = new TransactionCounter(Entity.getJdbi())) {
+      runBoundary(
+          repository,
+          flushFirst,
+          () -> {
+            insert(first);
+            runBoundary(
+                repository,
+                !flushFirst,
+                () -> {
+                  insert(second);
+                  PostCommitActionQueue.runOrDefer(() -> published.add(read(second)));
+                });
+            assertTrue(published.isEmpty());
+          });
+
+      assertEquals(1, transactions.commits());
+      assertEquals(0, transactions.rollbacks());
+      assertEquals(List.of("{}"), published);
+      assertEquals("{}", read(first));
     }
   }
 
@@ -218,6 +282,19 @@ class EntityTransactionBoundaryIT {
     Entity.getCollectionDAO().entityExtensionDAO().insert(id, EXTENSION, EXTENSION, "{}");
   }
 
+  private static void runBoundary(
+      final UnregisteredChartRepository repository, final boolean flush, final Runnable work) {
+    if (flush) {
+      repository.runFlush(work);
+    } else {
+      repository.executeInTransaction(
+          () -> {
+            work.run();
+            return null;
+          });
+    }
+  }
+
   private static String read(UUID id) {
     return Entity.getCollectionDAO().entityExtensionDAO().getExtension(id, EXTENSION);
   }
@@ -231,53 +308,9 @@ class EntityTransactionBoundaryIT {
     void storeColumns(final UUID id, final List<Column> columns) {
       storeColumnExtensions(id, columns);
     }
-  }
 
-  static final class TransactionCounter extends DelegatingTransactionHandler
-      implements AutoCloseable {
-    private final Jdbi jdbi;
-    private final Thread owner = Thread.currentThread();
-    private int commits;
-    private int rollbacks;
-
-    TransactionCounter(Jdbi jdbi) {
-      super(jdbi.getTransactionHandler());
-      this.jdbi = jdbi;
-      jdbi.setTransactionHandler(this);
-    }
-
-    @Override
-    public TransactionHandler specialize(Handle handle) throws SQLException {
-      return new DelegatingTransactionHandler(getDelegate().specialize(handle)) {
-        @Override
-        public void commit(Handle handle) {
-          super.commit(handle);
-          if (Thread.currentThread() == owner) {
-            commits++;
-          }
-        }
-
-        @Override
-        public void rollback(Handle handle) {
-          super.rollback(handle);
-          if (Thread.currentThread() == owner) {
-            rollbacks++;
-          }
-        }
-      };
-    }
-
-    int commits() {
-      return commits;
-    }
-
-    int rollbacks() {
-      return rollbacks;
-    }
-
-    @Override
-    public void close() {
-      jdbi.setTransactionHandler(getDelegate());
+    void runFlush(final Runnable work) {
+      flushInOneTransaction(work);
     }
   }
 }
