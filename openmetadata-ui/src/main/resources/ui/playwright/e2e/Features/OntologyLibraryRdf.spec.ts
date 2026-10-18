@@ -30,9 +30,8 @@ const isInstallResult = (value: unknown): value is OntologyPackInstallResult =>
   value.packId === 'fibo' &&
   'version' in value &&
   value.version === FIBO_VERSION &&
-  'installation' in value &&
-  typeof value.installation === 'object' &&
-  value.installation !== null;
+  'moduleIds' in value &&
+  Array.isArray(value.moduleIds);
 
 const isGlossary = (value: unknown): value is Glossary =>
   typeof value === 'object' &&
@@ -78,7 +77,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  test('installs a dependency-aware FIBO pack with durable provenance and opens its graph', async ({
+  test('imports a dependency-aware FIBO vocabulary and opens its glossary graph', async ({
     browser,
   }) => {
     test.setTimeout(EXTENDED_TEST_TIMEOUT);
@@ -146,6 +145,14 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
       }
 
       expect(installBody.moduleIds).toHaveLength(2);
+      expect(installBody).toMatchObject({
+        targetGlossaryName: TARGET_GLOSSARY,
+        dryRun: false,
+        conceptCount: 8,
+        relationshipCount: 6,
+        importResults: [{ termsCreated: 8 }],
+      });
+      expect(installBody).not.toHaveProperty('installation');
       await expect(
         page
           .getByTestId('ontology-pack-detail')
