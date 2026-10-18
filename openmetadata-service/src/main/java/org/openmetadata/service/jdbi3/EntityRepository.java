@@ -10973,6 +10973,39 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFqn);
     }
 
+    /**
+     * Whether a bot PUT must keep the stored extension. Without overrideMetadata a bot never
+     * replaces it, so a scheduled re-sync cannot clobber custom properties a user curated in the
+     * UI. With overrideMetadata - an explicit bulk force-sync - a connector-supplied extension may
+     * replace it, but an empty one must not blank it: a connector that is not collecting custom
+     * properties sends no extension, and that absence is not "delete the stored ones". Matches the
+     * guard on description, displayName, tags and certification.
+     */
+    private boolean keepsStoredExtension(Object incomingExtension) {
+      return !overrideMetadata || nullOrEmpty(JsonUtils.valueToTree(incomingExtension));
+    }
+
+    /**
+     * The force-sync view of an incoming extension: the properties the connector sends win, and
+     * stored properties it does not mention are kept. Ingestion only ever sends the properties its
+     * own source produces, and the server records no ownership for a custom property, so reading an
+     * absent key as a deletion would drop the ones a user curated in the UI - the very loss the bot
+     * guard exists to prevent. A property removed at the source therefore lingers until someone
+     * deletes it; that needs per-key provenance, which is tracked separately. Do not turn this into
+     * a wholesale replace to match tags - see
+     * ADR:2026-10-16-a-force-sync-merges-connector-supplied-custom-properties.
+     */
+    private Object mergedOverStoredExtension(Object storedExtension, Object incomingExtension) {
+      JsonNode stored = JsonUtils.valueToTree(storedExtension);
+      JsonNode incoming = JsonUtils.valueToTree(incomingExtension);
+      if (!stored.isObject() || !incoming.isObject()) {
+        return incomingExtension;
+      }
+      ObjectNode merged = stored.deepCopy();
+      merged.setAll((ObjectNode) incoming);
+      return JsonUtils.treeToValue(merged, Object.class);
+    }
+
     private void updateExtension(boolean consolidatingChanges) {
       Object origExtension = original.getExtension();
       Object updatedExtension = updated.getExtension();
@@ -10980,10 +11013,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         return;
       }
       if (updatedByBot() && operation == Operation.PUT) {
-        // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting
-        // custom extension
-        updated.setExtension(origExtension);
-        return;
+        if (keepsStoredExtension(updatedExtension)) {
+          // Revert extension field, if being updated by a bot with a PUT request to avoid
+          // overwriting custom extension
+          updated.setExtension(origExtension);
+          return;
+        }
+        updatedExtension = mergedOverStoredExtension(origExtension, updatedExtension);
+        updated.setExtension(updatedExtension);
       }
 
       if (operation == Operation.PUT && updatedExtension == null) {
