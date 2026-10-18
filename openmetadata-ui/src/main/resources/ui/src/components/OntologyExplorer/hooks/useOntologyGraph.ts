@@ -62,6 +62,8 @@ import {
   NODE_SELECTED_STROKE,
   PRACTICAL_MIN_ZOOM,
   type LayoutEngineType,
+  EDGE_LABEL_FONT_FAMILY,
+  EDGE_LABEL_FONT_SIZE,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import {
@@ -73,6 +75,7 @@ import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
 import {
   adaptiveSpacing,
   getLayoutConfig,
+  getNodeSize,
   NODE_HEIGHT,
   NODE_WIDTH,
   shouldUseComboGridLayout,
@@ -92,7 +95,16 @@ import {
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
+import {
+  EdgeRoute,
+  routeRelationsGraphEdges,
+} from '../utils/relationsGraphRouting';
 import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
+import { measureTextWidth } from '../utils/textMeasure';
+
+// Matches the relation badge's [4, 8, 4, 8] padding around 10px text.
+const RELATIONS_EDGE_LABEL_PADDING_X = 16;
+const RELATIONS_EDGE_LABEL_HEIGHT = 20;
 
 /**
  * Starts a G6 layout and waits for it to actually finish.
@@ -1101,6 +1113,7 @@ export function useOntologyGraph({
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
+  const relationsEdgeRoutesRef = useRef<Map<string, EdgeRoute>>(new Map());
 
   settingsRef.current = settings;
 
@@ -1425,6 +1438,40 @@ export function useOntologyGraph({
     if (updates.length > 0) {
       graph.updateNodeData(updates);
     }
+    relationsEdgeRoutesRef.current = routeRelationsGraphEdges(
+      updates.map((node) => {
+        const [width, height] = getNodeSize(node);
+
+        return {
+          id: String(node.id),
+          x: Number(node.style?.x),
+          y: Number(node.style?.y),
+          width,
+          height,
+        };
+      }),
+      graph.getEdgeData().map((edge) => {
+        const style = (edge.style ?? {}) as Record<string, unknown>;
+        const labelText =
+          typeof style.labelText === 'string' ? style.labelText : '';
+
+        return {
+          id: String(edge.id),
+          source: String(edge.source),
+          target: String(edge.target),
+          labelWidth: labelText
+            ? measureTextWidth(
+                labelText,
+                `700 ${EDGE_LABEL_FONT_SIZE}px ${EDGE_LABEL_FONT_FAMILY}`,
+                7
+              ) + RELATIONS_EDGE_LABEL_PADDING_X
+            : 0,
+          labelHeight: RELATIONS_EDGE_LABEL_HEIGHT,
+          labelOffsetX: Number(style.labelOffsetX) || 0,
+          labelOffsetY: Number(style.labelOffsetY) || 0,
+        };
+      })
+    );
   }, []);
 
   const positionStudioNodes = useCallback(
@@ -1700,7 +1747,7 @@ export function useOntologyGraph({
       },
       edge: {
         type: () =>
-          studioMode && !isDataMode
+          (studioMode || useComboGridLayout) && !isDataMode
             ? CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE
             : CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
@@ -1714,6 +1761,11 @@ export function useOntologyGraph({
             datum.style ? { ...base, ...datum.style } : { ...base }
           ) as Record<string, unknown>;
           applyEdgeLabelVisibility(merged, settingsRef.current.showEdgeLabels);
+          if (useComboGridLayout && !studioMode && !isDataMode) {
+            const route = relationsEdgeRoutesRef.current.get(String(datum.id));
+            merged.curveOffset = route?.curveOffset ?? 0;
+            merged.labelPlacement = route?.labelPlacement ?? 'center';
+          }
 
           return merged;
         },
