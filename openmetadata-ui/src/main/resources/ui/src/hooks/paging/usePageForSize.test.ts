@@ -41,4 +41,18 @@ describe('usePageForSize', () => {
 
     expect(result.current[0]).toBe(2);
   });
+
+  it('keeps the setter from an earlier render working after the size changes', () => {
+    const { result, rerender } = renderHook(
+      ({ size }: { size: number }) => usePageForSize(size),
+      { initialProps: { size: 15 } }
+    );
+    const [, setPageFromFirstRender] = result.current;
+
+    rerender({ size: 12 });
+    act(() => setPageFromFirstRender(2));
+
+    expect(result.current[0]).toBe(2);
+    expect(result.current[1]).toBe(setPageFromFirstRender);
+  });
 });

@@ -13,7 +13,7 @@
 
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
 import { RouteVisibilityProvider } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchQuery } from '../../../../rest/searchAPI';
@@ -143,6 +143,58 @@ describe('useListingData with a page size from an old link', () => {
     );
     expect(mockSearchQuery).not.toHaveBeenCalledWith(
       expect.objectContaining({ pageNumber: 3 })
+    );
+  });
+
+  it('keeps the page of a URL size it navigates back to', async () => {
+    const { result, rerender } = renderHook(
+      ({ pageSize }: { pageSize: number }) => ({
+        listing: useListingData({
+          searchIndex: SearchIndex.DOMAIN,
+          filterKeys: FILTER_KEYS,
+          columns: COLUMNS,
+          pageSize,
+          pageSizeOptions: LIST_OPTIONS,
+        }),
+        location: useLocation(),
+        navigate: useNavigate(),
+      }),
+      {
+        initialProps: { pageSize: 15 },
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <MemoryRouter initialEntries={['/domain?page=2&size=25']}>
+            {children}
+          </MemoryRouter>
+        ),
+      }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ pageNumber: 2, pageSize: 25 })
+      );
+    });
+
+    act(() => result.current.navigate('/domain?size=50'));
+    rerender({ pageSize: 50 });
+    await waitFor(() => {
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageNumber: 1, pageSize: 50 })
+      );
+    });
+
+    mockSearchQuery.mockClear();
+    act(() => result.current.navigate(-1));
+
+    await waitFor(() => {
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageNumber: 2, pageSize: 25 })
+      );
+    });
+
+    expect(result.current.location.search).toBe('?page=2&size=25');
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 1, pageSize: 25 })
     );
   });
 });

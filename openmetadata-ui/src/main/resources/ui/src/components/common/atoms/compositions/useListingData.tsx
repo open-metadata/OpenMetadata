@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useIsRouteVisible } from '../../../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -95,8 +96,10 @@ export const useListingData = <
   const effectivePageSize = isOffScaleUrlSize
     ? pageSize
     : urlState.pageSize || pageSize;
-  const [pagedAtSize, setPagedAtSize] = useState(effectivePageSize);
-  const isPageFromOtherSize = pagedAtSize !== effectivePageSize;
+  const [searchParams] = useSearchParams();
+  const hasUrlPageSize = searchParams.has('size') && !isOffScaleUrlSize;
+  const [pagedAtSize, setPagedAtSize] = useState(pageSize);
+  const isPageFromOtherSize = !hasUrlPageSize && pagedAtSize !== pageSize;
   const effectivePage =
     isOffScaleUrlSize || isPageFromOtherSize ? 1 : urlState.currentPage;
 
@@ -112,18 +115,19 @@ export const useListingData = <
   }, [isRouteVisible, isOffScaleUrlSize, resetPaging]);
 
   useEffect(() => {
-    if (!isRouteVisible || !isPageFromOtherSize) {
+    if (!isRouteVisible || pagedAtSize === pageSize) {
       return;
     }
-    if (urlState.currentPage > 1) {
+    if (isPageFromOtherSize && urlState.currentPage > 1) {
       setCurrentPage(1);
     } else {
-      setPagedAtSize(effectivePageSize);
+      setPagedAtSize(pageSize);
     }
   }, [
     isRouteVisible,
+    pagedAtSize,
+    pageSize,
     isPageFromOtherSize,
-    effectivePageSize,
     urlState.currentPage,
     setCurrentPage,
   ]);

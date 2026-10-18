@@ -36,7 +36,8 @@ matching entry.
   so are the page and cursor counted at it: the view opens on page 1 at its saved size and drops
   the link's paging from the URL or hash. Only the visible route rewrites the URL, since app mode
   keeps hidden routes mounted on it. When the saved size changes while a view stays mounted, its
-  page returns to 1 before the next request. Fixed
+  page returns to 1 before the next request, unless the URL carries its own size: that page, such
+  as one restored by browser Back, is kept. Fixed
   fetch batches that are not a paged view (e.g. loading all glossary terms, approval tasks) are
   out of scope.
 - `usePaging` treats a caller that declares no options as on the list scale, so a grid size left

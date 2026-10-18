@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 
 export const usePageForSize = (
@@ -21,9 +21,12 @@ export const usePageForSize = (
     size: pageSize,
   });
 
+  const sizeRef = useRef(pageSize);
+  sizeRef.current = pageSize;
+
   const setPage = useCallback(
-    (page: number) => setPageAtSize({ page, size: pageSize }),
-    [pageSize]
+    (page: number) => setPageAtSize({ page, size: sizeRef.current }),
+    []
   );
 
   return [
