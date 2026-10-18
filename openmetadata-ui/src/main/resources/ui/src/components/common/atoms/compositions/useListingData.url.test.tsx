@@ -197,4 +197,44 @@ describe('useListingData with a page size from an old link', () => {
       expect.objectContaining({ pageNumber: 1, pageSize: 25 })
     );
   });
+
+  it('treats an empty size in the URL as no size when the saved size changes', async () => {
+    const { rerender } = renderHook(
+      ({ pageSize }: { pageSize: number }) =>
+        useListingData({
+          searchIndex: SearchIndex.DOMAIN,
+          filterKeys: FILTER_KEYS,
+          columns: COLUMNS,
+          pageSize,
+          pageSizeOptions: LIST_OPTIONS,
+        }),
+      {
+        initialProps: { pageSize: 15 },
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <MemoryRouter initialEntries={['/domain?page=3&size=']}>
+            {children}
+          </MemoryRouter>
+        ),
+      }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ pageNumber: 3, pageSize: 15 })
+      );
+    });
+
+    mockSearchQuery.mockClear();
+    rerender({ pageSize: 50 });
+
+    await waitFor(() => {
+      expect(mockSearchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({ pageNumber: 1, pageSize: 50 })
+      );
+    });
+
+    expect(mockSearchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ pageNumber: 3 })
+    );
+  });
 });

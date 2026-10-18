@@ -97,7 +97,8 @@ export const useListingData = <
     ? pageSize
     : urlState.pageSize || pageSize;
   const [searchParams] = useSearchParams();
-  const hasUrlPageSize = searchParams.has('size') && !isOffScaleUrlSize;
+  const hasUrlPageSize =
+    Number(searchParams.get('size')) > 0 && !isOffScaleUrlSize;
   const [pagedAtSize, setPagedAtSize] = useState(pageSize);
   const isPageFromOtherSize = !hasUrlPageSize && pagedAtSize !== pageSize;
   const effectivePage =
