@@ -229,7 +229,7 @@ bound, and only the leading hash prefix changes.
 Capture runs that single statement unchanged and buffers one `EntityPrefixMutation` (entity
 type, old prefix, new prefix). Every row the statement changes is under the new prefix when the
 transaction commits, so expansion enumerates the members from committed state with
-`EntityPrefixMembers`,
+[`EntityPrefixMembers`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/EntityPrefixMembers.java),
 one keyset index range per page. Each member's former locator is derived from the fact. Rows that
 were already under the new prefix are included; the set is a superset and expansion refreshes by
 ID. The cases that seemed to need per-descendant facts are covered by other facts:
@@ -259,7 +259,7 @@ and a slow-producer/crash test. Until then it is a coverage gap, not a substitut
 of `captureInTransaction`. A process timeout or stale heartbeat alone is not that proof.
 
 The initial implementation of this boundary is
-`EntityMutationCapture`,
+[`EntityMutationCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/EntityMutationCapture.java),
 registered explicitly on JDBI in integration tests. It decorates standard `EntityDAO` row writes,
 uses the SQL object's supplied handle and wraps an autocommit call in `Handle.inTransaction`.
 `ProjectionJournal` captures facts and independent target obligations there; batch calls preserve
@@ -268,7 +268,7 @@ pending: the other persistence families, removed dependency membership, delivery
 latency gates are not covered merely by this entity-row implementation.
 
 Relationship capture now uses the same journal through
-`RelationshipMutationCapture`.
+[`RelationshipMutationCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/RelationshipMutationCapture.java).
 `MutationFacts` distinguishes entity facts from relationship batches. A batch retains stable
 endpoint/type pairs, relation and subtype, ontology relationship/type IDs, and old/new lineage
 pipeline IDs in `metadata_projection_relationship`. Both consumers page the same immutable
@@ -305,7 +305,7 @@ the caller's connection, and a failed rollback during commit leaves the connecti
 the transaction owner receives the original error, such as a deadlock, and retries the whole unit.
 
 Tag association capture now uses
-`TagUsageMutationCapture`
+[`TagUsageMutationCapture`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/TagUsageMutationCapture.java)
 and the same transaction/journal contract. The `2.2.0` schema retains source, tag FQN/hash and
 target hash in `metadata_projection_tag_usage`. Captured writes include point/batch applications,
 all current-schema deletion selectors, exact renames and prefix rewrites. Destructive operations
@@ -314,7 +314,7 @@ both old and new association locators. Tag prefix SQL is now declared with bound
 `TagUsageDAO`, and its compound root/child rename is transactional. The legacy pre-1.1 hash
 migration references a removed column and remains outside current-schema capture.
 
-`ProjectionOwnerLookup`
+[`ProjectionOwnerLookup`](../../openmetadata-service/src/main/java/org/openmetadata/service/projection/ProjectionOwnerLookup.java)
 resolves candidate IDs from the owning repository's declared catalog table and retained entity
 mutation history. A source declaration specifies whether descendant hashes represent owned
 fields; the lookup does not infer this from a fixed FQN depth. It uses the existing FQN hashing

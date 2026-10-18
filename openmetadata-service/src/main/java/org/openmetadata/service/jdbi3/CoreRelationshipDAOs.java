@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -727,6 +726,14 @@ public interface CoreRelationshipDAOs {
   }
 
   interface EntityRelationshipDAO {
+    @SqlUpdate("DELETE FROM entity_relationship WHERE fromEntity = 'task' OR toEntity = 'task'")
+    void deleteTaskRelationships();
+
+    @SqlUpdate(
+        "DELETE FROM entity_relationship WHERE fromEntity = 'domain' AND toEntity = 'task' "
+            + "AND relation = 10 AND toId IN (<taskIds>)")
+    void bulkRemoveTaskDomainRelationships(@BindList("taskIds") List<String> taskIds);
+
     /** Map an {@link Include} filter to the trailing {@code deleted} SQL clause. */
     private static String deletedCondition(Include include) {
       String condition = "";
@@ -2310,13 +2317,12 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation);
 
     default void renameByToFQN(String oldToFQN, String newToFQN) {
-      renameByToFQNInternal(
+      renameByToFQNPrefixInternal(
           oldToFQN,
           FullyQualifiedName.buildHash(oldToFQN),
           newToFQN,
-          FullyQualifiedName.buildHash(newToFQN)); // First rename targetFQN from oldFQN to newFQN
-      renameByToFQNPrefix(oldToFQN, newToFQN);
-      // Rename all the targetFQN prefixes starting with the oldFQN to newFQN
+          FullyQualifiedName.buildHash(newToFQN),
+          true);
     }
 
     @SqlUpdate(
@@ -2329,20 +2335,34 @@ public interface CoreRelationshipDAOs {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix,
+          FullyQualifiedName.buildHash(oldToFQNPrefix),
+          newToFQNPrefix,
+          FullyQualifiedName.buildHash(newToFQNPrefix),
+          false);
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        """
+        UPDATE field_relationship
+        SET toFQN = CONCAT(:newPrefix, SUBSTRING(toFQN, CHAR_LENGTH(:oldPrefix) + 1)),
+            toFQNHash = CONCAT(:newHash, SUBSTRING(toFQNHash, CHAR_LENGTH(:oldHash) + 1))
+        WHERE fromType = 'THREAD' AND relation = 3
+          AND ((:includeRoot AND toFQN = :oldPrefix AND toFQNHash = :oldHash)
+            OR (toFQNHash LIKE :hashPattern
+              AND LEFT(toFQN, CHAR_LENGTH(:oldPrefix) + 1) = CONCAT(:oldPrefix, '.')))
+        """)
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @BindConcat(
+                value = "hashPattern",
+                original = "oldHash",
+                parts = {":oldHash", ".%"})
+            String oldHash,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("newHash") String newHash,
+        @Bind("includeRoot") boolean includeRoot);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override

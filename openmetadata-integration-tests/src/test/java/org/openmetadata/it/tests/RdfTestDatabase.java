@@ -14,13 +14,13 @@ package org.openmetadata.it.tests;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
-import org.awaitility.Awaitility;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
 
 /** Isolated SQL database with the real RDF release migrations applied twice. */
 final class RdfTestDatabase implements AutoCloseable {
@@ -30,45 +30,38 @@ final class RdfTestDatabase implements AutoCloseable {
   }
 
   private final Backend backend;
-  private final GenericContainer<?> container;
+  private final String databaseName;
   private final Jdbi jdbi;
 
   RdfTestDatabase(final Backend backend) {
     this.backend = backend;
-    final int port = backend == Backend.POSTGRES ? 5432 : 3306;
-    container =
-        new GenericContainer<>(backend == Backend.POSTGRES ? "postgres:15" : "mysql:8.0")
-            .withExposedPorts(port)
-            .withEnv("POSTGRES_PASSWORD", "rdf-test")
-            .withEnv("POSTGRES_DB", "rdf")
-            .withEnv("MYSQL_ROOT_PASSWORD", "rdf-test")
-            .withEnv("MYSQL_DATABASE", "rdf")
-            .withStartupTimeout(Duration.ofMinutes(3));
-    container.start();
-    final String driver = backend == Backend.POSTGRES ? "postgresql" : "mysql";
-    final String suffix =
-        backend == Backend.MYSQL ? "?allowPublicKeyRetrieval=true&useSSL=false" : "";
-    final String url =
-        "jdbc:"
-            + driver
-            + "://"
-            + container.getHost()
-            + ":"
-            + container.getMappedPort(port)
-            + "/rdf"
-            + suffix;
-    jdbi = Jdbi.create(url, backend == Backend.POSTGRES ? "postgres" : "root", "rdf-test");
-    Awaitility.await()
-        .atMost(Duration.ofMinutes(2))
-        .ignoreExceptions()
-        .until(
-            () ->
-                jdbi.withHandle(handle -> handle.createQuery("SELECT 1").mapTo(Integer.class).one())
-                    == 1);
+    databaseName = "projection_test_" + UUID.randomUUID().toString().replace("-", "");
+    final Jdbi admin = SqlTestContainers.connect(backend, "rdf");
+    SqlTestContainers.awaitReady(admin);
+    admin.useHandle(
+        handle ->
+            handle.execute(
+                "CREATE DATABASE "
+                    + databaseName
+                    + (backend == Backend.MYSQL
+                        ? " CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"
+                        : "")));
+    jdbi = SqlTestContainers.connect(backend, databaseName);
     initializeSchema();
   }
 
+  static Stream<Backend> backends() {
+    final String lane = System.getProperty("databaseType", "");
+    return Arrays.stream(Backend.values())
+        .filter(backend -> lane.isBlank() || backend.name().equalsIgnoreCase(lane));
+  }
+
+  static boolean mysqlEnabled() {
+    return backends().anyMatch(backend -> backend == Backend.MYSQL);
+  }
+
   Jdbi jdbi() {
+
     return jdbi;
   }
 
@@ -84,7 +77,7 @@ final class RdfTestDatabase implements AutoCloseable {
   }
 
   void applyReleaseMigration() {
-    jdbi.useHandle(handle -> migrationStatements("2.0.2").forEach(handle::execute));
+    applyMigration("2.0.2");
   }
 
   /** Every statement of a release that names the table, in file order, on one connection. */
@@ -99,7 +92,19 @@ final class RdfTestDatabase implements AutoCloseable {
     jdbi.useHandle(handle -> changes.forEach(handle::execute));
   }
 
-  private void createTable(final String version, final String table) {
+  void applyMigration(final String version) {
+    jdbi.useHandle(handle -> migrationStatements(version).forEach(handle::execute));
+  }
+
+  void applyProjectionMigrations() {
+    jdbi.useHandle(
+        handle ->
+            migrationStatements("2.2.0").stream()
+                .filter(statement -> statement.contains("metadata_projection_"))
+                .forEach(handle::execute));
+  }
+
+  void createTable(final String version, final String table) {
     final String create =
         migrationStatements(version).stream()
             .filter(statement -> statement.contains("CREATE TABLE IF NOT EXISTS " + table + " ("))
@@ -135,6 +140,7 @@ final class RdfTestDatabase implements AutoCloseable {
 
   @Override
   public void close() {
-    container.close();
+    SqlTestContainers.connect(backend, "rdf")
+        .useHandle(handle -> handle.execute("DROP DATABASE " + databaseName));
   }
 }
