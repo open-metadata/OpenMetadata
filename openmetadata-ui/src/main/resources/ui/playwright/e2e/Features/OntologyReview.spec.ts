@@ -26,6 +26,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { fillCodeEditor } from '../../utils/codeEditor';
 import { fullUuid, getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { MEMORIES_API } from '../../utils/ContextCenterUtil';
 import { readGraphEdges, readNodePositions } from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -942,7 +943,7 @@ test(
     let draft: OntologyChangeSet | undefined;
     try {
       memory = await okJson<ContextMemory>(
-        await api.post('/api/v1/contextMemories', {
+        await api.post(MEMORIES_API, {
           data: {
             name: `${name}_source`,
             question: 'Who is a customer?',
@@ -1059,7 +1060,7 @@ test(
       if (memory)
         await deleteFixtureEntity(
           api,
-          `/api/v1/contextMemories/${memory.id}?hardDelete=true`
+          `${MEMORIES_API}/${memory.id}?hardDelete=true`
         );
       const archived = await deleteFixtureEntity(
         api,
