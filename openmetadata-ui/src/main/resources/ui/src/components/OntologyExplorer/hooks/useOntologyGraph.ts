@@ -39,6 +39,8 @@ import {
   DIMMED_EDGE_LABEL_OPACITY,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
+  EDGE_LABEL_FONT_FAMILY,
+  EDGE_LABEL_FONT_SIZE,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
@@ -62,8 +64,6 @@ import {
   NODE_SELECTED_STROKE,
   PRACTICAL_MIN_ZOOM,
   type LayoutEngineType,
-  EDGE_LABEL_FONT_FAMILY,
-  EDGE_LABEL_FONT_SIZE,
 } from '../OntologyExplorer.constants';
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import {
@@ -866,6 +866,44 @@ function computeLayoutContext(
   return { layoutOptions, useComboGridLayout, isModelView };
 }
 
+// Reads positions from the graph's own node data, so it reflects both the
+// grid layout and any term the user has since dragged.
+function computeRelationsEdgeRoutes(graph: Graph): Map<string, EdgeRoute> {
+  const nodes = graph.getNodeData().flatMap((node) => {
+    const x = Number(node.style?.x);
+    const y = Number(node.style?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return [];
+    }
+    const [width, height] = getNodeSize(node);
+
+    return [{ id: String(node.id), x, y, width, height }];
+  });
+  const edges = graph.getEdgeData().map((edge) => {
+    const style = (edge.style ?? {}) as Record<string, unknown>;
+    const labelText =
+      typeof style.labelText === 'string' ? style.labelText : '';
+
+    return {
+      id: String(edge.id),
+      source: String(edge.source),
+      target: String(edge.target),
+      labelWidth: labelText
+        ? measureTextWidth(
+            labelText,
+            `700 ${EDGE_LABEL_FONT_SIZE}px ${EDGE_LABEL_FONT_FAMILY}`,
+            7
+          ) + RELATIONS_EDGE_LABEL_PADDING_X
+        : 0,
+      labelHeight: RELATIONS_EDGE_LABEL_HEIGHT,
+      labelOffsetX: Number(style.labelOffsetX) || 0,
+      labelOffsetY: Number(style.labelOffsetY) || 0,
+    };
+  });
+
+  return routeRelationsGraphEdges(nodes, edges);
+}
+
 function attemptInPlacePatch(
   graph: Graph,
   graphData: GraphData,
@@ -1438,40 +1476,7 @@ export function useOntologyGraph({
     if (updates.length > 0) {
       graph.updateNodeData(updates);
     }
-    relationsEdgeRoutesRef.current = routeRelationsGraphEdges(
-      updates.map((node) => {
-        const [width, height] = getNodeSize(node);
-
-        return {
-          id: String(node.id),
-          x: Number(node.style?.x),
-          y: Number(node.style?.y),
-          width,
-          height,
-        };
-      }),
-      graph.getEdgeData().map((edge) => {
-        const style = (edge.style ?? {}) as Record<string, unknown>;
-        const labelText =
-          typeof style.labelText === 'string' ? style.labelText : '';
-
-        return {
-          id: String(edge.id),
-          source: String(edge.source),
-          target: String(edge.target),
-          labelWidth: labelText
-            ? measureTextWidth(
-                labelText,
-                `700 ${EDGE_LABEL_FONT_SIZE}px ${EDGE_LABEL_FONT_FAMILY}`,
-                7
-              ) + RELATIONS_EDGE_LABEL_PADDING_X
-            : 0,
-          labelHeight: RELATIONS_EDGE_LABEL_HEIGHT,
-          labelOffsetX: Number(style.labelOffsetX) || 0,
-          labelOffsetY: Number(style.labelOffsetY) || 0,
-        };
-      })
-    );
+    relationsEdgeRoutesRef.current = computeRelationsEdgeRoutes(graph);
   }, []);
 
   const positionStudioNodes = useCallback(
@@ -1901,6 +1906,20 @@ export function useOntologyGraph({
     const cancelEditGesture = () => {
       container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
     };
+    // A dragged term can land on an edge routed for the old layout, so the
+    // Relations Graph re-routes from the current positions once the drag ends.
+    const rerouteRelationsEdgesAfterDrag = () => {
+      if (studioMode || isDataMode || !useComboGridLayout) {
+        return;
+      }
+      relationsEdgeRoutesRef.current = computeRelationsEdgeRoutes(graph);
+      graph.updateEdgeData(
+        graph.getEdgeData().map((edge) => ({ id: edge.id }))
+      );
+      graph.draw().catch(() => {
+        // the graph may already be destroyed if the tab changed mid-drag
+      });
+    };
     const writeGraphSnapshot = () => {
       // A viewport animation started before a rebuild can finish after the
       // graph is torn down, when it no longer has a viewport to read.
@@ -1931,6 +1950,7 @@ export function useOntologyGraph({
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
     graph.on(NodeEvent.DRAG_START, cancelEditGesture);
+    graph.on(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
     graph.on(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
     graph.on(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
@@ -2126,6 +2146,7 @@ export function useOntologyGraph({
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
       graph.off(NodeEvent.DRAG_START, cancelEditGesture);
+      graph.off(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
       graph.off(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);

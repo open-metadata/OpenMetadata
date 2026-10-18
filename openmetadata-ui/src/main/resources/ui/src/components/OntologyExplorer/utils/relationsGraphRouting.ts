@@ -68,9 +68,6 @@ const toRect = (
   bottom: y + height / 2 + pad,
 });
 
-const containsPoint = (rect: Rect, [x, y]: Point): boolean =>
-  x > rect.left && x < rect.right && y > rect.top && y < rect.bottom;
-
 const overlaps = (a: Rect, b: Rect): boolean =>
   a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
 
@@ -201,12 +198,24 @@ export function routeRelationsGraphEdges(
       .map((node) =>
         toRect(node.x, node.y, node.width, node.height, NODE_CLEARANCE)
       );
-    const offset = CURVE_OFFSETS.find((candidate) =>
-      sampleCurve(source, target, candidate).every(
-        (point) => !obstacles.some((rect) => containsPoint(rect, point))
-      )
-    );
-    curveOffsets.set(edge.id, offset ?? 0);
+    // Segments, not sample points: a long edge can cross a term between two
+    // samples, so a point-only test would wrongly keep it straight.
+    // When no bend clears every term (a long edge across a busy grid), keep
+    // the one that crosses the fewest rather than falling back to straight.
+    let best = { offset: 0, hits: Infinity };
+    for (const candidate of CURVE_OFFSETS) {
+      const curve = sampleCurve(source, target, candidate);
+      const hits = obstacles.filter((rect) =>
+        curveHitsRect(curve, rect)
+      ).length;
+      if (hits < best.hits) {
+        best = { offset: candidate, hits };
+      }
+      if (hits === 0) {
+        break;
+      }
+    }
+    curveOffsets.set(edge.id, best.offset);
   });
 
   const curves = new Map(

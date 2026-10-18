@@ -41,6 +41,35 @@ describe('routeRelationsGraphEdges', () => {
     expect(routes.get('e')?.curveOffset).not.toBe(0);
   });
 
+  it('bends a long edge around a term that sits between two curve samples', () => {
+    const routes = routeRelationsGraphEdges(
+      [node('a', 0, 0), node('middle', 1100, 0), node('b', 10000, 0)],
+      [{ id: 'e', source: 'a', target: 'b', ...label }]
+    );
+
+    expect(routes.get('e')?.curveOffset).not.toBe(0);
+  });
+
+  it('picks the bend crossing the fewest terms when none clears them all', () => {
+    // A column of terms at x=500 blocks every bend; the straight line also
+    // crosses the terms at x=300 and x=700, which a wide enough bend avoids.
+    const wall = Array.from({ length: 21 }, (_, i) =>
+      node(`wall-${i}`, 500, -500 + i * 50)
+    );
+    const routes = routeRelationsGraphEdges(
+      [
+        node('a', 0, 0),
+        node('b', 1000, 0),
+        node('left', 300, 0),
+        node('right', 700, 0),
+        ...wall,
+      ],
+      [{ id: 'e', source: 'a', target: 'b', ...label }]
+    );
+
+    expect(routes.get('e')?.curveOffset).not.toBe(0);
+  });
+
   it('slides apart the labels of two edges that share a midpoint', () => {
     const routes = routeRelationsGraphEdges(
       [
