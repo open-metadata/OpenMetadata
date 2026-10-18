@@ -846,6 +846,7 @@ export const buildWorkflowForSave = async (
     nodes: workflowNodes,
     edges: workflowEdges,
     config: {
+      ...workflowDefinition?.config,
       storeStageStatus: triggerType === Type.EventBasedEntity,
     },
   };

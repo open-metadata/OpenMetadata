@@ -16,6 +16,7 @@ import { DataInsightTabs } from '../../src/interface/data-insight.interface';
 import { KPIData } from '../constant/dataInsight.interface';
 import { deleteFixtureEntity, okJson, settleAll } from './apiResponse';
 import { fillDescriptionBox, selectOptionWithRetry } from './common';
+import { pickDateInCorePicker } from './dateTime';
 
 export const deleteKpiRequest = async (
   apiRequest: APIRequestContext,
@@ -89,12 +90,16 @@ export const addKpi = async (page: Page, data: KPIData) => {
   );
   await page.getByRole('spinbutton').fill('100');
 
-  await page.getByTestId('start-date').click();
-  await page.getByTestId('start-date').fill(startDate);
-  await page.getByTestId('start-date').press('Enter');
-  await page.getByTestId('end-date').click();
-  await page.getByTestId('end-date').fill(endDate);
-  await page.getByTestId('end-date').press('Enter');
+  await pickDateInCorePicker(
+    page,
+    page.getByTestId('start-date').getByRole('button'),
+    startDate
+  );
+  await pickDateInCorePicker(
+    page,
+    page.getByTestId('end-date').getByRole('button'),
+    endDate
+  );
 
   await fillDescriptionBox(page, 'Playwright KPI test description');
 

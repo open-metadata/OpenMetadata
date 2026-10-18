@@ -2779,6 +2779,12 @@
                           "type": "boolean",
                           "default": true
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                          "type": "boolean",
+                          "default": true
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "description": "The source service supports the database concept in its hierarchy",
@@ -3777,6 +3783,9 @@
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                        },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
                         },
                         "supportsProfiler": {
                           "title": "Supports Profiler",
@@ -5282,6 +5291,12 @@
                           "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                           "default": true
                         },
+                        "includeTemporaryTables": {
+                          "title": "Include Temporary Tables",
+                          "type": "boolean",
+                          "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                          "default": false
+                        },
                         "connectionOptions": {
                           "title": "Connection Options",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
@@ -5501,6 +5516,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -5665,6 +5684,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         },
                         "supportsDatabase": {
                           "title": "Supports Database",
@@ -7821,6 +7844,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -7941,6 +7968,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -8056,6 +8087,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
@@ -8993,6 +9028,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         }
                       },
                       "additionalProperties": false,
@@ -10076,6 +10115,101 @@
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                        }
+                      },
+                      "additionalProperties": false,
+                      "required": [
+                        "hostPort",
+                        "username",
+                        "password"
+                      ]
+                    },
+                    {
+                      "title": "Neo4jConnection",
+                      "description": "Neo4j Connection Config",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+                      "definitions": {
+                        "neo4jType": {
+                          "description": "Service type.",
+                          "type": "string",
+                          "enum": [
+                            "Neo4j"
+                          ],
+                          "default": "Neo4j"
+                        },
+                        "neo4jScheme": {
+                          "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+                          "type": "string",
+                          "enum": [
+                            "neo4j",
+                            "neo4j+s",
+                            "neo4j+ssc",
+                            "bolt",
+                            "bolt+s",
+                            "bolt+ssc"
+                          ],
+                          "default": "neo4j"
+                        }
+                      },
+                      "properties": {
+                        "type": {
+                          "title": "Service Type",
+                          "description": "Service Type",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jType",
+                          "default": "Neo4j"
+                        },
+                        "scheme": {
+                          "title": "Connection Scheme",
+                          "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jScheme",
+                          "default": "neo4j"
+                        },
+                        "hostPort": {
+                          "title": "Host and Port",
+                          "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+                          "type": "string"
+                        },
+                        "username": {
+                          "title": "Username",
+                          "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+                          "type": "string"
+                        },
+                        "password": {
+                          "title": "Password",
+                          "description": "Password to connect to Neo4j.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "databaseName": {
+                          "title": "Database Name",
+                          "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+                          "type": "string"
+                        },
+                        "includeRelationships": {
+                          "title": "Include Relationships",
+                          "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+                          "type": "boolean",
+                          "default": true
+                        },
+                        "propertyFilterPattern": {
+                          "title": "Property Filter Pattern",
+                          "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                        },
+                        "schemaFilterPattern": {
+                          "title": "Default Schema Filter Pattern",
+                          "description": "Regex to only include/exclude schemas that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                        },
+                        "tableFilterPattern": {
+                          "title": "Default Table Filter Pattern",
+                          "description": "Regex to only include/exclude tables that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern"
+                        },
+                        "supportsMetadataExtraction": {
+                          "title": "Supports Metadata Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         }
                       },
                       "additionalProperties": false,

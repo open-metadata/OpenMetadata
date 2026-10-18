@@ -20,6 +20,10 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
+import {
+  LastRunStatus,
+  PipelineSummary,
+} from '../generated/type/pipelineSummary';
 import { ListParams } from '../interface/API.interface';
 import { QueryVote } from '../interface/entity/vote.interface';
 import { ServicePageData } from '../interface/platform/service.interface';
@@ -127,6 +131,34 @@ export const getPipelineStatus = async (
 
   const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
     url,
+    { params }
+  );
+
+  return response.data;
+};
+
+export interface ListPipelineSummariesParams {
+  /** Latest-run status to keep. Pipelines that have never run match none. */
+  status?: LastRunStatus;
+  service?: string;
+  search?: string;
+  domain?: string;
+  owner?: string;
+  tier?: string;
+  limit?: number;
+  before?: string;
+  after?: string;
+}
+
+/**
+ * Each pipeline with its latest run, ordered by name. `paging.total` honours
+ * the filters, so a `limit: 1` call counts a status bucket.
+ */
+export const listPipelineSummaries = async (
+  params?: ListPipelineSummariesParams
+) => {
+  const response = await APIClient.get<PagingResponse<PipelineSummary[]>>(
+    `${BASE_URL}/summary`,
     { params }
   );
 

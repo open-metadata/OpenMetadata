@@ -85,7 +85,7 @@ const PRODUCTS = [
     fullyQualifiedName: 'marketing',
     id: 'id-marketing',
     name: 'Marketing Analytics',
-    ownerName: 'Dale Kim',
+    owners: [{ id: 'dale-kim', name: 'Dale Kim', type: 'user' }],
     updatedAt: 300,
   },
   {
@@ -94,7 +94,7 @@ const PRODUCTS = [
     fullyQualifiedName: 'campaign',
     id: 'id-campaign',
     name: 'Campaign Attribution',
-    ownerName: 'Dale Kim',
+    owners: [{ id: 'dale-kim', name: 'Dale Kim', type: 'user' }],
     updatedAt: 100,
   },
   {
@@ -104,7 +104,7 @@ const PRODUCTS = [
     fullyQualifiedName: 'fraud',
     id: 'id-fraud',
     name: 'Fraud Signals',
-    ownerName: 'Teddy',
+    owners: [{ id: 'teddy', name: 'Teddy', type: 'user' }],
     updatedAt: 200,
   },
   {
@@ -113,7 +113,7 @@ const PRODUCTS = [
     fullyQualifiedName: 'orphan',
     id: 'id-orphan',
     name: 'Zebra Metrics',
-    ownerName: undefined,
+    owners: [],
     updatedAt: 50,
   },
 ];
@@ -283,8 +283,40 @@ describe('DataProductsOverviewWidget buckets', () => {
       .getAllByTestId('data-product-owner')
       .map((node) => node.textContent);
 
-    expect(owners).toContain('Dale Kim');
+    expect(owners.some((text) => text?.includes('Dale Kim'))).toBe(true);
     expect(owners.some((text) => text?.includes('·'))).toBe(false);
+  });
+
+  // Only the first owner used to show; a product with several shows them all.
+  it('shows every owner of a product, not just the first', () => {
+    renderWidget({
+      products: [
+        {
+          ...PRODUCTS[0],
+          owners: [
+            { id: 'dale', name: 'Dale Kim', type: 'user' },
+            { id: 'teddy', name: 'Teddy', type: 'user' },
+            { id: 'finance', name: 'Finance', type: 'team' },
+          ],
+        },
+      ],
+    });
+
+    const owners = within(screen.getByTestId('data-product-owner'));
+
+    expect(owners.getAllByTestId('avatar-group-item')).toHaveLength(3);
+
+    ['Dale Kim', 'Teddy', 'Finance'].forEach((name) =>
+      expect(owners.getByTestId(name)).toBeInTheDocument()
+    );
+  });
+
+  it('flags a product with no owner', () => {
+    renderWidget({ products: [PRODUCTS[3]] });
+
+    expect(screen.getByTestId('data-product-owner')).toHaveTextContent(
+      'label.no-owner'
+    );
   });
 
   it('shows an error body, not the empty-state copy, when the fetch fails', () => {
