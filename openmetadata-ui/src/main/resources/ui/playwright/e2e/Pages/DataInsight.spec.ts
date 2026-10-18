@@ -13,13 +13,16 @@
 import { Page } from '@playwright/test';
 import { Kpi } from '../../../src/generated/dataInsight/kpi/kpi';
 import { KPI_DATA } from '../../constant/dataInsight';
-import { DataInsightTabs } from '../../../src/interface/data-insight.interface';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { okJson } from '../../utils/apiResponse';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
-import { addKpi, deleteKpiRequest, openDataInsightTab } from '../../utils/dataInsight';
+import {
+  addKpi,
+  deleteKpiRequest,
+  openDataInsightTab,
+} from '../../utils/dataInsight';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // use the admin user to login
@@ -96,7 +99,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
   test('Create description and owner KPI', async ({ page }) => {
     await navigateToDataInsightPage(page);
 
-    await openDataInsightTab(page, DataInsightTabs.KPIS);
+    await openDataInsightTab(page, 'kpi');
 
     for (const data of kpiData) {
       await page.getByTestId('add-kpi-btn').click();
@@ -225,7 +228,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
 
-    await openDataInsightTab(page, DataInsightTabs.APP_ANALYTICS);
+    await openDataInsightTab(page, 'app-analytics');
 
     await expect(page.getByTestId('summary-card-content')).toBeVisible();
     await expect(
@@ -256,7 +259,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await percentageOfDataAssetWithDescriptionResponse;
     await page.getByTestId('date-picker-menu').click();
     await page.getByRole('menuitem', { name: 'Last 60 days' }).click();
-    await openDataInsightTab(page, DataInsightTabs.KPIS);
+    await openDataInsightTab(page, 'kpi');
 
     await expect(page.getByTestId('kpi-card')).toBeVisible();
     await expect(
@@ -288,7 +291,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    await openDataInsightTab(page, DataInsightTabs.KPIS);
+    await openDataInsightTab(page, 'kpi');
 
     for (const data of kpiData) {
       await page.getByTestId(`edit-action-${data.displayName}`).click();
@@ -355,7 +358,7 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
     await latestKPIResponse;
     await percentageOfDataAssetWithDescriptionResponse;
 
-    await openDataInsightTab(page, DataInsightTabs.KPIS);
+    await openDataInsightTab(page, 'kpi');
 
     for (const data of kpiData) {
       const kpi = getCreatedKpi(data.displayName);

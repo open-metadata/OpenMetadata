@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, Page } from '@playwright/test';
 import { Kpi } from '../../src/generated/dataInsight/kpi/kpi';
-import { DataInsightTabs } from '../../src/interface/data-insight.interface';
 import { KPIData } from '../constant/dataInsight.interface';
 import { deleteFixtureEntity, okJson, settleAll } from './apiResponse';
 import { fillDescriptionBox, selectOptionWithRetry } from './common';
@@ -121,7 +120,10 @@ export const addKpi = async (page: Page, data: KPIData) => {
   return { ...kpi, id: kpi.id, fullyQualifiedName: kpi.fullyQualifiedName };
 };
 
-export const openDataInsightTab = async (page: Page, tab: DataInsightTabs) => {
+export const openDataInsightTab = async (
+  page: Page,
+  tab: 'kpi' | 'app-analytics'
+) => {
   await page.getByTestId(`data-insight-tab-${tab}`).click();
   await page.waitForURL(`**/data-insights/${tab}`);
 };

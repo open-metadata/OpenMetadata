@@ -12,7 +12,6 @@
  */
 import { Page, Response } from '@playwright/test';
 import { KPI_DATA } from '../../constant/dataInsight';
-import { DataInsightTabs } from '../../../src/interface/data-insight.interface';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -315,7 +314,7 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await openDataInsightTab(page, DataInsightTabs.KPIS);
+    await openDataInsightTab(page, 'kpi');
 
     await page.getByTestId('add-kpi-btn').click();
     const createdKpi = await addKpi(page, {
