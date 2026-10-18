@@ -188,6 +188,31 @@ describe('Learning resources settings', () => {
     );
   });
 
+  it('restarts at page 1 when the saved page is past what a remount can walk to', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: '',
+            filterState: {},
+            currentPage: 30,
+            pageSize: 15,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentPage: 1 })
+    );
+  });
+
   it('reports its state so the panel can restore it, back on page 1 after a new search', async () => {
     const onSaveState = jest.fn();
     render(

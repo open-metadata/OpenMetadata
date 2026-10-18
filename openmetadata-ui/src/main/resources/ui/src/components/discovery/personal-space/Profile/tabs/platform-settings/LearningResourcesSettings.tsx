@@ -63,9 +63,9 @@ import {
 } from '../../../../../Learning/Learning.interface';
 import { LearningResourceCard } from '../../../../../Learning/LearningResourceCard/LearningResourceCard.component';
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
+import { getInitialLearningListState } from './LearningResourceSettings.utils';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
-import { getInitialLearningListState } from './LearningResourceSettings.utils';
 
 const CARD_GRID_STYLE: CSSProperties = {
   gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
@@ -154,15 +154,18 @@ const LearningResourcesSettings = ({
   );
   useEffect(() => () => debouncedSearch.cancel(), [debouncedSearch]);
 
-  // A new search or filter starts from page 1 — but not on mount, which would
-  // undo a restored page.
-  const isFirstRender = useRef(true);
+  // A new search or filter starts from page 1. Compared with the previous
+  // values rather than skipping the first run, so a restored page survives
+  // mount — including StrictMode's mount, unmount, mount in development.
+  const lastQuery = useRef({ searchText, filterState });
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-
+    if (
+      lastQuery.current.searchText === searchText &&
+      lastQuery.current.filterState === filterState
+    ) {
       return;
     }
+    lastQuery.current = { searchText, filterState };
     setCurrentPage(1);
   }, [searchText, filterState]);
 

@@ -11,19 +11,20 @@
  *  limitations under the License.
  */
 
+import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
 import {
   CATEGORIES,
   DURATIONS,
   LearningResourceStatus,
+  MAX_CHAIN_PAGES,
   PAGE_IDS,
 } from '../../../../../../constants/Learning.constants';
+import type { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 import {
   CreateLearningResource,
   LearningResource,
   LearningResourceType,
 } from '../../../../../../rest/learningResourceAPI';
-import { PAGE_SIZE_BASE } from '../../../../../../constants/constants';
-import type { PageViewMode } from '../../../../../../generated/type/personaPreferences';
 
 export interface SelectItem {
   id: string;
@@ -135,13 +136,24 @@ export interface LearningListState {
   selectedView?: PageViewMode;
 }
 
-/** The list state to start from: what was saved, else the defaults. */
+/**
+ * The list state to start from: what was saved, else the defaults. A remounted
+ * list rebuilds its cursors by walking up to `MAX_CHAIN_PAGES`; past that it can
+ * only show page 1, so a later saved page restarts at page 1 rather than show
+ * page 1's rows under another page number.
+ */
 export const getInitialLearningListState = (
   saved: unknown
-): LearningListState => ({
-  searchText: '',
-  filterState: {},
-  currentPage: 1,
-  pageSize: PAGE_SIZE_BASE,
-  ...(saved as Partial<LearningListState> | undefined),
-});
+): LearningListState => {
+  const state: LearningListState = {
+    searchText: '',
+    filterState: {},
+    currentPage: 1,
+    pageSize: PAGE_SIZE_BASE,
+    ...(saved as Partial<LearningListState> | undefined),
+  };
+
+  return state.currentPage > MAX_CHAIN_PAGES
+    ? { ...state, currentPage: 1 }
+    : state;
+};
