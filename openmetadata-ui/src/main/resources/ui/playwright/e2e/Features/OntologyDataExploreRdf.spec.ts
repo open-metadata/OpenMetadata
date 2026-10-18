@@ -36,6 +36,7 @@ import {
   readSearchHighlightIds,
   waitForGraphLoaded,
 } from '../../utils/ontologyStudio';
+import { assetIdsWithColumns, countAssetsWithColumns } from '../../utils/table';
 
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_data_${suffix}`);
@@ -422,7 +423,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ),
           { timeout: 120_000 }
         )
-        .toBe(PRIMARY_ASSET_COUNT);
+        .toBe(countAssetsWithColumns(tables.slice(0, PRIMARY_ASSET_COUNT)));
       await expect
         .poll(
           () =>
@@ -433,7 +434,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ),
           { timeout: LONG_ACTION_TIMEOUT }
         )
-        .toBe(1);
+        .toBe(countAssetsWithColumns([tables[SECONDARY_ASSET_INDEX]]));
       await expect
         .poll(
           () =>
@@ -451,7 +452,10 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ]),
           { timeout: LONG_ACTION_TIMEOUT }
         )
-        .toEqual([PRIMARY_ASSET_COUNT, 1]);
+        .toEqual([
+          countAssetsWithColumns(tables.slice(0, PRIMARY_ASSET_COUNT)),
+          countAssetsWithColumns([tables[SECONDARY_ASSET_INDEX]]),
+        ]);
       await expect
         .poll(
           async () => {
@@ -695,7 +699,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       ).toBeVisible();
 
       const primaryAssetIds = new Set(
-        tables.slice(0, PRIMARY_ASSET_COUNT).map((table) => table.id)
+        assetIdsWithColumns(tables.slice(0, PRIMARY_ASSET_COUNT))
       );
       await expect
         .poll(async () => {
