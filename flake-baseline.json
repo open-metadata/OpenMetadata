@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-17T03:35:44Z",
+  "generatedAt": "2026-10-18T03:18:25Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37564201661",
-      "sourceSha": "2df41a00f37449606a076ee057fd5b8dca1ef82f",
-      "recordedAt": "2026-10-07T03:33:28Z"
-    },
     {
       "runId": "37720017171",
       "sourceSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
@@ -53,6 +48,11 @@
       "runId": "38996045093",
       "sourceSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
       "recordedAt": "2026-10-17T03:35:44Z"
+    },
+    {
+      "runId": "39091104477",
+      "sourceSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "recordedAt": "2026-10-18T03:18:25Z"
     }
   ],
   "entries": {
@@ -86,14 +86,25 @@
       "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
       "hardFailure": false
     },
+    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database Schema": {
+      "observations": [
+        "39091104477"
+      ],
+      "project": "ImportExport",
+      "file": "Features/BulkImport.spec.ts",
+      "title": "Bulk Import Export \u203a Database Schema",
+      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "hardFailure": false
+    },
     "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service": {
       "observations": [
-        "38502607895"
+        "38502607895",
+        "39091104477"
       ],
       "project": "ImportExport",
       "file": "Features/BulkImport.spec.ts",
       "title": "Bulk Import Export \u203a Database service",
-      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
       "hardFailure": false
     },
     "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved": {
@@ -126,6 +137,16 @@
       "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
+    "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly": {
+      "observations": [
+        "39091104477"
+      ],
+      "project": "chromium",
+      "file": "Features/DataQuality/TestLibrary.spec.ts",
+      "title": "Test Library \u203a should display test platform badges correctly",
+      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "hardFailure": false
+    },
     "chromium :: Features/ProfilePlatformSettings.spec.ts :: Profile Platform Settings \u203a learning resources: adds, edits and deletes a resource": {
       "observations": [
         "38018608325"
@@ -155,6 +176,26 @@
       "title": "Task Navigation - Activity Feed Widget \u203a task link should contain correct entity FQN, not task ID",
       "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
       "hardFailure": false
+    },
+    "chromium :: Features/Topic.spec.ts :: Topic entity specific tests \u203a Copy nested field link should include full hierarchical path": {
+      "observations": [
+        "39091104477"
+      ],
+      "project": "chromium",
+      "file": "Features/Topic.spec.ts",
+      "title": "Topic entity specific tests \u203a Copy nested field link should include full hierarchical path",
+      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "hardFailure": false
+    },
+    "chromium :: Flow/NotificationAlerts.spec.ts :: Multiple Filters Alert": {
+      "observations": [
+        "39091104477"
+      ],
+      "project": "chromium",
+      "file": "Flow/NotificationAlerts.spec.ts",
+      "title": "Multiple Filters Alert",
+      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "hardFailure": true
     },
     "chromium :: Pages/AppStopRunModal.spec.ts :: App Stop Run Modal \u203a should close stop modal when cancel is clicked": {
       "observations": [
@@ -377,6 +418,16 @@
       "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
       "hardFailure": true
     },
+    "chromium :: Pages/ExplorePageRightPanel.spec.ts :: Right Panel Test Suite \u203a Explore page right panel tests \u203a Data Steward User - Permission Verification \u203a Should allow Data Steward to edit owners for topic": {
+      "observations": [
+        "39091104477"
+      ],
+      "project": "chromium",
+      "file": "Pages/ExplorePageRightPanel.spec.ts",
+      "title": "Right Panel Test Suite \u203a Explore page right panel tests \u203a Data Steward User - Permission Verification \u203a Should allow Data Steward to edit owners for topic",
+      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "hardFailure": false
+    },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboardDataModel -> dashboard": {
       "observations": [
         "38018608325"
@@ -539,6 +590,7 @@
     }
   },
   "stableIds": [
+    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service",
     "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set"
   ],
   "hardFailureStableIds": [
