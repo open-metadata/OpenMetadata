@@ -24,13 +24,20 @@
  *   Layer 2  --om-*       Project aliases defined here. Each references the
  *                         matching globals.css token with a raw fallback, e.g.
  *                         --om-color-text: var(--color-text-primary, #181d27).
- *                         Components reference ONLY these. Off-scale/legacy
+ *                         Colour roles in new LESS read the Tailwind bridge
+ *                         vars instead (--tw-background-color-*,
+ *                         --tw-text-color-*, --tw-border-color-*,
+ *                         --tw-color-fg-*, --tw-color-utility-*), which flip
+ *                         under .dark-mode; --om-color-* aliases stay for
+ *                         existing references only. New colour roles belong
+ *                         in core globals.css. Off-scale/legacy
  *                         values (spacing, z-index, legacy colors with no
  *                         upstream home) hold the raw value directly here —
  *                         this is the one place raw values may live.
  *
- *   Components (the .less / .css files) reference Layer 2 via var(--om-*) and
- *   never raw values.
+ *   Components (the .less / .css files) never hold raw values: colours read
+ *   the Tailwind bridge vars (also in canvas token strings), every other value
+ *   var(--om-*). Never add --om-color-* tokens or references.
  *
  * Docs: ./specs/tokens/token-reference.md and ./specs/foundations/*.md
  * Lint: node scripts/token-audit.js   (CI: zero errors required)
