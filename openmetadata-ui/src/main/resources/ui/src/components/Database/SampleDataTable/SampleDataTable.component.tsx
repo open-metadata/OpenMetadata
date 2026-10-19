@@ -293,7 +293,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <ErrorPlaceHolder className="error-placeholder tw:bg-surface!">
+      <ErrorPlaceHolder className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:py-16">
         <Typography as="p" className="tw:mb-3.5!">
           <Transi18next
             i18nKey="message.view-sample-data-entity"

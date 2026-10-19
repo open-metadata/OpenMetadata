@@ -18,11 +18,11 @@ import { FC, Fragment, HTMLAttributes, ReactNode, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import DocumentTitle from '../common/DocumentTitle/DocumentTitle';
+import './../../styles/layout/page-layout.less';
 import {
   ENTITY_TABS_FILL_COLUMN_CLASS,
   ENTITY_TABS_FILL_GRID_CLASS,
 } from './PageLayoutV1.constants';
-import './../../styles/layout/page-layout.less';
 
 export type PageLayoutVariant = 'default' | 'compact';
 

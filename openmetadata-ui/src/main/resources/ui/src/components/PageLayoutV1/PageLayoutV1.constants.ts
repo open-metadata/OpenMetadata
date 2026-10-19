@@ -31,7 +31,4 @@ export const ENTITY_TABS_FILL_COLUMN_CLASS = [
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex-col',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex-[1_0_auto]',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]>*]:flex-[1_0_auto]',
-  // Sample Data's empty state carries a classic-shell viewport height from LESS; the
-  // panel already sizes it here. `!` because unlayered LESS beats layered utilities.
-  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_.error-placeholder]:h-auto!',
 ].join(' ');
