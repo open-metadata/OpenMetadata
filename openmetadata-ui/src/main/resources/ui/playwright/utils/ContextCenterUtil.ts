@@ -889,8 +889,13 @@ export const scrollHierarchyToNode = async (
     const countBefore = await nodes.count();
 
     // Hoist listener before the scroll so no response is missed
+    // Root pages only: `domains/hierarchy` (every navigation) and child
+    // expands (`parent=`) carry their own paging.total.
     const responsePromise = page.waitForResponse(
-      (res) => res.url().includes('/hierarchy'),
+      (res) =>
+        res.url().includes('/contextCenter/pages/search/hierarchy') &&
+        !res.url().includes('parent=') &&
+        res.request().method() === 'GET',
       { timeout: 15000 }
     );
 
