@@ -201,8 +201,31 @@ test.describe('Context Center - Documents Page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // The replayed worker session has been seen to land on /signin in CI.
+    // Fail here with enough context to tell an unreachable token-storage
+    // service worker from a failed loggedInUser call.
+    const consoleErrors: string[] = [];
+    let loggedInUserStatus: number | string = 'not requested';
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on('response', (res) => {
+      if (res.url().includes('/api/v1/users/loggedInUser')) {
+        loggedInUserStatus = res.status();
+      }
+    });
+
     await disableEtagConditionalReads(page);
     await redirectToHomePage(page);
+
+    await expect(
+      page,
+      `Session lost before test: loggedInUser=${loggedInUserStatus}; console errors: ${consoleErrors.join(
+        ' | '
+      )}`
+    ).not.toHaveURL(/\/signin/);
   });
 
   // ─── Pagination ───────────────────────────────────────────────────────────

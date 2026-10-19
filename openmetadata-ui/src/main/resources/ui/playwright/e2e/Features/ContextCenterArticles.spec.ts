@@ -919,8 +919,14 @@ test.describe('Context Center Articles', () => {
       targetArticle
     );
 
-    const parent = listKnowledgeCenter.knowledgePages[0];
     const { apiContext, afterAction } = await getApiContext(page);
+    // A fresh parent sorts first (hierarchy is updatedAt desc); a beforeAll
+    // article can fall past the first 100-row page once other workers add
+    // articles.
+    const parent = await createArticleViaApi(apiContext, {
+      displayName: `CC Hierarchy Parent ${uuid()}`,
+      name: `cc_hierarchy_parent_${uuid()}`,
+    });
     const child = await createArticleViaApi(apiContext, {
       displayName: `CC Hierarchy Child ${uuid()}`,
       name: `cc_hierarchy_child_${uuid()}`,
@@ -997,10 +1003,7 @@ test.describe('Context Center Articles', () => {
 
     const { apiContext: cleanupContext, afterAction: cleanupAfterAction } =
       await getApiContext(page);
-    await deleteArticleByFqn(
-      cleanupContext,
-      `${parent.fullyQualifiedName}.${child.name}`
-    );
+    await deleteArticleByFqn(cleanupContext, parent.fullyQualifiedName);
     await cleanupAfterAction();
   });
 
