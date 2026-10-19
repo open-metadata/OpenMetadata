@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, SelectItemType, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  SelectItemType,
+  TableCard,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -92,6 +98,7 @@ import type { ExpandableConfig } from '../../../../../common/Table/Table.interfa
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { TABLE_TABS } from './Members.constants';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
@@ -145,6 +152,7 @@ const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
 
 // The inline role/policy add flow is identical bar the team field it writes to.
 type InlineAddField = 'defaultRoles' | 'policies';
+
 type AddOption = {
   id: string;
   name: string;
@@ -1267,6 +1275,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
+            entityDescription={t('message.page-sub-header-for-roles')}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
             filterOption={inlineFilterOption}
@@ -1291,6 +1300,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
+            entityDescription={t('message.page-sub-header-for-policies')}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
             filterOption={inlineFilterOption}
@@ -1315,10 +1325,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       data-testid="team-detail"
       direction="col">
       {/* Pinned header: info widgets + description. Capped at half the height and
-          scrollable so a long description or the open inline editor (incl. its
-          Save/Cancel) can't push the tab table to zero height or get clipped. */}
+          scrollable so a long description can't push the tab table to zero
+          height; its cards never shrink (they would clip instead of scroll), and
+          the cap lifts while the editor is open so Save/Cancel stay in view. */}
       <Box
-        className="tw:shrink-0 tw:max-h-[50%] tw:overflow-y-auto"
+        className={classNames(
+          'tw:shrink-0 tw:overflow-y-auto tw:[&>*]:shrink-0',
+          !isDescEditing && 'tw:max-h-[50%]'
+        )}
         direction="col">
         {/* Info widget section */}
         <MembersTeamInfoWidgets
@@ -1342,30 +1356,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
       {/* Tabs */}
       <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key: Key) => setActiveTab(String(key))}>
-          <Tabs.List size="sm" type="underline">
-            {allTabKeys.map((tab) => {
-              const plugin = pluginTabs.find((item) => item.key === tab);
-
-              return (
-                <Tabs.Item id={tab} key={tab}>
-                  {plugin
-                    ? plugin.label
-                    : getTabLabel(
-                        tab as TeamTab,
-                        t,
-                        team,
-                        childTeams.length,
-                        assetCount
-                      )}
-                </Tabs.Item>
-              );
-            })}
-          </Tabs.List>
-        </Tabs>
-
         {/* A plain block, NOT a `Box`: `Box` is display:flex, and inside a flex
             container the tab content becomes a flex item that shrinks to the
             container's height instead of overflowing it, so `overflow-auto`
@@ -1373,7 +1363,52 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             clientHeight). A block container lets the content keep its natural
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
-          {renderActiveTab()}
+          <TableCard.Root
+            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+            size="compact">
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key: Key) => setActiveTab(String(key))}>
+              {/* -mb-px lays the tab underline over the row border so the divider
+                  also runs under the actions. */}
+              <Box
+                align="center"
+                className="tw:border-b tw:border-secondary tw:pr-4"
+                direction="row"
+                gap={4}
+                justify="between">
+                <Tabs.List
+                  className="tw:-mb-px tw:px-4 tw:pt-3"
+                  size="sm"
+                  type="underline">
+                  {allTabKeys.map((tab) => {
+                    const plugin = pluginTabs.find((item) => item.key === tab);
+
+                    return (
+                      <Tabs.Item id={tab} key={tab}>
+                        {plugin
+                          ? plugin.label
+                          : getTabLabel(
+                              tab as TeamTab,
+                              t,
+                              team,
+                              childTeams.length,
+                              assetCount
+                            )}
+                      </Tabs.Item>
+                    );
+                  })}
+                </Tabs.List>
+              </Box>
+            </Tabs>
+            {TABLE_TABS.has(activeTab) ? (
+              renderActiveTab()
+            ) : (
+              <Box className="tw:p-4" direction="col">
+                {renderActiveTab()}
+              </Box>
+            )}
+          </TableCard.Root>
         </div>
       </Box>
 

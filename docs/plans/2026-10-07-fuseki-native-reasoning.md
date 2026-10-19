@@ -6,6 +6,16 @@ in review, and phase 3 has started. Date:
 code, and again to package all reasoning in the existing image without a sidecar;
 [Open decisions](#open-decisions) lists what remains.
 
+**2026-10-17 boundary revision:**
+ADR:2026-10-17-glossaries-do-not-own-ontology-models supersedes the glossary modeling
+assumptions below. Glossaries retain vocabulary terms, configurable relations and tagging;
+their unreleased ontology configuration, attributes and realization fields are removed.
+Native ontology releases own authored classes, properties and axioms, and Fuseki serves only
+the active release under
+ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release. Native asset mappings and imports
+remain follow-up work; references below to glossary realization roles or configuration are
+historical design context, not supported API contracts.
+
 ## Decision and requirements
 
 OpenMetadata owns authoring, authorization, scheduling, and presentation; it submits jobs and reads

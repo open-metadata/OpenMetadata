@@ -52,13 +52,16 @@ import {
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
+import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
 import AlertAiForm from './AlertAiForm.component';
 import AlertAiFormFields from './AlertAiFormFields.component';
-import AlertAiRuleSection from './AlertAiRuleSection.component';
+import AlertAiRuleSection, {
+  RuleArgumentField,
+} from './AlertAiRuleSection.component';
 import AlertAiSection from './AlertAiSection.component';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 
@@ -850,6 +853,60 @@ describe('AlertAi form field components', () => {
     await act(async () => {
       resolveInitialLoad?.({ hits: { hits: [] } });
     });
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'dom' })
+    );
+  });
+
+  it('keeps a typed search when the source search is rebuilt during the debounce', async () => {
+    jest.useFakeTimers();
+    const getSourceSearch = () =>
+      ({
+        byId: jest.fn(),
+        byName: jest.fn(),
+        containerEntities: [],
+        indexes: [],
+      } as unknown as AlertSourceSearch);
+    const value = {
+      ...baseValue,
+      input: {
+        filters: [
+          {
+            arguments: [{ input: [], name: 'domainList' }],
+            effect: Effect.Include,
+            name: 'matchAnyDomain',
+          },
+        ],
+      },
+    } as ModifiedCreateEventSubscription;
+    const renderField = (sourceSearch: AlertSourceSearch) => (
+      <RuleArgumentField
+        argument="domainList"
+        field="filters"
+        index={0}
+        name={0}
+        sourceSearch={sourceSearch}
+        value={value}
+        onChange={jest.fn()}
+      />
+    );
+
+    const { rerender } = render(renderField(getSourceSearch()));
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+    (searchQuery as jest.Mock).mockClear();
+
+    fireEvent.change(screen.getByTestId('domainList-autocomplete'), {
+      target: { value: 'dom' },
+    });
+    // Adding a filter re-asks the server what the selection supports, which hands the field
+    // a new source search while the typed text is still waiting on the debounce.
+    rerender(renderField(getSourceSearch()));
     await act(async () => {
       jest.advanceTimersByTime(500);
     });

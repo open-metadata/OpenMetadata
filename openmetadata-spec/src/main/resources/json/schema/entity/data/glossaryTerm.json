@@ -87,13 +87,6 @@
         "$ref": "../../entity/data/glossaryTerm.json#/definitions/termReference"
       }
     },
-    "sourceMemoryIds": {
-      "description": "Context memories that supported the derivation of this glossary term.",
-      "type": "array",
-      "items": { "$ref": "../../type/basic.json#/definitions/uuid" },
-      "uniqueItems": true,
-      "maxItems": 20
-    },
     "conceptMappings": {
       "description": "Optional mappings to external concepts (e.g., SKOS alignments).",
       "type": "array",
@@ -101,38 +94,6 @@
         "$ref": "../../type/conceptMapping.json"
       },
       "default": []
-    },
-    "attributes": {
-      "description": "Typed properties governed by this ontology concept.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/ontologyAttribute.json"
-      },
-      "default": []
-    },
-    "effectiveAttributes": {
-      "description": "Attributes declared by this concept together with those inherited from its ancestors through subsumption. Computed by the server on read and never stored; inherited entries carry `inherited` and `declaringTerm`.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/ontologyAttribute.json"
-      },
-      "default": []
-    },
-    "realizedIn": {
-      "description": "Data assets that physically realize this concept. Distinct from tag labels, which only record that an asset references the concept.",
-      "type": "array",
-      "items": {
-        "$ref": "../../type/assetRealization.json"
-      },
-      "default": []
-    },
-    "conceptType": {
-      "description": "Vocabulary the source ontology used to assert this concept. Defaults to `BOTH`, which emits the term as an `owl:Class` and a `skos:Concept`.",
-      "$ref": "../../type/ontologyConceptType.json"
-    },
-    "ontologySource": {
-      "description": "Pinned source provenance when this term belongs to an application ontology subset.",
-      "$ref": "../../type/ontologySourceProvenance.json"
     },
     "version": {
       "description": "Metadata version of the entity.",

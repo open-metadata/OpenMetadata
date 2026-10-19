@@ -55,8 +55,10 @@ import {
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
+import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
+import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
@@ -285,6 +287,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const { extensionRegistry } = useApplicationsProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
+  const [readyReviewTask, setReadyReviewTask] = useState<string>();
+  const handleReviewReady = useCallback(
+    (ready: boolean) => {
+      setReadyReviewTask(ready ? task?.id : undefined);
+    },
+    [task?.id]
+  );
   // The task id whose full record has loaded. The list row the panel opens with
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
@@ -432,8 +441,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       );
     }
 
-    return effective;
+    return isOntologyReviewTask(task) && readyReviewTask !== task.id
+      ? effective.filter(
+          (action) => action.kind !== 'approve' && action.kind !== 'reject'
+        )
+      : effective;
   }, [
+    readyReviewTask,
     task,
     hasFullTask,
     isSyncingTransitions,
@@ -537,7 +551,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         // server response is authoritative there.
         const resolved = {
           ...updated,
-          status: action.targetTaskStatus ?? updated.status,
+          // Native review responses retain Open until the approval threshold is met.
+          status: isOntologyReviewTask(task)
+            ? updated.status
+            : action.targetTaskStatus ?? updated.status,
         };
         consumedTransitionIdsRef.current.add(action.id);
         setTask(resolved);
@@ -663,6 +680,33 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     </ClampedText>
   ) : null;
   const LegacyPanel = contribution?.component;
+  const renderDetails = () => {
+    if (isOntologyReviewTask(task)) {
+      return (
+        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
+      );
+    }
+
+    return (
+      <>
+        <TaskAssetCard
+          StatTiles={contribution?.stats}
+          about={about}
+          isLoading={isAboutLoading}
+          task={task}
+        />
+        {LegacyPanel ? (
+          <LegacyPanel id={task.id} task={task} />
+        ) : (
+          <TaskDetailSummary
+            callout={descriptor.callout}
+            change={withExistingValues(descriptor.change, task, about?.entity)}
+            rows={descriptor.rows}
+          />
+        )}
+      </>
+    );
+  };
 
   return (
     <Box
@@ -699,22 +743,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
-        <TaskAssetCard
-          StatTiles={contribution?.stats}
-          about={about}
-          isLoading={isAboutLoading}
-          task={task}
-        />
-
-        {LegacyPanel ? (
-          <LegacyPanel id={task.id} task={task} />
-        ) : (
-          <TaskDetailSummary
-            callout={descriptor.callout}
-            change={withExistingValues(descriptor.change, task, about?.entity)}
-            rows={descriptor.rows}
-          />
-        )}
+        {renderDetails()}
 
         <TaskActivityTimeline
           createdEvent={descriptor.createdEvent}

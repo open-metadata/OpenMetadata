@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/captureOntologyRelease.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CaptureOntologyRelease",
+  "description": "Capture one committed working revision as an immutable ontology release candidate.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CaptureOntologyRelease",
+  "properties": {
+    "expectedWorkingRevision": {
+      "$ref": "../../type/ontologyState.json#/properties/workingRevision"
+    }
+  },
+  "required": [
+    "expectedWorkingRevision"
+  ],
+  "additionalProperties": false
+}
