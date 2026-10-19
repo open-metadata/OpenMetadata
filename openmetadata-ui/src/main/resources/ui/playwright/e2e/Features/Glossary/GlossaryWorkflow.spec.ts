@@ -561,6 +561,9 @@ test(
   'should delete parent term and cascade delete children',
   { tag: ['@workflow'] },
   async ({ page }) => {
+    // The async delete job can take well past the default budget on a loaded
+    // merge-queue runner; the 404 poll below needs room to wait it out.
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     let parentTerm: GlossaryTerm;
@@ -610,6 +613,22 @@ test(
       await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
+
+      // The async endpoint only queues the delete job; re-opening the glossary
+      // before the job commits renders the terms that are still in the DB.
+      for (const term of [parentTerm, childTerm]) {
+        await expect
+          .poll(
+            async () =>
+              (
+                await apiContext.get(
+                  `/api/v1/glossaryTerms/${term.responseData.id}`
+                )
+              ).status(),
+            { timeout: 90_000 }
+          )
+          .toBe(404);
+      }
 
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);

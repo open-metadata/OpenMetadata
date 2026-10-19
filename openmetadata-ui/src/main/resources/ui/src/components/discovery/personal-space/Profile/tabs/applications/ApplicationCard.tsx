@@ -42,6 +42,24 @@ interface ApplicationCardProps {
   onClick: () => void;
 }
 
+/** The app's full-colour tile, or its glyph on a neutral tile when it has none. */
+const AppIconTile = ({ appName }: { appName: string }) => {
+  const ColoredIcon = applicationsClassBase.getAppColoredIcon(appName);
+  if (ColoredIcon) {
+    return <ColoredIcon className="tw:size-10 tw:shrink-0" />;
+  }
+  const Icon = applicationsClassBase.getAppIcon(appName);
+
+  return (
+    <Box
+      align="center"
+      className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
+      justify="center">
+      <Icon className="tw:size-5 tw:text-fg-secondary" />
+    </Box>
+  );
+};
+
 const ApplicationCard: FC<ApplicationCardProps> = ({
   appName,
   title,
@@ -52,7 +70,6 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation();
-  const Icon = applicationsClassBase.getAppIcon(appName);
   const isAvailable = !unavailableReason;
   const isClickable = isAvailable && !actionLabel;
 
@@ -74,12 +91,7 @@ const ApplicationCard: FC<ApplicationCardProps> = ({
       }}>
       <Card.Content>
         <Box align="start" direction="row" gap={4}>
-          <Box
-            align="center"
-            className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-secondary"
-            justify="center">
-            <Icon className="tw:size-5 tw:text-fg-secondary" />
-          </Box>
+          <AppIconTile appName={appName} />
           <Box className="tw:min-w-0" direction="col" gap={1}>
             <Box align="center" direction="row" gap={2} wrap="wrap">
               <Typography
