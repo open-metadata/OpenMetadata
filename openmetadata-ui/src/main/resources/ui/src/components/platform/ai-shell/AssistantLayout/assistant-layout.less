@@ -70,4 +70,43 @@
   .page-layout-v1:not([data-variant='compact']) {
     padding-top: 16px;
   }
+
+  // Entity details: the active tab panel fills the rest of the canvas, so a tab's
+  // empty-state card reaches the bottom of the page body with its content centred
+  // instead of ending under the content. Each level grows into the space below.
+  .page-layout-v1-center:has(.entity-details-page-tabs) > .layout-grid {
+    min-height: 100%;
+
+    > .layout-column {
+      display: flex;
+      flex-direction: column;
+
+      > * {
+        flex: 1 0 auto;
+      }
+    }
+  }
+
+  .entity-details-page-tabs {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+
+    > *,
+    [role='tabpanel'] > * {
+      flex: 1 0 auto;
+    }
+
+    [role='tabpanel'] {
+      flex: 1 0 auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    // Sample Data's empty state carries a classic-shell viewport height; here the
+    // panel already sizes it, and the fixed height would overshoot the canvas.
+    .error-placeholder {
+      height: auto;
+    }
+  }
 }

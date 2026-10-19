@@ -79,7 +79,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
       onClick={handleClick}>
       <span className="tw:flex tw:w-full tw:min-w-0 tw:items-start tw:gap-2.5">
         <FeaturedIcon
-          color="brand"
+          color="gray"
           icon={
             serviceLogo ? (
               <img
@@ -92,6 +92,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
           radius="lg"
           shape="square"
           size="md"
+          theme="modern"
         />
         <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
           {/* The card title truncates hard at this width, so the full name has to be

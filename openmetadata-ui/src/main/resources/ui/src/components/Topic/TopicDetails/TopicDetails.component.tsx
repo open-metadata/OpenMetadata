@@ -416,7 +416,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       sampleDataTab: !viewSampleDataPermission ? (
-        <div className="border-default border-radius-sm p-y-lg">
+        <div className="border-default border-radius-sm p-y-lg tw:bg-surface">
           <ErrorPlaceHolder
             className="border-none"
             permissionValue={t('label.view-entity', {

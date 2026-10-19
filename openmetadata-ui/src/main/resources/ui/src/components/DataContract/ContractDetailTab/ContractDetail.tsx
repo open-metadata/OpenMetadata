@@ -595,7 +595,7 @@ const ContractDetail: React.FC<{
           }
           type={ERROR_PLACEHOLDER_TYPE.CORE_CREATE}>
           <div className="tw:my-4">
-            <Typography as="p" className="w-80 tw:text-gray-500 tw:text-center">
+            <Typography as="p" className="w-80 tw:text-tertiary tw:text-center">
               {t('message.create-contract-description')}
             </Typography>
           </div>

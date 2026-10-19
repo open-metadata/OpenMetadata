@@ -42,7 +42,7 @@ const CoreCreateErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'tw:h-full tw:flex-center tw:border-default tw:border-radius-sm tw:bg-primary tw:w-full tw:p-8 tw:pt-0'
+        'border-default border-radius-sm tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center tw:bg-surface tw:p-8'
       )}
       data-testid="no-data-placeholder">
       <div className="tw:flex tw:flex-col tw:items-center">
