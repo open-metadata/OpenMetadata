@@ -138,6 +138,8 @@ interface NodeInspectorProps
   coverage?: MappingCoverage;
   onDetails: (node: GraphNode) => void;
   onSelectRelationship: (id: string) => void;
+  showAllRelationships: boolean;
+  onShowAllRelationshipsChange: (showAll: boolean) => void;
 }
 
 /** Entity types that render as "USERNAME" / "FQN" instead of "FULL PATH". */
@@ -177,6 +179,8 @@ interface RelationshipsSectionProps {
   nodeMap: Map<string, GraphNode>;
   onSelectRelationship: (id: string) => void;
   onViewRelationships?: () => void;
+  showAll: boolean;
+  onShowAllChange: (showAll: boolean) => void;
 }
 
 const PREVIEW_RELATIONSHIPS = 3;
@@ -192,9 +196,10 @@ const RelationshipsSection = ({
   nodeMap,
   onSelectRelationship,
   onViewRelationships,
+  showAll,
+  onShowAllChange,
 }: RelationshipsSectionProps) => {
   const { t } = useTranslation();
-  const [showAll, setShowAll] = useState(false);
   const previewSlice = connections.slice(
     0,
     showAll ? INLINE_RELATIONSHIPS : PREVIEW_RELATIONSHIPS
@@ -234,7 +239,7 @@ const RelationshipsSection = ({
           className="tw:self-start"
           color="link-color"
           size="sm"
-          onPress={() => setShowAll((value) => !value)}>
+          onPress={() => onShowAllChange(!showAll)}>
           {showAll
             ? t('label.view-less')
             : t('label.kg-view-all-relationships', {
@@ -380,6 +385,8 @@ const GraphNodeInspector = ({
   onDetails,
   onSelectRelationship,
   onViewRelationships,
+  showAllRelationships,
+  onShowAllRelationshipsChange,
 }: NodeInspectorProps) => {
   const canShowGapNotes = hasMappingCoverageSignal(node.type);
   const bodyDescription = node.description ?? null;
@@ -410,7 +417,9 @@ const GraphNodeInspector = ({
           connections={connections}
           node={node}
           nodeMap={nodeMap}
+          showAll={showAllRelationships}
           onSelectRelationship={onSelectRelationship}
+          onShowAllChange={onShowAllRelationshipsChange}
           onViewRelationships={onViewRelationships}
         />
       </Box>
@@ -505,6 +514,9 @@ const KnowledgeGraphOverlays = ({
   // Where the inspector came from when it drilled into a relationship, so the
   // header can offer a way back. Only valid while that relationship is shown.
   const [back, setBack] = useState<InspectorBack | null>(null);
+  // Lives here, not in the section, so "back" from a relationship returns to
+  // the list as the user left it rather than collapsed to three rows.
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -692,9 +704,13 @@ const KnowledgeGraphOverlays = ({
                 node={selectedNode}
                 nodeHref={getGraphNodeHref(selectedNode)}
                 nodeMap={nodeMap}
+                showAllRelationships={expandedNodeId === selectedNode.id}
                 onDetails={setDetailsNode}
                 onExpandGroup={onExpandGroup}
                 onSelectRelationship={openRelationship}
+                onShowAllRelationshipsChange={(showAll) =>
+                  setExpandedNodeId(showAll ? selectedNode.id : null)
+                }
                 onViewRelationships={onViewRelationships}
               />
             )

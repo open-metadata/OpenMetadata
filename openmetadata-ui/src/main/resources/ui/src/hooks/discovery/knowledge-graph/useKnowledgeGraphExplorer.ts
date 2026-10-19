@@ -148,14 +148,12 @@ export const useKnowledgeGraphExplorer = ({
 
     return getMappingCoverage(rawData, inspectedIds);
   }, [rawData, rootId, result.appliedQuery?.depth]);
-  // Labels are already normalised where the graph is fetched (useKnowledgeGraphData).
-  const displayData = scopedData;
   const presented = useMemo(() => {
-    if (!displayData || !rawData) {
+    if (!scopedData || !rawData) {
       return null;
     }
     const graph = buildGraphPresentation(
-      displayData,
+      scopedData,
       rawData,
       rootId,
       presentation,
@@ -168,7 +166,7 @@ export const useKnowledgeGraphExplorer = ({
       unfiltered: annotateGraphCoverage(graph.unfiltered, coverage, rootId),
     };
   }, [
-    displayData,
+    scopedData,
     rawData,
     rootId,
     presentation,
@@ -177,12 +175,12 @@ export const useKnowledgeGraphExplorer = ({
     coverage,
   ]);
   const scene = useMemo(() => {
-    const original = transformToG6Format(displayData);
+    const original = transformToG6Format(scopedData);
     const grouped = transformToG6Format(presented?.data ?? null);
 
     return {
       nodes: [
-        ...(displayData?.nodes ?? []),
+        ...(scopedData?.nodes ?? []),
         ...(presented?.data.nodes.filter(
           (node) => node.presentation?.members
         ) ?? []),
@@ -193,30 +191,30 @@ export const useKnowledgeGraphExplorer = ({
         ).values(),
       ],
     };
-  }, [displayData, presented?.data]);
+  }, [scopedData, presented?.data]);
   const counts = useMemo(
-    () => countRelationCategories(displayData),
-    [displayData]
+    () => countRelationCategories(scopedData),
+    [scopedData]
   );
   const detailCounts = useMemo(
     () => ({
       columns:
         mode === 'ontology'
-          ? displayData?.nodes.filter((node) => node.type === 'property')
+          ? scopedData?.nodes.filter((node) => node.type === 'property')
               .length ?? 0
           : columns.total,
-      relationships: displayData?.edges.length ?? 0,
+      relationships: scopedData?.edges.length ?? 0,
       coverage: [...coverage.values()].filter((value) => value === 'unmapped')
         .length,
     }),
-    [mode, columns.total, displayData, coverage]
+    [mode, columns.total, scopedData, coverage]
   );
 
   return {
     result,
     rootEntityId,
     rootEntityType,
-    displayData,
+    displayData: scopedData,
     allData: rawData,
     presented: presented ?? { data: null, unfiltered: null },
     columns,

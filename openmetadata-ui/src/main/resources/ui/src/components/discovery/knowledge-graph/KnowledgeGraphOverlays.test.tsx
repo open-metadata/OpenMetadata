@@ -181,3 +181,16 @@ it('expands at most 40 relationships in the drawer and hands larger sets to the 
 
   expect(onViewRelationships).toHaveBeenCalled();
 });
+
+it('returns to the expanded relationship list after drilling into one of its rows', async () => {
+  render(<Harness initial={() => ({ kind: 'node', id: root.id })} />);
+  const rows = () => screen.getAllByRole('button', { name: /^Orders / });
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'label.kg-view-all-relationships' })
+  );
+  await userEvent.click(rows()[3]);
+  await userEvent.click(screen.getByTestId('inspector-back'));
+
+  expect(rows()).toHaveLength(4);
+});
