@@ -500,7 +500,17 @@ def au_abn_factory(
 
 class SeparatorTolerantAuAcnRecognizer(AuAcnRecognizer):
     def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
-        if not super().validate_result(pattern_text):
+        # ACN check: weights [8,7,6,5,4,3,2,1] on first 8 digits;
+        # check digit = (10 - weighted_sum % 10) % 10.
+        # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
+        # weighted sum is divisible by 10 (check digit = 0) are always rejected.
+        text = re.sub(r"[^0-9]", "", pattern_text)
+        if len(text) != 9:
+            return False
+        digits = [int(c) for c in text]
+        weights = [8, 7, 6, 5, 4, 3, 2, 1]
+        total = sum(d * w for d, w in zip(digits[:8], weights, strict=False))
+        if (10 - total % 10) % 10 != digits[8]:
             return False
         # Newly accepted hyphenated codes need column context, not just a checksum.
         return None if "-" in pattern_text else True
@@ -514,11 +524,13 @@ def au_acn_factory(
     supported_language: str = SUPPORTED_LANG,
     context: list[str] | None = None,
 ) -> SeparatorTolerantAuAcnRecognizer:
-    return SeparatorTolerantAuAcnRecognizer(
+    r = SeparatorTolerantAuAcnRecognizer(
         patterns=[*AuAcnRecognizer.PATTERNS, *patterns.au_acn_hyphenated],
         supported_language=supported_language,
         context=context,
     )
+    r.name = AuAcnRecognizer.__name__
+    return r
 
 
 class PrefixedItVatRecognizer(ItVatCodeRecognizer):
@@ -644,6 +656,13 @@ def eager_us_bank_recognizer(
 
 
 class ValidatedPlPeselRecognizer(PlPeselRecognizer):
+    # Add digit boundaries so an 11-digit PESEL embedded inside a longer digit sequence
+    # (e.g. a 16-digit card number) cannot match.
+    PATTERNS: ClassVar[list[Pattern]] = [
+        Pattern(name=p.name, regex=rf"(?<!\d){p.regex}(?!\d)", score=p.score)
+        for p in PlPeselRecognizer.PATTERNS
+    ]
+
     def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
         # PESEL check: weights [1,3,7,9,1,3,7,9,1,3] on first 10 digits;
         # check digit = (10 - weighted_sum % 10) % 10.
@@ -666,10 +685,12 @@ def pl_pesel_recognizer(
     supported_language: str = SUPPORTED_LANG,
     context: list[str] | None = None,
 ) -> ValidatedPlPeselRecognizer:
-    return ValidatedPlPeselRecognizer(
+    r = ValidatedPlPeselRecognizer(
         supported_language=supported_language,
         context=context,
     )
+    r.name = PlPeselRecognizer.__name__
+    return r
 
 
 class ValidatedItFiscalCodeRecognizer(ItFiscalCodeRecognizer):
@@ -689,39 +710,12 @@ def it_fiscal_code_recognizer(
     supported_language: str = SUPPORTED_LANG,
     context: list[str] | None = None,
 ) -> ValidatedItFiscalCodeRecognizer:
-    return ValidatedItFiscalCodeRecognizer(
+    r = ValidatedItFiscalCodeRecognizer(
         supported_language=supported_language,
         context=context,
     )
-
-
-class ValidatedAuAcnRecognizer(AuAcnRecognizer):
-    def validate_result(self, pattern_text: str) -> bool | None:  # pyright: ignore[reportIncompatibleMethodOverride]
-        # ACN check: weights [8,7,6,5,4,3,2,1] on first 8 digits;
-        # check digit = (10 - weighted_sum % 10) % 10.
-        # Presidio's upstream uses `10 - remainder` without the outer % 10, so ACNs whose
-        # weighted sum is divisible by 10 (check digit = 0) are always rejected.
-        text = re.sub(r"[^0-9]", "", pattern_text)
-        if len(text) != 9:
-            return False
-        digits = [int(c) for c in text]
-        weights = [8, 7, 6, 5, 4, 3, 2, 1]
-        total = sum(d * w for d, w in zip(digits[:8], weights, strict=False))
-        return (10 - total % 10) % 10 == digits[8]
-
-
-@recognizer_factories.add(  # pyright: ignore[reportUnknownMemberType, reportUntypedFunctionDecorator]
-    AuAcnRecognizer
-)
-def au_acn_recognizer(
-    *,
-    supported_language: str = SUPPORTED_LANG,
-    context: list[str] | None = None,
-) -> ValidatedAuAcnRecognizer:
-    return ValidatedAuAcnRecognizer(
-        supported_language=supported_language,
-        context=context,
-    )
+    r.name = ItFiscalCodeRecognizer.__name__
+    return r
 
 
 # Finnish HETU century separator → base year.
@@ -783,10 +777,12 @@ def fi_personal_identity_code_recognizer(
     supported_language: str = SUPPORTED_LANG,
     context: list[str] | None = None,
 ) -> ValidatedFiPersonalIdentityCodeRecognizer:
-    return ValidatedFiPersonalIdentityCodeRecognizer(
+    r = ValidatedFiPersonalIdentityCodeRecognizer(
         supported_language=supported_language,
         context=context,
     )
+    r.name = FiPersonalIdentityCodeRecognizer.__name__
+    return r
 
 
 def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
