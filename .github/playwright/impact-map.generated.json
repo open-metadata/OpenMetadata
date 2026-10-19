@@ -8418,6 +8418,17 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SearchedData/SearchEmptyState/SearchEmptyState.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ExploreUrlState.spec.ts",
+        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
+        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
+        "playwright/e2e/Flow/ServiceForm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/SearchedData/SearchedData.tsx"
       ],
       "specs": [
@@ -9681,43 +9692,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorWithPlaceholder/ErrorPlaceHolderES.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ExploreUrlState.spec.ts",
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
-        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
-        "playwright/e2e/Flow/ServiceForm.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorWithPlaceholder/FilterErrorPlaceHolder.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
-        "playwright/e2e/Pages/Bots.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorWithPlaceholder/PermissionErrorPlaceholder.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
-        "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
-        "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
-        "playwright/e2e/Flow/IngestionBot.spec.ts",
-        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Entity.spec.ts",
-        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/ExpandableCard/ExpandableCard.tsx"
       ],
       "specs": [
@@ -10777,7 +10751,6 @@
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/ColumnSorting.spec.ts",
         "playwright/e2e/Features/Container.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
@@ -10901,23 +10874,6 @@
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersPanel.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
-        "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
-        "playwright/e2e/Features/OntologyStudioE2E.spec.ts",
-        "playwright/e2e/Flow/IngestionBot.spec.ts",
-        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Entity.spec.ts",
-        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
       ]
     },
     {
