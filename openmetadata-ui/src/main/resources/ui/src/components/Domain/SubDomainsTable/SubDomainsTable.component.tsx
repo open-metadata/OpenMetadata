@@ -53,6 +53,7 @@ const SubDomainsTable = ({
 
   const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
+    baseFilter: subdomainListing.baseFilter,
     aggregations: subdomainListing.aggregations || undefined,
     parsedFilters: subdomainListing.parsedFilters,
     onFilterChange: subdomainListing.handleFilterChange,

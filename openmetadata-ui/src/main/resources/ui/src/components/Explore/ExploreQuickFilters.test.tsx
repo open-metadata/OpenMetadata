@@ -1584,6 +1584,43 @@ describe('ExploreQuickFilters component', () => {
       expect(dropdown).toHaveTextContent('unprocessed');
     });
 
+    it('checks statuses only within the listing scope', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        statusResponse('unprocessed')
+      );
+      const parentScope = {
+        query: {
+          bool: {
+            must: [
+              { term: { 'parent.fullyQualifiedName.keyword': 'Finance' } },
+            ],
+          },
+        },
+      };
+
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={{}}
+          defaultQueryFilter={parentScope}
+          fields={[...mockFields, statusField]}
+        />
+      );
+
+      await waitFor(() =>
+        expect(mockGetAggregationOptions).toHaveBeenCalledWith(
+          index,
+          EntityFields.ENTITY_STATUS,
+          '',
+          expect.stringContaining(
+            '"parent.fullyQualifiedName.keyword":"Finance"'
+          ),
+          false,
+          false
+        )
+      );
+    });
+
     it('keeps a filter that already has a selected value visible', async () => {
       mockGetAggregationOptions.mockResolvedValue(
         statusResponse('unprocessed')
