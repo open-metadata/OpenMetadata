@@ -7468,6 +7468,49 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  void test_approvalWithOnlyTheRequesterToAskGoesToAdmins(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    // Owned only by the requester and without reviewers; the workflow runs after the edit is
+    // published, so it is not reviewing a change request.
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("ownerOnlyApproval"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(SharedEntities.get().USER2_REF)));
+    String workflowName = "ownerOnly" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName,
+                    "glossary",
+                    glossary.getFullyQualifiedName(),
+                    List.of("description")));
+    ((ObjectNode) workflow.at("/trigger/config")).put("approvalMode", "Default");
+    ((ObjectNode) workflow.at("/nodes/1/config/assignees"))
+        .put("emptyAssigneeStrategy", "assignAdmins");
+    createWorkflow(workflow, workflowName);
+
+    SdkClients.user2Client()
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"edited by its owner\"}]"));
+
+    UUID adminId = admin.users().getByName("admin").getId();
+    Task task = awaitOpenApprovalTaskAssignedTo(admin, glossary.getFullyQualifiedName(), adminId);
+    Set<String> assignees =
+        task.getAssignees().stream().map(EntityReference::getName).collect(Collectors.toSet());
+    assertFalse(
+        assignees.contains(SharedEntities.get().USER2.getName()),
+        "never its requester: " + assignees);
+  }
+
+  @Test
   void test_previewIsRefusedExactlyWhenThePatchWouldBe(TestNamespace ns) throws Exception {
     SharedEntities shared = SharedEntities.get();
     // Owned by USER2 only, so USER3 is an ordinary non-owner here.

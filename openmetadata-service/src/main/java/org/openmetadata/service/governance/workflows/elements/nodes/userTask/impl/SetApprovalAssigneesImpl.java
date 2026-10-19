@@ -178,10 +178,14 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // (DAR, GlossaryApproval, RequestApproval) publish the requester as `taskUpdatedBy`; entity
       // workflows (glossary term / tag approval, certification changes, …) publish it as the
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
-      // workflow family — reading only one silently leaves the other's requester on the list. For
-      // non-workflow-managed tasks only, keep the requester when no one else is available so the
-      // task stays actionable; workflow-managed tasks rely on the empty-assignee strategy below
-      // instead. A change request is never given back to its requester.
+      // workflow family — reading only one silently leaves the other's requester on the list. A
+      // non-workflow-managed task under the "none" strategy keeps the requester when no one else is
+      // available, so the task stays actionable; "assignAdmins" and "wait" have a fallback of their
+      // own below, and workflow-managed tasks rely on it too. A change request is never given back
+      // to its requester.
+      String emptyAssigneeStrategy =
+          String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
+      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy);
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
       List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
       boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
@@ -190,7 +194,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           && assigneeList.isEmpty()
           && !workflowManagedTask
           && !reviewsChangeRequest
-          && !"wait".equals(assigneesConfig.get("emptyAssigneeStrategy"))) {
+          && "none".equals(emptyAssigneeStrategy)) {
         assigneeList.addAll(preRemovalAssignees);
       }
 
@@ -199,9 +203,6 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
       // self-approval can never happen. NONE leaves the list empty, so the approval node approves
       // automatically.
-      String emptyAssigneeStrategy =
-          String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
-      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy);
       if (assigneeList.isEmpty() && assignAdmins) {
         List<String> admins = resolveAdminAssignees();
         admins.removeAll(requesterEntityLinks);
