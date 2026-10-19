@@ -95,6 +95,7 @@ import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.ProfileSampleConfig;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableConstraint;
@@ -120,6 +121,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -6384,6 +6386,69 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .get(0);
     assertEquals(List.of("alt_type", "country"), stored.getColumns());
     assertEquals(List.of(typeFqn, countryFqn), stored.getReferredColumns());
+  }
+
+  /**
+   * Correcting the column pairing of a foreign key replaces the constraint with one that still
+   * refers to the same table, so the link between the two tables must be kept.
+   */
+  @Test
+  void patch_correctingForeignKeyPairingKeepsTableRelationship(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable parentRequest = new CreateTable();
+    parentRequest.setName(ns.prefix("fk_fix_parent"));
+    parentRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    parentRequest.setColumns(
+        List.of(
+            new Column().withName("country").withDataType(ColumnDataType.CHAR).withDataLength(2),
+            new Column().withName("type").withDataType(ColumnDataType.CHAR).withDataLength(3)));
+    Table parent = client.tables().create(parentRequest);
+    String countryFqn = parent.getColumns().get(0).getFullyQualifiedName();
+    String typeFqn = parent.getColumns().get(1).getFullyQualifiedName();
+
+    CreateTable childRequest = new CreateTable();
+    childRequest.setName(ns.prefix("fk_fix_child"));
+    childRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    childRequest.setColumns(
+        List.of(
+            new Column().withName("alt_type").withDataType(ColumnDataType.CHAR).withDataLength(3),
+            new Column().withName("country").withDataType(ColumnDataType.CHAR).withDataLength(2)));
+    // Crossed pairing: alt_type -> country and country -> type
+    childRequest.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("alt_type", "country"))
+                .withReferredColumns(List.of(countryFqn, typeFqn))));
+    Table child = client.tables().create(childRequest);
+    assertTrue(relatedTables(child).contains(parent.getId()));
+
+    Table childToFix =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    childToFix
+        .getTableConstraints()
+        .get(0)
+        .withReferredColumns(new ArrayList<>(List.of(typeFqn, countryFqn)));
+    // If-Match takes the version-checked save, which does not re-store the table's relationships
+    Table fixed = client.tables().update(child.getId().toString(), childToFix, "*");
+
+    assertEquals(
+        List.of(typeFqn, countryFqn), fixed.getTableConstraints().get(0).getReferredColumns());
+    assertTrue(
+        relatedTables(child).contains(parent.getId()),
+        "Correcting the column pairing must keep the link to the referred table");
+  }
+
+  private static List<UUID> relatedTables(Table table) {
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findTo(table.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal(), Entity.TABLE)
+        .stream()
+        .map(EntityRelationshipRecord::getId)
+        .toList();
   }
 
   // ===================================================================
