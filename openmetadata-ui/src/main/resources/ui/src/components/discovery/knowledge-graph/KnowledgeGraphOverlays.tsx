@@ -601,9 +601,17 @@ const KnowledgeGraphOverlays = ({
       <Typography size="text-sm">{node?.label ?? ''}</Typography>
     );
   };
+  // Drilling in or going back unmounts the control that had focus (the row,
+  // the Back button); land keyboard users on the inspector heading instead of
+  // letting focus fall to the page.
+  const focusHeadingAfterRender = () =>
+    requestAnimationFrame(() =>
+      headingRef.current?.focus({ preventScroll: true })
+    );
   const openRelationship = (id: string) => {
     setBack({ from: selection, to: id });
     onSelectionChange({ kind: 'edge', id });
+    focusHeadingAfterRender();
   };
   const backTarget = getBackTarget(back, selection);
 
@@ -684,6 +692,7 @@ const KnowledgeGraphOverlays = ({
                 ? () => {
                     setBack(null);
                     onSelectionChange(backTarget);
+                    focusHeadingAfterRender();
                   }
                 : undefined
             }

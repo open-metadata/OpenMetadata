@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
@@ -100,9 +100,18 @@ it('offers a way back to the group after drilling into one of its relationships'
 
   expect(screen.getByText('label.relationship')).toBeVisible();
 
+  await waitFor(() =>
+    expect(screen.getByRole('heading', { level: 3 })).toHaveFocus()
+  );
+
   await userEvent.click(screen.getByTestId('inspector-back'));
 
   expect(screen.getByText(/label.kg-bundle-subtitle/)).toBeVisible();
+
+  await waitFor(() =>
+    expect(screen.getByRole('heading', { level: 3 })).toHaveFocus()
+  );
+
   expect(screen.queryByTestId('inspector-back')).not.toBeInTheDocument();
 });
 
