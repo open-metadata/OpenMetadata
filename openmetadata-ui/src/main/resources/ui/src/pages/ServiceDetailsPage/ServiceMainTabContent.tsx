@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Grid,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space, Switch, Typography } from 'antd';
+import { getLayoutGutter } from '../../utils/common/layout.utils';
+
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -51,6 +58,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Paging } from '../../generated/type/paging';
 import { UsePagingInterface } from '../../hooks/paging/usePaging';
+import { ServicePageData } from '../../interface/platform/service.interface';
 import { ServicesType } from '../../interface/service.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
@@ -71,7 +79,6 @@ import { getTagsWithoutTier, getTierTags } from '../../utils/TablePureUtils';
 import { createTagObject } from '../../utils/TagsPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { ServicePageData } from './ServiceDetailsPage.interface';
 
 interface ServiceMainTabContentProps {
   serviceName: string;
@@ -88,6 +95,11 @@ interface ServiceMainTabContentProps {
   saveUpdatedServiceData: (updatedData: ServicesType) => Promise<void>;
   pagingInfo: UsePagingInterface;
   isVersionPage?: boolean;
+  /**
+   * Whether the list panel sits in a card. A host that already frames the tab (the AI-mode
+   * service page) passes false, and the table then stands as its own rounded card.
+   */
+  wrapInCard?: boolean;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
@@ -106,6 +118,7 @@ function ServiceMainTabContent({
   saveUpdatedServiceData,
   pagingInfo,
   isVersionPage = false,
+  wrapInCard = true,
   onDataProductUpdate,
   setFilters,
   setIsServiceLoading,
@@ -375,14 +388,25 @@ function ServiceMainTabContent({
   }, [searchValue, currentPage, showDeleted]);
 
   return (
-    <Row className="main-tab-content" gutter={[0, 16]} wrap={false}>
-      <Col className="tab-content-height-with-resizable-panel" span={24}>
+    <Box
+      className="layout-row main-tab-content"
+      style={{ ...getLayoutGutter(0, 16) }}
+      wrap="nowrap">
+      <Box
+        className="layout-column tw:block tab-content-height-with-resizable-panel"
+        style={{ maxWidth: '100%', flex: '0 0 100%' }}>
         <ResizablePanels
           firstPanel={{
             className: 'entity-resizable-panel-container',
+            wrapInCard,
             children: (
-              <Row gutter={[16, 16]}>
-                <Col data-testid="description-container" span={24}>
+              <Grid
+                className="layout-row layout-grid"
+                style={{ ...getLayoutGutter(16, 16) }}>
+                <Grid.Item
+                  className="layout-column"
+                  data-testid="description-container"
+                  span={24}>
                   <Description
                     description={serviceDetails.description}
                     entityName={serviceName}
@@ -392,14 +416,25 @@ function ServiceMainTabContent({
                     showCommentsIcon={false}
                     onDescriptionUpdate={handleDescriptionUpdate}
                   />
-                </Col>
-                <Col data-testid="table-container" span={24}>
-                  <Space
-                    className="w-full m-b-md"
-                    direction="vertical"
-                    size="large">
+                </Grid.Item>
+                <Grid.Item
+                  className="layout-column"
+                  data-testid="table-container"
+                  span={24}>
+                  <Box
+                    inline
+                    align="stretch"
+                    className="layout-space w-full m-b-md"
+                    direction="col"
+                    gap={6}
+                    itemClassName="layout-space-item">
                     <Table
                       columns={tableColumn}
+                      containerClassName={
+                        wrapInCard
+                          ? undefined
+                          : 'tw:rounded-xl tw:border-secondary'
+                      }
                       customPaginationProps={{
                         currentPage,
                         isLoading: isServiceLoading,
@@ -419,15 +454,15 @@ function ServiceMainTabContent({
                       entityType={serviceCategory}
                       extraTableFilters={
                         <>
-                          <span>
-                            <Switch
-                              checked={showDeleted}
+                          <span className="tw:inline-flex tw:items-center">
+                            <Toggle
                               data-testid="show-deleted"
-                              onClick={onShowDeletedChange}
+                              isSelected={showDeleted}
+                              onChange={onShowDeletedChange}
                             />
-                            <Typography.Text className="m-l-xs">
+                            <Typography className="m-l-xs">
                               {t('label.deleted')}
-                            </Typography.Text>
+                            </Typography>
                           </span>
 
                           {entityType === EntityType.DATABASE_SERVICE &&
@@ -473,9 +508,9 @@ function ServiceMainTabContent({
                       size="small"
                       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
                     />
-                  </Space>
-                </Col>
-              </Row>
+                  </Box>
+                </Grid.Item>
+              </Grid>
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
@@ -511,8 +546,8 @@ function ServiceMainTabContent({
               'entity-resizable-right-panel-container entity-resizable-panel-container',
           }}
         />
-      </Col>
-    </Row>
+      </Box>
+    </Box>
   );
 }
 

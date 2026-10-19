@@ -93,7 +93,7 @@ export const createBot = async (page: Page) => {
 
   // Select expiry time
   await page.click('[data-testid="token-expiry"]');
-  await page.locator('[title="1 hour"] div').click();
+  await page.getByRole('option', { name: '1 hour', exact: true }).click();
 
   await fillDescriptionBox(page, BOT_DETAILS.description);
 
@@ -199,7 +199,10 @@ export const tokenExpirationForDays = async (page: Page) => {
 
     // Select the expiration period
     await page
-      .locator(`text=${expiryTime} day${expiryTime > 1 ? 's' : ''}`)
+      .getByRole('option', {
+        name: `${expiryTime} day${expiryTime > 1 ? 's' : ''}`,
+        exact: true,
+      })
       .click();
 
     // Save the updated date
@@ -249,7 +252,7 @@ export const verifyGenerateTokenAPIContract = async (page: Page) => {
 
   // Click on dropdown and select '7 days' expiry
   await page.click('[data-testid="token-expiry"]');
-  await page.locator('text=7 days').click();
+  await page.getByRole('option', { name: '7 days', exact: true }).click();
 
   // Intercept the POST /api/v1/users/generateToken call
   const generateTokenResponsePromise = page.waitForResponse(
@@ -299,7 +302,7 @@ export const tokenExpirationUnlimitedDays = async (page: Page) => {
   // Click on expiry token dropdown
   await page.click('[data-testid="token-expiry"]');
   // Select unlimited days
-  await page.getByText('Unlimited').click();
+  await page.getByRole('option', { name: 'Unlimited', exact: true }).click();
   // Wait for the new generateToken API endpoint
   const generateTokenResponse = page.waitForResponse(
     (response) =>
@@ -335,7 +338,7 @@ export const redirectToBotPage = async (page: Page) => {
 };
 
 export const resetTokenFromBotPage = async (page: Page, botName: string) => {
-  await page.goto(`/bots/${botName}`);
+  await page.goto(`/bots/${botName}`, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
   await expect(page.getByTestId('left-panel')).toBeVisible();
@@ -361,7 +364,7 @@ export const resetTokenFromBotPage = async (page: Page, botName: string) => {
   await expect(page.getByTestId('token-expiry')).toBeVisible();
 
   await page.getByTestId('token-expiry').click();
-  await page.getByText('Unlimited').click();
+  await page.getByRole('option', { name: 'Unlimited', exact: true }).click();
 
   await expect(page.getByTestId('save-edit')).toBeVisible();
 

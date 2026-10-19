@@ -14,10 +14,14 @@
 package org.openmetadata.service.migration.v210;
 
 import static org.mockito.Answers.RETURNS_DEEP_STUBS;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
@@ -26,25 +30,38 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
+import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
+import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
 class IngestionPipelineMigrationEntryPointTest {
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("migrationEntryPoints")
-  void runDataMigrationBackfillsLegacySourceConfigTypes(
+  void runDataMigrationRunsSharedSettingsRepairs(
       String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    setField(migration, "handle", mock(Handle.class, RETURNS_DEEP_STUBS));
+    Handle handle = mock(Handle.class, RETURNS_DEEP_STUBS);
+    when(handle.createQuery(anyString()).mapTo(String.class).list()).thenReturn(List.of());
+    setField(migration, "handle", handle);
     setField(migration, "collectionDAO", collectionDAO);
+    setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
     try (MockedStatic<ConversationMigration> conversationMigration =
             mockStatic(ConversationMigration.class);
@@ -52,12 +69,38 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConversationReferenceMigration.class);
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<OntologyMigration> ontologyMigration = mockStatic(OntologyMigration.class);
+        MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
+            mockStatic(DataContractEntityReferenceMigration.class);
+        MockedStatic<CustomPropertyReferenceMigration> referenceMigration =
+            mockStatic(CustomPropertyReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
-            mockStatic(IngestionPipelineMigrationUtil.class)) {
+            mockStatic(IngestionPipelineMigrationUtil.class);
+        MockedStatic<MlFeatureTagBackfill> mlFeatureTagBackfill =
+            mockStatic(MlFeatureTagBackfill.class);
+        MockedStatic<SearchTermBoostRepair> searchTermBoostRepair =
+            mockStatic(SearchTermBoostRepair.class);
+        MockedStatic<AlertBacklogMigration> alertBacklogMigration =
+            mockStatic(AlertBacklogMigration.class);
+        MockedStatic<AuthenticationSecretsEncryptionMigration> authenticationSecretsMigration =
+            mockStatic(AuthenticationSecretsEncryptionMigration.class);
+        MockedStatic<ConsumerIdMigration> consumerIdMigration =
+            mockStatic(ConsumerIdMigration.class);
+        MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
+            mockStatic(DeltaLakeRetirementMigration.class)) {
       migration.runDataMigration();
 
+      deltaLakeRetirement.verify(
+          () -> DeltaLakeRetirementMigration.retireDeltaLakeServices(any(), any(), any()));
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
+      searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
+      ConnectionType connectionType =
+          "MySQL".equals(database) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
+      referenceMigration.verify(
+          () -> CustomPropertyReferenceMigration.migrate(handle, collectionDAO, connectionType));
+      authenticationSecretsMigration.verify(
+          () ->
+              AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
     }
   }
 

@@ -14,9 +14,13 @@
 .overview-tab-content {
   height: auto;
 }
-.ant-drawer-content,
 .navigation-container {
   background-color: @grey-50 !important;
+
+  // Dark: @grey-50 resolves to bg-secondary, a darker band than the drawer's overlay surface.
+  .dark-mode & {
+    background-color: transparent !important;
+  }
 }
 .pagination-header-text {
   color: @grey-700 !important;
@@ -26,59 +30,7 @@
   width: 70px;
 }
 
-.column-panel-alert-wrapper {
-  .ant-alert {
-    min-height: 48px;
-    padding: var(--om-space-8) var(--om-space-12);
-    border-radius: var(--om-radius-md);
-
-    .ant-alert-icon {
-      display: flex;
-      align-items: center;
-      margin-right: var(--om-space-8);
-    }
-
-    #alert-icon {
-      padding: var(--om-space-4);
-      border-width: 2px;
-      font-size: var(--om-font-size-md);
-    }
-
-    .ant-alert-description {
-      flex: 1;
-      word-break: break-word;
-    }
-  }
-}
-
 .column-detail-panel {
-  .ant-drawer-footer {
-    border-top: none;
-    padding-top: 0;
-    position: relative;
-  }
-  .ant-drawer-header {
-    padding: var(--om-space-8);
-    padding-bottom: 0;
-
-    .ant-drawer-header-title {
-      width: 100%;
-      min-width: 0;
-      overflow: hidden;
-    }
-
-    .ant-drawer-title {
-      width: 100%;
-      min-width: 0;
-      overflow: hidden;
-    }
-  }
-
-  .ant-drawer-body {
-    padding: 0;
-    height: 100%;
-  }
-
   .title-section {
     padding-bottom: 0;
     width: 100%;
@@ -105,6 +57,10 @@
 
       background-color: @grey-9;
 
+      .dark-mode & {
+        background-color: transparent;
+      }
+
       .entity-title-link {
         font-size: var(--om-font-size-md);
         font-weight: var(--om-font-weight-semibold);
@@ -116,7 +72,6 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        max-width: 95%;
       }
     }
 
@@ -140,6 +95,11 @@
   .column-detail-panel-container {
     background-color: @grey-50;
 
+    // Dark: let the drawer's overlay surface show instead of a darker bg-secondary strip.
+    .dark-mode & {
+      background-color: transparent;
+    }
+
     height: calc(100vh - 170px);
     display: flex;
     flex-direction: column;
@@ -153,12 +113,12 @@
       height: 100%;
       background: @grey-50;
       overflow: hidden;
+
+      .dark-mode & {
+        background: transparent;
+      }
       border-radius: 0;
       margin-left: var(--om-space-8);
-      .ant-card-body {
-        padding: 0;
-        height: 100%;
-      }
 
       .content-area {
         height: 100%;

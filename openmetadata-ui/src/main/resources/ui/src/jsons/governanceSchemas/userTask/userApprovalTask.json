@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "UserApprovalTaskDefinition",
   "description": "Defines a Task for a given User to approve.",
   "javaInterfaces": [
@@ -58,7 +57,6 @@
               "description": "List of specific candidates (users or teams) assigned to this task.",
               "type": "array",
               "items": {
-                "$schema": "http://json-schema.org/draft-07/schema#",
                 "title": "Entity Reference",
                 "description": "This schema defines the EntityReference type used for referencing an entity. EntityReference is used for capturing relationships from one entity to another. For example, a table has an attribute called database of type EntityReference that captures the relationship of a table `belongs to a` database.",
                 "type": "object",
@@ -112,16 +110,27 @@
               "default": []
             },
             "emptyAssigneeStrategy": {
-              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen.",
+              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen. 'wait' creates an unassigned task when no eligible assignee is available, without auto-approval or an admin fallback.",
               "type": "string",
               "enum": [
                 "none",
-                "assignAdmins"
+                "assignAdmins",
+                "wait"
               ],
               "default": "none"
+            },
+            "addDomainOwners": {
+              "description": "Resolve owners from the asset’s domains at execution time. For a domain, use its own owners.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
+        },
+        "allowPartialDecisions": {
+          "title": "Allow Partial Decisions",
+          "description": "In a workflow in Enforce approval mode, let reviewers approve or reject some of a change request's changes and leave the rest pending. Changes reviewers agree to approve are published and changes they agree to reject are dropped, while this task stays open with the remaining changes; the workflow leaves it through approve or reject once nothing is pending. A change is agreed once it reaches the approval or rejection threshold.",
+          "type": "boolean",
+          "default": false
         },
         "approvalThreshold": {
           "title": "Approval Threshold",
@@ -146,6 +155,38 @@
           "title": "Stage Display Name",
           "description": "Human-readable stage label shown to task assignees.",
           "type": "string"
+        },
+        "lifecycleMove": {
+          "title": "Lifecycle Move",
+          "description": "Set when the approval gates a lifecycle stage move: the task then asks to approve moving the asset from one stage to the next instead of listing the changes that led to it.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove",
+          "properties": {
+            "stage": {
+              "description": "Stage the asset is in while the approval is pending.",
+              "title": "EntityStatus",
+              "type": "string",
+              "javaType": "org.openmetadata.schema.type.EntityStatus",
+              "enum": [
+                "Draft",
+                "In Review",
+                "Approved",
+                "Archived",
+                "Deprecated",
+                "Rejected",
+                "Unprocessed"
+              ]
+            },
+            "targetStage": {
+              "description": "Stage the asset moves to once approved.",
+              "$ref": "#/properties/config/properties/lifecycleMove/properties/stage"
+            }
+          },
+          "required": [
+            "stage",
+            "targetStage"
+          ],
+          "additionalProperties": false
         },
         "taskStatus": {
           "title": "Task Status",
@@ -348,7 +389,6 @@
       "default": [
         "relatedEntity"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -373,7 +413,6 @@
       "default": [
         "updatedBy"
       ],
-      "additionalItems": false,
       "minItems": 1,
       "maxItems": 1
     },
@@ -386,7 +425,6 @@
         "true",
         "false"
       ],
-      "additionalItems": false,
       "minItems": 2,
       "maxItems": 2
     }

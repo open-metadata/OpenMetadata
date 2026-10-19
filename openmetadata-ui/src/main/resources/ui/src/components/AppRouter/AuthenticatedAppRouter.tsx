@@ -19,7 +19,7 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/policy';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -28,11 +28,6 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
-const AddCustomMetricPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
-  )
-);
 
 const CustomizablePage = withPageSuspenseFallback(
   React.lazy(() =>
@@ -130,7 +125,7 @@ const ServicePage = withPageSuspenseFallback(
 );
 
 const SwaggerPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/SwaggerPage'))
+  React.lazy(() => import('../../pages/SwaggerPage/SwaggerPage'))
 );
 
 const TourPageComponent = withPageSuspenseFallback(
@@ -326,12 +321,6 @@ const MetricListPage = withPageSuspenseFallback(
   )
 );
 
-const AddMetricPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/MetricsPage/AddMetricPage/AddMetricPage')
-  )
-);
-
 const ColumnBulkOperationsPage = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -509,23 +498,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_TAB} />
       <Route element={<UserPage />} path={ROUTES.USER_PROFILE} />
 
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
-              Operation.EditDataProfile,
-              ResourceEntity.TABLE,
-              permissions
-            )}>
-            <AddCustomMetricPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.custom-metric'),
-              })}
-            />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.ADD_CUSTOM_METRIC}
-      />
       <Route
         element={
           <AdminProtectedRoute
@@ -811,16 +783,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.DATA_PRODUCT}
       />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
-      <Route
-        element={
-          <AddMetricPage
-            pageTitle={t('label.add-new-entity', {
-              entity: t('label.metric'),
-            })}
-          />
-        }
-        path={ROUTES.ADD_METRIC}
-      />
       <Route
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}

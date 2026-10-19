@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,761 +10,245 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { AxiosError } from 'axios';
-import { MemoryRouter } from 'react-router-dom';
-import { CHART_WIDGET_DAYS_DURATION } from '../../../../constants/constants';
-import { SystemChartType } from '../../../../enums/DataInsight.enum';
-import {
-  DataInsightCustomChartResult,
-  getChartPreviewByName,
-} from '../../../../rest/DataInsightAPI';
-import {
-  getCurrentMillis,
-  getEpochMillisForPastDays,
-} from '../../../../utils/date-time/DateTimeUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
-import TotalDataAssetsWidget from './TotalDataAssetsWidget.component';
-import { DATA_ASSETS_SORT_BY_KEYS } from './TotalDataAssetsWidget.constant';
-import { TotalDataAssetsWidgetProps } from './TotalDataAssetsWidget.interface';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { ROUTES } from '../../../../constants/constants';
+import { useTotalDataAssets } from '../../../../hooks/useTotalDataAssets';
+import { FilterButtonOption } from '../Common/TopicWidget/FilterButton';
+import TotalDataAssetsWidget from './TotalDataAssetsWidget';
 
-jest.mock('../../../../hooks/useChartColors', () => ({
-  useChartColors: jest.fn().mockReturnValue({ axis: '#123456' }),
-}));
-
-const mockNavigate = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
-
-// Mock dependencies
-jest.mock('../../../../rest/DataInsightAPI', () => ({
-  getChartPreviewByName: jest.fn(),
-}));
-
-jest.mock('../../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
+// The charts entry is a separate bundle that jest maps to the built dist; the
+// sibling TopicWidget tests stub it the same way.
+jest.mock('@openmetadata/ui-core-components/charts', () => ({
+  BarChart: () => <div data-testid="bar-chart" />,
+  getSeriesColor: (index: number) => `color-${index}`,
 }));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    // Echoes the options, so a test can tell which figures a label carries.
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key} ${JSON.stringify(options)}` : key,
+    i18n: { language: 'en' },
   }),
 }));
 
-jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  customFormatDateTime: jest.fn((timestamp: number, format: string) => {
-    const date = new Date(timestamp);
-    if (format === 'dd MMM') {
-      return `${date
-        .getDate()
-        .toString()
-        .padStart(2, '0')} ${date.toLocaleDateString('en', {
-        month: 'short',
-      })}`;
-    }
-
-    return date.toLocaleDateString();
-  }),
-  getCurrentMillis: jest.fn(() => 1640995200000), // 2022-01-01
-  getEpochMillisForPastDays: jest.fn(
-    (days: number) => 1640995200000 - days * 24 * 60 * 60 * 1000
-  ),
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
 }));
 
-jest.mock('../Common/WidgetWrapper/WidgetWrapper', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ children, loading, dataLength, header }) => (
-      <div
-        data-length={dataLength}
-        data-loading={loading}
-        data-testid="widget-wrapper">
-        {header}
-        {children}
-      </div>
-    ));
-});
+const mockAddService = jest.fn();
+let mockCanAddService = true;
+jest.mock('../../../integration/ConnectionsPage/useAddServiceAction', () => ({
+  useAddServiceAction: () => ({
+    addService: mockAddService,
+    canAddService: mockCanAddService,
+  }),
+}));
 
-jest.mock('../Common/WidgetHeader/WidgetHeader', () => {
-  return jest
-    .fn()
-    .mockImplementation(
-      ({
-        title,
-        handleRemoveWidget,
-        isEditView,
-        widgetKey,
-        sortOptions,
-        selectedSortBy,
-        onSortChange,
-        onTitleClick,
-      }) => (
-        <div data-testid="widget-header">
-          <span
-            data-testid="widget-title"
-            role="button"
-            tabIndex={0}
-            onClick={onTitleClick}
-            onKeyDown={onTitleClick}>
-            {title}
-          </span>
-          {isEditView && (
-            <button
-              data-testid="remove-widget-button"
-              onClick={() => handleRemoveWidget?.(widgetKey)}>
-              Remove
-            </button>
-          )}
-          {!isEditView && sortOptions && (
-            <div data-testid="sort-options">
-              <select
-                data-testid="sort-by-dropdown"
-                value={selectedSortBy}
-                onChange={(e) => onSortChange?.(e.target.value)}>
-                {sortOptions.map(
-                  (option: { key: string; label: React.ReactNode }) => (
-                    <option key={option.key} value={option.key}>
-                      {option.label}
-                    </option>
-                  )
-                )}
-              </select>
-            </div>
-          )}
-        </div>
-      )
-    );
-});
+// Spread the real module: the widget also reads its exported window constants,
+// and a bare factory would blank them out.
+jest.mock('../../../../hooks/useTotalDataAssets', () => ({
+  ...jest.requireActual('../../../../hooks/useTotalDataAssets'),
+  useTotalDataAssets: jest.fn(),
+}));
 
-jest.mock('../Common/WidgetEmptyState/WidgetEmptyState', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ title, description, actionButtonText }) => (
-      <div data-testid="widget-empty-state">
-        <div>{title}</div>
-        <div>{description}</div>
-        <button>{actionButtonText}</button>
-      </div>
-    ));
-});
-
-// Mock Recharts components
-jest.mock('recharts', () => ({
-  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="responsive-container">{children}</div>
-  ),
-  PieChart: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="pie-chart">{children}</div>
-  ),
-  Pie: ({ data }: { data: { name: string; value: number }[] }) => (
-    <div data-length={data.length} data-testid="pie">
-      {data.map((item) => (
-        <div data-testid={`pie-cell-${item.name}`} key={item.name}>
-          {item.name}: {item.value}
-        </div>
+// The real control is a popover listbox; here each option is a button so a
+// test can pick one without driving react-aria's pointer dance.
+jest.mock('../Common/TopicWidget/FilterButton', () => ({
+  __esModule: true,
+  default: ({
+    options,
+    value,
+    onChange,
+    testId,
+  }: {
+    options: FilterButtonOption[];
+    value: string;
+    onChange: (next: string) => void;
+    testId?: string;
+  }) => (
+    <div data-selected={value} data-testid={testId}>
+      {options.map((option) => (
+        <button
+          data-testid={`${testId}-${option.value}`}
+          key={option.value}
+          onClick={() => onChange(option.value)}>
+          {option.label}
+        </button>
       ))}
     </div>
   ),
-  Cell: () => <div data-testid="cell" />,
-  Tooltip: () => <div data-testid="tooltip" />,
 }));
 
-// Mock chart data
-const mockChartData: DataInsightCustomChartResult = {
-  results: [
-    {
-      count: 150,
-      day: 1640995200000, // 2022-01-01
-      group: 'table',
-      term: 'table',
-    },
-    {
-      count: 75,
-      day: 1640995200000,
-      group: 'dashboard',
-      term: 'dashboard',
-    },
-    {
-      count: 200,
-      day: 1641081600000, // 2022-01-02
-      group: 'table',
-      term: 'table',
-    },
-    {
-      count: 100,
-      day: 1641081600000,
-      group: 'dashboard',
-      term: 'dashboard',
-    },
-    {
-      count: 50,
-      day: 1641081600000,
-      group: 'pipeline',
-      term: 'pipeline',
-    },
-  ],
+const TABLE = {
+  count: 800,
+  delta: 24,
+  key: 'table',
+  share: 80,
+};
+const DASHBOARD = {
+  count: 150,
+  delta: 31,
+  key: 'dashboard',
+  share: 15,
+};
+const CONTAINER = {
+  count: 50,
+  delta: -3,
+  key: 'container',
+  share: 5,
 };
 
-const defaultProps: TotalDataAssetsWidgetProps = {
-  widgetKey: 'test-widget-key',
-  isEditView: false,
-  selectedDays: CHART_WIDGET_DAYS_DURATION,
-  currentLayout: [
-    {
-      i: 'test-widget-key',
-      x: 0,
-      y: 0,
-      w: 2,
-      h: 4,
-    },
-  ],
-  handleRemoveWidget: jest.fn(),
-  handleLayoutUpdate: jest.fn(),
+const TOTALS = {
+  assetTypes: [TABLE, DASHBOARD, CONTAINER],
+  fastestGrowing: DASHBOARD,
+  isError: false,
+  isFetching: false,
+  isLoading: false,
+  refetch: jest.fn(),
+  totalAssets: 1000,
+  totalDelta: 52,
+  windowDays: 7,
 };
 
-const renderTotalDataAssetsWidget = (
-  props: Partial<TotalDataAssetsWidgetProps> = {}
-) => {
+const renderWidget = (totals: Partial<typeof TOTALS> = {}) => {
+  (useTotalDataAssets as jest.Mock).mockReturnValue({ ...TOTALS, ...totals });
+
   return render(
-    <MemoryRouter>
-      <TotalDataAssetsWidget {...defaultProps} {...props} />
-    </MemoryRouter>
+    <TotalDataAssetsWidget widgetKey="KnowledgePanel.TotalAssets-1" />
   );
 };
 
 describe('TotalDataAssetsWidget', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (getChartPreviewByName as jest.Mock).mockResolvedValue(mockChartData);
+  beforeEach(() => jest.clearAllMocks());
+
+  it('shows the total and one row per asset type, largest first', () => {
+    renderWidget();
+
+    expect(screen.getByTestId('total-data-assets-total')).toHaveTextContent(
+      '1,000'
+    );
+
+    const rows = within(screen.getByTestId('asset-type-rows')).getAllByRole(
+      'listitem'
+    );
+
+    expect(rows.map((row) => row.getAttribute('data-testid'))).toEqual([
+      'asset-type-row-table',
+      'asset-type-row-dashboard',
+      'asset-type-row-container',
+    ]);
+    expect(within(rows[0]).getByTestId('asset-type-count')).toHaveTextContent(
+      '800'
+    );
   });
 
-  describe('Navigation', () => {
-    it('should navigate to the data assets tab on title click', async () => {
-      // The bare /data-insights route has no tab segment, which leaves the page
-      // dependent on an in-page redirect. Link straight to the real tab.
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+  it('signs each type’s change, so a shrinking type reads as one', () => {
+    renderWidget();
 
-      fireEvent.click(screen.getByTestId('widget-title'));
-
-      expect(mockNavigate).toHaveBeenCalledWith('/data-insights/data-assets');
-    });
+    expect(
+      within(screen.getByTestId('asset-type-row-dashboard')).getByTestId(
+        'asset-type-delta'
+      )
+    ).toHaveTextContent('+31');
+    expect(
+      within(screen.getByTestId('asset-type-row-container')).getByTestId(
+        'asset-type-delta'
+      )
+    ).toHaveTextContent('-3');
   });
 
-  describe('Component Rendering', () => {
-    it('should render the widget with header and wrapper', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+  // A window with no baseline day has no movement to report per type.
+  it('leaves the delta slot empty when there is no baseline', () => {
+    renderWidget({
+      assetTypes: [{ ...TABLE, delta: null } as never],
+      fastestGrowing: undefined,
+      totalDelta: null,
+    } as never);
 
-      expect(screen.getByTestId('widget-wrapper')).toBeInTheDocument();
-      expect(screen.getByTestId('widget-header')).toBeInTheDocument();
-      expect(
-        screen.getByText('label.data-insight-total-entity-summary')
-      ).toBeInTheDocument();
-    });
-
-    it('should render widget in edit view with remove button', async () => {
-      const handleRemoveWidget = jest.fn();
-
-      await act(async () => {
-        renderTotalDataAssetsWidget({
-          isEditView: true,
-          handleRemoveWidget,
-        });
-      });
-
-      const removeButton = screen.getByTestId('remove-widget-button');
-
-      expect(removeButton).toBeInTheDocument();
-
-      fireEvent.click(removeButton);
-
-      expect(handleRemoveWidget).toHaveBeenCalledWith('test-widget-key');
-    });
-
-    it('should render empty state when no data is available', async () => {
-      (getChartPreviewByName as jest.Mock).mockResolvedValue({ results: [] });
-
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
-      expect(
-        screen.getByText('label.no-data-assets-to-display')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('message.no-data-for-total-assets')
-      ).toBeInTheDocument();
-    });
+    expect(screen.queryByTestId('asset-type-delta')).toBeNull();
+    expect(screen.queryByTestId('topic-status-totalDataAssets')).toBeNull();
   });
 
-  describe('Data Fetching', () => {
-    it('should fetch chart data on component mount with default 7 days', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+  it('names the fastest-growing type in the summary', () => {
+    renderWidget();
 
-      expect(getChartPreviewByName).toHaveBeenCalledWith(
-        SystemChartType.TotalDataAssets,
-        expect.objectContaining({
-          start: expect.any(Number),
-          end: expect.any(Number),
-        })
-      );
-    });
-
-    it('should handle API error gracefully', async () => {
-      const mockError = new AxiosError('Network Error');
-      (getChartPreviewByName as jest.Mock).mockRejectedValue(mockError);
-
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      expect(showErrorToast).toHaveBeenCalledWith(mockError);
-    });
-
-    it('should show loading state while fetching data', async () => {
-      (getChartPreviewByName as jest.Mock).mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve(mockChartData), 100)
-          )
-      );
-
-      renderTotalDataAssetsWidget();
-
-      const wrapper = screen.getByTestId('widget-wrapper');
-
-      expect(wrapper).toHaveAttribute('data-loading', 'true');
-    });
+    expect(
+      screen.getByText(
+        /message\.entity-grew-fastest {"entity":"label\.dashboard"}/
+      )
+    ).toBeInTheDocument();
   });
 
-  describe('Sorting/Filtering Functionality', () => {
-    it('should render sort dropdown with available options when not in edit view', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget({ isEditView: false });
-      });
+  it('words the status chip for the window the delta was measured over', () => {
+    renderWidget({ windowDays: 30 });
 
-      expect(screen.getByTestId('sort-options')).toBeInTheDocument();
-      expect(screen.getByTestId('sort-by-dropdown')).toBeInTheDocument();
-    });
-
-    it('should not render sort dropdown when in edit view', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget({ isEditView: true });
-      });
-
-      expect(screen.queryByTestId('sort-options')).not.toBeInTheDocument();
-      expect(screen.queryByTestId('sort-by-dropdown')).not.toBeInTheDocument();
-    });
-
-    it('should default to last 7 days sort option', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      const sortDropdown = screen.getByTestId(
-        'sort-by-dropdown'
-      ) as HTMLSelectElement;
-
-      expect(sortDropdown.value).toBe(DATA_ASSETS_SORT_BY_KEYS.LAST_7_DAYS);
-    });
-
-    it('should change sort option and refetch data when dropdown value changes', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
-
-      // Change to 14 days
-      await act(async () => {
-        fireEvent.change(sortDropdown, {
-          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS },
-        });
-      });
-
-      await waitFor(() => {
-        expect(getChartPreviewByName).toHaveBeenCalledTimes(2); // Initial + after sort change
-      });
-    });
-
-    it('should fetch data with correct time period when sort changes', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Initially should call with 7 days
-      expect(getEpochMillisForPastDays).toHaveBeenCalledWith(7);
-      expect(getCurrentMillis).toHaveBeenCalled();
-
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
-
-      // Change to 14 days
-      await act(async () => {
-        fireEvent.change(sortDropdown, {
-          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS },
-        });
-      });
-
-      await waitFor(() => {
-        expect(getEpochMillisForPastDays).toHaveBeenCalledWith(14);
-      });
-    });
-
-    it('should handle unknown sort key gracefully and default to 7 days', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
-
-      // Change to an unknown sort key
-      await act(async () => {
-        fireEvent.change(sortDropdown, {
-          target: { value: 'unknown_key' },
-        });
-      });
-
-      await waitFor(() => {
-        expect(getEpochMillisForPastDays).toHaveBeenCalledWith(7); // Should default to 7 days
-      });
-    });
+    expect(
+      screen.getByTestId('topic-status-totalDataAssets')
+    ).toHaveTextContent(
+      'message.value-in-last-count-days {"count":30,"value":"+52"}'
+    );
   });
 
-  describe('Chart Rendering', () => {
-    it('should render pie chart with data', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+  it('asks the hook for the selected window', () => {
+    renderWidget();
 
-      expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
-      expect(screen.getByTestId('pie')).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByTestId('total-data-assets-window-filter-14'));
 
-    it('should display total data assets count in center of donut chart', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // For the latest date (1641081600000), total should be 200 + 100 + 50 = 350
-      expect(screen.getByText('350')).toBeInTheDocument();
-    });
-
-    it('should render legend when widget is full size', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget({
-          currentLayout: [
-            {
-              i: 'test-widget-key',
-              x: 0,
-              y: 0,
-              w: 2, // Full width
-              h: 4,
-            },
-          ],
-        });
-      });
-
-      // Should show legend with entity types and counts (startCase formatting)
-      expect(screen.getByText('Table')).toBeInTheDocument();
-      expect(screen.getByText('Dashboard')).toBeInTheDocument();
-      expect(screen.getByText('Pipeline')).toBeInTheDocument();
-    });
-
-    it('should not render legend when widget is not full size', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget({
-          currentLayout: [
-            {
-              i: 'test-widget-key',
-              x: 0,
-              y: 0,
-              w: 1, // Half width
-              h: 4,
-            },
-          ],
-        });
-      });
-
-      // Legend should not be visible for smaller widgets
-      const legendElements = screen.queryAllByText('Table');
-
-      expect(legendElements.length).toBeLessThanOrEqual(1); // Only in pie chart data
-    });
+    expect(useTotalDataAssets).toHaveBeenLastCalledWith({ windowDays: 14 });
   });
 
-  describe('Date Selection', () => {
-    it('should render date selector with available dates', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+  it('opens Explore from the footer', () => {
+    renderWidget();
 
-      expect(screen.getByText('01')).toBeInTheDocument(); // Day from formatted date
-      expect(screen.getByText('02')).toBeInTheDocument(); // Day from formatted date
-    });
+    fireEvent.click(screen.getByTestId('topic-action-totalDataAssets'));
 
-    it('should auto-select the latest date on data load', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // The latest date should be selected and show its total
-      expect(screen.getByText('350')).toBeInTheDocument(); // 200 + 100 + 50
-    });
-
-    it('should update chart data when a different date is selected', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Find and click on the first date
-      const firstDateBox = screen
-        .getByText('01')
-        .closest('.date-box') as HTMLElement;
-
-      expect(firstDateBox).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(firstDateBox);
-      });
-
-      // Should now show data for the first date (150 + 75 = 225)
-      await waitFor(() => {
-        expect(screen.getByText('225')).toBeInTheDocument();
-      });
-    });
-
-    it('should highlight selected date', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      const dateBoxes = screen.getAllByText('02')[0].closest('.date-box');
-
-      expect(dateBoxes).toHaveClass('selected');
-    });
+    expect(mockNavigate).toHaveBeenCalledWith(ROUTES.EXPLORE);
   });
 
-  describe('Widget Configuration', () => {
-    it('should pass correct props to WidgetWrapper', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+  it('shows the empty state, not a zero total, before anything is counted', () => {
+    renderWidget({ assetTypes: [], totalAssets: 0, totalDelta: null } as never);
 
-      const wrapper = screen.getByTestId('widget-wrapper');
-
-      expect(wrapper).toHaveAttribute('data-loading', 'false');
-      expect(wrapper).toHaveAttribute('data-length', '2'); // Two unique dates
-    });
-
-    it('should pass correct props to WidgetHeader', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Verify that the widget header receives the sorting props
-      expect(screen.getByTestId('sort-options')).toBeInTheDocument();
-      expect(screen.getByTestId('sort-by-dropdown')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('topic-empty-totalDataAssets')).toHaveTextContent(
+      'message.no-data-assets-yet'
+    );
+    expect(screen.getByText('message.no-assets-ingested-yet')).toBeVisible();
+    expect(screen.queryByTestId('total-data-assets-total')).toBeNull();
+    // An empty estate is no failure: the header carries no "Not set up" chip.
+    expect(screen.queryByTestId('topic-status-totalDataAssets')).toBeNull();
   });
 
-  describe('Data Processing', () => {
-    it('should sort data by count in descending order', async () => {
-      const sortedTestData: DataInsightCustomChartResult = {
-        results: [
-          {
-            count: 50,
-            day: 1640995200000,
-            group: 'dashboard',
-            term: 'dashboard',
-          },
-          {
-            count: 200,
-            day: 1640995200000,
-            group: 'table',
-            term: 'table',
-          },
-          {
-            count: 100,
-            day: 1640995200000,
-            group: 'topic',
-            term: 'topic',
-          },
-        ],
-      };
+  // The empty card keeps its footer: "0 assets", and the step that fills it.
+  it('offers to add a database service from the empty footer', () => {
+    mockCanAddService = true;
+    renderWidget({ assetTypes: [], totalAssets: 0, totalDelta: null } as never);
 
-      (getChartPreviewByName as jest.Mock).mockResolvedValueOnce(
-        sortedTestData
-      );
+    expect(
+      screen.getByText('label.count-asset {"count":0}')
+    ).toBeInTheDocument();
 
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+    fireEvent.click(screen.getByTestId('topic-action-totalDataAssets'));
 
-      await waitFor(() => {
-        expect(screen.getByText('350')).toBeInTheDocument(); // Total count
-      });
-
-      // Verify legend items are sorted by count (high to low)
-      await waitFor(() => {
-        // Verify specific legend items exist with correct counts using data-testid
-        expect(screen.getByTestId('legend-count-table')).toHaveTextContent(
-          '200'
-        );
-        expect(screen.getByTestId('legend-count-topic')).toHaveTextContent(
-          '100'
-        );
-        expect(screen.getByTestId('legend-count-dashboard')).toHaveTextContent(
-          '50'
-        );
-
-        // Verify legend items appear in sorted order (highest count first)
-        const legendContainer = screen.getByTestId('assets-legend');
-        const legendItems = legendContainer.querySelectorAll(
-          '[data-testid^="legend-item-"]'
-        );
-
-        // First item should be table (highest count)
-        expect(legendItems[0]).toHaveAttribute(
-          'data-testid',
-          'legend-item-table'
-        );
-        // Second item should be topic (medium count)
-        expect(legendItems[1]).toHaveAttribute(
-          'data-testid',
-          'legend-item-topic'
-        );
-        // Third item should be dashboard (lowest count)
-        expect(legendItems[2]).toHaveAttribute(
-          'data-testid',
-          'legend-item-dashboard'
-        );
-      });
-    });
-
-    it('should correctly group data by date', async () => {
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Verify that data is processed correctly for different dates
-      const firstDateBox = screen
-        .getByText('01')
-        .closest('.date-box') as HTMLElement;
-      await act(async () => {
-        fireEvent.click(firstDateBox);
-      });
-
-      // First date should show 150 + 75 = 225
-      expect(screen.getByText('225')).toBeInTheDocument();
-    });
-
-    it('should handle data with undefined groups', async () => {
-      const dataWithUndefinedGroups: DataInsightCustomChartResult = {
-        results: [
-          {
-            count: 100,
-            day: 1640995200000,
-            group: 'table',
-            term: 'table',
-          },
-          {
-            count: 50,
-            day: 1640995200000,
-            group: '',
-            term: '',
-          },
-        ],
-      };
-
-      (getChartPreviewByName as jest.Mock).mockResolvedValue(
-        dataWithUndefinedGroups
-      );
-
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Should still render without errors
-      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
-    });
+    expect(mockAddService).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  describe('Error Handling', () => {
-    it('should handle network errors', async () => {
-      const networkError = new AxiosError('Network Error');
-      (getChartPreviewByName as jest.Mock).mockRejectedValue(networkError);
+  it('offers no add link to a viewer who may not create a service', () => {
+    mockCanAddService = false;
+    renderWidget({ assetTypes: [], totalAssets: 0, totalDelta: null } as never);
 
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
+    expect(screen.queryByTestId('topic-action-totalDataAssets')).toBeNull();
 
-      expect(showErrorToast).toHaveBeenCalledWith(networkError);
-      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
-    });
+    mockCanAddService = true;
+  });
 
-    it('should handle API timeout errors', async () => {
-      const timeoutError = new AxiosError('Request timeout');
-      (getChartPreviewByName as jest.Mock).mockRejectedValue(timeoutError);
+  it('shows an error body, not an empty estate, when the fetch fails', () => {
+    renderWidget({ assetTypes: [], isError: true, totalAssets: 0 } as never);
 
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      expect(showErrorToast).toHaveBeenCalledWith(timeoutError);
-    });
-
-    it('should handle malformed data gracefully', async () => {
-      const malformedData = {
-        results: null,
-      };
-
-      (getChartPreviewByName as jest.Mock).mockResolvedValue(malformedData);
-
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Should show empty state when results is null/undefined
-      expect(screen.getByTestId('widget-empty-state')).toBeInTheDocument();
-    });
-
-    it('should handle sort change error gracefully', async () => {
-      const mockError = new AxiosError('Sort change error');
-
-      await act(async () => {
-        renderTotalDataAssetsWidget();
-      });
-
-      // Mock error on second call (after sort change)
-      (getChartPreviewByName as jest.Mock).mockRejectedValueOnce(mockError);
-
-      const sortDropdown = screen.getByTestId('sort-by-dropdown');
-
-      await act(async () => {
-        fireEvent.change(sortDropdown, {
-          target: { value: DATA_ASSETS_SORT_BY_KEYS.LAST_14_DAYS },
-        });
-      });
-
-      await waitFor(() => {
-        expect(showErrorToast).toHaveBeenCalledWith(mockError);
-      });
-    });
+    expect(
+      screen.getByTestId('topic-error-totalDataAssets')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('topic-empty-totalDataAssets')).toBeNull();
   });
 });

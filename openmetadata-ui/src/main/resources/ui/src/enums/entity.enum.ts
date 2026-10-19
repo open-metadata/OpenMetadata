@@ -128,6 +128,7 @@ export enum TabSpecificField {
   DATA_INSIGHT_CHART = 'dataInsightChart',
   DATA_PRODUCTS = 'dataProducts',
   DEFAULT_PERSONA = 'defaultPersona',
+  DEFAULT_DOMAIN = 'defaultDomain',
   DEFAULT_ROLES = 'defaultRoles',
   DOMAIN = 'domain',
   DOMAINS = 'domains',
@@ -268,6 +269,7 @@ export enum EntityTabs {
   RELATIONS_GRAPH = 'relations_graph',
   DATA_OBSERVABILITY = 'data_observability',
   RECOGNIZER = 'recognizer',
+  APPROVAL = 'approval',
 }
 
 export enum EntityAction {

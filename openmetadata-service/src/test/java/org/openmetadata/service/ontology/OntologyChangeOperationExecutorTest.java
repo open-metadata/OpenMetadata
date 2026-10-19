@@ -14,6 +14,8 @@
 package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,6 +25,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.net.URI;
@@ -30,11 +33,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.EventType;
@@ -42,6 +48,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
@@ -58,13 +65,98 @@ class OntologyChangeOperationExecutorTest {
 
   private final UriInfo uriInfo = mock(UriInfo.class);
   private final GlossaryTermRepository termRepository = mock(GlossaryTermRepository.class);
+  private final GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
   private final OntologyAxiomRepository axiomRepository = mock(OntologyAxiomRepository.class);
   private final Clock clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC);
   private OntologyChangeOperationExecutor executor;
 
   @BeforeEach
   void setUp() {
-    executor = new OntologyChangeOperationExecutor(termRepository, axiomRepository, clock);
+    executor =
+        new OntologyChangeOperationExecutor(
+            glossaryRepository, termRepository, axiomRepository, clock);
+  }
+
+  @Test
+  void createsGlossaryOnlyWhenItsStudioOperationExecutes() {
+    final Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Sales")
+            .withFullyQualifiedName("Sales")
+            .withDescription("Sales concepts");
+    when(glossaryRepository.getByNameOrNull(
+            isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
+        .thenReturn(Optional.empty());
+    when(glossaryRepository.createOrUpdate(eq(uriInfo), any(Glossary.class), eq(USER)))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.CREATED,
+                    invocation.getArgument(1, Glossary.class),
+                    EventType.ENTITY_CREATED));
+    final OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+            .withGlossary(glossary);
+
+    final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
+
+    assertEquals(glossary.getId(), outcome.entity().getId());
+    final ArgumentCaptor<Glossary> persisted = ArgumentCaptor.forClass(Glossary.class);
+    verify(glossaryRepository).createOrUpdate(eq(uriInfo), persisted.capture(), eq(USER));
+    assertEquals(NOW, persisted.getValue().getUpdatedAt());
+    assertEquals(USER, persisted.getValue().getUpdatedBy());
+    verify(glossaryRepository).prepareInternal(any(Glossary.class), eq(false));
+  }
+
+  @Test
+  void neverOverwritesAnExistingGlossaryDuringCreate() {
+    final Glossary glossary =
+        new Glossary()
+            .withId(UUID.randomUUID())
+            .withName("Sales")
+            .withFullyQualifiedName("Sales")
+            .withDescription("Sales concepts");
+    when(glossaryRepository.getByNameOrNull(
+            isNull(), eq("Sales"), isNull(), eq(Include.ALL), eq(false)))
+        .thenReturn(Optional.of(glossary));
+    final OntologyChangeOperation operation =
+        new OntologyChangeOperation()
+            .withId(UUID.randomUUID())
+            .withOperationType(OntologyChangeOperationType.CREATE_GLOSSARY)
+            .withGlossary(glossary);
+
+    assertThrows(BadRequestException.class, () -> executor.execute(uriInfo, USER, operation));
+    verify(glossaryRepository, never()).createOrUpdate(any(), any(), any());
+  }
+
+  @Test
+  void createTermPersistsItsSourceMemory() {
+    final UUID memoryId = UUID.randomUUID();
+    stubTermUpsertEchoesEntity();
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.CREATE_TERM, null)
+            .withTerm(term(UUID.randomUUID()))
+            .withSourceMemoryIds(Set.of(memoryId));
+
+    executor.execute(uriInfo, USER, operation);
+
+    assertEquals(Set.of(memoryId), capturePersistedTerm().getSourceMemoryIds());
+  }
+
+  @Test
+  void createTermNeverOverwritesATermThatClaimedTheNameAfterDrafting() {
+    final GlossaryTerm proposed = term(UUID.randomUUID());
+    when(termRepository.getByNameOrNull(
+            isNull(), eq("glossary.term1"), isNull(), eq(Include.ALL), eq(false)))
+        .thenReturn(Optional.of(term(UUID.randomUUID())));
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.CREATE_TERM, null).withTerm(proposed);
+
+    assertThrows(BadRequestException.class, () -> executor.execute(uriInfo, USER, operation));
+    verify(termRepository, never()).createOrUpdate(any(), any(), any());
   }
 
   @Test
@@ -74,14 +166,16 @@ class OntologyChangeOperationExecutorTest {
     final GlossaryTerm stored =
         term(termId).withAttributes(List.of(attribute(attributeId, "old-value")));
     stubEditableTerm(termId, stored);
-    stubTermUpsertEchoesEntity();
+    stubPersistTermEchoesEntity();
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.UPSERT_ATTRIBUTE, termId)
             .withAttribute(attribute(attributeId, "new-value"));
 
     final OperationOutcome outcome = executor.execute(uriInfo, USER, operation);
 
-    final GlossaryTerm persisted = capturePersistedTerm();
+    final FieldUpdate update = captureFieldUpdate();
+    final GlossaryTerm persisted = update.term;
+    assertEquals(Set.of("attributes"), update.patchedFields);
     assertEquals(1, persisted.getAttributes().size());
     assertEquals(attributeId, persisted.getAttributes().getFirst().getId());
     assertEquals("new-value", persisted.getAttributes().getFirst().getName());
@@ -90,20 +184,43 @@ class OntologyChangeOperationExecutorTest {
   }
 
   @Test
+  void upsertAttributeScopesStoreToAttributesFieldOnly() {
+    // Regression guard for the data-loss bug where attribute/mapping edits routed a partial-entity
+    // load-mutate-store through the whole-entity PUT path (patchedFields == null), wiping the
+    // relationship-backed collections (reviewers, relatedTerms, realizedIn) the loader never
+    // populated. The executor must scope the store to only the edited field name.
+    final UUID termId = UUID.randomUUID();
+    stubEditableTerm(termId, term(termId));
+    stubPersistTermEchoesEntity();
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.UPSERT_ATTRIBUTE, termId)
+            .withAttribute(attribute(UUID.randomUUID(), "value"));
+
+    executor.execute(uriInfo, USER, operation);
+
+    final FieldUpdate update = captureFieldUpdate();
+    assertNotNull(update.patchedFields);
+    assertEquals(Set.of("attributes"), update.patchedFields);
+    // The unscoped 3-arg createOrUpdate (whole-entity PUT) must not be invoked.
+    verify(termRepository, never()).createOrUpdate(eq(uriInfo), any(GlossaryTerm.class), eq(USER));
+  }
+
+  @Test
   void upsertAttributeAddsNewAttributeWhenTermHasNone() {
     final UUID termId = UUID.randomUUID();
     final UUID attributeId = UUID.randomUUID();
     stubEditableTerm(termId, term(termId));
-    stubTermUpsertEchoesEntity();
+    stubPersistTermEchoesEntity();
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.UPSERT_ATTRIBUTE, termId)
             .withAttribute(attribute(attributeId, "value"));
 
     executor.execute(uriInfo, USER, operation);
 
-    final GlossaryTerm persisted = capturePersistedTerm();
-    assertEquals(1, persisted.getAttributes().size());
-    assertEquals(attributeId, persisted.getAttributes().getFirst().getId());
+    final FieldUpdate update = captureFieldUpdate();
+    assertEquals(Set.of("attributes"), update.patchedFields);
+    assertEquals(1, update.term.getAttributes().size());
+    assertEquals(attributeId, update.term.getAttributes().getFirst().getId());
   }
 
   @Test
@@ -116,14 +233,16 @@ class OntologyChangeOperationExecutorTest {
                     mapping(ConceptMapping.ConceptMappingType.EXACT_MATCH, CONCEPT_A, SCHEME),
                     mapping(ConceptMapping.ConceptMappingType.CLOSE_MATCH, CONCEPT_B, SCHEME)));
     stubEditableTerm(termId, stored);
-    stubTermUpsertEchoesEntity();
+    stubPersistTermEchoesEntity();
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.UPSERT_MAPPING, termId)
             .withMapping(mapping(ConceptMapping.ConceptMappingType.EXACT_MATCH, CONCEPT_A, SCHEME));
 
     executor.execute(uriInfo, USER, operation);
 
-    final GlossaryTerm persisted = capturePersistedTerm();
+    final FieldUpdate update = captureFieldUpdate();
+    final GlossaryTerm persisted = update.term;
+    assertEquals(Set.of("conceptMappings"), update.patchedFields);
     assertEquals(2, persisted.getConceptMappings().size());
     assertEquals(
         1,
@@ -140,7 +259,7 @@ class OntologyChangeOperationExecutorTest {
             .withConceptMappings(
                 List.of(mapping(ConceptMapping.ConceptMappingType.EXACT_MATCH, CONCEPT_A, SCHEME)));
     stubEditableTerm(termId, stored);
-    stubTermUpsertEchoesEntity();
+    stubPersistTermEchoesEntity();
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.UPSERT_MAPPING, termId)
             .withMapping(
@@ -148,8 +267,9 @@ class OntologyChangeOperationExecutorTest {
 
     executor.execute(uriInfo, USER, operation);
 
-    final GlossaryTerm persisted = capturePersistedTerm();
-    assertEquals(2, persisted.getConceptMappings().size());
+    final FieldUpdate update = captureFieldUpdate();
+    assertEquals(Set.of("conceptMappings"), update.patchedFields);
+    assertEquals(2, update.term.getConceptMappings().size());
   }
 
   @Test
@@ -162,16 +282,35 @@ class OntologyChangeOperationExecutorTest {
                     mapping(ConceptMapping.ConceptMappingType.EXACT_MATCH, CONCEPT_A, SCHEME),
                     mapping(ConceptMapping.ConceptMappingType.CLOSE_MATCH, CONCEPT_B, SCHEME)));
     stubEditableTerm(termId, stored);
-    stubTermUpsertEchoesEntity();
+    stubPersistTermEchoesEntity();
     final OntologyChangeOperation operation =
         operation(OntologyChangeOperationType.DELETE_MAPPING, termId)
             .withMapping(mapping(ConceptMapping.ConceptMappingType.EXACT_MATCH, CONCEPT_A, SCHEME));
 
     executor.execute(uriInfo, USER, operation);
 
-    final GlossaryTerm persisted = capturePersistedTerm();
-    assertEquals(1, persisted.getConceptMappings().size());
-    assertEquals(CONCEPT_B, persisted.getConceptMappings().getFirst().getConceptIri());
+    final FieldUpdate update = captureFieldUpdate();
+    assertEquals(Set.of("conceptMappings"), update.patchedFields);
+    assertEquals(1, update.term.getConceptMappings().size());
+    assertEquals(CONCEPT_B, update.term.getConceptMappings().getFirst().getConceptIri());
+  }
+
+  @Test
+  void deleteAttributeScopesStoreToAttributesFieldOnly() {
+    final UUID termId = UUID.randomUUID();
+    final UUID attributeId = UUID.randomUUID();
+    stubEditableTerm(termId, term(termId).withAttributes(List.of(attribute(attributeId, "value"))));
+    stubPersistTermEchoesEntity();
+    final OntologyChangeOperation operation =
+        operation(OntologyChangeOperationType.DELETE_ATTRIBUTE, termId)
+            .withAttribute(attribute(attributeId, "value"));
+
+    executor.execute(uriInfo, USER, operation);
+
+    final FieldUpdate update = captureFieldUpdate();
+    assertNotNull(update.patchedFields);
+    assertEquals(Set.of("attributes"), update.patchedFields);
+    verify(termRepository, never()).createOrUpdate(eq(uriInfo), any(GlossaryTerm.class), eq(USER));
   }
 
   @Test
@@ -296,6 +435,44 @@ class OntologyChangeOperationExecutorTest {
                     Response.Status.OK,
                     invocation.getArgument(1, GlossaryTerm.class),
                     EventType.ENTITY_UPDATED));
+  }
+
+  /**
+   * Stubs the field-scoped store path ({@code createOrUpdate} with {@code patchedFields}) used by
+   * the attribute/mapping operations, and echoes the mutated term back so assertions can inspect
+   * what was persisted.
+   */
+  @SuppressWarnings("unchecked")
+  private void stubPersistTermEchoesEntity() {
+    when(termRepository.createOrUpdate(
+            eq(uriInfo), any(GlossaryTerm.class), eq(USER), isNull(), any(Set.class)))
+        .thenAnswer(
+            invocation ->
+                new PutResponse<>(
+                    Response.Status.OK,
+                    invocation.getArgument(1, GlossaryTerm.class),
+                    EventType.ENTITY_UPDATED));
+  }
+
+  /** The term and the field scope the executor asked the repository to persist. */
+  private static final class FieldUpdate {
+    final GlossaryTerm term;
+    final Set<String> patchedFields;
+
+    FieldUpdate(GlossaryTerm term, Set<String> patchedFields) {
+      this.term = term;
+      this.patchedFields = patchedFields;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private FieldUpdate captureFieldUpdate() {
+    final ArgumentCaptor<GlossaryTerm> termCaptor = ArgumentCaptor.forClass(GlossaryTerm.class);
+    final ArgumentCaptor<Set<String>> fieldsCaptor = ArgumentCaptor.forClass(Set.class);
+    verify(termRepository)
+        .createOrUpdate(
+            eq(uriInfo), termCaptor.capture(), eq(USER), isNull(), fieldsCaptor.capture());
+    return new FieldUpdate(termCaptor.getValue(), fieldsCaptor.getValue());
   }
 
   private void stubAxiomUpsertEchoesEntity() {

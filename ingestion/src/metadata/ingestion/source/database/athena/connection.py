@@ -264,7 +264,9 @@ def get_connection_url(connection: AthenaConnectionConfig) -> str:
     """Build the existing Athena URL with static AWS credentials."""
     aws_access_key_id = connection.awsConfig.awsAccessKeyId
     aws_secret_access_key = connection.awsConfig.awsSecretAccessKey
-    aws_session_token = connection.awsConfig.awsSessionToken
+    aws_session_token = (
+        connection.awsConfig.awsSessionToken.get_secret_value() if connection.awsConfig.awsSessionToken else None
+    )
     if connection.awsConfig.assumeRoleArn:
         assume_configs = AWSClient.get_assume_role_config(connection.awsConfig)
         if assume_configs:

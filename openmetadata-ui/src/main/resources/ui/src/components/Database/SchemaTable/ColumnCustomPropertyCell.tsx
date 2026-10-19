@@ -11,10 +11,19 @@
  *  limitations under the License.
  */
 
-import { FC, useCallback } from 'react';
+import { AxiosError } from 'axios';
+import classNames from 'classnames';
+import { FC, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Column } from '../../../generated/entity/data/table';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import { PropertyValue } from '../../common/CustomPropertyTable/PropertyValue';
+import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { isPropertyValueEmpty } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertyEditModal } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
+import { getPropertyRenderer } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
+import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 
 export interface ColumnCustomPropertyCellProps {
   property: CustomProperty;
@@ -32,21 +41,77 @@ export const ColumnCustomPropertyCell: FC<ColumnCustomPropertyCellProps> = ({
   hasEditPermissions,
   onExtensionUpdate,
 }) => {
-  const handleUpdate = useCallback(
-    (updatedExtension: Column['extension']) =>
-      onExtensionUpdate(record, updatedExtension),
-    [onExtensionUpdate, record]
-  );
+  const { t } = useTranslation();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const typeName = property.propertyType.name;
+  const { View } = getPropertyRenderer(typeName);
+  const value = (record.extension as Record<string, unknown> | undefined)?.[
+    property.name
+  ];
+  const isEmptyValue = isPropertyValueEmpty(typeName, value);
+
+  const handleSave = async (updatedValue: unknown) => {
+    setIsSaving(true);
+    try {
+      await onExtensionUpdate(
+        record,
+        buildUpdatedExtension(
+          record.extension as Record<string, unknown> | undefined,
+          property.name,
+          typeName ?? '',
+          updatedValue
+        )
+      );
+      setIsEditing(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <PropertyValue
-      hideLabel
-      isRenderedInRightPanel
-      extension={record.extension}
-      hasEditPermissions={hasEditPermissions}
-      property={property}
-      onExtensionUpdate={handleUpdate}
-    />
+    <div
+      className="tw:group tw:flex tw:min-w-0 tw:items-start tw:gap-1"
+      data-testid={property.name}>
+      <div
+        className={classNames('tw:min-w-0 tw:flex-1 tw:text-xs', {
+          'tw:text-tertiary': isEmptyValue,
+        })}
+        data-testid="property-value">
+        {isEmptyValue ? (
+          t('label.not-set')
+        ) : (
+          <View isCompact property={property} value={value} />
+        )}
+      </div>
+      {hasEditPermissions && (
+        // Empty cells keep the icon visible: it is their only edit affordance.
+        <span
+          className={classNames('tw:flex tw:shrink-0', {
+            'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-within:opacity-100':
+              !isEmptyValue,
+          })}>
+          <WidgetEditButton
+            data-testid="edit-icon"
+            title={t('label.edit-entity', { entity: getEntityName(property) })}
+            onClick={() => setIsEditing(true)}
+          />
+        </span>
+      )}
+      {isEditing && (
+        <CustomPropertyEditModal
+          isNewValue={isEmptyValue}
+          isSaving={isSaving}
+          property={property}
+          value={value}
+          onCancel={() => setIsEditing(false)}
+          onSave={handleSave}
+        />
+      )}
+    </div>
   );
 };
 

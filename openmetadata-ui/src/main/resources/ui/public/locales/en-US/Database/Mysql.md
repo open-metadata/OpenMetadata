@@ -6,19 +6,20 @@ In this section, we provide guides and references to use the MySQL connector.
 To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
--- Create user. If <hostName> is ommited, defaults to '%'
+-- Create user. If <hostName> is omitted, defaults to '%'
 -- More details https://dev.mysql.com/doc/refman/8.0/en/create-user.html
 CREATE USER '<username>'[@'<hostName>'] IDENTIFIED BY '<password>';
 
--- Grant select on a database
-GRANT SELECT ON world.* TO '<username>';
+-- Grant metadata access on a database, without access to its data
+GRANT SHOW VIEW, REFERENCES ON world.* TO '<username>';
 
--- Grant select on a database
-GRANT SELECT ON world.* TO '<username>';
-
--- Grant select on a specific object
-GRANT SELECT ON world.hello TO '<username>';
+-- Or grant data access as well, for the profiler, data quality tests, and sample data
+GRANT SELECT, SHOW VIEW ON world.* TO '<username>';
 ```
+
+The user needs `SHOW VIEW` to ingest view definitions. When the user has no `SELECT` on a view, `REFERENCES` lets the connector read the view's columns. Without `SELECT` or `REFERENCES`, the connector ingests views without columns.
+
+To ingest stored procedures and functions with their code, also run `GRANT SHOW_ROUTINE ON *.* TO '<username>';` (MySQL 8.0.20 and up). With only `EXECUTE`, the connector ingests them without their code.
 
 $$note
 OpenMetadata supports MySQL version `8.0.0` and up. 
@@ -60,7 +61,7 @@ There are 2 types of auth configs:
 - IAM based Auth.
 - Azure Based Auth.
 
-User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Baed Authentication` to connecto to Azure releated services.
+User can authenticate the Mysql Instance with auth type as `Basic Authentication` i.e. Password **or** by using `IAM based Authentication` to connect to AWS related services **or** by using `Azure Based Authentication` to connect to Azure related services.
 $$
 
 

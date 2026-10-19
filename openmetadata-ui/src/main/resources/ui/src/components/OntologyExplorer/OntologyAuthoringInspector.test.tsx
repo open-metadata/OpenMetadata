@@ -125,27 +125,21 @@ describe('OntologyAuthoringInspector', () => {
         ]}
         relationTypes={[RELATIONSHIP_TYPE]}
         onCreateRelation={jest.fn()}
-        onShowDataAssets={jest.fn()}
       />
     );
 
     const inspector = screen.getByTestId('ontology-authoring-inspector');
 
     expect(inspector).toHaveClass(
-      'tw:w-[300px]',
-      'tw:p-[18px]',
-      'tw:border-l',
-      'tw:overflow-y-auto'
+      'tw:fixed',
+      'tw:w-[max(420px,40vw)]',
+      'tw:bg-overlay-surface'
     );
-    expect(screen.getByRole('heading', { level: 2 })).toHaveClass(
-      'tw:text-[17px]',
-      'tw:font-bold',
-      'tw:leading-[1.25]'
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+      'Anti-Money Laundering'
     );
-    expect(screen.getByText('finance.AntiMoneyLaundering')).toHaveClass(
-      'tw:font-mono',
-      'tw:text-[11px]'
-    );
+    expect(screen.getByText('finance')).toBeInTheDocument();
+    expect(screen.getByText('label.concept')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(
@@ -161,8 +155,63 @@ describe('OntologyAuthoringInspector', () => {
       )
     ).toBeInTheDocument();
     expect(screen.getByTestId('authoring-more-assets')).toHaveTextContent(
-      '+46 label.more-lowercase label.data-asset-lowercase-plural'
+      'label.show-count-more'
     );
+  });
+
+  it('lists a relationship once when both of its directions are graph edges', () => {
+    render(
+      <OntologyAuthoringInspector
+        edges={[
+          {
+            from: TERM_ID,
+            id: 'relation-1',
+            label: 'partOf',
+            relationType: 'partOf',
+            to: TARGET_ID,
+          },
+          {
+            from: TARGET_ID,
+            id: 'relation-1',
+            label: 'hasPart',
+            relationType: 'hasPart',
+            to: TERM_ID,
+          },
+        ]}
+        isEditable={false}
+        node={{ id: TERM_ID, label: 'Churn Rate', type: 'glossaryTerm' }}
+        nodes={[
+          { id: TERM_ID, label: 'Churn Rate', type: 'glossaryTerm' },
+          { id: TARGET_ID, label: 'Retention', type: 'glossaryTerm' },
+        ]}
+        relationTypes={[
+          createRelationshipTypeMock({
+            displayName: 'Part Of',
+            inverse: {
+              id: 'has-part',
+              name: 'hasPart',
+              type: 'relationshipType',
+            },
+            name: 'partOf',
+          }),
+          createRelationshipTypeMock({
+            displayName: 'Has Part',
+            inverse: {
+              id: 'part-of',
+              name: 'partOf',
+              type: 'relationshipType',
+            },
+            name: 'hasPart',
+          }),
+        ]}
+        onCreateRelation={jest.fn()}
+      />
+    );
+
+    const relationships = screen.getByTestId('authoring-relationships');
+
+    expect(within(relationships).getAllByText('Retention')).toHaveLength(1);
+    expect(within(relationships).getByText('Part Of')).toBeInTheDocument();
   });
 
   it('creates a relationship from the inline two-step flow', async () => {
@@ -179,15 +228,22 @@ describe('OntologyAuthoringInspector', () => {
         ]}
         relationTypes={[RELATIONSHIP_TYPE]}
         onCreateRelation={onCreateRelation}
-        onShowDataAssets={jest.fn()}
       />
     );
 
     fireEvent.click(screen.getByTestId('authoring-add-relationship'));
-    fireEvent.click(
-      screen.getByTestId(`authoring-relation-type-${RELATIONSHIP_TYPE.name}`)
-    );
-    fireEvent.click(screen.getByTestId(`authoring-target-${TARGET_ID}`));
+    fireEvent.click(screen.getByRole('button', { name: /label\.type/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Requires' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Show options/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /Target/ }));
+
+    expect(
+      within(screen.getByTestId('authoring-relationship-draft')).getByText(
+        'Source'
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('authoring-save-relationship'));
 
     await waitFor(() => {
       expect(onCreateRelation).toHaveBeenCalledWith(

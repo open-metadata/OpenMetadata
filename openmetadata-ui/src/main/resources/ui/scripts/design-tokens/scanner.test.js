@@ -13,7 +13,7 @@
 
 /* Focused round-trip checks for the token scanner. Run: node scanner.test.js */
 const assert = require('assert');
-const { processText } = require('./scanner');
+const { processText, SEVERITY } = require('./scanner');
 const tokenMap = require('./token-map');
 
 let pass = 0;
@@ -189,6 +189,36 @@ const rich =
 const once = processText(rich, 't').newText;
 const twice = processText(once, 't').newText;
 check('idempotent (all categories)', twice, once);
+
+const unsupportedNamespace = processText(
+  '.a { --ai-card-background: #fff; color: var(--ai-card-foreground); }',
+  'ai-theme.less'
+).findings.filter(
+  (finding) => finding.category === 'unsupported-theme-namespace'
+);
+assert.deepEqual(unsupportedNamespace, [
+  {
+    file: 'ai-theme.less',
+    line: 1,
+    col: 6,
+    property: 'custom-property',
+    category: 'unsupported-theme-namespace',
+    severity: SEVERITY.WARNING,
+    raw: '--ai-card-background',
+    suggestion: '--color-*',
+  },
+  {
+    file: 'ai-theme.less',
+    line: 1,
+    col: 45,
+    property: 'custom-property',
+    category: 'unsupported-theme-namespace',
+    severity: SEVERITY.WARNING,
+    raw: '--ai-card-foreground',
+    suggestion: '--color-*',
+  },
+]);
+pass++;
 
 tokenMap.resetRegistry();
 for (const radius of [10, 16, 24, 1, 3.2]) {

@@ -15,6 +15,7 @@ import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
 } from '../../../constants/constants';
+import { TEST_DEFINITION_COLUMN_BY_SORT_FIELD } from '../../../constants/TestDefinition.constants';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { useTestDefinitionData } from './useTestDefinitionData';
@@ -44,7 +45,12 @@ export const useTestDefinitionListPage = () => {
     urlParams,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortField,
+    sortOrder,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     setSingleFilter,
     clearAllFilters,
     hasActiveFilters,
@@ -62,6 +68,7 @@ export const useTestDefinitionListPage = () => {
     testDefinitions,
     setTestDefinitions,
     isLoading,
+    isInitialLoading,
     fetchTestDefinitions,
     handleEnableToggle,
   } = useTestDefinitionData({
@@ -70,6 +77,8 @@ export const useTestDefinitionListPage = () => {
     pagingCursor,
     urlFilters,
     urlParams,
+    sortField,
+    sortOrder,
     fetchTestDefinitionPermissions,
   });
 
@@ -109,6 +118,20 @@ export const useTestDefinitionListPage = () => {
     }
   };
 
+  /**
+   * The table talks in column ids and react-aria's ascending/descending; the
+   * URL and the API talk in sort fields and asc/desc. Translated once here so
+   * neither side has to know the other's vocabulary.
+   */
+  const sortDescriptor = useMemo(
+    () => ({
+      column: TEST_DEFINITION_COLUMN_BY_SORT_FIELD[sortField],
+      direction:
+        sortOrder === 'desc' ? ('descending' as const) : ('ascending' as const),
+    }),
+    [sortField, sortOrder]
+  );
+
   const pagingData = useMemo(
     () => ({
       currentPage,
@@ -124,6 +147,7 @@ export const useTestDefinitionListPage = () => {
   return {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -134,7 +158,11 @@ export const useTestDefinitionListPage = () => {
     showPagination,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     setSingleFilter,
     clearAllFilters,
     hasActiveFilters,

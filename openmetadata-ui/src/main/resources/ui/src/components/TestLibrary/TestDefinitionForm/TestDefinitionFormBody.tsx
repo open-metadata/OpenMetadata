@@ -24,10 +24,9 @@ import {
   useFieldDoc,
   useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import {
   FC,
-  FocusEvent,
   lazy,
   useCallback,
   useEffect,
@@ -65,12 +64,29 @@ const toOptions = (values: string[]): FormSelectItem[] =>
 // `Select` a new `items` array on every render — and a new collection identity
 // makes react-aria tear down and remount the open listbox, detaching the
 // option the user (or Playwright) is mid-click on. Focusing any field re-renders
-// this component via `onActiveFieldChange`, so simply opening a select and
+// this component via the Form Hint registry, so simply opening a select and
 // clicking an option raced the remount: locally the click won, under CI load it
 // lost and the popover closed with the field left empty.
 const ENTITY_TYPE_OPTIONS = toOptions(Object.values(EntityType));
 const TEST_PLATFORM_OPTIONS = toOptions(Object.values(TestPlatform));
-const SUPPORTED_SERVICE_OPTIONS = toOptions(Object.values(DatabaseServiceType));
+// `Dbt` and `QueryLog` are pseudo-types: they exist in the generated `DatabaseServiceType`
+// enum but have no entry in the backend `databaseService.json` connection `oneOf` (no
+// `dbtConnection.json` / `queryLogConnection.json`), so there is no connector to ingest
+// them and no `Table` can ever live under such a service. The backend treats a non-empty
+// `supportedServices` as a whitelist (JSON `LIKE` substring match) when listing test
+// definitions for "Add Test Case", so a definition restricted to *only* a pseudo-type
+// matches no real table and silently vanishes from the picker. Filter only these two —
+// every other enum member (including wizard-"unsupported" real connectors like `Dremio`
+// or `Synapse`) has a connection schema and may legitimately host tables a test targets.
+const NON_SERVICE_TYPES = new Set<DatabaseServiceType>([
+  DatabaseServiceType.Dbt,
+  DatabaseServiceType.QueryLog,
+]);
+const SUPPORTED_SERVICE_OPTIONS = toOptions(
+  Object.values(DatabaseServiceType).filter(
+    (type) => !NON_SERVICE_TYPES.has(type)
+  )
+);
 const SUPPORTED_DATA_TYPE_OPTIONS = toOptions(Object.values(DataType));
 const TEST_DATA_TYPE_OPTIONS = toOptions(Object.values(TestDataType));
 
@@ -80,7 +96,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   isReadOnlyField,
   errorMessage,
   onErrorDismiss,
-  onActiveFieldChange,
 }) => {
   const { t } = useTranslation();
   const { control } = form;
@@ -112,9 +127,8 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     [dataQualityDimensions, dataQualityDimensionValue]
   );
 
-  // Per-field "Form Hint" text is sourced from the same TestDefinitionForm.md
-  // that backs the classic documentation panel, so the modal popover and the
-  // drawer doc panel stay in sync without duplicating the copy as translations.
+  // Per-field "Form Hint" text is sourced from TestDefinitionForm.md, so the
+  // copy is not duplicated as translations.
   const [fieldDocs, setFieldDocs] = useState<Record<string, string>>({});
   useEffect(() => {
     let cancelled = false;
@@ -151,10 +165,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     doc: resolveDoc('parameterDefinition'),
   });
 
-  // Seed the hint popover with the first rendered field's doc so it isn't empty
-  // when the modal opens (the popover otherwise waits for the first focus). A
-  // no-op in the drawer variant, where the FieldDocProvider is disabled and no
-  // `data-field-doc` anchors exist. Focusing any field replaces it as usual.
+  // Seed the Form Hint with the first rendered field's doc so it isn't empty
+  // when the drawer opens (it otherwise waits for the first focus). A no-op
+  // while Show Hint is off, where no `data-field-doc` anchors exist. Focusing
+  // any field replaces it as usual.
   const { setActive: setActiveFieldDoc, entries: fieldDocEntries } =
     useFieldDocRegistry();
   const formBodyRef = useRef<HTMLDivElement>(null);
@@ -172,30 +186,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     }
   }, [fieldDocEntries, setActiveFieldDoc]);
 
-  const handleActiveField = useCallback(
-    (id?: string) => {
-      if (!id) {
-        return;
-      }
-      const fieldId = id.startsWith('root/') ? id : `root/${id}`;
-      onActiveFieldChange?.(fieldId);
-    },
-    [onActiveFieldChange]
-  );
-
-  const handleFocus = useCallback(
-    (event: FocusEvent<HTMLDivElement>) => {
-      const fieldId = (event.target as HTMLElement).closest?.(
-        '[id^="root/"]'
-      )?.id;
-      handleActiveField(fieldId);
-    },
-    [handleActiveField]
-  );
-
-  // Memoized so a focus-driven re-render (onFocusCapture -> setActiveField in
-  // the parent) does not hand the react-aria Selects a new props object and
-  // rebuild their collection, which detaches an option mid-click.
+  // Memoized so a focus-driven re-render (the Form Hint registry) does not hand
+  // the react-aria Selects a new props object and rebuild their collection,
+  // which detaches an option mid-click.
   const primaryFields: FieldProp[] = useMemo(
     () => [
       {
@@ -250,9 +243,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     [t, resolveDoc, isReadOnlyField, isEditMode]
   );
 
-  // Memoized so a focus-driven re-render (onFocusCapture -> setActiveField in
-  // the parent) does not hand the react-aria Selects a new props object and
-  // rebuild their collection, which detaches an option mid-click.
+  // Memoized so a focus-driven re-render (the Form Hint registry) does not hand
+  // the react-aria Selects a new props object and rebuild their collection,
+  // which detaches an option mid-click.
   const classificationFields: FieldProp[] = useMemo(
     () => [
       {
@@ -333,28 +326,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         required: false,
         id: 'root/supportedDataTypes',
         doc: resolveDoc('supportedDataTypes'),
-        placeholder: t('label.select-field', {
-          field: t('label.supported-data-type-plural'),
-        }),
-        rules: {
-          validate: (value?: FormSelectItem[]) => {
-            const platforms = (form.getValues('testPlatforms') ??
-              []) as FormSelectItem[];
-            const hasOpenMetadata = platforms.some(
-              (platform) =>
-                (typeof platform === 'object' ? platform?.id : platform) ===
-                TestPlatform.OpenMetadata
-            );
-            let result: string | boolean = true;
-            if (hasOpenMetadata && (value ?? []).length === 0) {
-              result = t('message.field-text-is-required', {
-                fieldText: t('label.supported-data-type-plural'),
-              });
-            }
-
-            return result;
-          },
-        },
+        helperText: t('message.supported-data-types-help'),
+        helperTextType: HelperTextType.TOOLTIP,
+        placeholder: t('message.empty-means-all-data-types'),
         props: {
           'data-testid': 'supported-data-types',
           isDisabled: isReadOnlyField,
@@ -380,10 +354,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
 
   return (
     <div
-      className="new-form-style tw:flex tw:flex-col tw:gap-5"
+      className="new-form-style tw:relative tw:flex tw:flex-col tw:gap-5"
       data-testid="test-definition-form-body"
-      ref={formBodyRef}
-      onFocusCapture={handleFocus}>
+      ref={formBodyRef}>
       {errorMessage && (
         <div>
           <Alert
@@ -401,8 +374,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         className="tw:flex tw:flex-col tw:gap-1.5"
         data-testid="sql-expression"
-        role="presentation"
-        onClick={() => handleActiveField('root/sqlExpression')}
         {...sqlExpressionDoc}>
         <FormItemLabel
           label={t('label.sql-query')}
@@ -436,8 +407,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         className="tw:flex tw:flex-col tw:gap-3"
         data-testid="parameter-definition"
-        role="presentation"
-        onClick={() => handleActiveField('root/parameterDefinition')}
         {...parameterDefinitionDoc}>
         <FormItemLabel
           label={t('label.parameter-plural')}

@@ -12,8 +12,9 @@
  */
 
 import { Button, HintText, Label } from '@openmetadata/ui-core-components';
+import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
-import { Copy01, XClose } from '@untitledui/icons';
+import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
@@ -22,6 +23,103 @@ import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
+// Clipboard text may be a JSON array (copied from this field) or a CSV-ish
+// string typed by hand; both shapes collapse to a list of strings here so the
+// key handler stays a plain dispatch.
+const parsePastedValues = (text: string): string[] => {
+  try {
+    const parsed = JSON.parse(text);
+
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return splitCSV(text);
+  }
+};
+
+const getArrayFieldContainerClass = (isInvalid: boolean, isDisabled: boolean) =>
+  classNames(
+    // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+    // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
+    // only box-shadow, so it must name the outline properties now.
+    'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
+    'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+    isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
+    {
+      'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled':
+        isDisabled,
+    }
+  );
+
+// Plain derivations of the RJSF props; pulled out so the component body stays a
+// render function rather than a chain of defaulting expressions.
+// A string schema rendered with `'ui:field': 'ArrayField'` (e.g. an OIDC
+// `scope`) is edited as tags but stored space-separated.
+const toValues = (formData: unknown, isSpaceSeparated: boolean): string[] => {
+  if (isSpaceSeparated) {
+    return typeof formData === 'string'
+      ? formData.split(' ').filter(Boolean)
+      : [];
+  }
+
+  return (formData as string[] | undefined) ?? [];
+};
+
+const getCoreArrayFieldState = (
+  id: string,
+  formData: unknown,
+  isSpaceSeparated: boolean,
+  disabled?: boolean,
+  readonly?: boolean
+) => ({
+  fieldName: id.split('/').pop() ?? '',
+  value: toValues(formData, isSpaceSeparated),
+  isDisabled: Boolean(disabled || readonly),
+});
+
+const ArrayFieldError = ({
+  isInvalid,
+  rawErrors,
+}: {
+  isInvalid: boolean;
+  rawErrors?: string[];
+}) => {
+  if (!isInvalid || !rawErrors) {
+    return null;
+  }
+
+  return <HintText isInvalid>{rawErrors[0]}</HintText>;
+};
+
+// Each chip owns its own remove affordance so the field body stays a flat list.
+const ArrayValueChip = ({
+  value,
+  isDisabled,
+  onRemove,
+}: {
+  value: string;
+  isDisabled: boolean;
+  onRemove: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <span
+      className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
+          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-utility-brand-200">
+      {value}
+      {!isDisabled && (
+        <button
+          aria-label={t('label.remove-entity', { entity: value })}
+          className="tw:flex tw:cursor-pointer tw:items-center tw:text-utility-brand-400 tw:hover:text-utility-brand-700"
+          type="button"
+          onClick={onRemove}>
+          <XClose size={10} strokeWidth={2.5} />
+        </button>
+      )}
+    </span>
+  );
+};
+
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,
@@ -35,20 +133,31 @@ const CoreArrayField = (props: FieldProps) => {
     rawErrors,
     label,
     required,
+    uiSchema,
   } = props;
 
   const { t } = useTranslation();
   const id = idSchema.$id;
-  const fieldName = id.split('/').pop() ?? '';
   const isFilterPattern = /FilterPattern/.test(id);
-  const value: string[] = formData ?? [];
+  const isSpaceSeparated = schema.type === 'string';
+  const { fieldName, value, isDisabled } = getCoreArrayFieldState(
+    id,
+    formData,
+    isSpaceSeparated,
+    disabled,
+    readonly
+  );
+  const emitValues = useCallback(
+    (values: string[]) =>
+      onChange(isSpaceSeparated ? values.join(' ') : values),
+    [isSpaceSeparated, onChange]
+  );
   const [inputValue, setInputValue] = useState('');
 
   const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
     JSON.stringify(value)
   );
 
-  const isDisabled = disabled || readonly;
   const isInvalid = !!rawErrors?.length;
 
   const handleFocus = useCallback(() => {
@@ -65,9 +174,9 @@ const CoreArrayField = (props: FieldProps) => {
       if (isEmpty(filtered)) {
         return;
       }
-      onChange(Array.from(new Set([...value, ...filtered])));
+      emitValues(Array.from(new Set([...value, ...filtered])));
     },
-    [value, onChange]
+    [value, emitValues]
   );
 
   const commitInput = useCallback(() => {
@@ -77,6 +186,17 @@ const CoreArrayField = (props: FieldProps) => {
     }
   }, [inputValue, addValues]);
 
+  const pasteFromClipboard = useCallback(async () => {
+    const text = await onPasteFromClipBoard();
+    if (!text) {
+      return;
+    }
+    const values = parsePastedValues(text);
+    if (!isEmpty(values)) {
+      addValues(values);
+    }
+  }, [onPasteFromClipBoard, addValues]);
+
   const handleKeyDown = useCallback(
     async (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
@@ -85,66 +205,29 @@ const CoreArrayField = (props: FieldProps) => {
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
         e.preventDefault();
-        const text = await onPasteFromClipBoard();
-        if (!text) {
-          return;
-        }
-        let values: string[] = [];
-        try {
-          const parsed = JSON.parse(text);
-          if (Array.isArray(parsed)) {
-            values = parsed.map(String);
-          }
-        } catch {
-          values = splitCSV(text);
-        }
-        if (!isEmpty(values)) {
-          addValues(values);
-        }
+        await pasteFromClipboard();
       }
     },
-    [commitInput, onPasteFromClipBoard, addValues]
+    [commitInput, pasteFromClipboard]
   );
 
-  const placeholder = isFilterPattern
-    ? t('message.filter-pattern-placeholder')
-    : '';
+  const placeholder =
+    (uiSchema?.['ui:placeholder'] as string | undefined) ??
+    (isFilterPattern ? t('message.filter-pattern-placeholder') : '');
 
   const fieldLabel = label || schema.title || getFormDisplayLabel(fieldName);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
-      <div
-        className={[
-          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
-          // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
-          // only box-shadow, so it must name the outline properties now.
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
-          'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
-          isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
-          isDisabled
-            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
-            : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}>
+      <div className={getArrayFieldContainerClass(isInvalid, isDisabled)}>
         {value.map((v) => (
-          <span
-            className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
-          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200"
-            key={v}>
-            {v}
-            {!isDisabled && (
-              <button
-                aria-label={t('label.remove-entity', { entity: v })}
-                className="tw:flex tw:cursor-pointer tw:items-center tw:text-brand-400 hover:tw:text-brand-700"
-                type="button"
-                onClick={() => onChange(value.filter((val) => val !== v))}>
-                <XClose size={10} strokeWidth={2.5} />
-              </button>
-            )}
-          </span>
+          <ArrayValueChip
+            isDisabled={isDisabled}
+            key={v}
+            value={v}
+            onRemove={() => emitValues(value.filter((val) => val !== v))}
+          />
         ))}
         {!isDisabled && (
           <AriaInput
@@ -174,7 +257,7 @@ const CoreArrayField = (props: FieldProps) => {
           }}
         />
       </div>
-      {isInvalid && rawErrors && <HintText isInvalid>{rawErrors[0]}</HintText>}
+      <ArrayFieldError isInvalid={isInvalid} rawErrors={rawErrors} />
     </div>
   );
 };

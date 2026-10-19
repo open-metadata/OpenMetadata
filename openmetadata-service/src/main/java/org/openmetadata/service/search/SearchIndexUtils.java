@@ -1,5 +1,12 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
+import static org.openmetadata.service.apps.bundles.insights.search.DataInsightsSearchInterface.getStringWithClusterAlias;
+import static org.openmetadata.service.jdbi3.DataInsightSystemChartRepository.DI_SEARCH_INDEX_PREFIX;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.getAggregationBuckets;
 import static org.openmetadata.service.search.SearchUtils.getAggregationObject;
 
@@ -14,12 +21,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +47,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.util.Utilities;
@@ -54,6 +65,180 @@ public final class SearchIndexUtils {
           "collateaiqualityagentapplicationbot");
 
   private SearchIndexUtils() {}
+
+  /**
+   * Resolve the supplied index alias into the actual Elasticsearch / OpenSearch index name to
+   * query. Handles these shapes:
+   *
+   * <ul>
+   *   <li><b>Entity-specific alias</b> (e.g. {@code "table"}): looked up in
+   *       {@code entityIndexMap} and resolved to the canonical {@code *_search_index} name.
+   *       This is the bug fix — without resolving, ES would treat {@code "table"} as an alias
+   *       and expand it to every index that has that alias attached, including
+   *       {@code column_search_index} (because {@code tableColumn} declares {@code "table"} as
+   *       a {@code parentAlias}). Resolving here bypasses ES's alias expansion entirely so a
+   *       query for tables only hits the table index.
+   *   <li><b>Compound alias</b> (e.g. {@code "all"}, {@code "dataAsset"}): no entry in
+   *       {@code entityIndexMap}, no canonical index, so the alias passes through and ES
+   *       resolves it natively across the entities that have registered the alias. This is the
+   *       intended behavior — searching {@code dataAsset} should surface every data-asset
+   *       entity.
+   *   <li><b>Canonical / legacy index name</b> (e.g. {@code "table_search_index"}): not a key
+   *       in {@code entityIndexMap}, falls through to the prefix-and-pass branch, identical to
+   *       the legacy behavior.
+   *   <li><b>Already cluster-prefixed token</b>: idempotent — returned unchanged so that
+   *       internal code paths that hand back a resolved value don't double-prefix.
+   *   <li><b>Data Insights index or wildcard</b>: uses the hyphen-separated cluster prefix
+   *       used by DI data streams and aliases.
+   * </ul>
+   *
+   * Comma-separated tokens are resolved independently. Empty tokens (from {@code "table,"} or
+   * {@code ","}) are dropped instead of materializing as a bare cluster prefix; if every token
+   * is empty the original input is returned unchanged so downstream ES surfaces a normal
+   * "unknown index" error instead of an empty-target failure.
+   */
+  public static String getIndexOrAliasName(
+      String name,
+      Map<String, IndexMapping> entityIndexMap,
+      Map<String, IndexMapping> aliasIndexMap,
+      String clusterAlias) {
+    if (nullOrEmpty(name)) {
+      return name;
+    }
+    String prefix =
+        clusterAlias == null || clusterAlias.isEmpty() ? null : clusterAlias + INDEX_NAME_SEPARATOR;
+    String resolved =
+        Arrays.stream(name.split(","))
+            .map(String::trim)
+            .filter(t -> !t.isEmpty())
+            .map(
+                t ->
+                    resolveSingleAliasToken(t, prefix, entityIndexMap, aliasIndexMap, clusterAlias))
+            .collect(Collectors.joining(","));
+    return resolved.isEmpty() ? name : resolved;
+  }
+
+  private static String resolveSingleAliasToken(
+      String token,
+      String clusterPrefix,
+      Map<String, IndexMapping> entityIndexMap,
+      Map<String, IndexMapping> aliasIndexMap,
+      String clusterAlias) {
+    if (clusterPrefix != null
+        && (token.startsWith(clusterPrefix)
+            || token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX)))) {
+      return token;
+    }
+    if (token.startsWith(DI_SEARCH_INDEX_PREFIX)) {
+      return getStringWithClusterAlias(clusterAlias, token);
+    }
+    IndexMapping mapping = entityIndexMap == null ? null : entityIndexMap.get(token);
+    if (mapping == null && aliasIndexMap != null) {
+      mapping = aliasIndexMap.get(token);
+    }
+    if (mapping != null) {
+      return mapping.getIndexName(clusterAlias);
+    }
+    return clusterPrefix == null ? token : clusterPrefix + token;
+  }
+
+  /**
+   * Every name, without cluster prefix, that resolves to an index or alias OpenMetadata manages:
+   * entity types, canonical index names and their aliases.
+   */
+  public static Set<String> knownIndexNames(Map<String, IndexMapping> entityIndexMap) {
+    if (entityIndexMap == null) {
+      return Set.of();
+    }
+    Set<String> names = new HashSet<>(entityIndexMap.keySet());
+    entityIndexMap.values().forEach(mapping -> addMappingNames(names, mapping));
+    names.remove(null);
+    return Set.copyOf(names);
+  }
+
+  private static void addMappingNames(Set<String> names, IndexMapping mapping) {
+    names.add(mapping.getIndexName());
+    names.add(mapping.getAlias());
+    names.addAll(listOrEmpty(mapping.getParentAliases()));
+    names.addAll(listOrEmpty(mapping.getChildAliases()));
+    names.addAll(listOrEmpty(mapping.getDataInsightAliases()));
+  }
+
+  /**
+   * Names in an index expression, already resolved by {@link #getIndexOrAliasName}, that
+   * OpenMetadata does not manage, as the caller typed them. Wildcards, exclusions and Data Insights
+   * names never count as unknown. An empty result means every name is managed, so a missing index
+   * is a server fault rather than the caller's mistake.
+   */
+  public static List<String> unknownIndexNames(
+      String resolvedIndex, Set<String> knownIndexNames, String clusterAlias) {
+    if (nullOrEmpty(resolvedIndex) || nullOrEmpty(knownIndexNames)) {
+      return List.of();
+    }
+    return Arrays.stream(resolvedIndex.split(","))
+        .map(String::trim)
+        .filter(token -> isPlainIndexName(token, clusterAlias))
+        .map(token -> withoutClusterPrefix(token, clusterAlias))
+        .filter(name -> !knownIndexNames.contains(name))
+        .distinct()
+        .toList();
+  }
+
+  private static boolean isPlainIndexName(String token, String clusterAlias) {
+    return !token.isEmpty()
+        && !token.contains("*")
+        && !token.startsWith("-")
+        && !token.startsWith(DI_SEARCH_INDEX_PREFIX)
+        && !token.startsWith(getStringWithClusterAlias(clusterAlias, DI_SEARCH_INDEX_PREFIX));
+  }
+
+  private static String withoutClusterPrefix(String token, String clusterAlias) {
+    if (nullOrEmpty(clusterAlias)) {
+      return token;
+    }
+    String prefix = clusterAlias + INDEX_NAME_SEPARATOR;
+    return token.startsWith(prefix) && token.length() > prefix.length()
+        ? token.substring(prefix.length())
+        : token;
+  }
+
+  /**
+   * Resolves comma-separated entity names, canonical indexes, and {@code all}/{@code dataAsset}
+   * aliases to sorted, distinct registered entity types. Unknown or empty targets have no members.
+   * Entity-specific targets select their canonical index only, without RBAC child expansion.
+   */
+  public static List<String> getEntityTypesForIndex(
+      String index,
+      Map<String, IndexMapping> entityIndexMap,
+      Map<String, IndexMapping> aliasIndexMap,
+      String clusterAlias) {
+    if (nullOrEmpty(index) || nullOrEmpty(entityIndexMap)) {
+      return List.of();
+    }
+    UnaryOperator<String> normalize =
+        name -> getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
+    List<String> targets =
+        Arrays.stream(index.split(",")).map(String::trim).map(normalize).toList();
+    return entityIndexMap.entrySet().stream()
+        .filter(entry -> matchesIndexTarget(targets, entry.getKey(), entry.getValue(), normalize))
+        .map(Map.Entry::getKey)
+        .sorted()
+        .toList();
+  }
+
+  private static boolean matchesIndexTarget(
+      List<String> targets, String type, IndexMapping mapping, UnaryOperator<String> normalize) {
+    return targets.stream()
+        .anyMatch(
+            target ->
+                target.equals(normalize.apply(type))
+                    || ((target.equals(normalize.apply(GLOBAL_SEARCH_ALIAS))
+                            || target.equals(normalize.apply(DATA_ASSET_SEARCH_ALIAS)))
+                        && mapping.getParentAliases() != null
+                        && mapping.getParentAliases().stream()
+                            .map(normalize)
+                            .anyMatch(target::equals)));
+  }
 
   /**
    * Deduplicates identical SQL queries across lineage edges in-place.
@@ -137,6 +322,19 @@ public final class SearchIndexUtils {
           size);
     }
     return json;
+  }
+
+  /**
+   * The document a scripted update stores when its target doc is missing. It must hold plain values:
+   * the {@code JsonData}-wrapped script params serialize as {@code {}} per field when used as the
+   * upsert, and scripts that preserve existing fields (e.g. a logical test suite's {@code tests})
+   * then keep those empty objects (#33492).
+   */
+  public static Map<String, Object> toUpsertDocument(Map<String, Object> doc) {
+    Map<String, Object> upsert = JsonUtils.getMap(doc);
+    upsert.values().removeIf(Objects::isNull);
+    upsert.remove(SearchClient.FIELDS_TO_REMOVE);
+    return upsert;
   }
 
   public static Map<String, Object> stripDocMapIfOversized(
@@ -585,7 +783,7 @@ public final class SearchIndexUtils {
   }
 
   private static void processEntityTagSources(
-      EntityInterface entity, TagAndTierSources tagAndTierSources) {
+      EntityInterface<?> entity, TagAndTierSources tagAndTierSources) {
     processTagAndTierSources(entity.getTags(), tagAndTierSources);
   }
 
@@ -596,7 +794,7 @@ public final class SearchIndexUtils {
     }
   }
 
-  public static TagAndTierSources processTagAndTierSources(EntityInterface entity) {
+  public static TagAndTierSources processTagAndTierSources(EntityInterface<?> entity) {
     TagAndTierSources tagAndTierSources = new TagAndTierSources();
     processEntityTagSources(entity, tagAndTierSources);
     if (SearchIndexUtils.hasColumns(entity)) {
@@ -606,7 +804,7 @@ public final class SearchIndexUtils {
   }
 
   public static void processDescriptionSource(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Map<String, ChangeSummary> changeSummaryMap,
       Map<String, Integer> descriptionSources) {
     Optional.ofNullable(
@@ -632,12 +830,12 @@ public final class SearchIndexUtils {
     }
   }
 
-  public static boolean hasColumns(EntityInterface entity) {
+  public static boolean hasColumns(EntityInterface<?> entity) {
     return List.of(entity.getClass().getInterfaces()).contains(ColumnsEntityInterface.class);
   }
 
   public static Map<String, Integer> processDescriptionSources(
-      EntityInterface entity, Map<String, ChangeSummary> changeSummaryMap) {
+      EntityInterface<?> entity, Map<String, ChangeSummary> changeSummaryMap) {
     Map<String, Integer> descriptionSources = new HashMap<>();
     processDescriptionSource(entity, changeSummaryMap, descriptionSources);
     if (hasColumns(entity)) {
@@ -647,7 +845,7 @@ public final class SearchIndexUtils {
     return descriptionSources;
   }
 
-  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface entity) {
+  public static Map<String, ChangeSummary> getChangeSummaryMap(EntityInterface<?> entity) {
     return Optional.ofNullable(entity.getChangeDescription())
         .map(ChangeDescription::getChangeSummary)
         .map(ChangeSummaryMap::getAdditionalProperties)

@@ -11,8 +11,6 @@
 
 """Athena source module"""
 
-import hashlib
-import re
 import traceback
 from collections.abc import Iterable
 from typing import cast
@@ -22,9 +20,6 @@ from sqlalchemy import text
 from sqlalchemy.engine.reflection import Inspector
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.api.data.createCustomProperty import (
-    CreateCustomPropertyRequest,
-)
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -43,13 +38,8 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.custom_properties import (
-    CustomPropertyDataTypes,
-    OMetaCustomProperties,
-)
 from metadata.ingestion.models.lf_tags_model import TagItem
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -63,6 +53,9 @@ from metadata.ingestion.source.database.athena.utils import (
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
+)
+from metadata.ingestion.source.database.custom_property_extension_mixin import (
+    CustomPropertyExtensionMixin,
 )
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
@@ -86,9 +79,8 @@ ATHENA_TAG = "ATHENA TAG"
 ATHENA_TAG_CLASSIFICATION = "ATHENA TAG CLASSIFICATION"
 
 ICEBERG_TABLE_TYPE = "ICEBERG"
-PROPERTY_NAME_INVALID_CHARS_PATTERN = re.compile(r"[^A-Za-z0-9_.\-]")
-PROPERTY_NAME_REPLACEMENT = "__"
-PROPERTY_NAME_MAX_LENGTH = 256
+GLUE_VIEW_TABLE_TYPE = "VIRTUAL_VIEW"
+MAX_HIVE_VIEW_WARNINGS = 100
 
 ATHENA_INTERVAL_TYPE_MAP = {
     **dict.fromkeys(["enum", "string", "VARCHAR"], PartitionIntervalTypes.COLUMN_VALUE),
@@ -101,7 +93,7 @@ ATHENA_INTERVAL_TYPE_MAP = {
 }
 
 
-class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
+class AthenaSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, CommonDbSourceService):
     """
     Implements the necessary methods to extract
     Database metadata from Athena Source
@@ -125,8 +117,8 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         self.external_location_map = {}
         self.schema_description_map = {}
         self.glue_client = None
-        self._processed_prop: set[str] = set()
-        self._string_property_type_ref = None
+        self._hive_view_warning_count = 0
+        self._init_custom_properties()
 
     def prepare(self):
         """
@@ -147,17 +139,16 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         except Exception as exc:
             logger.warning(f"Error preparing Athena source: {exc}")
             logger.debug(traceback.format_exc())
-        try:
-            self._string_property_type_ref = self.metadata.get_property_type_ref(CustomPropertyDataTypes.STRING)
-        except Exception as exc:
-            logger.warning(f"Failed to fetch string property type ref: {exc}")
-            logger.debug(traceback.format_exc())
+        self._load_string_property_type_ref()
 
     def get_schema_description(self, schema_name: str) -> str | None:
         return self.schema_description_map.get(schema_name)
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        """Return tables with proper type detection using a single Glue API pass."""
+        """Return tables with proper type detection using a single Glue API pass.
+
+        Views are left to the view pass, which types them View with their definition.
+        """
         if self.glue_client:
             try:
                 results = []
@@ -167,10 +158,23 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                     paginate_params["CatalogId"] = self.service_connection.catalogId
                 for page in paginator.paginate(**paginate_params):
                     for table in page.get("TableList", []):
+                        # Glue lists views too. Emitting them here would send each view twice and put
+                        # it under includeTables instead of includeViews. Checked before the Iceberg
+                        # branch because Glue also stamps Iceberg views with table_type=ICEBERG.
+                        if table.get("TableType") == GLUE_VIEW_TABLE_TYPE:
+                            continue
                         params = table.get("Parameters", {})
-                        table_type = (
-                            TableType.Iceberg if params.get("table_type") == ICEBERG_TABLE_TYPE else TableType.External
-                        )
+                        if params.get("table_type") == ICEBERG_TABLE_TYPE:
+                            # iceberg tables carry table_type=ICEBERG in the Glue DDL
+                            # https://docs.aws.amazon.com/athena/latest/ug/querying-iceberg-creating-tables.html
+                            table_type = TableType.Iceberg
+                        elif self._is_delta_table(params):
+                            # Kept after the Iceberg check so a UniForm table carrying both markers
+                            # stays Iceberg. Athena DDL writes table_type=DELTA, Spark and the crawler
+                            # write spark.sql.sources.provider=delta; producers disagree on case.
+                            table_type = TableType.DeltaLake
+                        else:
+                            table_type = TableType.External
                         results.append(TableNameAndType(name=table["Name"], type_=table_type))
                 return results  # noqa: TRY300
             except Exception as exc:
@@ -180,6 +184,19 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             TableNameAndType(name=name, type_=TableType.External)
             for name in self.inspector.get_table_names(schema_name) or []
         ]
+
+    @staticmethod
+    def _is_delta_table(parameters: dict | None) -> bool:
+        """A Delta table is marked by table_type=DELTA (Athena DDL) or
+        spark.sql.sources.provider=delta (Spark/crawler). Producers disagree on case, so both
+        keys are compared case-insensitively. Mirrors GlueSource._is_delta_table but reads the
+        raw boto3 get_tables Parameters dict rather than the Glue TableParameters model."""
+        if not parameters:
+            return False
+        return any(
+            isinstance(parameters.get(key), str) and parameters[key].lower() == "delta"
+            for key in ("table_type", "spark.sql.sources.provider")
+        )
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
@@ -219,6 +236,72 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
             return True, partition_details
         return False, None
 
+    def should_preserve_table_type_when_partitioned(self, table_type: TableType) -> bool:
+        return table_type == TableType.Iceberg or super().should_preserve_table_type_when_partitioned(table_type)
+
+    def _is_hive_view(self, table_name: str, schema_name: str) -> bool:
+        """Whether Glue stores this view in Hive form, whose definition SHOW CREATE VIEW cannot read.
+
+        Athena reads only its own views and Data Catalog views. Spark writes its views to Glue in Hive
+        form too, so they count as Hive views here.
+        """
+        if not self.glue_client:
+            return False
+        get_table_params = {"DatabaseName": schema_name, "Name": table_name}
+        if self.service_connection.catalogId:
+            get_table_params["CatalogId"] = self.service_connection.catalogId
+        try:
+            table = self.glue_client.get_table(**get_table_params).get("Table") or {}
+        except Exception:
+            logger.debug("Could not identify Glue view format for [%s.%s]", schema_name, table_name)
+            return False
+        if table.get("TableType") != GLUE_VIEW_TABLE_TYPE or table.get("ViewDefinition"):
+            return False
+        parameters = table.get("Parameters") or {}
+        original_text = table.get("ViewOriginalText") or ""
+        return bool(
+            (original_text or table.get("ViewExpandedText"))
+            and str(parameters.get("presto_view", "")).lower() != "true"
+            and not original_text.lstrip().startswith("/* Presto View:")
+        )
+
+    def get_schema_definition(
+        self,
+        table_type: TableType,
+        table_name: str,
+        schema_name: str,
+        inspector: Inspector,
+    ) -> str | None:
+        if table_type == TableType.View and self._is_hive_view(table_name, schema_name):
+            context = self.context.get()
+            if self._hive_view_warning_count < MAX_HIVE_VIEW_WARNINGS:
+                table_fqn = cast(
+                    "str",
+                    fqn.build(
+                        self.metadata,
+                        Table,
+                        service_name=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                        database_name=context.database,  # pyright: ignore[reportAttributeAccessIssue]
+                        schema_name=schema_name,
+                        table_name=table_name,
+                        skip_es_search=True,
+                    ),
+                )
+                self.status.warning(
+                    key=table_fqn,
+                    reason="Athena cannot retrieve this Hive or Spark view definition with SHOW CREATE VIEW. "
+                    "The view was ingested without SQL; recreate it in Athena to make its definition available.",
+                )
+            elif self._hive_view_warning_count == MAX_HIVE_VIEW_WARNINGS:
+                self.status.warning(
+                    key=context.database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    reason="Additional Hive or Spark view definition warnings omitted "
+                    f"after {MAX_HIVE_VIEW_WARNINGS} views.",
+                )
+            self._hive_view_warning_count += 1
+            return None
+        return super().get_schema_definition(table_type, table_name, schema_name, inspector)
+
     def get_location_path(self, table_name: str, schema_name: str) -> str | None:
         """
         Method to fetch the location path of the table
@@ -234,6 +317,7 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
                     tag_name=value,
                     classification_description=ATHENA_TAG_CLASSIFICATION,
                     tag_description=ATHENA_TAG,
+                    entity_fqn=entity_fqn,
                 )
                 if definition:
                     self.attach_tag(entity_fqn=entity_fqn, tag=definition)
@@ -376,46 +460,17 @@ class AthenaSource(ExternalTableLineageMixin, CommonDbSourceService):
         )
 
     def get_table_extensions(self, table_name: str, table_type: TableType | None = None) -> dict[str, str] | None:
-        if not getattr(self.source_config, "includeCustomProperties", False):
+        if not self.custom_properties_enabled:
             return None
         if not self._string_property_type_ref:
             return None
         if table_type != TableType.Iceberg:
             return None
         schema_name: str = getattr(self.context.get(), "database_schema", "")
-        tbl_properties = self._fetch_iceberg_properties(schema_name, table_name)
-        if not tbl_properties:
-            return None
-        registered_properties = {}
-        for prop_name, prop_value in tbl_properties.items():
-            if not prop_value:
-                continue
-            sanitized_name = PROPERTY_NAME_INVALID_CHARS_PATTERN.sub(PROPERTY_NAME_REPLACEMENT, prop_name)
-            if len(sanitized_name) > PROPERTY_NAME_MAX_LENGTH:
-                sanitized_name = hashlib.md5(prop_name.encode("utf-8"), usedforsecurity=False).hexdigest()
-            if sanitized_name not in self._processed_prop:
-                try:
-                    self.metadata.create_or_update_custom_property(  # pyright: ignore[reportUnknownMemberType, reportUnusedCallResult]
-                        OMetaCustomProperties(
-                            entity_type=Table,
-                            createCustomPropertyRequest=CreateCustomPropertyRequest(
-                                name=EntityName(sanitized_name),
-                                displayName=prop_name,
-                                description=Markdown(prop_name),
-                                propertyType=self._string_property_type_ref,
-                                customPropertyConfig=None,
-                            ),
-                        )
-                    )
-                    self._processed_prop.add(sanitized_name)
-                except Exception as exc:
-                    logger.warning(
-                        f"Failed to register custom property [{prop_name}] for Athena table properties: {exc}"
-                    )
-                    logger.debug(traceback.format_exc())
-                    continue
-            registered_properties[sanitized_name] = prop_value
-        return registered_properties or None
+        return self.build_entity_extension(
+            self._fetch_iceberg_properties(schema_name, table_name),
+            source_label="Athena table properties",
+        )
 
     def _fetch_iceberg_properties(self, schema_name: str, table_name: str) -> dict[str, str]:
         """Read Iceberg native properties from Athena's `<table>$properties` metatable."""

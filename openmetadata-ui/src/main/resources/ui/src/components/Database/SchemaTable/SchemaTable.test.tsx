@@ -14,6 +14,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DefaultColumnOrder } from '../../../generated/api/configuration/appConfiguration';
 import { Column } from '../../../generated/entity/data/container';
 import { Table } from '../../../generated/entity/data/table';
 import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
@@ -197,21 +198,21 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   ),
 }));
 
-jest.mock('../../common/CustomPropertyTable/PropertyValue', () => ({
-  PropertyValue: jest
+jest.mock('./ColumnCustomPropertyCell', () => ({
+  ColumnCustomPropertyCell: jest
     .fn()
     .mockImplementation(
-      ({ property, extension, hasEditPermissions, onExtensionUpdate }) => (
+      ({ property, record, hasEditPermissions, onExtensionUpdate }) => (
         <div data-testid={`property-value-${property.name}`}>
           <span data-testid="property-cell-value">
-            {String(extension?.[property.name] ?? '')}
+            {String(record.extension?.[property.name] ?? '')}
           </span>
           {hasEditPermissions && (
             <button
               data-testid={`property-cell-save-${property.name}`}
               onClick={() =>
-                onExtensionUpdate({
-                  ...extension,
+                onExtensionUpdate(record, {
+                  ...record.extension,
                   [property.name]: 'updated',
                 })
               }>
@@ -395,7 +396,7 @@ jest.mock('../../../rest/testAPI', () => ({
   getTestCaseExecutionSummary: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../utils/StringUtils', () => ({
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -441,6 +442,7 @@ jest.mock('../../../utils/EntityColumnUtils', () => ({
 jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchArrayElement: jest.fn(),
   highlightSearchText: jest.fn().mockImplementation((value) => value),
+  renderHighlightedText: jest.fn().mockImplementation((value) => value ?? ''),
 }));
 
 jest.mock('../../../constants/Table.constants', () => ({
@@ -452,6 +454,32 @@ jest.mock('../../../constants/Table.constants', () => ({
 }));
 
 describe('Test EntityTable Component', () => {
+  it('starts in source order when that is the tenant default', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockClear();
+    useApplicationStore.getState().setAppPreferences({
+      defaultColumnOrder: DefaultColumnOrder.SourceOrder,
+    });
+
+    try {
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      expect(getTableColumnsByFQN).toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'ordinalPosition', sortOrder: 'asc' })
+      );
+      expect(getTableColumnsByFQN).not.toHaveBeenCalledWith(
+        MOCK_TABLE.fullyQualifiedName,
+        expect.objectContaining({ sortBy: 'name' })
+      );
+    } finally {
+      useApplicationStore
+        .getState()
+        .setAppPreferences({ defaultColumnOrder: undefined });
+    }
+  });
+
   it('Initially, Table should load', async () => {
     await act(async () => {
       render(<SchemaTable />, {

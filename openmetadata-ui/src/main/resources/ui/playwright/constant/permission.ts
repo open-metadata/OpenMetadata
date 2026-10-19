@@ -21,6 +21,15 @@ export const DEFAULT_POLICIES = {
   teamOnlyAccessPolicy: 'Team only access Policy',
 };
 
+// FQN-format names used when passing policies to the roles API.
+// The API resolves policies by name/FQN, not by display name.
+export const DEFAULT_POLICY_FQNS = {
+  dataConsumerPolicy: 'DataConsumerPolicy',
+  dataStewardPolicy: 'DataStewardPolicy',
+  organizationPolicy: 'OrganizationPolicy',
+  teamOnlyAccessPolicy: 'TeamOnlyAccessPolicy',
+};
+
 export const SYSTEM_POLICY_NAMES = {
   taskAuthorPolicy: 'TaskAuthorPolicy',
 };

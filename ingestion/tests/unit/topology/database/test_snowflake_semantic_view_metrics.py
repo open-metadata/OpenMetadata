@@ -23,11 +23,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
 from metadata.ingestion.source.database.snowflake.semantic_view_metrics import (
-    SERVICE_PREFIX_MAX_LEN,
     build_metric_name,
     build_metric_request,
     infer_metric_type,
 )
+from metadata.utils.metric_naming import SERVICE_PREFIX_MAX_LEN
 
 # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
 TOTAL_REVENUE = ("orders", "total_revenue", "NUMBER", "SUM(orders.line_amount)", "Total revenue", None)
@@ -322,6 +322,32 @@ def test_yield_table_metrics_does_not_flush_when_the_view_has_no_metrics():
 
     assert records == []
     source.metadata.get_by_name.assert_not_called()
+
+
+def test_yield_table_metrics_for_a_same_named_schema_in_a_later_database():
+    """Multi-database run on one thread: MARTS in the second database must not be
+    served the first database's cached MARTS catalog, which silently emitted zero
+    metrics for every view the second database's MARTS holds."""
+    source = _make_source()
+    views_by_database = {"FIRST_DB": "first_view", "SECOND_DB": VIEW}
+
+    def execute(clause):
+        view = views_by_database[source.context.get().database]
+        return [(view, *row) for (_, *row) in _rows_for(str(clause.text))]
+
+    source.connection.execute.side_effect = execute
+
+    source.context.get.return_value = MagicMock(
+        database_service="snowflake_svc", database="FIRST_DB", database_schema="MARTS"
+    )
+    first = _metric_requests(source.yield_table_metrics(("first_view", TableType.SemanticView)))
+    source.context.get.return_value = MagicMock(
+        database_service="snowflake_svc", database="SECOND_DB", database_schema="MARTS"
+    )
+    second = _metric_requests(source.yield_table_metrics((VIEW, TableType.SemanticView)))
+
+    assert len(first) == 2
+    assert {r.displayName for r in second} == {"total_revenue", "order_count"}
 
 
 def test_lineage_resolves_the_name_the_metadata_stage_emitted():

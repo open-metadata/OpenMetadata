@@ -21,10 +21,6 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForParentAndSubField;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -42,24 +38,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.BulkAssetsRequestInterface;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.teams.Team;
-import org.openmetadata.schema.type.ApiStatus;
-import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -74,8 +62,9 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
-import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -96,6 +85,8 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
+    onlyReviewersDeleteInReview = true;
+    approvalTaskReviewsEntityStatus = true;
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -117,6 +108,12 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
+    return getTagAssets(tagId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getTagAssets(
+      UUID tagId, int limit, int offset, SubjectContext caller) {
     Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -125,7 +122,7 @@ public class TagRepository extends EntityRepository<Tag> {
     }
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
+        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -141,8 +138,13 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
+    return getTagAssetsByName(tagName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getTagAssetsByName(
+      String tagName, int limit, int offset, SubjectContext caller) {
     Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
-    return getTagAssets(tag.getId(), limit, offset);
+    return getTagAssets(tag.getId(), limit, offset, caller);
   }
 
   public Map<String, Integer> getAllTagsWithAssetsCount() {
@@ -488,259 +490,22 @@ public class TagRepository extends EntityRepository<Tag> {
 
   @Override
   public BulkOperationResult bulkAddAndValidateTagsToAssets(
-      UUID classificationTagId, BulkAssetsRequestInterface request) {
-    AddTagToAssetsRequest addTagToAssetsRequest = (AddTagToAssetsRequest) request;
-    boolean dryRun = Boolean.TRUE.equals(addTagToAssetsRequest.getDryRun());
-
-    Tag tag = this.get(null, classificationTagId, getFields("id"));
-
-    BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
-    List<BulkResponse> failures = new ArrayList<>();
-    List<BulkResponse> success = new ArrayList<>();
-
-    if (nullOrEmpty(request.getAssets())) {
-      // Nothing to Validate
-      return result
-          .withStatus(ApiStatus.SUCCESS)
-          .withSuccessRequest(List.of(new BulkResponse().withMessage("Nothing to Validate.")));
-    }
-
-    // Validation for entityReferences
-    EntityUtil.populateEntityReferences(request.getAssets());
-
-    TagLabel tagLabel =
-        new TagLabel()
-            .withTagFQN(tag.getFullyQualifiedName())
-            .withSource(TagSource.CLASSIFICATION)
-            .withLabelType(TagLabel.LabelType.MANUAL);
-
-    for (EntityReference ref : request.getAssets()) {
-      // Update Result Processed
-      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
-      // Handle column assets specially - columns don't have their own repository
-      if (Entity.TABLE_COLUMN.equals(ref.getType())) {
-        try {
-          addTagToColumn(ref, tagLabel, dryRun, success, failures, result);
-        } catch (Exception ex) {
-          failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
-          result.withFailedRequest(failures);
-          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-        }
-        continue;
-      }
-
-      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
-          entityRepository.get(null, ref.getId(), entityRepository.getFields("tags"));
-
-      try {
-        Map<String, List<TagLabel>> allAssetTags =
-            daoCollection.tagUsageDAO().getTagsByPrefix(asset.getFullyQualifiedName(), "%", true);
-        checkMutuallyExclusiveForParentAndSubField(
-            asset.getFullyQualifiedName(),
-            FullyQualifiedName.buildHash(asset.getFullyQualifiedName()),
-            allAssetTags,
-            new ArrayList<>(Collections.singleton(tagLabel)),
-            false);
-        success.add(new BulkResponse().withRequest(ref));
-        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-      } catch (Exception ex) {
-        failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
-        result.withFailedRequest(failures);
-        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-      }
-      // Validate and Store Tags — skip the write side-effects on dryRun so the preview
-      // surfaces the same validation outcome a real call would without mutating state.
-      if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
-        List<TagLabel> tempList = new ArrayList<>(asset.getTags());
-        tempList.add(tagLabel);
-        // Apply Tags to Entities
-        entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
-
-        searchRepository.updateEntity(ref);
-      }
-    }
-
-    // Add Failed And Suceess Request
-    result.withFailedRequest(failures).withSuccessRequest(success);
-
-    // Set Final Status
-    if (result.getNumberOfRowsPassed().equals(result.getNumberOfRowsProcessed())) {
-      result.withStatus(ApiStatus.SUCCESS);
-    } else if (result.getNumberOfRowsPassed() > 1) {
-      result.withStatus(ApiStatus.PARTIAL_SUCCESS);
-    } else {
-      result.withStatus(ApiStatus.FAILURE);
-    }
-
-    return result;
-  }
-
-  /**
-   * Add a tag to a column through its parent table.
-   * Columns are not standalone entities, so we need to update the parent table's column.
-   */
-  private void addTagToColumn(
-      EntityReference columnRef,
-      TagLabel tagLabel,
-      boolean dryRun,
-      List<BulkResponse> success,
-      List<BulkResponse> failures,
-      BulkOperationResult result) {
-    String columnFqn = columnRef.getFullyQualifiedName();
-    if (columnFqn == null) {
-      throw new IllegalArgumentException("Column FQN is required");
-    }
-
-    // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
-    String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
-
-    // Get the table with columns
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-    Table table =
-        tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns,tags"));
-
-    // Find the column by FQN
-    Column targetColumn = findColumnByFqn(table.getColumns(), columnFqn);
-    if (targetColumn == null) {
-      throw new IllegalArgumentException("Column not found: " + columnFqn);
-    }
-
-    // Validate mutually exclusive tags
-    Map<String, List<TagLabel>> allAssetTags =
-        daoCollection.tagUsageDAO().getTagsByPrefix(columnFqn, "%", true);
-    checkMutuallyExclusiveForParentAndSubField(
-        columnFqn,
-        FullyQualifiedName.buildHash(columnFqn),
-        allAssetTags,
-        new ArrayList<>(Collections.singleton(tagLabel)),
-        false);
-
-    if (!dryRun && nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
-      searchRepository.updateEntity(table.getEntityReference());
-    }
-
-    success.add(new BulkResponse().withRequest(columnRef));
-    result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-  }
-
-  private Column findColumnByFqn(List<Column> columns, String columnFqn) {
-    if (columns == null) {
-      return null;
-    }
-    for (Column column : columns) {
-      if (columnFqn.equals(column.getFullyQualifiedName())) {
-        return column;
-      }
-      // Check nested columns
-      if (column.getChildren() != null) {
-        Column nested = findColumnByFqn(column.getChildren(), columnFqn);
-        if (nested != null) {
-          return nested;
-        }
-      }
-    }
-    return null;
+      UUID entityId, BulkAssetsRequestInterface request, PatchRequester requester) {
+    return AssetTagLabelService.addToAssets(assetsRequest(entityId, request, requester));
   }
 
   @Override
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
-      UUID classificationTagId, BulkAssetsRequestInterface request) {
-    AddTagToAssetsRequest assetsRequest = (AddTagToAssetsRequest) request;
-    boolean dryRun = Boolean.TRUE.equals(assetsRequest.getDryRun());
-
-    Tag tag = this.get(null, classificationTagId, getFields("id"));
-
-    BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(dryRun);
-    List<BulkResponse> success = new ArrayList<>();
-
-    if (nullOrEmpty(request.getAssets())) {
-      // Nothing to Validate
-      return result.withSuccessRequest(
-          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
-    }
-
-    // Validation for entityReferences
-    EntityUtil.populateEntityReferences(request.getAssets());
-
-    for (EntityReference ref : request.getAssets()) {
-      // Update Result Processed
-      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
-
-      // Handle column assets specially - columns don't have their own repository
-      if (Entity.TABLE_COLUMN.equals(ref.getType())) {
-        try {
-          removeTagFromColumn(ref, tag, dryRun, success, result);
-        } catch (Exception ex) {
-          LOG.error("Error removing tag from column: {}", ref.getFullyQualifiedName(), ex);
-          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-        }
-        continue;
-      }
-
-      EntityRepository<?> entityRepository = Entity.getEntityRepository(ref.getType());
-      EntityInterface asset =
-          entityRepository.get(null, ref.getId(), entityRepository.getFields("id"));
-
-      // Skip the destructive tag_usage delete + ES update on dryRun so the preview
-      // surfaces the same lookup errors a real call would without mutating state.
-      if (!dryRun) {
-        daoCollection
-            .tagUsageDAO()
-            .deleteTagsByTagAndTargetEntity(
-                tag.getFullyQualifiedName(), asset.getFullyQualifiedName());
-      }
-      success.add(new BulkResponse().withRequest(ref));
-      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-      if (!dryRun) {
-        // Update ES
-        searchRepository.updateEntity(ref);
-      }
-    }
-
-    return result.withSuccessRequest(success);
+      UUID entityId, BulkAssetsRequestInterface request, PatchRequester requester) {
+    return AssetTagLabelService.removeFromAssets(assetsRequest(entityId, request, requester));
   }
 
-  /**
-   * Remove a tag from a column through its parent table.
-   */
-  private void removeTagFromColumn(
-      EntityReference columnRef,
-      Tag tag,
-      boolean dryRun,
-      List<BulkResponse> success,
-      BulkOperationResult result) {
-    String columnFqn = columnRef.getFullyQualifiedName();
-    if (columnFqn == null) {
-      throw new IllegalArgumentException("Column FQN is required");
-    }
-
-    // Extract table FQN from column FQN (format: service.database.schema.table.column[.nested...])
-    String tableFqn = FullyQualifiedName.getTableFQN(columnFqn);
-
-    // Get the table — also validates that the column's parent table exists
-    TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-    Table table = tableRepository.getByName(null, tableFqn, tableRepository.getFields("columns"));
-
-    if (!dryRun) {
-      // Remove the tag from the column
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagsByTagAndTargetEntity(tag.getFullyQualifiedName(), columnFqn);
-    }
-    success.add(new BulkResponse().withRequest(columnRef));
-    result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-    if (!dryRun) {
-      // Update the parent table's search index
-      searchRepository.updateEntity(table.getEntityReference());
-    }
+  private AssetTagLabelService.Request assetsRequest(
+      UUID tagId, BulkAssetsRequestInterface request, PatchRequester requester) {
+    Tag tag = get(null, tagId, getFields("id"));
+    TagLabel label = EntityUtil.toTagLabel(tag);
+    boolean dryRun = Boolean.TRUE.equals(((AddTagToAssetsRequest) request).getDryRun());
+    return new AssetTagLabelService.Request(label, request.getAssets(), dryRun, requester);
   }
 
   @Override
@@ -1176,77 +941,6 @@ public class TagRepository extends EntityRepository<Tag> {
     private void run() {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
-    }
-  }
-
-  @Override
-  public void postUpdate(Tag original, Tag updated) {
-    super.postUpdate(original, updated);
-    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
-      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Approved the tag");
-      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
-        closeApprovalTask(updated, "Rejected the tag");
-      }
-    }
-
-    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
-    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
-    // will be a Task created.
-    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
-    // Tag goes back to DRAFT.
-    if (!EntityStatus.DRAFT.equals(original.getEntityStatus())
-        && EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
-      try {
-        closeApprovalTask(updated, "Closed due to tag going back to DRAFT.");
-      } catch (EntityNotFoundException ignored) {
-      } // No ApprovalTask is present, and thus we don't need to worry about this.
-    }
-  }
-
-  @Override
-  protected void preDelete(Tag entity, String deletedBy) {
-    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
-      checkUpdatedByReviewer(entity, deletedBy);
-    }
-  }
-
-  private void closeApprovalTask(Tag entity, String comment) {
-    if (entity.getUpdatedBy() == null) {
-      LOG.debug(
-          "Skipping task closure for tag {} - updatedBy is null", entity.getFullyQualifiedName());
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.closeApprovalTaskForEntity(
-        entity.getFullyQualifiedName(), entity.getUpdatedBy(), comment);
-  }
-
-  public static void checkUpdatedByReviewer(Tag tag, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
-    List<EntityReference> reviewers = tag.getReviewers();
-    if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
-      boolean isReviewer =
-          reviewers.stream()
-              .anyMatch(
-                  e -> {
-                    if (e.getType().equals(TEAM)) {
-                      Team team =
-                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
-                      return team.getUsers().stream()
-                          .anyMatch(
-                              u ->
-                                  u.getName().equals(updatedBy)
-                                      || u.getFullyQualifiedName().equals(updatedBy));
-                    } else {
-                      return e.getName().equals(updatedBy)
-                          || e.getFullyQualifiedName().equals(updatedBy);
-                    }
-                  });
-      if (!isReviewer) {
-        throw new AuthorizationException(notReviewer(updatedBy));
-      }
     }
   }
 

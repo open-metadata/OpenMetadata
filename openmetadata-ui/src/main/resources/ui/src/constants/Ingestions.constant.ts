@@ -37,6 +37,7 @@ export const PIPELINE_TYPE_LOCALIZATION = {
   [PipelineType.Metadata]: 'metadata',
   [PipelineType.PolicyAgent]: 'policy-agent',
   [PipelineType.Profiler]: 'profiler',
+  [PipelineType.ReverseMetadata]: 'reverse-metadata',
   [PipelineType.TestSuite]: 'test-suite',
   [PipelineType.Usage]: 'usage',
   [PipelineType.Application]: 'application',
@@ -48,3 +49,6 @@ export const PIPELINE_TYPE_LOCALIZATION = {
  * raw `name`, which is machine-generated for UI-created agents.
  */
 export const SORT_FIELD_DISPLAY_NAME = 'displayName';
+
+/** Page size when listing a test suite's pipelines; a suite has only a few. */
+export const TEST_SUITE_PIPELINE_LIMIT = 100;

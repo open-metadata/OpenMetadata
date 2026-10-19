@@ -10,14 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { ReactComponent as IconDistribution } from '../../../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
 import { ReactComponent as IconSort } from '../../../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUnique } from '../../../assets/svg/icon-unique.svg';
 
-import SectionLine from '../../../assets/svg/section-line-medium.svg';
+import { ReactComponent as SectionLine } from '../../../assets/svg/section-line-medium.svg';
 
 import classNames from 'classnames';
 import { useMemo } from 'react';
@@ -35,7 +34,7 @@ const ConstraintIcon = ({
 }: ConstraintIconProps) => {
   const { t } = useTranslation();
 
-  const { icon, title } = useMemo(() => {
+  const { icon: IconComponent, title } = useMemo(() => {
     switch (constraintType) {
       case ConstraintType.PrimaryKey:
         return {
@@ -81,13 +80,16 @@ const ConstraintIcon = ({
       })}
       data-testid={`${constraintType}-icon`}>
       {!showOnlyIcon && (
-        <img alt="" className="primary-key-section-line" src={SectionLine} />
+        <SectionLine
+          aria-hidden
+          className="primary-key-section-line tw:text-black tw:dark:text-fg-quaternary tw:[&_path]:stroke-current"
+        />
       )}
-      <Tooltip placement="bottom" title={title} trigger="hover">
-        <Icon
-          alt={constraintType}
-          className="primary-key-icon"
-          component={icon}
+      <Tooltip placement="bottom" title={title}>
+        <IconComponent
+          aria-label={constraintType}
+          className="primary-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
+          role="img"
         />
       </Tooltip>
     </div>

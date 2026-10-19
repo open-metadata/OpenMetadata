@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
+import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Tour from '../../components/AppTour/Tour';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
-import {
-  ExploreSearchIndex,
-  SearchHitCounts,
-} from '../../components/Explore/ExplorePage.interface';
+import { SearchHitCounts } from '../../components/Explore/ExplorePage.interface';
 import { TOUR_SEARCH_TERM } from '../../constants/constants';
 import {
   mockDatasetData,
@@ -28,7 +26,9 @@ import {
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityTabs } from '../../enums/entity.enum';
 import { CurrentTourPageType } from '../../enums/tour.enum';
+import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import { SearchResponse } from '../../interface/search.interface';
+import { preloadTourTableTabs } from '../../utils/TableTabsUtils';
 import { getTourSteps } from '../../utils/TourUtils';
 import ExplorePageV1Component from '../ExplorePage/ExplorePageV1.component';
 import MyDataPage from '../MyDataPage/MyDataPage.component';
@@ -140,15 +140,25 @@ const TourPage = () => {
   }, [updateTourPage, updateActiveTab]);
 
   useEffect(() => {
+    let isCancelled = false;
     let tourMountFrameId = 0;
-    const cancelFeedWidgetWait = waitForTourFeedWidget(() => {
+    let cancelFeedWidgetWait: () => void = () => undefined;
+
+    const openTour = () => {
       updateIsTourOpen(true);
       tourMountFrameId = window.requestAnimationFrame(() => {
         setIsTourReady(true);
       });
+    };
+
+    preloadTourTableTabs().then(() => {
+      if (!isCancelled) {
+        cancelFeedWidgetWait = waitForTourFeedWidget(openTour);
+      }
     });
 
     return () => {
+      isCancelled = true;
       cancelFeedWidgetWait();
       window.cancelAnimationFrame(tourMountFrameId);
     };
@@ -158,19 +168,24 @@ const TourPage = () => {
   // Pre-mount Explore (hidden) during the MyData phase so it stays mounted into
   // the Explore step — react-tour closes a step whose target is missing on
   // activation, and the redesigned Explore can't mount within its stepWaitTimer.
+  // Hidden with `visibility`, not `display: none`: under `display: none` the
+  // resizable results panel measures 0px on mount and keeps that width, so the
+  // highlighted result card is clipped away when the Explore step reveals it.
   const shouldRenderExplore =
     currentTourPage === CurrentTourPageType.MY_DATA_PAGE || isExplorePage;
-  const exploreStyle = useMemo(
-    () => ({ display: isExplorePage ? undefined : 'none' }),
-    [isExplorePage]
-  );
 
   const currentPageComponent = useMemo(() => {
     return (
       <>
         {currentTourPage === CurrentTourPageType.MY_DATA_PAGE && <MyDataPage />}
         {shouldRenderExplore && (
-          <div style={exploreStyle}>
+          <div
+            aria-hidden={!isExplorePage}
+            className={classNames({
+              'tw:pointer-events-none tw:invisible tw:fixed tw:inset-0':
+                !isExplorePage,
+            })}
+            data-testid="tour-explore-page">
             <ExplorePageV1Component pageTitle={t('label.explore')} />
           </div>
         )}
@@ -179,7 +194,7 @@ const TourPage = () => {
         )}
       </>
     );
-  }, [currentTourPage, shouldRenderExplore, exploreStyle, t]);
+  }, [currentTourPage, shouldRenderExplore, isExplorePage, t]);
 
   const tourSteps = useMemo(
     () =>

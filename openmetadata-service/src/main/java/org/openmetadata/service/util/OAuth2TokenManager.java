@@ -16,7 +16,6 @@ package org.openmetadata.service.util;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Form;
 import jakarta.ws.rs.core.MediaType;
@@ -30,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.util.http.OutboundHttpClients;
 
 @Slf4j
 public class OAuth2TokenManager {
@@ -153,10 +153,7 @@ public class OAuth2TokenManager {
   }
 
   private static Client createTokenClient() {
-    return ClientBuilder.newBuilder()
-        .connectTimeout(TOKEN_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .readTimeout(TOKEN_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-        .build();
+    return OutboundHttpClients.newClient(TOKEN_CONNECT_TIMEOUT_SECONDS, TOKEN_READ_TIMEOUT_SECONDS);
   }
 
   private record CachedToken(String accessToken, Instant expiresAt) {

@@ -27,7 +27,7 @@ public interface LineageIndex extends SearchIndex {
    */
   default void applyLineageFields(Map<String, Object> doc, DocBuildContext ctx) {
     Object entity = getEntity();
-    if (entity instanceof EntityInterface ei) {
+    if (entity instanceof EntityInterface<?> ei) {
       List<EsLineageData> prefetched = ctx.prefetchedUpstreamLineage();
       if (prefetched != null) {
         doc.put("upstreamLineage", prefetched);

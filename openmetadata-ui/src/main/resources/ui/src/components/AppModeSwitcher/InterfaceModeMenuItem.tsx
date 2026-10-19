@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Check } from '@untitledui/icons';
+import { Badge, HoverCard } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +23,7 @@ import {
   DEFAULT_APP_MODE,
 } from '../../constants/appMode.constants';
 import { useIsAiMode, writeAppMode } from '../../hooks/useAppMode';
+import { ClassicDeprecationCard } from './ClassicDeprecationNotice';
 
 const OPTION_CLASS =
   'tw:flex tw:items-center tw:gap-2 tw:w-full tw:px-2 tw:py-1.5 tw:rounded-md ' +
@@ -31,7 +33,7 @@ const OPTION_CLASS =
 /**
  * Inline Classic⇄AI interface switch for the classic navbar profile dropdown.
  * AI is always available in OSS (the app-mode shell ships in-tree, no
- * install-gate — see SettingsAppModePage), so this renders unconditionally.
+ * install-gate — see PersonaAppLayoutPage), so this renders unconditionally.
  * Switching writes the app mode and navigates home; the boot resolver takes
  * the user into the selected experience.
  */
@@ -56,17 +58,27 @@ const InterfaceModeMenuItem = () => {
         {t('label.user-interface')}
       </span>
 
-      <button
-        className={classNames(OPTION_CLASS, {
-          'tw:text-utility-blue-700': !isAiMode,
-        })}
-        data-testid="interface-mode-option-classic"
-        type="button"
-        onClick={handleClassic}>
-        <AppModeClassicIcon height={18} width={18} />
-        <span className="tw:flex-1 tw:text-left">{t('label.classic')}</span>
-        {!isAiMode && <Check height={16} width={16} />}
-      </button>
+      <HoverCard content={<ClassicDeprecationCard />} placement="left">
+        <button
+          className={classNames(OPTION_CLASS, {
+            'tw:text-utility-blue-700': !isAiMode,
+          })}
+          data-testid="interface-mode-option-classic"
+          type="button"
+          onClick={handleClassic}>
+          <AppModeClassicIcon height={18} width={18} />
+          <span className="tw:flex tw:flex-1 tw:items-center tw:gap-2">
+            {t('label.classic')}
+            <Badge
+              color="warning"
+              data-testid="classic-deprecated-badge"
+              size="sm">
+              {t('label.deprecated')}
+            </Badge>
+          </span>
+          {!isAiMode && <Check height={16} width={16} />}
+        </button>
+      </HoverCard>
 
       <button
         className={classNames(OPTION_CLASS, {

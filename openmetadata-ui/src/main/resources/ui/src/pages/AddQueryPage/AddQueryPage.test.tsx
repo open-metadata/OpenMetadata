@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MOCK_TABLE } from '../../mocks/TableData.mock';
+import { postQuery } from '../../rest/queryAPI';
 import AddQueryPage from './AddQueryPage.component';
 
 jest.mock('../../rest/tableAPI', () => ({
@@ -40,14 +41,18 @@ jest.mock(
   }
 );
 jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockImplementation(() => <div>SchemaEditor</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ onChange }) => (
+      <textarea
+        aria-label="SchemaEditor"
+        onChange={(e) => onChange(e.target.value)}
+      />
+    ));
 });
 jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   return jest.fn().mockImplementation(() => <div>RichTextEditor</div>);
 });
-jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
-  AsyncSelect: jest.fn().mockImplementation(() => <div>AsyncSelect</div>),
-}));
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <>
@@ -75,9 +80,9 @@ describe('AddQueryPage test', () => {
     render(<AddQueryPage {...mockProps} />);
 
     expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
-    expect(await screen.findByText('SchemaEditor')).toBeInTheDocument();
+    expect(await screen.findByLabelText('SchemaEditor')).toBeInTheDocument();
     expect(await screen.findByText('RichTextEditor')).toBeInTheDocument();
-    expect(await screen.findByText('AsyncSelect')).toBeInTheDocument();
+    expect(await screen.findByTestId('query-used-in')).toBeInTheDocument();
     expect(await screen.findByTestId('form-title')).toBeInTheDocument();
     expect(await screen.findByTestId('query-form')).toBeInTheDocument();
     expect(
@@ -85,5 +90,30 @@ describe('AddQueryPage test', () => {
     ).toBeInTheDocument();
     expect(await screen.findByTestId('cancel-btn')).toBeInTheDocument();
     expect(await screen.findByTestId('save-btn')).toBeInTheDocument();
+  });
+
+  it('requires a query before saving', async () => {
+    render(<AddQueryPage {...mockProps} />);
+
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('save-btn'));
+    });
+
+    expect(postQuery).not.toHaveBeenCalled();
+  });
+
+  it('saves the typed query', async () => {
+    render(<AddQueryPage {...mockProps} />);
+
+    fireEvent.change(await screen.findByLabelText('SchemaEditor'), {
+      target: { value: 'select 1' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-btn'));
+    });
+
+    expect(postQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'select 1' })
+    );
   });
 });

@@ -1,6 +1,6 @@
 {
     "$id": "https://open-metadata.org/schema/api/services/createSecurityService.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "CreateSecurityServiceRequest",
     "description": "Create Security Service entity request",
     "type": "object",
@@ -34,6 +34,10 @@
                 "$ref": "../../type/tagLabel.json"
             },
             "default": null
+        },
+        "serviceAttributes": {
+          "description": "Deployment attributes of this service: environment, region and deployment. Set once here rather than tagged onto every asset this service ingests.",
+          "$ref": "../../entity/services/serviceAttributes.json"
         },
         "owners": {
             "description": "Owners of this security service.",

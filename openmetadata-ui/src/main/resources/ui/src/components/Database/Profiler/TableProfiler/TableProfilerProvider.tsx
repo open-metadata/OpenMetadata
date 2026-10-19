@@ -32,7 +32,8 @@ import { ReactComponent as TotalSizeIcon } from '../../../../assets/svg/data-obs
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
-import { Table } from '../../../../generated/entity/data/table';
+import { CustomMetric, Table } from '../../../../generated/entity/data/table';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { Include } from '../../../../generated/type/include';
@@ -71,6 +72,11 @@ const TestCaseFormDrawer = withSuspenseFallback(
       )
   )
 );
+const CustomMetricFormDrawer = withSuspenseFallback(
+  lazy(
+    () => import('../../../DataQuality/CustomMetricForm/CustomMetricFormDrawer')
+  )
+);
 
 export const TableProfilerContext =
   createContext<TableProfilerContextInterface>(
@@ -94,9 +100,17 @@ export const TableProfilerProvider = ({
   const [isTestsLoading, setIsTestsLoading] = useState(true);
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
+  // Left undefined when the list API doesn't return inline permissions so the
+  // DataQualityTab falls back to its own per-row permission fetch.
+  const [allTestCasesPermissions, setAllTestCasesPermissions] =
+    useState<Record<string, ResourcePermission>>();
   const [settingModalVisible, setSettingModalVisible] = useState(false);
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
+  const [customMetricDrawer, setCustomMetricDrawer] = useState<{
+    isColumnMetric: boolean;
+    metric?: CustomMetric;
+  }>();
   const [table, setTable] = useState<Table | undefined>(tableEntity);
   const [testCaseSummary, setTestCaseSummary] =
     useState<Record<string, TestCaseCountByStatus>>();
@@ -231,6 +245,17 @@ export const TableProfilerProvider = ({
     setCustomMetric(customMetric);
   };
 
+  const handleOpenCustomMetricDrawer = useCallback(
+    (isColumnMetric: boolean, metric?: CustomMetric) =>
+      setCustomMetricDrawer({ isColumnMetric, metric }),
+    []
+  );
+
+  const handleCloseCustomMetricDrawer = useCallback(
+    () => setCustomMetricDrawer(undefined),
+    []
+  );
+
   const onTestCaseSubmit = (testCase: TestCase) => {
     setTable((prev) => {
       if (!prev) {
@@ -278,22 +303,26 @@ export const TableProfilerProvider = ({
   const fetchAllTests = async (params?: ListTestCaseParamsBySearch) => {
     setIsTestsLoading(true);
     try {
-      const { data, paging } = await getListTestCaseBySearch({
-        ...DEFAULT_SORT_ORDER,
-        ...params,
-        fields: [
-          TabSpecificField.TEST_CASE_RESULT,
-          TabSpecificField.INCIDENT_ID,
-          TabSpecificField.INCIDENT_STATUS,
-        ],
+      const { data, paging, entityPermissions } = await getListTestCaseBySearch(
+        {
+          ...DEFAULT_SORT_ORDER,
+          ...params,
+          fields: [
+            TabSpecificField.TEST_CASE_RESULT,
+            TabSpecificField.INCIDENT_ID,
+            TabSpecificField.INCIDENT_STATUS,
+          ],
 
-        entityLink: generateEntityLink(datasetFQN ?? ''),
-        includeAllTests: true,
-        limit: testCasePaging.pageSize,
-        include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
-      });
+          entityLink: generateEntityLink(datasetFQN ?? ''),
+          includeAllTests: true,
+          includePermissions: true,
+          limit: testCasePaging.pageSize,
+          include: isTableDeleted ? Include.Deleted : Include.NonDeleted,
+        }
+      );
 
       setAllTestCases(data);
+      setAllTestCasesPermissions(entityPermissions);
       testCasePaging.handlePagingChange(paging);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -368,6 +397,7 @@ export const TableProfilerProvider = ({
       isProfilerDataLoading,
       tableProfiler,
       allTestCases,
+      allTestCasesPermissions,
       permissions,
       isTableDeleted,
       overallSummary,
@@ -382,12 +412,14 @@ export const TableProfilerProvider = ({
       testCaseSummary,
       onTestCaseDrawerOpen: handleOpenTestCaseDrawer,
       isTestCaseDrawerOpen,
+      onCustomMetricDrawerOpen: handleOpenCustomMetricDrawer,
     };
   }, [
     isTestsLoading,
     isProfilerDataLoading,
     tableProfiler,
     allTestCases,
+    allTestCasesPermissions,
     permissions,
     isTableDeleted,
     overallSummary,
@@ -398,27 +430,48 @@ export const TableProfilerProvider = ({
     testCaseSummary,
     isTestCaseDrawerOpen,
     handleOpenTestCaseDrawer,
+    handleOpenCustomMetricDrawer,
   ]);
 
+  const readOnlyProfilerContext = useMemo(
+    () => ({ ...tableProfilerPropsData, permissions: undefined }),
+    [tableProfilerPropsData]
+  );
+
   return (
-    <TableProfilerContext.Provider value={tableProfilerPropsData}>
-      {children}
-      {settingModalVisible && (
-        <ProfilerSettingsModal
-          columns={table?.columns ?? []}
-          tableId={table?.id ?? ''}
-          visible={settingModalVisible}
-          onVisibilityChange={handleSettingModal}
+    <>
+      <TableProfilerContext.Provider value={tableProfilerPropsData}>
+        {children}
+        {settingModalVisible && (
+          <ProfilerSettingsModal
+            columns={table?.columns ?? []}
+            tableId={table?.id ?? ''}
+            visible={settingModalVisible}
+            onVisibilityChange={handleSettingModal}
+          />
+        )}
+        <TestCaseFormDrawer
+          open={isTestCaseDrawerOpen}
+          table={table}
+          testLevel={testLevel}
+          onClose={handleCloseTestCaseDrawer}
+          onFormSubmit={onTestCaseSubmit}
         />
-      )}
-      <TestCaseFormDrawer
-        open={isTestCaseDrawerOpen}
-        table={table}
-        testLevel={testLevel}
-        onClose={handleCloseTestCaseDrawer}
-        onFormSubmit={onTestCaseSubmit}
-      />
-    </TableProfilerContext.Provider>
+      </TableProfilerContext.Provider>
+      {/* The profile preview inside the drawer reads the profiler's data but
+          gets no permissions, so its custom metric graphs offer no edit/delete
+          actions that would reopen this drawer. */}
+      <TableProfilerContext.Provider value={readOnlyProfilerContext}>
+        <CustomMetricFormDrawer
+          isColumnMetric={customMetricDrawer?.isColumnMetric ?? false}
+          metric={customMetricDrawer?.metric}
+          open={!isUndefined(customMetricDrawer)}
+          table={customMetric ?? table}
+          onClose={handleCloseCustomMetricDrawer}
+          onSuccess={handleUpdateCustomMetrics}
+        />
+      </TableProfilerContext.Provider>
+    </>
   );
 };
 

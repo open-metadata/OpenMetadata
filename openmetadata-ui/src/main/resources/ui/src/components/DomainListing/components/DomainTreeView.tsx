@@ -21,9 +21,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Domain as DomainIcon,
-  Expand,
+  Globe01 as DomainIcon,
   NoSearch,
+  Plus as Expand,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
@@ -48,7 +48,6 @@ import {
 } from '../../../rest/domainAPI';
 import { domainBuildESQuery } from '../../../utils/DomainFilterUtils';
 import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
-import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import {
@@ -285,9 +284,8 @@ const DomainTreeView = ({
             ? filterDomainsToAllowed(results, userDomains)
             : results;
 
-        const updatedTreeData = convertDomainsToTreeOptions(filteredResults);
-        setHierarchy(updatedTreeData as Domain[]);
-        selectDomain(updatedTreeData as Domain[]);
+        setHierarchy(filteredResults);
+        selectDomain(filteredResults);
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -928,6 +926,7 @@ const DomainTreeView = ({
           onActiveTabChange={setActiveTab}
           onDelete={handleDomainDelete}
           onNavigate={handleNavigate}
+          onRefresh={refreshAll}
           onUpdate={handleDomainUpdate}
         />
       );

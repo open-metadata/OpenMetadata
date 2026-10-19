@@ -28,6 +28,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -42,9 +43,15 @@ import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateRelationshipType;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
+import org.openmetadata.schema.type.RelationshipPaletteKey;
+import org.openmetadata.schema.type.RelationshipTypeCategory;
+import org.openmetadata.sdk.services.ontology.RelationshipTypeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -939,21 +946,33 @@ public class GlossaryTermRelationEdgeCasesIT {
     GlossaryTerm termA = GlossaryTermTestFactory.createWithName(ns, glossary, "termA");
     GlossaryTerm termB = GlossaryTermTestFactory.createWithName(ns, glossary, "termB");
     GlossaryTerm termC = GlossaryTermTestFactory.createWithName(ns, glossary, "termC");
+    String termAId = termA.getId().toString();
+    String termBId = termB.getId().toString();
+    String termCId = termC.getId().toString();
 
-    Map<String, Integer> countsBefore = getUsageCounts();
-    int synonymBefore = countsBefore.getOrDefault("synonym", 0);
+    // Usage counts span every glossary, and sibling tests add and remove synonyms concurrently, so
+    // a before/after delta on a built-in type races them. A type only this test uses is exact.
+    RelationshipTypeService relationshipTypes = SdkClients.adminClient().relationshipTypes();
+    RelationshipType usageType = relationshipTypes.create(usageCountRelationshipType(ns));
+    String typeName = usageType.getName();
+    try {
+      assertEquals(0, getUsageCounts().getOrDefault(typeName, 0));
 
-    addTermRelation(termA.getId().toString(), termB.getId().toString(), "synonym");
-    addTermRelation(termA.getId().toString(), termC.getId().toString(), "synonym");
+      assertNotNull(addTermRelation(termAId, termBId, typeName), "Relation A-B should be added");
+      assertNotNull(addTermRelation(termAId, termCId, typeName), "Relation A-C should be added");
 
-    Map<String, Integer> countsAfter = getUsageCounts();
-    int synonymAfter = countsAfter.getOrDefault("synonym", 0);
-
-    LOG.info("Synonym usage: before={}, after={}", synonymBefore, synonymAfter);
-
-    assertTrue(
-        synonymAfter > synonymBefore,
-        "Synonym usage count should increase after adding synonym relations");
+      assertEquals(
+          2,
+          getUsageCounts().getOrDefault(typeName, 0),
+          "Usage count should equal the relations added with the type");
+    } finally {
+      try {
+        removeTermRelation(termAId, termBId, typeName);
+        removeTermRelation(termAId, termCId, typeName);
+      } finally {
+        relationshipTypes.delete(usageType.getId().toString(), true);
+      }
+    }
   }
 
   // ==================== HELPER METHODS ====================
@@ -1194,5 +1213,20 @@ public class GlossaryTermRelationEdgeCasesIT {
       counts.put(usage.getRelationshipType().getName(), usage.getCount());
     }
     return counts;
+  }
+
+  private static CreateRelationshipType usageCountRelationshipType(TestNamespace ns) {
+    String name = "usageCount" + ns.uniqueShortId();
+    URI predicate = URI.create("https://example.org/ontology/" + name);
+    return new CreateRelationshipType()
+        .withName(name)
+        .withDisplayName(name)
+        .withDescription("Relationship type used only to verify usage counts")
+        .withIri(predicate)
+        .withRdfPredicate(predicate)
+        .withCategory(RelationshipTypeCategory.CUSTOM)
+        .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC))
+        .withCrossGlossaryAllowed(true)
+        .withPaletteKey(RelationshipPaletteKey.VIOLET);
   }
 }

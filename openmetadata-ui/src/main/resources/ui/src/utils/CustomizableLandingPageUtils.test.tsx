@@ -121,19 +121,18 @@ describe('CustomizableLandingPageUtils', () => {
     it('should place widget in same row if space available', () => {
       const currentLayout = [
         { w: 1, h: 3, x: 0, y: 0, i: 'widget1', static: false },
-        { w: 1, h: 3, x: 1, y: 0, i: 'widget2', static: false },
       ];
 
       const result = getNewWidgetPlacement(currentLayout, 1);
 
-      expect(result).toEqual({ x: 2, y: 0 });
+      expect(result).toEqual({ x: 1, y: 0 });
     });
 
     it('should place widget in next row if no space in current row', () => {
+      // One widget per column: the landing grid is two columns wide.
       const currentLayout = [
         { w: 1, h: 3, x: 0, y: 0, i: 'widget1', static: false },
         { w: 1, h: 3, x: 1, y: 0, i: 'widget2', static: false },
-        { w: 1, h: 3, x: 2, y: 0, i: 'widget3', static: false },
       ];
 
       const result = getNewWidgetPlacement(currentLayout, 1);

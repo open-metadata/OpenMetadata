@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/security/client/samlSSOClientConfig.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SamlSSOClientConfig",
   "description": "SAML SSO client security configs.",
   "type": "object",
@@ -26,8 +26,7 @@
         },
         "idpX509Certificate": {
           "description": "X509 Certificate ",
-          "type": "string",
-          "format": "password"
+          "type": "string"
         },
         "nameId": {
           "description": "Name ID format for SAML assertions",
@@ -53,8 +52,7 @@
         },
         "spX509Certificate": {
           "description": "X509 Certificate ",
-          "type": "string",
-          "format": "password"
+          "type": "string"
         },
         "spPrivateKey": {
           "description": "Sp Private Key for Signing and Encryption Only",

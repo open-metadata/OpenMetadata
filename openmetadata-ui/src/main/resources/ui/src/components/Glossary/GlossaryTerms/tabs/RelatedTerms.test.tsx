@@ -17,7 +17,6 @@ import {
   MOCKED_GLOSSARY_TERMS,
   MOCK_PERMISSIONS,
 } from '../../../../mocks/Glossary.mock';
-import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { listRelationshipTypes } from '../../../../rest/ontologyAPI';
 import RelatedTerms from './RelatedTerms';
 
@@ -96,43 +95,35 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('../../../common/ExpandableCard/ExpandableCard', () => ({
+jest.mock('../../../common/WidgetCard/WidgetCard', () => ({
   __esModule: true,
   default: jest.fn(
     ({
       children,
-      cardProps,
+      headerExtra,
+      title,
     }: {
       children: unknown;
-      cardProps?: { title?: unknown };
+      headerExtra?: unknown;
+      title?: unknown;
     }) => {
       const React = require('react');
 
-      return React.createElement('div', {}, cardProps?.title, children);
+      return React.createElement('div', {}, title, headerExtra, children);
     }
   ),
 }));
 
-jest.mock('../../../common/IconButtons/EditIconButton', () => ({
-  EditIconButton: ({
-    children,
-    newLook: _newLook,
-    ...props
-  }: Record<string, unknown>) => {
-    const React = require('react');
+jest.mock('../../../common/WidgetActionButton/WidgetActionButton', () => {
+  const React = require('react');
 
-    return React.createElement('button', props, children);
-  },
-  PlusIconButton: ({
-    children,
-    newLook: _newLook,
-    ...props
-  }: Record<string, unknown>) => {
-    const React = require('react');
-
-    return React.createElement('button', props, children);
-  },
-}));
+  return {
+    WidgetEditButton: (props: Record<string, unknown>) =>
+      React.createElement('button', props),
+    WidgetPlusButton: (props: Record<string, unknown>) =>
+      React.createElement('button', props),
+  };
+});
 
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),
@@ -159,7 +150,6 @@ const renderRelatedTerms = async () => {
 
   await waitFor(() => {
     expect(listRelationshipTypes).toHaveBeenCalled();
-    expect(searchGlossaryTermsPaginated).toHaveBeenCalled();
   });
 
   return view;
@@ -170,6 +160,7 @@ describe('RelatedTerms', () => {
     jest.clearAllMocks();
     mockContext.data = MOCKED_GLOSSARY_TERMS[2];
     mockContext.permissions = MOCK_PERMISSIONS;
+    mockContext.isVersionView = false;
   });
 
   it('should render the component', async () => {
@@ -287,5 +278,30 @@ describe('RelatedTerms overflow', () => {
 
     expect(getByText('Related 6')).toBeInTheDocument();
     expect(queryByText('Synonym 6')).toBeNull();
+  });
+
+  it('should keep an unchanged relation in version view when another relation type to the same term is added', () => {
+    const [relatedTo] = buildRelatedTerms(1, 'relatedTo', 'Target');
+    const narrower = { ...relatedTo, relationType: 'narrower' };
+    mockContext.isVersionView = true;
+    mockContext.data = {
+      ...MOCKED_GLOSSARY_TERMS[2],
+      relatedTerms: [relatedTo, narrower],
+      changeDescription: {
+        fieldsAdded: [
+          { name: 'relatedTerms', newValue: JSON.stringify([narrower]) },
+        ],
+        fieldsDeleted: [],
+        fieldsUpdated: [],
+      },
+    };
+    const { getAllByTestId } = render(<RelatedTerms />);
+
+    const chips = getAllByTestId('Target 0');
+
+    expect(chips).toHaveLength(2);
+    expect(
+      chips.filter((c) => c.classList.contains('diff-added'))
+    ).toHaveLength(1);
   });
 });

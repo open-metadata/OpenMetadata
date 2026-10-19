@@ -12,11 +12,11 @@
  *  limitations under the License.
  */
 import { omit } from 'lodash';
-import { IncidentTimeMetricsType } from '../components/DataQuality/DataQuality.interface';
 import { DATA_QUALITY_DIMENSION_INDEX_FIELD } from '../constants/DataQualityDimension.constants';
+import { IncidentTimeMetricsType } from '../enums/DataQuality.enum';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../generated/tests/testCaseResolutionStatus';
-import { DataQualityDashboardChartFilters } from '../pages/DataQuality/DataQualityPage.interface';
+import { DataQualityDashboardChartFilters } from '../interface/observability/dataQuality.interface';
 import {
   buildDataQualityDashboardFilters,
   buildDataQualityTableFilters,

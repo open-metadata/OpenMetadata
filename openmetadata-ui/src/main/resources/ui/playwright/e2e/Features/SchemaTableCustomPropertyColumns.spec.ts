@@ -97,9 +97,10 @@ test.describe('Schema table column-level custom property columns', () => {
     await test.step('value is editable inline from the cell', async () => {
       await expect(cell.getByTestId('property-value')).toContainText('Not set');
 
-      await cell.getByTestId('edit-icon-right-panel').click();
+      await cell.getByTestId('edit-icon').click();
 
-      const valueInput = page.getByTestId('value-input');
+      const editModal = page.getByTestId('custom-property-edit-modal');
+      const valueInput = editModal.getByTestId('value-input');
       await expect(valueInput).toBeVisible();
       await valueInput.fill(PROPERTY_VALUE);
 
@@ -109,8 +110,9 @@ test.describe('Schema table column-level custom property columns', () => {
           response.request().method() === 'PUT' &&
           response.ok()
       );
-      await cell.getByTestId('inline-save-btn').click();
+      await editModal.getByTestId('inline-save-btn').click();
       await updateColumnResponse;
+      await expect(editModal).toBeHidden();
 
       await expect(cell.getByTestId('property-value')).toContainText(
         PROPERTY_VALUE

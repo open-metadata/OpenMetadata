@@ -13,7 +13,6 @@ from sqlalchemy.exc import OperationalError
 from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
-from testcontainers.minio import MinioContainer
 from testcontainers.mysql import MySqlContainer
 
 from _openmetadata_testutils.helpers.docker import try_bind
@@ -30,7 +29,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401, TID252
-from ..containers import MinioContainerConfigs  # noqa: TID252
+from ..containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
 
 HIVE_METASTORE_IMAGE = (
     "bitsondatadev/hive-metastore@sha256:b44a186b6dcffafc6a72327aaa5912a5824feecb50718aaf661727ff6aef011b"
@@ -145,7 +144,7 @@ def docker_network():
 
 
 @pytest.fixture(scope="package")
-def trino_container(hive_metastore_container, minio_container, docker_network):
+def trino_container(hive_metastore_container, s3_container, docker_network):
     container = (
         TrinoContainer(image="trinodb/trino:418")
         .with_network(docker_network)
@@ -154,8 +153,8 @@ def trino_container(hive_metastore_container, minio_container, docker_network):
             f"thrift://metastore:{hive_metastore_container.port}",
         )
         .with_env(
-            "MINIO_ENDPOINT",
-            f"http://minio:{minio_container.port}",
+            "S3_ENDPOINT",
+            f"http://s3:{s3_container.port}",
         )
     )
     with try_bind(container, container.port, container.port + 1) as trino:
@@ -174,7 +173,7 @@ def mysql_container(docker_network):
 
 
 @pytest.fixture(scope="package")
-def hive_metastore_container(mysql_container, minio_container, docker_network):
+def hive_metastore_container(mysql_container, s3_container, docker_network):
     with (
         HiveMetaStoreContainer(HIVE_METASTORE_IMAGE)
         .with_network(docker_network)
@@ -186,20 +185,21 @@ def hive_metastore_container(mysql_container, minio_container, docker_network):
             f"jdbc:mysql://mariadb:{mysql_container.port}/{mysql_container.dbname}",
         )
         .with_env(
-            "MINIO_ENDPOINT",
-            f"http://minio:{minio_container.port}",
+            "S3_ENDPOINT",
+            f"http://s3:{s3_container.port}",
         ) as hive
     ):
         yield hive
 
 
 @pytest.fixture(scope="package")
-def minio_container(docker_network):
-    container = MinioContainer(MinioContainerConfigs.image).with_network(docker_network).with_network_aliases("minio")
-    with try_bind(container, container.port, container.port) as minio:
-        client = minio.get_client()
-        client.make_bucket("hive-warehouse")
-        yield minio
+def s3_container(docker_network):
+    # The Trino catalog and Hive metastore configs authenticate as these credentials.
+    config = S3ContainerConfigs(access_key="hiveaccesskey", secret_key="hivesecretkey")
+    container = get_s3_container(config).with_network(docker_network).with_network_aliases("s3")
+    with try_bind(container, config.port, config.port) as s3:
+        s3.get_client().make_bucket("hive-warehouse")
+        yield s3
 
 
 @pytest.fixture(scope="package")

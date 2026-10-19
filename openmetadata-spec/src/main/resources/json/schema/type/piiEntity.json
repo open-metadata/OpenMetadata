@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/piiEntity.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "PIIEntity",
   "description": "Enum of PII (Personally Identifiable Information) tags for classification and detection of sensitive data. Based on Presidio supported entities (https://microsoft.github.io/presidio/supported_entities/).",
   "type": "string",

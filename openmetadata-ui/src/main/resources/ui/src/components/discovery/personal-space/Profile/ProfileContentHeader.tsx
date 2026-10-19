@@ -28,25 +28,30 @@ export interface ProfileContentHeaderProps {
   /** Breadcrumb root crumb — the current item's group label (Account / Credentials). */
   breadcrumbRoot: string;
   /**
-   * When provided, overrides the default `[breadcrumbRoot, title]` pair. Use
-   * for panels that need dynamic multi-level breadcrumbs (e.g. CustomPropertiesPanel).
+   * When provided, replaces the auto-computed two-level breadcrumb.
+   * Use for panels with deeper internal navigation (e.g. Access Control).
    */
   breadcrumbs?: BreadcrumbItemType[];
-  /** Called when the user clicks a breadcrumb item. Only used with `breadcrumbs`. */
+  /** Called when the user clicks an interactive breadcrumb item. */
   onBreadcrumbAction?: (id: Key) => void;
   /**
    * When provided, renders this node instead of the default `<FeaturedIcon>`.
    * Use when the icon is dynamic (e.g. an entity-specific icon).
    */
   iconNode?: React.ReactNode;
-  /** Optional right-side slot in the title row (e.g. a toggle or action buttons). */
+  /** Action buttons rendered on the right of the title row. */
   actions?: React.ReactNode;
+  /** When set, renders in place of the title text (e.g. an inline rename input). */
+  titleInput?: React.ReactNode;
+  /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
+  titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
 }
 
 /**
  * The header shown at the top of the right content panel for the selected
- * nav item: a "<group> / <item>" breadcrumb, a featured icon, and the item
- * title + description.
+ * nav item: a breadcrumb, a featured icon, and the item title + description.
  */
 const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   icon,
@@ -57,8 +62,11 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   onBreadcrumbAction,
   iconNode,
   actions,
+  titleInput,
+  titleSuffix,
+  meta,
 }) => {
-  const defaultBreadcrumbs = useMemo(
+  const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
       { id: 'root', label: breadcrumbRoot },
       { id: 'current', label: title },
@@ -73,7 +81,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       className="ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:py-4 tw:mb-7"
       data-testid="profile-content-header"
       direction="col"
-      gap={3}>
+      gap={5}>
       <Breadcrumbs
         divider="chevron"
         items={resolvedBreadcrumbs}
@@ -81,37 +89,48 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
         type="text"
         onAction={onBreadcrumbAction}
       />
-      <Box
-        align="center"
-        direction="row"
-        justify={actions ? 'between' : undefined}>
-        <Box align="center" direction="row" gap={3}>
-          {iconNode ?? (
-            <FeaturedIcon
-              className="tw:rounded-xl"
-              color="brand"
-              icon={icon}
-              shape="square"
-              size="md"
-              theme="dark"
-            />
-          )}
-          <Box direction="col">
-            <Typography
-              className="tw:text-primary-900"
-              size="text-lg"
-              weight="bold">
-              {title}
-            </Typography>
-            <Typography
-              className="tw:text-tertiary"
-              size="text-sm"
-              weight="regular">
-              {description}
-            </Typography>
+      <Box align="center" direction="row" gap={3}>
+        {iconNode ?? (
+          <FeaturedIcon
+            className="tw:rounded-xl"
+            color="brand"
+            icon={icon}
+            shape="square"
+            size="md"
+            theme="dark"
+          />
+        )}
+        <Box className="tw:flex-1" direction="col">
+          <Box align="center" direction="row" gap={1}>
+            {titleInput ?? (
+              <Typography
+                className="tw:text-primary"
+                data-testid="profile-content-header-title"
+                size="text-lg"
+                weight="bold">
+                {title}
+              </Typography>
+            )}
+            {!titleInput && titleSuffix}
           </Box>
+          <Typography
+            className="tw:text-tertiary"
+            size="text-sm"
+            weight="regular">
+            {description}
+          </Typography>
+          {meta}
         </Box>
-        {actions}
+        {/* The header sits under the modal's close button, which core pins to
+            the dialog's top-right corner; the right margin keeps the actions
+            clear of it, as core's own Dialog header does with `pr-12`. */}
+        {actions && (
+          <Box
+            className="tw:ml-auto tw:mr-12 tw:flex tw:items-center tw:gap-2"
+            direction="row">
+            {actions}
+          </Box>
+        )}
       </Box>
     </Box>
   );

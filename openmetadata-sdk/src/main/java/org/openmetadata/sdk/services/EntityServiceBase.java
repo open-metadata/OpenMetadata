@@ -3,7 +3,6 @@ package org.openmetadata.sdk.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -16,6 +15,7 @@ import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
@@ -297,7 +297,7 @@ public abstract class EntityServiceBase<T> {
       removeComputedFields(updatedNode);
       normalizePatchNodes(originalNode, updatedNode, entity);
 
-      JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
+      JsonNode patch = JsonDiff.of(originalNode, updatedNode);
 
       RequestOptions options = null;
       if (etag != null) {
@@ -409,6 +409,26 @@ public abstract class EntityServiceBase<T> {
     } else {
       RequestOptions options = RequestOptions.builder().queryParams(params).build();
       httpClient.execute(HttpMethod.DELETE, basePath + "/" + id, null, Void.class, options);
+    }
+  }
+
+  /**
+   * Delete an entity by its fully qualified name, hitting the {@code DELETE
+   * basePath/name/{fqn}} endpoint. Mirrors {@link #getByName(String)} routing and uses the same
+   * path-encoding helper so FQNs with special characters are handled consistently. Query params
+   * (e.g. {@code recursive}, {@code hardDelete}) are forwarded as-is.
+   */
+  public void deleteByName(String name) throws OpenMetadataException {
+    httpClient.execute(HttpMethod.DELETE, buildPathWithEncodedName(name), null, Void.class);
+  }
+
+  public void deleteByName(String name, Map<String, String> params) throws OpenMetadataException {
+    if (params == null || params.isEmpty()) {
+      deleteByName(name);
+    } else {
+      RequestOptions options = RequestOptions.builder().queryParams(params).build();
+      httpClient.execute(
+          HttpMethod.DELETE, buildPathWithEncodedName(name), null, Void.class, options);
     }
   }
 

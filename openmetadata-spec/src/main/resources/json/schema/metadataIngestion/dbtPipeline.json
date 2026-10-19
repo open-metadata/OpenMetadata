@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/metadataIngestion/dbtPipeline.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "dbtPipeline",
   "description": "DBT Pipeline Configuration.",
   "type": "object",
@@ -50,6 +50,14 @@
       "description": "Optional configuration to search across databases for tables or not",
       "type": "boolean",
       "default": false
+    },
+    "catalogMapping": {
+      "title": "Catalog Mapping",
+      "description": "Optional map from a database name in the dbt manifest to the database it is ingested under in OpenMetadata, for when the engine dbt runs on names it differently. For example, dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up in every database service.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "dbtUpdateDescriptions": {
       "title": "Update Descriptions",

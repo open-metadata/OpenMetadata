@@ -13,13 +13,13 @@
 
 import { useCallback, useReducer } from 'react';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { LineagePagingInfo } from '../../interface/lineage.interface';
 import {
   ColumnLevelLineageNode,
   LineageNode,
 } from '../Lineage/Lineage.interface';
 import {
   EImpactLevel,
-  LineagePagingInfo,
   LineageTableAction,
   LineageTableState,
 } from './LineageTable.interface';

@@ -13,16 +13,32 @@
 
 import {
   Badge,
+  Box,
   Button,
   ButtonUtility,
-  Input,
+  FilterSelect,
+  FilterSelectOption,
+  Label,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, XClose } from '@untitledui/icons';
+import {
+  Database01,
+  Plus,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import { useControlledState } from '@react-stately/utils';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { Operation } from 'fast-json-patch';
-import React, { useCallback, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -32,7 +48,16 @@ import {
 } from '../../generated/type/assetRealization';
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import Fqn from '../../utils/Fqn';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  InspectorForm,
+  InspectorList,
+  InspectorRemoveButton,
+  InspectorRow,
+  InspectorSection,
+  InspectorSectionHeading,
+} from './OntologyInspectorSection';
 
 export interface OntologyConceptRealizationProps {
   readonly termId?: string;
@@ -40,7 +65,22 @@ export interface OntologyConceptRealizationProps {
   readonly isEditMode?: boolean;
   readonly variant?: 'default' | 'inspector';
   readonly onTermUpdate?: (term: GlossaryTerm) => void;
+  /** Lets the parent drawer open the add form, e.g. from its "Add more details" chips. */
+  readonly isAdding?: boolean;
+  readonly onAddingChange?: (isAdding: boolean) => void;
 }
+
+const ASSET_PAGE_SIZE = 10;
+const ASSET_SEARCH_DEBOUNCE_MS = 250;
+
+const getCandidateLabel = (candidate: AssetCandidate): string =>
+  candidate.displayName ?? candidate.name;
+
+// The containers above the asset, e.g. "service / database / schema".
+const getCandidatePath = (candidate: AssetCandidate): string =>
+  candidate.fullyQualifiedName
+    ? Fqn.split(candidate.fullyQualifiedName).slice(0, -1).join(' / ')
+    : '';
 
 interface AssetCandidate {
   id: string;
@@ -62,6 +102,12 @@ const ROLE_LABEL_KEYS: Record<RealizationRole, string> = {
   [RealizationRole.Replica]: 'label.replica',
 };
 
+const ROLE_HINT_KEYS: Record<RealizationRole, string> = {
+  [RealizationRole.PrimaryStore]: 'message.realization-role-primary-store-hint',
+  [RealizationRole.Derived]: 'message.realization-role-derived-hint',
+  [RealizationRole.Replica]: 'message.realization-role-replica-hint',
+};
+
 const ROLE_ORDER: RealizationRole[] = [
   RealizationRole.PrimaryStore,
   RealizationRole.Derived,
@@ -79,15 +125,24 @@ export const OntologyConceptRealization: React.FC<
   realizations,
   isEditMode = false,
   variant = 'default',
+  isAdding: controlledIsAdding,
+  onAddingChange,
   onTermUpdate,
 }) => {
   const { t } = useTranslation();
   const isInspector = variant === 'inspector';
   const canAuthor = isEditMode && Boolean(termId);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isAdding, setIsAdding] = useControlledState(
+    controlledIsAdding,
+    false,
+    onAddingChange
+  );
   const [isSaving, setIsSaving] = useState(false);
-  const [assetQuery, setAssetQuery] = useState('');
+  const assetLabelId = useId();
   const [candidates, setCandidates] = useState<AssetCandidate[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  // A slower earlier search must not overwrite the results of a later one.
+  const searchRequestRef = useRef(0);
   const [selectedAsset, setSelectedAsset] = useState<AssetCandidate | null>(
     null
   );
@@ -96,12 +151,11 @@ export const OntologyConceptRealization: React.FC<
   );
 
   const resetDraft = useCallback(() => {
-    setAssetQuery('');
     setCandidates([]);
     setSelectedAsset(null);
     setDraftRole(RealizationRole.PrimaryStore);
     setIsAdding(false);
-  }, []);
+  }, [setIsAdding]);
 
   const persist = useCallback(
     async (value: AssetRealization[]) => {
@@ -132,33 +186,130 @@ export const OntologyConceptRealization: React.FC<
     [onTermUpdate, t, termId]
   );
 
-  const handleSearch = useCallback(async (value: string) => {
-    setAssetQuery(value);
-    setSelectedAsset(null);
-    if (value.trim().length < 2) {
-      setCandidates([]);
-
-      return;
-    }
+  // An empty query lists the first tables, so the field never opens empty.
+  const loadCandidates = useCallback(async (value: string) => {
+    searchRequestRef.current += 1;
+    const requestId = searchRequestRef.current;
+    setIsSearching(true);
     try {
       const response = await searchQuery({
         pageNumber: 1,
-        pageSize: 5,
+        pageSize: ASSET_PAGE_SIZE,
         searchIndex: SearchIndex.TABLE,
-        query: `*${value.trim()}*`,
+        query: value.trim() ? `*${value.trim()}*` : '',
       });
-      setCandidates(
-        response.hits.hits.map((hit) => ({
-          id: hit._source.id ?? '',
-          name: hit._source.name,
-          displayName: hit._source.displayName,
-          fullyQualifiedName: hit._source.fullyQualifiedName,
-        }))
-      );
+      if (requestId === searchRequestRef.current) {
+        setCandidates(
+          response.hits.hits.map((hit) => ({
+            id: hit._source.id ?? '',
+            name: hit._source.name,
+            displayName: hit._source.displayName,
+            fullyQualifiedName: hit._source.fullyQualifiedName,
+          }))
+        );
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestId === searchRequestRef.current) {
+        showErrorToast(error as AxiosError);
+      }
+    } finally {
+      // An older search finishing must not end the newest one's spinner.
+      if (requestId === searchRequestRef.current) {
+        setIsSearching(false);
+      }
     }
   }, []);
+
+  // Typing searches once it pauses, not on every key.
+  const searchTimerRef = useRef<number>();
+  useEffect(() => () => window.clearTimeout(searchTimerRef.current), []);
+  const searchCandidates = useCallback(
+    (value: string) => {
+      window.clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = window.setTimeout(
+        () => void loadCandidates(value),
+        ASSET_SEARCH_DEBOUNCE_MS
+      );
+    },
+    [loadCandidates]
+  );
+
+  useEffect(() => {
+    if (isAdding) {
+      void loadCandidates('');
+    }
+  }, [isAdding, loadCandidates]);
+
+  // The chosen asset stays listed after a new search, so it keeps its icon and
+  // path instead of falling back to a bare label.
+  const listedCandidates = useMemo(
+    () =>
+      selectedAsset &&
+      !candidates.some((candidate) => candidate.id === selectedAsset.id)
+        ? [selectedAsset, ...candidates]
+        : candidates,
+    [candidates, selectedAsset]
+  );
+
+  const assetOptions = useMemo<FilterSelectOption[]>(
+    () =>
+      listedCandidates.map((candidate) => ({
+        icon: Database01,
+        label: (
+          <span className="tw:flex tw:min-w-0 tw:flex-col">
+            <span className="tw:truncate tw:text-sm tw:font-medium tw:text-primary">
+              {getCandidateLabel(candidate)}
+            </span>
+            <span className="tw:truncate tw:text-xs tw:text-tertiary">
+              {[getCandidatePath(candidate), t('label.table')]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </span>
+        ),
+        textValue: getCandidateLabel(candidate),
+        value: candidate.id,
+      })),
+    [listedCandidates, t]
+  );
+
+  // Pressing the chosen asset again keeps it rather than clearing the field.
+  const handleAssetChange = useCallback(
+    ([assetId]: string[]) => {
+      const asset = listedCandidates.find(
+        (candidate) => candidate.id === assetId
+      );
+      if (asset) {
+        setSelectedAsset(asset);
+      }
+    },
+    [listedCandidates]
+  );
+
+  const renderAssetField = () => (
+    <Box direction="col" gap={1}>
+      <Label isRequired id={assetLabelId}>
+        {t('label.data-asset')}
+      </Label>
+      <FilterSelect
+        hideCounts
+        searchable
+        aria-labelledby={assetLabelId}
+        data-testid="realization-asset-input"
+        isClearable={false}
+        isLoading={isSearching}
+        label={t('label.data-asset')}
+        options={assetOptions}
+        placeholder={t('message.realization-asset-placeholder')}
+        popoverClassName="tw:w-(--trigger-width)"
+        selectedValues={selectedAsset ? [selectedAsset.id] : []}
+        selectionMode="single"
+        triggerVariant="input"
+        onChange={handleAssetChange}
+        onSearch={searchCandidates}
+      />
+    </Box>
+  );
 
   const handleAdd = useCallback(async () => {
     if (!selectedAsset) {
@@ -188,22 +339,17 @@ export const OntologyConceptRealization: React.FC<
     [persist, realizations]
   );
 
-  const renderRealization = (realization: AssetRealization) => {
+  const renderRealizationContent = (realization: AssetRealization) => {
     const role = realization.role ?? RealizationRole.PrimaryStore;
 
     return (
-      <div
-        className={classNames(
-          'tw:flex tw:items-center tw:gap-2 tw:border tw:border-secondary tw:bg-secondary',
-          isInspector
-            ? 'tw:rounded-lg tw:px-2.5 tw:py-2'
-            : 'tw:rounded-lg tw:p-3'
-        )}
-        data-testid={`concept-realization-${realization.asset.name}`}
-        key={realization.asset.id}>
-        <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
+      <>
+        <Typography
+          className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
+          size="text-sm"
+          weight="medium">
           {realization.asset.displayName ?? realization.asset.name}
-        </span>
+        </Typography>
         <Badge color="gray" size="sm" type="color">
           {realization.asset.type}
         </Badge>
@@ -212,6 +358,7 @@ export const OntologyConceptRealization: React.FC<
         </Badge>
         {canAuthor ? (
           <ButtonUtility
+            color="tertiary"
             data-testid={`remove-realization-${realization.asset.name}`}
             icon={XClose}
             isDisabled={isSaving}
@@ -220,42 +367,71 @@ export const OntologyConceptRealization: React.FC<
             onClick={() => handleRemove(realization.asset.id)}
           />
         ) : null}
-      </div>
+      </>
     );
   };
+
+  const renderInspectorRealization = (realization: AssetRealization) => {
+    const role = realization.role ?? RealizationRole.PrimaryStore;
+
+    return (
+      <InspectorRow
+        key={realization.asset.id}
+        testId={`concept-realization-${realization.asset.name}`}>
+        <Box
+          align="center"
+          className="tw:size-7 tw:shrink-0 tw:rounded-md tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600"
+          justify="center">
+          <Database01 aria-hidden="true" className="tw:size-4" />
+        </Box>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Typography
+            ellipsis
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {realization.asset.displayName ?? realization.asset.name}
+          </Typography>
+          {realization.asset.fullyQualifiedName ? (
+            <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+              {realization.asset.fullyQualifiedName}
+            </Typography>
+          ) : null}
+        </Box>
+        <Badge color={ROLE_BADGE_COLORS[role]} size="sm" type="pill-color">
+          {t(ROLE_LABEL_KEYS[role])}
+        </Badge>
+        {canAuthor ? (
+          <InspectorRemoveButton
+            isDisabled={isSaving}
+            label={t('label.remove-entity', {
+              entity: realization.asset.displayName ?? realization.asset.name,
+            })}
+            testId={`remove-realization-${realization.asset.name}`}
+            onRemove={() => handleRemove(realization.asset.id)}
+          />
+        ) : null}
+      </InspectorRow>
+    );
+  };
+
+  const renderRealization = (realization: AssetRealization) =>
+    isInspector ? (
+      renderInspectorRealization(realization)
+    ) : (
+      <div
+        className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-3"
+        data-testid={`concept-realization-${realization.asset.name}`}
+        key={realization.asset.id}>
+        {renderRealizationContent(realization)}
+      </div>
+    );
 
   const renderAddForm = () => (
     <div
       className="tw:flex tw:flex-col tw:gap-2 tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:bg-secondary tw:p-2.5"
       data-testid="realization-add-form">
-      <Input
-        aria-label={t('label.data-asset')}
-        data-testid="realization-asset-input"
-        placeholder={t('label.data-asset')}
-        value={assetQuery}
-        onChange={handleSearch}
-      />
-      {candidates.length > 0 ? (
-        <div className="tw:flex tw:flex-col tw:gap-1">
-          {candidates.map((candidate) => (
-            <Button
-              ellipsis
-              noTextPadding
-              className={classNames(
-                'tw:justify-start tw:rounded tw:px-2 tw:py-1 tw:text-left tw:font-mono tw:text-[11px]',
-                selectedAsset?.id === candidate.id
-                  ? 'tw:bg-brand-solid tw:text-white'
-                  : 'tw:bg-primary tw:text-secondary'
-              )}
-              color="tertiary"
-              data-testid={`realization-candidate-${candidate.name}`}
-              key={candidate.id}
-              onClick={() => setSelectedAsset(candidate)}>
-              {candidate.fullyQualifiedName ?? candidate.name}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+      {renderAssetField()}
       <div className="tw:flex tw:flex-wrap tw:gap-1">
         {ROLE_ORDER.map((role) => (
           <Button
@@ -284,12 +460,64 @@ export const OntologyConceptRealization: React.FC<
     </div>
   );
 
-  return (
+  const addLabel = t('label.add-entity', { entity: t('label.realized-in') });
+
+  const renderInspectorForm = () => (
+    <InspectorForm
+      isSubmitDisabled={!selectedAsset || isSaving}
+      submitLabel={t('label.add-entity', { entity: t('label.realization') })}
+      submitTestId="save-realization"
+      testId="realization-add-form"
+      title={t('label.new-entity', { entity: t('label.realization') })}
+      onCancel={resetDraft}
+      onSubmit={handleAdd}>
+      {renderAssetField()}
+      <Box direction="col" gap={1}>
+        <Typography
+          className="tw:text-secondary"
+          size="text-sm"
+          weight="medium">
+          {t('label.role')}
+        </Typography>
+        <Tabs
+          selectedKey={draftRole}
+          onSelectionChange={(key) => setDraftRole(key as RealizationRole)}>
+          <Tabs.List fullWidth size="sm" type="button-border">
+            {ROLE_ORDER.map((role) => (
+              <Tabs.Item
+                data-testid={`realization-role-${role}`}
+                id={role}
+                key={role}>
+                {t(ROLE_LABEL_KEYS[role])}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t(ROLE_HINT_KEYS[draftRole])}
+        </Typography>
+      </Box>
+    </InspectorForm>
+  );
+
+  const renderInspectorSection = () => (
+    <InspectorSection testId="ontology-realizations">
+      <InspectorSectionHeading
+        addTestId="add-realization"
+        count={realizations.length}
+        label={t('label.realized-in')}
+        onAdd={canAuthor && !isAdding ? () => setIsAdding(true) : undefined}
+      />
+      {realizations.length > 0 ? (
+        <InspectorList>{realizations.map(renderRealization)}</InspectorList>
+      ) : null}
+      {canAuthor && isAdding ? renderInspectorForm() : null}
+    </InspectorSection>
+  );
+
+  const renderDefaultSection = () => (
     <div
-      className={classNames(
-        'tw:flex tw:flex-col',
-        isInspector ? 'tw:gap-1.5' : 'tw:gap-2'
-      )}
+      className="tw:flex tw:flex-col tw:gap-2"
       data-testid="ontology-realizations">
       <div className="tw:mb-1 tw:flex tw:items-center tw:gap-2">
         <Typography as="h3" size="text-sm" weight="semibold">
@@ -299,13 +527,7 @@ export const OntologyConceptRealization: React.FC<
           {realizations.length}
         </Badge>
       </div>
-      {realizations.length === 0 ? (
-        <Typography as="p" className="tw:text-tertiary" size="text-xs">
-          {t('message.no-concept-realization')}
-        </Typography>
-      ) : (
-        realizations.map(renderRealization)
-      )}
+      {realizations.map(renderRealization)}
       {canAuthor && isAdding && renderAddForm()}
       {canAuthor && !isAdding && (
         <Button
@@ -318,9 +540,17 @@ export const OntologyConceptRealization: React.FC<
           data-testid="add-realization"
           iconLeading={Plus}
           onClick={() => setIsAdding(true)}>
-          {t('label.add-entity', { entity: t('label.realized-in') })}
+          {addLabel}
         </Button>
       )}
     </div>
   );
+
+  if (isInspector) {
+    return renderInspectorSection();
+  }
+
+  // Read-only and with nothing recorded, a bare "Realized in 0" heading says
+  // nothing, so the section is left out (as on the glossary term Assets tab).
+  return realizations.length > 0 || canAuthor ? renderDefaultSection() : null;
 };

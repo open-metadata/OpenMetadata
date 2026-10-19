@@ -24,6 +24,7 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
 
+from metadata.cli.common import execute_workflow
 from metadata.ingestion.ometa.credentials import URL
 from metadata.utils.logger import cli_logger
 from metadata.workflow.metadata import MetadataWorkflow
@@ -53,6 +54,10 @@ class OpenMetadataDBTConfig(BaseModel):
     openmetadata_search_across_databases: bool = Field(default=False, description="Search across multiple databases")
     openmetadata_dbt_classification_name: str | None = Field(
         default=None, description="Custom classification name for DBT tags"
+    )
+    openmetadata_catalog_mapping: dict[str, str] | None = Field(
+        default=None,
+        description="Map from a database name in the dbt manifest to the database it is ingested under in OpenMetadata",
     )
 
     # Filter patterns - standardized to dict format only
@@ -107,6 +112,7 @@ class OpenMetadataDBTConfig(BaseModel):
             "include_tags": self.openmetadata_include_tags,
             "search_across_databases": self.openmetadata_search_across_databases,
             "classification_name": self.openmetadata_dbt_classification_name,
+            "catalog_mapping": self.openmetadata_catalog_mapping,
             "database_filter": self.database_filter.model_dump(exclude_none=True),
             "schema_filter": self.schema_filter.model_dump(exclude_none=True),
             "table_filter": self.table_filter.model_dump(exclude_none=True),
@@ -269,6 +275,9 @@ def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDB
     if om_config.openmetadata_dbt_classification_name:
         source_config["dbtClassificationName"] = om_config.openmetadata_dbt_classification_name
 
+    if om_config.openmetadata_catalog_mapping:
+        source_config["catalogMapping"] = om_config.openmetadata_catalog_mapping
+
     # Create workflow configuration
     config = {
         "source": {
@@ -290,7 +299,7 @@ def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDB
     return config  # noqa: RET504
 
 
-def run_ingest_dbt(dbt_project_path: Path) -> None:
+def run_ingest_dbt(dbt_project_path: Path, status_file: Path | None = None) -> None:
     """
     Run the dbt artifacts ingestion workflow from a dbt project path
 
@@ -320,13 +329,13 @@ def run_ingest_dbt(dbt_project_path: Path) -> None:
         logger.info("Creating workflow configuration...")
         workflow_config = create_dbt_workflow_config(dbt_project_path, om_config)
 
-        # Create and execute the MetadataWorkflow (reusing existing infrastructure)
         logger.info("Starting OpenMetadata ingestion workflow...")
         workflow = MetadataWorkflow.create(workflow_config)
-        workflow.execute()
-        workflow.raise_from_status()
-        workflow.print_status()
-        workflow.stop()
+        execute_workflow(
+            workflow=workflow,
+            config_dict=workflow_config,
+            status_file=status_file,
+        )
 
         logger.info("DBT artifacts ingestion completed successfully")
 

@@ -11,13 +11,25 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import {
+  Badge,
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  BarChart01,
+  ChevronDown,
+  ChevronUp,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
+  Fragment,
   MouseEvent,
   PointerEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -25,29 +37,35 @@ import {
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import OntologyControlButtons from './OntologyControlButtons';
-import {
-  DATA_MODE_MAX_RENDER_COUNT,
-  EDGE_STROKE_COLOR,
-} from './OntologyExplorer.constants';
+import { DATA_MODE_MAX_RENDER_COUNT } from './OntologyExplorer.constants';
 import {
   OntologyEdge,
   OntologyGraphData,
   OntologyNode,
 } from './OntologyExplorer.interface';
 import {
+  buildClusterEdgeGeometry,
+  CardBox,
+  CardPosition,
+  CLUSTER_LAYOUT_MARGIN,
+  KeyedClusterLink,
+  layoutDataClusters,
+  Point,
+} from './utils/dataGraphLayout';
+import {
   ASSET_RELATION_TYPE,
   isDataAssetLikeNode,
   isTermNode,
+  METRIC_NODE_TYPE,
   METRIC_RELATION_TYPE,
-  OBSERVED_LINEAGE_EDGE_KIND,
 } from './utils/graphBuilders';
 import {
   formatRelationLabel,
   getEffectiveRelationColor,
 } from './utils/graphStyles';
-import { getRelationshipHexColor } from './utils/relationshipTypeUtils';
 
 interface OntologyDataGraphProps {
   data: OntologyGraphData;
@@ -61,48 +79,40 @@ interface OntologyDataGraphProps {
   onLoadMoreTerms: () => void;
 }
 
-interface CardPosition {
-  left: number;
-  top: number;
-}
-
 interface DataClusterModel {
   assetsByTerm: Map<string, OntologyNode[]>;
-  termIdsByAsset: Map<string, Set<string>>;
   terms: OntologyNode[];
 }
 
 interface DataEdgeLayout {
   edge: OntologyEdge;
+  end: Point;
   labelLeft: number;
   labelTop: number;
   path: string;
   renderKey: string;
 }
 
-const CARD_WIDTH = 236;
-const CARD_HEADER_ANCHOR_X = 115;
-const CARD_HEADER_ANCHOR_Y = 26;
-const EDGE_SLOT_SPACING = 16;
+const CARD_WIDTH = 380;
+// Card border + header and one asset row; used until the rendered card is measured.
+const CARD_CHROME_HEIGHT = 50;
+const ASSET_ROW_HEIGHT = 64;
+const SHOW_MORE_HEIGHT = 41;
+// A collapsed card previews this many assets; the rest sit behind "Show N more".
+const COLLAPSED_ASSET_COUNT = 3;
+const HIERARCHY_RELATION_TYPES = new Set(['parentOf', 'childOf']);
 const CANVAS_MIN_HEIGHT = 560;
 const CANVAS_MIN_WIDTH = 996;
-const COLUMN_COUNT = 3;
-const COLUMN_GAP = 74;
-const ROW_STEP = 260;
+const LOAD_MORE_TERMS_GAP = 16;
+const LOAD_MORE_TERMS_HEIGHT = 48;
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2;
 const ZOOM_BUTTON_FACTOR = 1.2;
 const WHEEL_ZOOM_STEP = 0.12;
-const TOOLBAR_CARD_CLASS =
-  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
-const CANVAS_BOTTOM_PADDING = 24;
-const MAX_OBSERVED_LINEAGE_CLUSTER_EDGES = 500;
 
 function clampZoom(value: number): number {
   return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
 }
-const START_X = 70;
-const START_Y = 50;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -140,18 +150,30 @@ function getAssetServiceLabel(node: OntologyNode): string {
   );
 }
 
-function getAssetColumnCount(node: OntologyNode): number | undefined {
-  if (node.columnCount !== undefined) {
-    return node.columnCount;
-  }
-  const columnNames = node.searchSource?.columnNames;
-  if (Array.isArray(columnNames)) {
-    return columnNames.length;
-  }
+function toSentenceCase(label: string): string {
+  const lower = label.toLocaleLowerCase();
 
-  const columns = node.searchSource?.columns;
+  return lower.charAt(0).toLocaleUpperCase() + lower.slice(1);
+}
 
-  return Array.isArray(columns) ? columns.length : undefined;
+// The containers above the asset, e.g. "service › database › schema".
+function getAssetPath(node: OntologyNode): string {
+  const fqn = node.fullyQualifiedName ?? node.entityRef?.fullyQualifiedName;
+  const parents = fqn ? Fqn.split(fqn).slice(0, -1) : [];
+
+  return parents.length > 0 ? parents.join(' › ') : getAssetServiceLabel(node);
+}
+
+const ASSET_BADGE_COLORS: Record<string, 'indigo' | 'blue-light' | 'purple'> = {
+  metric: 'purple',
+  table: 'indigo',
+  tableColumn: 'blue-light',
+};
+
+function getAssetEntityType(node: OntologyNode): string {
+  return node.type === METRIC_NODE_TYPE
+    ? METRIC_NODE_TYPE
+    : node.entityRef?.type ?? node.type;
 }
 
 function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
@@ -162,7 +184,6 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
     data.nodes.filter(isDataAssetLikeNode).map((node) => [node.id, node])
   );
   const assetMapsByTerm = new Map<string, Map<string, OntologyNode>>();
-  const termIdsByAsset = new Map<string, Set<string>>();
 
   data.edges.forEach((edge) => {
     if (
@@ -181,9 +202,6 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
     const assets = assetMapsByTerm.get(term.id) ?? new Map();
     assets.set(asset.id, asset);
     assetMapsByTerm.set(term.id, assets);
-    const termIds = termIdsByAsset.get(asset.id) ?? new Set<string>();
-    termIds.add(term.id);
-    termIdsByAsset.set(asset.id, termIds);
   });
 
   const assetsByTerm = new Map(
@@ -204,86 +222,91 @@ function buildDataClusterModel(data: OntologyGraphData): DataClusterModel {
         Number(Boolean(left.isDataModeSeed))
     );
 
-  return { assetsByTerm, termIdsByAsset, terms };
+  return { assetsByTerm, terms };
 }
 
-function getCardPosition(index: number): CardPosition {
-  const column = index % COLUMN_COUNT;
-  const row = Math.floor(index / COLUMN_COUNT);
+function estimateCardHeight(
+  term: OntologyNode,
+  loadedAssets: number,
+  isExpanded: boolean
+): number {
+  const totalAssets = Math.max(term.assetCount ?? 0, loadedAssets);
+  const shownAssets = isExpanded
+    ? loadedAssets
+    : Math.min(loadedAssets, COLLAPSED_ASSET_COUNT);
+  const hasToggle = totalAssets > COLLAPSED_ASSET_COUNT;
+
+  return (
+    CARD_CHROME_HEIGHT +
+    shownAssets * ASSET_ROW_HEIGHT +
+    (hasToggle ? SHOW_MORE_HEIGHT : 0)
+  );
+}
+
+interface CardAssetState {
+  hiddenAssetCount: number;
+  shownAssets: OntologyNode[];
+  totalAssetCount: number;
+  unloadedAssetCount: number;
+}
+
+function getCardAssetState(
+  term: OntologyNode,
+  assets: OntologyNode[],
+  isExpanded: boolean
+): CardAssetState {
+  const totalAssetCount = Math.max(term.assetCount ?? 0, assets.length);
+  const loadedAssetCount = Math.max(term.loadedAssetCount ?? 0, assets.length);
+  const shownAssets = isExpanded
+    ? assets
+    : assets.slice(0, COLLAPSED_ASSET_COUNT);
 
   return {
-    left: START_X + column * (CARD_WIDTH + COLUMN_GAP),
-    top: START_Y + row * ROW_STEP,
+    hiddenAssetCount: totalAssetCount - shownAssets.length,
+    shownAssets,
+    totalAssetCount,
+    unloadedAssetCount: Math.max(0, totalAssetCount - loadedAssetCount),
   };
 }
 
-function* projectObservedLineageEdge(
-  edge: OntologyEdge,
-  termIdsByAsset: Map<string, Set<string>>
-): Generator<OntologyEdge> {
-  const fromTermIds = termIdsByAsset.get(edge.from);
-  const toTermIds = termIdsByAsset.get(edge.to);
+// Returns `current` itself when nothing changed so React skips the re-render.
+function mergeMeasuredHeights(
+  current: Record<string, number>,
+  entries: ResizeObserverEntry[]
+): Record<string, number> {
+  const changed = entries.flatMap((entry): Array<[string, number]> => {
+    const termId = entry.target.getAttribute('data-term-id');
+    const height = Math.round(entry.borderBoxSize?.[0]?.blockSize ?? 0);
 
-  if (!fromTermIds || !toTermIds) {
-    return;
-  }
+    return termId && height > 0 && current[termId] !== height
+      ? [[termId, height]]
+      : [];
+  });
 
-  for (const fromTermId of fromTermIds) {
-    for (const toTermId of toTermIds) {
-      if (fromTermId !== toTermId) {
-        yield { ...edge, from: fromTermId, to: toTermId };
-      }
-    }
-  }
+  return changed.length === 0
+    ? current
+    : { ...current, ...Object.fromEntries(changed) };
 }
 
-function buildObservedLineageClusterEdges(
-  data: OntologyGraphData,
-  termIdsByAsset: Map<string, Set<string>>
-): OntologyEdge[] {
-  const edges: OntologyEdge[] = [];
-  const seen = new Set<string>();
-  const lineageEdges = data.edges.filter(
-    (edge) => edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND
-  );
-
-  for (const edge of lineageEdges) {
-    for (const projectedEdge of projectObservedLineageEdge(
-      edge,
-      termIdsByAsset
-    )) {
-      const key = `${projectedEdge.from}-${projectedEdge.to}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        edges.push(projectedEdge);
-      }
-      if (edges.length >= MAX_OBSERVED_LINEAGE_CLUSTER_EDGES) {
-        return edges;
-      }
-    }
-  }
-
-  return edges;
+interface KeyedClusterEdge {
+  edge: OntologyEdge;
+  renderKey: string;
 }
 
-function buildDataEdgeLayout(
+// The Data view shows only the relations between the visible concept cards.
+function collectClusterEdges(
   data: OntologyGraphData,
-  termIdsByAsset: Map<string, Set<string>>,
-  positions: Map<string, CardPosition>
-): DataEdgeLayout[] {
-  const semanticEdges = data.edges.filter(
-    (edge) =>
-      edge.edgeKind !== OBSERVED_LINEAGE_EDGE_KIND &&
-      positions.has(edge.from) &&
-      positions.has(edge.to)
+  cardIds: Set<string>
+): KeyedClusterEdge[] {
+  const relationEdges = data.edges.filter(
+    (edge) => cardIds.has(edge.from) && cardIds.has(edge.to)
   );
-  const lineageEdges = buildObservedLineageClusterEdges(data, termIdsByAsset);
-  const relevantEdges = [...semanticEdges, ...lineageEdges];
   const edgeId = (edge: OntologyEdge) =>
     edge.id ??
     `${edge.from}-${edge.to}-${edge.relationType}-${edge.edgeKind ?? ''}`;
   const edgeOccurrences = new Map<string, number>();
-  const keyedEdges = relevantEdges.map((edge) => {
+
+  return relationEdges.map((edge) => {
     const id = edgeId(edge);
     const occurrence = edgeOccurrences.get(id) ?? 0;
     edgeOccurrences.set(id, occurrence + 1);
@@ -293,56 +316,46 @@ function buildDataEdgeLayout(
       renderKey: occurrence === 0 ? id : `${id}-${occurrence}`,
     };
   });
+}
 
-  // Fan the edges touching each card across its height so that parallel or
-  // converging relations don't overlap on a single anchor point.
-  const cardEdgeIds = new Map<string, string[]>();
-  keyedEdges.forEach(({ edge, renderKey }) => {
-    [edge.from, edge.to].forEach((cardId) => {
-      const list = cardEdgeIds.get(cardId) ?? [];
-      list.push(renderKey);
-      cardEdgeIds.set(cardId, list);
-    });
-  });
-  const slotOffset = (cardId: string, id: string): number => {
-    const list = cardEdgeIds.get(cardId) ?? [];
-    if (list.length <= 1) {
-      return 0;
-    }
+function toClusterLink({
+  edge,
+  renderKey,
+}: KeyedClusterEdge): KeyedClusterLink {
+  return { from: edge.from, key: renderKey, to: edge.to };
+}
 
-    return (list.indexOf(id) - (list.length - 1) / 2) * EDGE_SLOT_SPACING;
-  };
+// A dragged card has left its layout slot, so its links are drawn directly.
+function routesBetweenUnmovedCards(
+  clusterEdges: KeyedClusterEdge[],
+  routes: Map<string, Point[]>,
+  movedCards: Record<string, CardPosition>
+): Map<string, Point[]> {
+  return new Map(
+    clusterEdges.flatMap(({ edge, renderKey }): Array<[string, Point[]]> => {
+      const route = routes.get(renderKey);
+      const isMoved = edge.from in movedCards || edge.to in movedCards;
 
-  return keyedEdges.flatMap(({ edge, renderKey }) => {
-    const from = positions.get(edge.from);
-    const to = positions.get(edge.to);
-    if (!from || !to) {
-      return [];
-    }
+      return route && !isMoved ? [[renderKey, route]] : [];
+    })
+  );
+}
 
-    const x1 = from.left + CARD_HEADER_ANCHOR_X;
-    const y1 =
-      from.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.from, renderKey);
-    const x2 = to.left + CARD_HEADER_ANCHOR_X;
-    const y2 = to.top + CARD_HEADER_ANCHOR_Y + slotOffset(edge.to, renderKey);
-    const middleX = (x1 + x2) / 2;
-    const middleY = (y1 + y2) / 2;
-    const deltaX = x2 - x1;
-    const deltaY = y2 - y1;
-    const distance = Math.hypot(deltaX, deltaY) || 1;
-    const offset = Math.min(34, distance * 0.16);
-    const controlX = middleX - (deltaY / distance) * offset;
-    const controlY = middleY + (deltaX / distance) * offset;
+function buildDataEdgeLayout(
+  clusterEdges: KeyedClusterEdge[],
+  boxes: Map<string, CardBox>,
+  routes: Map<string, Point[]>
+): DataEdgeLayout[] {
+  const geometry = buildClusterEdgeGeometry(
+    clusterEdges.map(toClusterLink),
+    boxes,
+    routes
+  );
 
-    return [
-      {
-        edge,
-        labelLeft: 0.25 * x1 + 0.5 * controlX + 0.25 * x2,
-        labelTop: 0.25 * y1 + 0.5 * controlY + 0.25 * y2,
-        path: `M ${x1} ${y1} Q ${controlX} ${controlY} ${x2} ${y2}`,
-        renderKey,
-      },
-    ];
+  return clusterEdges.flatMap(({ edge, renderKey }) => {
+    const route = geometry.get(renderKey);
+
+    return route ? [{ edge, renderKey, ...route }] : [];
   });
 }
 
@@ -358,7 +371,7 @@ const OntologyDataGraph = ({
   onLoadMoreTerms,
 }: OntologyDataGraphProps) => {
   const { t } = useTranslation();
-  const { assetsByTerm, termIdsByAsset, terms } = useMemo(
+  const { assetsByTerm, terms } = useMemo(
     () => buildDataClusterModel(data),
     [data]
   );
@@ -370,31 +383,67 @@ const OntologyDataGraph = ({
   const [cardPositions, setCardPositions] = useState<
     Record<string, CardPosition>
   >({});
-  const positionByTermId = useMemo(() => {
-    const map = new Map<string, CardPosition>();
-    visibleTerms.forEach((term, index) => {
-      map.set(term.id, cardPositions[term.id] ?? getCardPosition(index));
+  const [measuredHeights, setMeasuredHeights] = useState<
+    Record<string, number>
+  >({});
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const cardHeightOf = useCallback(
+    (term: OntologyNode) =>
+      measuredHeights[term.id] ??
+      estimateCardHeight(
+        term,
+        assetsByTerm.get(term.id)?.length ?? 0,
+        expandedCardIds.has(term.id)
+      ),
+    [assetsByTerm, expandedCardIds, measuredHeights]
+  );
+  const clusterEdges = useMemo(
+    () =>
+      collectClusterEdges(data, new Set(visibleTerms.map((term) => term.id))),
+    [data, visibleTerms]
+  );
+  const clusterLayout = useMemo(() => {
+    const heightById = new Map(
+      visibleTerms.map((term) => [term.id, cardHeightOf(term)])
+    );
+
+    return layoutDataClusters(
+      visibleTerms.map((term) => term.id),
+      (id) => ({ height: heightById.get(id) ?? 0, width: CARD_WIDTH }),
+      clusterEdges.map(toClusterLink)
+    );
+  }, [cardHeightOf, clusterEdges, visibleTerms]);
+  const cardBoxes = useMemo(() => {
+    const boxes = new Map<string, CardBox>();
+    visibleTerms.forEach((term) => {
+      const position = cardPositions[term.id] ??
+        clusterLayout.positions.get(term.id) ?? {
+          left: CLUSTER_LAYOUT_MARGIN,
+          top: CLUSTER_LAYOUT_MARGIN,
+        };
+      boxes.set(term.id, {
+        ...position,
+        height: cardHeightOf(term),
+        width: CARD_WIDTH,
+      });
     });
 
-    return map;
-  }, [visibleTerms, cardPositions]);
+    return boxes;
+  }, [cardHeightOf, cardPositions, clusterLayout, visibleTerms]);
   const dataEdges = useMemo(
-    () => buildDataEdgeLayout(data, termIdsByAsset, positionByTermId),
-    [data, positionByTermId, termIdsByAsset]
-  );
-  const semanticEdges = useMemo(
     () =>
-      dataEdges.filter(
-        ({ edge }) => edge.edgeKind !== OBSERVED_LINEAGE_EDGE_KIND
+      buildDataEdgeLayout(
+        clusterEdges,
+        cardBoxes,
+        routesBetweenUnmovedCards(
+          clusterEdges,
+          clusterLayout.routes,
+          cardPositions
+        )
       ),
-    [dataEdges]
-  );
-  const observedLineageEdges = useMemo(
-    () =>
-      dataEdges.filter(
-        ({ edge }) => edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND
-      ),
-    [dataEdges]
+    [cardBoxes, cardPositions, clusterEdges, clusterLayout]
   );
   const relationshipTypeByName = useMemo(
     () => new Map(relationTypes.map((type) => [type.name, type])),
@@ -402,50 +451,87 @@ const OntologyDataGraph = ({
   );
   const renderedSemanticEdges = useMemo(
     () =>
-      semanticEdges.map((layout) => {
+      dataEdges.map((layout) => {
         const relationshipType = relationshipTypeByName.get(
           layout.edge.relationType
         );
-        const effectiveColor =
+        // DOM/SVG resolves theme variables after a theme switch; a stored palette
+        // hex would discard the built-in relation's active foreground.
+        const color =
           getEffectiveRelationColor(
             layout.edge.relationType,
             relationshipType
-          ) ?? 'var(--color-border-brand)';
-        let color = EDGE_STROKE_COLOR;
-        if (!effectiveColor.startsWith('var(')) {
-          color = effectiveColor;
-        } else if (relationshipType) {
-          color = getRelationshipHexColor(relationshipType);
-        }
+          ) ?? 'var(--tw-color-border-brand)';
 
         return {
           ...layout,
           color,
+          isHierarchy: HIERARCHY_RELATION_TYPES.has(layout.edge.relationType),
         };
       }),
-    [relationshipTypeByName, semanticEdges]
+    [dataEdges, relationshipTypeByName]
   );
-  const rows = Math.ceil(visibleTerms.length / COLUMN_COUNT);
-  const minimumCanvasHeight = Math.max(
-    CANVAS_MIN_HEIGHT,
-    START_Y + rows * ROW_STEP + (hasMoreTerms ? 64 : CANVAS_BOTTOM_PADDING)
+  const legendEntries = useMemo(
+    () => [
+      ...new Map(
+        renderedSemanticEdges.map(({ color, edge, isHierarchy }) => [
+          edge.relationType,
+          { color, isHierarchy, relationType: edge.relationType },
+        ])
+      ).values(),
+    ],
+    [renderedSemanticEdges]
   );
+  const linkedAssetTotal = useMemo(
+    () =>
+      visibleTerms.reduce(
+        (sum, term) =>
+          sum +
+          Math.max(
+            term.assetCount ?? 0,
+            assetsByTerm.get(term.id)?.length ?? 0
+          ),
+        0
+      ),
+    [assetsByTerm, visibleTerms]
+  );
+  const contentBottom = useMemo(
+    () =>
+      Math.max(
+        0,
+        ...[...cardBoxes.values()].map((box) => box.top + box.height)
+      ),
+    [cardBoxes]
+  );
+  const hasFooter = hasMoreTerms || isRenderCapped;
   const { canvasHeight, canvasWidth } = useMemo(() => {
-    let nextHeight = minimumCanvasHeight;
-    let nextWidth = CANVAS_MIN_WIDTH;
+    let nextHeight = Math.max(CANVAS_MIN_HEIGHT, clusterLayout.height);
+    let nextWidth = Math.max(CANVAS_MIN_WIDTH, clusterLayout.width);
 
-    positionByTermId.forEach((position) => {
+    cardBoxes.forEach((box) => {
       nextHeight = Math.max(
         nextHeight,
-        position.top + ROW_STEP + CANVAS_BOTTOM_PADDING
+        box.top + box.height + CLUSTER_LAYOUT_MARGIN
       );
-      nextWidth = Math.max(nextWidth, position.left + CARD_WIDTH + START_X);
+      nextWidth = Math.max(
+        nextWidth,
+        box.left + box.width + CLUSTER_LAYOUT_MARGIN
+      );
     });
+    if (hasFooter) {
+      nextHeight = Math.max(
+        nextHeight,
+        contentBottom + LOAD_MORE_TERMS_GAP + LOAD_MORE_TERMS_HEIGHT
+      );
+    }
 
     return { canvasHeight: nextHeight, canvasWidth: nextWidth };
-  }, [minimumCanvasHeight, positionByTermId]);
+  }, [cardBoxes, clusterLayout, contentBottom, hasFooter]);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const cardObserverRef = useRef<ResizeObserver | null>(null);
+  const fittedLayoutKeyRef = useRef<string>();
   const wheelCleanupRef = useRef<(() => void) | null>(null);
   const [view, setView] = useState({ x: 0, y: 0, zoom: 1 });
   const panRef = useRef<{
@@ -500,6 +586,56 @@ const OntologyDataGraph = ({
     wheelCleanupRef.current = () =>
       node.removeEventListener('wheel', handleWheel);
   }, []);
+
+  // Cards grow with their asset list; lay out and anchor edges on the real size.
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new ResizeObserver((entries) =>
+      setMeasuredHeights((current) => mergeMeasuredHeights(current, entries))
+    );
+    cardObserverRef.current = observer;
+
+    return () => {
+      observer.disconnect();
+      cardObserverRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const observer = cardObserverRef.current;
+    canvasRef.current
+      ?.querySelectorAll('[data-term-id]')
+      .forEach((card) => observer?.observe(card));
+  }, [visibleTerms]);
+
+  const layoutKey = useMemo(
+    () => visibleTerms.map((term) => term.id).join('|'),
+    [visibleTerms]
+  );
+  // Frame each new set of clusters once; later pans and zooms are the user's.
+  useEffect(() => {
+    const element = containerRef.current;
+    if (
+      !element ||
+      element.clientWidth === 0 ||
+      fittedLayoutKeyRef.current === layoutKey
+    ) {
+      return;
+    }
+    fittedLayoutKeyRef.current = layoutKey;
+    const fitZoom = Math.min(
+      element.clientWidth / canvasWidth,
+      element.clientHeight / canvasHeight
+    );
+    const zoom = clampZoom(Math.min(1, fitZoom));
+    setView({
+      x: Math.max(0, (element.clientWidth - canvasWidth * zoom) / 2),
+      y: Math.max(0, (element.clientHeight - canvasHeight * zoom) / 2),
+      zoom,
+    });
+  }, [canvasHeight, canvasWidth, layoutKey]);
 
   const zoomAtCenter = (factor: number) => {
     const element = containerRef.current;
@@ -609,7 +745,7 @@ const OntologyDataGraph = ({
     term: OntologyNode
   ) => {
     event.stopPropagation();
-    const position = positionByTermId.get(term.id) ?? { left: 0, top: 0 };
+    const position = cardBoxes.get(term.id) ?? { left: 0, top: 0 };
     cardDragRef.current = {
       originLeft: position.left,
       originTop: position.top,
@@ -664,40 +800,195 @@ const OntologyDataGraph = ({
 
   if (terms.length === 0) {
     return (
-      <div
-        className="tw:flex tw:h-full tw:items-center tw:justify-center"
-        data-testid="ontology-data-graph-empty">
-        <p className="tw:m-0 tw:font-body tw:text-sm tw:text-tertiary">
+      <Box
+        align="center"
+        className="tw:h-full"
+        data-testid="ontology-data-graph-empty"
+        justify="center">
+        <Typography as="p" className="tw:text-tertiary" size="text-sm">
           {t('message.no-data-available')}
-        </p>
-      </div>
+        </Typography>
+      </Box>
     );
   }
 
-  const renderLoadMore = (term: OntologyNode, remainingAssetCount: number) =>
-    remainingAssetCount > 0 || term.isLoadingAssets ? (
+  const toggleCard = (term: OntologyNode, unloadedAssetCount: number) => {
+    const isExpanded = expandedCardIds.has(term.id);
+    // Expanding past the loaded preview fetches the next page as well.
+    if (unloadedAssetCount > 0) {
+      onLoadMore(term);
+    }
+    setExpandedCardIds((current) => {
+      const next = new Set(current);
+      if (isExpanded && unloadedAssetCount === 0) {
+        next.delete(term.id);
+      } else {
+        next.add(term.id);
+      }
+
+      return next;
+    });
+  };
+
+  const renderAssetRow = (asset: OntologyNode, index: number) => {
+    const entityType = getAssetEntityType(asset);
+    const isMetric = entityType === METRIC_NODE_TYPE;
+    const iconUrl = isMetric
+      ? undefined
+      : serviceUtilClassBase.getServiceTypeLogo({
+          entityType: asset.entityRef?.type,
+          serviceType:
+            getText(asset.serviceLabel) ??
+            getText(asset.searchSource?.serviceType),
+        });
+
+    return (
       <Button
         noTextPadding
         className={classNames(
-          'tw:inline-flex tw:items-center tw:gap-1.5 tw:border-0 tw:bg-transparent',
-          'tw:px-0.5 tw:pt-1.5 tw:pb-0.5 tw:font-body tw:text-[10px] tw:leading-normal',
-          'tw:font-semibold tw:text-brand-secondary disabled:tw:cursor-wait disabled:tw:text-disabled tw:*:data-icon:size-3'
+          'tw:flex tw:min-h-16 tw:w-full tw:items-center tw:gap-3 tw:rounded-none tw:px-5 tw:py-3 tw:text-left tw:whitespace-normal',
+          'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3',
+          index > 0 && 'tw:border-t tw:border-secondary'
         )}
         color="tertiary"
-        data-testid={`ontology-load-more-assets-${term.id}`}
-        iconLeading={ChevronDown}
-        isDisabled={term.isLoadingAssets}
-        onClick={() => onLoadMore(term)}>
-        {term.isLoadingAssets ? (
-          t('label.loading')
-        ) : (
-          <>
-            {t('label.load-more')} ({remainingAssetCount}{' '}
-            {t('label.more-lowercase')})
-          </>
-        )}
+        data-testid={`ontology-data-asset-${asset.id}`}
+        key={asset.id}
+        onClick={() => onSelectNode(asset)}>
+        <Box
+          align="center"
+          className={classNames(
+            'tw:size-8 tw:shrink-0 tw:rounded-lg tw:border',
+            isMetric
+              ? 'tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:text-utility-purple-600'
+              : 'tw:border-secondary tw:bg-primary'
+          )}
+          justify="center">
+          {isMetric ? (
+            <BarChart01 aria-hidden="true" className="tw:size-4" />
+          ) : null}
+          {!isMetric && iconUrl ? (
+            <img
+              alt=""
+              className="tw:size-4 tw:object-contain"
+              height={16}
+              src={iconUrl}
+              width={16}
+            />
+          ) : null}
+        </Box>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Typography
+            ellipsis
+            className="tw:text-primary"
+            data-testid="ontology-data-asset-name"
+            size="text-sm"
+            weight="medium">
+            {asset.originalLabel ?? asset.label}
+          </Typography>
+          <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+            {getAssetPath(asset)}
+          </Typography>
+        </Box>
+        <Badge
+          className="tw:shrink-0"
+          color={ASSET_BADGE_COLORS[entityType] ?? 'gray'}
+          size="sm"
+          type="pill-color">
+          {entityUtilClassBase.getFormattedEntityType(entityType)}
+        </Badge>
       </Button>
-    ) : null;
+    );
+  };
+
+  const renderCardToggle = (
+    term: OntologyNode,
+    { hiddenAssetCount, unloadedAssetCount }: CardAssetState
+  ) => {
+    const isExpanded = expandedCardIds.has(term.id);
+    if (hiddenAssetCount === 0 && !isExpanded && !term.isLoadingAssets) {
+      return null;
+    }
+    const isShowingMore = hiddenAssetCount > 0 || term.isLoadingAssets;
+    let label = t('label.show-less');
+    if (term.isLoadingAssets) {
+      label = t('label.loading');
+    } else if (hiddenAssetCount > 0) {
+      label = t('label.show-count-more', { count: hiddenAssetCount });
+    }
+
+    return (
+      <Box className="tw:border-t tw:border-secondary tw:px-5 tw:py-2.5">
+        <Button
+          color="link-color"
+          data-testid={`ontology-load-more-assets-${term.id}`}
+          iconLeading={isShowingMore ? ChevronDown : ChevronUp}
+          isDisabled={term.isLoadingAssets}
+          size="sm"
+          onClick={() => toggleCard(term, unloadedAssetCount)}>
+          {label}
+        </Button>
+      </Box>
+    );
+  };
+
+  const renderCard = (term: OntologyNode) => {
+    const assetState = getCardAssetState(
+      term,
+      assetsByTerm.get(term.id) ?? [],
+      expandedCardIds.has(term.id)
+    );
+    const position = cardBoxes.get(term.id) ?? {
+      left: CLUSTER_LAYOUT_MARGIN,
+      top: CLUSTER_LAYOUT_MARGIN,
+    };
+    const accentColor = term.glossaryId
+      ? glossaryColorMap[term.glossaryId]
+      : undefined;
+
+    return (
+      <Card
+        className="tw:absolute tw:cursor-grab tw:shadow-xs tw:active:cursor-grabbing"
+        data-term-id={term.id}
+        data-testid={`ontology-data-cluster-${term.id}`}
+        key={term.id}
+        style={{ left: position.left, top: position.top, width: CARD_WIDTH }}
+        onClickCapture={handleCardClickCapture}
+        onPointerDown={(event) => handleCardPointerDown(event, term)}
+        onPointerMove={handleCardPointerMove}
+        onPointerUp={handleCardPointerUp}>
+        <Button
+          noTextPadding
+          className={classNames(
+            'tw:flex tw:min-h-12 tw:w-full tw:items-center tw:rounded-none tw:border-b tw:border-secondary tw:px-5 tw:py-3.5 tw:text-left',
+            'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
+          )}
+          color="tertiary"
+          onClick={() => onSelectNode(term)}>
+          <span
+            aria-hidden="true"
+            className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-utility-blue-light-400"
+            style={accentColor ? { backgroundColor: accentColor } : undefined}
+          />
+          <Typography
+            ellipsis
+            className="tw:min-w-0 tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {term.originalLabel ?? term.label}
+          </Typography>
+          <Typography
+            className="tw:ml-auto tw:shrink-0 tw:text-tertiary"
+            size="text-xs">
+            {assetState.totalAssetCount} {t('label.asset-plural-lowercase')}
+          </Typography>
+        </Button>
+
+        {assetState.shownAssets.map(renderAssetRow)}
+
+        {renderCardToggle(term, assetState)}
+      </Card>
+    );
+  };
 
   return (
     <div
@@ -714,6 +1005,7 @@ const OntologyDataGraph = ({
       <div
         aria-label={t('label.graph')}
         className="tw:relative tw:origin-top-left"
+        ref={canvasRef}
         role="button"
         style={{
           height: canvasHeight,
@@ -736,168 +1028,49 @@ const OntologyDataGraph = ({
           className="tw:pointer-events-none tw:absolute tw:inset-0 tw:overflow-visible"
           height={canvasHeight}
           width={canvasWidth}>
-          {observedLineageEdges.map(({ path, renderKey }) => (
-            <path
-              d={path}
-              data-testid="ontology-data-observed-lineage-edge"
-              fill="none"
-              key={`${renderKey}-path`}
-              opacity="0.75"
-              stroke={EDGE_STROKE_COLOR}
-              strokeWidth="1.8"
-            />
-          ))}
-          {renderedSemanticEdges.map(({ color, path, renderKey }) => (
-            <path
-              d={path}
-              data-testid="ontology-data-semantic-edge"
-              fill="none"
-              key={`${renderKey}-path`}
-              opacity="0.85"
-              stroke={color}
-              strokeDasharray="6 5"
-              strokeWidth="1.8"
-            />
-          ))}
+          {renderedSemanticEdges.map(
+            ({ color, end, isHierarchy, path, renderKey }) => (
+              <Fragment key={renderKey}>
+                <path
+                  d={path}
+                  data-testid="ontology-data-semantic-edge"
+                  fill="none"
+                  stroke={color}
+                  strokeDasharray={isHierarchy ? undefined : '4 3'}
+                  strokeWidth="1.5"
+                />
+                <circle
+                  cx={end.x}
+                  cy={end.y}
+                  data-testid="ontology-data-edge-arrow"
+                  fill={color}
+                  r="3"
+                />
+              </Fragment>
+            )
+          )}
         </svg>
+
+        {visibleTerms.map(renderCard)}
 
         {renderedSemanticEdges.map(
           ({ color, edge, labelLeft, labelTop, renderKey }) => (
-            <span
-              className={classNames(
-                'tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2',
-                'tw:rounded-full tw:border tw:bg-primary tw:px-[7px] tw:py-0.5',
-                'tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold'
-              )}
+            <Badge
+              className="tw:pointer-events-none tw:absolute tw:-translate-x-1/2 tw:-translate-y-1/2 tw:border tw:bg-surface"
               data-testid="ontology-data-semantic-edge-label"
               key={`${renderKey}-label`}
+              size="sm"
               style={{
                 borderColor: color,
                 color,
                 left: labelLeft,
                 top: labelTop,
-              }}>
+              }}
+              type="pill-color">
               {formatRelationLabel(edge.relationType).toLocaleLowerCase()}
-            </span>
+            </Badge>
           )
         )}
-
-        {visibleTerms.map((term, index) => {
-          const assets = assetsByTerm.get(term.id) ?? [];
-          const position =
-            positionByTermId.get(term.id) ?? getCardPosition(index);
-          const totalAssetCount = Math.max(term.assetCount ?? 0, assets.length);
-          const loadedAssetCount = Math.max(
-            term.loadedAssetCount ?? 0,
-            assets.length
-          );
-          const remainingAssetCount = Math.max(
-            0,
-            totalAssetCount - loadedAssetCount
-          );
-          const accentColor = term.glossaryId
-            ? glossaryColorMap[term.glossaryId]
-            : undefined;
-
-          return (
-            <div
-              className={classNames(
-                'tw:absolute tw:cursor-grab tw:rounded-xl tw:border-[1.5px] tw:border-secondary',
-                'tw:bg-secondary tw:p-3 tw:shadow-xs active:tw:cursor-grabbing'
-              )}
-              data-testid={`ontology-data-cluster-${term.id}`}
-              key={term.id}
-              style={{
-                left: position.left,
-                top: position.top,
-                width: CARD_WIDTH,
-              }}
-              onClickCapture={handleCardClickCapture}
-              onPointerDown={(event) => handleCardPointerDown(event, term)}
-              onPointerMove={handleCardPointerMove}
-              onPointerUp={handleCardPointerUp}>
-              <Button
-                noTextPadding
-                className={classNames(
-                  'tw:mb-[9px] tw:flex tw:w-full tw:items-center tw:gap-[7px] tw:border-0 tw:bg-transparent tw:p-0 tw:text-left',
-                  'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-[7px]'
-                )}
-                color="tertiary"
-                onClick={() => onSelectNode(term)}>
-                <span
-                  aria-hidden="true"
-                  className="tw:size-[7px] tw:shrink-0 tw:rounded-full tw:bg-utility-blue-light-400"
-                  style={
-                    accentColor ? { backgroundColor: accentColor } : undefined
-                  }
-                />
-                <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-primary">
-                  {term.originalLabel ?? term.label}
-                </span>
-                <span className="tw:shrink-0 tw:font-body tw:text-[10px] tw:leading-normal tw:font-medium tw:text-quaternary">
-                  {totalAssetCount} {t('label.asset-plural-lowercase')}
-                </span>
-              </Button>
-
-              <div className="tw:-mx-0.5 tw:max-h-[172px] tw:overflow-y-auto tw:px-0.5">
-                {assets.map((asset) => {
-                  const iconUrl = serviceUtilClassBase.getServiceTypeLogo({
-                    entityType: asset.entityRef?.type,
-                    serviceType:
-                      getText(asset.serviceLabel) ??
-                      getText(asset.searchSource?.serviceType),
-                  });
-                  const columnCount = getAssetColumnCount(asset);
-
-                  return (
-                    <Button
-                      noTextPadding
-                      className={classNames(
-                        'tw:mb-1.5 tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-[7px] tw:border tw:border-secondary',
-                        'tw:bg-primary tw:px-2 tw:py-1.5 tw:text-left tw:whitespace-normal',
-                        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
-                      )}
-                      color="tertiary"
-                      data-testid={`ontology-data-asset-${asset.id}`}
-                      key={asset.id}
-                      onClick={() => onSelectNode(asset)}>
-                      {iconUrl ? (
-                        <img
-                          alt=""
-                          className="tw:size-3.5 tw:shrink-0 tw:object-contain"
-                          height={14}
-                          src={iconUrl}
-                          width={14}
-                        />
-                      ) : (
-                        <span className="tw:size-3.5 tw:shrink-0 tw:rounded tw:bg-quaternary" />
-                      )}
-                      <span className="tw:min-w-0 tw:flex-1">
-                        <span
-                          className="tw:block tw:truncate tw:font-mono tw:text-[11px] tw:leading-normal tw:font-medium tw:text-primary"
-                          data-testid="ontology-data-asset-name">
-                          {asset.originalLabel ?? asset.label}
-                        </span>
-                        <span className="tw:block tw:truncate tw:font-body tw:text-[9px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                          {getAssetServiceLabel(asset)}
-                          {columnCount !== undefined ? (
-                            <>
-                              {' '}
-                              <span aria-hidden="true">·</span> {columnCount}{' '}
-                              {t('label.column-lowercase-plural')}
-                            </>
-                          ) : null}
-                        </span>
-                      </span>
-                    </Button>
-                  );
-                })}
-              </div>
-
-              {renderLoadMore(term, remainingAssetCount)}
-            </div>
-          );
-        })}
 
         {hasMoreTerms ? (
           <Button
@@ -905,42 +1078,85 @@ const OntologyDataGraph = ({
             color="secondary"
             isDisabled={isLoadingMoreTerms}
             size="sm"
-            style={{ top: START_Y + rows * ROW_STEP }}
+            style={{ top: contentBottom + LOAD_MORE_TERMS_GAP }}
             onPress={onLoadMoreTerms}>
             {isLoadingMoreTerms ? t('label.loading') : t('label.load-more')}
           </Button>
         ) : null}
 
         {!hasMoreTerms && isRenderCapped ? (
-          <span
-            className={classNames(
-              'tw:absolute tw:left-1/2 tw:-translate-x-1/2 tw:rounded-full tw:border tw:border-secondary',
-              'tw:bg-secondary tw:px-3 tw:py-1.5 tw:font-body tw:text-[11px] tw:leading-normal',
-              'tw:font-medium tw:text-quaternary'
-            )}
+          <Badge
+            className="tw:absolute tw:left-1/2 tw:-translate-x-1/2"
+            color="gray"
             data-testid="ontology-data-render-cap"
-            style={{ top: START_Y + rows * ROW_STEP }}>
+            size="md"
+            style={{ top: contentBottom + LOAD_MORE_TERMS_GAP }}
+            type="pill-color">
             {t('message.data-clusters-render-cap', {
               count: DATA_MODE_MAX_RENDER_COUNT,
             })}
-          </span>
+          </Badge>
         ) : null}
       </div>
 
-      <Card
-        className={classNames(
-          'tw:absolute tw:right-4 tw:bottom-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-          TOOLBAR_CARD_CLASS
-        )}
-        data-testid="ontology-data-graph-controls">
-        <OntologyControlButtons
-          isLoading={isLoadingMoreTerms}
-          onFitToScreen={fitToScreen}
-          onRefresh={resetView}
-          onZoomIn={() => zoomAtCenter(ZOOM_BUTTON_FACTOR)}
-          onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
-        />
-      </Card>
+      <Box
+        className="tw:pointer-events-none tw:absolute tw:left-6 tw:top-5"
+        data-testid="ontology-data-layer-heading"
+        direction="col"
+        gap={0}>
+        <Typography className="tw:text-primary" size="text-sm" weight="medium">
+          {t('label.data-layer')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('message.data-layer-summary', {
+            assetCount: linkedAssetTotal,
+            termCount: visibleTerms.length,
+          })}
+        </Typography>
+      </Box>
+
+      <Box
+        align="end"
+        className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6"
+        gap={2}>
+        <Card
+          className="tw:flex tw:items-center"
+          data-testid="ontology-data-graph-controls"
+          variant="elevated">
+          <OntologyControlButtons
+            isLoading={isLoadingMoreTerms}
+            onFitToScreen={fitToScreen}
+            onRefresh={resetView}
+            onZoomIn={() => zoomAtCenter(ZOOM_BUTTON_FACTOR)}
+            onZoomOut={() => zoomAtCenter(1 / ZOOM_BUTTON_FACTOR)}
+          />
+        </Card>
+        {legendEntries.length > 0 ? (
+          <Card
+            className="tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2"
+            data-testid="ontology-data-edge-legend"
+            variant="elevated">
+            {legendEntries.map(({ color, isHierarchy, relationType }) => (
+              <Box align="center" gap={2} key={relationType}>
+                <svg aria-hidden="true" height="2" width="24">
+                  <line
+                    stroke={color}
+                    strokeDasharray={isHierarchy ? undefined : '4 3'}
+                    strokeWidth="2"
+                    x1="0"
+                    x2="24"
+                    y1="1"
+                    y2="1"
+                  />
+                </svg>
+                <Typography className="tw:text-secondary" size="text-xs">
+                  {toSentenceCase(formatRelationLabel(relationType))}
+                </Typography>
+              </Box>
+            ))}
+          </Card>
+        ) : null}
+      </Box>
     </div>
   );
 };

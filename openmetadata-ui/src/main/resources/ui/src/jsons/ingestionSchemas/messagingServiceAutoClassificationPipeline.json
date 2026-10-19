@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MessagingServiceAutoClassificationPipeline",
   "description": "MessagingService AutoClassification Pipeline Configuration.",
   "type": "object",
@@ -75,12 +74,12 @@
       "type": "integer",
       "default": 50,
       "minimum": 1,
+      "maximum": 1000,
       "title": "Sample Data Count"
     },
     "classificationLanguage": {
       "description": "Language used for classification. Supported languages include: en (English).",
       "default": "en",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "ClassificationLanguage",
       "type": "string",
       "javaType": "org.openmetadata.schema.type.ClassificationLanguage",

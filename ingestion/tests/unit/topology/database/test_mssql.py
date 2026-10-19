@@ -28,6 +28,7 @@ from metadata.generated.schema.api.data.createDatabaseSchema import (
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.storedProcedure import Language
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
@@ -55,6 +56,8 @@ from metadata.ingestion.source.database.mssql.metadata import MssqlSource
 from metadata.ingestion.source.database.mssql.models import MssqlStoredProcedure
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_INDEXED_VIEWS,
+    MSSQL_GET_STORED_PROCEDURES,
     MSSQL_SQL_STATEMENT,
     MSSQL_SQL_STATEMENT_CURRENT_DB,
     MSSQL_SQL_STATEMENT_FROM_QUERY_STORE,
@@ -215,6 +218,10 @@ EXPECTED_TABLE = [
 ]
 
 
+# Where the connection points before the run walks to its first database.
+ENTRY_POINT_DATABASE = "<entry point>"
+
+
 class MssqlUnitTest(TestCase):
     """
     Implements the necessary methods to extract
@@ -317,8 +324,97 @@ class MssqlUnitTest(TestCase):
         # definition (regression guard for the cross-schema join bug).
         executed_sql = str(mock_conn.execute.call_args.args[0])
         self.assertIn("sch.name = r.ROUTINE_SCHEMA", executed_sql)
-        self.assertIn(f"ROUTINE_CATALOG = '{MOCK_DATABASE.name.root}'", executed_sql)
-        self.assertIn(f"ROUTINE_SCHEMA = '{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+        # The database and schema predicates are passed as bound parameters, not
+        # interpolated into the SQL. This keeps names containing apostrophes (legal
+        # SQL Server delimited identifiers like [O'Brien]) from breaking the query.
+        self.assertIn(":database_name", executed_sql)
+        self.assertIn(":schema_name", executed_sql)
+        self.assertNotIn(f"'{MOCK_DATABASE.name.root}'", executed_sql)
+        self.assertNotIn(f"'{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+        executed_params = mock_conn.execute.call_args.args[1]
+        self.assertEqual(
+            executed_params,
+            {
+                "database_name": MOCK_DATABASE.name.root,
+                "schema_name": MOCK_DATABASE_SCHEMA.name.root,
+            },
+        )
+
+    def test_get_stored_procedures_with_apostrophe_in_schema_name(self):
+        """
+        A schema or database name containing an apostrophe (a legal SQL Server
+        delimited identifier, e.g. ``[O'Brien]``) must not break stored-procedure
+        ingestion.
+
+        The old implementation interpolated the names into single-quoted T-SQL
+        string literals via ``.format()``, so ``ROUTINE_SCHEMA = 'O'Brien'``
+        produced a syntax error and the procedures for that schema silently
+        vanished from the catalogue. The fix passes the names as bound
+        parameters, which keeps the apostrophe out of the SQL text entirely.
+        """
+        apostrophe_database = "O'Brien_db"
+        apostrophe_schema = "O'Brien"
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.source_config.storedProcedureFilterPattern = None
+        self.mssql.context.get().__dict__["database"] = apostrophe_database
+        self.mssql.context.get().__dict__["database_schema"] = apostrophe_schema
+
+        mock_engine = MagicMock()
+        self.mssql.engine = mock_engine
+
+        row = MagicMock()
+        row._asdict.return_value = {
+            "name": "sp_apostrophe_schema",
+            "definition": "def1",
+            "language": "SQL",
+            "owner": "owner",
+        }
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.mssql.get_stored_procedures())
+
+        # The procedure for the apostrophe-named schema must be yielded: the
+        # bound-parameter call must not raise, so the producer is not dropped.
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_apostrophe_schema")
+
+        # The apostrophe must travel in the params dict, never in the SQL text.
+        # Interpolating it (``ROUTINE_SCHEMA = 'O'Brien'``) is the regression we
+        # guard against: it would create an unbalanced string literal.
+        executed_sql = str(mock_conn.execute.call_args.args[0])
+        executed_params = mock_conn.execute.call_args.args[1]
+        self.assertNotIn(apostrophe_schema, executed_sql)
+        self.assertNotIn(apostrophe_database, executed_sql)
+        self.assertEqual(
+            executed_params,
+            {
+                "database_name": apostrophe_database,
+                "schema_name": apostrophe_schema,
+            },
+        )
+
+    def test_get_stored_procedures_degrades_gracefully_on_query_failure(self):
+        """A permission/syntax failure listing stored procedures for one schema
+        is reported as a warning, not a hard failure that tanks the workflow's
+        success percentage - the rest of ingestion is unaffected."""
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.status = MagicMock()
+
+        mock_engine = MagicMock()
+        mock_engine.connect.side_effect = Exception("The SELECT permission was denied on sql_modules")
+        self.mssql.engine = mock_engine
+
+        results = list(self.mssql.get_stored_procedures())
+
+        self.assertEqual(results, [])
+        self.mssql.status.warning.assert_called_once()
+        self.mssql.status.failed.assert_not_called()
 
 
 class TestUpdateMssqlIschemaNames:
@@ -523,6 +619,227 @@ class TestUpdateMssqlIschemaNames:
 
         assert yielded == []
         self.mssql.status.failed.assert_called_once()
+
+    def test_failed_single_database_recorded_in_status(self):
+        """In single-database mode a connection failure is recorded in status and not
+        yielded, matching the ingest-all-databases branch instead of aborting the run."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        self.mssql.config.serviceConnection.root.config.database = "only_db"
+        self.mssql.status = MagicMock()
+
+        with (
+            patch.object(MssqlSource, "_load_description_maps"),
+            patch.object(MssqlSource, "set_inspector", side_effect=Exception("cannot connect")),
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == []
+        self.mssql.status.failed.assert_called_once()
+
+    def _record_which_database_each_load_reads(self):
+        """
+        Stand in for the connection: `set_inspector` moves it, the description
+        loaders record where it was pointing when they ran. That pairing is the
+        property under test - reading before the move records the database the
+        run has just left, which is what left every database undocumented.
+
+        Whether the inspector truly repoints, and whether the descriptions that
+        come back belong to that database, is asserted against a real server in
+        tests/integration/sql_server/test_reflection.py.
+        """
+        connection = {"database": ENTRY_POINT_DATABASE}
+        read_from = []
+
+        def switch(database_name):
+            connection["database"] = database_name
+
+        def load():
+            read_from.append(connection["database"])
+
+        return (
+            read_from,
+            patch.object(MssqlSource, "set_inspector", side_effect=switch),
+            patch.object(MssqlSource, "_load_description_maps", side_effect=load),
+        )
+
+    def test_descriptions_are_read_from_each_database_after_connecting_to_it(self):
+        """Every description query reads the connected database (they select
+        DB_NAME()), so a load that runs before the switch reads the previous
+        database and no lookup can match the maps it builds."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = True
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        read_from, switching, loading = self._record_which_database_each_load_reads()
+
+        with (
+            patch.object(MssqlSource, "get_database_names_raw", return_value=iter(["db_one", "db_two"])),
+            switching,
+            loading,
+        ):
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == ["db_one", "db_two"]
+        assert read_from == yielded
+
+    def test_descriptions_are_read_after_connecting_for_a_single_database(self):
+        """The single-database path holds the same property as the multi-database one."""
+        self.mssql.config.serviceConnection.root.config.ingestAllDatabases = False
+        configured_database = self.mssql.config.serviceConnection.root.config.database
+        read_from, switching, loading = self._record_which_database_each_load_reads()
+
+        with switching, loading:
+            yielded = list(self.mssql.get_database_names())
+
+        assert yielded == [configured_database]
+        assert read_from == yielded
+
+    @staticmethod
+    def _inspector_listing(*view_names):
+        return property(lambda _self: types.SimpleNamespace(get_view_names=lambda schema_name: list(view_names)))
+
+    def test_indexed_views_are_reported_as_materialized_views(self):
+        """An indexed view is persisted and engine-maintained, so calling it a plain
+        view understates it."""
+        with (
+            patch.object(
+                MssqlSource,
+                "inspector",
+                new_callable=lambda: self._inspector_listing("plain_view", "indexed_view"),
+            ),
+            patch.object(MssqlSource, "_get_indexed_views", return_value={"indexed_view"}),
+        ):
+            views = self.mssql.query_view_names_and_types("sales")
+
+        assert [(view.name, view.type_) for view in views] == [
+            ("plain_view", TableType.View),
+            ("indexed_view", TableType.MaterializedView),
+        ]
+
+    def test_a_failure_to_detect_indexed_views_leaves_them_as_plain_views(self):
+        """The finer type is optional metadata: losing it must not lose the views."""
+        self.mssql.engine = _raising_engine()
+
+        with patch.object(MssqlSource, "inspector", new_callable=lambda: self._inspector_listing("plain_view")):
+            views = self.mssql.query_view_names_and_types("sales")
+
+        assert [(view.name, view.type_) for view in views] == [("plain_view", TableType.View)]
+
+    def test_indexed_view_query_matches_only_a_unique_clustered_index(self):
+        """That index is what makes a view indexed, and nothing else must match."""
+        assert "i.type = 1" in MSSQL_GET_INDEXED_VIEWS
+        assert "i.is_unique = 1" in MSSQL_GET_INDEXED_VIEWS
+
+
+class TestMssqlClrStoredProcedures:
+    """CLR (assembly) stored procedures -- ``sys.objects.type = 'PC'`` -- have
+    no row in ``sys.sql_modules`` (their definition lives in
+    ``sys.assembly_modules``), so an INNER JOIN to ``sys.sql_modules`` silently
+    drops them from the catalogue. The stored-procedure query must LEFT JOIN
+    ``sys.sql_modules`` so CLR procedures survive with ``definition = NULL`` and
+    ``ROUTINE_BODY = 'EXTERNAL'``, which maps to ``Language.External``.
+
+    Regression guard for the data loss introduced when the 4000-char
+    truncation fix (PR #16002) swapped ``ROUTINE_DEFINITION`` for an INNER JOIN
+    to ``sys.sql_modules``.
+    """
+
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def setup_method(self, _method, test_connection):
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
+        self.mssql = MssqlSource.create(
+            mock_mssql_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+
+    def _setup_stored_procedure_context(self):
+        self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mssql.stored_procedure_desc_map = {}
+        self.mssql.encrypted_procedures_cache = {}
+
+    def test_get_stored_procedures_query_keeps_clr_procedures(self):
+        """The stored-procedure query must LEFT JOIN sys.sql_modules so CLR
+        procedures (sys.objects.type='PC', absent from sys.sql_modules) survive
+        with definition=NULL instead of being dropped by an INNER JOIN."""
+        assert "LEFT JOIN sys.sql_modules" in MSSQL_GET_STORED_PROCEDURES
+        # Every JOIN to sys.sql_modules must be a LEFT JOIN. A bare INNER JOIN
+        # would silently drop CLR (type PC) procedures which have no
+        # sys.sql_modules row. "LEFT JOIN sys.sql_modules" also contains the
+        # substring "JOIN sys.sql_modules", so equality proves each join is a
+        # LEFT join rather than an INNER one.
+        all_joins = MSSQL_GET_STORED_PROCEDURES.count("JOIN sys.sql_modules")
+        left_joins = MSSQL_GET_STORED_PROCEDURES.count("LEFT JOIN sys.sql_modules")
+        assert all_joins == left_joins
+
+    def test_get_stored_procedures_yields_clr_row_as_external(self):
+        """A CLR procedure surfaces from INFORMATION_SCHEMA.ROUTINES with
+        ROUTINE_BODY='EXTERNAL' and, thanks to the LEFT JOIN, definition=NULL.
+        The producer must parse and yield that row -- it must not be silently
+        dropped before reaching Python."""
+        self._setup_stored_procedure_context()
+        row = MagicMock()
+        row._asdict.return_value = {
+            "name": "sp_clr_proc",
+            "definition": None,
+            "language": "EXTERNAL",
+            "owner": None,
+        }
+
+        self.mssql.source_config.includeStoredProcedures = True
+        self.mssql.source_config.storedProcedureFilterPattern = None
+
+        mock_engine = MagicMock()
+        self.mssql.engine = mock_engine
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value.all.return_value = [row]
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.mssql.get_stored_procedures())
+
+        assert len(results) == 1
+        assert results[0].name == "sp_clr_proc"
+        assert results[0].language == "EXTERNAL"
+        assert results[0].definition is None
+
+    def test_yield_stored_procedure_external_language_keeps_none_code(self):
+        """A CLR (EXTERNAL) stored procedure carries no T-SQL definition, so its
+        code is None and its language is Language.External -- the now-live
+        EXTERNAL arm of STORED_PROC_LANGUAGE_MAP. A CLR procedure is never
+        encrypted (OBJECTPROPERTY IsEncrypted is only true for T-SQL WITH
+        ENCRYPTION), so the encrypted branch must not substitute a placeholder
+        and code stays None."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        self.mssql.encrypted_procedures_cache[cache_key] = set()
+
+        sp = MssqlStoredProcedure(name="sp_clr_proc", language="EXTERNAL", definition=None)
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.language == Language.External
+        assert results[0].storedProcedureCode.code is None
+
+    def test_yield_stored_procedure_external_language_not_substituted_by_encrypted_cache(self):
+        """An EXTERNAL procedure whose name is not in the encrypted cache keeps
+        code=None. This guards the boundary between the encrypted placeholder
+        path (T-SQL WITH ENCRYPTION) and the CLR path: a CLR procedure must
+        never pick up the encrypted-procedure placeholder."""
+        self._setup_stored_procedure_context()
+        cache_key = (MOCK_DATABASE.name.root, MOCK_DATABASE_SCHEMA.name.root)
+        # The encrypted cache holds a *different* procedure name.
+        self.mssql.encrypted_procedures_cache[cache_key] = {"sp_encrypted_sql"}
+
+        sp = MssqlStoredProcedure(name="sp_clr_proc", language="EXTERNAL", definition=None)
+        results = [either.right for either in self.mssql.yield_stored_procedure(sp)]
+
+        assert len(results) == 1
+        assert results[0].storedProcedureCode.language == Language.External
+        assert results[0].storedProcedureCode.code is None
+        assert results[0].storedProcedureCode.code != (
+            "-- Unable to fetch code as this is an encrypted stored procedure"
+        )
 
 
 class MssqlIdentityColumnTest(TestCase):
@@ -792,6 +1109,27 @@ class TestMssqlQueryStoreSelection:
         assert "sys.dm_exec_procedure_stats" in statement
 
 
+class TestMssqlDateformatProbe:
+    """get_sqlalchemy_engine_dateformat: falls back to the caller's documented
+    default instead of crashing source/usage/lineage construction when the
+    DBCC USEROPTIONS probe itself fails (e.g. a transient connection issue)."""
+
+    def test_returns_dateformat_value(self):
+        engine = MagicMock()
+        conn = engine.connect.return_value.__enter__.return_value
+        row = MagicMock()
+        row._asdict.return_value = {"Set Option": "dateformat", "Value": "ymd"}
+        conn.execute.return_value.all.return_value = [row]
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) == "ymd"
+
+    def test_returns_none_when_probe_errors(self):
+        engine = MagicMock()
+        engine.connect.side_effect = Exception("connection reset")
+
+        assert mssql_dialet.get_sqlalchemy_engine_dateformat(engine) is None
+
+
 class TestMssqlPerDatabaseQueryStore:
     """Per-database Query Store engine iteration for ingest-all-databases runs."""
 
@@ -893,6 +1231,39 @@ class TestMssqlPerDatabaseQueryStore:
 
         assert list(source._databases_to_scan()) == ["SalesDW", "Inventory"]
 
+    def test_falls_back_to_single_engine_when_database_enumeration_fails(self):
+        """A transient failure listing databases (network blip, timeout) must not
+        crash the whole ingest-all-databases run - it falls back to the single,
+        already-connected engine instead."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source.engine.connect.side_effect = Exception("connection reset")
+
+        assert list(source.get_engine()) == [source.engine]
+
+    def test_skips_database_when_engine_construction_fails(self):
+        """A database whose engine cannot be built (e.g. login denied on that specific
+        database) is skipped; the remaining databases are still processed - one bad
+        database must not kill query history for the rest of the ingest-all-databases run."""
+        source = self._source(query_store_enabled=True, ingest_all_databases=True)
+        source._databases_to_scan = lambda: iter(["BadDb", "GoodDb"])
+        good_engine = MagicMock()
+
+        def build(database):
+            if database == "BadDb":
+                raise RuntimeError("login failed for user on BadDb")
+            return good_engine
+
+        source._engine_for_database = build
+
+        with patch(
+            "metadata.ingestion.source.database.mssql.query_parser.is_query_store_enabled",
+            return_value=True,
+        ):
+            engines = list(source.get_engine())
+
+        assert engines == [good_engine]
+        good_engine.dispose.assert_called_once()
+
     def test_falls_back_to_dmv_when_no_user_databases_scanned(self):
         source = self._source(query_store_enabled=True, ingest_all_databases=True)
         source._databases_to_scan = lambda: iter([])
@@ -910,3 +1281,70 @@ class TestMssqlPerDatabaseQueryStore:
         engines = list(StoredProcedureLineageMixin.get_stored_procedure_engines(fake_source))
 
         assert engines == [fake_source.engine]
+
+
+def _raising_engine():
+    """An engine whose connect() fails, for the degraded paths."""
+    engine = MagicMock()
+    engine.connect.side_effect = Exception("cannot connect")
+    return engine
+
+
+class TestMssqlUniqueConstraints:
+    """``get_unique_constraints`` must report the UNIQUE constraints on a table.
+
+    SQLAlchemy's MSSQL dialect does not reflect them and the base dialect raises
+    NotImplementedError, which the catalogue swallows, so they were dropped.
+    """
+
+    @staticmethod
+    def _row(constraint_name, column_name):
+        return {"CONSTRAINT_NAME": constraint_name, "COLUMN_NAME": column_name}
+
+    @staticmethod
+    def _unique_constraints(rows):
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = rows
+
+        return mssql_dialet.get_unique_constraints(MSDialect(), connection, "orders", schema="sales")
+
+    def test_a_single_column_constraint_is_reported(self):
+        assert self._unique_constraints([self._row("uq_orders_code", "code")]) == [
+            {"name": "uq_orders_code", "column_names": ["code"]}
+        ]
+
+    def test_a_composite_constraint_keeps_its_key_order(self):
+        constraints = self._unique_constraints(
+            [
+                self._row("uq_orders_region_code", "region"),
+                self._row("uq_orders_region_code", "code"),
+            ]
+        )
+
+        assert constraints == [{"name": "uq_orders_region_code", "column_names": ["region", "code"]}]
+
+    def test_constraints_are_reported_separately(self):
+        constraints = self._unique_constraints([self._row("uq_orders_code", "code"), self._row("uq_orders_ref", "ref")])
+
+        assert [constraint["name"] for constraint in constraints] == ["uq_orders_code", "uq_orders_ref"]
+
+    def test_a_table_without_unique_constraints_reports_none(self):
+        assert self._unique_constraints([]) == []
+
+    def test_only_unique_constraints_are_selected(self):
+        """Primary and foreign keys live in the same view and are read elsewhere."""
+        from sqlalchemy.dialects.mssql.base import MSDialect
+
+        connection = MagicMock()
+        connection.execution_options.return_value.execute.return_value.mappings.return_value = []
+
+        mssql_dialet.get_unique_constraints(MSDialect(), connection, "orders", schema="sales")
+
+        (query,), _ = connection.execution_options.return_value.execute.call_args
+        compiled = str(query.compile(dialect=MSDialect(), compile_kwargs={"literal_binds": True}))
+
+        assert "[CONSTRAINT_TYPE] = N'UNIQUE'" in compiled
+        assert "[C].[TABLE_NAME] = N'orders'" in compiled
+        assert "[C].[TABLE_SCHEMA] = N'sales'" in compiled

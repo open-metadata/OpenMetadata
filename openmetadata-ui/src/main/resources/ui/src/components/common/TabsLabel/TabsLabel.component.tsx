@@ -10,8 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import {
+  Badge,
+  Skeleton,
+  useTabItemState,
+} from '@openmetadata/ui-core-components';
+
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
@@ -28,6 +32,10 @@ const TabsLabel = ({
   isLoading,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
+  const tabState = useTabItemState();
+  // Inside a card tab list the tab's own selection is authoritative; route-derived isActive can lag.
+  const isCountActive =
+    tabState?.variant === 'card' ? tabState.isSelected : isActive;
 
   return (
     <div className="w-full tabs-label-container" data-testid={id}>
@@ -42,12 +50,14 @@ const TabsLabel = ({
         ) : (
           !isNil(count) && (
             <span data-testid="count">
-              {getCountBadge(count, '', isActive)}
+              {getCountBadge(count, '', isCountActive)}
             </span>
           )
         )}
         {isBeta && (
-          <Badge className="service-beta-tag" count={t('label.beta')} />
+          <Badge className="service-beta-tag" color="brand" size="sm">
+            {t('label.beta')}
+          </Badge>
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}

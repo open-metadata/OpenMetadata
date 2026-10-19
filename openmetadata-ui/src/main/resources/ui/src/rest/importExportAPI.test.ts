@@ -32,7 +32,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -59,7 +59,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -86,7 +86,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -113,7 +113,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -139,7 +139,7 @@ describe('importExportAPI tests', () => {
     it('should handle API errors', async () => {
       const mockError = new Error('API Error');
       const mockPut = jest.fn().mockRejectedValue(mockError);
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -161,7 +161,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -187,7 +187,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -214,7 +214,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -240,7 +240,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -266,7 +266,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -294,7 +294,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -319,7 +319,7 @@ describe('importExportAPI tests', () => {
     it('should handle network errors', async () => {
       const networkError = new Error('Network Error');
       const mockPut = jest.fn().mockRejectedValue(networkError);
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -343,7 +343,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -370,7 +370,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -396,7 +396,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -423,7 +423,7 @@ describe('importExportAPI tests', () => {
     it('should handle API errors', async () => {
       const apiError = new Error('Service import failed');
       const mockPut = jest.fn().mockRejectedValue(apiError);
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -447,7 +447,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -474,7 +474,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -501,7 +501,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -529,7 +529,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -554,7 +554,7 @@ describe('importExportAPI tests', () => {
     it('should handle API errors', async () => {
       const error = new Error('Glossary import failed');
       const mockPut = jest.fn().mockRejectedValue(error);
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -578,7 +578,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -605,7 +605,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -632,7 +632,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -660,7 +660,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -685,7 +685,7 @@ describe('importExportAPI tests', () => {
     it('should handle API errors', async () => {
       const error = new Error('Glossary term import failed');
       const mockPut = jest.fn().mockRejectedValue(error);
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -708,7 +708,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -734,7 +734,7 @@ describe('importExportAPI tests', () => {
       const mockPut = jest
         .fn()
         .mockResolvedValue({ data: mockCSVImportResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,
@@ -791,7 +791,7 @@ describe('importExportAPI tests', () => {
         message: 'Custom message',
       };
       const mockPut = jest.fn().mockResolvedValue({ data: customResponse });
-      jest.mock('./index', () => ({
+      jest.mock('./axiosClient', () => ({
         __esModule: true,
         default: {
           put: mockPut,

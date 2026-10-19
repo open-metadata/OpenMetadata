@@ -65,6 +65,7 @@ import {
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getCountLabel,
+  getEntityTypeFromServiceCategory,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -1254,10 +1255,10 @@ describe('ServiceDetailsPage', () => {
       });
     };
 
-    const switchToAgentsTab = async (view: RenderResult) => {
+    const switchToTab = async (view: RenderResult, tab: string) => {
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.DASHBOARD_SERVICES,
-        tab: EntityTabs.AGENTS,
+        tab,
       });
 
       await act(async () => {
@@ -1267,6 +1268,13 @@ describe('ServiceDetailsPage', () => {
           </MemoryRouter>
         );
       });
+    };
+
+    // Only the selected tab panel is mounted, so come back to the entity tab
+    // to observe the loading state it was left with.
+    const moveOffAndBackToEntityTab = async (view: RenderResult) => {
+      await switchToTab(view, EntityTabs.AGENTS);
+      await switchToTab(view, 'databases');
     };
 
     it('should clear the loading state after moving off the entity tab', async () => {
@@ -1283,7 +1291,7 @@ describe('ServiceDetailsPage', () => {
 
       await expectEntityTabNotLoading();
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1302,7 +1310,7 @@ describe('ServiceDetailsPage', () => {
         );
       });
 
-      await switchToAgentsTab(view);
+      await moveOffAndBackToEntityTab(view);
 
       await expectEntityTabNotLoading();
     });
@@ -1706,7 +1714,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
 
@@ -1721,7 +1732,10 @@ describe('ServiceDetailsPage', () => {
       // AutoPilot creates at most one automation per template, so the list is
       // requested in a single unpaginated call scoped to the service.
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
 
       expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
@@ -1742,16 +1756,27 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should not fetch agents for non-database services', async () => {
-      // Set up messaging service context (CollateAI widgets not supported)
+    it('should fetch agents for non-database services too', async () => {
+      // AutoPilot creates AI Automations for services of every type, not only databases.
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.MESSAGING_SERVICES,
         tab: EntityTabs.INSIGHTS,
       });
+      (getEntityTypeFromServiceCategory as jest.Mock).mockImplementation(
+        (category: ServiceCategory) =>
+          category === ServiceCategory.MESSAGING_SERVICES
+            ? 'messagingService'
+            : 'database'
+      );
 
       await renderComponent();
 
-      expect(getAiAutomationsByService).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'messagingService'
+        );
+      });
     });
 
     it('should properly handle CollateAI widget support check', async () => {
@@ -1779,7 +1804,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
   });

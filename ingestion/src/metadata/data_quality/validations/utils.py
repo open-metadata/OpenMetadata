@@ -2,13 +2,19 @@
 Data quality validation utility functions.
 """
 
+import json
+from ast import literal_eval
 from collections.abc import Callable
 from typing import Any, TypeVar
 from urllib.parse import quote
 
+from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2.exceptions import SecurityError
+from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy.engine import URL
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
+from metadata.profiler.orm.registry import is_boolean
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -19,6 +25,34 @@ R = TypeVar("R")
 # Characters that terminate the userinfo (or the whole authority) while data-diff parses the URI.
 # They must stay percent-encoded even though data-diff will not decode them back.
 USERNAME_RESERVED_CHARACTERS = ":/?#"
+
+
+def parse_set_values(raw: str, column_type) -> list:
+    """Parse an allowed or forbidden set; on a boolean column "true"/"false" strings become booleans
+
+    Only "true"/"false" (any case) are mapped: "1"/"0", "t"/"f" and "yes"/"no" stay as written.
+    """
+    values = _parse_literal(raw)
+    if not isinstance(values, (list, tuple, set)):
+        raise ValueError(f"A set of values must be a list, got {raw}")  # noqa: TRY004 the set validators abort on ValueError
+    return [_as_boolean(value) for value in values] if is_boolean(column_type) else list(values)
+
+
+def _parse_literal(raw: str) -> Any:
+    """A Python literal, or JSON when literal_eval rejects it: JSON writes booleans and null in lowercase
+
+    literal_eval runs first, so a value it read before reads the same. Its ValueError and
+    SyntaxError fall through to JSON; any other error it raises propagates.
+    """
+    try:
+        value = literal_eval(raw)
+    except (ValueError, SyntaxError):
+        value = json.loads(raw)
+    return value
+
+
+def _as_boolean(value):
+    return {"true": True, "false": False}.get(value.lower(), value) if isinstance(value, str) else value
 
 
 def get_test_case_param_value(
@@ -112,3 +146,21 @@ def casefold_if_string(value: Any) -> Any:
         Any: case folded value
     """
     return value.casefold() if isinstance(value, str) else value
+
+
+def render_sql_expression(sql_template: str, params: dict[str, str]) -> str:
+    """Render a Rule Library SQL expression, raising ``ValueError`` on any template error.
+
+    The expression is user-authored, so it is rendered sandboxed: a plain Template
+    lets it reach Python internals and run code on the ingestion worker.
+    """
+    try:
+        return SandboxedEnvironment(undefined=StrictUndefined).from_string(sql_template).render(**params)
+    except TemplateSyntaxError as e:
+        raise ValueError(f"Invalid Jinja2 syntax in SQL expression: {e.message}") from e
+    except SecurityError as e:
+        raise ValueError(f"Unsafe operation in SQL expression: {e}") from e
+    except UndefinedError as e:
+        raise ValueError(
+            f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
+        ) from e

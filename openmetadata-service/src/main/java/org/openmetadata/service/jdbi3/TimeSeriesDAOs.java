@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Relationship.CONTAINS;
 import static org.openmetadata.schema.type.Relationship.OWNS;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
@@ -21,11 +22,15 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -50,6 +55,7 @@ import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
@@ -128,7 +134,197 @@ public interface TimeSeriesDAOs {
     }
   }
 
+  /**
+   * An absent or empty {@code supportedDataTypes} or {@code supportedServices} list means the test
+   * definition declares no restriction, so it is generic and applies everywhere. The matching
+   * listing filters must let those definitions through instead of requiring a positive match —
+   * otherwise a generic test definition never appears when picking a test for a column, which is
+   * issue #27718.
+   */
   interface TestDefinitionDAO extends EntityDAO<TestDefinition> {
+    /**
+     * Listing order for test definitions: the display name, falling back to the name when a
+     * definition has none. The Test Library lists rules by the label it renders, so paging has to
+     * walk that order instead of the internal {@code columnValuesToBeBetween}-style name (issue
+     * #27257). {@link TestDefinitionRepository#getCursorValue} builds the page cursors from the
+     * same key, so the keyset comparisons below stay aligned with it.
+     *
+     * <p>Both halves are read out of {@code json} rather than falling back to the {@code name}
+     * column: on MySQL a {@code COALESCE} across the JSON string and the column raises "Illegal
+     * mix of collations". {@code LOWER} makes the order case-insensitive on both engines and is
+     * mirrored by the Java-side cursor. The expression is not indexable, so this costs a sort —
+     * acceptable because the test definition catalog is a bounded list of rules, not a catalog
+     * table.
+     */
+    String MYSQL_LIST_SORT_KEY =
+        "LOWER(COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), ''), "
+            + "JSON_UNQUOTE(JSON_EXTRACT(json, '$.name'))))";
+
+    String POSTGRES_LIST_SORT_KEY =
+        "LOWER(COALESCE(NULLIF(json->>'displayName', ''), json->>'name'))";
+
+    String MYSQL_ENTITY_TYPE_SORT_KEY = "LOWER(entityType)";
+
+    String POSTGRES_ENTITY_TYPE_SORT_KEY = "LOWER(entityType)";
+
+    /**
+     * A definition can declare several platforms, so the order follows the first one it lists —
+     * the same value the Test Library renders first in the column. Ordering on the serialized
+     * array instead would sort on its leading {@code ["} and read as arbitrary. Missing and empty
+     * arrays collapse to the empty string so they group together at the ascending end rather than
+     * scattering on NULL ordering, which MySQL and Postgres disagree about.
+     */
+    String MYSQL_TEST_PLATFORM_SORT_KEY =
+        "LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.testPlatforms[0]')), ''))";
+
+    String POSTGRES_TEST_PLATFORM_SORT_KEY = "LOWER(COALESCE(json->'testPlatforms'->>0, ''))";
+
+    /**
+     * The columns the Test Library lets a reviewer sort by, each paired with the SQL that orders
+     * it. Closed on purpose: the chosen expression is interpolated into the query template by
+     * {@code @Define}, which is raw substitution and not a bind, so only values that originate
+     * here may ever reach it. {@link #fromParam} is the single door in, and it rejects anything
+     * unrecognised rather than falling back to a default — a typo'd {@code sortField} that
+     * silently returned display-name order would read as the sort being broken.
+     */
+    enum SortField {
+      DISPLAY_NAME("displayName", MYSQL_LIST_SORT_KEY, POSTGRES_LIST_SORT_KEY),
+      ENTITY_TYPE("entityType", MYSQL_ENTITY_TYPE_SORT_KEY, POSTGRES_ENTITY_TYPE_SORT_KEY),
+      TEST_PLATFORMS(
+          "testPlatforms", MYSQL_TEST_PLATFORM_SORT_KEY, POSTGRES_TEST_PLATFORM_SORT_KEY);
+
+      private final String param;
+      private final String mysqlKey;
+      private final String postgresKey;
+
+      SortField(String param, String mysqlKey, String postgresKey) {
+        this.param = param;
+        this.mysqlKey = mysqlKey;
+        this.postgresKey = postgresKey;
+      }
+
+      public String param() {
+        return param;
+      }
+
+      public String mysqlKey() {
+        return mysqlKey;
+      }
+
+      public String postgresKey() {
+        return postgresKey;
+      }
+
+      public static SortField fromParam(String value) {
+        if (nullOrEmpty(value)) {
+          return DISPLAY_NAME;
+        }
+        for (SortField field : values()) {
+          if (field.param.equalsIgnoreCase(value)) {
+            return field;
+          }
+        }
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidTestDefinitionSortField(value, sortFieldParams()));
+      }
+
+      public static List<String> sortFieldParams() {
+        return Arrays.stream(values()).map(SortField::param).toList();
+      }
+    }
+
+    /**
+     * Sort direction. Ascending is the default so an unset {@code sortOrder} keeps the listing in
+     * the display-name order issue #27257 asked for.
+     */
+    enum SortOrder {
+      ASC("asc"),
+      DESC("desc");
+
+      private final String param;
+
+      SortOrder(String param) {
+        this.param = param;
+      }
+
+      public String param() {
+        return param;
+      }
+
+      public static SortOrder fromParam(String value) {
+        if (nullOrEmpty(value)) {
+          return ASC;
+        }
+        for (SortOrder order : values()) {
+          if (order.param.equalsIgnoreCase(value)) {
+            return order;
+          }
+        }
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.invalidTestDefinitionSortOrder(value, sortOrderParams()));
+      }
+
+      public static List<String> sortOrderParams() {
+        return Arrays.stream(values()).map(SortOrder::param).toList();
+      }
+    }
+
+    /**
+     * The SQL fragments one (field, order) choice expands to. The id tiebreaker always runs
+     * ascending, in both directions and at both ends: it exists only to make the key total, and
+     * flipping it with the sort key would make a descending page disagree with the cursor that
+     * {@link TestDefinitionRepository} built from the previous one.
+     *
+     * @param sortKey the ordering expression for the active dialect
+     * @param afterCmp comparison that walks forward past an after-cursor
+     * @param beforeCmp comparison that walks backward past a before-cursor
+     * @param pageOrder direction the page is returned in
+     * @param scanOrder direction {@code listBefore} scans in before re-reversing
+     */
+    record SortSql(
+        String sortKey, String afterCmp, String beforeCmp, String pageOrder, String scanOrder) {}
+
+    default SortSql resolveSortSql(ListFilter filter) {
+      SortField field = SortField.fromParam(filter.getSortField());
+      SortOrder order = SortOrder.fromParam(filter.getSortOrder());
+      String sortKey =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? field.mysqlKey()
+              : field.postgresKey();
+
+      return order == SortOrder.ASC
+          ? new SortSql(sortKey, ">", "<", "ASC", "DESC")
+          : new SortSql(sortKey, "<", ">", "DESC", "ASC");
+    }
+
+    /**
+     * Free-text search over everything the Test Library puts on screen: the name and display name
+     * it labels a rule with, the description column, the entity type and the test platforms. A
+     * reviewer searching "column" or "dbt" is naming what they see in the table, so restricting the
+     * match to the name would make the search box read as broken for those terms.
+     *
+     * <p>Every branch is lower-cased against a pre-lowered bind value rather than wrapped in
+     * {@code LOWER(:param)}: the parameter is a plain string, so lowering it in Java keeps the
+     * comparison off the driver. {@code testPlatforms} is matched against the raw JSON array text
+     * (e.g. {@code ["OpenMetadata"]}), which is how the platform filter above already matches it.
+     */
+    String MYSQL_SEARCH_CONDITION =
+        "AND (LOWER(name) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.displayName')), '')) "
+            + "LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.description')), '')) "
+            + "LIKE :testDefinitionSearchLike "
+            + "OR LOWER(entityType) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(CAST(JSON_EXTRACT(json, '$.testPlatforms') AS CHAR)) "
+            + "LIKE :testDefinitionSearchLike) ";
+
+    String POSTGRES_SEARCH_CONDITION =
+        "AND (LOWER(name) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'displayName', '')) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'description', '')) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(entityType) LIKE :testDefinitionSearchLike "
+            + "OR LOWER(COALESCE(json->>'testPlatforms', '')) LIKE :testDefinitionSearchLike) ";
+
     @Override
     default String getTableName() {
       return "test_definition";
@@ -188,93 +384,22 @@ public interface TimeSeriesDAOs {
       return TestDefinition.class;
     }
 
-    @Override
-    default List<String> listBefore(
-        ListFilter filter, int limit, String beforeName, String beforeId) {
+    /**
+     * The listing filters and the free-text search, as a MySQL/Postgres condition pair. Built in one
+     * place because {@link #listBefore}, {@link #listAfter} and {@link #listCount} have to agree
+     * exactly: a page whose rows are selected by one set of predicates and counted by another
+     * reports a total the pager cannot walk to.
+     */
+    record ListConditions(String mysql, String psql) {}
+
+    default ListConditions buildListConditions(ListFilter filter) {
       String entityType = filter.getQueryParam("entityType");
       String testPlatform = filter.getQueryParam("testPlatform");
       String supportedDataType = filter.getQueryParam("supportedDataType");
       String supportedService = filter.getQueryParam("supportedService");
       String enabled = filter.getQueryParam("enabled");
+      String searchQuery = filter.getQueryParam("testDefinitionSearch");
       String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
-      }
-
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
-
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
-
-      if (entityType != null) {
-        mysqlCondition.append("AND entityType=:entityType ");
-        psqlCondition.append("AND entityType=:entityType ");
-      }
-
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeExact", supportedDataType);
-        mysqlCondition.append(
-            "AND JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes') ");
-        psqlCondition.append(
-            "AND json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT)) ");
-      }
-
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
-
-      if (enabled != null) {
-        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-      }
-
-      return listBefore(
-          getTableName(),
-          filter.getQueryParams(),
-          mysqlCondition.toString(),
-          psqlCondition.toString(),
-          limit,
-          beforeName,
-          beforeId);
-    }
-
-    @Override
-    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
-      String entityType = filter.getQueryParam("entityType");
-      String testPlatform = filter.getQueryParam("testPlatform");
-      String supportedDataType = filter.getQueryParam("supportedDataType");
-      String supportedService = filter.getQueryParam("supportedService");
-      String enabled = filter.getQueryParam("enabled");
-      String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
-      }
 
       StringBuilder mysqlCondition = new StringBuilder();
       StringBuilder psqlCondition = new StringBuilder();
@@ -296,9 +421,13 @@ public interface TimeSeriesDAOs {
       if (supportedDataType != null) {
         filter.queryParams.put("supportedDataTypeExact", supportedDataType);
         mysqlCondition.append(
-            "AND JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes') ");
+            "AND (json_extract(json, '$.supportedDataTypes') IS NULL "
+                + "OR json_extract(json, '$.supportedDataTypes') = JSON_ARRAY() "
+                + "OR JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes')) ");
         psqlCondition.append(
-            "AND json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT)) ");
+            "AND (json->>'supportedDataTypes' IS NULL "
+                + "OR json->>'supportedDataTypes' = '[]' "
+                + "OR json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT))) ");
       }
 
       if (supportedService != null) {
@@ -319,11 +448,101 @@ public interface TimeSeriesDAOs {
         psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
       }
 
+      if (!nullOrEmpty(searchQuery)) {
+        // Lower-cased here to pair with the LOWER(...) columns in the condition instead of asking
+        // the engine to lower the pattern per row.
+        String pattern =
+            ListFilter.escapeLikeBindValue(searchQuery.trim().toLowerCase(Locale.ROOT));
+        filter.queryParams.put("testDefinitionSearchLike", String.format("%%%s%%", pattern));
+        mysqlCondition.append(MYSQL_SEARCH_CONDITION);
+        psqlCondition.append(POSTGRES_SEARCH_CONDITION);
+      }
+
+      return new ListConditions(mysqlCondition.toString(), psqlCondition.toString());
+    }
+
+    /**
+     * The keyset predicate that walks past a cursor, or nothing at all when there is no cursor to
+     * walk past.
+     *
+     * <p>An unanchored page cannot express itself as a comparison. {@code EntityRepository} seeds
+     * the first page with an empty cursor name, which only behaves as "before everything" while
+     * the order is ascending: {@code key > ''} admits every row, but the descending mirror
+     * {@code key < ''} admits none, so every descending listing came back empty. It also silently
+     * dropped ascending rows whose sort key really is the empty string — a definition declaring no
+     * test platforms — because those are not {@code > ''} either.
+     *
+     * <p>Built here rather than as a template hole because {@code @Define} substitution is not
+     * recursive: a fragment containing {@code <table>} would reach the database unexpanded.
+     *
+     * @param cursor the cursor's bind-parameter names, its id value and the id comparison that
+     *     breaks a sort-key tie in this direction
+     */
+    private String keysetCondition(String sortKey, String comparison, Cursor cursor) {
+      if (nullOrEmpty(cursor.id())) {
+        return "";
+      }
+
+      return String.format(
+          "AND (%s %s :%s OR (%s = :%s AND %s.id %s :%s)) ",
+          sortKey,
+          comparison,
+          cursor.nameParam(),
+          sortKey,
+          cursor.nameParam(),
+          getTableName(),
+          cursor.idComparison(),
+          cursor.idParam());
+    }
+
+    /**
+     * One end of the keyset walk. The id comparison is fixed per end rather than per sort
+     * direction: {@code listAfter} always takes the rows after the boundary id and
+     * {@code listBefore} the ones before it, whichever way the sort key runs.
+     */
+    record Cursor(String nameParam, String idParam, String id, String idComparison) {
+      static Cursor after(String id) {
+        return new Cursor("afterName", "afterId", id, ">");
+      }
+
+      static Cursor before(String id) {
+        return new Cursor("beforeName", "beforeId", id, "<");
+      }
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      ListConditions conditions = buildListConditions(filter);
+      SortSql sort = resolveSortSql(filter);
+
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          conditions.mysql(),
+          conditions.psql(),
+          sort.sortKey(),
+          keysetCondition(sort.sortKey(), sort.beforeCmp(), Cursor.before(beforeId)),
+          sort.pageOrder(),
+          sort.scanOrder(),
+          limit,
+          beforeName,
+          beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      ListConditions conditions = buildListConditions(filter);
+      SortSql sort = resolveSortSql(filter);
+
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          mysqlCondition.toString(),
-          psqlCondition.toString(),
+          conditions.mysql(),
+          conditions.psql(),
+          sort.sortKey(),
+          keysetCondition(sort.sortKey(), sort.afterCmp(), Cursor.after(afterId)),
+          sort.pageOrder(),
           limit,
           afterName,
           afterId);
@@ -331,115 +550,113 @@ public interface TimeSeriesDAOs {
 
     @Override
     default int listCount(ListFilter filter) {
-      String entityType = filter.getQueryParam("entityType");
-      String testPlatform = filter.getQueryParam("testPlatform");
-      String supportedDataType = filter.getQueryParam("supportedDataType");
-      String supportedService = filter.getQueryParam("supportedService");
-      String enabled = filter.getQueryParam("enabled");
-      String condition = filter.getCondition();
-
-      if (entityType == null
-          && testPlatform == null
-          && supportedDataType == null
-          && supportedService == null
-          && enabled == null) {
-        return EntityDAO.super.listCount(filter);
-      }
-
-      StringBuilder mysqlCondition = new StringBuilder();
-      StringBuilder psqlCondition = new StringBuilder();
-
-      mysqlCondition.append(String.format("%s ", condition));
-      psqlCondition.append(String.format("%s ", condition));
-
-      if (testPlatform != null) {
-        filter.queryParams.put("testPlatformLike", String.format("%%%s%%", testPlatform));
-        mysqlCondition.append("AND json_extract(json, '$.testPlatforms') LIKE :testPlatformLike ");
-        psqlCondition.append("AND json->>'testPlatforms' LIKE :testPlatformLike ");
-      }
-
-      if (entityType != null) {
-        mysqlCondition.append("AND entityType=:entityType ");
-        psqlCondition.append("AND entityType=:entityType ");
-      }
-
-      if (supportedDataType != null) {
-        filter.queryParams.put("supportedDataTypeExact", supportedDataType);
-        mysqlCondition.append(
-            "AND JSON_CONTAINS(json, JSON_QUOTE(:supportedDataTypeExact), '$.supportedDataTypes') ");
-        psqlCondition.append(
-            "AND json->'supportedDataTypes' @> to_jsonb(CAST(:supportedDataTypeExact AS TEXT)) ");
-      }
-
-      if (supportedService != null) {
-        filter.queryParams.put("supportedServiceLike", String.format("%%%s%%", supportedService));
-        mysqlCondition.append(
-            "AND (json_extract(json, '$.supportedServices') = JSON_ARRAY() "
-                + "OR json_extract(json, '$.supportedServices') IS NULL "
-                + "OR json_extract(json, '$.supportedServices') LIKE :supportedServiceLike) ");
-        psqlCondition.append(
-            "AND (json->>'supportedServices' = '[]' "
-                + "OR json->>'supportedServices' IS NULL "
-                + "OR json->>'supportedServices' LIKE :supportedServiceLike) ");
-      }
-
-      if (enabled != null) {
-        String enabledValue = Boolean.parseBoolean(enabled) ? "TRUE" : "FALSE";
-        mysqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-        psqlCondition.append("AND enabled=").append(enabledValue).append(" ");
-      }
+      ListConditions conditions = buildListConditions(filter);
 
       return listCount(
           getTableName(),
           filter.getQueryParams(),
           getNameHashColumn(),
-          mysqlCondition.toString(),
-          psqlCondition.toString());
+          conditions.mysql(),
+          conditions.psql());
     }
 
+    /**
+     * Reverse keyset scan: take the {@code limit} rows nearest the before-cursor by scanning away
+     * from it, then re-reverse the subquery into page order. The id tiebreaker is {@code DESC}
+     * inside — that is what "nearest" means when several rows share a sort key — and ascending
+     * outside, matching {@link #listAfter} and the cursor {@link TestDefinitionRepository} builds.
+     */
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name, id, json FROM <table> <mysqlCond> AND "
-                + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC  "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <mysqlCond> "
+                + "<keysetCond> "
+                + "ORDER BY sort_key <scanOrder>,id DESC  "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id",
+                + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM ("
-                + "SELECT name, id, json FROM <table> <psqlCond> AND "
-                + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId))  "
-                + "ORDER BY name DESC,id DESC "
+                + "SELECT <sortKey> AS sort_key, id, json FROM <table> <psqlCond> "
+                + "<keysetCond> "
+                + "ORDER BY sort_key <scanOrder>,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id",
+                + ") last_rows_subquery ORDER BY sort_key <pageOrder>,id",
         connectionType = POSTGRES)
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
+        @Define("sortKey") String sortKey,
+        @Define("keysetCond") String keysetCond,
+        @Define("pageOrder") String pageOrder,
+        @Define("scanOrder") String scanOrder,
         @Bind("limit") int limit,
         @Bind("beforeName") String beforeName,
         @Bind("beforeId") String beforeId);
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <mysqlCond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  ORDER BY name,id LIMIT :limit",
+            "SELECT json FROM <table> <mysqlCond> <keysetCond> "
+                + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT json FROM <table> <psqlCond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId))  ORDER BY name,id LIMIT :limit",
+            "SELECT json FROM <table> <psqlCond> <keysetCond> "
+                + "ORDER BY <sortKey> <pageOrder>,id LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("mysqlCond") String mysqlCond,
         @Define("psqlCond") String psqlCond,
+        @Define("sortKey") String sortKey,
+        @Define("keysetCond") String keysetCond,
+        @Define("pageOrder") String pageOrder,
         @Bind("limit") int limit,
         @Bind("afterName") String afterName,
         @Bind("afterId") String afterId);
+
+    /**
+     * Keyset partitioning (the distributed indexers) seeds itself with the cursor at an absolute
+     * offset and then pages forward through {@link #listAfter}. The inherited lookup walks {@code
+     * ORDER BY name, id}, so it has to be re-pointed at whichever sort key is active — otherwise
+     * the seed cursor names a row from a different position in the sequence and the partition
+     * silently skips or repeats definitions.
+     */
+    @Override
+    default CursorRow getCursorAtOffset(ListFilter filter, int offset) {
+      SortSql sort = resolveSortSql(filter);
+
+      return getCursorAtOffsetBySortKey(
+          getTableName(),
+          filter.getQueryParams(),
+          filter.getCondition(),
+          sort.sortKey(),
+          sort.pageOrder(),
+          offset);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT <sortKey> AS name, id FROM <table> <cond> "
+                + "ORDER BY 1 <pageOrder>,2 LIMIT 1 OFFSET :offset",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT <sortKey> AS name, id FROM <table> <cond> "
+                + "ORDER BY 1 <pageOrder>,2 LIMIT 1 OFFSET :offset",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityDAO.CursorRowMapper.class)
+    CursorRow getCursorAtOffsetBySortKey(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("sortKey") String sortKey,
+        @Define("pageOrder") String pageOrder,
+        @Bind("offset") int offset);
 
     @ConnectionAwareSqlQuery(
         value = "SELECT count(<nameHashColumn>) FROM <table> <mysqlCond>",
@@ -1175,6 +1392,37 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     void markRunningEntriesFailedByName(@Bind("appName") String appName);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT appName FROM apps_extension_time_series WHERE extension = 'status' AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT appName FROM apps_extension_time_series WHERE extension = 'status' AND json->>'status' = 'running'",
+        connectionType = POSTGRES)
+    List<String> listAppNamesWithRunningStatus();
+
+    /**
+     * Ends the named apps' runs that started before {@code startedBefore} and are still running as
+     * failed with an end time and the given {@code failure}, so a run whose server stopped says why
+     * instead of staying failed without a reason. Runs that started later belong to a server that
+     * is up and are left alone. Other failure-context entries are kept; an earlier {@code failure}
+     * is replaced whole.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'failed', '$.endTime', :endTime, '$.failureContext', JSON_SET(IF(JSON_TYPE(JSON_EXTRACT(json, '$.failureContext')) = 'OBJECT', JSON_EXTRACT(json, '$.failureContext'), JSON_OBJECT()), '$.failure', CAST(:failure AS JSON))) WHERE extension = 'status' AND appName IN (<appNames>) AND timestamp < :startedBefore AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) = 'running'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE apps_extension_time_series SET json = jsonb_set(jsonb_set(jsonb_set(json, '{status}', '\"failed\"'), '{endTime}', to_jsonb(CAST(:endTime AS bigint))), '{failureContext}', jsonb_set(CASE WHEN jsonb_typeof(json->'failureContext') = 'object' THEN json->'failureContext' ELSE '{}'::jsonb END, '{failure}', CAST(:failure AS jsonb))) WHERE extension = 'status' AND appName IN (<appNames>) AND timestamp < :startedBefore AND json->>'status' = 'running'",
+        connectionType = POSTGRES)
+    int markRunningEntriesInterrupted(
+        @BindList("appNames") List<String> appNames,
+        @Bind("failure") String failure,
+        @Bind("endTime") long endTime,
+        @Bind("startedBefore") long startedBefore);
+
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE apps_extension_time_series SET json = JSON_SET(json, '$.status', 'running') WHERE appId = :appId AND extension = 'status' AND timestamp = :timestamp",
@@ -1348,6 +1596,17 @@ public interface TimeSeriesDAOs {
     String TABLE_PROFILE_EXTENSION = "table.tableProfile";
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+
+    @SqlQuery(
+        "SELECT json FROM profiler_data_time_series "
+            + "WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+            + "AND timestamp <= :endTs ORDER BY timestamp DESC, operation DESC LIMIT :limit OFFSET :offset")
+    List<String> listProfileHistory(
+        @BindFQN("entityFQNHash") String entityFQN,
+        @Bind("extension") String extension,
+        @Bind("endTs") long endTs,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset);
 
     /**
      * Purges the profiler history left behind by a hard-deleted table, bounded to profiles recorded
@@ -1735,6 +1994,16 @@ public interface TimeSeriesDAOs {
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
 
+    // Keeps the incident row's denormalized severity in step with a severity edited on the
+    // record that row points at; an edit on any older record of the chain leaves it alone.
+    @SqlUpdate(
+        "UPDATE test_case_incident SET severity = :severity "
+            + "WHERE stateId = :stateId AND latestRecordId = :recordId")
+    void updateIncidentSeverity(
+        @Bind("stateId") String stateId,
+        @Bind("recordId") String recordId,
+        @Bind("severity") String severity);
+
     @SqlQuery(
         "SELECT json FROM "
             + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
@@ -1754,22 +2023,25 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> outerParams,
         @Define("outerCond") String outerFilter);
 
+    // The status, the assignee and the severity describe an incident as it stands, so a latest
+    // listing applies them to each incident's latest record rather than to the records it is
+    // ranked from — or an incident resolved since would still match through an earlier record.
+    List<String> LATEST_RECORD_PARAMS =
+        List.of("testCaseResolutionStatusType", "incidentAssignee", "incidentListSeverity");
+
+    static ListFilter latestRecordFilter(ListFilter filter) {
+      ListFilter outerFilter = new ListFilter(null);
+      LATEST_RECORD_PARAMS.forEach(
+          param -> outerFilter.addQueryParam(param, filter.getQueryParam(param)));
+      return outerFilter;
+    }
+
     @Override
     default List<String> listWithOffset(
         ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
       if (latest) {
-        // When fetching latest, we need to apply Assignee and Status filters on the outer query
-        // i.e. after we have fetched the latest records for each testCaseFQNHash
-        // We'll first get the values, remove then from `filter` and then create `outerFilter`
-        String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
-        filter.removeQueryParam("testCaseResolutionStatusType");
-        String assignee = filter.getQueryParam("incidentAssignee");
-        filter.removeQueryParam("incidentAssignee");
-
-        ListFilter outerFilter = new ListFilter(null);
-        outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-        outerFilter.addQueryParam("incidentAssignee", assignee);
-
+        ListFilter outerFilter = latestRecordFilter(filter);
+        LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
         String condition = filter.getCondition();
         condition = addOriginEntityFQNJoin(filter, condition);
 
@@ -1798,19 +2070,44 @@ public interface TimeSeriesDAOs {
           endTs);
     }
 
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
-      String condition = filter.getCondition();
-      condition = addOriginEntityFQNJoin(filter, condition);
-      return latest
-          ? listCount(
-              getTimeSeriesTableName(),
-              getPartitionFieldName(),
-              filter.getQueryParams(),
-              condition,
-              startTs,
-              endTs)
-          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      if (!latest) {
+        String condition = addOriginEntityFQNJoin(filter, filter.getCondition());
+        return listCount(
+            getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      String condition = addOriginEntityFQNJoin(innerFilter, innerFilter.getCondition());
+      return listCount(
+          getTimeSeriesTableName(),
+          innerFilter.getQueryParams(),
+          condition,
+          getPartitionFieldName(),
+          startTs,
+          endTs,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
     }
 
     @Override
@@ -1861,6 +2158,24 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     int deleteOrphanedRecords(@Bind("limit") int limit);
 
+    // Statuses an open incident can currently be in, from the most actionable to the least.
+    // Resolved is left out throughout: a resolved incident has left the group, so it neither
+    // counts toward the group nor appears in the per-status breakdown of it.
+    //
+    // This is the one place the triage order is written down: the statusRank expression below,
+    // the per-status count columns and the repository's breakdown ordering are all derived from
+    // it, so a new status value cannot drift between them.
+    List<TestCaseResolutionStatusTypes> OPEN_STATUSES =
+        List.of(
+            TestCaseResolutionStatusTypes.Assigned,
+            TestCaseResolutionStatusTypes.Ack,
+            TestCaseResolutionStatusTypes.New);
+
+    // Column a status' incident count is selected under, e.g. statusCountAssigned.
+    static String statusCountColumn(TestCaseResolutionStatusTypes status) {
+      return "statusCount" + status.value();
+    }
+
     String INCIDENT_GROUPS_FROM =
         """
         FROM test_case_incident i
@@ -1872,31 +2187,63 @@ public interface TimeSeriesDAOs {
     @SqlQuery(
         "SELECT <groupKey> AS groupKey, <groupType> AS groupType, COUNT(DISTINCT i.stateId) AS incidentCount, "
             + "MIN(i.severity) AS severity, "
-            + "MIN(CASE i.testCaseResolutionStatusType WHEN 'Assigned' THEN 1 WHEN 'Ack' THEN 2 ELSE 3 END) AS statusRank, "
+            + "<statusRank> AS statusRank, "
+            + "<statusCounts>, "
             + "<assigneesExpr> AS assignees, "
             + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
             + "MIN(i.createdAt) AS firstSeen, "
             + "MAX(i.updatedAt) AS lastSeen, "
             + "<createdAtAgg> AS incidentCreatedAt, "
+            + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
+            + "COUNT(DISTINCT "
+            + TEST_DEFINITION_ID
+            + ") AS testDefinitionCount, "
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
-            + "ORDER BY incidentCount <sortOrder>, groupKey "
+            + "ORDER BY <orderBy>, groupKey "
             + "LIMIT :limit OFFSET :offset")
     @RegisterRowMapper(TestCaseIncidentGroupCountMapper.class)
     List<TestCaseIncidentGroupCount> listIncidentGroups(
         @Define("openStatuses") String openStatuses,
+        @Define("statusRank") String statusRank,
+        @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
+        @Define("tableFqn") String tableFqn,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
         @Define("dimensionJoin") String dimensionJoin,
         @Define("cond") String cond,
-        @Define("sortOrder") String sortOrder,
+        @Define("orderBy") String orderBy,
         @BindMap Map<String, ?> params,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
+
+    // The few related entities each group of a page names inline: those most of its incidents
+    // carry, ranked here so the payload is bounded by the page rather than by its incidents.
+    @SqlQuery(
+        "SELECT groupKey, relatedKey FROM ("
+            + "SELECT <groupKey> AS groupKey, <relatedKey> AS relatedKey, "
+            + "ROW_NUMBER() OVER (PARTITION BY <groupKey> "
+            + "ORDER BY COUNT(DISTINCT i.stateId) DESC, <relatedKey>) AS relatedRank "
+            + INCIDENT_GROUPS_FROM
+            + "AND <relatedKey> IS NOT NULL AND <groupKey> IN (<groupKeys>) "
+            + "GROUP BY <groupByCols>, <relatedKey>) ranked "
+            + "WHERE :relatedLimit >= relatedRank "
+            + "ORDER BY groupKey, relatedRank")
+    @RegisterRowMapper(IncidentGroupRelatedKeyMapper.class)
+    List<IncidentGroupRelatedKey> listIncidentGroupRelatedKeys(
+        @Define("openStatuses") String openStatuses,
+        @Define("groupKey") String groupKey,
+        @Define("groupByCols") String groupByCols,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String cond,
+        @Define("relatedKey") String relatedKey,
+        @BindList("groupKeys") List<String> groupKeys,
+        @BindMap Map<String, ?> params,
+        @Bind("relatedLimit") int relatedLimit);
 
     @SqlQuery("SELECT COUNT(DISTINCT <groupKey>) " + INCIDENT_GROUPS_FROM)
     int countIncidentGroups(
@@ -1922,31 +2269,56 @@ public interface TimeSeriesDAOs {
     }
 
     default IncidentGroupPage listIncidentGroups(
-        IncidentGroupBy groupBy, ListFilter filter, String sortOrder, int limit, int offset) {
+        IncidentGroupBy groupBy, ListFilter filter, String orderBy, int limit, int offset) {
       IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
       String condition = filter.getCondition();
+      // One group on its own, as a link to its drill-down reopens it: matched on the very key
+      // it is grouped under, so it counts what it counts in the full listing.
+      if (filter.getQueryParam("incidentGroupKey") != null) {
+        condition += " AND " + dimension.groupKey() + " = :incidentGroupKey";
+      }
       Map<String, Object> params = new HashMap<>(filter.getQueryParams());
       List<String> openStatusBinds = new ArrayList<>();
+      List<String> statusCountExprs = new ArrayList<>();
+      List<String> statusRankWhens = new ArrayList<>();
       int openStatusIndex = 0;
-      for (TestCaseResolutionStatusTypes status : TestCaseResolutionStatusTypes.values()) {
-        if (status != TestCaseResolutionStatusTypes.Resolved) {
-          String bind = "openStatus" + openStatusIndex++;
-          params.put(bind, status.value());
-          openStatusBinds.add(":" + bind);
-        }
+      for (TestCaseResolutionStatusTypes status : OPEN_STATUSES) {
+        String bind = "openStatus" + openStatusIndex++;
+        params.put(bind, status.value());
+        openStatusBinds.add(":" + bind);
+        statusCountExprs.add(
+            String.format(
+                "COUNT(DISTINCT CASE WHEN i.testCaseResolutionStatusType = :%s THEN i.stateId END) AS %s",
+                bind, statusCountColumn(status)));
+        // 1-based so the rank reads as a position in OPEN_STATUSES; the repository turns it back
+        // into the status at that position. The value is inlined rather than bound: a simple CASE
+        // is a rendered expression here, and the strings come from the enum, never from input.
+        statusRankWhens.add(String.format("WHEN '%s' THEN %d", status.value(), openStatusIndex));
       }
       String openStatuses = String.join(", ", openStatusBinds);
+      // A status outside the open set cannot reach this query — the WHERE clause bars it — but
+      // SQL needs an ELSE, and ranking it past the last one keeps MIN() picking a real status.
+      String statusRank =
+          String.format(
+              "MIN(CASE i.testCaseResolutionStatusType %s ELSE %d END)",
+              String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
+      // A test case has one test definition, so this join does not multiply incident rows; it is
+      // what lets a group of any dimension name its definitions.
+      String joins = dimension.join() + " " + TEST_DEFINITION_JOIN;
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
+              statusRank,
+              String.join(", ", statusCountExprs),
               assigneesExpr(),
               createdAtAggExpr(),
+              tableFqnExpr(),
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
-              dimension.join(),
+              joins,
               condition,
-              sortOrder,
+              orderBy,
               params,
               limit,
               offset);
@@ -1958,29 +2330,94 @@ public interface TimeSeriesDAOs {
       } else if (offset == 0) {
         total = 0;
       } else {
-        total =
-            countIncidentGroups(
-                openStatuses, dimension.groupKey(), dimension.join(), condition, params);
+        total = countIncidentGroups(openStatuses, dimension.groupKey(), joins, condition, params);
       }
-      return new IncidentGroupPage(counts, total);
+      IncidentGroupScope scope =
+          new IncidentGroupScope(dimension, openStatuses, joins, condition, params);
+      List<String> groupKeys = counts.stream().map(TestCaseIncidentGroupCount::groupKey).toList();
+      return new IncidentGroupPage(
+          counts,
+          total,
+          topRelatedKeys(scope, tableFqnExpr(), groupKeys),
+          topRelatedKeys(scope, TEST_DEFINITION_ID, groupKeys));
+    }
+
+    // Related keys by group key, each group's list ordered from the most incidents down.
+    private Map<String, List<String>> topRelatedKeys(
+        IncidentGroupScope scope, String relatedKey, List<String> groupKeys) {
+      List<IncidentGroupRelatedKey> rows =
+          groupKeys.isEmpty()
+              ? List.of()
+              : listIncidentGroupRelatedKeys(
+                  scope.openStatuses(),
+                  scope.dimension().groupKey(),
+                  scope.dimension().groupByCols(),
+                  scope.joins(),
+                  scope.condition(),
+                  relatedKey,
+                  groupKeys,
+                  scope.params(),
+                  INCIDENT_GROUP_RELATED_LIMIT);
+      return rows.stream()
+          .collect(
+              Collectors.groupingBy(
+                  IncidentGroupRelatedKey::groupKey,
+                  Collectors.mapping(IncidentGroupRelatedKey::relatedKey, Collectors.toList())));
     }
 
     // JSON aggregates instead of GROUP_CONCAT/STRING_AGG: the 1024-char group_concat_max_len
     // default would truncate an assignee-dense group mid-name. MySQL's JSON_ARRAYAGG cannot take
     // DISTINCT, so the array may carry nulls and duplicates — the repository dedupes on parse.
     private static String assigneesExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "JSON_ARRAYAGG(i.assignee)"
-          : "JSON_AGG(i.assignee)";
+      return jsonArrayAgg("i.assignee");
     }
 
     private static String createdAtAggExpr() {
-      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-          ? "JSON_ARRAYAGG(i.createdAt)"
-          : "JSON_AGG(i.createdAt)";
+      return jsonArrayAgg("i.createdAt");
     }
 
-    record IncidentGroupPage(List<TestCaseIncidentGroupCount> counts, int total) {}
+    private static String jsonArrayAgg(String expression) {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? String.format("JSON_ARRAYAGG(%s)", expression)
+          : String.format("JSON_AGG(%s)", expression);
+    }
+
+    // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
+    // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
+    // instead.
+    private static String tableFqnExpr() {
+      return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+          ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
+          : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+    }
+
+    // Outer, so an incident whose test case lost its definition relationship still counts, as it
+    // still lists in the flat listing.
+    String TEST_DEFINITION_JOIN =
+        String.format(
+            "LEFT JOIN entity_relationship tdr ON tdr.toId = tc.id AND tdr.relation = %d "
+                + "AND tdr.fromEntity = '%s' AND tdr.toEntity = '%s'",
+            CONTAINS.ordinal(), Entity.TEST_DEFINITION, Entity.TEST_CASE);
+
+    String TEST_DEFINITION_ID = "tdr.fromId";
+
+    // Related tables and test definitions a group names inline; its counts carry the full number.
+    int INCIDENT_GROUP_RELATED_LIMIT = 5;
+
+    /** A page of groups, with the top related table FQNs and test definition ids of each group. */
+    record IncidentGroupPage(
+        List<TestCaseIncidentGroupCount> counts,
+        int total,
+        Map<String, List<String>> tables,
+        Map<String, List<String>> testDefinitions) {}
+
+    // The FROM and WHERE of a grouping, which the page and its related-entity ranking share.
+    record IncidentGroupScope(
+        IncidentGroupDimension dimension,
+        String openStatuses,
+        String joins,
+        String condition,
+        Map<String, Object> params) {}
 
     record IncidentGroupDimension(
         String groupKey, String groupType, String groupByCols, String join) {
@@ -1988,34 +2425,43 @@ public interface TimeSeriesDAOs {
       static IncidentGroupDimension from(IncidentGroupBy groupBy) {
         return switch (groupBy) {
           case Table -> forTable();
-          case TestDefinition -> forRelationship(
-              CONTAINS, String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION));
-          case Owner -> forRelationship(
-              OWNS, String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM));
+          case TestDefinition -> forTestDefinition();
+          case Owner -> forOwner();
         };
       }
 
-      // test_case.entityFQN is column-level for column test cases, so the origin table FQN is
-      // extracted from the entityLink (<#E::table::fqn> or <#E::table::fqn::columns::col>)
-      // instead.
       private static IncidentGroupDimension forTable() {
-        String tableFqn =
-            Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
-                ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(tc.entityLink, '::', 3), '::', -1))"
-                : "TRIM(TRAILING '>' FROM SPLIT_PART(tc.entityLink, '::', 3))";
+        String tableFqn = tableFqnExpr();
         return new IncidentGroupDimension(
             tableFqn, String.format("'%s'", Entity.TABLE), tableFqn, "");
       }
 
-      private static IncidentGroupDimension forRelationship(
-          Relationship relation, String fromEntityCondition) {
-        String join =
-            String.format(
-                "INNER JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
-                    + "AND %s AND er.toEntity = '%s'",
-                relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
+      private static IncidentGroupDimension forTestDefinition() {
+        String definitions = String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION);
+        String join = relationshipJoin("INNER", CONTAINS, definitions);
         return new IncidentGroupDimension(
             "er.fromId", "er.fromEntity", "er.fromId, er.fromEntity", join);
+      }
+
+      // A test case always has a test definition, but it need not have an owner — and the
+      // incidents of an unowned test case are still incidents. The owner dimension therefore
+      // joins outwards and gathers the rows that match no owner under an empty group key, which
+      // the repository turns into the "no owner" group. An inner join would drop them from the
+      // dimension instead, reading as though those test cases had no incidents at all.
+      private static IncidentGroupDimension forOwner() {
+        String owners = String.format("er.fromEntity IN ('%s', '%s')", Entity.USER, Entity.TEAM);
+        String join = relationshipJoin("LEFT", OWNS, owners);
+        String groupByCols = "er.fromId, er.fromEntity";
+        return new IncidentGroupDimension(
+            "COALESCE(er.fromId, '')", "COALESCE(er.fromEntity, '')", groupByCols, join);
+      }
+
+      private static String relationshipJoin(
+          String joinType, Relationship relation, String fromEntityCondition) {
+        return String.format(
+            "%s JOIN entity_relationship er ON er.toId = tc.id AND er.relation = %d "
+                + "AND %s AND er.toEntity = '%s'",
+            joinType, relation.ordinal(), fromEntityCondition, Entity.TEST_CASE);
       }
     }
   }
@@ -2265,27 +2711,49 @@ public interface TimeSeriesDAOs {
       int incidentCount,
       String severity,
       int statusRank,
+      Map<String, Integer> statusCounts,
       String assignees,
       int assigneeCount,
       long firstSeen,
       long lastSeen,
       String incidentCreatedAt,
+      int tableCount,
+      int testDefinitionCount,
       int totalGroups) {}
+
+  record IncidentGroupRelatedKey(String groupKey, String relatedKey) {}
+
+  class IncidentGroupRelatedKeyMapper implements RowMapper<IncidentGroupRelatedKey> {
+    @Override
+    public IncidentGroupRelatedKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new IncidentGroupRelatedKey(rs.getString("groupKey"), rs.getString("relatedKey"));
+    }
+  }
 
   class TestCaseIncidentGroupCountMapper implements RowMapper<TestCaseIncidentGroupCount> {
     @Override
     public TestCaseIncidentGroupCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      Map<String, Integer> statusCounts = new LinkedHashMap<>();
+      for (TestCaseResolutionStatusTypes status :
+          TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES) {
+        statusCounts.put(
+            status.value(),
+            rs.getInt(TestCaseResolutionStatusTimeSeriesDAO.statusCountColumn(status)));
+      }
       return new TestCaseIncidentGroupCount(
           rs.getString("groupKey"),
           rs.getString("groupType"),
           rs.getInt("incidentCount"),
           rs.getString("severity"),
           rs.getInt("statusRank"),
+          statusCounts,
           rs.getString("assignees"),
           rs.getInt("assigneeCount"),
           rs.getLong("firstSeen"),
           rs.getLong("lastSeen"),
           rs.getString("incidentCreatedAt"),
+          rs.getInt("tableCount"),
+          rs.getInt("testDefinitionCount"),
           rs.getInt("totalGroups"));
     }
   }

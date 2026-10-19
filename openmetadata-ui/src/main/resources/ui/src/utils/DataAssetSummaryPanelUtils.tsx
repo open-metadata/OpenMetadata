@@ -55,12 +55,13 @@ import {
 } from './DataAssetSummaryPanelPureUtils';
 import { getEntityName } from './EntityNameUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from './EntityPureUtils';
+import { renderHighlightedText } from './EntitySearchUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-import { bytesToSize, stringToHTML } from './StringUtils';
+import { bytesToSize } from './StringUtils';
 import { getTierTags } from './TablePureUtils';
 
 const entityTierRenderer = (tier?: TagLabel) => {
@@ -336,7 +337,7 @@ const getPipelineOverview = (pipelineDetails: Pipeline) => {
     {
       name: `${i18n.t('label.pipeline')} ${i18n.t('label.url-uppercase')}`,
       dataTestId: 'pipeline-url-label',
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -377,7 +378,7 @@ const getDashboardOverview = (dashboardDetails: Dashboard) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.dashboard')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -556,7 +557,7 @@ const getChartOverview = (chartDetails: Chart) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.chart')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: sourceUrl,
       isLink: true,
       isExternal: true,
@@ -618,7 +619,7 @@ const getDataModelOverview = (dataModelDetails: DashboardDataModel) => {
     ...getCommonOverview({ owners, domains }),
     {
       name: `${i18n.t('label.data-model')} ${i18n.t('label.url-uppercase')}`,
-      value: stringToHTML(displayName ?? '') || NO_DATA,
+      value: renderHighlightedText(displayName ?? '') || NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DASHBOARD_DATA_MODEL,
         fullyQualifiedName ?? ''

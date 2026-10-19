@@ -97,6 +97,8 @@ export interface ServiceConnectionClass {
  * SQL Server Reporting Services (SSRS) provides a set of on-premises tools and services to
  * create, deploy, and manage paginated reports
  *
+ * Rill Connection Config
+ *
  * SAP S/4HANA Connection Config for Embedded Analytics
  *
  * Omni BI connector: models, topics, workbooks/dashboards and lineage
@@ -115,9 +117,9 @@ export interface ServiceConnectionClass {
  *
  * Databricks Connection Config
  *
- * Db2 Connection Config
+ * Databend Database Connection Config
  *
- * DeltaLake Database Connection Config
+ * Db2 Connection Config
  *
  * Druid Connection Config
  *
@@ -221,6 +223,8 @@ export interface ServiceConnectionClass {
  *
  * SAP BW/4HANA Database Connection Config
  *
+ * Neo4j Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -298,6 +302,8 @@ export interface ServiceConnectionClass {
  * Salesforce Data 360 Pipeline Connection Config
  *
  * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
+ *
+ * Tableau Pipeline Connection Config
  *
  * MlFlow Connection Config
  *
@@ -390,6 +396,8 @@ export interface Connection {
      *
      * Hex API token for authentication. Can be personal or workspace token.
      *
+     * API token to authenticate with Rill.
+     *
      * API token to authenticate with Omni.
      *
      * To Connect to Dagster Cloud
@@ -429,6 +437,8 @@ export interface Connection {
      * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
      *
      * Client SSL verification.
+     *
+     * Boolean marking if we need to verify the SSL certs for Rill. Default to True.
      *
      * Client SSL verification. Use 'no-ssl' for plain HTTP, 'ignore' to skip certificate
      * validation, 'validate' to verify against a CA certificate.
@@ -534,6 +544,8 @@ export interface Connection {
      *
      * Host and Port of the Ssrs instance.
      *
+     * URL of a Rill Developer runtime or Rill Cloud project endpoint.
+     *
      * Base URL of the SAP S/4HANA instance (e.g. https://s4hana.example.com).
      *
      * URL of the Omni instance, e.g. `https://your-org.omniapp.co`. The `/api` path is added
@@ -548,6 +560,8 @@ export interface Connection {
      * Complete ClickZetta instance and service host, with an optional port.
      *
      * Host and port of the Databricks service.
+     *
+     * Host and port of the Databend HTTP query service. The default self-hosted port is 8000.
      *
      * Host and port of the DB2 service.
      *
@@ -615,6 +629,9 @@ export interface Connection {
      *
      * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      *
+     * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
+     * 7687.
+     *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
      * Host and port of the Amundsen Neo4j Connection. This expect a URI format like:
@@ -643,6 +660,8 @@ export interface Connection {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Tableau Server URL.
      *
      * Host and port of the ElasticSearch service.
      *
@@ -687,6 +706,8 @@ export interface Connection {
      * Password to connect to AzureSQL.
      *
      * Password to connect to Clickhouse.
+     *
+     * Password to connect to Databend.
      *
      * Password to connect to DB2.
      *
@@ -746,6 +767,8 @@ export interface Connection {
      *
      * Password for the HANA database user.
      *
+     * Password to connect to Neo4j.
+     *
      * password to connect to the Amundsen Neo4j Connection.
      *
      * password to connect  to the Atlas.
@@ -771,6 +794,9 @@ export interface Connection {
      * metadata in Clickhouse.
      *
      * Username to connect to ClickZetta.
+     *
+     * Username to connect to Databend. The user must be able to read system and
+     * information_schema metadata.
      *
      * Username to connect to DB2. This user should have privileges to read all the metadata in
      * DB2.
@@ -882,6 +908,9 @@ export interface Connection {
      *
      * HANA database username with access to BW metadata tables.
      *
+     * Username to connect to Neo4j. The user needs read access to the graph schema of the
+     * database.
+     *
      * username to connect to the Amundsen Neo4j Connection.
      *
      * username to connect  to the Atlas. This user should have privileges to read all the
@@ -953,7 +982,7 @@ export interface Connection {
      *
      * Matillion Auth Configuration
      */
-    connection?: AirflowConnectionConnection;
+    connection?: ConnectionClass;
     /**
      * Tableau API version. If not provided, the version will be used from the tableau server.
      *
@@ -985,6 +1014,9 @@ export interface Connection {
      * Choose how to authenticate with SAP SuccessFactors OData API.
      *
      * Choose between Dremio Cloud (SaaS) or Dremio Software (self-hosted) authentication.
+     *
+     * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+     * Fabric SQL endpoint.
      *
      * NATS authentication method. Leave empty for anonymous authentication.
      *
@@ -1039,7 +1071,12 @@ export interface Connection {
     /**
      * Mode Workspace Name
      */
-    workspaceName?:     string;
+    workspaceName?: string;
+    /**
+     * Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP
+     * endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS
+     * endpoint, set sslmode to enable.
+     */
     connectionOptions?: { [key: string]: string };
     /**
      * Source Python Class Name to instantiated by the ingestion workflow
@@ -1151,10 +1188,7 @@ export interface Connection {
     /**
      * Billing Project ID
      */
-    billingProjectId?: string;
-    /**
-     * If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.
-     */
+    billingProjectId?:    string;
     connectionArguments?: { [key: string]: any };
     /**
      * Cost per TiB for BigQuery usage
@@ -1173,6 +1207,9 @@ export interface Connection {
      *
      * Regex to only include or exclude matching databases.
      *
+     * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+     * ingested.
+     *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
      */
@@ -1180,12 +1217,13 @@ export interface Connection {
     /**
      * Option to include policy tags as part of column description.
      */
-    includePolicyTags?:       boolean;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    includePolicyTags?: boolean;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      *
      * Regex to only include or exclude matching schemas.
+     *
+     * Regex to include or exclude Databend databases.
      *
      * Regex to only include/exclude schemas that matches the pattern. System schemas
      * (information_schema, _statistics_, sys) are excluded by default.
@@ -1207,12 +1245,15 @@ export interface Connection {
      * Mongo connection scheme options.
      *
      * Couchbase driver scheme options.
+     *
+     * Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.
      */
     scheme?: AirflowConnectionScheme;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
+    supportsAutoPartitionDetection?:        boolean;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -1228,6 +1269,8 @@ export interface Connection {
      * Regex to only include/exclude tables that matches the pattern.
      *
      * Regex to only include or exclude matching tables.
+     *
+     * Regex to include or exclude tables and views.
      *
      * Regex to include/exclude FHIR resource types
      *
@@ -1271,6 +1314,8 @@ export interface Connection {
      *
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
+     *
+     * Neo4j database to extract metadata from. If left blank, the user's home database is used.
      */
     databaseName?: string;
     /**
@@ -1359,6 +1404,10 @@ export interface Connection {
      * attempts to scan all the schemas.
      *
      * Optional schema restriction. When omitted, OpenMetadata attempts to scan all schemas.
+     *
+     * Optional Databend database to ingest. It is also used as the initial database of the
+     * connection. When omitted, the connection starts in the `default` database and all
+     * accessible Databend databases are scanned as OpenMetadata schemas.
      *
      * databaseSchema of the data source. This is optional parameter, if you would like to
      * restrict the metadata reading to a single databaseSchema. When left blank, OpenMetadata
@@ -1464,14 +1513,6 @@ export interface Connection {
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
     /**
-     * Available sources to fetch the metadata.
-     *
-     * Available sources to fetch files.
-     *
-     * Available sources to fetch metadata.
-     */
-    configSource?: DeltaLakeConfigurationSource;
-    /**
      * Authentication mode to connect to hive.
      *
      * Choose between Basic authentication (for self-hosted) or OAuth 2.0 client credentials
@@ -1504,8 +1545,10 @@ export interface Connection {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -1515,7 +1558,9 @@ export interface Connection {
     includeSynonyms?: boolean;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -1526,6 +1571,13 @@ export interface Connection {
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
+    /**
+     * Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data
+     * dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped.
+     * When enabled, GTTs are ingested with TableType=Local so they can be distinguished from
+     * regular tables.
+     */
+    includeTemporaryTables?: boolean;
     /**
      * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
      * you need to enable thick connection mode. By default, we bring instant client 19 and
@@ -1736,6 +1788,12 @@ export interface Connection {
      */
     bucketName?: string;
     /**
+     * Available sources to fetch files.
+     *
+     * Available sources to fetch metadata.
+     */
+    configSource?: DataLakeConfigurationSource;
+    /**
      * Prefix of the data source.
      */
     prefix?: string;
@@ -1753,6 +1811,11 @@ export interface Connection {
      * Hostname of the Couchbase service.
      */
     hostport?: string;
+    /**
+     * Ingest the measures of a Unity Catalog metric view as Metric entities, and the lineage
+     * from the relations it reads.
+     */
+    includeMetricViews?: boolean;
     /**
      * Enable dataflow for ingestion
      */
@@ -1857,6 +1920,16 @@ export interface Connection {
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
      */
     abapSchema?: string;
+    /**
+     * Also ingest relationship types as tables in the `relationships` schema, with their
+     * properties as columns.
+     */
+    includeRelationships?: boolean;
+    /**
+     * Regex to only include/exclude node and relationship properties (columns) that match the
+     * pattern, e.g. properties written back by graph algorithms.
+     */
+    propertyFilterPattern?: FilterPattern;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -2161,6 +2234,8 @@ export interface Connection {
      * Pipeline Service Number Of Status
      *
      * Number of past flow run statuses to ingest per flow.
+     *
+     * Number of recent runs to fetch per flow or extract refresh.
      */
     numberOfStatus?: number;
     /**
@@ -2171,6 +2246,8 @@ export interface Connection {
      * Regex to only include/exclude pipelines that matches the pattern.
      *
      * Regex to only include/exclude Process Chains that match the pattern.
+     *
+     * Regex exclude or include pipelines that match the pattern.
      */
     pipelineFilterPattern?: FilterPattern;
     /**
@@ -2327,6 +2404,12 @@ export interface Connection {
      * {"S3_Connector": "my-s3-service"}
      */
     serviceMapping?: string;
+    /**
+     * Ingest the extract refresh tasks of published data sources and workbooks as pipelines,
+     * with their refresh jobs as pipeline status. Reading refresh job history requires a site
+     * administrator.
+     */
+    includeExtractRefreshes?: boolean;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -2518,6 +2601,13 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only include or exclude matching tables.
  *
+ * Regex to include or exclude Databend catalogs. Only the `default` catalog is currently
+ * ingested.
+ *
+ * Regex to include or exclude Databend databases.
+ *
+ * Regex to include or exclude tables and views.
+ *
  * Regex to only fetch containers that matches the pattern.
  *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
@@ -2545,6 +2635,9 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
  * pattern.
  *
+ * Regex to only include/exclude node and relationship properties (columns) that match the
+ * pattern, e.g. properties written back by graph algorithms.
+ *
  * Regex to only fetch topics that matches the pattern.
  *
  * Regex to only fetch subjects/streams that match the pattern.
@@ -2560,6 +2653,8 @@ export interface UsernamePasswordAuthentication {
  * Regex to only include/exclude pipelines that matches the pattern.
  *
  * Regex to only include/exclude Process Chains that match the pattern.
+ *
+ * Regex exclude or include pipelines that match the pattern.
  *
  * Regex to only fetch MlModels with names matching the pattern.
  *
@@ -2710,6 +2805,15 @@ export enum AuthProvider {
  * Authentication configuration for self-hosted Dremio Software using username and password.
  * Dremio Software is deployed on-premises or in your own cloud infrastructure.
  *
+ * Credential the service principal uses to obtain Microsoft Entra ID access tokens for the
+ * Fabric SQL endpoint.
+ *
+ * Authenticate the service principal with a client secret of its Microsoft Entra ID
+ * application.
+ *
+ * Authenticate the service principal with an X.509 certificate registered on its Microsoft
+ * Entra ID application.
+ *
  * NATS authentication method. Leave empty for anonymous authentication.
  *
  * Username and password authentication for NATS.
@@ -2815,6 +2919,9 @@ export interface AuthenticationType {
      *
      * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
      * secure OAuth2 authentication.
+     *
+     * Client secret value (not the secret ID) from the application's Certificates & secrets
+     * page in Microsoft Entra ID.
      */
     clientSecret?: string;
     /**
@@ -2878,6 +2985,26 @@ export interface AuthenticationType {
      * http://localhost:9047 or https://dremio.example.com:9047).
      */
     hostPort?: string;
+    /**
+     * PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page
+     * in Microsoft Entra ID. It may be followed by its issuing certificate chain.
+     */
+    certificate?: string;
+    /**
+     * PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN
+     * ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding
+     * both the key and the certificate can be supplied in both fields.
+     *
+     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
+     */
+    privateKey?: string;
+    /**
+     * Passphrase of an encrypted private key. Leave empty when the private key is not
+     * encrypted.
+     *
+     * Passphrase for the private key (if encrypted)
+     */
+    privateKeyPassphrase?: string;
     /**
      * NKey seed for NATS authentication.
      */
@@ -2955,14 +3082,6 @@ export interface AuthenticationType {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
-    /**
-     * SSH private key content in PEM format. Supports RSA, Ed25519, ECDSA, and DSS keys.
-     */
-    privateKey?: string;
-    /**
-     * Passphrase for the private key (if encrypted)
-     */
-    privateKeyPassphrase?: string;
 }
 
 /**
@@ -3169,6 +3288,11 @@ export interface GCPCredentialsConfiguration {
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
+    /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -3510,12 +3634,6 @@ export enum CloudProvider {
 }
 
 /**
- * Available sources to fetch the metadata.
- *
- * Deltalake Metastore configuration.
- *
- * DeltaLake Storage Connection Config
- *
  * Available sources to fetch files.
  *
  * Local config source where no extra information needs to be sent.
@@ -3532,25 +3650,7 @@ export enum CloudProvider {
  *
  * Azure Credentials
  */
-export interface DeltaLakeConfigurationSource {
-    /**
-     * pySpark App Name.
-     */
-    appName?: string;
-    /**
-     * Metastore connection configuration, depending on your metastore type.
-     *
-     * Available sources to fetch files.
-     */
-    connection?: ConfigSourceConnection;
-    /**
-     * Bucket Name of the data source.
-     */
-    bucketName?: string;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:         string;
+export interface DataLakeConfigurationSource {
     securityConfig?: SecurityConfigClass;
     /**
      * Account Name of your storage account
@@ -3576,50 +3676,6 @@ export interface DeltaLakeConfigurationSource {
      * Key Vault Name
      */
     vaultName?: string;
-}
-
-/**
- * Metastore connection configuration, depending on your metastore type.
- *
- * Available sources to fetch files.
- *
- * DataLake S3 bucket will ingest metadata of files in bucket
- */
-export interface ConfigSourceConnection {
-    /**
-     * Thrift connection to the metastore service. E.g., localhost:9083
-     */
-    metastoreHostPort?: string;
-    /**
-     * Driver class name for JDBC metastore. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g.,
-     * org.mariadb.jdbc.Driver
-     */
-    driverName?: string;
-    /**
-     * Class path to JDBC driver required for JDBC connection. The value will be mapped as
-     * spark.driver.extraClassPath sparks property.
-     */
-    jdbcDriverClassPath?: string;
-    /**
-     * JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive
-     */
-    metastoreDb?: string;
-    /**
-     * Password to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.
-     */
-    password?: string;
-    /**
-     * Username to use against metastore database. The value will be mapped as
-     * spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.
-     */
-    username?: string;
-    /**
-     * Local path for the local file with metastore data. E.g., /tmp/metastore.db
-     */
-    metastoreFilePath?: string;
-    securityConfig?:    AWSCredentials;
 }
 
 /**
@@ -3771,7 +3827,7 @@ export interface SecurityConfigClass {
  *
  * Matillion Data Productivity Cloud Auth Config.
  */
-export interface AirflowConnectionConnection {
+export interface ConnectionClass {
     /**
      * Password for Superset.
      *
@@ -3863,8 +3919,7 @@ export interface AirflowConnectionConnection {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -3877,15 +3932,16 @@ export interface AirflowConnectionConnection {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsProfiler?:             boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -4091,96 +4147,6 @@ export enum Region {
 }
 
 /**
- * Storage config to store sample data
- */
-export interface SampleDataStorageConfig {
-    config?: DataStorageConfig;
-}
-
-/**
- * Storage config to store sample data
- */
-export interface DataStorageConfig {
-    /**
-     * Bucket Name
-     */
-    bucketName?: string;
-    /**
-     * Provide the pattern of the path where the generated sample data file needs to be stored.
-     */
-    filePathPattern?: string;
-    /**
-     * When this field enabled a single parquet file will be created to store sample data,
-     * otherwise we will create a new file per day
-     */
-    overwriteData?: boolean;
-    /**
-     * Prefix of the data source.
-     */
-    prefix?:        string;
-    storageConfig?: AwsCredentials;
-    [property: string]: any;
-}
-
-/**
- * AWS credentials required to access the S3 file.
- *
- * AWS credentials configs.
- *
- * AWS credentials for generating MWAA CLI token.
- *
- * AWS credentials configuration.
- */
-export interface AwsCredentials {
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
-     * Role
-     */
-    assumeRoleArn?: string;
-    /**
-     * An identifier for the assumed role session. Use the role session name to uniquely
-     * identify a session when the same role is assumed by different principals or for different
-     * reasons. Required Field in case of Assume Role
-     */
-    assumeRoleSessionName?: string;
-    /**
-     * The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume
-     * Role
-     */
-    assumeRoleSourceIdentity?: string;
-    /**
-     * AWS Access key ID.
-     */
-    awsAccessKeyId?: string;
-    /**
-     * AWS Region
-     */
-    awsRegion?: string;
-    /**
-     * AWS Secret Access Key.
-     */
-    awsSecretAccessKey?: string;
-    /**
-     * AWS Session Token.
-     */
-    awsSessionToken?: string;
-    /**
-     * Enable AWS IAM authentication. When enabled, uses the default credential provider chain
-     * (environment variables, instance profile, etc.). Defaults to false for backward
-     * compatibility.
-     */
-    enabled?: boolean;
-    /**
-     * EndPoint URL for the AWS
-     */
-    endPointURL?: string;
-    /**
-     * The name of a profile to use with the boto session.
-     */
-    profileName?: string;
-}
-
-/**
  * SQLAlchemy driver scheme options.
  */
 export enum ConnectionScheme {
@@ -4367,8 +4333,10 @@ export interface DatabaseConnectionClass {
      */
     driver?: string;
     /**
-     * Enable SSL/TLS encryption for the MSSQL connection. When enabled, all data transmitted
-     * between the client and server will be encrypted.
+     * Request SSL/TLS encryption for the MSSQL connection. Honoured directly by mssql+pyodbc.
+     * mssql+pytds encrypts only when a CA certificate is supplied in SSL Configuration, and
+     * logs a warning otherwise. mssql+pymssql takes no TLS settings at all - encryption is
+     * decided by FreeTDS configuration.
      */
     encrypt?: boolean;
     /**
@@ -4387,8 +4355,7 @@ export interface DatabaseConnectionClass {
     /**
      * Password to connect to MSSQL.
      */
-    password?:                string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    password?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -4420,7 +4387,9 @@ export interface DatabaseConnectionClass {
     tableFilterPattern?: FilterPattern;
     /**
      * Trust the server certificate without validation. Set to false in production to validate
-     * server certificates against the certificate authority.
+     * server certificates against the certificate authority. On mssql+pytds the certificate
+     * chain is always validated against the supplied CA certificate and only the host name
+     * check is dropped.
      */
     trustServerCertificate?: boolean;
     /**
@@ -4608,8 +4577,7 @@ export interface HiveMetastoreConnectionDetails {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?:    string;
-    sampleDataStorageConfig?: SampleDataStorageConfig;
+    queryStatementSource?: string;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
      */
@@ -4626,15 +4594,16 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsProfiler?:             boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -4904,15 +4873,24 @@ export enum RunMode {
  * Mongo connection scheme options.
  *
  * Couchbase driver scheme options.
+ *
+ * Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.
+ *
+ * Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts
+ * and accepts self-signed certificates.
  */
 export enum AirflowConnectionScheme {
     AwsathenaREST = "awsathena+rest",
     Bigquery = "bigquery",
+    Bolt = "bolt",
+    BoltS = "bolt+s",
+    BoltSsc = "bolt+ssc",
     ClickhouseHTTP = "clickhouse+http",
     ClickhouseNative = "clickhouse+native",
     Clickzetta = "clickzetta",
     CockroachdbPsycopg2 = "cockroachdb+psycopg2",
     Couchbase = "couchbase",
+    Databend = "databend",
     Databricks = "databricks",
     Db2IBMDB = "db2+ibm_db",
     Doris = "doris",
@@ -4934,6 +4912,9 @@ export enum AirflowConnectionScheme {
     MssqlPyodbc = "mssql+pyodbc",
     MssqlPytds = "mssql+pytds",
     MysqlPymysql = "mysql+pymysql",
+    Neo4J = "neo4j",
+    Neo4JS = "neo4j+s",
+    Neo4JSsc = "neo4j+ssc",
     OracleCxOracle = "oracle+cx_oracle",
     OracleOracledb = "oracle+oracledb",
     PgspiderPsycopg2 = "pgspider+psycopg2",
@@ -5304,11 +5285,11 @@ export enum AirflowConnectionType {
     Data360 = "Data360",
     Data360Pipeline = "Data360Pipeline",
     DataFactory = "DataFactory",
+    Databend = "Databend",
     Databricks = "Databricks",
     DatabricksPipeline = "DatabricksPipeline",
     Datalake = "Datalake",
     Db2 = "Db2",
-    DeltaLake = "DeltaLake",
     DomoDashboard = "DomoDashboard",
     DomoDatabase = "DomoDatabase",
     DomoPipeline = "DomoPipeline",
@@ -5354,6 +5335,7 @@ export enum AirflowConnectionType {
     Mulesoft = "Mulesoft",
     Mysql = "Mysql",
     Nats = "Nats",
+    Neo4J = "Neo4j",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",
@@ -5376,6 +5358,7 @@ export enum AirflowConnectionType {
     Redash = "Redash",
     Redpanda = "Redpanda",
     Redshift = "Redshift",
+    Rill = "Rill",
     S3 = "S3",
     SAS = "SAS",
     SFTP = "Sftp",
@@ -5405,6 +5388,7 @@ export enum AirflowConnectionType {
     Superset = "Superset",
     Synapse = "Synapse",
     Tableau = "Tableau",
+    TableauPipeline = "TableauPipeline",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
     Timescale = "Timescale",

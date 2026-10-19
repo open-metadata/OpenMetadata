@@ -19,7 +19,7 @@ from functools import partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.service.catalog import ColumnInfo
+from databricks.sdk.service.catalog import ColumnInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -86,6 +86,10 @@ from metadata.ingestion.source.database.stored_procedures_mixin import QueryByPr
 from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
     UnityCatalogIncrementalTableProcessor,
 )
+from metadata.ingestion.source.database.unitycatalog.metric_view_mixin import (
+    UnitycatalogMetricViewMixin,
+)
+from metadata.ingestion.source.database.unitycatalog.metric_views import is_metric_view
 from metadata.ingestion.source.database.unitycatalog.models import (
     ColumnJson,
     ElementType,
@@ -93,6 +97,7 @@ from metadata.ingestion.source.database.unitycatalog.models import (
     Type,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
+    UNITY_CATALOG_DESCRIBE_TABLE_JSON,
     UNITY_CATALOG_GET_ALL_SCHEMA_TAGS,
     UNITY_CATALOG_GET_ALL_SCHEMAS,
     UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS,
@@ -100,6 +105,7 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_GET_CATALOGS_TAGS,
     UNITY_CATALOG_GET_TABLE_DDL,
     UNITY_CATALOG_TABLE_CONSTRAINTS,
+    escape_identifier,
 )
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -127,7 +133,7 @@ UNITY_CATALOG_TAG_MAPPING = TagMappingConfig(
 
 
 # pylint: disable=protected-access
-class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
+class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin, DatabaseServiceSource, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Databricks Source using
@@ -467,6 +473,42 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             )
         return tables_with_constraints
 
+    def _list_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[TableInfo, str]]:
+        """The schema's tables, each paired with its raw ``securable_kind``.
+
+        This is ``client.tables.list`` done by hand against the same endpoint, because
+        ``TableInfo.from_dict`` enumerates its fields and ``securable_kind`` is not one
+        of them -- and it is the only field that separates a managed Iceberg table from
+        a Delta one, since the payload reports ``data_source_format`` DELTA for both.
+        One listing per schema, exactly as before: the typed and the raw view of a table
+        come out of the same response rather than out of two.
+        """
+        query: dict[str, Any] = {
+            "catalog_name": catalog_name,
+            "schema_name": schema_name,
+            # max_results=0 makes the server paginate with its configured page size;
+            # leaving it unset returns every table of the schema in one response,
+            # which OOMs the pod on schemas with many wide tables.
+            "max_results": 0,
+        }
+        seen_tokens: set[str] = set()
+        while True:
+            response = self.client.api_client.do("GET", "/api/2.1/unity-catalog/tables", query=query)
+            if not isinstance(response, dict):
+                # do() is typed dict | BinaryIO. A non-dict body carries no
+                # next_page_token we can trust, and reading one off it would
+                # spin this loop forever.
+                raise TypeError(f"expected a JSON object, got {type(response).__name__}")
+            for row in response.get("tables") or []:
+                yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
+            page_token = response.get("next_page_token")
+            if not page_token:
+                return
+            if page_token in seen_tokens:
+                raise RuntimeError(f"Unity Catalog reissued page token [{page_token}] while listing tables.")
+            seen_tokens.add(page_token)
+            query["page_token"] = page_token
+
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
         Handle table and views.
@@ -485,16 +527,10 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             yield from self._get_incremental_tables(catalog_name, schema_name)
         else:
             table_with_constraints = self._get_tables_with_constraints()
-            # max_results=0 makes the server paginate with its configured page
-            # size; leaving it unset returns every table of the schema in one
-            # response, which OOMs the pod on schemas with many wide tables.
-            table_listing = partial(
-                self.client.tables.list,
-                catalog_name=catalog_name,
-                schema_name=schema_name,
-                max_results=0,
-            )
-            for table in self._iterate_listing(table_listing, f"tables in schema [{catalog_name}.{schema_name}]"):
+            table_listing = partial(self._list_tables, catalog_name, schema_name)
+            for table, securable_kind in self._iterate_listing(
+                table_listing, f"tables in schema [{catalog_name}.{schema_name}]"
+            ):
                 detailed_table = table
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
                     # Only tables with constraints require full fetch; list() doesn't include constraint details
@@ -507,7 +543,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                         )
                         logger.warning(msg)
                         self.status.warning(table.name, msg)
-                yield from self._process_table(detailed_table, catalog_name, schema_name)
+                yield from self._process_table(detailed_table, catalog_name, schema_name, securable_kind)
 
     def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
         """Record deleted tables and yield only the tables changed since the watermark."""
@@ -535,7 +571,16 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             )
         for table_name in changed:
             try:
-                table = self.client.tables.get(f"{catalog_name}.{schema_name}.{table_name}")
+                # client.tables.get() by hand: TableInfo.from_dict drops securable_kind,
+                # and that is the only field that tells managed Iceberg from Delta.
+                row = self.client.api_client.do(
+                    "GET", f"/api/2.1/unity-catalog/tables/{catalog_name}.{schema_name}.{table_name}"
+                )
+                if not isinstance(row, dict):
+                    # do() is typed dict | BinaryIO; a non-dict body carries no table.
+                    raise TypeError(f"expected a JSON object, got {type(row).__name__}")  # noqa: TRY301
+                table = TableInfo.from_dict(row)
+                securable_kind = str(row.get("securable_kind") or "").upper()
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
@@ -545,9 +590,15 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     )
                 )
                 continue
-            yield from self._process_table(table, catalog_name, schema_name)
+            yield from self._process_table(table, catalog_name, schema_name, securable_kind)
 
-    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[tuple[str, TableType]]:
+    def _process_table(
+        self,
+        table: Any,
+        catalog_name: str,
+        schema_name: str,
+        securable_kind: str,
+    ) -> Iterable[tuple[str, TableType]]:
         """Apply filtering and table-type detection, then yield the table to the topology."""
         try:
             table_name = table.name
@@ -576,6 +627,25 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     table_type = TableType.MaterializedView
                 elif table.table_type.value.lower() == TableType.External.value.lower():
                     table_type = TableType.External
+            # Storage format refines a table's own type, so a View or a
+            # MaterializedView is left alone -- a view has no storage format to
+            # speak of. An External table is refined, matching Databricks and the
+            # tracking issue's "previously typed as External or Regular is
+            # recognized as Delta Lake".
+            # Iceberg is checked first because a managed Iceberg table also reports
+            # data_source_format DELTA, so the Delta branch would otherwise swallow
+            # it. UniForm generates Iceberg metadata beside a table that stays Delta
+            # Lake, so TABLE_DELTA_UNIFORM_ICEBERG_* is not Iceberg;
+            # TABLE_DELTA_ICEBERG_MANAGED and TABLE_ICEBERG_* are. Match DELTA
+            # exactly rather than any DELTA-prefixed value, so DELTASHARING -- a
+            # Delta Sharing table, not Delta Lake -- is not misclassified.
+            dsf = getattr(table, "data_source_format", None)
+            normalized_dsf = str(getattr(dsf, "value", dsf)).upper() if dsf is not None else ""
+            if table_type not in (TableType.View, TableType.MaterializedView):
+                if "ICEBERG" in securable_kind and "UNIFORM_ICEBERG" not in securable_kind:
+                    table_type = TableType.Iceberg
+                elif normalized_dsf == "DELTA":
+                    table_type = TableType.DeltaLake
             self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
             yield table_name, table_type
         except Exception as exc:
@@ -587,6 +657,66 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+    def _current_table_info(self, table_name: str) -> Any | None:
+        """The ``TableInfo`` the topology producer stashed for the table being
+        processed. ``getattr`` because ``table_data`` is a context extra: it is absent
+        until the first table of the run is produced."""
+        table = getattr(self.context.get(), "table_data", None)
+        return table if table is not None and getattr(table, "name", None) == table_name else None
+
+    def get_metric_view_text(self, table_name: str) -> str | None:
+        """A metric view's YAML body, as written.
+
+        The ``TableInfo`` the topology producer already fetched carries a *reduced*
+        copy of the body: Unity Catalog strips the ``comment``, ``synonyms``,
+        ``display_name`` and ``format`` entries it declares, and normalises ``fields``
+        to ``dimensions``. Metrics built from that copy come out with no description
+        and no unit of measurement. ``DESCRIBE TABLE EXTENDED ... AS JSON`` is the only
+        path that returns the text intact.
+
+        The reduced copy still declares ``measures``, which makes it a free and
+        reliable discriminator: the extra round-trip is paid once a table is known to
+        be a metric view, and never for the ordinary tables and SQL views that make up
+        the rest of the run. If it fails, the reduced copy is still returned -- a
+        metric with no description beats no metric at all.
+        """
+        table = self._current_table_info(table_name)
+        definition = getattr(table, "view_definition", None) if table is not None else None
+        if not is_metric_view(definition):
+            return definition
+        return self._describe_metric_view_text(table_name) or definition
+
+    def _describe_metric_view_text(self, table_name: str) -> str | None:
+        """One metric view's YAML body, read over the SQL warehouse."""
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        schema = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        query = UNITY_CATALOG_DESCRIBE_TABLE_JSON.format(
+            database_name=escape_identifier(database),
+            schema_name=escape_identifier(schema),
+            table_name=escape_identifier(table_name),
+        )
+        try:
+            row = self.sql_connection.execute(text(query)).fetchone()
+            payload = json.loads(row[0]) if row else {}
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                "Metric view [%s.%s.%s]: could not read the full definition (%s); "
+                "falling back to the reduced copy, whose descriptions and units are absent",
+                database,
+                schema,
+                table_name,
+                exc,
+            )
+            return None
+        return payload.get("view_text") or payload.get("view_original_text")
+
+    def get_metric_view_column_types(self, table_name: str) -> dict[str, str]:
+        table = self._current_table_info(table_name)
+        if table is None:
+            return {}
+        return {column.name: column.type_text for column in table.columns or [] if column.name and column.type_text}
 
     def get_schema_definition(self, table_name: str, table_type: TableType, table: Any) -> str | None:
         """

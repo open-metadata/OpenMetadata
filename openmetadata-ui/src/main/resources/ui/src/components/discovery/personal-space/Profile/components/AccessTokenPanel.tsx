@@ -27,7 +27,7 @@ const AccessTokenPanel: React.FC = () => {
     <Box className="tw:max-w-[800px]" direction="col" gap={4}>
       <Box direction="col">
         <Typography
-          className="tw:text-primary-900 tw:uppercase"
+          className="tw:text-primary tw:uppercase"
           size="text-xs"
           weight="medium">
           {t('message.personal-access-token')}

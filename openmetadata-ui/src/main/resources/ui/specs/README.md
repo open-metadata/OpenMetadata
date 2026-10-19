@@ -10,8 +10,8 @@ Machine- and human-readable specifications for the OpenMetadata design system.
 | **Go-forward** ✅ | UntitledUI + Tailwind | `tw:` utility classes | `globals.css` `@theme` → [tokens/tailwind-utility-reference.md](tokens/tailwind-utility-reference.md) | `yarn tw-audit` |
 | **Legacy** ⚠️ (deprecated) | Ant Design + Less | `.less` + `var(--om-*)` | [tokens/token-reference.md](tokens/token-reference.md) | `yarn token-audit` |
 
-**New work uses UntitledUI + Tailwind. Do not add new Antd components or new
-`.less` files** — `yarn tw-guard` blocks new debt. Never hardcode a value in
+**New work uses UntitledUI + Tailwind. Do not add new Antd components, new
+`.less` files, or new `assets/svg/` raw-SVG files/imports** — `yarn tw-guard` blocks new debt. Never hardcode a value in
 either stack: use a `tw:` token utility (or `var(--color-*)`) in TSX, and
 `var(--om-*)` in existing `.less`. The `--om-*` layer below documents the
 **deprecated** Antd/Less side (still maintained during the migration).
@@ -54,9 +54,9 @@ a violation; new work should prefer `var(--om-*)`.
 
 | Command | What it does |
 | --- | --- |
-| `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded Tailwind values. Exit 1 on error. |
+| `yarn tw-audit` | **(go-forward)** Lint `.tsx`/`.ts` for hardcoded values. Explicit `tw:dark:*` and `--ai-*` usage are review warnings; resolvable arbitrary values remain errors. |
 | `yarn tw-audit:report` | Full inventory + which token each raw hex matches + Antd/Less debt count. |
-| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `.less` files (deprecation). |
+| `yarn tw-guard` | Fails on NEW `antd` imports / NEW `assets/svg/` raw-SVG files or imports / NEW `.less` files (deprecation). |
 | `yarn token-audit` | _(legacy)_ Lint CSS/LESS for hardcoded values. **Exit 1 on any error.** CI-ready. |
 | `yarn token-audit:report` | Full grouped inventory of every value + its suggested token. |
 | `yarn token-migrate` | Codemod raw values → `var(--om-*)` tokens (safe, idempotent). |
@@ -66,14 +66,20 @@ a violation; new work should prefer `var(--om-*)`.
 Errors (fail CI): **hardcoded colors, hardcoded spacing**.
 Warnings: uncommon values (fractional off-grid sizes, exotic durations).
 
+Dark-theme warnings do not fail CI while AI-mode migration is in progress. Resolve them with a
+shared semantic token or document them using the fixed-color and dark-override review template in
+[`docs/colors.md`](../docs/colors.md).
+
 ## Rules for contributors and AI agents
 
 1. Read the relevant `specs/` file before touching UI code.
-2. Use only tokens from `tokens.css` (`var(--om-*)`); never introduce a raw hex,
-   rgb/rgba, or px spacing value in a component style.
-3. Prefer semantic tokens (`--om-color-text-primary`, `--om-space-16`) over
-   palette/legacy tokens where one fits.
+2. Colours come from core `globals.css` only, via its generated `--tw-*` variables
+   (`--tw-text-color-primary`, `--tw-background-color-surface`,
+   `--tw-border-color-secondary`, `--tw-color-fg-brand-primary`, …). Never use
+   `--om-color-*` or raw `--color-*` (invalid in light mode). Non-colour values use
+   `tokens.css` (`var(--om-space-16)`, `--om-radius-*`, `--om-z-*`). Never introduce a
+   raw hex, rgb/rgba, or px spacing value in a component style.
+3. Prefer semantic tokens over palette/legacy tokens where one fits.
 4. Run `yarn token-audit` before committing. **Zero errors required.**
-5. If a needed value has no token, add it to `tokens.css` as an `--om-*` alias
-   (referencing the upstream `globals.css` token, or holding the raw value when
-   there is no upstream equivalent), not to the component.
+5. If a needed non-colour value has no token, add it to `tokens.css` as an `--om-*`
+   alias, not to the component. A missing colour role belongs in `globals.css`.

@@ -287,7 +287,9 @@ test.describe(
                 )}`
               );
               if (!response.ok()) {
-                return [];
+                throw new Error(
+                  `HTTP ${response.status()} querying ${response.url()}`
+                );
               }
               const body = await response.json();
 
@@ -323,7 +325,9 @@ test.describe(
                 data: { query },
               });
               if (!response.ok()) {
-                return [];
+                throw new Error(
+                  `HTTP ${response.status()} querying ${response.url()}`
+                );
               }
               const body = await response.json();
 
@@ -373,7 +377,7 @@ test.describe(
       await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
     });
 
-    test('a concept with no realizing asset explains the empty state', async ({
+    test('a concept with no realizing asset opens straight into adding one', async ({
       page,
     }) => {
       await navigateToOntologyStudio(page);
@@ -393,10 +397,23 @@ test.describe(
       await expect(
         page.getByTestId('ontology-authoring-inspector')
       ).toBeVisible();
+      // An empty section is offered from "Add more details" rather than shown.
+      await expect(page.getByTestId('ontology-realizations')).toHaveCount(0);
+      await page.getByTestId('add-realization').click();
 
+      // With nothing recorded there is no empty-state text; the section opens
+      // on the form to add the first realizing asset.
       const realizations = page.getByTestId('ontology-realizations');
       await expect(realizations).toBeVisible();
-      await expect(realizations).toContainText('No data asset');
+      await expect(
+        realizations.getByTestId('realization-add-form')
+      ).toBeVisible();
+      await expect(
+        realizations.getByTestId('realization-asset-input')
+      ).toBeVisible();
+      await expect(
+        realizations.locator('[data-testid^="concept-realization-"]')
+      ).toHaveCount(0);
 
       await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
     });

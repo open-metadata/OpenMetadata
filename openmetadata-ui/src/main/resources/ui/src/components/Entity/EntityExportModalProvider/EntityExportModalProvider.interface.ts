@@ -12,10 +12,8 @@ import { ExportTypes } from '../../../constants/Export.constants';
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export type CSVExportResponse = {
-  jobId: string;
-  message: string;
-};
+
+import { CSVExportResponse } from '../../../interface/entity/csv.interface';
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
@@ -65,6 +63,13 @@ export type ExportData = {
     padding: number,
     pixelRatio: number
   ) => HTMLCanvasElement | null;
+  /**
+   * Awaited before a PNG capture clones `documentSelector`, so the page can
+   * mount content it normally leaves out of the DOM, such as off-screen nodes
+   * of a virtualized canvas. `afterCapture` runs once the capture ends.
+   */
+  beforeCapture?: () => Promise<void>;
+  afterCapture?: () => void;
   onExport: (
     name: string,
     params?: {

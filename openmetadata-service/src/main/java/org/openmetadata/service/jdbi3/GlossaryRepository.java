@@ -38,6 +38,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -82,10 +83,12 @@ import org.openmetadata.service.ontology.OntologyLayerValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
@@ -181,14 +184,35 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     return List.of("reviewers");
   }
 
+  // The updater restores it when a PUT leaves it out; it cannot change after creation.
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add("mutuallyExclusive");
+    return Set.copyOf(kept);
+  }
+
   @Override
   public void storeEntity(Glossary glossary, boolean update) {
+    // Intake governs human creation, including PUT upserts; later edits to a glossary that predates
+    // a required field must not be blocked by requirements intended for the creation form.
+    if (!update) {
+      validateIntakeForCreation(glossary);
+    }
     store(glossary, update);
   }
 
   @Override
   public void storeEntities(List<Glossary> entities) {
+    entities.forEach(this::validateIntakeForCreation);
     storeMany(entities);
+  }
+
+  private void validateIntakeForCreation(final Glossary glossary) {
+    if (nullOrEmpty(glossary.getUpdatedBy())
+        || !SubjectContext.getSubjectContext(glossary.getUpdatedBy()).isBot()) {
+      IntakeFormValidator.validate(glossary, GLOSSARY);
+    }
   }
 
   @Override
@@ -251,7 +275,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
             repository.getFields(
                 "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
             glossary.getFullyQualifiedName());
-    terms.sort(Comparator.comparing(EntityInterface::getFullyQualifiedName));
+    terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
 
@@ -469,9 +493,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus)
-            ? EntityStatus.DRAFT
-            : EntityFieldUtils.parseEntityStatus(termStatus);
+        // A blank status leaves the stage to the lifecycle: an existing term keeps its stored
+        // stage and a new one starts in the stage every new term starts in.
+        return nullOrEmpty(termStatus) ? null : EntityFieldUtils.parseEntityStatus(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(

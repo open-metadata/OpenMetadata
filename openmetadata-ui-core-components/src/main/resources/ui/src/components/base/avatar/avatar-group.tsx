@@ -17,11 +17,14 @@ import {
   TooltipTrigger as AriaTooltipTrigger,
 } from 'react-aria-components';
 import { cx } from '@/utils/cx';
-import { getOwnerRenderer } from '../../application/owner/owner-renderer';
+import {
+  getOwnerRenderer,
+  resolveOwnerHref,
+} from '../../application/owner/owner-renderer';
 import { OwnerOverflowPopoverContent } from '../../application/owner/owner-overflow-popover-content';
 import type { AvatarSize, OwnerEntityReference } from '../../../types';
 import { TooltipTrigger } from '../tooltip/tooltip';
-import { getAvatarColorTokens, getFirstAlphanumeric } from './utils';
+import { getFirstAlphanumeric } from './utils';
 import type { AvatarProps } from './avatar';
 import { Avatar } from './avatar';
 
@@ -82,39 +85,57 @@ export const AvatarGroup = ({
         ? rawDisplayName
         : owner.name ?? owner.id;
     const isTeam = owner.type === 'team';
-    const colorTokens = !isTeam ? getAvatarColorTokens(nameStr) : undefined;
     const TeamIcon = owner.icon;
 
+    // Users get an auto theme-adapting color from their name (Avatar's default
+    // `colorVariant`); teams keep a neutral gray surface.
     const avatar = (
       <Avatar
         alt={nameStr}
-        className={isTeam ? 'tw:opacity-60' : undefined}
+        className={isTeam ? 'tw:bg-utility-gray-200' : undefined}
         contrastBorder={!isTeam}
         initials={
           !isTeam ? getFirstAlphanumeric(nameStr).toUpperCase() : undefined
         }
         placeholderIcon={isTeam ? TeamIcon ?? TeamsIcon : undefined}
         size={resolvedSize}
-        style={
-          isTeam
-            ? {
-                backgroundColor: 'var(--tw-color-utility-gray-200)',
-              }
-            : {
-                backgroundColor: colorTokens!.background,
-                color: colorTokens!.textColor,
-                outlineColor: colorTokens!.border,
-              }
-        }
       />
     );
 
     // No `title`: a title matching the display name collides with
     // `getByTitle()` owner-filter selectors (see owner-chip.tsx). Identity is
     // carried by `data-testid` and the avatar's `alt`.
-    const chip = (
-      <span className="tw:block" data-testid={nameStr} key={owner.id}>
+    //
+    // The `owner-link` wrapper with the name test id nested inside is the same
+    // shape OwnerChip documents for its non-compact branch, so `owner-link` ->
+    // name chains resolve for a stacked group exactly as they do for a lone
+    // owner. It is also the only way to reach an owner's page from the stack:
+    // without the anchor, an entity with two or more owners renders avatars
+    // that cannot be clicked at all.
+    const nameNode = (
+      <span className="tw:block" data-testid={nameStr}>
         {avatar}
+      </span>
+    );
+
+    // Same source as OwnerChip: `Owner` normalises inputs before rendering and
+    // strips any incoming href, so the profile link exists only in the
+    // registered resolver -- reading `owner.href` here would never match and
+    // every stacked owner would render unclickable.
+    const href = resolveOwnerHref(owner);
+
+    const chip = href ? (
+      <a
+        aria-label={nameStr}
+        className="tw:block"
+        data-testid="owner-link"
+        href={href}
+        key={owner.id}>
+        {nameNode}
+      </a>
+    ) : (
+      <span className="tw:block" data-testid="owner-link" key={owner.id}>
+        {nameNode}
       </span>
     );
 
@@ -129,7 +150,9 @@ export const AvatarGroup = ({
     <div className={cx('tw:flex tw:items-center', className)}>
       {visibleOwners.map((owner, i) => (
         <span
-          className={cx('tw:relative tw:block tw:rounded-full')}
+          // Avatar tints can be translucent; an opaque backing stops the
+          // previous avatar from showing through the overlap.
+          className="tw:relative tw:block tw:rounded-full tw:bg-surface"
           data-testid="avatar-group-item"
           key={owner.id}
           style={{
@@ -157,6 +180,7 @@ export const AvatarGroup = ({
             <Avatar
               contrastBorder
               className="tw:bg-secondary tw:text-secondary"
+              colorVariant="neutral"
               initials={`+${overflowCount}`}
               size={resolvedSize}
             />
@@ -164,7 +188,7 @@ export const AvatarGroup = ({
           <AriaTooltip
             className={({ isEntering, isExiting }) =>
               cx(
-                'tw:z-50 tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-primary tw:py-2 tw:shadow-lg tw:outline tw:outline-1 tw:outline-secondary tw:will-change-transform',
+                'tw:z-50 tw:max-h-96 tw:w-72 tw:overflow-y-auto tw:rounded-xl tw:bg-overlay-surface tw:py-2 tw:shadow-lg tw:outline tw:outline-1 tw:outline-secondary tw:will-change-transform',
                 isEntering &&
                   'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in',
                 isExiting &&

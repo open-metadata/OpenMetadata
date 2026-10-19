@@ -1,7 +1,9 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { DotsVertical } from '@untitledui/icons';
+import { DotsVertical } from '../../../icons';
+import { forwardRef } from 'react';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -34,6 +36,8 @@ interface DropdownItemProps extends AriaMenuItemProps {
   showCheckbox?: boolean;
   /** Size of that checkbox. */
   checkboxSize?: 'xs' | 'sm';
+  /** If true, shows a radio on the left to indicate single selection state. */
+  showRadio?: boolean;
 }
 
 const DropdownItem = ({
@@ -44,10 +48,15 @@ const DropdownItem = ({
   unstyled,
   showCheckbox,
   checkboxSize = 'sm',
+  showRadio,
   ...props
 }: DropdownItemProps) => {
   if (unstyled) {
-    return <AriaMenuItem id={label} textValue={label} {...props} />;
+    return (
+      <AriaMenuItem id={label} textValue={label} {...props}>
+        {children}
+      </AriaMenuItem>
+    );
   }
 
   return (
@@ -66,10 +75,15 @@ const DropdownItem = ({
         <div
           className={cx(
             'tw:relative tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-            !state.isDisabled && 'tw:group-hover:bg-primary_hover',
-            state.isFocused && 'tw:bg-primary_hover',
-            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2',
-            state.isSelected && 'tw:bg-active'
+            // Selected matches the sidebar's selected nav item and keeps its
+            // tint under hover/focus, like the sidebar does.
+            state.isSelected
+              ? 'tw:bg-brand-primary'
+              : cx(
+                  !state.isDisabled && 'tw:group-hover:bg-primary_hover',
+                  state.isFocused && 'tw:bg-primary_hover'
+                ),
+            state.isFocusVisible && 'tw:outline-2 tw:-outline-offset-2'
           )}>
           {showCheckbox && (
             <CheckboxBase
@@ -80,6 +94,14 @@ const DropdownItem = ({
             />
           )}
 
+          {showRadio && (
+            <RadioButtonBase
+              isDisabled={state.isDisabled}
+              isFocusVisible={state.isFocusVisible}
+              isSelected={state.isSelected}
+            />
+          )}
+
           {Icon && (
             <Icon
               aria-hidden="true"
@@ -87,6 +109,8 @@ const DropdownItem = ({
                 'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
+                  : state.isSelected
+                  ? 'tw:text-fg-brand-secondary_alt'
                   : 'tw:text-fg-quaternary'
               )}
             />
@@ -95,8 +119,13 @@ const DropdownItem = ({
           <span
             className={cx(
               'tw:grow tw:truncate tw:text-sm',
-              state.isDisabled ? 'tw:text-disabled' : 'tw:text-secondary',
-              state.isFocused && 'tw:text-secondary_hover'
+              state.isDisabled
+                ? 'tw:text-disabled'
+                : state.isSelected
+                ? 'tw:text-brand-secondary'
+                : state.isFocused
+                ? 'tw:text-secondary_hover'
+                : 'tw:text-secondary'
             )}>
             {label ||
               (typeof children === 'function' ? children(state) : children)}
@@ -140,15 +169,16 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
-  const { placement = 'bottom right', ...rest } = props;
+  const { placement = 'bottom right', offset = 4, ...rest } = props;
 
   return (
     <AriaPopover
+      offset={offset}
       placement={placement}
       {...rest}
       className={(state) =>
         cx(
-          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-raised tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&
@@ -175,30 +205,36 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
   );
 };
 
-const DropdownDotsButton = (
-  props: AriaButtonProps & RefAttributes<HTMLButtonElement>
-) => {
-  const { t } = useCoreTranslation();
+// forwardRef so callers can anchor popovers to the button; React 18 drops a
+// plain `ref` prop on function components.
+const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
+  (props, ref) => {
+    const { t } = useCoreTranslation();
 
-  return (
-    <AriaButton
-      {...props}
-      aria-label={t('label.open-menu', 'Open menu')}
-      className={(state) =>
-        cx(
-          'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-          (state.isPressed || state.isHovered) && 'tw:text-fg-quaternary_hover',
-          (state.isPressed || state.isFocusVisible) &&
-            'tw:outline-2 tw:outline-offset-2',
-          typeof props.className === 'function'
-            ? props.className(state)
-            : props.className
-        )
-      }>
-      <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
-    </AriaButton>
-  );
-};
+    return (
+      <AriaButton
+        {...props}
+        aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
+        className={(state) =>
+          cx(
+            'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            (state.isPressed || state.isHovered) &&
+              'tw:text-fg-quaternary_hover',
+            (state.isPressed || state.isFocusVisible) &&
+              'tw:outline-2 tw:outline-offset-2',
+            typeof props.className === 'function'
+              ? props.className(state)
+              : props.className
+          )
+        }
+        ref={ref}>
+        <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
+      </AriaButton>
+    );
+  }
+);
+
+DropdownDotsButton.displayName = 'DropdownDotsButton';
 
 export type DropdownSectionHeaderProps = HTMLAttributes<HTMLElement> &
   RefAttributes<HTMLElement>;

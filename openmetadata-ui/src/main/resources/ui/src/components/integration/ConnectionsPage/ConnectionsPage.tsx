@@ -18,7 +18,11 @@ import {
   Input,
   PageLayout,
 } from '@openmetadata/ui-core-components';
-import { LayoutGrid01, List, SearchLg } from '@untitledui/icons';
+import {
+  LayoutGrid01,
+  List,
+  Search,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -147,10 +151,8 @@ const ConnectionsPage: React.FC = () => {
 
   const viewToggle = (
     <ButtonGroup
-      className="tw:h-10"
       selectedKeys={[viewMode]}
       selectionMode="single"
-      size="sm"
       onSelectionChange={(keys) => {
         const selected = [...keys][0] as 'grid' | 'list';
         if (selected) {
@@ -158,13 +160,13 @@ const ConnectionsPage: React.FC = () => {
         }
       }}>
       <ButtonGroupItem
-        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600"
+        className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
         data-testid="grid-view-toggle"
         iconLeading={<LayoutGrid01 height={18} width={18} />}
         id="grid"
       />
       <ButtonGroupItem
-        className="tw:size-10! tw:justify-center tw:p-0! tw:selected:bg-brand-50 tw:selected:text-brand-600"
+        className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
         data-testid="list-view-toggle"
         iconLeading={<List height={18} width={18} />}
         id="list"
@@ -182,7 +184,7 @@ const ConnectionsPage: React.FC = () => {
             <div className="tw:w-[280px]">
               <Input
                 fontSize="sm"
-                icon={SearchLg}
+                icon={Search}
                 iconClassName="tw:size-[18px]!"
                 inputClassName="tw:h-11! tw:py-0! tw:text-[15px]!"
                 inputDataTestId="search-connections-input"
@@ -209,7 +211,7 @@ const ConnectionsPage: React.FC = () => {
             )}
           </div>
         }
-        className="tw:mb-0! tw:px-8! tw:py-[18px]!"
+        className="tw:mb-0!"
         density="comfortable"
         icon={<ConnectorsIcon className="tw:size-12" />}
         subtitle={t('message.connections-subtitle')}
@@ -217,7 +219,7 @@ const ConnectionsPage: React.FC = () => {
         variant="gradient"
       />
 
-      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:p-0!">
+      <PageLayout.Content className="tw:relative tw:flex tw:flex-col tw:overflow-hidden! tw:px-2! tw:pt-4! tw:pb-0!">
         {/* The browse view owns its own scrolling so the secondary nav, page header and filter row
             stay put; scrolling here would carry all three away with the list. */}
         <div className="tw:relative tw:flex-1 tw:overflow-hidden">
@@ -230,17 +232,19 @@ const ConnectionsPage: React.FC = () => {
             onCategoryChange={handleCategoryChange}
           />
         </div>
-
-        {footerContributions.length > 0 && (
-          <div
-            className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
-            ref={footerRef}>
-            {footerContributions.map((contribution) => (
-              <contribution.component key={contribution.key} />
-            ))}
-          </div>
-        )}
       </PageLayout.Content>
+
+      {/* Pinned to the page canvas, not the padded Content, so the composer meets the canvas
+          edge the way Home's footer slot does. */}
+      {footerContributions.length > 0 && (
+        <div
+          className="tw:absolute tw:bottom-0 tw:left-0 tw:right-0 tw:z-10 tw:overflow-hidden tw:rounded-b-card"
+          ref={footerRef}>
+          {footerContributions.map((contribution) => (
+            <contribution.component key={contribution.key} />
+          ))}
+        </div>
+      )}
     </PageLayout>
   );
 };

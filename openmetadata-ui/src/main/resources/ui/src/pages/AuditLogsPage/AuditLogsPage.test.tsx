@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
@@ -71,6 +72,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <div data-testid={testId}>{children}</div>
     )),
+  DateRangePicker: jest
+    .fn()
+    .mockImplementation(({ onChange, onApply, 'data-testid': testId }) => {
+      const day = {
+        toDate: () => new Date(0),
+        add: () => ({ toDate: () => new Date(86_400_000) }),
+      };
+
+      return (
+        <>
+          <button
+            data-testid={testId}
+            type="button"
+            onClick={() => onChange({ start: day, end: day })}>
+            range
+          </button>
+          <button
+            data-testid={`${testId}-apply`}
+            type="button"
+            onClick={() => onApply?.()}>
+            apply
+          </button>
+        </>
+      );
+    }),
   Input: jest
     .fn()
     .mockImplementation(({ value, onChange, inputDataTestId, placeholder }) => (
@@ -82,6 +108,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onChange={(e) => onChange?.(e.target.value)}
       />
     )),
+  SimpleModal: jest.requireActual('@openmetadata/ui-core-components')
+    .SimpleModal,
   Typography: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
@@ -144,29 +172,6 @@ jest.mock('../../rest/auditLogAPI', () => ({
 
 // The real range picker cannot be driven from jsdom, so expose a button that
 // hands the page a valid range and lets the export flow run end to end.
-const mockRangeDay = {
-  startOf: () => ({ valueOf: () => 1 }),
-  endOf: () => ({ valueOf: () => 2 }),
-};
-
-jest.mock('../../components/common/DatePicker/DatePicker', () => ({
-  __esModule: true,
-  default: {
-    RangePicker: ({
-      onChange,
-    }: {
-      onChange: (dates: [unknown, unknown]) => void;
-    }) => (
-      <button
-        data-testid="export-date-range-picker"
-        type="button"
-        onClick={() => onChange([mockRangeDay, mockRangeDay])}>
-        range
-      </button>
-    ),
-  },
-}));
-
 jest.mock('../../components/PageHeader/PageHeader.component', () =>
   jest.fn().mockReturnValue(<div data-testid="page-header">Page Header</div>)
 );
@@ -222,8 +227,9 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
     ));
 });
 
-jest.mock('../../components/AuditLog', () => ({
-  AuditLogFilters: jest.fn().mockImplementation(({ onFiltersChange }) => (
+jest.mock('../../components/AuditLog/AuditLogFilters.component', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ onFiltersChange }) => (
     <div data-testid="audit-log-filters">
       <button
         data-testid="apply-filter"
@@ -242,7 +248,11 @@ jest.mock('../../components/AuditLog', () => ({
       </button>
     </div>
   )),
-  AuditLogList: jest
+}));
+
+jest.mock('../../components/AuditLog/AuditLogList.component', () => ({
+  __esModule: true,
+  default: jest
     .fn()
     .mockImplementation(({ isLoading, logs }) => (
       <div data-testid="audit-log-list">
@@ -699,11 +709,11 @@ describe('AuditLogsPage', () => {
         expect(screen.getByText('label.export-entity')).toBeInTheDocument();
       });
 
-      // Find the primary button in modal footer (Export button)
-      const modalFooter = document.querySelector('.ant-modal-footer');
-      const okButton = modalFooter?.querySelector('button.ant-btn-primary');
-
-      expect(okButton).toBeDisabled();
+      expect(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'label.export',
+        })
+      ).toBeDisabled();
     });
 
     it('shows error toast when export fails', async () => {
@@ -815,10 +825,13 @@ describe('AuditLogsPage', () => {
         fireEvent.click(screen.getByTestId('export-date-range-picker'));
       });
       await act(async () => {
+        fireEvent.click(screen.getByTestId('export-date-range-picker-apply'));
+      });
+      await act(async () => {
         fireEvent.click(
-          document.querySelector(
-            '.ant-modal-footer button.ant-btn-primary'
-          ) as HTMLElement
+          within(screen.getByRole('dialog')).getByRole('button', {
+            name: 'label.export',
+          })
         );
       });
 

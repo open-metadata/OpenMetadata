@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, Page } from '@playwright/test';
+import { ACTION_TIMEOUT, EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
@@ -41,7 +42,7 @@ async function visitColumnBulkOperationsPage(page: Page) {
   // Register before sidebarClick so the listener is active before navigation fires.
   const responsePromise = page.waitForResponse(
     (r) => r.url().includes(GRID_API_URL),
-    { timeout: 30000 }
+    { timeout: ACTION_TIMEOUT }
   );
   await sidebarClick(page, SidebarItem.COLUMN_BULK_OPERATIONS);
   const response = await responsePromise;
@@ -110,7 +111,9 @@ async function waitForColumnInGridIndex(
         );
 
         if (!response.ok()) {
-          return 0;
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const body = await response.json();
@@ -274,10 +277,16 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
     await test.step('Navigate to page with metadataStatus in URL', async () => {
       const dataReq = waitForGridRequest(page);
       await page.goto(
-        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`
+        `${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=INCONSISTENT`,
+        { waitUntil: 'domcontentloaded' }
       );
       await dataReq;
       await waitForAllLoadersToDisappear(page);
+    });
+
+    await test.step('Verify the grid survived the load', async () => {
+      // A render crash swaps the page for the error boundary, so assert the grid is still mounted.
+      await expect(page.getByTestId('column-grid-container')).toBeVisible();
     });
 
     await test.step('Verify filter chip is restored', async () => {
@@ -358,7 +367,9 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       // Use waitForRequest (not waitForResponse) so we don't depend on response
       // status code — the UI filter chip is driven by URL params, not response data.
       const dataReq = waitForGridRequest(page);
-      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`);
+      await page.goto(`${COLUMN_BULK_OPERATIONS_URL}?metadataStatus=MISSING`, {
+        waitUntil: 'domcontentloaded',
+      });
       await dataReq;
       await waitForAllLoadersToDisappear(page);
     });
@@ -470,7 +481,8 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
       await page.goto(
         `${COLUMN_BULK_OPERATIONS_URL}?service.displayName.keyword=${encodeURIComponent(
           'sample_data'
-        )}`
+        )}`,
+        { waitUntil: 'domcontentloaded' }
       );
       await dataReq;
       await waitForAllLoadersToDisappear(page);
@@ -489,7 +501,7 @@ test.describe('Column Bulk Operations - Filters & Search', () => {
 });
 
 test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
-  test.setTimeout(120000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
   const table = new TableClass();
   let sharedColumnName: string;
@@ -656,8 +668,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
         page.getByTestId('column-bulk-operations-form-drawer')
       ).not.toBeVisible({ timeout: 10000 });
 
-      const loaders = page.getByTestId('loader');
-      await expect(loaders.first()).toBeVisible();
+      await expect(page.getByTestId('loader')).not.toHaveCount(0);
 
       const value = await getPendingChangesValue(page);
       expect(value).toMatch(/^\d+\/\d+$/);
@@ -865,7 +876,7 @@ test.describe('Column Bulk Operations - Selection & Edit Drawer', () => {
 });
 
 test.describe('Column Bulk Operations - Bulk Update Flow', () => {
-  test.setTimeout(120000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
   const table = new TableClass();
   let sharedColumnName: string;
@@ -1015,7 +1026,7 @@ test.describe('Column Bulk Operations - Bulk Update Flow', () => {
 });
 
 test.describe('Column Bulk Operations - Nested STRUCT Columns', () => {
-  test.setTimeout(120000);
+  test.setTimeout(EXTENDED_TEST_TIMEOUT);
 
   const table = new TableClass();
   let structColumnName: string;

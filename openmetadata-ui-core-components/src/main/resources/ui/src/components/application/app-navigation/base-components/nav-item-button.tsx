@@ -1,4 +1,5 @@
-import type { FC, MouseEventHandler } from 'react';
+import { shouldClientNavigate, useRouter } from '@react-aria/utils';
+import type { FC, MouseEvent, MouseEventHandler } from 'react';
 import { Pressable } from 'react-aria-components';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
@@ -45,20 +46,39 @@ export const NavItemButton = ({
   tooltipPlacement = 'right',
   onClick,
 }: NavItemButtonProps) => {
+  const router = useRouter();
+
+  // A plain anchor would reload the whole app; under a RouterProvider, hand
+  // same-tab clicks to the client router the way react-aria's Link does.
+  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    onClick?.(event);
+    if (
+      href &&
+      !event.defaultPrevented &&
+      !router.isNative &&
+      shouldClientNavigate(event.currentTarget, event)
+    ) {
+      event.preventDefault();
+      router.open(event.currentTarget, event, href, undefined);
+    }
+  };
+
   return (
     <Tooltip placement={tooltipPlacement} title={label}>
       <Pressable>
         <a
           aria-label={label}
           className={cx(
-            'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:bg-primary tw:p-2 tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+            'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:bg-primary tw:dark:bg-transparent tw:p-2 tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+            // Same current-page treatment as the expanded NavItemBase, so the
+            // collapsed rail still shows where the user is.
             current &&
-              'tw:bg-active tw:text-fg-quaternary_hover tw:hover:bg-secondary_hover',
+              'tw:bg-brand-primary_alt tw:text-fg-brand-secondary_alt tw:hover:bg-brand-primary_alt tw:hover:text-fg-brand-secondary_alt',
             styles[size].root,
             className
           )}
           href={href}
-          onClick={onClick}>
+          onClick={handleClick}>
           <Icon
             aria-hidden="true"
             className={cx(

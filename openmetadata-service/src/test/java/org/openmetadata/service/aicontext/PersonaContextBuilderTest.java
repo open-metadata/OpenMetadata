@@ -13,7 +13,9 @@
 package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,9 +41,12 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.MetricAssetDirection;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ColumnLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.DataQuality;
@@ -50,12 +55,43 @@ import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 
 class PersonaContextBuilderTest {
+
+  @Test
+  void metricKnowledgeLoadsEveryAssetThroughBoundedRepositoryPages() {
+    UUID metricId = UUID.randomUUID();
+    Metric metric = new Metric().withId(metricId).withName("revenue");
+    MetricRepository repository = mock(MetricRepository.class);
+    List<MetricAssetDirection> firstPage = metricAssets(0, 1000);
+    List<MetricAssetDirection> secondPage = metricAssets(1000, 1001);
+    when(repository.listAssets(metricId, 1000, 0, null, null, null))
+        .thenReturn(new ResultList<>(firstPage, 0, 1000, 1001));
+    when(repository.listAssets(metricId, 1000, 1000, null, null, null))
+        .thenReturn(new ResultList<>(secondPage, 1000, 1000, 1001));
+
+    PersonaContextBuilder.loadMetricAssets(metric, repository);
+
+    assertEquals(1001, metric.getAssets().size());
+    assertEquals(
+        "service.db.schema.asset-0000", metric.getAssets().getFirst().getFullyQualifiedName());
+    assertEquals(
+        "service.db.schema.asset-1000", metric.getAssets().getLast().getFullyQualifiedName());
+    verify(repository).listAssets(metricId, 1000, 0, null, null, null);
+    verify(repository).listAssets(metricId, 1000, 1000, null, null, null);
+  }
+
+  @Test
+  void metricKnowledgeUsesGenericFieldsThatExcludeTheUnboundedAssetRelationship() {
+    assertEquals(
+        "owners,tags,relatedMetrics", PersonaContextBuilder.knowledgeFields(Entity.METRIC));
+  }
 
   @Test
   void searchUsesDeepPaginationAndHonorsRuleLimit() throws IOException {
@@ -205,6 +241,36 @@ class PersonaContextBuilderTest {
             any(SearchSortFilter.class),
             anyInt(),
             nullable(Object[].class));
+  }
+
+  @Test
+  void buildCarriesThePromptOnTheStructuredDocumentOnly() {
+    String prompt = "You assist finance analysts with quarterly revenue questions.";
+    Persona persona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition().withEnabled(true).withPrompt(prompt));
+
+    PersonaContextBuilder.MaterializedPersonaContext materialized =
+        new PersonaContextBuilder(persona, mock(SearchRepository.class)).build();
+
+    assertEquals(prompt, materialized.context().getPrompt());
+    // Consumers frame the markdown as reference data, never instructions, so a prompt inside it
+    // would be neutered by that framing.
+    assertFalse(materialized.markdown().contains(prompt));
+  }
+
+  @Test
+  void promptIsWithheldWhileTheContextIsDisabled() {
+    Persona persona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition().withEnabled(false).withPrompt("Answer tersely."));
+
+    PersonaContextBuilder.MaterializedPersonaContext materialized =
+        new PersonaContextBuilder(persona, mock(SearchRepository.class)).build();
+
+    assertNull(materialized.context().getPrompt());
   }
 
   @Test
@@ -643,6 +709,20 @@ class PersonaContextBuilderTest {
                         "fullyQualifiedName",
                         "service.db.schema.table-%03d".formatted(index))));
     return documents;
+  }
+
+  private static List<MetricAssetDirection> metricAssets(int start, int end) {
+    return IntStream.range(start, end)
+        .mapToObj(
+            index ->
+                new MetricAssetDirection()
+                    .withAsset(
+                        new EntityReference()
+                            .withId(UUID.nameUUIDFromBytes(("asset-" + index).getBytes()))
+                            .withType(Entity.TABLE)
+                            .withFullyQualifiedName(
+                                "service.db.schema.asset-%04d".formatted(index))))
+        .toList();
   }
 
   private static Persona persona() {

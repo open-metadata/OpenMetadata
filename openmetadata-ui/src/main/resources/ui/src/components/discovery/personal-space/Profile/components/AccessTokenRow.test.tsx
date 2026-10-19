@@ -29,7 +29,7 @@ jest.mock('rest/userAPI', () => ({
   updateUserAccessToken: (...a: unknown[]) => mockUpdateUserAccessToken(...a),
 }));
 
-jest.mock('rest/index', () => ({
+jest.mock('rest/axiosClient', () => ({
   __esModule: true,
   default: { put: (...a: unknown[]) => mockPut(...a) },
 }));
@@ -53,6 +53,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
       color?: string;
     }) => <span data-color={color}>{children}</span>,
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Card: Object.assign(
+      ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+      {
+        Content: ({
+          children,
+          className,
+        }: {
+          children?: ReactNode;
+          className?: string;
+        }) => <div className={className}>{children}</div>,
+      }
+    ),
     Button: ({
       children,
       onClick,
@@ -77,7 +89,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Copy01: () => <span />,
   Eye: () => <span />,
   EyeOff: () => <span />,

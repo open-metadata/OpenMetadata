@@ -11,44 +11,47 @@
  *  limitations under the License.
  */
 
-import { Input, Select } from '@openmetadata/ui-core-components';
+import { Input, Label, Select } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
-import {
-  CERTIFICATION_CATEGORY,
-  TIER_CATEGORY,
-} from '../../../../constants/constants';
+import { TIER_CATEGORY } from '../../../../constants/constants';
 import {
   FieldOptions,
   FIELD_OPTIONS_DROPDOWN,
 } from '../../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
-import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
-import { EntityStatus } from '../../../../generated/entity/data/glossaryTerm';
 import {
   LabelType,
   State,
   TagLabel,
 } from '../../../../generated/type/tagLabel';
 import { getTags } from '../../../../rest/tagAPI';
+import { fetchLifecycleStatuses } from '../../../../utils/governance/lifecycle/LifecycleStatus.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   createNodeConfig,
   isValidString,
 } from '../../../../utils/WorkflowBuilderUtils';
+import {
+  parseFqnList,
+  serializeFqnList,
+} from '../../../../utils/WorkflowSerializationUtils';
+import Certification from '../../../Certification/Certification.component';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
+import TagSelector from '../../../Tag/TagSelector/TagSelector';
 
-import { FormActionButtons, MetadataFormSection } from './';
+import { FormActionButtons } from './FormActionButtons';
+import { MetadataFormSection } from './MetadataFormSection';
 
 interface SetActionFormProps {
   node: Node;
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
-  entityTypes?: EntityType[];
+  entityTypes?: readonly string[];
 }
 
 export const SetActionForm: React.FC<SetActionFormProps> = ({
@@ -56,9 +59,11 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   onSave,
   onClose,
   onDelete,
+  entityTypes,
 }) => {
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
+  const fieldValueLabelId = useId();
   const [formData, setFormData] = useState({
     displayName: '',
     description: '',
@@ -67,11 +72,43 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     actionConditions: '',
   });
   const [fieldOptions, setFieldOptions] = useState<Record<string, string[]>>({
-    certification: [],
     tier: [],
-    status: Object.values(EntityStatus),
+    status: [],
   });
   const [isLoadingOptions, setIsLoadingOptions] = useState(false);
+  const entityTypesKey = entityTypes?.join(',') ?? '';
+
+  useEffect(() => {
+    if (formData.fieldName !== FieldOptions.STATUS) {
+      return;
+    }
+    let active = true;
+    setIsLoadingOptions(true);
+    setFieldOptions((previous) => ({ ...previous, status: [] }));
+    fetchLifecycleStatuses(
+      entityTypesKey.split(',').filter(Boolean),
+      'intersection'
+    )
+      .then((status) => {
+        if (active) {
+          setFieldOptions((previous) => ({ ...previous, status }));
+        }
+      })
+      .catch((error: AxiosError) => {
+        if (active) {
+          showErrorToast(error);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoadingOptions(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [formData.fieldName, entityTypesKey]);
 
   const updateFormData = useCallback(
     (field: keyof typeof formData, value: string) => {
@@ -85,9 +122,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
       return [];
     }
 
-    const uniqueTagFQNs = [
-      ...new Set(value.split(',').map((tag) => tag.trim())),
-    ];
+    const uniqueTagFQNs = [...new Set(parseFqnList(value))];
 
     return uniqueTagFQNs.map((tagFQN: string) => ({
       tagFQN,
@@ -100,15 +135,8 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     }));
   };
 
-  const convertTagsToFieldValue = (tags: TagLabel[]): string => {
-    if (tags.length === 0) {
-      return '';
-    } else if (tags.length === 1) {
-      return tags[0].tagFQN;
-    } else {
-      return tags.map((tag) => tag.tagFQN).join(',');
-    }
-  };
+  const convertTagsToFieldValue = (tags: TagLabel[]): string =>
+    serializeFqnList(tags.map((tag) => tag.tagFQN));
 
   const handleTagsChange = useCallback(
     (newTags: TagLabel[]) => {
@@ -133,24 +161,6 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
     }
   }, [node]);
 
-  const fetchCertificationOptions = async () => {
-    try {
-      setIsLoadingOptions(true);
-      const response = await getTags({
-        limit: 1000,
-        parent: CERTIFICATION_CATEGORY,
-      });
-      const options = (response.data
-        ?.map((tag) => tag.fullyQualifiedName)
-        .filter(Boolean) || []) as string[];
-      setFieldOptions((prev) => ({ ...prev, certification: options }));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoadingOptions(false);
-    }
-  };
-
   const fetchTierOptions = async () => {
     try {
       setIsLoadingOptions(true);
@@ -171,9 +181,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   };
 
   useEffect(() => {
-    if (formData.fieldName === FieldOptions.CERTIFICATION) {
-      fetchCertificationOptions();
-    } else if (formData.fieldName === FieldOptions.TIER) {
+    if (formData.fieldName === FieldOptions.TIER) {
       fetchTierOptions();
     }
   }, [formData.fieldName]);
@@ -183,7 +191,7 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   };
 
   const isSelectField = (field: string): boolean => {
-    return ['certification', 'tier', 'status'].includes(field);
+    return ['tier', 'status'].includes(field);
   };
 
   const handleSave = () => {
@@ -213,10 +221,9 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
   const renderFieldValue = () => {
     if (formData.fieldName === 'tags') {
       return (
-        <TagSuggestion
+        <TagSelector
           key="tags"
           label={t('label.field-value')}
-          tagType={TagSource.Classification}
           value={parseFieldValueToTags(formData.fieldValue)}
           onChange={handleTagsChange}
         />
@@ -235,6 +242,24 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
           value={parseFieldValueToTags(formData.fieldValue)}
           onChange={handleTagsChange}
         />
+      );
+    }
+
+    if (formData.fieldName === FieldOptions.CERTIFICATION) {
+      return (
+        <div className="tw:flex tw:flex-col tw:gap-1.5">
+          <Label id={fieldValueLabelId}>{t('label.field-value')}</Label>
+          <Certification
+            permission
+            aria-labelledby={fieldValueLabelId}
+            currentCertificate={formData.fieldValue}
+            data-testid="field-value-select"
+            isDisabled={isFormDisabled}
+            onCertificationUpdate={(tag) =>
+              updateFormData('fieldValue', tag?.fullyQualifiedName ?? '')
+            }
+          />
+        </div>
       );
     }
 
@@ -297,7 +322,12 @@ export const SetActionForm: React.FC<SetActionFormProps> = ({
 
       <FormActionButtons
         showDelete
-        isDisabled={!isValidString(formData.displayName) || !formData.fieldName}
+        isDisabled={
+          !isValidString(formData.displayName) ||
+          !formData.fieldName ||
+          (formData.fieldName === FieldOptions.STATUS &&
+            !getSelectOptions('status').includes(formData.fieldValue))
+        }
         onCancel={onClose}
         onDelete={handleDeleteNode}
         onSave={handleSave}

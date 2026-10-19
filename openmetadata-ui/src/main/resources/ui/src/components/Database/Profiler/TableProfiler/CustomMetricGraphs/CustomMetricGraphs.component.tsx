@@ -11,44 +11,36 @@
  *  limitations under the License.
  */
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@untitledui/icons';
-import { Form, Modal } from 'antd';
+import {
+  AreaChart,
+  type ChartTooltipRenderProps,
+  type ChartYAxisProps,
+} from '@openmetadata/ui-core-components/charts';
+import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
+import { isEmpty, isUndefined, last, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Area,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
-import { useChartColors } from '../../../../../hooks/useChartColors';
-import {
-  deleteCustomMetric,
-  putCustomMetric,
-} from '../../../../../rest/customMetricAPI';
+import { deleteCustomMetric } from '../../../../../rest/customMetricAPI';
 import {
   axisTickFormatter,
-  createHorizontalGridLineRenderer,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
-import { CustomDQTooltip } from '../../../../../utils/DataQuality/CustomDQTooltip.component';
+import {
+  chartTooltipRows,
+  DQTooltipContent,
+} from '../../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
-import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
+import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 import './custom-metric-graphs.style.less';
@@ -57,33 +49,58 @@ import {
   MenuOptions,
 } from './CustomMetricGraphs.interface';
 
+type MetricRow = MetricChartType['data'][number];
+
+const CHART_HEIGHT = 300;
+
+// The axis spans the data rather than starting at 0.
+const Y_AXIS: ChartYAxisProps = {
+  min: 'dataMin',
+  max: 'dataMax',
+  formatter: (value) => String(axisTickFormatter(Number(value))),
+};
+
+const TOOLTIP: ChartTooltipRenderProps<MetricRow> = {
+  render: (items, row) => (
+    <DQTooltipContent
+      header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
+      rows={chartTooltipRows(items)}
+      valueFormatter={(value) => tooltipFormatter(value)}
+    />
+  ),
+};
+
 const CustomMetricGraphs = ({
   customMetricsGraphData,
   isLoading,
   customMetrics,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
-  const { grid, primary, primaryArea } = useChartColors();
-  const [form] = Form.useForm<CustomMetric>();
   const {
     permissions,
     customMetric: tableDetails,
     onCustomMetricUpdate,
+    onCustomMetricDrawerOpen,
   } = useTableProfiler();
   const editPermission =
     permissions &&
-    getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
+    getDerivedPermissionFlags(permissions).can(Operation.EditDataProfile);
   const deletePermission = permissions?.Delete || false;
 
   const [selectedMetrics, setSelectedMetrics] = useState<CustomMetric>();
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
-  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
 
-  const renderHorizontalGridLine = useMemo(
-    () => createHorizontalGridLineRenderer(),
-    []
+  const seriesByMetric = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.keys(customMetricsGraphData ?? {}).map((key) => [
+          key,
+          [{ key, name: key }],
+        ])
+      ),
+    [customMetricsGraphData]
   );
 
   const items = useMemo(
@@ -104,7 +121,6 @@ const CustomMetricGraphs = ({
 
   const handleModalCancel = () => {
     setIsDeleteModalVisible(false);
-    setIsEditModalVisible(false);
     setSelectedMetrics(undefined);
   };
 
@@ -132,43 +148,19 @@ const CustomMetricGraphs = ({
     }
   };
 
-  const handleEditFormSubmit = async (values: CustomMetric) => {
-    if (tableDetails) {
-      setIsActionLoading(true);
-      const updatedMetric = {
-        ...omit(selectedMetrics, ['id']),
-        ...values,
-      };
-
-      try {
-        const { data } = await putCustomMetric(tableDetails.id, updatedMetric);
-        showSuccessToast(
-          t('server.update-entity-success', {
-            entity: selectedMetrics?.name,
-          })
-        );
-        onCustomMetricUpdate(data);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        handleModalCancel();
-        setIsActionLoading(false);
-      }
-    }
-  };
-
   const handleMenuClick = (key: string, metricName: string) => {
-    setSelectedMetrics(
-      customMetrics?.find((metric) => metric.name === metricName)
-    );
+    const metric = customMetrics?.find((metric) => metric.name === metricName);
     setOpenMenuKey(null);
 
     switch (key) {
       case MenuOptions.EDIT:
-        setIsEditModalVisible(true);
+        if (metric) {
+          onCustomMetricDrawerOpen(!isUndefined(metric.columnName), metric);
+        }
 
         break;
       case MenuOptions.DELETE:
+        setSelectedMetrics(metric);
         setIsDeleteModalVisible(true);
 
         break;
@@ -197,7 +189,6 @@ const CustomMetricGraphs = ({
                     latestValue: last(metric)?.[key] ?? '--',
                     title: t('label.count'),
                     dataKey: key,
-                    color: primary,
                   },
                 ],
                 extra:
@@ -235,68 +226,17 @@ const CustomMetricGraphs = ({
                     <ErrorPlaceHolder className="mt-0-important" />
                   </div>
                 ) : (
-                  <ResponsiveContainer
-                    className="custom-legend"
-                    debounce={200}
-                    id={`${key}-graph`}
-                    minHeight={300}>
-                    <ComposedChart
-                      className="w-full"
+                  <div className="tw:w-full" id={`${key}-graph`}>
+                    <AreaChart
+                      ariaLabel={key}
                       data={metric}
-                      margin={{ left: 16 }}>
-                      <CartesianGrid
-                        horizontal={renderHorizontalGridLine}
-                        stroke={grid}
-                        strokeDasharray="3 3"
-                        vertical={false}
-                      />
-                      <XAxis
-                        axisLine={false}
-                        dataKey="formattedTimestamp"
-                        padding={{ left: 16, right: 16 }}
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                      />
-
-                      <YAxis
-                        axisLine={false}
-                        domain={['min', 'max']}
-                        padding={{ top: 16, bottom: 16 }}
-                        tick={{ fontSize: 12 }}
-                        tickFormatter={(props) => axisTickFormatter(props)}
-                        tickLine={false}
-                        type="number"
-                      />
-
-                      <Tooltip
-                        content={
-                          <CustomDQTooltip
-                            dateTimeFormatter={formatDateTimeLong}
-                            timeStampKey="timestamp"
-                            valueFormatter={(value) => tooltipFormatter(value)}
-                          />
-                        }
-                        cursor={{
-                          stroke: grid,
-                          strokeDasharray: '3 3',
-                        }}
-                      />
-
-                      <Line
-                        dataKey={key}
-                        name={key}
-                        stroke={primary}
-                        type="monotone"
-                      />
-                      <Area
-                        dataKey={key}
-                        fill={primaryArea}
-                        name={key}
-                        stroke={primary}
-                        type="monotone"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                      height={CHART_HEIGHT}
+                      series={seriesByMetric[key]}
+                      tooltip={TOOLTIP}
+                      xKey="formattedTimestamp"
+                      yAxis={Y_AXIS}
+                    />
+                  </div>
                 )}
               </div>
             </ProfilerStateWrapper>
@@ -315,29 +255,6 @@ const CustomMetricGraphs = ({
         onCancel={handleModalCancel}
         onDelete={handleDeleteClick}
       />
-      {isEditModalVisible && !isUndefined(selectedMetrics) && (
-        <Modal
-          centered
-          destroyOnClose
-          cancelButtonProps={{ disabled: isActionLoading }}
-          closable={false}
-          okButtonProps={{ loading: isActionLoading }}
-          okText={t('label.save')}
-          open={isEditModalVisible}
-          title={t('label.edit-entity', { entity: selectedMetrics.name })}
-          width={650}
-          onCancel={handleModalCancel}
-          onOk={() => form.submit()}>
-          <CustomMetricForm
-            isEditMode
-            form={form}
-            initialValues={selectedMetrics}
-            isColumnMetric={!isUndefined(selectedMetrics.columnName)}
-            table={tableDetails}
-            onFinish={handleEditFormSubmit}
-          />
-        </Modal>
-      )}
     </div>
   );
 };

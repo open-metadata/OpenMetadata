@@ -67,20 +67,39 @@ test.describe('Ontology Studio — isolated concepts', () => {
     );
     await page.route('**/api/v1/glossaryTerms?*', async (route) => {
       const response = await route.fetch();
-      const body = (await response.json()) as {
-        data: Array<{
+      let body: {
+        data?: Array<{
           displayName?: string;
           fullyQualifiedName: string;
           id: string;
           name: string;
         }>;
       };
+      try {
+        body = (await response.json()) as typeof body;
+      } catch {
+        await route.fulfill({ response });
+
+        return;
+      }
+
+      // This pattern catches every call to the collection, not just the
+      // listing this test rewrites, and an error body carries no `data`.
+      // Mapping over it throws inside the handler, which leaves the request
+      // unfulfilled -- so the page hangs on it and the test reports a
+      // TypeError plus a graph stuck on its loader, neither of which names
+      // the response that actually came back.
+      if (!Array.isArray(body.data)) {
+        await route.fulfill({ response });
+
+        return;
+      }
 
       await route.fulfill({
         response,
         json: {
           ...body,
-          data: body.data.map((term) =>
+          data: (body.data ?? []).map((term) =>
             term.id === toggleTermIso.responseData.id
               ? {
                   ...term,
@@ -120,21 +139,19 @@ test.describe('Ontology Studio — isolated concepts', () => {
         { message: 'all scoped concepts must be visible in the graph' }
       )
       .toBe(true);
-    await expect(page.getByTestId('ontology-health-panel')).toBeVisible();
-    const connectButton = page.getByTestId(
-      `ontology-connect-${toggleTermIso.responseData.id}`
+    await expect(page.getByTestId('ontology-isolated-count')).toHaveText('1');
+    await page.getByTestId('ontology-health-review').click();
+    const isolatedRow = page.getByTestId(
+      `ontology-isolated-term-${toggleTermIso.responseData.id}`
     );
 
-    await expect(connectButton).toBeVisible();
-    await expect(connectButton).toContainText(
+    await expect(isolatedRow).toBeVisible();
+    await expect(isolatedRow).toContainText(
       toggleTermIso.responseData.displayName
     );
-    await expect(connectButton).not.toContainText(
-      toggleTermIso.responseData.id
-    );
-    await expect(page.getByTestId('ontology-isolated-count')).toHaveText('1');
+    await expect(isolatedRow).not.toContainText(toggleTermIso.responseData.id);
     await expect(
-      page.getByTestId('ontology-header-isolated-count')
-    ).toContainText(/1\s*isolated/i);
+      page.getByTestId(`ontology-connect-${toggleTermIso.responseData.id}`)
+    ).toBeVisible();
   });
 });

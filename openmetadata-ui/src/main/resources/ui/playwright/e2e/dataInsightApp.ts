@@ -98,7 +98,7 @@ setup(
             )
             .then((res) => res.json());
 
-          return response.data[0].status;
+          return response.data?.[0]?.status;
         },
         {
           // Custom expect message for reporting, optional.

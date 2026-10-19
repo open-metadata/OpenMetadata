@@ -46,7 +46,7 @@ class LineageWorkflow(BaseModel):
     parserType: QueryParserType | None = QueryParserType.Auto  # noqa: N815
 
 
-def run_lineage(config_path: Path) -> None:
+def run_lineage(config_path: Path, status_file: Path | None = None) -> None:
     """
     Run the ingestion workflow from a config path
     to a JSON or YAML file

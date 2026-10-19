@@ -1,6 +1,7 @@
 package org.openmetadata.service.util;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
@@ -13,6 +14,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -44,6 +47,12 @@ public class LineageUtil {
    */
   private static final ThreadLocal<List<DeferredLineageEsWrite>> DEFERRED_LINEAGE_ES =
       new ThreadLocal<>();
+
+  private static final String ROOT_ID_FIELD = "id";
+
+  /** Source fields a lineage root lookup reads: the root's identity and the FQN keying the hits. */
+  public static final List<String> ROOT_SOURCE_FIELDS =
+      List.of(ROOT_ID_FIELD, Entity.FIELD_ENTITY_TYPE, Entity.FIELD_FULLY_QUALIFIED_NAME);
 
   /**
    * A captured lineage-ES write plus the entity whose search document carries the edge. The {@code
@@ -181,7 +190,8 @@ public class LineageUtil {
     if (relation == null) return;
 
     LineageDetails lineageDetails = JsonUtils.readValue(relation.getJson(), LineageDetails.class);
-    if (lineageDetails.getAssetEdges() - 1 < 1) {
+    final int assetEdges = nullOrDefault(lineageDetails.getAssetEdges(), 0);
+    if (assetEdges - 1 < 1) {
       Entity.getCollectionDAO()
           .relationshipDAO()
           .delete(
@@ -192,7 +202,7 @@ public class LineageUtil {
               Relationship.UPSTREAM.ordinal());
       deleteLineageFromSearch(fromRef, toRef, lineageDetails);
     } else {
-      lineageDetails.withAssetEdges(lineageDetails.getAssetEdges() - 1);
+      lineageDetails.withAssetEdges(assetEdges - 1);
       Entity.getCollectionDAO()
           .relationshipDAO()
           .insert(
@@ -343,6 +353,26 @@ public class LineageUtil {
             ref);
       }
     }
+  }
+
+  /**
+   * The entity behind the single document a lineage root lookup returns, or empty when nothing is
+   * indexed under the FQN. The hits are keyed by FQN, which is why {@link #ROOT_SOURCE_FIELDS}
+   * carries it.
+   */
+  @SuppressWarnings("unchecked")
+  public static Optional<EntityReference> lineageRoot(Map<String, Object> hitsByFqn) {
+    return hitsByFqn.values().stream()
+        .findFirst()
+        .map(doc -> rootReference((Map<String, Object>) doc));
+  }
+
+  private static EntityReference rootReference(Map<String, Object> doc) {
+    Object id = doc.get(ROOT_ID_FIELD);
+    return new EntityReference()
+        .withId(id == null ? null : UUID.fromString(id.toString()))
+        .withType(Objects.toString(doc.get(Entity.FIELD_ENTITY_TYPE), null))
+        .withFullyQualifiedName(Objects.toString(doc.get(Entity.FIELD_FULLY_QUALIFIED_NAME), null));
   }
 
   public static NodeInformation getNodeInformation(

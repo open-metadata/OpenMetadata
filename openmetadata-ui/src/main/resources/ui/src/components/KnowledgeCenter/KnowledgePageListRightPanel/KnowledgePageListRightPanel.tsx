@@ -14,10 +14,10 @@ import {
   Box,
   Card,
   EmptyPlaceholder,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { QuickLink } from '@openmetadata/ui-core-components/icons';
-import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
@@ -154,17 +154,11 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
       <div className="p-md p-x-lg" data-testid="loader">
         {Array.from({ length: 3 }).map(() => (
           <div className="m-b-lg" key={uniqueId()}>
-            <Box className="tw:w-full" direction="col">
-              <Skeleton
-                active
-                paragraph={{ rows: 1, width: 100 }}
-                title={false}
-              />
-              <Skeleton
-                active
-                paragraph={{ rows: 3, width: '100%' }}
-                title={false}
-              />
+            <Box className="tw:w-full tw:gap-4" direction="col">
+              <Skeleton height={16} width={100} />
+              <Skeleton height={16} />
+              <Skeleton height={16} />
+              <Skeleton height={16} />
             </Box>
           </div>
         ))}

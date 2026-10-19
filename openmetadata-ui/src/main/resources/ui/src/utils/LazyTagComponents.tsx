@@ -16,6 +16,7 @@ import { isEmpty } from 'lodash';
 import { lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainLabelProps } from '../components/common/DomainLabel/DomainLabel.interface';
+import { useGenericDomainLabel } from '../components/common/DomainLabel/useGenericDomainLabel';
 import { EntityDetailWidgetSkeleton } from '../components/common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import {
   WidgetEditButton,
@@ -33,10 +34,10 @@ const CommonWidgets = lazy(() =>
   }))
 );
 
-const DomainLabelV2 = lazy(() =>
-  import('../components/DataAssets/DomainLabelV2/DomainLabelV2').then((m) => ({
-    default: m.DomainLabelV2,
-  }))
+const DomainLabel = lazy(() =>
+  import('../components/common/DomainLabel/DomainLabel.component').then(
+    (m) => ({ default: m.DomainLabel })
+  )
 );
 
 const UserTeamSelectableList = lazy(() =>
@@ -122,11 +123,22 @@ export const LazyCommonWidgets = (props: LazyCommonWidgetsProps) => (
   </Suspense>
 );
 
-export const LazyDomainLabelV2 = (props: Partial<DomainLabelProps>) => (
-  <Suspense fallback={null}>
-    <DomainLabelV2 {...props} />
-  </Suspense>
-);
+export const LazyDomainLabel = (props: Partial<DomainLabelProps>) => {
+  const domainProps = useGenericDomainLabel();
+
+  return (
+    <Suspense fallback={null}>
+      <DomainLabel
+        {...domainProps}
+        {...props}
+        // An explicitly-undefined prop must not clobber the context-derived
+        // permission, so fall back rather than letting the spread win.
+        hasPermission={props.hasPermission ?? domainProps.hasPermission}
+        variant="widget"
+      />
+    </Suspense>
+  );
+};
 
 export const LazyOwnerLabelV2 = (props: OwnerWidgetFromContextProps) => (
   <OwnerWidgetFromContext {...props} />

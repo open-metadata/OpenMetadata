@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Announcement02,
   Atom01,
   ClipboardMinus,
   CodeSquare01,
@@ -21,10 +22,9 @@ import {
   Server04,
   Settings02,
   SlashDivider,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { ReactComponent as AlertIcon } from '../assets/svg/alert.svg';
-import { ReactComponent as AnnouncementIcon } from '../assets/svg/announcements-black.svg';
 import { ReactComponent as AutomatorBotIcon } from '../assets/svg/automator-bot.svg';
 import { ReactComponent as ConversationIcon } from '../assets/svg/comment.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/common/application.svg';
@@ -805,7 +805,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: TEXT_UTILITY_WARNING_600,
     bgClass: BG_UTILITY_WARNING_50,
     borderClass: 'tw:border-utility-warning-200',
-    icon: AnnouncementIcon,
+    icon: Announcement02,
   },
   conversation: {
     iconClass: TEXT_UTILITY_GRAY_600,

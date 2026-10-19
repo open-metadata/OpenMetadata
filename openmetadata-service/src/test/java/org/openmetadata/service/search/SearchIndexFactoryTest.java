@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
@@ -41,6 +42,7 @@ import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -92,6 +94,7 @@ import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
@@ -111,6 +114,7 @@ import org.openmetadata.service.search.indexes.McpServerIndex;
 import org.openmetadata.service.search.indexes.McpServiceIndex;
 import org.openmetadata.service.search.indexes.MessagingServiceIndex;
 import org.openmetadata.service.search.indexes.MetadataServiceIndex;
+import org.openmetadata.service.search.indexes.MetricGroupIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
@@ -393,6 +397,8 @@ class SearchIndexFactoryTest {
         Arguments.of(Entity.USER, (Supplier<Object>) User::new, UserIndex.class),
         Arguments.of(Entity.TEAM, (Supplier<Object>) Team::new, TeamIndex.class),
         Arguments.of(Entity.METRIC, (Supplier<Object>) Metric::new, MetricIndex.class),
+        Arguments.of(
+            Entity.METRIC_GROUP, (Supplier<Object>) MetricGroup::new, MetricGroupIndex.class),
         Arguments.of(Entity.GLOSSARY, (Supplier<Object>) Glossary::new, GlossaryIndex.class),
         Arguments.of(
             Entity.GLOSSARY_TERM, (Supplier<Object>) GlossaryTerm::new, GlossaryTermIndex.class),
@@ -422,6 +428,8 @@ class SearchIndexFactoryTest {
             AiFrameworkControlIndex.class),
         Arguments.of(
             Entity.AUDIT_REPORT, (Supplier<Object>) AuditReport::new, AuditReportIndex.class),
+        Arguments.of(
+            Entity.DATA_CONTRACT, (Supplier<Object>) DataContract::new, DataContractIndex.class),
         Arguments.of(Entity.TAG, (Supplier<Object>) Tag::new, TagIndex.class),
         Arguments.of(
             Entity.CLASSIFICATION,

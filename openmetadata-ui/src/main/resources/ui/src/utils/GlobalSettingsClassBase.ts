@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  AnnouncementColored,
+  DefaultAppMode,
+  DefaultTime,
+  GlossaryTerm,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
 import { ReactComponent as APICollectionIcon } from '../assets/svg/api-collection-colored.svg';
 import { ReactComponent as APIEndpointIcon } from '../assets/svg/api-endpoints-colored.svg';
 import { ReactComponent as IconAPI } from '../assets/svg/apis-colored.svg';
-import { ReactComponent as AppModeIcon } from '../assets/svg/app-mode.svg';
 import { ReactComponent as ApplicationIcon } from '../assets/svg/application-colored.svg';
 import { ReactComponent as BotIcon } from '../assets/svg/bot-colored.svg';
 import { ReactComponent as ChartIcon } from '../assets/svg/chart-colored.svg';
@@ -67,7 +72,7 @@ import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-ne
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
 import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored-new.svg';
-import { SettingMenuItem } from './GlobalSettingsUtils';
+import type { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as GovernanceIcon } from '../assets/svg/governance.svg';
 import { ReactComponent as WorkflowsSettingsIcon } from '../assets/svg/ic-workflow-settings.svg';
@@ -76,11 +81,12 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
-import {
-  ResourceEntity,
-  UIPermission,
-} from '../context/PermissionProvider/PermissionProvider.interface';
-import { userPermissions } from '../utils/PermissionsUtils';
+import { UIPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../enums/permissions.enum';
+import { Operation } from '../generated/entity/policies/accessControl/resourcePermission';
+import { AuthProvider } from '../generated/settings/settings';
+import { checkPermission, userPermissions } from '../utils/PermissionsUtils';
+import { isLoginConfigurationApplicable } from './AuthProvider.util';
 import { t } from './i18next/LocalUtil';
 
 class GlobalSettingsClassBase {
@@ -155,11 +161,21 @@ class GlobalSettingsClassBase {
 
   /**
    * getSidebarItems
+   *
+   * `authProvider` gates the login configuration entry. It is optional so callers that only want
+   * another category keep working unchanged; omitting it leaves the entry visible, because showing
+   * an inert settings page is a cosmetic fault whereas hiding a live one takes working settings
+   * away from admins. The two pages that actually render the entry pass it.
    */
   public getGlobalSettingsMenuWithPermission(
     permissions: UIPermission,
-    isAdminUser?: boolean
+    isAdminUser?: boolean,
+    authProvider?: AuthProvider
   ): Array<SettingMenuItem> {
+    const isLoginConfigVisible =
+      authProvider === undefined ||
+      isLoginConfigurationApplicable(authProvider);
+
     return [
       {
         category: t('label.service-plural'),
@@ -228,7 +244,7 @@ class GlobalSettingsClassBase {
             icon: MlModelIcon,
           },
           {
-            label: t('label.storage-plural'),
+            label: t('label.storage'),
             description: t('message.page-sub-header-for-storages'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.STORAGE_SERVICE,
@@ -238,7 +254,7 @@ class GlobalSettingsClassBase {
             icon: StorageIcon,
           },
           {
-            label: t('label.search'),
+            label: t('label.search-engine-plural'),
             description: t('message.page-sub-header-for-search'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.SEARCH_SERVICE,
@@ -248,7 +264,7 @@ class GlobalSettingsClassBase {
             icon: SearchIconV1,
           },
           {
-            label: t('label.metadata'),
+            label: t('label.catalog-plural'),
             description: t('message.page-sub-header-for-metadata'),
             isProtected: userPermissions.hasViewPermissions(
               ResourceEntity.METADATA_SERVICE,
@@ -302,6 +318,15 @@ class GlobalSettingsClassBase {
               ResourceEntity.EVENT_SUBSCRIPTION,
               permissions
             ),
+          },
+          {
+            category: t('label.announcement-plural'),
+            key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.${GlobalSettingOptions.ANNOUNCEMENTS}`,
+            icon: AnnouncementColored,
+            description: t('message.system-announcements-description'),
+            // System announcements are written by admins alone — the server
+            // allows no other user — so nobody else is shown the card.
+            isProtected: Boolean(isAdminUser),
           },
         ],
       },
@@ -380,9 +405,13 @@ class GlobalSettingsClassBase {
           {
             label: t('label.audit-log-plural'),
             description: t('message.page-sub-header-for-audit-logs'),
-            isProtected: userPermissions.hasViewPermissions(
-              ResourceEntity.AUDIT_LOG,
-              permissions
+            isProtected: Boolean(
+              isAdminUser ||
+                checkPermission(
+                  Operation.AuditLogs,
+                  ResourceEntity.AUDIT_LOG,
+                  permissions
+                )
             ),
             key: `${GlobalSettingsMenuCategory.ACCESS}.${GlobalSettingOptions.AUDIT_LOGS}`,
             icon: ManagementIcon,
@@ -412,7 +441,7 @@ class GlobalSettingsClassBase {
           {
             label: t('label.login-configuration'),
             description: t('message.page-sub-header-for-login-configuration'),
-            isProtected: Boolean(isAdminUser),
+            isProtected: Boolean(isAdminUser) && isLoginConfigVisible,
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.LOGIN_CONFIGURATION}`,
             icon: LoginIcon,
           },
@@ -693,7 +722,24 @@ class GlobalSettingsClassBase {
             description: t('message.default-app-mode-description'),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.APP_MODE}`,
-            icon: AppModeIcon,
+            icon: DefaultAppMode,
+            iconColor: 'blue',
+          },
+          {
+            label: t('label.glossary'),
+            description: t('message.glossary-tag-propagation-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.GLOSSARY}`,
+            icon: GlossaryTerm,
+            iconColor: 'blue',
+          },
+          {
+            label: t('label.default-time-format'),
+            description: t('message.default-time-format-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.TIME_FORMAT}`,
+            icon: DefaultTime,
+            iconColor: 'blue',
           },
         ],
       },
@@ -907,6 +953,24 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
+          },
+          {
+            label: t('label.team-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.team-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.TEAMS}`,
+            icon: TeamsIcon,
+          },
+          {
+            label: t('label.user-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.user-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.USERS}`,
+            icon: UsersIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

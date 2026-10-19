@@ -11,23 +11,17 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Column, DataType } from '../../../generated/entity/data/table';
 import { CustomProperty } from '../../../generated/type/customProperty';
-import { PropertyValue } from '../../common/CustomPropertyTable/PropertyValue';
-import { ColumnCustomPropertyCell } from './ColumnCustomPropertyCell';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  ColumnCustomPropertyCell,
+  ColumnCustomPropertyCellProps,
+} from './ColumnCustomPropertyCell';
 
-jest.mock('../../common/CustomPropertyTable/PropertyValue', () => ({
-  PropertyValue: jest
-    .fn()
-    .mockImplementation(({ onExtensionUpdate, extension }) => (
-      <button
-        data-testid="mock-property-value"
-        onClick={() => onExtensionUpdate({ ...extension, owner: 'new' })}>
-        PropertyValue
-      </button>
-    )),
-}));
+const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
 const property: CustomProperty = {
   name: 'owner',
@@ -47,65 +41,78 @@ const record: Column = {
   extension: { owner: 'old', other: 1 },
 };
 
-describe('ColumnCustomPropertyCell', () => {
-  it('renders PropertyValue without its label, using the record extension', () => {
-    render(
-      <ColumnCustomPropertyCell
-        hasEditPermissions
-        property={property}
-        record={record}
-        onExtensionUpdate={jest.fn()}
-      />
-    );
+const renderCell = (props: Partial<ColumnCustomPropertyCellProps> = {}) => {
+  const onExtensionUpdate = jest.fn().mockResolvedValue(undefined);
 
-    expect(screen.getByTestId('mock-property-value')).toBeInTheDocument();
-    expect(PropertyValue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        hideLabel: true,
-        isRenderedInRightPanel: true,
-        hasEditPermissions: true,
-        property,
-        extension: record.extension,
-      }),
-      expect.anything()
+  render(
+    <ColumnCustomPropertyCell
+      hasEditPermissions
+      property={property}
+      record={record}
+      onExtensionUpdate={onExtensionUpdate}
+      {...props}
+    />
+  );
+
+  return { onExtensionUpdate };
+};
+
+describe('ColumnCustomPropertyCell', () => {
+  it('renders the record value without the property label', () => {
+    renderCell();
+
+    expect(screen.getByTestId('owner')).toBeInTheDocument();
+    expect(screen.getByTestId('property-value')).toHaveTextContent('old');
+    expect(screen.queryByTestId('property-name')).not.toBeInTheDocument();
+    expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+  });
+
+  it('shows "not set" when the record has no value for the property', () => {
+    renderCell({ record: { ...record, extension: undefined } });
+
+    expect(screen.getByTestId('property-value')).toHaveTextContent(
+      'label.not-set'
     );
   });
 
-  it('forwards extension updates together with the row record', async () => {
-    const onExtensionUpdate = jest.fn().mockResolvedValue(undefined);
+  it('has no edit button without edit permission', () => {
+    renderCell({ hasEditPermissions: false });
 
-    render(
-      <ColumnCustomPropertyCell
-        hasEditPermissions
-        property={property}
-        record={record}
-        onExtensionUpdate={onExtensionUpdate}
-      />
-    );
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+  });
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('mock-property-value'));
-    });
+  it('merges the edited value into the record extension and closes the editor', async () => {
+    const { onExtensionUpdate } = renderCell();
+
+    await user.click(screen.getByTestId('edit-icon'));
+    const input = screen.getByTestId('value-input');
+    await user.clear(input);
+    await user.type(input, 'new');
+    await user.click(screen.getByTestId('inline-save-btn'));
 
     expect(onExtensionUpdate).toHaveBeenCalledWith(record, {
       owner: 'new',
       other: 1,
     });
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('custom-property-edit-modal')
+      ).not.toBeInTheDocument()
+    );
   });
 
-  it('passes read-only permission through', () => {
-    render(
-      <ColumnCustomPropertyCell
-        hasEditPermissions={false}
-        property={property}
-        record={record}
-        onExtensionUpdate={jest.fn()}
-      />
-    );
+  it('keeps the editor open and shows a toast when saving fails', async () => {
+    const error = new Error('boom');
+    renderCell({ onExtensionUpdate: jest.fn().mockRejectedValue(error) });
 
-    expect(PropertyValue).toHaveBeenCalledWith(
-      expect.objectContaining({ hasEditPermissions: false }),
-      expect.anything()
-    );
+    await user.click(screen.getByTestId('edit-icon'));
+    await user.click(screen.getByTestId('inline-save-btn'));
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+    expect(
+      screen.getByTestId('custom-property-edit-modal')
+    ).toBeInTheDocument();
   });
 });

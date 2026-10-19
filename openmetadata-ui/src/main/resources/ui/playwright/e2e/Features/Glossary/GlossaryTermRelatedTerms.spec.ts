@@ -17,9 +17,14 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   addRelatedTermsByRelationType,
+  addRelationRow,
+  getOnlyRelationRow,
+  getRelationRows,
   selectActiveGlossary,
   selectActiveGlossaryTerm,
+  selectRelationType,
 } from '../../../utils/glossary';
+import { pickGlossaryTermInField } from '../../../utils/glossaryPicker';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -51,33 +56,33 @@ test.describe('Glossary Term — Related Terms', () => {
       await selectActiveGlossaryTerm(page, termA.data.displayName);
       await page.getByTestId('related-term-add-button').click();
 
-      const firstRow = page.locator('[data-testid^="relation-row-"]').first();
-      const firstInput = firstRow
-        .locator('[data-testid^="term-autocomplete-"]')
-        .locator('input');
+      const firstRow = await getOnlyRelationRow(page);
 
       const termBName =
         termB.responseData?.displayName ?? termB.data.displayName;
-      const searchResB = page.waitForResponse(
-        '**/api/v1/glossaryTerms/search*'
+      await pickGlossaryTermInField(
+        page,
+        firstRow.locator('[data-testid^="term-picker-"]'),
+        {
+          name: termB.data.name,
+          displayName: termBName,
+          fullyQualifiedName: termB.responseData?.fullyQualifiedName ?? '',
+        }
       );
-      await firstInput.fill(termBName);
-      await searchResB;
-      await page.getByRole('option', { exact: true, name: termBName }).click();
-      await page.getByTestId('add-row-button').click();
-      const secondRow = page.locator('[data-testid^="relation-row-"]').last();
-      const secondInput = secondRow
-        .locator('[data-testid^="term-autocomplete-"]')
-        .locator('input');
+
+      const secondRow = await addRelationRow(page);
 
       const termCName =
         termC.responseData?.displayName ?? termC.data.displayName;
-      const searchResC = page.waitForResponse(
-        '**/api/v1/glossaryTerms/search*'
+      await pickGlossaryTermInField(
+        page,
+        secondRow.locator('[data-testid^="term-picker-"]'),
+        {
+          name: termC.data.name,
+          displayName: termCName,
+          fullyQualifiedName: termC.responseData?.fullyQualifiedName ?? '',
+        }
       );
-      await secondInput.fill(termCName);
-      await searchResC;
-      await page.getByRole('option', { exact: true, name: termCName }).click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
@@ -128,14 +133,11 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      const row = page.locator('[data-testid^="relation-row-"]').first();
-      await row.getByRole('button').first().click();
-      const seeAlsoOption = page.getByRole('option', {
-        exact: true,
-        name: 'See Also',
-      });
-      await expect(seeAlsoOption).toBeVisible();
-      await seeAlsoOption.click();
+      await selectRelationType(
+        page,
+        await getOnlyRelationRow(page),
+        'See Also'
+      );
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
@@ -198,7 +200,15 @@ test.describe('Glossary Term — Related Terms', () => {
         .getByTestId('edit-button')
         .click();
 
-      await page.locator('[data-testid^="remove-row-"]').first().click();
+      // Match on the trigger: each row's hidden native <select> lists every type.
+      await getRelationRows(page)
+        .filter({
+          has: page.locator('button[aria-haspopup="listbox"]', {
+            hasText: 'Related To',
+          }),
+        })
+        .locator('[data-testid^="remove-row-"]')
+        .click();
 
       const saveRes = page.waitForResponse('/api/v1/glossaryTerms/*');
       await page.getByTestId('save-related-terms').click();
@@ -256,7 +266,7 @@ test.describe('Glossary Term — Related Terms', () => {
       const reloadRes = page.waitForResponse(
         `/api/v1/glossaryTerms/name/*${encodeURIComponent(termA.data.name)}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(termBName)).toBeVisible();
@@ -318,7 +328,7 @@ test.describe('Glossary Term — Related Terms', () => {
           termBalance.data.name
         )}*`
       );
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await reloadRes;
 
       await expect(page.getByTestId(relatedName)).toHaveCount(3);

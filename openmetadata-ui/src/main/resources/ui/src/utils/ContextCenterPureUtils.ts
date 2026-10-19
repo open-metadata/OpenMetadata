@@ -20,6 +20,7 @@ import { CREATE_PAGE_HASH } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import type { Asset } from '../generated/attachments/asset';
 import { AssetType } from '../generated/attachments/asset';
+import type { ContextMemory } from '../generated/entity/context/contextMemory';
 import type { ContextFile } from '../generated/entity/data/contextFile';
 import { ListParams } from '../interface/API.interface';
 import type {
@@ -175,14 +176,28 @@ export const handleAssetDownload = async (file: ContextFile) => {
   }
 };
 
+/**
+ * How often a memory was cited and when last: the answers it was applied to once a recount has
+ * stamped its outcomes, otherwise the retrieval usage it recorded before outcomes existed.
+ */
+export const getMemoryCitations = (
+  memory: ContextMemory
+): { count?: number; lastAt?: number } => {
+  const { outcomes } = memory;
+
+  return outcomes?.countedAt === undefined
+    ? { count: memory.usageCount, lastAt: memory.lastUsedAt }
+    : { count: outcomes.appliedCount ?? 0, lastAt: outcomes.lastAppliedAt };
+};
+
 export const getSortConfig = (
   sortBy: MemorySortBy
 ): {
-  sortBy: 'updatedAt' | 'usageCount' | 'updatedBy';
+  sortBy: 'updatedAt' | 'appliedCount' | 'usageCount' | 'updatedBy';
   sortOrder: 'asc' | 'desc';
 } => {
   if (sortBy === 'usage') {
-    return { sortBy: 'usageCount', sortOrder: 'desc' };
+    return { sortBy: 'appliedCount', sortOrder: 'desc' };
   }
   if (sortBy === 'updatedBy') {
     return { sortBy: 'updatedBy', sortOrder: 'asc' };
@@ -190,3 +205,14 @@ export const getSortConfig = (
 
   return { sortBy: 'updatedAt', sortOrder: 'desc' };
 };
+
+export const getFilterTabClassName = ({
+  isSelected,
+}: {
+  isSelected: boolean;
+}): string =>
+  `tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer ${
+    isSelected
+      ? 'tw:border-utility-brand-100 tw:bg-brand-primary tw:text-brand-secondary'
+      : 'tw:border-primary tw:bg-surface tw:text-secondary'
+  }`;

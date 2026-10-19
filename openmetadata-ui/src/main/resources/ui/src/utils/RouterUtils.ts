@@ -17,7 +17,6 @@ import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
   PLACEHOLDER_ACTION,
-  PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_DIMENSION_KEY,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
@@ -43,14 +42,22 @@ import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceAgentSubTabs } from '../enums/service.enum';
-import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
+import { getSettingPath } from './RouterPaths';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getEncodedFqn } from './StringUtils';
+
+// Moved to RouterPaths so callers needing only a profile URL (the app
+// entry registers one) do not pull this module's graph into their chunk.
+export {
+  getSettingPath,
+  getTeamAndUserDetailsPath,
+  getUserPath,
+} from './RouterPaths';
 
 /**
  * The landing page is reachable at two paths: `/` (rendered in place, where
@@ -228,36 +235,6 @@ export const getAppInstallPath = (fqn: string) => {
   );
 };
 
-export const getSettingPath = (
-  category?: string,
-  tab?: string,
-  withFqn = false,
-  withAction = false
-) => {
-  let path = ROUTES.SETTINGS;
-
-  if (tab && category) {
-    if (withFqn) {
-      path = withAction
-        ? ROUTES.SETTINGS_WITH_TAB_FQN_ACTION
-        : ROUTES.SETTINGS_WITH_TAB_FQN;
-    } else {
-      path = ROUTES.SETTINGS_WITH_TAB;
-    }
-
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
-  } else if (category) {
-    path = withFqn
-      ? ROUTES.SETTINGS_WITH_CATEGORY_FQN
-      : ROUTES.SETTINGS_WITH_CATEGORY;
-
-    path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
-  }
-
-  return path;
-};
-
 export const getSettingPathRelative = (
   category?: string,
   tab?: string,
@@ -390,19 +367,6 @@ export const getTagPath = (fqn?: string) => {
     path = ROUTES.TAG_DETAILS;
     path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
   }
-
-  return path;
-};
-
-export const getAddCustomMetricPath = (
-  dashboardType: ProfilerDashboardType,
-  fqn: string
-) => {
-  let path = ROUTES.ADD_CUSTOM_METRIC;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };
@@ -833,42 +797,9 @@ export const getGlossaryTermDetailsPath = (
   return path;
 };
 
-export const getTeamAndUserDetailsPath = (name?: string) => {
-  let path = getSettingPath(
-    GlobalSettingsMenuCategory.MEMBERS,
-    GlobalSettingOptions.TEAMS
-  );
-  if (name) {
-    path = getSettingPath(
-      GlobalSettingsMenuCategory.MEMBERS,
-      GlobalSettingOptions.TEAMS,
-      true
-    );
-    path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
-  }
-
-  return path;
-};
-
 export const getEditWebhookPath = (webhookName: string) => {
   let path = ROUTES.EDIT_WEBHOOK;
   path = path.replace(PLACEHOLDER_WEBHOOK_NAME, getEncodedFqn(webhookName));
-
-  return path;
-};
-
-export const getUserPath = (username: string, tab?: string, subTab = 'all') => {
-  let path = tab ? ROUTES.USER_PROFILE_WITH_TAB : ROUTES.USER_PROFILE;
-
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.USER_PROFILE_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
-  }
-
-  if (tab) {
-    path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
-  }
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(username));
 
   return path;
 };
@@ -942,4 +873,12 @@ export const getLogEntityPath = (
     GlobalSettingsMenuCategory.SERVICES,
     getServiceRouteFromServiceType(logEntityType as ServiceTypes)
   );
+};
+
+export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
+  const path = ROUTES.CUSTOMIZE_PAGE;
+
+  return path
+    .replaceAll(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(personaFqn))
+    .replace(':pageFqn', pageFqn);
 };
