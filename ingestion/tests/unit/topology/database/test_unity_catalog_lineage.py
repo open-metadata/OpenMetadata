@@ -422,6 +422,108 @@ class TestNativeLineageStream:
         results = run(lineage_source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
 
         assert results == []
+        assert [list(warning) for warning in lineage_source.status.warnings] == [["cat.schema.src"]]
+
+    def test_an_unresolved_upstream_is_reported_once(self, lineage_source):
+        tables = {"cat.schema.tgt": a_table("tgt"), "cat.schema.other": a_table("other")}
+        rows = [table_row("cat.schema.src", "cat.schema.other"), table_row("cat.schema.src", "cat.schema.tgt")]
+
+        run(lineage_source, rows, tables)
+
+        assert len(lineage_source.status.warnings) == 1
+
+
+def cross_service_source(process_cross_database_lineage=True, cross_database_service_names=("other_service",)):
+    """A source whose upstreams may live in other services, its lookups keyed by full name"""
+    config = json.loads(json.dumps(MOCK_CONFIG["source"]))
+    config["sourceConfig"]["config"].update(
+        processCrossDatabaseLineage=process_cross_database_lineage,
+        crossDatabaseServiceNames=list(cross_database_service_names),
+    )
+    with (
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"),
+        patch("metadata.ingestion.source.database.unitycatalog.lineage.create_connection") as mock_create_connection,
+    ):
+        source = UnitycatalogLineageSource(WorkflowSource.model_validate(config), MagicMock())
+        source.engine = mock_create_connection.return_value.sql.client
+    return source
+
+
+def run_across_services(source, rows, tables):
+    """Everything the connector emits for `rows`, with `tables` keyed by `service.catalog.schema.table`"""
+    stub_rows(source, rows)
+    source.metadata.get_by_name.side_effect = lambda entity=None, fqn=None, **_: tables.get(str(fqn))
+    return list(source._iter())
+
+
+class TestCrossServiceLineage:
+    """An upstream ingested under another service, as the metastore-wide system tables report it."""
+
+    def test_an_upstream_in_a_cross_database_service_is_resolved(self):
+        source = cross_service_source()
+        tables = {
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert len(results) == 1
+        assert results[0].right.edge.fromEntity.id == tables["other_service.cat.schema.src"].id
+        assert source.status.warnings == []
+
+    def test_the_own_service_wins_over_a_cross_database_service(self):
+        source = cross_service_source()
+        tables = {
+            "local_unitycatalog.cat.schema.src": a_table("src"),
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert results[0].right.edge.fromEntity.id == tables["local_unitycatalog.cat.schema.src"].id
+
+    @pytest.mark.parametrize(
+        "process_cross_database_lineage, cross_database_service_names",
+        [(False, ("other_service",)), (True, ())],
+    )
+    def test_without_cross_database_lineage_only_the_own_service_is_searched(
+        self, process_cross_database_lineage, cross_database_service_names
+    ):
+        source = cross_service_source(process_cross_database_lineage, cross_database_service_names)
+        tables = {
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert results == []
+        assert [list(warning) for warning in source.status.warnings] == [["cat.schema.src"]]
+
+    def test_a_target_is_never_looked_up_in_another_service(self):
+        source = cross_service_source()
+        tables = {
+            "local_unitycatalog.cat.schema.src": a_table("src"),
+            "other_service.cat.schema.tgt": a_table("tgt"),
+        }
+
+        results = run_across_services(source, [table_row("cat.schema.src", "cat.schema.tgt")], tables)
+
+        assert results == []
+
+    def test_a_name_missed_as_a_target_is_still_found_as_an_upstream(self):
+        source = cross_service_source()
+        tables = {
+            "other_service.cat.schema.mid": a_table("mid"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+        rows = [table_row("cat.schema.src", "cat.schema.mid"), table_row("cat.schema.mid", "cat.schema.tgt")]
+
+        results = run_across_services(source, rows, tables)
+
+        assert [result.right.edge.fromEntity.id for result in results] == [tables["other_service.cat.schema.mid"].id]
 
 
 class TestSqlEnrichment:
