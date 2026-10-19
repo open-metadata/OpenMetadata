@@ -4148,6 +4148,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
+        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts"
       ]
     },
@@ -5921,6 +5922,7 @@
       "specs": [
         "playwright/e2e/Features/ColumnBulkOperations.spec.ts",
         "playwright/e2e/Features/ColumnBulkOperationsTagsGlossary.spec.ts",
+        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DataProducts.spec.ts"
       ]
     },
