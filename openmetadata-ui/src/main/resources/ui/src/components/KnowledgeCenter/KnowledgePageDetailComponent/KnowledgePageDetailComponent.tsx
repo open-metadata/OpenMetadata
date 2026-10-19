@@ -22,6 +22,7 @@ import { EntityTags } from 'Models';
 import {
   FC,
   KeyboardEvent,
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -34,6 +35,10 @@ import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/Activit
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
@@ -47,6 +52,7 @@ import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import {
   getKnowledgePageFields,
+  isKnowledgePageFullWidthTab,
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
@@ -97,9 +103,20 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 // Pure helper (module scope): decides whether a locally-stashed draft should be
 // merged into the freshly fetched page, and produces the merged shape. Kept out of
@@ -198,6 +215,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     hasViewAccess: hasViewPermission,
     canEditDescription,
     canEditDisplayName,
+    canEditCustomFields,
+    canViewCustomFields,
   } = useEntityPermissions(ResourceEntity.KNOWLEDGE_PAGE, fqn, {
     deleted: Boolean(knowledgePage?.deleted),
   });
@@ -249,6 +268,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.RELATED_ARTICLES,
           KNOWLEDGE_PAGE_FIELDS.EDITORS,
           KNOWLEDGE_PAGE_FIELDS.PARENT,
+          KNOWLEDGE_PAGE_FIELDS.EXTENSION,
         ]),
       });
 
@@ -550,6 +570,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         reviewers: response.reviewers,
         domains: response.domains,
         dataProducts: response.dataProducts,
+        extension: response.extension,
         version: response.version,
       }));
 
@@ -845,6 +866,25 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           />
         ),
       },
+      {
+        name: t('label.custom-property-plural'),
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: knowledgePage && (
+          <CustomPropertyTable<EntityType.KNOWLEDGE_PAGE>
+            entityDetails={knowledgePage}
+            entityType={EntityType.KNOWLEDGE_PAGE}
+            hasEditAccess={canEditCustomFields}
+            hasPermission={canViewCustomFields}
+            onEntityUpdate={updatePage}
+          />
+        ),
+      },
     ];
 
     return items;
@@ -854,6 +894,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     activeTab,
     canEditDisplayName,
     canEditDescription,
+    canEditCustomFields,
+    canViewCustomFields,
     displayName,
     fqn,
   ]);
@@ -947,7 +989,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     let rightPanel = null;
     if (
       isRightPanelOpen &&
-      activeTab !== EntityTabs.ACTIVITY_FEED &&
+      !isKnowledgePageFullWidthTab(activeTab) &&
       knowledgePage
     ) {
       rightPanel = (

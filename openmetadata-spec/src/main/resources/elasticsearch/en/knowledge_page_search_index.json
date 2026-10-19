@@ -553,6 +553,10 @@
       "totalVotes": {
         "type": "long"
       },
+      "extension": {
+        "type": "object",
+        "enabled": false
+      },
       "page": {
         "properties": {
           "publicationDate": {

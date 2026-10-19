@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
@@ -22,11 +24,13 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
 import org.openmetadata.sdk.services.teams.TeamService;
@@ -426,5 +430,52 @@ public class KnowledgeCenterIT {
                   result.getData().stream().anyMatch(p -> page.getId().equals(p.getId()));
               assertTrue(found, "Followed page should appear in sorted list");
             });
+  }
+
+  @Test
+  void testArticleCustomPropertyIsStoredOnCreateAndPatch(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    String propertyName = "articleCp" + ns.uniqueShortId();
+    addStringCustomPropertyToPageType(propertyName);
+
+    Page page =
+        createPage(
+            rest,
+            buildCreateRequest(ns.prefix("articleWithExtension"), getOrganizationRef())
+                .withExtension(Map.of(propertyName, "initial")));
+    assertEquals(
+        "initial", readExtensionValue(getPage(rest, page.getId(), "extension"), propertyName));
+
+    String original = JsonUtils.pojoToJson(page);
+    page.withExtension(Map.of(propertyName, "patched"));
+    patchPage(rest, page.getId(), original, page);
+
+    assertEquals(
+        "patched", readExtensionValue(getPage(rest, page.getId(), "extension"), propertyName));
+  }
+
+  private void addStringCustomPropertyToPageType(String propertyName) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Type pageType = getTypeByName(client, "page");
+    Type stringType = getTypeByName(client, "string");
+    CustomProperty property =
+        new CustomProperty()
+            .withName(propertyName)
+            .withDescription("Article custom property for KnowledgeCenterIT")
+            .withPropertyType(stringType.getEntityReference());
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metadata/types/" + pageType.getId(), property, Type.class);
+  }
+
+  private Type getTypeByName(OpenMetadataClient client, String name) {
+    return client
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/v1/metadata/types/name/" + name, null, Type.class);
+  }
+
+  private Object readExtensionValue(Page page, String propertyName) {
+    return JsonUtils.convertValue(page.getExtension(), Map.class).get(propertyName);
   }
 }
