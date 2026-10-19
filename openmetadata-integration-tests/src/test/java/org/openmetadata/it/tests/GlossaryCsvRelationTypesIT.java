@@ -411,6 +411,24 @@ public class GlossaryCsvRelationTypesIT {
   }
 
   @Test
+  void testReimportIntoSameGlossaryResolvesRelatedTermFromEarlierRow(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm termA = GlossaryTermTestFactory.createWithName(ns, glossary, "termA");
+    GlossaryTermTestFactory.createWithRelatedTerms(
+        ns, glossary, "termB", List.of(termA.getFullyQualifiedName()));
+
+    String exportedCsv = exportGlossaryCsv(glossary.getName());
+
+    for (boolean dryRun : List.of(true, false)) {
+      JsonNode result =
+          OBJECT_MAPPER.readTree(importGlossaryCsv(glossary.getName(), exportedCsv, dryRun));
+      assertEquals("success", result.path("status").asText(), "dryRun=" + dryRun + ": " + result);
+      assertEquals(0, result.path("numberOfRowsFailed").asInt(), "dryRun=" + dryRun);
+    }
+  }
+
+  @Test
   void testFqnWithColonIsNotMisinterpreted(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm existingTerm =
