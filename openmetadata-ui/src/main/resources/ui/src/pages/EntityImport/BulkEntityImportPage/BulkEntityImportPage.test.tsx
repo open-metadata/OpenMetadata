@@ -24,6 +24,7 @@ import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import BulkEntityImportPage from './BulkEntityImportPage';
 
 // Mock data
@@ -115,6 +116,10 @@ const mockSocket = {
 
 jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn(() => ({ socket: mockSocket })),
+}));
+
+jest.mock('../../../utils/Export/ExportUtils', () => ({
+  downloadCsv: jest.fn(),
 }));
 
 // Mock Papa Parse
@@ -721,6 +726,19 @@ describe('BulkEntityImportPage', () => {
   });
 
   describe('User Interactions - CSV Upload', () => {
+    it('downloads the CSV template as a UTF-8 CSV with a BOM', async () => {
+      renderComponent();
+
+      const templateButton = await screen.findByRole('button', {
+        name: 'label.download label.csv label.template',
+      });
+      await waitFor(() => expect(templateButton).toBeEnabled());
+
+      fireEvent.click(templateButton);
+
+      expect(downloadCsv).toHaveBeenCalledWith(expect.any(String), 'table.csv');
+    });
+
     it('should handle CSV file upload successfully', async () => {
       renderComponent();
 

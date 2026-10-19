@@ -563,7 +563,7 @@ test.describe(
         expect(download.suggestedFilename()).toContain(jobId);
         expect(download.suggestedFilename()).toContain('.csv');
 
-        // Excel decodes a CSV as UTF-8 only when it starts with a BOM (#25764).
+        // Excel decodes a CSV as UTF-8 only when it starts with a BOM.
         const stream = await download.createReadStream();
         const chunks: Buffer[] = [];
         for await (const chunk of stream) {

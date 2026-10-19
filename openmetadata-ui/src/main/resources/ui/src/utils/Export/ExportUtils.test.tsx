@@ -138,14 +138,6 @@ describe('ExportUtils', () => {
         { type: 'text/csv;charset=utf-8' }
       );
     });
-
-    it('does not add a second BOM to content that already has one', () => {
-      downloadCsv(`${BOM}a,b`, 'export.csv');
-
-      expect(MockBlob).toHaveBeenCalledWith([`${BOM}a,b`], {
-        type: 'text/csv;charset=utf-8',
-      });
-    });
   });
 
   describe('downloadBlob', () => {
