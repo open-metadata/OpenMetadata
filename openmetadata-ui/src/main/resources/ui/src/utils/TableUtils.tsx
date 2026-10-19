@@ -168,6 +168,8 @@ export const getConstraintIcon = ({
       title={title}
       triggerClassName={classNames('tw:inline-flex', className)}>
       <ConstraintIcon
+        // The core icons default to aria-hidden; this one carries the label.
+        aria-hidden={false}
         aria-label={title}
         className={classNames('tw:shrink-0', {
           'diff-added': isConstraintAdded,

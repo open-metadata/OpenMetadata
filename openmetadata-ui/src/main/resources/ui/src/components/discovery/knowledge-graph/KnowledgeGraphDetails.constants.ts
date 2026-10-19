@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import type { BadgeColors } from '@openmetadata/ui-core-components';
+import type { BadgeColors, Typography } from '@openmetadata/ui-core-components';
+import type { ComponentProps } from 'react';
 import { RelationCategory } from './KnowledgeGraph.relations';
 
 /**
@@ -28,4 +29,21 @@ export const FAMILY_BADGE_COLORS: Record<RelationCategory, BadgeColors> = {
   ownership: 'orange',
   quality: 'pink',
   other: 'gray',
+};
+
+export type CellTone = 'primary' | 'muted' | 'brand' | 'warning' | 'success';
+
+/**
+ * Typography props per cell tone. Uses the `color` prop where Typography has
+ * the tone; primary and brand have no `color` option, so they keep a class.
+ */
+export const CELL_TONE_PROPS: Record<
+  CellTone,
+  Pick<ComponentProps<typeof Typography>, 'color' | 'weight' | 'className'>
+> = {
+  primary: { className: 'tw:text-primary' },
+  muted: { color: 'secondary' },
+  brand: { className: 'tw:text-brand-secondary' },
+  warning: { color: 'warning', weight: 'semibold' },
+  success: { color: 'success' },
 };

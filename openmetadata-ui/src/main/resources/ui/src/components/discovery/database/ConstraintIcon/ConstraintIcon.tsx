@@ -89,6 +89,7 @@ const ConstraintIcon = ({
       )}
       <Tooltip placement="bottom" title={title}>
         <IconComponent
+          aria-hidden={false}
           aria-label={constraintType}
           className="primary-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
           role="img"

@@ -21,12 +21,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
-import { uniqBy } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Column } from '../../../generated/entity/data/table';
-import { TagLabel } from '../../../generated/type/tagLabel';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import { isCoverageNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -50,7 +47,12 @@ import {
 import KnowledgeGraphChipList, {
   KnowledgeGraphChip,
 } from './KnowledgeGraphChipList';
-import { FAMILY_BADGE_COLORS } from './KnowledgeGraphDetails.constants';
+import {
+  CellTone,
+  CELL_TONE_PROPS,
+  FAMILY_BADGE_COLORS,
+} from './KnowledgeGraphDetails.constants';
+import { chipText, toChips } from './KnowledgeGraphDetails.utils';
 import KnowledgeGraphDetailsFooter from './KnowledgeGraphDetailsFooter';
 
 interface DetailsProps {
@@ -72,8 +74,6 @@ interface DetailsProps {
   onClose: () => void;
   onRetry: () => void;
 }
-
-type CellTone = 'primary' | 'muted' | 'brand' | 'warning' | 'success';
 
 interface DetailCell {
   /** Plain text of the cell; also what the search box matches against. */
@@ -103,31 +103,6 @@ const UNKNOWN: MappingCoverage = 'unknown';
 const COVERAGE_STATUSES: MappingCoverage[] = ['mapped', 'unmapped', UNKNOWN];
 /** Gaps surfaces only the actionable statuses — mapped rows aren't a gap. */
 const GAPS_STATUSES: MappingCoverage[] = ['unmapped', UNKNOWN];
-
-const CELL_TONES: Record<CellTone, string> = {
-  primary: 'tw:text-primary',
-  muted: 'tw:text-tertiary',
-  brand: 'tw:text-brand-secondary',
-  warning: 'tw:font-semibold tw:text-warning-primary',
-  success: 'tw:text-success-primary',
-};
-
-/**
- * One chip per distinct tag. Distinct by FQN, not display name: two glossaries
- * can each hold a "Customer" term, and both belong on the column.
- */
-const toChips = (
-  tags: TagLabel[],
-  kind: KnowledgeGraphChip['kind']
-): KnowledgeGraphChip[] =>
-  uniqBy(tags, 'tagFQN').map((tag) => ({
-    id: tag.tagFQN,
-    label: tag.displayName || tag.name || tag.tagFQN,
-    kind,
-  }));
-
-const chipText = (chips: KnowledgeGraphChip[]) =>
-  chips.map((chip) => chip.label).join(', ');
 
 const getColumnCoverage = (
   termCount: number,
@@ -560,8 +535,8 @@ const KnowledgeGraphDetails = ({
 
           return (
             <Typography
-              className={classNames(cell.tone && CELL_TONES[cell.tone])}
-              size="text-sm">
+              size="text-sm"
+              {...(cell.tone && CELL_TONE_PROPS[cell.tone])}>
               {cell.text}
             </Typography>
           );

@@ -32,6 +32,7 @@ const ForeignKeyConstraint = () => {
       />
       <Tooltip placement="bottom" title={t('label.foreign-key')}>
         <ConstraintForeignKey
+          aria-hidden={false}
           aria-label="foreign-key"
           className="foreign-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
           role="img"

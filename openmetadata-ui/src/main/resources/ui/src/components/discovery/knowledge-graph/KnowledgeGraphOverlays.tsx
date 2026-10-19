@@ -66,6 +66,11 @@ import {
   InspectorSection,
   relationTile,
 } from './KnowledgeGraphInspectorParts';
+import {
+  INLINE_RELATIONSHIPS,
+  PREVIEW_RELATIONSHIPS,
+} from './KnowledgeGraphOverlays.constants';
+import { getBackTarget, InspectorBack } from './KnowledgeGraphOverlays.utils';
 import KnowledgeGraphRelationship from './KnowledgeGraphRelationship';
 
 const EntitySummaryPanel = withSuspenseFallback(
@@ -189,14 +194,6 @@ interface RelationshipsSectionProps {
   showAll: boolean;
   onShowAllChange: (showAll: boolean) => void;
 }
-
-const PREVIEW_RELATIONSHIPS = 3;
-/**
- * Most rows "View all" expands in the drawer. Past this the paged details
- * table takes over, so a 300-column table never renders 300 drawer rows.
- * ADR:2026-10-19-kg-inspector-expands-relationships-inline
- */
-const INLINE_RELATIONSHIPS = 40;
 
 const RelationshipsSection = ({
   node,
@@ -440,20 +437,6 @@ const GraphNodeInspector = ({
     </>
   );
 };
-
-interface InspectorBack {
-  from: GraphSelection;
-  to: string;
-}
-
-/** The selection to return to, while the drilled-into relationship is still shown. */
-const getBackTarget = (
-  back: InspectorBack | null,
-  selection: GraphSelection
-): GraphSelection =>
-  back && selection?.kind === 'edge' && selection.id === back.to
-    ? back.from
-    : null;
 
 interface InspectorHeaderProps {
   tile: ReactNode;

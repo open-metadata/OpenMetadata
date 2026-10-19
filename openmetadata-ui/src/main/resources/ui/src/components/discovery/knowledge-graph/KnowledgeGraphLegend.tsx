@@ -118,11 +118,11 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
 
         <Popover
           aria-label={t('label.relationship-type')}
-          className="tw:w-max tw:min-w-40 tw:p-2"
+          className="tw:w-max tw:min-w-40"
           placement="top end">
           {!isCollapsed && (
             <ul
-              className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1 tw:p-0"
+              className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1 tw:p-2"
               data-testid="knowledge-graph-legend-items">
               {presentCategories.map((category) => {
                 const style = getRelationStyle(category);
