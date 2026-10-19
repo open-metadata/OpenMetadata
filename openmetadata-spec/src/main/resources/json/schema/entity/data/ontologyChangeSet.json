@@ -6,12 +6,20 @@
   "$comment": "@om-entity-type",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.OntologyChangeSet",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
+  "javaInterfaces": [
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
+  ],
   "definitions": {
     "state": {
       "javaType": "org.openmetadata.schema.type.OntologyChangeSetState",
       "type": "string",
-      "enum": ["DRAFT", "SUBMITTED", "APPLIED", "APPLY_FAILED", "DISCARDED"],
+      "enum": [
+        "DRAFT",
+        "SUBMITTED",
+        "APPLIED",
+        "APPLY_FAILED",
+        "DISCARDED"
+      ],
       "default": "DRAFT"
     }
   },
@@ -85,6 +93,16 @@
     },
     "provider": {
       "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "ontology": {
+      "description": "Native ontology scope. Mutually exclusive with glossaries.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "baseWorkingRevision": {
+      "description": "Native working revision against which all operations were proposed. Required for native scope.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "minimum": 0
     }
   },
   "required": [
@@ -93,7 +111,6 @@
     "displayName",
     "fullyQualifiedName",
     "description",
-    "glossaries",
     "state",
     "operations",
     "undoCursor"

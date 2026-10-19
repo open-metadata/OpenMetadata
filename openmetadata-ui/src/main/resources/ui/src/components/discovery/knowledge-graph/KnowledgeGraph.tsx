@@ -104,23 +104,6 @@ const hasGraphFilters = (filters: KnowledgeGraphFilters) =>
     (items) => items.length > 0
   );
 
-const getGraphStatus = (
-  view: ReturnType<typeof getGraphViewState>,
-  loading: boolean,
-  mode: KnowledgeGraphMode,
-  concepts: ReturnType<typeof useKnowledgeGraphExplorer>['concepts']
-) => {
-  const metadata =
-    mode === 'ontology'
-      ? concepts
-      : { error: null, loading: false, partial: false };
-
-  return {
-    failed: view.failed || Boolean(metadata.error),
-    loading: loading || metadata.loading,
-    partial: view.partial || metadata.partial,
-  };
-};
 /** The design draws level bands only once there is a level beyond the entity itself. */
 const areBandsVisible = (showBands: boolean, level: KnowledgeGraphLevel) =>
   showBands && level > 1;
@@ -173,7 +156,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     displayData,
     presented,
     columns,
-    concepts,
     ontology,
     coverage,
     scene,
@@ -227,7 +209,11 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     canvas.error,
     selectedLevel
   );
-  const status = getGraphStatus(view, result.loading, mode, concepts);
+  const status = {
+    failed: view.failed,
+    loading: result.loading,
+    partial: view.partial,
+  };
   const findNode = (id: string) => {
     const group = presented.data?.nodes.find((node) =>
       node.presentation?.members?.some((member) => member.id === id)
@@ -421,7 +407,6 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     drawer && displayData ? (
       <KnowledgeGraphDetails
         columns={columns}
-        concepts={concepts}
         coverage={coverage}
         data={displayData}
         drawer={drawer}
