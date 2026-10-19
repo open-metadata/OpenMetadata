@@ -15,9 +15,9 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -28,7 +28,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -46,10 +45,18 @@ public final class OntologyChangePreflight {
 
   public void validate(
       final OntologyChangeSet changeSet, final List<OntologyChangeOperation> operations) {
+    final Map<UUID, Boolean> activeSourceMemories =
+        Caffeine.newBuilder().maximumSize(1000).<UUID, Boolean>build().asMap();
+    if (changeSet.getOntology() != null) {
+      for (final OntologyChangeOperation operation : operations) {
+        validateSourceMemories(operation, activeSourceMemories);
+        NativeOntologyChanges.validateTarget(changeSet, operation, entityLoader);
+      }
+      return;
+    }
     final Set<UUID> scope = glossaryScope(changeSet);
     final List<GlossaryTerm> plannedTerms = plannedTerms(operations);
     final List<VersionGuard> versionGuards = new ArrayList<>();
-    final Map<UUID, Boolean> activeSourceMemories = new HashMap<>();
     for (final OntologyChangeOperation operation : operations) {
       validateSourceMemories(operation, activeSourceMemories);
       validateScope(operation, scope, plannedTerms);
@@ -108,17 +115,17 @@ public final class OntologyChangePreflight {
     switch (operation.getOperationType()) {
       case CREATE_GLOSSARY -> requireInScope(operation, operation.getGlossary().getId(), scope);
       case CREATE_TERM -> validateCreatedTermScope(operation, scope, plannedTerms);
-      case UPDATE_TERM,
-          DELETE_TERM,
-          UPSERT_ATTRIBUTE,
-          DELETE_ATTRIBUTE,
-          UPSERT_MAPPING,
-          DELETE_MAPPING -> requireTermInScope(
+      case UPDATE_TERM, DELETE_TERM, UPSERT_MAPPING, DELETE_MAPPING -> requireTermInScope(
           operation, operation.getTargetId(), scope, plannedTerms);
       case ADD_RELATIONSHIP, UPDATE_RELATIONSHIP, DELETE_RELATIONSHIP -> validateRelationshipScope(
           operation, scope, plannedTerms);
-      case UPSERT_AXIOM -> validateAxiomScope(operation, scope);
-      case DELETE_AXIOM -> requireAxiomInScope(operation, scope);
+      case UPSERT_CONCEPT,
+          DELETE_CONCEPT,
+          UPSERT_PROPERTY,
+          DELETE_PROPERTY,
+          UPSERT_AXIOM,
+          DELETE_AXIOM -> throw new BadRequestException(
+          "Axioms must be authored in an ontology, not a glossary change set");
     }
   }
 
@@ -153,20 +160,6 @@ public final class OntologyChangePreflight {
             ? (GlossaryTerm) entityLoader.load(Entity.GLOSSARY_TERM, termId)
             : plannedTerm;
     requireInScope(operation, term.getGlossary().getId(), scope);
-  }
-
-  private void validateAxiomScope(final OntologyChangeOperation operation, final Set<UUID> scope) {
-    if (operation.getTargetId() == null) {
-      requireInScope(operation, operation.getAxiom().getGlossary().getId(), scope);
-    } else {
-      requireAxiomInScope(operation, scope);
-    }
-  }
-
-  private void requireAxiomInScope(final OntologyChangeOperation operation, final Set<UUID> scope) {
-    final OntologyAxiom axiom =
-        (OntologyAxiom) entityLoader.load(Entity.ONTOLOGY_AXIOM, operation.getTargetId());
-    requireInScope(operation, axiom.getGlossary().getId(), scope);
   }
 
   private static void requireInScope(
@@ -240,10 +233,7 @@ public final class OntologyChangePreflight {
     final OperationTarget target =
         switch (operation.getOperationType()) {
           case CREATE_GLOSSARY, CREATE_TERM -> null;
-          case UPSERT_AXIOM -> operation.getTargetId() == null
-              ? null
-              : new OperationTarget(Entity.ONTOLOGY_AXIOM, operation.getTargetId());
-          case DELETE_AXIOM -> new OperationTarget(Entity.ONTOLOGY_AXIOM, operation.getTargetId());
+          case UPSERT_AXIOM, DELETE_AXIOM -> null;
           default -> new OperationTarget(Entity.GLOSSARY_TERM, operation.getTargetId());
         };
     return target;

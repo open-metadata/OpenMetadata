@@ -15,7 +15,6 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ComponentProps } from 'react';
 import { ThemeProvider } from '../../../context/UntitledUIThemeProvider/theme-provider';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Column } from '../../../generated/entity/data/table';
 import KnowledgeGraphDetails from './KnowledgeGraphDetails';
 
@@ -37,7 +36,6 @@ const props: ComponentProps<typeof KnowledgeGraphDetails> = {
     error: null,
     loadMore: jest.fn(),
   },
-  concepts: { terms: [], loading: false, error: null, partial: false },
   coverage: new Map(),
   onDrawerChange: jest.fn(),
   onSelect: jest.fn(),
@@ -133,30 +131,39 @@ it('lists the gaps first, names what is missing and links to the asset to fix it
 it('shows actual property types and distinguishes functional declarations from unspecified cardinality', () => {
   openDetails({
     mode: 'ontology',
-    concepts: {
-      terms: [
+    data: {
+      nodes: [
+        { id: 'customer', label: 'Customer', type: 'ontologyConcept' },
         {
-          id: 'customer',
-          name: 'Customer',
-          attributes: [
-            {
-              id: 'id',
-              name: 'customerId',
-              dataType: 'STRING',
-              isIdentifier: true,
-            },
-            {
-              id: 'email',
-              name: 'emailAddress',
-              dataType: 'STRING',
-              datatypeIri: 'http://www.w3.org/2001/XMLSchema#string',
-            },
-          ],
+          id: 'id',
+          label: 'customerId',
+          type: 'property',
+          ontologyProperty: { range: 'STRING', functional: true },
         },
-      ] as GlossaryTerm[],
-      loading: false,
-      error: null,
-      partial: false,
+        {
+          id: 'email',
+          label: 'emailAddress',
+          type: 'property',
+          ontologyProperty: {
+            range: 'http://www.w3.org/2001/XMLSchema#string',
+            functional: false,
+          },
+        },
+      ],
+      edges: [
+        {
+          from: 'id',
+          to: 'customer',
+          label: 'domain',
+          relationType: 'http://www.w3.org/2000/01/rdf-schema#domain',
+        },
+        {
+          from: 'email',
+          to: 'customer',
+          label: 'domain',
+          relationType: 'http://www.w3.org/2000/01/rdf-schema#domain',
+        },
+      ],
     },
   });
   const grid = screen.getByRole('grid');
@@ -168,7 +175,7 @@ it('shows actual property types and distinguishes functional declarations from u
   expect(email).toHaveTextContent('label.kg-not-declared');
 });
 
-it('navigates an inherited property to the ancestor node that declares it', async () => {
+it('navigates to the property returned by the graph', async () => {
   const onSelect = jest.fn();
   openDetails({
     mode: 'ontology',
@@ -184,27 +191,6 @@ it('navigates an inherited property to the ancestor node that declares it', asyn
         },
       ],
       edges: [],
-    },
-    concepts: {
-      terms: [
-        {
-          id: 'customer',
-          name: 'Customer',
-          attributes: [],
-          effectiveAttributes: [
-            {
-              id: 'birthDate',
-              name: 'birthDate',
-              dataType: 'DATE',
-              inherited: true,
-              declaringTerm: { id: 'person', type: 'glossaryTerm' },
-            },
-          ],
-        },
-      ] as unknown as GlossaryTerm[],
-      loading: false,
-      error: null,
-      partial: false,
     },
   });
   const grid = screen.getByRole('grid');

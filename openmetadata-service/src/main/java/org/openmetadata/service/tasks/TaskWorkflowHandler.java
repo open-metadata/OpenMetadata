@@ -57,8 +57,12 @@ import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
+import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowHandler.TaskResolutionOutcome;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -202,6 +206,13 @@ public class TaskWorkflowHandler {
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.
     boolean isWorkflowManaged = isWorkflowManaged(task);
+    if (OntologyApprovalWorkflow.isReview(task)) {
+      if (!isWorkflowManaged || resolvedPayload != null || newValue != null) {
+        throw TaskStateConflictException.of(
+            "Ontology review must complete its workflow task without changing the reviewed content");
+      }
+      OntologyApprovalWorkflow.validate(task, user);
+    }
 
     if (isWorkflowManaged) {
       return resolveWorkflowTask(
@@ -248,7 +259,8 @@ public class TaskWorkflowHandler {
     WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     List<EntityReference> payloadAssignees = extractAssigneesFromPayload(resolvedPayload);
-    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task);
+    boolean ontologyReview = OntologyApprovalWorkflow.isReview(task);
+    boolean requiresRuntimeTaskReadiness = isMetricApprovalTask(task) || ontologyReview;
 
     if (requiresRuntimeTaskReadiness && TaskRepository.isTerminalStatus(task.getStatus())) {
       throw new IllegalStateException(
@@ -259,6 +271,9 @@ public class TaskWorkflowHandler {
           String.format(
               "Flowable runtime task for workflow-managed task '%s' is unavailable; retry the resolution",
               taskId));
+    }
+    if (ontologyReview) {
+      OntologyApprovalWorkflow.validateRuntime(task);
     }
 
     if (payloadAssignees != null && !payloadAssignees.isEmpty()) {
@@ -298,17 +313,45 @@ public class TaskWorkflowHandler {
     // transition result and mis-evaluate the outgoing gateway, so treat it as a failed resolve.
     Map<String, Object> namespacedVariables =
         workflowHandler.transformToNodeVariables(taskId, variables);
+    if (ontologyReview && namespacedVariables != null) {
+      TaskResolutionType decision =
+          resolutionType != null
+              ? resolutionType
+              : TaskWorkflowLifecycleResolver.isApproveTransition(selectedTransition)
+                  ? TaskResolutionType.Approved
+                  : TaskResolutionType.Rejected;
+      OntologyApprovalWorkflow.recordDecision(
+          task,
+          new OntologyWorkflowDecision(
+              taskId,
+              task.getOntologyReview(),
+              decision,
+              user,
+              List.of(user),
+              selectedTransition,
+              comment),
+          namespacedVariables);
+    }
+    TaskResolutionOutcome ontologyOutcome =
+        ontologyReview && namespacedVariables != null
+            ? workflowHandler.resolveTaskOutcome(taskId, namespacedVariables)
+            : null;
     boolean workflowSuccess =
-        namespacedVariables != null && workflowHandler.resolveTask(taskId, namespacedVariables);
+        ontologyReview
+            ? ontologyOutcome != null
+                && ontologyOutcome != TaskResolutionOutcome.RESOLUTION_FAILED
+                && ontologyOutcome != TaskResolutionOutcome.PROCESS_FAILED
+            : namespacedVariables != null
+                && workflowHandler.resolveTask(taskId, namespacedVariables);
 
     if (!workflowSuccess) {
       if (!workflowHandler.hasActiveRuntimeTask(taskId)) {
-        // Workflow-managed Metric tasks must not bypass their approval workflow when the runtime
+        // Governed approval tasks must not bypass their approval workflow when the runtime
         // task disappears between the readiness check and resolution.
         if (requiresRuntimeTaskReadiness) {
           throw TaskStateConflictException.of(
               String.format(
-                  "Flowable runtime task for workflow-managed Metric task '%s' disappeared while resolving transition '%s'; the task was not finalized",
+                  "Flowable runtime task for workflow-managed approval task '%s' disappeared while resolving transition '%s'; the task was not finalized",
                   taskId,
                   transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
         }
@@ -356,7 +399,9 @@ public class TaskWorkflowHandler {
     }
 
     // Check if multi-approval task is still waiting for more votes
-    if (workflowHandler.isAwaitingAdditionalVotes(taskId)) {
+    if (ontologyReview
+        ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
+        : workflowHandler.isAwaitingAdditionalVotes(taskId)) {
       LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
       persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
       updateTaskVotes(task, user, isPositiveResolution(resolutionType));
@@ -364,6 +409,10 @@ public class TaskWorkflowHandler {
     }
 
     // Task threshold met, apply resolution
+    if (ontologyReview) {
+      new OntologyReviewReconciler(Entity.getCollectionDAO()).reconcile(taskId);
+      return refreshTask(taskId);
+    }
     return applyTaskResolution(
         task, resolutionType, selectedTransition, newValue, resolvedPayload, comment, user);
   }
