@@ -205,8 +205,12 @@ class NatsJetStreamClient:
         async def _close() -> None:
             # Flush the acknowledgements, then close: draining a pull consumer waits for
             # deliveries that are not coming and times out
-            await self.nc.flush(timeout=ACK_TIMEOUT_SECONDS)
-            await self.nc.close()
+            try:
+                await self.nc.flush(timeout=ACK_TIMEOUT_SECONDS)
+            finally:
+                # A flush that times out must not cost us the close: the loop is stopped
+                # right after this, so a connection left open here is never closed at all
+                await self.nc.close()
 
         try:
             if not self._loop.is_closed():
