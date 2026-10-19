@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { SectionLineDashed } from '@openmetadata/ui-core-components/icons';
+import {
+  ConstraintForeignKey,
+  SectionLineDashed,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconForeignKey } from '../../../assets/svg/foreign-key.svg';
 import { ConstraintType } from '../../../generated/entity/data/table';
 
 const ForeignKeyConstraint = () => {
@@ -29,7 +31,7 @@ const ForeignKeyConstraint = () => {
         width="100%"
       />
       <Tooltip placement="bottom" title={t('label.foreign-key')}>
-        <IconForeignKey
+        <ConstraintForeignKey
           aria-label="foreign-key"
           className="foreign-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
           role="img"

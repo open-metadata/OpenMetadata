@@ -15,9 +15,17 @@ import type { BadgeColors } from '@openmetadata/ui-core-components';
 import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   ConstraintDistribution,
+  ConstraintDistributionRemoved,
+  ConstraintForeignKey,
+  ConstraintForeignKeyRemoved,
   ConstraintKey,
+  ConstraintKeyRemoved,
+  ConstraintNotNull,
+  ConstraintNotNullRemoved,
   ConstraintSort,
+  ConstraintSortRemoved,
   ConstraintUnique,
+  ConstraintUniqueRemoved,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
@@ -53,16 +61,8 @@ import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varc
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
-import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
-import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
-import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
-import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
-import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
-import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ExpandableConfig } from '../components/common/Table/Table.interface';
 import ConstraintIcon from '../components/discovery/database/ConstraintIcon/ConstraintIcon';
 import { ConstraintTypes } from '../enums/table.enum';
@@ -95,43 +95,43 @@ const CONSTRAINT_ICON_CONFIG: Record<string, ConstraintIconConfig> = {
   [ConstraintTypes.PRIMARY_KEY]: {
     getTitle: () => t('label.primary-key'),
     icon: ConstraintKey,
-    deletedIcon: IconKeyLineThrough,
+    deletedIcon: ConstraintKeyRemoved,
     dataTestId: 'primary-key',
   },
   [ConstraintTypes.UNIQUE]: {
     getTitle: () => t('label.unique'),
     icon: ConstraintUnique,
-    deletedIcon: IconUniqueLineThrough,
+    deletedIcon: ConstraintUniqueRemoved,
     dataTestId: 'unique',
   },
   [ConstraintTypes.NOT_NULL]: {
     getTitle: () => t('label.not-null'),
-    icon: IconNotNull,
-    deletedIcon: IconNotNullLineThrough,
+    icon: ConstraintNotNull,
+    deletedIcon: ConstraintNotNullRemoved,
     dataTestId: 'not-null',
   },
   [ConstraintTypes.FOREIGN_KEY]: {
     getTitle: () => t('label.foreign-key'),
-    icon: IconForeignKey,
-    deletedIcon: IconForeignKeyLineThrough,
+    icon: ConstraintForeignKey,
+    deletedIcon: ConstraintForeignKeyRemoved,
     dataTestId: 'foreign-key',
   },
   [ConstraintType.DistKey]: {
     getTitle: () => t('label.entity-key', { entity: t('label.dist') }),
     icon: ConstraintDistribution,
-    deletedIcon: IconDistLineThrough,
+    deletedIcon: ConstraintDistributionRemoved,
     dataTestId: 'dist-key',
   },
   [ConstraintType.SortKey]: {
     getTitle: () => t('label.entity-key', { entity: t('label.sort') }),
     icon: ConstraintSort,
-    deletedIcon: IconSortLineThrough,
+    deletedIcon: ConstraintSortRemoved,
     dataTestId: 'sort-key',
   },
   [ConstraintType.ClusterKey]: {
     getTitle: () => t('label.entity-key', { entity: t('label.cluster') }),
     icon: ConstraintDistribution,
-    deletedIcon: IconDistLineThrough,
+    deletedIcon: ConstraintDistributionRemoved,
     dataTestId: 'cluster-key',
   },
 };
