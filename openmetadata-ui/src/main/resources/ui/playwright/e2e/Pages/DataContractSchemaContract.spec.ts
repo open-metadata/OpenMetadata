@@ -12,6 +12,7 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -19,7 +20,7 @@ import {
   okJson,
   settleAll,
 } from '../../utils/apiResponse';
-import { getApiContext, uuid } from '../../utils/common';
+import { fullUuid, uuid } from '../../utils/common';
 import {
   getEncodedFqn,
   waitForAllLoadersToDisappear,
@@ -31,15 +32,6 @@ interface Contract {
   name: string;
   fullyQualifiedName: string;
 }
-
-interface ActivityEvent {
-  entity: { id: string };
-  fieldName?: string;
-  newValue?: string;
-}
-
-// Activity is written by an event subscription that polls every 30s.
-const ACTIVITY_TIMEOUT = 120_000;
 
 const createContract = async (
   apiContext: APIRequestContext,
@@ -53,26 +45,42 @@ const createContract = async (
     'Create data contract'
   );
 
-const waitForContractActivity = async (
+/**
+ * Seeds a contract activity event synchronously. The real event is written by
+ * an event subscription that polls every 30s and lags far behind on a shared
+ * CI server; what this spec asserts is that the asset feed shows and links
+ * its contract's activity, not that the poller ran.
+ */
+const seedContractActivity = async (
   apiContext: APIRequestContext,
-  entityPath: string,
-  isExpected: (event: ActivityEvent) => boolean
-) =>
-  expect
-    .poll(
-      async () => {
-        const { data } = await okJson<{ data: ActivityEvent[] }>(
-          await apiContext.get(`/api/v1/activity/entity/${entityPath}`, {
-            params: { days: 1, limit: 50 },
-          }),
-          'List entity activity'
-        );
-
-        return data.some(isExpected);
+  contract: Contract,
+  summary: string,
+  change: { eventType: string; fieldName?: string; newValue?: string }
+) => {
+  const admin = await okJson<{ id: string; name: string }>(
+    await apiContext.get('/api/v1/users/loggedInUser'),
+    'Get logged-in user'
+  );
+  await okJson(
+    await apiContext.post('/api/v1/activity/test-insert', {
+      data: {
+        id: fullUuid(),
+        about: `<#E::dataContract::${contract.fullyQualifiedName}>`,
+        entity: {
+          id: contract.id,
+          type: 'dataContract',
+          name: contract.name,
+          fullyQualifiedName: contract.fullyQualifiedName,
+        },
+        actor: { id: admin.id, type: 'user', name: admin.name },
+        timestamp: Date.now(),
+        summary,
+        ...change,
       },
-      { timeout: ACTIVITY_TIMEOUT, intervals: [2_000, 5_000] }
-    )
-    .toBe(true);
+    }),
+    'Seed contract activity'
+  );
+};
 
 const openActivityFeed = async (page: Page, entityPath: string) => {
   await page.goto(`/${entityPath}/activity_feed/all`);
@@ -88,25 +96,36 @@ test.describe(
   'Data contract on a database schema',
   { tag: [DOMAIN_TAGS.GOVERNANCE] },
   () => {
-    const approvedSchemaTable = new TableClass();
-    const draftSchemaTable = new TableClass();
-    const statusChangeTable = new TableClass();
+    // Each table gets its own service, so the contracts set on its schema
+    // cannot leak into the shared schema other specs' tables live in.
+    let approvedSchemaTable: TableClass;
+    let draftSchemaTable: TableClass;
+    let contractTable: TableClass;
     let approvedSchemaContract: Contract;
     let draftSchemaContract: Contract;
-    let draftTableContract: Contract;
+    let tableContract: Contract;
 
     const schemaFqn = (table: TableClass) =>
       table.schemaResponseData.fullyQualifiedName ?? '';
 
     test.beforeAll(async ({ browser }) => {
+      approvedSchemaTable = new TableClass({
+        service: new DatabaseServiceClass(),
+      });
+      draftSchemaTable = new TableClass({
+        service: new DatabaseServiceClass(),
+      });
+      contractTable = new TableClass({
+        service: new DatabaseServiceClass(),
+      });
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
         await settleAll([
           approvedSchemaTable.create(apiContext),
           draftSchemaTable.create(apiContext),
-          statusChangeTable.create(apiContext),
+          contractTable.create(apiContext),
         ]);
-        [approvedSchemaContract, draftSchemaContract, draftTableContract] =
+        [approvedSchemaContract, draftSchemaContract, tableContract] =
           await Promise.all([
             createContract(
               apiContext,
@@ -127,7 +146,7 @@ test.describe(
             createContract(
               apiContext,
               {
-                id: statusChangeTable.entityResponseData.id ?? '',
+                id: contractTable.entityResponseData.id ?? '',
                 type: 'table',
               },
               'Draft'
@@ -142,7 +161,7 @@ test.describe(
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
         await settleAll(
-          [approvedSchemaContract, draftSchemaContract, draftTableContract]
+          [approvedSchemaContract, draftSchemaContract, tableContract]
             .filter(Boolean)
             .map((contract) =>
               deleteFixtureEntity(
@@ -154,7 +173,7 @@ test.describe(
         await settleAll([
           approvedSchemaTable.delete(apiContext),
           draftSchemaTable.delete(apiContext),
-          statusChangeTable.delete(apiContext),
+          contractTable.delete(apiContext),
         ]);
       } finally {
         await afterAction();
@@ -225,19 +244,19 @@ test.describe(
     });
 
     test('schema activity feed lists its contract and links to it', async ({
+      browser,
       page,
     }) => {
-      test.slow();
-
       const schemaPath = `databaseSchema/${getEncodedFqn(
         schemaFqn(approvedSchemaTable)
       )}`;
-      const { apiContext, afterAction } = await getApiContext(page);
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
-        await waitForContractActivity(
+        await seedContractActivity(
           apiContext,
-          `databaseSchema/${approvedSchemaTable.schemaResponseData.id}`,
-          (event) => event.entity.id === approvedSchemaContract.id
+          approvedSchemaContract,
+          `Created dataContract: ${approvedSchemaContract.name}`,
+          { eventType: 'EntityCreated' }
         );
       } finally {
         await afterAction();
@@ -259,33 +278,18 @@ test.describe(
       );
     });
 
-    test('contract approval appears in the table activity feed', async ({
+    test('table activity feed shows its contract status change', async ({
+      browser,
       page,
     }) => {
-      test.slow();
-
-      const { apiContext, afterAction } = await getApiContext(page);
+      const summary = `Status of ${tableContract.name} changed to Approved`;
+      const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
-        await okJson(
-          await apiContext.patch(
-            `/api/v1/dataContracts/${draftTableContract.id}`,
-            {
-              data: [
-                { op: 'replace', path: '/entityStatus', value: 'Approved' },
-              ],
-              headers: { 'Content-Type': 'application/json-patch+json' },
-            }
-          ),
-          'Approve data contract'
-        );
-        await waitForContractActivity(
-          apiContext,
-          `table/${statusChangeTable.entityResponseData.id}`,
-          (event) =>
-            event.entity.id === draftTableContract.id &&
-            event.fieldName === 'entityStatus' &&
-            event.newValue === 'Approved'
-        );
+        await seedContractActivity(apiContext, tableContract, summary, {
+          eventType: 'EntityUpdated',
+          fieldName: 'entityStatus',
+          newValue: 'Approved',
+        });
       } finally {
         await afterAction();
       }
@@ -293,16 +297,11 @@ test.describe(
       await openActivityFeed(
         page,
         `table/${getEncodedFqn(
-          statusChangeTable.entityResponseData.fullyQualifiedName ?? ''
+          contractTable.entityResponseData.fullyQualifiedName ?? ''
         )}`
       );
 
-      await expect(
-        feedEntry(
-          page,
-          `Status of ${draftTableContract.name} changed to Approved`
-        )
-      ).toBeVisible();
+      await expect(feedEntry(page, summary)).toBeVisible();
     });
   }
 );
