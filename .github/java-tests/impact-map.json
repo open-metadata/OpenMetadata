@@ -1245,6 +1245,7 @@
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/factories/**",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/bench/**",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/search/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/service/search/vector/**",
         "openmetadata-integration-tests/src/test/resources/**"
       ],
       "tests": [

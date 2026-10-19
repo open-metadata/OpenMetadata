@@ -201,6 +201,7 @@ class ContextMemoryExtractionIT {
         extracted(second.getEntityReference()).stream().map(ContextMemory::getId).toList());
     RestClient.admin().delete(FILES, second.getId());
     assertTrue(extracted(second.getEntityReference()).isEmpty());
+    assertGone("v1/contextCenter/memories/" + pill.getId());
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     assertGone(FILES + "/" + first.getId());
     assertGone(FILES + "/" + second.getId());

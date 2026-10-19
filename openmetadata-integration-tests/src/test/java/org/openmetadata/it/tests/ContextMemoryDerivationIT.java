@@ -98,7 +98,7 @@ class ContextMemoryDerivationIT {
     fixture.memoryId().set(memory.getId());
     BackgroundJob job = claimDerivation(memory, fixture.source());
     OntologyChangeSet draft = derive(ns, job, memory);
-    assertRedeliveryReusesProposal(job, fixture.calls());
+    assertRedeliveryReusesProposal(job, fixture.calls(), draft.getId());
     OntologyChangeSet applied = apply(draft);
     assertEvidenceSurvives(fixture, applied, memory);
     assertCleanupRemovesRoots(ns, fixture, memory, applied);
@@ -205,11 +205,19 @@ class ContextMemoryDerivationIT {
     return draft;
   }
 
-  private void assertRedeliveryReusesProposal(BackgroundJob job, AtomicInteger calls) {
+  private void assertRedeliveryReusesProposal(
+      BackgroundJob job, AtomicInteger calls, UUID proposalId) {
     int callsAfterProposal = calls.get();
     OntologyMemoryDerivationJobHandler.createDefault().runJob(job);
     assertEquals(
         callsAfterProposal, calls.get(), "redelivery reuses the persisted draft for the job");
+    BackgroundJob redelivered = Entity.getJobDAO().fetchJobById(job.getId()).orElseThrow();
+    assertEquals(BackgroundJob.Status.COMPLETED, redelivered.getStatus());
+    assertEquals(
+        proposalId,
+        JsonUtils.readValue(
+                redelivered.getResult(), OntologyMemoryDerivationJobHandler.Result.class)
+            .changeSetId());
   }
 
   private OntologyChangeSet apply(OntologyChangeSet draft) {
