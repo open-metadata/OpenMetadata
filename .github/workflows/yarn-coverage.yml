@@ -32,7 +32,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        if: ${{ github.event_name == 'merge_group' }}
+        # paths-filter needs a repo for merge_group and workflow_dispatch;
+        # pull_request_target reads the PR's files through the API instead.
+        if: ${{ github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' }}
         with:
           fetch-depth: 0
           filter: blob:none
