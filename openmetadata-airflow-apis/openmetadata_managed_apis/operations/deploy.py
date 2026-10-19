@@ -35,6 +35,7 @@ from openmetadata_managed_apis.api.utils import (
     clean_dag_id,
     get_dagbag,
     import_path,
+    import_timeout_disabled_off_main_thread,
     scan_dags_job_background,
 )
 from openmetadata_managed_apis.utils.logger import operations_logger
@@ -153,7 +154,8 @@ class DagDeployer:
                     session.query(DagModel.last_parsed_time).filter(DagModel.dag_id == self.dag_id).scalar()
                 )
                 dag_bag = get_dagbag()
-                found_dags = dag_bag.process_file(dag_py_file)
+                with import_timeout_disabled_off_main_thread():
+                    found_dags = dag_bag.process_file(dag_py_file)
                 logger.info("processed dags {}".format(found_dags))  # noqa: UP032
                 # Serialized metadata can lag behind the definition being deployed.
                 dag: DAG | None = next((parsed for parsed in found_dags if parsed.dag_id == self.dag_id), None)

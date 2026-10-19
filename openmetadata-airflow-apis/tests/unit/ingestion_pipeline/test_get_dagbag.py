@@ -19,8 +19,10 @@ Airflow < 3.0 builds the bag with `read_dags_from_db=True`, which already early
 returns out of `collect_dags`, so these assertions only apply from 3.0 onwards.
 """
 
+import logging
 import os
 import textwrap
+import threading
 from unittest.mock import patch
 
 import pytest
@@ -116,3 +118,58 @@ def test_process_file_bags_the_deployed_dag(dags_folder):
     assert "the_deployed_dag" in dag_bag.dags
     # Only the deployed DAG is bagged, not the rest of the folder
     assert dag_bag.size() == 1
+
+
+def _process_in_request_thread(dag_bag, dag_file):
+    """The API server runs deploy handlers on worker threads, never the main thread"""
+    from openmetadata_managed_apis.api import utils
+
+    found = []
+
+    def deploy():
+        with utils.import_timeout_disabled_off_main_thread():
+            found.extend(dag_bag.process_file(str(dag_file)))
+
+    thread = threading.Thread(target=deploy)
+    thread.start()
+    thread.join()
+    return found
+
+
+@patch.dict(os.environ, {"AIRFLOW_HOME": "/tmp"})
+def test_deploy_thread_import_logs_no_signal_traceback(dags_folder, caplog):
+    """
+    Issue #35460: every deploy logged `ValueError: signal only works in main thread`
+    because Airflow's import timeout installs a SIGALRM handler.
+    """
+    from openmetadata_managed_apis.api import utils
+
+    deployed = _write_dag_file(dags_folder, "the_deployed_dag")
+    with patch.object(utils.settings, "DAGS_FOLDER", str(dags_folder)):
+        dag_bag = utils.get_dagbag()
+
+    with caplog.at_level(logging.WARNING):
+        found_dags = _process_in_request_thread(dag_bag, deployed)
+
+    assert [dag.dag_id for dag in found_dags] == ["the_deployed_dag"]
+    assert not [record for record in caplog.records if "timeout can't be used" in record.getMessage()]
+
+
+def test_import_timeout_is_kept_on_main_thread_and_restored():
+    from openmetadata_managed_apis.api import utils
+
+    original = utils.settings.get_dagbag_import_timeout
+    with utils.import_timeout_disabled_off_main_thread():
+        assert utils.settings.get_dagbag_import_timeout is original
+
+    timeouts = []
+
+    def deploy():
+        with utils.import_timeout_disabled_off_main_thread():
+            timeouts.append(utils.settings.get_dagbag_import_timeout("any.py"))
+
+    thread = threading.Thread(target=deploy)
+    thread.start()
+    thread.join()
+    assert timeouts == [0]
+    assert utils.settings.get_dagbag_import_timeout is original
