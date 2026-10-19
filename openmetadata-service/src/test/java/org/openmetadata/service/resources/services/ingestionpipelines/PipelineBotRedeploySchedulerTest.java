@@ -197,6 +197,29 @@ class PipelineBotRedeploySchedulerTest {
     assertFalse(pending.contains(agent.getId().toString()));
   }
 
+  // stop() interrupts the scan thread; a deploy in flight finishes, no further one starts.
+  @Test
+  void shutdownDuringADeployStartsNoFurtherDeploy() {
+    markedAgent(PipelineType.USAGE);
+    markedAgent(PipelineType.LINEAGE);
+    when(pipelineRepository.deployIngestionPipeline(any(), eq(service)))
+        .thenAnswer(
+            invocation -> {
+              deployed.add(invocation.getArgument(0));
+              Thread.currentThread().interrupt();
+              return response(200);
+            });
+
+    try {
+      assertTrue(scheduler.redeployPending());
+    } finally {
+      Thread.interrupted();
+    }
+
+    assertEquals(1, deployed.size());
+    assertEquals(1, pending.size());
+  }
+
   // The scan runs on the scheduler's own thread, which the static mocks do not reach, so these
   // two tests only watch how often the marker table is scanned.
   @Test

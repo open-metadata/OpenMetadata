@@ -110,13 +110,18 @@ public final class PipelineBotRedeployScheduler implements Managed {
     }
   }
 
-  // An interrupt means the server is stopping: the rest of the batch waits for the next start.
   private void redeployAll() {
     List<String> batch = extensionDAO.listExtensionIds(PENDING_REDEPLOY, "", BATCH_SIZE);
-    while (!batch.isEmpty() && !Thread.currentThread().isInterrupted()) {
-      batch.forEach(id -> redeploy(UUID.fromString(id)));
+    while (!batch.isEmpty() && !isStopping()) {
+      batch.stream().takeWhile(id -> !isStopping()).forEach(id -> redeploy(UUID.fromString(id)));
       batch = extensionDAO.listExtensionIds(PENDING_REDEPLOY, batch.getLast(), BATCH_SIZE);
     }
+  }
+
+  // stop() interrupts this thread: no further deploy starts, and the pipelines not reached keep
+  // their markers for the next server start.
+  private static boolean isStopping() {
+    return Thread.currentThread().isInterrupted();
   }
 
   private boolean hasPending() {
