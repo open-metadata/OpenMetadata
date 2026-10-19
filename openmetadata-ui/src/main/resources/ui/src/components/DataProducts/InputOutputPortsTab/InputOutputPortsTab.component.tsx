@@ -210,7 +210,7 @@ const InputPortsAccordionSection = ({
               className="tw:flex tw:flex-col tw:pb-2"
               style={{ height: 'calc(100vh - 460px)' }}>
               {inputPortsCount === 0 ? (
-                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <EmptyPlaceholder
                     data-testid="no-data-placeholder"
                     footer={
@@ -338,7 +338,7 @@ const OutputPortsAccordionSection = ({
               className="tw:flex tw:flex-col tw:pb-2"
               style={{ height: 'calc(100vh - 460px)' }}>
               {outputPortsCount === 0 ? (
-                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <EmptyPlaceholder
                     data-testid="no-data-placeholder"
                     footer={

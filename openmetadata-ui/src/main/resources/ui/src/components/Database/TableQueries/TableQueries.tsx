@@ -502,7 +502,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <CreatePlaceholder
           buttonId="add-query-btn"
           data-testid={`create-error-placeholder-${t(
@@ -523,7 +523,7 @@ const TableQueries: FC<TableQueriesProp> = ({
   if (isTableDeleted) {
     return (
       <div data-testid="no-queries">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={
@@ -544,7 +544,7 @@ const TableQueries: FC<TableQueriesProp> = ({
       className="layout-column flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
           footer={

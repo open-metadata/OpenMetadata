@@ -226,7 +226,7 @@ const getCustomizePageContent = (
   return renderer ? (
     renderer()
   ) : (
-    <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
       <NoDataPlaceholder data-testid="no-data-placeholder" />
     </div>
   );
@@ -522,7 +522,7 @@ const CustomizablePageContent = () => {
     return (
       <Grid className="layout-row layout-grid bg-white h-full">
         <Grid.Item className="layout-column" span={24}>
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <EmptyPlaceholder
               data-testid="no-data-placeholder"
               footer={

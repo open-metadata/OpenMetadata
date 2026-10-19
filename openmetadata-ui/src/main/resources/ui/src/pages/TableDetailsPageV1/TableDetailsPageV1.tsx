@@ -964,7 +964,7 @@ const TableDetailsPageV1: React.FC = () => {
 
   if (!isTourDataset && !viewBasicPermission) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {
@@ -987,7 +987,7 @@ const TableDetailsPageV1: React.FC = () => {
   // looping on the loader (the original page used a separate gate for this).
   if (!tableDetails) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder data-testid="no-data-placeholder" />
       </div>
     );

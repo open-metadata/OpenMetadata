@@ -107,7 +107,7 @@ export const getTopicDetailsPageTabs = ({
         sampleDataTab
       ) : (
         <div className="border-default border-radius-sm p-y-lg tw:relative tw:min-h-60 tw:bg-surface">
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <PermissionPlaceholder
               data-testid="permission-error-placeholder"
               permissionValue={i18n.t('label.view-entity', {

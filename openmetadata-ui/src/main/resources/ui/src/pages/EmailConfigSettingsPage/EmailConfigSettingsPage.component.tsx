@@ -154,7 +154,7 @@ function EmailConfigSettingsPage() {
   const configValuesContainer = useMemo(() => {
     if (isUndefined(emailConfigValues) && !loading) {
       return (
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <CreatePlaceholder
             data-testid={`create-error-placeholder-${t(
               'label.email-configuration-lowercase'

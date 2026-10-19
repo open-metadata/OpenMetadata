@@ -285,7 +285,7 @@ const KPIChart: FC<Props> = ({
                     {viewKPIPermission ? (
                       <EmptyGraphPlaceholder />
                     ) : (
-                      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                         <PermissionPlaceholder
                           data-testid="permission-error-placeholder"
                           permissionValue={t('label.view-entity', {
@@ -305,7 +305,7 @@ const KPIChart: FC<Props> = ({
                 direction="col"
                 gap={2}
                 itemClassName="layout-space-item">
-                <div className="tw:relative tw:h-full tw:min-h-60 tw:w-full">
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60">
                   <NoDataPlaceholder
                     data-testid="no-data-placeholder"
                     {...(createKPIPermission && {

@@ -320,7 +320,7 @@ function WorksheetColumnsTable() {
 
   if (isEmpty(schema)) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder data-testid="no-data-placeholder" />
       </div>
     );

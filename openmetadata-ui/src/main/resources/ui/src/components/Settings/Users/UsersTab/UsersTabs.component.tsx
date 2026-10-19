@@ -134,7 +134,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         loading={isDetailsLoading}
         locale={{
           emptyText: (
-            <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
               <CreatePlaceholder
                 permission
                 data-testid={`assign-error-placeholder-${t('label.user')}`}

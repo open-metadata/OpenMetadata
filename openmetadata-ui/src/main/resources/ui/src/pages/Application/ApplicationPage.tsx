@@ -125,7 +125,7 @@ const ApplicationPage = () => {
     if (showDisabled) {
       return (
         <Grid.Item className="layout-column mt-24 text-center" span={24}>
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoDataPlaceholder data-testid="no-data-placeholder" />
           </div>
         </Grid.Item>
@@ -134,7 +134,7 @@ const ApplicationPage = () => {
 
     return (
       <Grid.Item className="layout-column mt-24 text-center" span={24}>
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={

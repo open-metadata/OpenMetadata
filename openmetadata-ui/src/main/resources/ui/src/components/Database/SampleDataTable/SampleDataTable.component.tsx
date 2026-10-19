@@ -293,7 +293,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
 
   if (isEmpty(sampleData?.rows) && isEmpty(sampleData?.columns)) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
           footer={

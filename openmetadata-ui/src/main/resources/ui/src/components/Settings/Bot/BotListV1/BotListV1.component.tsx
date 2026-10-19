@@ -447,7 +447,7 @@ const BotListV1 = ({
         />
       </Box>
       <Box className="layout-column tw:block w-full">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <CreatePlaceholder
             data-testid={`create-error-placeholder-${t('label.bot')}`}
             doc={BOTS_DOCS}
@@ -542,7 +542,7 @@ const BotListV1 = ({
           loading={loading}
           locale={{
             emptyText: (
-              <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                 <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
               </div>
             ),

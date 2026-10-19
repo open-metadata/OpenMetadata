@@ -170,7 +170,7 @@ const ImportTeamsPage = () => {
   // it will fetch permission 1st, if its not allowed will show no permission placeholder
   if (!canCreate || !canEditAll) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.create-entity', {
@@ -188,7 +188,7 @@ const ImportTeamsPage = () => {
 
   if (isUndefined(team)) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder data-testid="no-data-placeholder" />
       </div>
     );
@@ -196,7 +196,7 @@ const ImportTeamsPage = () => {
 
   if (team.teamType === TeamType.Group && type === ImportType.TEAMS) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <EmptyPlaceholder
           data-testid="no-data-placeholder"
           footer={

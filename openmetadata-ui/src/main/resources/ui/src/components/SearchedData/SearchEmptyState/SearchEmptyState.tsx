@@ -95,7 +95,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
     if (isQuery) {
       return (
         <div className="text-center" data-testid="no-search-results">
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
           </div>
         </div>
@@ -105,7 +105,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
     if (['glossaries', 'tags'].includes(tab)) {
       return (
         <div className="text-center" data-testid="no-search-results">
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <CreatePlaceholder
               permission
               data-testid={`create-error-placeholder-${
@@ -126,7 +126,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
 
     return (
       <div className="text-center" data-testid="no-search-results">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={

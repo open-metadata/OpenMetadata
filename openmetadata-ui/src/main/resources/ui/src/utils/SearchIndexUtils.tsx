@@ -166,7 +166,7 @@ export const getSearchIndexDetailsTabs = ({
         />
       ) : (
         <div className="m-t-xlg">
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <PermissionPlaceholder
               data-testid="permission-error-placeholder"
               permissionValue={t('label.view-entity', {

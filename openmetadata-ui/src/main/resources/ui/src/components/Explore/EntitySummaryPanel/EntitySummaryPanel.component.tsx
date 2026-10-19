@@ -944,7 +944,7 @@ export default function EntitySummaryPanel({
     }
     if (!viewPermission) {
       return (
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <PermissionPlaceholder
             data-testid="permission-error-placeholder"
             permissionValue={t('label.view-entity', {
@@ -1173,7 +1173,7 @@ export default function EntitySummaryPanel({
               onDisplayNameUpdate={handleDisplayNameUpdate}
             />
           )}
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <PermissionPlaceholder
               data-testid="permission-error-placeholder"
               permissionValue={t('label.view-entity', {
@@ -1232,7 +1232,7 @@ export default function EntitySummaryPanel({
             })}>
             <div
               className={classNames(
-                'content-area tw:relative tw:block tw:w-full tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
+                'content-area tw:relative tw:block tw:border tw:border-utility-gray-blue-100 tw:dark:border-subtle',
                 { 'drawer-content-area': isSideDrawer }
               )}>
               <div className="tw:relative">{renderTabContent()}</div>

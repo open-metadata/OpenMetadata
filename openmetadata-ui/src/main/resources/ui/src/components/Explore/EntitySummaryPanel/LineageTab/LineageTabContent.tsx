@@ -282,7 +282,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           ))
         ) : (
           <div>
-            <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
               <EmptyPlaceholder
                 data-testid="no-data-placeholder"
                 footer={

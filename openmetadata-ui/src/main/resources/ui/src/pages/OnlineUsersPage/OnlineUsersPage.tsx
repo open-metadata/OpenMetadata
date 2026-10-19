@@ -254,7 +254,7 @@ const OnlineUsersPage = () => {
 
   if (!isAdminUser) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder data-testid="permission-error-placeholder" />
       </div>
     );
@@ -307,7 +307,7 @@ const OnlineUsersPage = () => {
             loading={isDataLoading}
             locale={{
               emptyText: (
-                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoSearchResultsPlaceholder
                     data-testid="search-error-placeholder"
                     description={

@@ -105,7 +105,7 @@ const CustomPropertiesSection = ({
 
     return (
       <div className="lineage-items-list tw:min-w-0 tw:px-4">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={
@@ -149,7 +149,7 @@ const CustomPropertiesSection = ({
   if (!viewCustomPropertiesPermission) {
     return (
       <div className="lineage-items-list">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <PermissionPlaceholder data-testid="permission-error-placeholder" />
         </div>
       </div>

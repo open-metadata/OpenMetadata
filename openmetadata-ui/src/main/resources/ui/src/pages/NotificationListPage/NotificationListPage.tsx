@@ -387,7 +387,7 @@ const NotificationListPage = () => {
             loading={Boolean(loadingCount)}
             locale={{
               emptyText: (
-                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <CreatePlaceholder
                     permission
                     data-testid={`create-error-placeholder-${t('label.alert')}`}

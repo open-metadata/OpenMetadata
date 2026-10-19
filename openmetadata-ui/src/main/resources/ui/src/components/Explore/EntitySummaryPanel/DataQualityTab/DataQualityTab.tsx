@@ -662,7 +662,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (statusCounts.total === 0) {
       return (
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={
@@ -728,7 +728,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (incidentCounts.total === 0) {
       return (
         <div className="m-t-lg">
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <EmptyPlaceholder
               data-testid="no-data-placeholder"
               footer={
@@ -851,7 +851,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   if (!hasViewTests) {
     return (
       <div className="lineage-items-list">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <PermissionPlaceholder data-testid="permission-error-placeholder" />
         </div>
       </div>

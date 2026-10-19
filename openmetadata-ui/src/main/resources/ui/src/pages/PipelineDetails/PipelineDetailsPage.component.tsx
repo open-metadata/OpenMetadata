@@ -401,7 +401,7 @@ const PipelineDetailsPage = () => {
 
   if (isError) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
           footer={<>{getEntityMissingError('pipeline', decodedPipelineFQN)}</>}
@@ -412,7 +412,7 @@ const PipelineDetailsPage = () => {
 
   if (!canViewPipeline) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {

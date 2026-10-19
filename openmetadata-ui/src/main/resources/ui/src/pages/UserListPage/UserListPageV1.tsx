@@ -389,7 +389,7 @@ const UserListPageV1 = () => {
 
   const errorPlaceHolder = useMemo(
     () => (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <CreatePlaceholder
           data-testid={`create-error-placeholder-${t('label.user')}`}
           heading={t('label.user')}
@@ -458,7 +458,7 @@ const UserListPageV1 = () => {
     return shouldShowErrorPlaceHolder ? (
       errorPlaceHolder
     ) : (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoSearchResultsPlaceholder
           data-testid="search-error-placeholder"
           description={emptyPlaceHolderText}

@@ -112,7 +112,7 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
   const errorPlaceHolder = useMemo(
     () => (
       <div className="h-full text-center w-full p-x-box">
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <CreatePlaceholder
             buttonId="add-persona-button"
             data-testid={`create-error-placeholder-${t('label.persona')}`}

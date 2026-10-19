@@ -120,7 +120,7 @@ const DataInsightPage = () => {
 
   if (!viewDataInsightChartPermission && !viewKPIPermission) {
     return (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {
@@ -141,7 +141,7 @@ const DataInsightPage = () => {
         <Box
           className="layout-column tw:block"
           style={{ maxWidth: '100%', flex: '0 0 100%' }}>
-          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <PermissionPlaceholder
               data-testid="permission-error-placeholder"
               permissionValue={t('label.view-entity', {

@@ -158,6 +158,8 @@ const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 // in every band; assets keep the wider default for their column lists.
 const CONTAINER_NODE_WIDTH = 340;
 const SCENE_LAYER_NODE_HEIGHT = 66;
+// The lineage canvas is already the surface, so empty states inside it only fill it
+// (`tw:relative tw:size-full`) rather than drawing their own card.
 const LINEAGE_MAP_EMPTY_CLASSES =
   'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
@@ -958,7 +960,7 @@ const LineageMapPlaceholder = ({
   if (error && !scene) {
     return (
       <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:size-full">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={
@@ -984,7 +986,7 @@ const LineageMapPlaceholder = ({
 
   return (
     <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className="tw:relative tw:size-full">
         <NoSearchResultsPlaceholder
           data-testid="search-error-placeholder"
           description={t('message.no-lineage-data-available')}
