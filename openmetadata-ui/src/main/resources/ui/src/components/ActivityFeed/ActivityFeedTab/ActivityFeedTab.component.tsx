@@ -286,7 +286,7 @@ const TaskFilterBar = ({
       : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
 
   return (
-    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
+    <div className="d-flex gap-4 task-filter-container justify-between items-center tw:flex-wrap">
       <Dropdown.Root>
         <Button
           color="secondary"

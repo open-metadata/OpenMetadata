@@ -1960,6 +1960,7 @@ export const TaskTabNew = ({
 
                 {/* Only opens the editor, so it is a button rather than an input. */}
                 <Button
+                  ellipsis
                   className="comments-input-field tw:w-full tw:justify-start"
                   color="secondary"
                   data-testid="comments-input-field"
