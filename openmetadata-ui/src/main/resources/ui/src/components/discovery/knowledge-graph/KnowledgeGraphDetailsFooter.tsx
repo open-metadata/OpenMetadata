@@ -27,7 +27,7 @@ interface KnowledgeGraphDetailsFooterProps {
   onLoadColumns: () => void;
 }
 
-/** Paging row under the details table; hidden when there is nothing more to show. */
+/** Paging row under the details table; visually hidden when there is nothing more to show. */
 const KnowledgeGraphDetailsFooter = ({
   total,
   limit,
@@ -39,8 +39,15 @@ const KnowledgeGraphDetailsFooter = ({
 }: KnowledgeGraphDetailsFooterProps) => {
   const { t } = useTranslation();
   const hasMoreRows = total > limit;
+  const count = t('label.kg-list-count', { count: total });
+  // Nothing to page: no visible row, but the count stays mounted so screen
+  // readers still hear it change as the search narrows the table.
   if (!hasMoreRows && unloadedColumns === 0) {
-    return null;
+    return (
+      <span aria-live="polite" className="tw:sr-only">
+        {count}
+      </span>
+    );
   }
 
   return (
@@ -51,7 +58,7 @@ const KnowledgeGraphDetailsFooter = ({
       justify="between"
       wrap="wrap">
       <Typography aria-live="polite" color="secondary" size="text-xs">
-        {t('label.kg-list-count', { count: total })}
+        {count}
       </Typography>
       <Box align="center" gap={3}>
         {unloadedColumns > 0 && (

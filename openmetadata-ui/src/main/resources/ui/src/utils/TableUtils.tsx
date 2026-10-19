@@ -402,21 +402,85 @@ export const tableConstraintRendererBasedOnType = (
   );
 };
 
-/** Badge colour per data-type family, so every surface colours types alike. */
-const DATA_TYPE_BADGE_COLORS: Array<[RegExp, BadgeColors]> = [
-  [/CHAR|TEXT|STRING|CLOB|UUID|ENUM/, 'blue'],
-  [/INT|NUM|DEC|DOUBLE|FLOAT|LONG|MONEY|REAL/, 'success'],
-  [/DATE|TIME|INTERVAL|YEAR/, 'orange'],
-  [/BOOL/, 'purple'],
-  [/ARRAY|MAP|STRUCT|JSON|UNION|VARIANT|OBJECT|RECORD/, 'pink'],
+const DATA_TYPE_FAMILIES: Array<[BadgeColors, DataType[]]> = [
+  [
+    'blue',
+    [
+      DataType.Char,
+      DataType.Varchar,
+      DataType.Text,
+      DataType.Mediumtext,
+      DataType.Ntext,
+      DataType.String,
+      DataType.Clob,
+      DataType.UUID,
+      DataType.Enum,
+    ],
+  ],
+  [
+    'success',
+    [
+      DataType.Bigint,
+      DataType.Byteint,
+      DataType.Decimal,
+      DataType.Double,
+      DataType.Float,
+      DataType.Int,
+      DataType.Largeint,
+      DataType.Long,
+      DataType.Money,
+      DataType.Number,
+      DataType.Numeric,
+      DataType.Smallint,
+      DataType.Tinyint,
+      DataType.Uint,
+    ],
+  ],
+  [
+    'orange',
+    [
+      DataType.Date,
+      DataType.Datetime,
+      DataType.Datetimerange,
+      DataType.Interval,
+      DataType.Time,
+      DataType.Timestamp,
+      DataType.Timestampz,
+      DataType.Year,
+    ],
+  ],
+  ['purple', [DataType.Boolean, DataType.Bit]],
+  [
+    'pink',
+    [
+      DataType.Array,
+      DataType.JSON,
+      DataType.Map,
+      DataType.Record,
+      DataType.Set,
+      DataType.Struct,
+      DataType.Super,
+      DataType.Tuple,
+      DataType.Union,
+      DataType.Variant,
+      DataType.XML,
+    ],
+  ],
 ];
+
+/** Badge colour per data-type family, so every surface colours types alike. */
+const DATA_TYPE_BADGE_COLORS = new Map<string, BadgeColors>(
+  DATA_TYPE_FAMILIES.flatMap(([color, types]) =>
+    types.map((type) => [type, color] as const)
+  )
+);
 
 /**
  * Colour for a column data-type badge: text, numeric, temporal, boolean and
- * complex types each get one colour; anything else is gray. Accepts either the
- * `DataType` enum value or a display string such as `varchar(50)`.
+ * complex types each get one colour; anything else (binary, spatial, …) is
+ * gray. Accepts the `DataType` value or a display string such as
+ * `varchar(50)`, whose leading word is the type.
  */
 export const getDataTypeBadgeColor = (dataType = ''): BadgeColors =>
-  DATA_TYPE_BADGE_COLORS.find(([pattern]) =>
-    pattern.test(dataType.toUpperCase())
-  )?.[1] ?? 'gray';
+  DATA_TYPE_BADGE_COLORS.get(dataType.toUpperCase().split(/[^A-Z0-9_]/)[0]) ??
+  'gray';

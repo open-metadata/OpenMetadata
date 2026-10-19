@@ -18,6 +18,8 @@ import { useTranslation } from 'react-i18next';
 import { CHIP_LIMIT } from './KnowledgeGraphDetails.constants';
 
 export interface KnowledgeGraphChip {
+  /** Tag FQN; two chips may share a label but never an id. */
+  id: string;
   label: string;
   kind: 'tag' | 'glossary';
 }
@@ -38,7 +40,7 @@ const KnowledgeGraphChipList = ({ chips }: KnowledgeGraphChipListProps) => {
         <BadgeWithIcon
           color="gray"
           iconLeading={chip.kind === 'tag' ? Tag01 : BookClosed}
-          key={chip.label}
+          key={chip.id}
           size="sm"
           type="modern">
           {chip.label}

@@ -265,8 +265,36 @@ it('hides the paging footer when every row is already shown', () => {
     },
   });
 
-  expect(screen.queryByText('label.kg-list-count')).not.toBeInTheDocument();
+  expect(screen.getByText('label.kg-list-count')).toHaveClass('tw:sr-only');
   expect(
     screen.queryByRole('button', { name: /label.kg-show-more/ })
   ).not.toBeInTheDocument();
+});
+
+it('keeps same-named terms from different glossaries as separate chips', () => {
+  openDetails({
+    columns: {
+      ...props.columns,
+      columns: [
+        {
+          name: 'customer',
+          dataType: 'VARCHAR',
+          tags: [
+            { tagFQN: 'Sales.Customer', name: 'Customer', source: 'Glossary' },
+            {
+              tagFQN: 'Marketing.Customer',
+              name: 'Customer',
+              source: 'Glossary',
+            },
+            { tagFQN: 'Sales.Customer', name: 'Customer', source: 'Glossary' },
+          ],
+        },
+      ] as Column[],
+      total: 1,
+    },
+  });
+
+  expect(
+    within(screen.getByRole('grid')).getAllByText('Customer')
+  ).toHaveLength(2);
 });

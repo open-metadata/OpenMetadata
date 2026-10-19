@@ -22,10 +22,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { uniq } from 'lodash';
+import { uniqBy } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Column } from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import { isCoverageNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -110,6 +111,23 @@ const CELL_TONES: Record<CellTone, string> = {
   warning: 'tw:font-semibold tw:text-warning-primary',
   success: 'tw:text-success-primary',
 };
+
+/**
+ * One chip per distinct tag. Distinct by FQN, not display name: two glossaries
+ * can each hold a "Customer" term, and both belong on the column.
+ */
+const toChips = (
+  tags: TagLabel[],
+  kind: KnowledgeGraphChip['kind']
+): KnowledgeGraphChip[] =>
+  uniqBy(tags, 'tagFQN').map((tag) => ({
+    id: tag.tagFQN,
+    label: tag.displayName || tag.name || tag.tagFQN,
+    kind,
+  }));
+
+const chipText = (chips: KnowledgeGraphChip[]) =>
+  chips.map((chip) => chip.label).join(', ');
 
 const getColumnCoverage = (
   termCount: number,
@@ -447,13 +465,10 @@ const KnowledgeGraphDetails = ({
           column.tags?.filter((tag) => tag.source === 'Glossary') ?? [];
         const node = graphColumns.get(column.fullyQualifiedName ?? column.name);
         const mapping = getColumnCoverage(terms.length, node, coverage);
-        const termNames = uniq(
-          terms.map((term) => term.displayName || term.name || term.tagFQN)
-        );
-        const tagNames = uniq(
-          (column.tags ?? [])
-            .filter((tag) => tag.source !== 'Glossary')
-            .map((tag) => tag.displayName || tag.name || tag.tagFQN)
+        const termChips = toChips(terms, 'glossary');
+        const tagChips = toChips(
+          (column.tags ?? []).filter((tag) => tag.source !== 'Glossary'),
+          'tag'
         );
         const dataType = column.dataTypeDisplay ?? column.dataType;
 
@@ -465,20 +480,11 @@ const KnowledgeGraphDetails = ({
           cells: [
             { text: column.name, tone: 'primary' },
             { text: dataType, dataType: column.dataType },
-            termNames.length > 0
-              ? {
-                  text: termNames.join(', '),
-                  chips: termNames.map((label) => ({
-                    label,
-                    kind: 'glossary',
-                  })),
-                }
+            termChips.length > 0
+              ? { text: chipText(termChips), chips: termChips }
               : { text: t('label.kg-' + mapping), tone: 'muted' },
-            tagNames.length > 0
-              ? {
-                  text: tagNames.join(', '),
-                  chips: tagNames.map((label) => ({ label, kind: 'tag' })),
-                }
+            tagChips.length > 0
+              ? { text: chipText(tagChips), chips: tagChips }
               : { text: '—', tone: 'muted' },
           ],
         };

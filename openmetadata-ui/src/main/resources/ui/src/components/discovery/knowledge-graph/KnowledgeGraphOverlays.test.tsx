@@ -60,8 +60,24 @@ const Harness = ({ initial }: { initial: (id: string) => GraphSelection }) => {
     ...transformToG6Format(presented).edges,
   ];
 
+  const accountEdge = edges.find(
+    (edge) => edge.target === 'Account' && !edge.data.members
+  );
+
   return (
     <ThemeProvider>
+      <button
+        type="button"
+        onClick={() => setSelection({ kind: 'node', id: root.id })}>
+        select root on canvas
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          setSelection({ kind: 'edge', id: String(accountEdge?.id) })
+        }>
+        select account edge on canvas
+      </button>
       <KnowledgeGraphOverlays
         edges={[...new Map(edges.map((edge) => [edge.id, edge])).values()]}
         nodes={[...data.nodes, ...(group ? [group] : [])]}
@@ -102,4 +118,24 @@ it('lists every relationship in the drawer when "view all" is pressed', async ()
 
   expect(rows()).toHaveLength(4);
   expect(screen.getByRole('button', { name: 'label.view-less' })).toBeVisible();
+});
+
+it('drops the way back once the user leaves the relationship', async () => {
+  render(<Harness initial={(groupId) => ({ kind: 'node', id: groupId })} />);
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Orders Has glossary term Account' })
+  );
+
+  expect(screen.getByTestId('inspector-back')).toBeVisible();
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'select root on canvas' })
+  );
+  await userEvent.click(
+    screen.getByRole('button', { name: 'select account edge on canvas' })
+  );
+
+  expect(screen.getByText('label.relationship')).toBeVisible();
+  expect(screen.queryByTestId('inspector-back')).not.toBeInTheDocument();
 });

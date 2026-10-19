@@ -532,6 +532,13 @@ const KnowledgeGraphOverlays = ({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
     }
   }, [inspectorOpen]);
+  // Leaving the drilled-into relationship (canvas click, close, another row)
+  // ends the trip, so a later direct selection of that edge offers no "back".
+  useEffect(() => {
+    if (back && !getBackTarget(back, selection)) {
+      setBack(null);
+    }
+  }, [back, selection]);
   const nodeLink = (node?: GraphNode) => {
     const href = getGraphNodeHref(node);
 

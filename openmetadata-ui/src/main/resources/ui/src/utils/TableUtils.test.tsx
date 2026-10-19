@@ -2591,6 +2591,10 @@ describe('getDataTypeBadgeColor', () => {
     ['BOOLEAN', 'purple'],
     ['STRUCT', 'pink'],
     ['BINARY', 'gray'],
+    ['INTERVAL', 'orange'],
+    ['LONGBLOB', 'gray'],
+    ['POINT', 'gray'],
+    ['BITMAP', 'gray'],
     [undefined, 'gray'],
   ])('colours %s as %s', (dataType, color) => {
     expect(getDataTypeBadgeColor(dataType)).toBe(color);
