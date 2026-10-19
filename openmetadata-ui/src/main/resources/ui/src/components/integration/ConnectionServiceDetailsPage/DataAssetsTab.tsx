@@ -14,12 +14,10 @@
 import { Dispatch, SetStateAction, useMemo } from 'react';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
-import type { WidgetConfig } from '../../../interface/customization.interface';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import ServiceMainTabContent from '../../../pages/ServiceDetailsPage/ServiceMainTabContent';
@@ -28,13 +26,8 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtil
 import Description from '../../common/EntityDescription/Description';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { CommonWidgets } from '../../DataAssets/CommonWidgets/CommonWidgets';
+import { RIGHT_PANEL_WIDGETS } from './DataAssetsTab.constants';
 import './data-assets-tab.less';
-
-const RIGHT_PANEL_WIDGETS = [
-  DetailPageWidgetKeys.DATA_PRODUCTS,
-  DetailPageWidgetKeys.TAGS,
-  DetailPageWidgetKeys.GLOSSARY_TERMS,
-].map((i) => ({ i } as WidgetConfig));
 
 interface DataAssetsTabProps {
   serviceCategory: ServiceCategory;
