@@ -32,13 +32,15 @@ function IngestionStatusCount({
       {records.map((record) => (
         <div
           className={classNames(
-            'tw:flex tw:h-12 tw:w-15.5 tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:px-3 tw:py-1.5',
+            'tw:flex tw:h-12 tw:min-w-15.5 tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:px-3 tw:py-1.5',
             STATUS_TILE_CLASS[record.type]
           )}
           data-testid={`${record.type}-count`}
           key={`${record.label}-${runId}`}>
           <span className="tw:text-sm tw:font-bold">{record.value}</span>
-          <span className="tw:text-[8px]">{record.label}</span>
+          <span className="tw:text-[length:var(--om-font-size-8)]">
+            {record.label}
+          </span>
         </div>
       ))}
     </Box>
