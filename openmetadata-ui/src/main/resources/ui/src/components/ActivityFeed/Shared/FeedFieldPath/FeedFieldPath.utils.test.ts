@@ -17,15 +17,35 @@ describe('getFeedFieldPath', () => {
     expect(
       getFeedFieldPath('<#E::table::db.sch.t::columns::last_name::description>')
     ).toEqual({
-      column: { name: 'last_name', fqn: 'db.sch.t.last_name' },
+      child: { name: 'last_name', columnFqn: 'db.sch.t.last_name' },
       field: 'description',
     });
   });
 
   it('names only the column when the link stops at it', () => {
     expect(getFeedFieldPath('<#E::table::db.sch.t::columns::id>')).toEqual({
-      column: { name: 'id', fqn: 'db.sch.t.id' },
+      child: { name: 'id', columnFqn: 'db.sch.t.id' },
       field: undefined,
+    });
+  });
+
+  // A child named like a field (`description`) must not read as that field
+  // of the entity.
+  it.each([
+    [
+      '<#E::pipeline::svc.p::tasks::load_orders::description>',
+      'load_orders',
+      'description',
+    ],
+    [
+      '<#E::topic::svc.t::messageSchema::description::tags>',
+      'description',
+      'tags',
+    ],
+  ])('names a non-column child and its field for %s', (about, child, field) => {
+    expect(getFeedFieldPath(about)).toEqual({
+      child: { name: child, columnFqn: undefined },
+      field,
     });
   });
 

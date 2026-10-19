@@ -23,29 +23,35 @@ const FIELD_LABEL_KEYS: Record<string, string> = {
 };
 
 export interface FeedFieldPathParts {
-  column?: { name: string; fqn: string };
+  // A column carries the fqn its link points at; other children (a pipeline
+  // task, a chart, a schema field) are named but not linked.
+  child?: { name: string; columnFqn?: string };
   field?: string;
 }
 
 /**
- * The part of a feed's entity link below the entity, e.g.
- * `<#E::table::db.t::columns::id::description>` → column `id`, field
- * `description`. Undefined when the link names only the entity.
+ * The part of a feed's entity link below the entity:
+ * `<#E::table::db.t::columns::id::description>` → child `id`, field
+ * `description`; `<#E::table::db.t::description>` → field `description`.
+ * Undefined when the link names only the entity.
  */
 export const getFeedFieldPath = (
   about?: string
 ): FeedFieldPathParts | undefined => {
-  const [, , group, name, columnField] = about ? EntityLink.split(about) : [];
+  const [, , group, child, childField] = about ? EntityLink.split(about) : [];
   if (!group) {
     return undefined;
   }
+  if (!child) {
+    return { field: group };
+  }
 
-  return group === COLUMNS_FIELD && name
-    ? {
-        column: { name, fqn: EntityLink.getEntityColumnFqn(about ?? '') },
-        field: columnField,
-      }
-    : { field: name ?? group };
+  const columnFqn =
+    group === COLUMNS_FIELD
+      ? EntityLink.getEntityColumnFqn(about ?? '')
+      : undefined;
+
+  return { child: { name: child, columnFqn }, field: childField };
 };
 
 export const getFeedFieldLabelKey = (field: string) =>

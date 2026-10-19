@@ -51,7 +51,7 @@ const FeedFieldPath = ({
 
   const field = showField ? path?.field : undefined;
 
-  if (!entityType || !(path?.column || field)) {
+  if (!entityType || !(path?.child || field)) {
     return null;
   }
 
@@ -59,9 +59,9 @@ const FeedFieldPath = ({
     <span
       className="tw:inline-flex tw:min-w-0 tw:items-center tw:gap-1.5"
       data-testid="feed-field-path">
-      {path?.column && (
+      {path?.child && <Separator />}
+      {path?.child?.columnFqn && (
         <>
-          <Separator />
           <Column
             aria-hidden="true"
             className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
@@ -69,10 +69,22 @@ const FeedFieldPath = ({
           <Link
             className="tw:truncate tw:text-sm tw:text-brand-secondary tw:hover:underline"
             data-testid="feed-field-path-column"
-            to={entityUtilClassBase.getEntityLink(entityType, path.column.fqn)}>
-            {path.column.name}
+            to={entityUtilClassBase.getEntityLink(
+              entityType,
+              path.child.columnFqn
+            )}>
+            {path.child.name}
           </Link>
         </>
+      )}
+      {path?.child && !path.child.columnFqn && (
+        <Typography
+          as="span"
+          className="tw:truncate"
+          data-testid="feed-field-path-child"
+          size="text-sm">
+          {path.child.name}
+        </Typography>
       )}
       {field && (
         <>
