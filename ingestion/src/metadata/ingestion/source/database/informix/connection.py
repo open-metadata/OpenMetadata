@@ -12,7 +12,7 @@
 Source connection handler
 """
 
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
@@ -73,10 +73,11 @@ def get_connection_url(connection: InformixConnectionConfig) -> str:
     """
     url = f"{(connection.scheme or InformixScheme.informix).value}://"
     if connection.username:
-        url += quote_plus(connection.username)
+        # Not quote_plus: SQLAlchemy decodes credentials with unquote, so a space would reach the driver as '+'.
+        url += quote(connection.username, safe="")
         password = get_password_secret(connection)
         if password and password.get_secret_value():
-            url += f":{quote_plus(password.get_secret_value())}"
+            url += f":{quote(password.get_secret_value(), safe='')}"
         url += "@"
     url += connection.hostPort
     url += f"/{connection.database}"

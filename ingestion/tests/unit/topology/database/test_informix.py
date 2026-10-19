@@ -15,7 +15,7 @@ from sqlalchemy import VARCHAR, cast, select
 from sqlalchemy import column as sa_column
 from sqlalchemy.engine.url import make_url
 
-from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, TableData
 from metadata.generated.schema.entity.services.connections.database.informixConnection import (
     InformixConnection as InformixConnectionConfig,
 )
@@ -121,6 +121,11 @@ class TestConnectionUrl:
     def test_password_special_characters_are_escaped(self):
         """':' or '@' in a password silently truncates an unescaped URL."""
         assert "informix:p%40ss%3Aw%2Frd%3Fx@db.local" in get_connection_url(config(password="p@ss:w/rd?x"))
+
+    @pytest.mark.parametrize("password", ["my password", "ünï cødé", "a+b"])
+    def test_password_reaches_the_driver_unchanged(self, password):
+        """SQLAlchemy decodes credentials with unquote, so quote_plus's '+' for a space survives as '+'."""
+        assert make_url(get_connection_url(config(password=password))).password == password
 
     def test_connection_options_are_appended(self):
         assert "DELIMIDENT=y" in get_connection_url(config(connectionOptions={"DELIMIDENT": "y"}))
@@ -492,6 +497,14 @@ class TestSampler:
         with patch.object(SQASampler, "fetch_sample_data", return_value="base") as base:
             assert sampler.fetch_sample_data(None) == "base"
         base.assert_called_once()
+
+    def test_an_empty_selection_samples_nothing(self):
+        """The base method reads [] as "every column", including the ones get_columns() dropped."""
+        sampler = build_sampler([("d_opaque", False)])
+
+        with patch.object(SQASampler, "fetch_sample_data") as base:
+            assert sampler.fetch_sample_data([]) == TableData(columns=[], rows=[])
+        base.assert_not_called()
 
     def test_user_sample_query_wins_over_the_cast_path(self):
         """A custom sample query often exists to filter sensitive rows out, so a

@@ -104,6 +104,10 @@ class InformixSampler(SQASampler):
         """Read the sample, casting the opaque columns to text on the way out."""
         if self.sample_query:
             return self._fetch_sample_data_from_user_query()
+        if columns is not None and not columns:
+            # The base method reads an empty list as "use them all", which would
+            # select again the columns get_columns() dropped.
+            return TableData(columns=[], rows=[])
         castable = {name for name, ok in self.driver_unfriendly_columns().items() if ok}
         if not castable:
             return super().fetch_sample_data(columns)
