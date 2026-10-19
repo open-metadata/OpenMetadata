@@ -70,6 +70,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
+  private static final Set<String> DERIVED_ENTITY_TYPES =
+      Set.of(
+          Entity.GLOSSARY_TERM,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_AXIOM);
   public static final String FIELD_SOURCE_FILE = "sourceFile";
   public static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   public static final String FIELD_ROOT_MEMORY = "rootMemory";
@@ -425,8 +431,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private List<EntityReference> getDerivedEntities(ContextMemory entity) {
-    return findFrom(
-        entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+    return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, null).stream()
+        .filter(reference -> DERIVED_ENTITY_TYPES.contains(reference.getType()))
+        .toList();
   }
 
   private void fetchAndSetDerivedEntities(List<ContextMemory> entities, Fields fields) {
@@ -443,7 +450,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     Map<String, EntityReference> refById = resolveReferencesByType(records);
     Map<UUID, List<EntityReference>> derivedById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      if (!Entity.GLOSSARY_TERM.equals(record.getFromEntity())) {
+      if (!DERIVED_ENTITY_TYPES.contains(record.getFromEntity())) {
         continue;
       }
       EntityReference ref = refById.get(record.getFromId());
