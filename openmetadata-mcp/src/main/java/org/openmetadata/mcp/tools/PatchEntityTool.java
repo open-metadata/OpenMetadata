@@ -161,12 +161,11 @@ public class PatchEntityTool implements McpTool {
 
   /**
    * A service's connection holds its credentials, and MCP reads return it masked. Stricter than
-   * REST PATCH on purpose: a {@code copy}, {@code move} or {@code test} reading from it exposes the
-   * stored config, and a write such as a new {@code hostPort} keeps the stored password, which the
-   * repository restores over the mask, and sends it to that host on the next connection test or
-   * ingestion run. The root pointer is refused too: replacing the whole document replaces the
+   * REST PATCH on purpose: an agent neither edits the connection nor reads the stored config back
+   * through a {@code copy}, {@code move} or {@code test}; connection changes go through the
+   * service's REST API. The root pointer is refused too: replacing the whole document replaces the
    * connection with it.
-   * ADR:2026-10-20-mcp-responses-carry-no-stored-credentials
+   * ADR:2026-10-20-mcp-responses-mask-stored-credentials
    */
   private static void requireConnectionUntouched(String entityType, JsonPatch patch) {
     boolean touchesConnection =
