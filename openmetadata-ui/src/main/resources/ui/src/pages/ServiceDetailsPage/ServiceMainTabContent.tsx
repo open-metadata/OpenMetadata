@@ -399,7 +399,6 @@ function ServiceMainTabContent({
         className="layout-column tw:block tab-content-height-with-resizable-panel"
         style={{ maxWidth: '100%', flex: '0 0 100%' }}>
         <ResizablePanels
-          hideSecondPanel={hideRightPanel}
           firstPanel={{
             className: 'entity-resizable-panel-container',
             wrapInCard,
@@ -518,6 +517,7 @@ function ServiceMainTabContent({
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
+          hideSecondPanel={hideRightPanel}
           secondPanel={{
             children: (
               <GenericProvider
