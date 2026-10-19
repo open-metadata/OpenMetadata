@@ -1,9 +1,12 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -16,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -23,6 +27,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -35,10 +40,13 @@ import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
@@ -70,27 +78,35 @@ class ContextMemoryDerivationIT {
   }
 
   @AfterEach
-  void restoreProviders() {
-    rdf.setAiEnabled(previousAiEnabled);
-    LLMClientHolder.initialize(LlmConfigHolder.get());
-    worker.start();
+  void restoreProviders(TestNamespace ns) {
+    try {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    } finally {
+      if (rdf != null) rdf.setAiEnabled(previousAiEnabled);
+      LLMClientHolder.initialize(LlmConfigHolder.get());
+      if (worker != null) worker.start();
+    }
   }
 
   @Test
   void aPublishedMemoryProducesOneDurableProposalAndApplyingItKeepsItsEvidence(TestNamespace ns)
       throws Exception {
     Fixture fixture = fixture(ns);
+    awaitGlossaryIndexed(fixture);
     LLMClientHolder.setForTesting(completions(fixture));
-    ContextMemory memory = publish(ns, fixture.source());
+    ContextMemory memory = publish(ns, fixture);
     fixture.memoryId().set(memory.getId());
     BackgroundJob job = claimDerivation(memory, fixture.source());
     OntologyChangeSet draft = derive(ns, job, memory);
     assertRedeliveryReusesProposal(job, fixture.calls());
     OntologyChangeSet applied = apply(draft);
     assertEvidenceSurvives(fixture, applied, memory);
+    assertCleanupRemovesRoots(ns, fixture, memory, applied);
   }
 
   private Fixture fixture(TestNamespace ns) throws Exception {
+    String termName = "qualified_" + ns.shortPrefix();
+    seedOtherGlossaries(ns);
     Page source =
         ns.trackRoot(
             Entity.PAGE,
@@ -103,23 +119,59 @@ class ContextMemoryDerivationIT {
                         .withPage(new Article()),
                     Page.class));
     return new Fixture(
-        GlossaryTestFactory.createSimple(ns),
-        source,
-        "qualified_" + ns.shortPrefix(),
-        new AtomicReference<>(),
-        new AtomicInteger());
+        glossary(ns, termName), source, termName, new AtomicReference<>(), new AtomicInteger());
   }
 
-  private ContextMemory publish(TestNamespace ns, Page source) {
+  private void seedOtherGlossaries(TestNamespace ns) {
+    for (int i = 0; i < 60; i++) {
+      GlossaryTestFactory.createWithName(ns, "a_prior_" + i);
+    }
+  }
+
+  private Glossary glossary(TestNamespace ns, String termName) {
+    // Keep this namespace-owned fixture in the selector's bounded fallback list.
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName("0_memory_" + ns.shortPrefix())
+                    .withDescription(
+                        termName + ": a qualified customer has completed seven paid orders.")));
+  }
+
+  private void awaitGlossaryIndexed(Fixture fixture) {
+    var search = Entity.getSearchRepository();
+    var request =
+        new SearchRequest()
+            .withIndex(search.getIndexOrAliasName("glossary_search_index"))
+            .withQuery(fixture.termName())
+            .withSize(40);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              var response = search.search(request, null);
+              var ids =
+                  JsonUtils.readTree((String) response.getEntity())
+                      .path("hits")
+                      .path("hits")
+                      .findValuesAsText("id");
+              assertTrue(ids.contains(fixture.glossary().getId().toString()));
+            });
+  }
+
+  private ContextMemory publish(TestNamespace ns, Fixture fixture) {
     CreateContextMemory request =
         new CreateContextMemory()
             .withName(ns.prefix("published"))
-            .withQuestion("What is a qualified customer?")
+            .withQuestion("What is " + fixture.termName() + "?")
             .withAnswer("A qualified customer has completed seven paid orders.")
             .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withSourceType(ContextMemorySourceType.PAGE_EXTRACTION)
-            .withSourceEntity(source.getEntityReference())
-            .withPrimaryEntity(source.getEntityReference())
+            .withSourceEntity(fixture.source().getEntityReference())
+            .withPrimaryEntity(fixture.source().getEntityReference())
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
     return ns.trackRoot(Entity.CONTEXT_MEMORY, memories().create(request));
   }
@@ -206,6 +258,25 @@ class ContextMemoryDerivationIT {
     return new ContextMemoryService(SdkClients.adminClient().getHttpClient());
   }
 
+  private void assertCleanupRemovesRoots(
+      TestNamespace ns, Fixture fixture, ContextMemory memory, OntologyChangeSet applied) {
+    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    assertGone("contextCenter/pages/" + fixture.source().getId());
+    assertGone("contextCenter/memories/" + memory.getId());
+    assertGone("ontologyChangeSets/" + applied.getId());
+  }
+
+  private void assertGone(String path) {
+    OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.GET, "/v1/" + path + "?include=all", null, Object.class));
+    assertEquals(404, failure.getStatusCode());
+  }
+
   private LLMCompletionClient completions(Fixture fixture) {
     return new LLMCompletionClient(1) {
       @Override
@@ -214,7 +285,7 @@ class ContextMemoryDerivationIT {
         fixture.calls().incrementAndGet();
         String reply =
             systemPrompt.contains("glossaryId")
-                ? glossaryChoice(fixture.glossary())
+                ? glossaryChoice(fixture, userPrompt)
                 : termChoice(fixture);
         return new CompletionResult(reply, 100, 30);
       }
@@ -226,13 +297,16 @@ class ContextMemoryDerivationIT {
     };
   }
 
-  private String glossaryChoice(Glossary glossary) {
+  private String glossaryChoice(Fixture fixture, String userPrompt) {
+    assertTrue(
+        userPrompt.contains(fixture.glossary().getId().toString()),
+        "The scripted selection must choose a glossary the model actually received");
     return """
         [{"glossaryId":"%s","newGlossaryName":"fallback","newGlossaryDisplayName":"Fallback",
           "newGlossaryDescription":"Customer definitions","confidence":0.99,
           "rationale":"The supplied glossary governs these concepts"}]
         """
-        .formatted(glossary.getId());
+        .formatted(fixture.glossary().getId());
   }
 
   private String termChoice(Fixture fixture) {

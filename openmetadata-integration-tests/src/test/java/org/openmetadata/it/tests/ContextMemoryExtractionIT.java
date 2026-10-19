@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -17,6 +19,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateContextFile;
@@ -39,6 +43,8 @@ import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
@@ -69,9 +75,12 @@ class ContextMemoryExtractionIT {
   private boolean partial;
   private DocumentMemoryExtractor extractor;
   private GenericBackgroundWorker worker;
+  private TestNamespace namespace;
+  private final Set<UUID> trackedMemories = new HashSet<>();
 
   @BeforeEach
-  void installScriptedProvider() {
+  void installScriptedProvider(TestNamespace ns) {
+    namespace = ns;
     worker = TestSuiteBootstrap.findManagedObject(GenericBackgroundWorker.class).orElseThrow();
     worker.stop();
     previousProvider = AiProviderHolder.get();
@@ -88,11 +97,15 @@ class ContextMemoryExtractionIT {
   }
 
   @AfterEach
-  void restoreProviders() {
-    AiProviderHolder.setForTesting(previousProvider);
-    PageContextProcessingEngineHolder.setForTesting(null);
-    LLMClientHolder.initialize(LlmConfigHolder.get());
-    if (worker != null) worker.start();
+  void restoreProviders(TestNamespace ns) {
+    try {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    } finally {
+      AiProviderHolder.setForTesting(previousProvider);
+      PageContextProcessingEngineHolder.setForTesting(null);
+      LLMClientHolder.initialize(LlmConfigHolder.get());
+      if (worker != null) worker.start();
+    }
   }
 
   @Test
@@ -119,6 +132,9 @@ class ContextMemoryExtractionIT {
     new ContextMemoryExtractionJobHandler().runJob(jobs.fetchJobById(queued).orElseThrow());
     assertEquals(1, calls.get(), "a rebuilt worker reads the persisted successful source hash");
     assertEquals(published.getId(), extracted(page.getEntityReference()).getFirst().getId());
+    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    assertGone(PAGES + "/" + page.getId());
+    assertGone("v1/contextCenter/memories/" + published.getId());
   }
 
   @Test
@@ -185,6 +201,10 @@ class ContextMemoryExtractionIT {
         extracted(second.getEntityReference()).stream().map(ContextMemory::getId).toList());
     RestClient.admin().delete(FILES, second.getId());
     assertTrue(extracted(second.getEntityReference()).isEmpty());
+    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    assertGone(FILES + "/" + first.getId());
+    assertGone(FILES + "/" + second.getId());
+    assertGone("v1/contextCenter/memories/" + pill.getId());
   }
 
   private void installPageWorker(long quietPeriod) {
@@ -318,7 +338,23 @@ class ContextMemoryExtractionIT {
   }
 
   private List<ContextMemory> extracted(EntityReference source) {
-    return memoryRepository().listExtractedMemories(source.getId(), source.getType());
+    List<ContextMemory> memories =
+        memoryRepository().listExtractedMemories(source.getId(), source.getType());
+    memories.stream()
+        .filter(memory -> trackedMemories.add(memory.getId()))
+        .forEach(memory -> namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId()));
+    return memories;
+  }
+
+  private void assertGone(String path) {
+    OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.GET, "/" + path + "?include=all", null, Object.class));
+    assertEquals(404, failure.getStatusCode());
   }
 
   private void assertSource(
