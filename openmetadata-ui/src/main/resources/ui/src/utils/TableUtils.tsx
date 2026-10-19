@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
@@ -400,3 +401,22 @@ export const tableConstraintRendererBasedOnType = (
     </div>
   );
 };
+
+/** Badge colour per data-type family, so every surface colours types alike. */
+const DATA_TYPE_BADGE_COLORS: Array<[RegExp, BadgeColors]> = [
+  [/CHAR|TEXT|STRING|CLOB|UUID|ENUM/, 'blue'],
+  [/INT|NUM|DEC|DOUBLE|FLOAT|LONG|MONEY|REAL/, 'success'],
+  [/DATE|TIME|INTERVAL|YEAR/, 'orange'],
+  [/BOOL/, 'purple'],
+  [/ARRAY|MAP|STRUCT|JSON|UNION|VARIANT|OBJECT|RECORD/, 'pink'],
+];
+
+/**
+ * Colour for a column data-type badge: text, numeric, temporal, boolean and
+ * complex types each get one colour; anything else is gray. Accepts either the
+ * `DataType` enum value or a display string such as `varchar(50)`.
+ */
+export const getDataTypeBadgeColor = (dataType = ''): BadgeColors =>
+  DATA_TYPE_BADGE_COLORS.find(([pattern]) =>
+    pattern.test(dataType.toUpperCase())
+  )?.[1] ?? 'gray';

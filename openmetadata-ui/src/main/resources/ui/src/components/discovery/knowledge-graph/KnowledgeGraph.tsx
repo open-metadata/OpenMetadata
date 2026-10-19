@@ -315,7 +315,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     ]
   );
   const handleExportPng = useCallback(async () => {
-    const container = canvas.containerRef.current?.parentElement;
+    const container = canvas.container?.parentElement;
     if (!container || !canvas.ready) {
       return;
     }
@@ -338,7 +338,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
-  }, [canvas.containerRef, canvas.ready]);
+  }, [canvas.container, canvas.ready]);
 
   const handleExportCsv = useCallback(async () => {
     const { unparse } = await import('papaparse');
@@ -443,9 +443,7 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       <ReflexSplitter
         className={classNames(
           'kg-stage-splitter',
-          'tw:relative tw:h-px tw:cursor-row-resize tw:border-0',
-          'tw:bg-border-secondary tw:hover:bg-border-brand',
-          'tw:[&.active]:bg-border-brand',
+          'tw:relative tw:cursor-row-resize',
           "tw:before:absolute tw:before:inset-x-0 tw:before:-inset-y-1 tw:before:content-['']"
         )}
         key="splitter"

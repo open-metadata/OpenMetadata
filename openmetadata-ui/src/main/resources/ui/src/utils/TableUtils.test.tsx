@@ -48,6 +48,7 @@ import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
+import { getDataTypeBadgeColor } from './TableUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {
@@ -2577,5 +2578,21 @@ describe('getNestedSectionTitle', () => {
     expect(getNestedSectionTitle(entityType)).toBe(
       'label.nested-column-plural'
     );
+  });
+});
+
+describe('getDataTypeBadgeColor', () => {
+  it.each([
+    ['VARCHAR', 'blue'],
+    ['varchar(50)', 'blue'],
+    ['INT', 'success'],
+    ['decimal(10,2)', 'success'],
+    ['TIMESTAMP', 'orange'],
+    ['BOOLEAN', 'purple'],
+    ['STRUCT', 'pink'],
+    ['BINARY', 'gray'],
+    [undefined, 'gray'],
+  ])('colours %s as %s', (dataType, color) => {
+    expect(getDataTypeBadgeColor(dataType)).toBe(color);
   });
 });

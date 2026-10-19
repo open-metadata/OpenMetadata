@@ -199,3 +199,74 @@ it('navigates to the property returned by the graph', async () => {
 
   expect(onSelect).toHaveBeenCalledWith('node', 'kg:property:person:birthDate');
 });
+
+it('shows tags and glossary terms as chips, capped at five until expanded, without selecting the row', async () => {
+  const onSelect = jest.fn();
+  const terms = ['Account', 'Branch', 'Customer', 'Employee', 'Testing', 'CLV'];
+  openDetails({
+    onSelect,
+    data: {
+      nodes: [
+        {
+          id: 'col',
+          label: 'customer',
+          type: 'column',
+          fullyQualifiedName: 'svc.db.sales.orders.customer',
+        },
+      ],
+      edges: [],
+    },
+    columns: {
+      ...props.columns,
+      columns: [
+        {
+          name: 'customer',
+          fullyQualifiedName: 'svc.db.sales.orders.customer',
+          dataType: 'VARCHAR',
+          dataTypeDisplay: 'varchar',
+          tags: [
+            ...terms.map((name) => ({
+              tagFQN: 'Glossary.' + name,
+              name,
+              source: 'Glossary',
+            })),
+            {
+              tagFQN: 'PII.Sensitive',
+              name: 'Sensitive',
+              source: 'Classification',
+            },
+          ],
+        },
+      ] as Column[],
+      total: 1,
+    },
+  });
+  const grid = screen.getByRole('grid');
+
+  expect(within(grid).getByText('varchar')).toBeVisible();
+  expect(within(grid).getByText('Sensitive')).toBeVisible();
+  expect(within(grid).getByText('Testing')).toBeVisible();
+  expect(within(grid).queryByText('CLV')).not.toBeInTheDocument();
+
+  await userEvent.click(
+    within(grid).getByRole('button', { name: 'label.kg-more-count' })
+  );
+
+  expect(within(grid).getByText('CLV')).toBeVisible();
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+it('hides the paging footer when every row is already shown', () => {
+  openDetails({
+    columns: {
+      ...props.columns,
+      columns: props.columns.columns.slice(0, 3),
+      total: 3,
+    },
+  });
+
+  expect(screen.queryByText('label.kg-list-count')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /label.kg-show-more/ })
+  ).not.toBeInTheDocument();
+});

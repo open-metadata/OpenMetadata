@@ -118,23 +118,20 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
 
         <Popover
           aria-label={t('label.relationship-type')}
-          className="tw:w-72 tw:p-3"
+          className="tw:w-max tw:min-w-40 tw:p-2"
           placement="top end">
           {!isCollapsed && (
             <ul
-              className="tw:m-0 tw:flex tw:list-none tw:flex-wrap tw:gap-1 tw:p-0"
+              className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1 tw:p-0"
               data-testid="knowledge-graph-legend-items">
               {presentCategories.map((category) => {
                 const style = getRelationStyle(category);
 
                 return (
-                  <li
-                    className="tw:flex tw:items-center tw:gap-2"
-                    data-testid={`legend-item-${category}`}
-                    key={category}>
+                  <li data-testid={`legend-item-${category}`} key={category}>
                     <Button
                       aria-pressed={selectedCategory === category}
-                      className="tw:[&>[data-text]]:flex tw:[&>[data-text]]:items-center tw:[&>[data-text]]:gap-2"
+                      className="tw:w-full tw:[&>[data-text]]:flex tw:[&>[data-text]]:flex-1 tw:[&>[data-text]]:items-center tw:[&>[data-text]]:gap-2"
                       color="tertiary"
                       size="sm"
                       onPress={() => onSelectCategory?.(category)}>
@@ -165,7 +162,9 @@ const KnowledgeGraphLegend: FC<KnowledgeGraphLegendProps> = ({
                           fill={style.color}
                         />
                       </svg>
-                      <Typography className="tw:flex-1" size="text-xs">
+                      <Typography
+                        className="tw:flex-1 tw:text-left"
+                        size="text-xs">
                         {t(style.labelKey)}
                       </Typography>
                       <Typography

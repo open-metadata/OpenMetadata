@@ -57,7 +57,7 @@ const downloadRelationships = async (page: Page) => {
 };
 const chooseView = async (page: Page, name: string) => {
   if (name === 'Ontology' || name === 'Knowledge Graph') {
-    await page.getByRole('radio', { name, exact: true }).click();
+    await page.getByRole('tab', { name, exact: true }).click();
 
     return;
   }
@@ -852,7 +852,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.getByTestId('graph-status')).not.toContainText('Level 2');
     await expect(page.getByTestId('knowledge-graph-export')).toHaveCount(0);
     await expect(
-      page.getByRole('radio', { name: 'Ontology', exact: true })
+      page.getByRole('tab', { name: 'Ontology', exact: true })
     ).toBeVisible();
     await page.getByTestId('graph-view-menu').click();
     await expect(
