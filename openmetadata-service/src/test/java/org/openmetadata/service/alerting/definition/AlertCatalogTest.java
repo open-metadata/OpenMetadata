@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 
 /**
@@ -199,7 +200,7 @@ class AlertCatalogTest {
           .filter(source -> source.getKind() == AlertSourceKind.ENTITY)
           .filter(source -> !Boolean.TRUE.equals(source.getRemoved()))
           .map(AlertCatalogSource::getName)
-          .filter(name -> !entityTypes.contains(AlertUtil.entityTypeOfSource(name)))
+          .filter(name -> !entityTypes.contains(AlertMatching.entityTypeOfSource(name)))
           .forEach(withoutOne::add);
     }
 

@@ -1,5 +1,6 @@
 package org.openmetadata.service.alerting.matching;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -67,14 +68,14 @@ class AlertMatchingTest {
   void shouldTriggerAlert_classificationEvent_tagCategoryResource_returnsTrue() {
     ChangeEvent event = entityChangeEvent(Entity.CLASSIFICATION);
     FilteringRules config = filteringRules("tagCategory");
-    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+    assertTrue(AlertMatching.shouldTriggerAlert(event, config));
   }
 
   @Test
   void shouldTriggerAlert_tagEvent_tagCategoryResource_returnsFalse() {
     ChangeEvent event = entityChangeEvent(Entity.TAG);
     FilteringRules config = filteringRules("tagCategory");
-    assertFalse(AlertUtil.shouldTriggerAlert(event, config));
+    assertFalse(AlertMatching.shouldTriggerAlert(event, config));
   }
 
   @Test
@@ -82,13 +83,13 @@ class AlertMatchingTest {
     ChangeEvent event =
         conversationChangeEvent(conversation(ref(Entity.CLASSIFICATION)), EventType.THREAD_CREATED);
     FilteringRules config = filteringRules("tagCategory");
-    assertTrue(AlertUtil.shouldTriggerAlert(event, config));
+    assertTrue(AlertMatching.shouldTriggerAlert(event, config));
   }
 
   @Test
   void entityTypeOfSource_resolvesRenamedSourceOnly() {
-    assertEquals(Entity.CLASSIFICATION, AlertUtil.entityTypeOfSource("tagCategory"));
-    assertEquals(Entity.TABLE, AlertUtil.entityTypeOfSource(Entity.TABLE));
+    assertEquals(Entity.CLASSIFICATION, AlertMatching.entityTypeOfSource("tagCategory"));
+    assertEquals(Entity.TABLE, AlertMatching.entityTypeOfSource(Entity.TABLE));
   }
 
   // ---- shouldTriggerAlert: conversations and dedicated resources -----------
