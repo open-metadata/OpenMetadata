@@ -58,18 +58,18 @@ getTypes() {
 # Move to project root directory
 cd "$(dirname "$0")/../../../../.." || exit
 
-# quicktype is fetched on demand (pinned) instead of via a root package.json;
-QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
-    echo "Failed to resolve quicktype via npx" >&2
-    exit 1
-}
-
 echo "Generating TypeScript from OpenMetadata specifications"
 
 if [ "$#" -eq 0 ]; then
     echo "No schema files specified. Please provide schema file paths."
     exit 1
 fi
+
+# quicktype is fetched on demand (pinned) instead of via a root package.json.
+QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
+    echo "Failed to resolve quicktype via npx" >&2
+    exit 1
+}
 
 # Process the schema files passed as arguments
 getTypes "$@"

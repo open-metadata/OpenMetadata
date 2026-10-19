@@ -138,8 +138,16 @@ jobs:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
       - name: Generate TypeScript types
-        # json2ts-generate-all.sh fetches its pinned quicktype via npx.
-        run: ./openmetadata-ui/src/main/resources/ui/json2ts-generate-all.sh -l true
+        # json2ts-generate-all.sh fetches its pinned quicktype via npx. A branch
+        # still on the old script expects a root node_modules this job no longer
+        # installs; it then "succeeds" with zero types, so fail rather than push
+        # the deletion of every generated file.
+        run: |
+          ./openmetadata-ui/src/main/resources/ui/json2ts-generate-all.sh -l true
+          find openmetadata-ui/src/main/resources/ui/src/generated -name '*.ts' | grep -q . || {
+            echo "::error::No TypeScript types were generated — rebase the branch on main."
+            exit 1
+          }
 
       - name: Generate dereferenced JSON schemas
         run: |
