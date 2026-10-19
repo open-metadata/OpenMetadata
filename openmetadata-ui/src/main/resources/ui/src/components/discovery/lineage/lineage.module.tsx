@@ -10,20 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dataflow03 } from '@openmetadata/ui-core-components/icons';
+import {
+  PlatformLineage,
+  PlatformLineageActive,
+} from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
  * Lineage module — the AI sidebar's entry to the main Lineage page. The page
  * itself is served by the shell's page-table fallback, like Explore; this
- * module only surfaces the sidebar icon and points it at `/lineage`.
+ * module only surfaces the sidebar icon and points it at `/lineage`. Sorted
+ * after Context Center so it lands in "More" once the sidebar overflows.
  */
 export const lineageModule: AppModule = {
   id: 'lineage',
-  navOrder: 12,
+  navOrder: 85,
   labelKey: 'label.lineage',
-  icon: Dataflow03,
+  icon: PlatformLineage,
+  activeIcon: PlatformLineageActive,
   prefix: ROUTES.PLATFORM_LINEAGE,
   defaultPath: ROUTES.PLATFORM_LINEAGE,
   routes: [],

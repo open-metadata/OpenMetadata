@@ -139,12 +139,12 @@ const saveAppModeSidebarCustomization = async (page: Page) => {
 const DEFAULT_NAV_KEYS = [
   'home',
   'explore',
-  'lineage',
   'connections',
   'observability',
   'govern',
   'marketplace',
   'context-center',
+  'lineage',
 ];
 
 const toNavigationItem = (id: string) => ({
