@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -97,8 +98,9 @@ public class IndependentOntologyWorkingDiffIT extends BaseOntologyApprovalIT {
     assertEquals(OntologyReleaseChangeType.ADDED, firstPage.getData().getFirst().getChangeType());
     final String after = firstPage.getPaging().getAfter();
     assertFalse(after == null || after.isBlank());
+    assertEquals(first.getId(), firstPage.getData().getFirst().getEntity().getId());
     assertEquals(
-        first.getId(),
+        ontology.getId(),
         client
             .ontologies()
             .workingDiff(ontology.getId(), 1, after)
@@ -179,6 +181,20 @@ public class IndependentOntologyWorkingDiffIT extends BaseOntologyApprovalIT {
           assertThrows(
                   OpenMetadataException.class,
                   () -> denied.ontologies().workingDiff(ontology.getId(), 10, null))
+              .getStatusCode());
+      assertEquals(
+          403,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      denied
+                          .ontologies()
+                          .previewImport(
+                              ontology.getId(),
+                              new PreviewNativeOntologyImport()
+                                  .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+                                  .withData(
+                                      "<https://example.org/New> a <http://www.w3.org/2002/07/owl#Class> .")))
               .getStatusCode());
     }
   }

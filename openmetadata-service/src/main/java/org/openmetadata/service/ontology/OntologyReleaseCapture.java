@@ -12,31 +12,25 @@ import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityRepository;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyEntityRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
-import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Captures bounded working content while holding the same module lock as its writers. */
 public final class OntologyReleaseCapture {
-  private static final int PAGE_SIZE = 100;
   private static final Duration CAPTURE_TIMEOUT = Duration.ofSeconds(30);
   private final CollectionDAO dao;
   private final OntologyReleaseRepository releases;
   private final OntologyRepository ontologies;
-  private final Map<MemberKind, OntologyEntityRepository<?>> definitions;
+  private final OntologyWorkingSnapshot snapshot;
   private final Clock clock;
 
   public record Access(String user, Consumer<List<? extends OntologyDefinition>> authorize) {}
@@ -49,37 +43,42 @@ public final class OntologyReleaseCapture {
     this.releases = releases;
     this.dao = releases.getDaoCollection();
     this.ontologies = ontologies;
-    this.definitions = Map.copyOf(definitions);
+    this.snapshot = new OntologyWorkingSnapshot(ontologies, definitions);
     this.clock = clock;
   }
 
   public OntologyRelease capture(
       final UUID ontologyId, final CaptureOntologyRelease request, final Access access) {
-    return ontologies.executeInTransaction(
-        () -> {
-          try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
-            return captureLocked(ontologyId, request, access);
-          }
-        });
+    return snapshot.read(
+        ontologyId,
+        access.authorize(),
+        working -> captureLocked(ontologyId, request, access, working));
+  }
+
+  public OntologyWorkingSnapshot snapshot() {
+    return snapshot;
   }
 
   private OntologyRelease captureLocked(
-      final UUID ontologyId, final CaptureOntologyRelease request, final Access access) {
-    dao.ontologyStateDAO().initialize(ontologyId);
-    final OntologyState state = dao.ontologyStateDAO().lock(ontologyId);
+      final UUID ontologyId,
+      final CaptureOntologyRelease request,
+      final Access access,
+      final OntologyWorkingSnapshot.Snapshot working) {
+    final OntologyState state = working.state();
     if (request.getExpectedWorkingRevision() == null
         || request.getExpectedWorkingRevision().longValue() != state.getWorkingRevision()) {
       throw new PreconditionFailedException(
           "Ontology changed; reload its working revision before capture");
     }
-    final Ontology ontology =
-        ontologies.get(
-            null, ontologyId, ontologies.getFields("owners,reviewers"), Include.NON_DELETED, false);
+    if (request.getExpectedActivationRevision() != null
+        && request.getExpectedActivationRevision().longValue() != state.getActivationRevision()) {
+      throw new PreconditionFailedException(
+          "Ontology activation changed; reload its working diff before capture");
+    }
+    final Ontology ontology = working.root();
     final OntologyRelease release = header(ontology, state, access.user());
-    final Members members = new Members(release.getId(), access);
-    access.authorize().accept(List.of(ontology));
-    members.add(MemberKind.ONTOLOGY, ontology);
-    definitions.forEach((kind, repository) -> members.add(repository, kind, ontologyId));
+    final Members members = new Members(release.getId());
+    working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
     OntologyStructureValidator.requireValid(release, members.values);
     seal(release, state, members);
     return release;
@@ -150,29 +149,12 @@ public final class OntologyReleaseCapture {
 
   private static final class Members {
     private final UUID releaseId;
-    private final Access access;
     private final long deadline = System.nanoTime() + CAPTURE_TIMEOUT.toNanos();
     private final List<OntologyReleaseMember> values = new ArrayList<>();
     private long bytes;
 
-    private Members(final UUID releaseId, final Access access) {
+    private Members(final UUID releaseId) {
       this.releaseId = releaseId;
-      this.access = access;
-    }
-
-    private <T extends OntologyDefinition> void add(
-        final EntityRepository<T> repository, final MemberKind kind, final UUID ontologyId) {
-      final ListFilter filter =
-          new ListFilter(Include.NON_DELETED).addQueryParam("ontologyId", ontologyId.toString());
-      String after = null;
-      do {
-        requireTimeRemaining();
-        final ResultList<T> page =
-            repository.listAfter(null, repository.getFields(""), filter, PAGE_SIZE, after);
-        access.authorize().accept(page.getData());
-        page.getData().forEach(entity -> add(kind, entity));
-        after = page.getPaging().getAfter();
-      } while (after != null);
     }
 
     private void add(final MemberKind kind, final OntologyDefinition entity) {
