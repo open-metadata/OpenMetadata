@@ -61,6 +61,37 @@ export interface UsePagingInterface {
   pagingCursor: PagingUrlParams;
 }
 
+const readUrlPaging = (
+  urlParams: Record<string, unknown>,
+  pageSizeOptions: number[],
+  processedPageSize: number,
+  pagedAtSize: number
+) => {
+  // Both sources this can come from are shared — one `pageSize` query param (and app mode keeps
+  // every visited route mounted against it) plus one app-wide preference — so either can hand a
+  // page a size its picker has no option for, which renders as an unselectable placeholder.
+  const urlPageSize = Number(urlParams.pageSize) || processedPageSize;
+  const isOffScaleUrlSize = !pageSizeOptions.includes(urlPageSize);
+  const hasUrlPageSize = Number(urlParams.pageSize) > 0 && !isOffScaleUrlSize;
+  const isPageFromOtherSize =
+    !hasUrlPageSize && pagedAtSize !== processedPageSize;
+  const isUrlPagingStale = isOffScaleUrlSize || isPageFromOtherSize;
+
+  return {
+    isOffScaleUrlSize,
+    isPageFromOtherSize,
+    isUrlPagingStale,
+    resolvedPageSize: isOffScaleUrlSize ? processedPageSize : urlPageSize,
+    urlCurrentPage: isUrlPagingStale
+      ? INITIAL_PAGING_VALUE
+      : Number(urlParams.currentPage) || INITIAL_PAGING_VALUE,
+    hasUrlPaging: Boolean(
+      Number(urlParams.currentPage) > INITIAL_PAGING_VALUE ||
+        urlParams.cursorValue
+    ),
+  };
+};
+
 /**
  * @param defaultPageSize where to start when the URL carries no size; falls back to the size the
  *   user last picked on this page's scale (`useSavedPageSize`).
@@ -86,18 +117,18 @@ export const usePaging = (
     cursorType: undefined,
     cursorValue: undefined,
     currentPage: String(INITIAL_PAGING_VALUE),
-    pageSize: String(processedPageSize),
+    pageSize: undefined,
   });
 
-  // Both sources this can come from are shared — one `pageSize` query param (and app mode keeps
-  // every visited route mounted against it) plus one app-wide preference — so either can hand a
-  // page a size its picker has no option for, which renders as an unselectable placeholder.
-  const urlPageSize = Number(urlParams.pageSize) || processedPageSize;
-  const isOffScaleUrlSize = !pageSizeOptions.includes(urlPageSize);
-  const resolvedPageSize = isOffScaleUrlSize ? processedPageSize : urlPageSize;
-  const urlCurrentPage = isOffScaleUrlSize
-    ? INITIAL_PAGING_VALUE
-    : Number(urlParams.currentPage) || INITIAL_PAGING_VALUE;
+  const [pagedAtSize, setPagedAtSize] = useState(processedPageSize);
+  const {
+    isOffScaleUrlSize,
+    isPageFromOtherSize,
+    isUrlPagingStale,
+    resolvedPageSize,
+    urlCurrentPage,
+    hasUrlPaging,
+  } = readUrlPaging(urlParams, pageSizeOptions, processedPageSize, pagedAtSize);
   const isRouteVisible = useIsRouteVisible();
 
   useEffect(() => {
@@ -110,6 +141,28 @@ export const usePaging = (
       });
     }
   }, [isRouteVisible, isOffScaleUrlSize, updateUrlParams]);
+
+  useEffect(() => {
+    if (!isRouteVisible || pagedAtSize === processedPageSize) {
+      return;
+    }
+    if (isPageFromOtherSize && hasUrlPaging) {
+      updateUrlParams({
+        currentPage: null,
+        cursorType: null,
+        cursorValue: null,
+      });
+    } else {
+      setPagedAtSize(processedPageSize);
+    }
+  }, [
+    isRouteVisible,
+    pagedAtSize,
+    processedPageSize,
+    isPageFromOtherSize,
+    hasUrlPaging,
+    updateUrlParams,
+  ]);
 
   const [paging, setPaging] = useState<Paging>(pagingObject);
   const [currentPage, setCurrentPage] = useState<number>(urlCurrentPage);
@@ -131,13 +184,13 @@ export const usePaging = (
 
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({
-      cursorType: isOffScaleUrlSize ? undefined : urlParams.cursorType,
-      cursorValue: isOffScaleUrlSize ? undefined : urlParams.cursorValue,
+      cursorType: isUrlPagingStale ? undefined : urlParams.cursorType,
+      cursorValue: isUrlPagingStale ? undefined : urlParams.cursorValue,
       currentPage: String(urlCurrentPage),
       pageSize: resolvedPageSize,
     }),
     [
-      isOffScaleUrlSize,
+      isUrlPagingStale,
       urlParams.cursorType,
       urlParams.cursorValue,
       urlCurrentPage,

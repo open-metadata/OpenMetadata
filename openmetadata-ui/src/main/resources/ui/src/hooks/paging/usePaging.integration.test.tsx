@@ -230,4 +230,54 @@ describe('usePaging (integration)', () => {
       expect(result.current.location.search).toBe('?currentPage=3&pageSize=10');
     });
   });
+
+  describe('a change to the saved size while the page stays mounted', () => {
+    const renderTracked = (entry: string) => {
+      const seen: Array<[number, number]> = [];
+      const view = renderHook(
+        () => {
+          const paging = usePaging();
+          seen.push([paging.currentPage, paging.pageSize]);
+
+          return { paging, location: useLocation() };
+        },
+        { wrapper: wrapperAt(entry) }
+      );
+
+      return { ...view, seen };
+    };
+
+    const saveListSize = (size: number) =>
+      act(() => {
+        usePersistentStorage
+          .getState()
+          .setUserPreference('paging-user', { globalPageSize: size });
+      });
+
+    it('returns to page 1 without pairing the old page with the new size', () => {
+      saveListSize(15);
+      const { result, seen } = renderTracked('/schema?currentPage=3');
+
+      expect(result.current.paging.currentPage).toBe(3);
+
+      saveListSize(50);
+
+      expect(result.current.paging.currentPage).toBe(1);
+      expect(result.current.paging.pageSize).toBe(50);
+      expect(result.current.paging.pagingCursor.currentPage).toBe('1');
+      expect(result.current.location.search).toBe('');
+      expect(seen).not.toContainEqual([3, 50]);
+    });
+
+    it('keeps the page when the URL carries its own size', () => {
+      saveListSize(15);
+      const { result } = renderTracked('/schema?currentPage=3&pageSize=25');
+
+      saveListSize(50);
+
+      expect(result.current.paging.currentPage).toBe(3);
+      expect(result.current.paging.pageSize).toBe(25);
+      expect(result.current.location.search).toBe('?currentPage=3&pageSize=25');
+    });
+  });
 });
