@@ -197,6 +197,7 @@ const LeftSidebar = () => {
           {/* Hover menus must leave their triggers and neighbouring groups interactive. */}
           <Dropdown.Popover
             isNonModal
+            className="tw:w-auto tw:min-w-56"
             placement={isDirectionRTL ? 'left top' : 'right top'}>
             <div
               ref={collapsedPopover}
@@ -214,6 +215,7 @@ const LeftSidebar = () => {
                     id={child.key}
                     key={child.key}
                     label={t(child.title)}
+                    size="lg"
                     onAction={() => navigateToItem(child, item.key)}
                   />
                 ))}
@@ -276,7 +278,12 @@ const LeftSidebar = () => {
       <div className="left-sidebar-layout">
         <Box className="menu-container" direction="col">
           <nav aria-label={t('label.navigation')} className="top-menu">
-            <ul className="left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0 tw:ps-4 tw:pe-0">
+            <ul
+              className={classNames(
+                'left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0',
+                // Even padding when collapsed centres the icons on the rail, under the logo.
+                isSidebarCollapsed ? 'tw:px-3' : 'tw:ps-4 tw:pe-0'
+              )}>
               {sideBarItems.map((item) => (
                 <li data-testid={`side-bar-${item.dataTestId}`} key={item.key}>
                   {item.children?.length ? renderGroup(item) : renderLeaf(item)}
@@ -286,7 +293,10 @@ const LeftSidebar = () => {
           </nav>
           <nav
             aria-label={t('label.setting-plural')}
-            className="bottom-menu tw:ps-4">
+            className={classNames(
+              'bottom-menu',
+              isSidebarCollapsed ? 'tw:px-3' : 'tw:ps-4'
+            )}>
             <Divider className="tw:my-2" />
             <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
               {[SETTING_ITEM, LOGOUT_ITEM].map((item) => (
