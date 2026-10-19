@@ -673,14 +673,6 @@
       <version>${snakeyaml.version}</version>
     </dependency>
 
-    <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt</artifactId>
-      <version>${jjwt.version}</version>
-    </dependency>
-
-
     <!-- https://mvnrepository.com/artifact/com.auth0/java-jwt -->
     <dependency>
       <groupId>com.auth0</groupId>
