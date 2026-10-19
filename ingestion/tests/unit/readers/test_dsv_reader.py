@@ -13,13 +13,19 @@
 Tests for DSVDataFrameReader (CSV/TSV)
 """
 
+import csv
 import gzip
+import io
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pandas as pd
+import pytest
+from pydantic import ValidationError
 
+from metadata.generated.schema.entity.data.table import FileFormat
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
 )
@@ -30,17 +36,68 @@ from metadata.generated.schema.entity.services.connections.database.datalake.s3C
     S3Config,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
     LocalConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.credentials.azureCredentials import (
     AzureCredentials,
 )
+from metadata.mixins.pandas.pandas_mixin import PandasInterfaceMixin
 from metadata.readers.dataframe.dsv import (
     CSVDataFrameReader,
     DSVDataFrameReader,
     TSVDataFrameReader,
 )
+from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
+from metadata.utils.datalake.datalake_utils import fetch_dataframe_first_chunk
+
+
+@pytest.mark.parametrize("backend", ["local", "s3"])
+@pytest.mark.parametrize("escapechar", [None, "\\", "!"])
+@pytest.mark.parametrize("extension", ["csv", "csv.gz", "tsv"])
+def test_csv_escape_character_preserves_values(tmp_path, backend, escapechar, extension):
+    rows = [["id", "text"], ["one", 'literal\\",comma'], ["two", "C:\\Users\\data"], ["three", 'quote"\nnext!']]
+    stream = io.StringIO()
+    csv.writer(stream, escapechar=escapechar, delimiter="\t" if extension == "tsv" else ",").writerows(rows)
+    data = stream.getvalue().encode()
+    if extension == "csv.gz":
+        data = gzip.compress(data)
+    path = tmp_path / f"example.{extension}"
+    path.write_bytes(data)
+    client = SimpleNamespace(get_object=lambda **_: {"Body": io.BytesIO(data)})
+    options = {} if escapechar == "\\" else {"csvEscapeChar": escapechar or ""}
+    connection = DatalakeConnection(
+        configSource=LocalConfig() if backend == "local" else S3Config(),
+        **options,
+    )
+    connection = DatalakeConnection.model_validate_json(connection.model_dump_json())
+    table = SimpleNamespace(
+        name=SimpleNamespace(root=str(path)),
+        databaseSchema=SimpleNamespace(name="bucket"),
+        fileFormat=FileFormat(extension),
+    )
+    # The shared profiler/quality entry point must carry the configured dialect to the reader.
+    with patch("metadata.readers.dataframe.dsv.CHUNKSIZE", 1):
+        wrapper = PandasInterfaceMixin().get_dataframes(connection, SimpleNamespace(client=client), table)
+        actual = pd.concat(wrapper.dataframes(), ignore_index=True)
+        first = next(
+            fetch_dataframe_first_chunk(
+                connection.configSource,
+                client,
+                DatalakeTableSchemaWrapper(
+                    key=str(path), bucket_name="bucket", escapechar=connection.csvEscapeChar or None
+                ),
+            )
+        )
+    assert actual.columns.tolist() == rows[0]
+    assert actual.values.tolist() == rows[1:]
+    assert first.values.tolist() == rows[1:2]
+
+
+def test_csv_escape_character_rejects_multiple_characters():
+    with pytest.raises(ValidationError, match="csvEscapeChar"):
+        DatalakeConnection(configSource=LocalConfig(), csvEscapeChar="xx")
 
 
 class TestDSVReader(unittest.TestCase):

@@ -96,8 +96,9 @@ const renderConnectionSchema = async (
     schemaWithoutDefaultFilterPatternFields,
     getUISchemaWithNestedDefaultFilterFieldsHidden(connSch.uiSchema)
   );
+  const onChange = jest.fn();
 
-  return render(
+  const result = render(
     <Form
       noHtml5Validate
       fields={customFields}
@@ -122,8 +123,11 @@ const renderConnectionSchema = async (
         URLWidget: CoreInputWidget,
         UpDownWidget: CoreInputWidget,
       }}
+      onChange={onChange}
     />
   );
+
+  return { ...result, onChange };
 };
 
 const getRequiredElement = (container: HTMLElement, selector: string) => {
@@ -185,6 +189,22 @@ const expectAwsCredentialLayout = (
 };
 
 describe('ConnectionConfigForm schema rendering', () => {
+  it('preserves an empty CSV escape character when the Datalake field is cleared', async () => {
+    const { container, onChange } = await renderConnectionSchema('Datalake');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label.scope-and-option-plural/ })
+    );
+
+    const input = getRequiredElement(container, '[id="root/csvEscapeChar"]');
+
+    expect(input).toHaveValue('\\');
+
+    fireEvent.change(input, { target: { value: '' } });
+
+    expect(onChange.mock.lastCall?.[0].formData.csvEscapeChar).toBe('');
+  });
+
   it.each(['Cassandra', 'Cockroach', 'Databricks', 'Glue', 'Greenplum'])(
     'renders %s without leaving the connection form empty',
     async (connectorType) => {
