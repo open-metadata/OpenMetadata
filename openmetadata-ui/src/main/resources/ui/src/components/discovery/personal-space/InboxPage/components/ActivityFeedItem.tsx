@@ -202,14 +202,18 @@ const getEntityTarget = (
   };
 };
 
-// "Hide replies" while open; otherwise how many there are.
-const getRepliesToggleLabel = (
+// "Hide replies" while open; otherwise how many there are, or "Reply" while
+// there are none.
+const getThreadButtonLabel = (
   isOpen: boolean,
   count: number,
   t: TFunction
 ): string => {
   if (isOpen) {
     return t('label.hide-reply-plural');
+  }
+  if (!count) {
+    return t('label.reply');
   }
 
   return count === 1
@@ -275,7 +279,10 @@ const LikeButton = ({ likeCount, isLiked, onToggle }: LikeButtonProps) => {
   );
 };
 
-interface RepliesToggleProps {
+const getThreadChevron = (isOpen: boolean) =>
+  isOpen ? ChevronUp : ChevronDown;
+
+interface ThreadButtonProps {
   isOpen: boolean;
   count: number;
   // Loaded only once the thread has been opened; until then no faces show.
@@ -283,50 +290,57 @@ interface RepliesToggleProps {
   onToggle: () => void;
 }
 
-// How many replied, and who once they are loaded; stays while the thread is
-// open, so it can close even once its last reply is deleted.
-const RepliesToggle = ({
+/**
+ * The card's one button for its thread: "Reply" while the thread is closed and
+ * has no replies, how many replied (and who, once they are loaded) when it has
+ * some, and "Hide replies" while it is open — so it can close even once its
+ * last reply is deleted.
+ */
+const ThreadButton = ({
   isOpen,
   count,
   replies,
   onToggle,
-}: RepliesToggleProps) => {
+}: ThreadButtonProps) => {
   const { t } = useTranslation();
+  const isReply = !isOpen && !count;
   const replyFaces = uniqBy(replies, ({ author }) => author?.name).slice(
     0,
     MAX_REPLY_FACES
   );
+  const faces = replyFaces.length ? (
+    <span className="tw:flex tw:items-center tw:-space-x-1">
+      {replyFaces.map(({ id, author }) => (
+        <ProfilePicture
+          borderless
+          // An edge of the card's surface parts the overlapping faces.
+          className="tw:outline-2 tw:outline-bg-surface"
+          displayName={author?.displayName}
+          key={id}
+          name={author?.name ?? ''}
+          size="xs"
+        />
+      ))}
+    </span>
+  ) : undefined;
 
-  return count > 0 || isOpen ? (
+  return (
     <Button
       aria-expanded={isOpen}
       className={classNames(
+        isReply && FOOTER_BUTTON_CLASS,
         isOpen && TOGGLE_ON_CLASS,
         isOpen && 'tw:bg-brand-primary tw:hover:bg-brand-primary'
       )}
       color="tertiary"
-      data-testid="activity-replies-toggle"
-      iconLeading={
-        <span className="tw:flex tw:items-center tw:-space-x-1">
-          {replyFaces.map(({ id, author }) => (
-            <ProfilePicture
-              borderless
-              // An edge of the card's surface parts the overlapping faces.
-              className="tw:outline-2 tw:outline-bg-surface"
-              displayName={author?.displayName}
-              key={id}
-              name={author?.name ?? ''}
-              size="xs"
-            />
-          ))}
-        </span>
-      }
-      iconTrailing={isOpen ? ChevronUp : ChevronDown}
+      data-testid="activity-reply"
+      iconLeading={isReply ? MessageDotsCircle : faces}
+      iconTrailing={isReply ? undefined : getThreadChevron(isOpen)}
       size="sm"
       onPress={onToggle}>
-      {getRepliesToggleLabel(isOpen, count, t)}
+      {getThreadButtonLabel(isOpen, count, t)}
     </Button>
-  ) : null;
+  );
 };
 
 const getEventTimestamp = (
@@ -391,7 +405,7 @@ const CardMeta = ({
 /**
  * A single Inbox card for a 2.0 activity event or a conversation: actor +
  * action + entity link, the change (or message) body, and a footer with Like,
- * reactions, Reply and a replies toggle that opens the thread inline below.
+ * reactions, and one button that opens the thread inline below.
  */
 const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
@@ -624,25 +638,19 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 (reaction) => `${reaction.reactionType}:${reaction.user?.id}`
               )
               .join('|')}
+            // Like is the tray's thumbs up: picked there once liked.
+            pickedReactions={reactions}
             reactions={otherReactions}
             variant={ReactionsVariant.Pill}
             onReactionSelect={handleReactionSelect}
           />
-          <Button
-            className={FOOTER_BUTTON_CLASS}
-            color="tertiary"
-            data-testid="activity-reply"
-            iconLeading={MessageDotsCircle}
-            size="sm"
-            onPress={() => openThread(true)}>
-            {t('label.reply')}
-          </Button>
-          <RepliesToggle
+          <ThreadButton
             count={replyCount}
             isOpen={isThreadOpen}
             replies={replies}
+            // Nothing to read yet: open straight into the composer.
             onToggle={() =>
-              isThreadOpen ? setIsThreadOpen(false) : openThread(false)
+              isThreadOpen ? setIsThreadOpen(false) : openThread(!replyCount)
             }
           />
         </Box>

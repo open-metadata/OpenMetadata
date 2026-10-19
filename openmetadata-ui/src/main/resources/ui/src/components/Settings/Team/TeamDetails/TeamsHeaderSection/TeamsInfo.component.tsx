@@ -84,11 +84,14 @@ const TeamsInfo = ({
   // Task 8 rule 2). hasEditPermission (bare EditAll-only) and hasEditOwnerPermission (already
   // used the prioritized helper directly, just not through the shared derivation) are both
   // identical mappings onto canEditAll/canEditOwners.
-  const { canEditAll, canEditOwners } = useMemo(
+  const { canEditAll, canEditOwners, canEditDomains } = useMemo(
     () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
     [entityPermissions, isTeamDeleted]
   );
   const hasEditPermission = canEditAll;
+  // Reassigning a team's domain is EditDomains on the server (EditAll still
+  // subsumes it), so gate the domain control on that, not bare EditAll.
+  const hasEditDomainPermission = canEditDomains;
   const hasEditOwnerPermission = canEditOwners;
 
   const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
@@ -424,7 +427,7 @@ const TeamsInfo = ({
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
-        hasPermission={hasEditPermission}
+        hasPermission={hasEditDomainPermission}
       />
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       <Owner

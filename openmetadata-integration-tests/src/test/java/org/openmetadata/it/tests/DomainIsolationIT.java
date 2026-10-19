@@ -65,7 +65,6 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
-import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -580,13 +579,8 @@ public class DomainIsolationIT {
       Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
       Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
 
-      String testDefinitionFqn =
-          admin
-              .testDefinitions()
-              .list(new ListParams().withLimit(1))
-              .getData()
-              .get(0)
-              .getFullyQualifiedName();
+      // Lists INT among its supported types, so it fits the INT `id` column the incidents are on.
+      String testDefinitionFqn = "columnValuesToBeNotNull";
       String ownIncidentFqn = createIncident(admin, ownTable, p + "_own_tc", testDefinitionFqn);
       String foreignIncidentFqn =
           createIncident(admin, foreignTable, p + "_foreign_tc", testDefinitionFqn);

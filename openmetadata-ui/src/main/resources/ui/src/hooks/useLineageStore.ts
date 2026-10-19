@@ -55,6 +55,9 @@ interface LineageState {
   nodeFilterState: Map<string, boolean>;
   isRepositioning: boolean;
   isCanvasReady: boolean;
+  // Set while a PNG export captures the canvas: virtualized canvases then
+  // mount their off-screen nodes so the image is complete.
+  renderAllNodes: boolean;
   lineageMutationTick: number;
   sceneBand?: LineageBand;
   nodes: Node[];
@@ -106,6 +109,7 @@ interface LineageState {
   setNodeFilterState: (nodeId: string, isVisible: boolean) => void;
   setIsRepositioning: (isRepositioning: boolean) => void;
   setIsCanvasReady: (isCanvasReady: boolean) => void;
+  setRenderAllNodes: (renderAllNodes: boolean) => void;
   bumpLineageMutationTick: () => void;
   setSceneBand: (sceneBand?: LineageBand) => void;
   reset: () => void;
@@ -169,6 +173,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   nodeFilterState: new Map(),
   isRepositioning: false,
   isCanvasReady: false,
+  renderAllNodes: false,
   lineageMutationTick: 0,
   nodes: [],
   edges: [],
@@ -306,6 +311,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   setIsRepositioning: (isRepositioning: boolean) => set({ isRepositioning }),
 
   setIsCanvasReady: (isCanvasReady: boolean) => set({ isCanvasReady }),
+  setRenderAllNodes: (renderAllNodes: boolean) => set({ renderAllNodes }),
 
   bumpLineageMutationTick: () =>
     set((state) => ({
@@ -336,6 +342,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
       nodeFilterState: new Map(),
       isRepositioning: false,
       isCanvasReady: false,
+      renderAllNodes: false,
       lineageMutationTick: 0,
       sceneBand: undefined,
       nodes: [],

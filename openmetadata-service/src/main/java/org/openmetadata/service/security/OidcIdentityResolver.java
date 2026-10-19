@@ -9,7 +9,9 @@ import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims
 import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.validateConfiguredEmailDomain;
 import static org.openmetadata.service.security.SecurityUtil.validateEmailVerifiedClaim;
+import static org.openmetadata.service.security.UserProfileClaims.pictureFrom;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +24,7 @@ import org.openmetadata.service.exception.AuthenticationException;
 public class OidcIdentityResolver {
 
   public record ResolvedOidcIdentity(
-      String userName, String email, String displayName, boolean emailFirstFlow) {}
+      String userName, String email, String displayName, URI picture, boolean emailFirstFlow) {}
 
   private final AuthenticationConfiguration authenticationConfiguration;
   private final AuthorizerConfiguration authorizerConfiguration;
@@ -72,7 +74,7 @@ public class OidcIdentityResolver {
         String displayName =
             extractDisplayNameFromClaim(claims, authenticationConfiguration.getDisplayNameClaim());
         LOG.debug("OIDC email-first flow: email={}, displayName={}", email, displayName);
-        return new ResolvedOidcIdentity(null, email, displayName, true);
+        return new ResolvedOidcIdentity(null, email, displayName, pictureFrom(claims), true);
       }
     }
 
@@ -90,7 +92,7 @@ public class OidcIdentityResolver {
         authorizerConfiguration.getAllowedDomains(),
         authorizerConfiguration.getEnforcePrincipalDomain());
     String displayName = extractDisplayNameFromClaims(claims);
-    return new ResolvedOidcIdentity(userName, email, displayName, false);
+    return new ResolvedOidcIdentity(userName, email, displayName, pictureFrom(claims), false);
   }
 
   public List<String> resolveTeams(Map<String, Object> claims, String teamClaimMapping) {

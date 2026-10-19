@@ -40,14 +40,14 @@ const IncidentGroupByDropdown = ({
   return (
     <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <Button
+        className="tw:shrink-0"
         color="secondary"
         data-testid="incident-group-by-button"
         iconLeading={LayersTwo01}
         iconTrailing={ChevronDown}
-        size="sm">
-        <span className="tw:font-normal tw:text-tertiary">
-          {`${t('label.group-by')} `}
-        </span>
+        size="lg">
+        {/* The field's name stays for screen readers; the icon stands for it. */}
+        <span className="tw:sr-only">{`${t('label.group-by')} `}</span>
         <span data-testid="incident-group-by-value">
           {t(selectedOption.labelKey)}
         </span>

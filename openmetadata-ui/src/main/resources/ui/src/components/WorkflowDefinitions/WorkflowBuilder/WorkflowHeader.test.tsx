@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeader } from './WorkflowHeader';
@@ -66,6 +66,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     title?: string;
   }) => <div data-title={title}>{children}</div>,
+  Dropdown: {
+    Root: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    Popover: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    Menu: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    Item: ({
+      children,
+      label,
+      onAction,
+      'data-testid': dataTestId,
+    }: {
+      children?: React.ReactNode;
+      label?: string;
+      onAction?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={dataTestId} onClick={onAction}>
+        {label ?? children}
+      </button>
+    ),
+  },
   Input: ({ label }: { label?: string }) => <input aria-label={label} />,
   Modal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   ModalOverlay: ({
@@ -124,6 +144,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     [key: string]: unknown;
   }) => <span {...rest}>{children}</span>,
+}));
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  DotsVertical: () => null,
+  Edit01: () => null,
 }));
 
 jest.mock('../../../assets/svg/workflow.svg', () => ({
@@ -296,5 +321,181 @@ describe('WorkflowHeader — System badge', () => {
     expect(screen.getByTestId('workflow-title')).toHaveTextContent(
       'Glossary Approval Workflow'
     );
+  });
+});
+
+describe('WorkflowHeader — editor link', () => {
+  it('links to the editor that owns the workflow beside Edit Workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        editorLink={{
+          path: '/workflows/lifecycle/domain',
+          labelKey: 'label.edit-stages',
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('workflow-editor-link')).toHaveTextContent(
+      'label.edit-stages'
+    );
+    expect(screen.getByTestId('workflow-editor-link')).toHaveAttribute(
+      'href',
+      '/workflows/lifecycle/domain'
+    );
+  });
+
+  it('shows no editor link for a workflow the builder owns', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} />);
+
+    expect(
+      screen.queryByTestId('workflow-editor-link')
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('WorkflowHeader — actions variant', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('renders only the controls, for a host page that shows the title', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} variant="actions" />);
+
+    expect(screen.getByTestId('workflow-header-actions')).toBeInTheDocument();
+    expect(screen.getByTestId('workflow-controls')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-workflow-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('workflow-title')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('workflow-header')).not.toBeInTheDocument();
+  });
+});
+
+describe('WorkflowHeader — manage menu', () => {
+  const handleToggleSuspend = jest.fn();
+  const handleDeleteWorkflow = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('offers Suspend and a red Delete after Edit Workflow in view mode', () => {
+    mockUseWorkflowModeContext.mockReturnValue(
+      buildContextMock({ showDeleteButton: true })
+    );
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        handleDeleteWorkflow={handleDeleteWorkflow}
+        handleToggleSuspend={handleToggleSuspend}
+      />
+    );
+
+    expect(screen.getByTestId('workflow-manage-button')).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId('edit-workflow-button')
+        .compareDocumentPosition(screen.getByTestId('workflow-manage-button'))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    fireEvent.click(screen.getByTestId('suspend-workflow-button'));
+
+    expect(handleToggleSuspend).toHaveBeenCalledTimes(1);
+
+    expect(screen.getByText('label.delete')).toHaveClass(
+      'tw:text-error-primary'
+    );
+
+    fireEvent.click(screen.getByTestId('delete-workflow-button'));
+
+    expect(handleDeleteWorkflow).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers Resume for a suspended workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(
+      buildContextMock({ showDeleteButton: true })
+    );
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        isSuspended
+        handleToggleSuspend={handleToggleSuspend}
+      />
+    );
+
+    expect(screen.getByTestId('resume-workflow-button')).toHaveTextContent(
+      'label.resume'
+    );
+    expect(
+      screen.queryByTestId('suspend-workflow-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers Suspend without Delete when the workflow cannot be deleted', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        handleDeleteWorkflow={handleDeleteWorkflow}
+        handleToggleSuspend={handleToggleSuspend}
+      />
+    );
+
+    expect(screen.getByTestId('suspend-workflow-button')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-workflow-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no menu outside view mode', () => {
+    mockUseWorkflowModeContext.mockReturnValue(
+      buildContextMock({ showEditButton: false })
+    );
+
+    render(
+      <WorkflowHeader
+        {...defaultProps}
+        handleDeleteWorkflow={handleDeleteWorkflow}
+        handleToggleSuspend={handleToggleSuspend}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('workflow-manage-button')
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('WorkflowHeader — suspended badge', () => {
+  it('shows a warning badge after the title for a suspended workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} isSuspended />);
+
+    const badge = screen.getByTestId('workflow-suspended-badge');
+
+    expect(badge).toHaveTextContent('label.suspended');
+    expect(badge).toHaveAttribute('color', 'warning');
+    expect(
+      screen.getByTestId('workflow-title').compareDocumentPosition(badge)
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  it('shows no badge for an active workflow', () => {
+    mockUseWorkflowModeContext.mockReturnValue(buildContextMock());
+
+    render(<WorkflowHeader {...defaultProps} />);
+
+    expect(
+      screen.queryByTestId('workflow-suspended-badge')
+    ).not.toBeInTheDocument();
   });
 });

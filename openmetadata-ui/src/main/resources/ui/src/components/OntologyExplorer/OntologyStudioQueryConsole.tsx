@@ -49,6 +49,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useSparqlQueryLibrary } from '../../hooks/useSparqlQueryLibrary';
 import {
   runGlossarySparqlQuery,
+  runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
   SparqlPlaygroundResult,
@@ -73,6 +74,7 @@ interface OntologyStudioQueryConsoleProps {
   readonly graphData: OntologyGraphData | null;
   readonly relationTypes: RelationshipType[];
   readonly selectedGlossaryIds: string[];
+  readonly selectedOntologyId?: string;
 }
 
 type SaveTarget = 'personal' | 'template';
@@ -600,6 +602,7 @@ const OntologyStudioQueryConsole = ({
   graphData,
   relationTypes,
   selectedGlossaryIds,
+  selectedOntologyId,
 }: OntologyStudioQueryConsoleProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -695,14 +698,22 @@ const OntologyStudioQueryConsole = ({
           inference: 'none' as const,
         };
         const glossaryId = selectedGlossaryIds[0];
-        if (!glossaryId && !isAdminUser) {
+        if (!glossaryId && !selectedOntologyId && !isAdminUser) {
           throw new Error(
             t('label.please-select-entity', { entity: t('label.glossary') })
           );
         }
-        const nextResult = glossaryId
-          ? await runGlossarySparqlQuery(glossaryId, queryParams)
-          : await runSparqlQuery(queryParams);
+        let nextResult;
+        if (selectedOntologyId) {
+          nextResult = await runOntologySparqlQuery(
+            selectedOntologyId,
+            queryParams
+          );
+        } else if (glossaryId) {
+          nextResult = await runGlossarySparqlQuery(glossaryId, queryParams);
+        } else {
+          nextResult = await runSparqlQuery(queryParams);
+        }
         setResult(nextResult);
       } catch (error) {
         let message: string;
@@ -720,7 +731,7 @@ const OntologyStudioQueryConsole = ({
         setRunning(false);
       }
     },
-    [isAdminUser, selectedGlossaryIds, t]
+    [isAdminUser, selectedGlossaryIds, selectedOntologyId, t]
   );
 
   const runListedQuery = useCallback(

@@ -16,7 +16,12 @@ import classNames from 'classnames';
 import React from 'react';
 import type { Key } from 'react-aria-components';
 
-export type TopicFilterTone = 'brand' | 'error' | 'warning' | 'muted';
+export type TopicFilterTone =
+  | 'brand'
+  | 'error'
+  | 'warning'
+  | 'success'
+  | 'muted';
 
 export interface TopicFilterChip {
   id: string;
@@ -51,6 +56,12 @@ const TONES: Record<
     dot: 'tw:bg-utility-warning-500',
     selected:
       'tw:after:outline-utility-warning-300 tw:bg-utility-warning-50 tw:selected:bg-utility-warning-50',
+  },
+  success: {
+    count: 'tw:text-utility-success-700',
+    dot: 'tw:bg-utility-success-500',
+    selected:
+      'tw:after:outline-utility-success-300 tw:bg-utility-success-50 tw:selected:bg-utility-success-50',
   },
   muted: {
     count: 'tw:text-text-tertiary',

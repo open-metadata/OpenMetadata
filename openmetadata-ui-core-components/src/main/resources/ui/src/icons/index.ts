@@ -478,6 +478,7 @@ export { AnnouncementColored } from './AnnouncementColored';
 export { AppLayout } from './AppLayout';
 export { AppMicrosoftTeams } from './AppMicrosoftTeams';
 export { AppSlack } from './AppSlack';
+export { AskCollateSparkle } from './AskCollateSparkle';
 export { Auth0 } from './Auth0';
 export { Bronze } from './Bronze';
 export { ColumnCustomize } from './ColumnCustomize';

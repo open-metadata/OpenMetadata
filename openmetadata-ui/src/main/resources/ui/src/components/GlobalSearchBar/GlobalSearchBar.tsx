@@ -100,11 +100,12 @@ export const GlobalSearchBar = () => {
   const entitiesSelect = useMemo(
     () => (
       <Select
+        borderless
         aria-label={t('label.search-index')}
         data-testid="global-search-selector"
         popoverClassName="tw:w-50"
-        selectedKey={searchCriteria || ALL_SEARCH_CRITERIA_KEY}
-        onSelectionChange={(key) =>
+        value={searchCriteria || ALL_SEARCH_CRITERIA_KEY}
+        onChange={(key) =>
           key !== null &&
           updateSearchCriteria(
             key === ALL_SEARCH_CRITERIA_KEY
@@ -307,6 +308,7 @@ export const GlobalSearchBar = () => {
       ref={searchContainerRef}>
       {renderNlpToggle()}
       <Input
+        borderless
         aria-label={t('label.search-for-type', {
           type: t('label.data-asset-plural'),
         })}

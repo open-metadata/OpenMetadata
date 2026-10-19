@@ -53,6 +53,7 @@ class TaskEntityType(str, Enum):
     RecognizerFeedbackApproval = "RecognizerFeedbackApproval"
     CustomTask = "CustomTask"
     MemoryConflictReview = "MemoryConflictReview"
+    MetadataCompletion = "MetadataCompletion"
 
 
 class TaskEntityStatus(str, Enum):

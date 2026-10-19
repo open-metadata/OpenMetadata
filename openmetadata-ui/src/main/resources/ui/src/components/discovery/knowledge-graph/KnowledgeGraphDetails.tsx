@@ -23,7 +23,6 @@ import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Column } from '../../../generated/entity/data/table';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
@@ -55,12 +54,6 @@ interface DetailsProps {
     loading: boolean;
     error: unknown;
     loadMore: () => void;
-  };
-  concepts: {
-    terms: GlossaryTerm[];
-    loading: boolean;
-    error: unknown;
-    partial: boolean;
   };
   coverage: Map<string, MappingCoverage>;
   relationshipScope?: { label: string; edgeIds: string[] } | null;
@@ -135,19 +128,15 @@ const getDetailsState = ({
   drawer,
   mode,
   columns,
-  concepts,
-}: Pick<DetailsProps, 'drawer' | 'mode' | 'columns' | 'concepts'>) => {
-  const metadata = mode === 'ontology' ? concepts : columns;
-
+}: Pick<DetailsProps, 'drawer' | 'mode' | 'columns'>) => {
   return {
-    loading: drawer === 'columns' && metadata.loading,
-    error: drawer === 'columns' && metadata.error,
+    loading: drawer === 'columns' && mode !== 'ontology' && columns.loading,
+    error: drawer === 'columns' && mode !== 'ontology' && columns.error,
     showFilters: drawer !== 'columns' || mode !== 'ontology',
     hasMoreColumns:
       drawer === 'columns' &&
       mode !== 'ontology' &&
       columns.columns.length < columns.total,
-    partial: mode === 'ontology' && concepts.partial,
   };
 };
 
@@ -264,7 +253,6 @@ const KnowledgeGraphDetails = ({
   mode,
   data,
   columns,
-  concepts,
   coverage,
   relationshipScope,
   onClearRelationshipScope,
@@ -304,7 +292,7 @@ const KnowledgeGraphDetails = ({
     relationships: t(DETAIL_LABELS[mode].relationships),
     coverage: t(DETAIL_LABELS[mode].coverage),
   };
-  const view = getDetailsState({ drawer, mode, columns, concepts });
+  const view = getDetailsState({ drawer, mode, columns });
   const model = useMemo((): {
     headings: string[];
     rows: DetailRow[];
@@ -386,44 +374,35 @@ const KnowledgeGraphDetails = ({
           t('label.kg-cardinality'),
         ],
         hint: t('message.kg-properties-scope'),
-        rows: concepts.terms.flatMap((term) =>
-          (term.effectiveAttributes ?? term.attributes ?? []).map(
-            (attribute) => ({
-              id: term.id + ':' + attribute.id,
-              kind: 'node',
-              // An inherited attribute is drawn once, on the ancestor that
-              // declares it, so its node id keys off the declaring concept.
-              target: nodeMap.get(
-                attribute.iri ??
-                  'kg:property:' +
-                    (attribute.declaringTerm?.id ?? term.id) +
-                    ':' +
-                    attribute.id
-              )?.id,
-              cells: [
-                { text: attribute.name, tone: 'mono' },
-                {
-                  text: attribute.datatypeIri ?? attribute.dataType,
-                  tone: 'muted',
-                },
-                {
-                  text:
-                    attribute.declaringTerm?.displayName ??
-                    attribute.declaringTerm?.name ??
-                    term.displayName ??
-                    term.name,
-                  tone: 'brand',
-                },
-                {
-                  text: attribute.isIdentifier
-                    ? t('label.kg-at-most-one')
-                    : t('label.kg-not-declared'),
-                  tone: 'muted',
-                },
-              ],
-            })
-          )
-        ),
+        rows: data.nodes
+          .filter((node) => node.type === 'property')
+          .map((node) => ({
+            id: node.id,
+            kind: 'node',
+            target: node.id,
+            cells: [
+              { text: node.label, tone: 'mono' },
+              { text: node.ontologyProperty?.range ?? '', tone: 'muted' },
+              {
+                text: data.edges
+                  .filter(
+                    (edge) =>
+                      edge.from === node.id &&
+                      edge.relationType ===
+                        'http://www.w3.org/2000/01/rdf-schema#domain'
+                  )
+                  .map((edge) => nodeMap.get(edge.to)?.label ?? '')
+                  .join(', '),
+                tone: 'brand',
+              },
+              {
+                text: node.ontologyProperty?.functional
+                  ? t('label.kg-at-most-one')
+                  : t('label.kg-not-declared'),
+                tone: 'muted',
+              },
+            ],
+          })),
       };
     }
     const graphColumns = new Map(
@@ -474,16 +453,7 @@ const KnowledgeGraphDetails = ({
         };
       }),
     };
-  }, [
-    drawer,
-    mode,
-    data,
-    columns.columns,
-    concepts.terms,
-    coverage,
-    t,
-    relationshipScope,
-  ]);
+  }, [drawer, mode, data, columns.columns, coverage, t, relationshipScope]);
   const tableLocale = useMemo(
     () => ({
       emptyText: view.loading ? t('label.loading') : t('label.kg-no-results'),
@@ -714,7 +684,6 @@ const KnowledgeGraphDetails = ({
               className="tw:text-tertiary"
               size="text-xs">
               {t('label.kg-list-count', { count: rows.length })}
-              {view.partial ? ' · ' + t('message.kg-partial-graph') : ''}
             </Typography>
             <Box align="center" gap={3}>
               {view.hasMoreColumns && (

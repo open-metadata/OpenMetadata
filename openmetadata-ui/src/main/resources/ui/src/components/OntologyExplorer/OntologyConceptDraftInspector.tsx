@@ -28,10 +28,8 @@ import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { OntologyAttribute } from '../../generated/type/ontologyAttribute';
 import { addGlossaryTerm } from '../../rest/glossaryAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
-import { OntologyConceptAttributes } from './OntologyConceptAttributes.component';
 import { ONTOLOGY_DRAWER_WIDTH } from './OntologyExplorer.constants';
 import { OntologyNode } from './OntologyExplorer.interface';
 
@@ -80,7 +78,6 @@ const OntologyConceptDraftInspector = ({
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [iri, setIri] = useState('');
-  const [attributes, setAttributes] = useState<OntologyAttribute[]>([]);
   const [iriError, setIriError] = useState<string>();
   const [isCreating, setIsCreating] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -138,7 +135,6 @@ const OntologyConceptDraftInspector = ({
     setIsCreating(true);
     try {
       const concept = await addGlossaryTerm({
-        ...(attributes.length ? { attributes } : {}),
         description: description.trim(),
         displayName: displayName.trim() || undefined,
         glossary: selectedGlossary.fullyQualifiedName ?? selectedGlossary.name,
@@ -283,14 +279,6 @@ const OntologyConceptDraftInspector = ({
               }}
             />
           </section>
-
-          <div className="tw:my-[18px] tw:h-px tw:bg-secondary" />
-          <OntologyConceptAttributes
-            isEditMode
-            attributes={attributes}
-            variant="inspector"
-            onAttributesChange={setAttributes}
-          />
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:justify-end tw:gap-2 tw:border-t tw:border-secondary tw:p-4">

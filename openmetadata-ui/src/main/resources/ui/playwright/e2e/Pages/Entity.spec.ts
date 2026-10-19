@@ -1764,20 +1764,20 @@ pickEntityMatrix(
             const testCase1 = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_dq_success_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 1 },
-                { name: 'maxLength', value: 10 },
+                { name: 'minValue', value: 1 },
+                { name: 'maxValue', value: 10 },
               ],
             });
 
             const testCase2 = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_dq_failed_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 100 },
-                { name: 'maxLength', value: 200 },
+                { name: 'minValue', value: 100 },
+                { name: 'maxValue', value: 200 },
               ],
             });
 
@@ -1903,10 +1903,10 @@ pickEntityMatrix(
             const testCase = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_incident_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 100 },
-                { name: 'maxLength', value: 200 },
+                { name: 'minValue', value: 100 },
+                { name: 'maxValue', value: 200 },
               ],
             });
 

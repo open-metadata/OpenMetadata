@@ -26,13 +26,17 @@ import {
   Edit01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { useId } from 'react';
-import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
-
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
@@ -1083,7 +1087,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         {columnTitle}
       </SlideoutMenu.Header>
       <SlideoutMenu.Content role="region">
-        <DrawerPopupContainerProvider>
+        <>
           <div className="column-detail-panel-container">
             <div className="tw:flex tw:gap-2 tw:h-full">
               <Card className="summary-panel-container" variant="ghost">
@@ -1105,7 +1109,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
           </div>
           {renderDisplayNameModal()}
-        </DrawerPopupContainerProvider>
+        </>
       </SlideoutMenu.Content>
       <SlideoutMenu.Footer>{navFooter}</SlideoutMenu.Footer>
     </SlideoutMenu>

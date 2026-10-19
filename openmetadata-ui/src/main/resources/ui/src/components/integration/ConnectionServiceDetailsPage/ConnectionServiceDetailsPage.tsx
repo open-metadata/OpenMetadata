@@ -1038,7 +1038,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         meta={
           <DataAssetHeaderDetailsRow
-            canEditDomains={headerEditFlags.canEditAll}
+            canEditDomains={headerEditFlags.canEditDomains}
             canEditOwners={headerEditFlags.canEditOwners}
             canEditTier={headerEditFlags.canEditTier}
             domains={

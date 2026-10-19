@@ -592,6 +592,25 @@ describe('InlineTestCaseIncidentStatus', () => {
       });
     });
 
+    it('shows a plain-text empty state when no users match', async () => {
+      (getUserAndTeamSearch as jest.Mock).mockResolvedValueOnce({
+        data: { hits: { hits: [] } },
+      });
+
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+
+      expect(
+        await screen.findByText('label.no-entity-found')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/<0>/)).not.toBeInTheDocument();
+    });
+
     it('calls getUserAndTeamSearch with query when typing in search', async () => {
       renderComponent({
         testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,

@@ -613,6 +613,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
 
+      // The identity below must come from the ID token the back-channel exchange returns, and that
+      // exchange only runs when the callback carries an authorization code. Reject a callback that
+      // brings only a front-channel token: it never passed through the provider's token endpoint.
+      requireAuthorizationCode(pendingSession, credentials);
+
       // Validations
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
@@ -646,8 +651,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
       User user =
           identity.emailFirstFlow()
-              ? getOrCreateEmailFirstOidcUser(identity.email(), identity.displayName(), claims)
-              : getOrCreateOidcUser(identity.userName(), identity.email(), claims);
+              ? getOrCreateEmailFirstOidcUser(identity, claims)
+              : getOrCreateOidcUser(identity, claims);
       syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -914,6 +919,32 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
+  private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
+    if (expectsAuthorizationCode() && credentials.getCode() == null) {
+      LOG.warn(
+          "Rejecting OIDC callback without an authorization code for session {}",
+          SessionService.truncateId(session.getId()));
+      throw new IllegalArgumentException("Authorization code is required");
+    }
+  }
+
+  private boolean expectsAuthorizationCode() {
+    // The default and documented confidential mode is the authorization-code flow. Per OIDC, any
+    // response_type that includes "code" (plain or hybrid) returns an authorization code, so the
+    // callback must carry one. A response_type configured for pure implicit delivery is not a code
+    // flow and keeps its existing handling.
+    String responseType = client.getConfiguration().getResponseType();
+    if (nullOrEmpty(responseType)) {
+      return true;
+    }
+    for (String part : responseType.trim().split("\\s+")) {
+      if ("code".equalsIgnoreCase(part)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
       throws URISyntaxException {
@@ -1166,33 +1197,47 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   }
 
   private User getOrCreateEmailFirstOidcUser(
-      String email, String displayName, Map<String, Object> claims) {
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
     return EmailFirstUserProvisioner.forProvider(
             "OIDC",
             authorizerConfiguration,
             Entity.getUserRepository(),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim),
-            user -> UserUtil.assignTeamsFromClaim(user, teamsFromClaim))
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()),
+            user -> applyTeamsAndPicture(user, teamsFromClaim, identity.picture()))
         .getOrCreate(
-            email,
-            displayName,
+            identity.email(),
+            identity.displayName(),
             SecurityUtil.getClaimOrObject(claims.get(JWTTokenGenerator.SUBJECT_CLAIM)),
             Boolean.TRUE.equals(authenticationConfiguration.getEnableSelfSignup()));
+  }
+
+  private static boolean applyTeamsAndPicture(User user, List<String> teams, URI picture) {
+    boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teams);
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, picture);
+    return teamsAssigned || pictureChanged;
+  }
+
+  private static boolean applyDisplayNameAndPicture(
+      User user, OidcIdentityResolver.ResolvedOidcIdentity identity) {
+    boolean displayNameFilled = UserProfileClaims.fillDisplayName(user, identity.displayName());
+    boolean pictureChanged = UserProfileClaims.syncPicture(user, identity.picture());
+    return displayNameFilled || pictureChanged;
   }
 
   private boolean isUserAdmin(String email, String username) {
     return UserUtil.isConfiguredAdmin(authorizerConfiguration, email, username);
   }
 
-  private User getOrCreateOidcUser(String userName, String email, Map<String, Object> claims) {
+  private User getOrCreateOidcUser(
+      OidcIdentityResolver.ResolvedOidcIdentity identity, Map<String, Object> claims) {
+    String userName = identity.userName();
+    String email = identity.email();
     // Extract teams from claims if configured (supports array claims like groups)
     List<String> teamsFromClaim = findTeamsFromClaims(teamClaimMapping, claims);
 
     try {
-      // Fetch user with teams relationship loaded to preserve existing team memberships
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "id,roles,teams", Include.NON_DELETED);
+      User user = Entity.getUserRepository().getUserByNameForAuthUpdate(userName);
 
       boolean shouldBeAdmin = isUserAdmin(email, userName);
       boolean needsUpdate = false;
@@ -1212,7 +1257,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       // Assign teams from claims if provided (this only adds, doesn't remove existing teams)
       boolean teamsAssigned = UserUtil.assignTeamsFromClaim(user, teamsFromClaim);
-      needsUpdate = needsUpdate || teamsAssigned;
+      boolean profileChanged = applyDisplayNameAndPicture(user, identity);
+      needsUpdate = needsUpdate || teamsAssigned || profileChanged;
 
       if (needsUpdate) {
         UserUtil.addOrUpdateUser(user);
@@ -1245,6 +1291,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
                   userName, new CreateUser().withName(userName).withEmail(email).withIsBot(false))
               .withIsAdmin(isAdmin)
               .withIsEmailVerified(true);
+      applyDisplayNameAndPicture(newUser, identity);
 
       // Assign default role if configured
       String defaultRoleName = authorizerConfiguration.getDefaultOAuthRole();

@@ -379,6 +379,26 @@ describe('ContextCenterMemoriesPage — permissions', () => {
     });
   });
 
+  it('activates a count card from the keyboard', async () => {
+    renderPage();
+
+    const card = screen.getByTestId('memory-count-card-created-by-me');
+
+    expect(card).toHaveAttribute('role', 'button');
+    expect(card).toHaveAttribute('tabIndex', '0');
+    expect(card).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.keyDown(card, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenCalledWith(
+        expect.objectContaining({ author: 'user-1' })
+      );
+    });
+
+    expect(card).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('keeps the typed author results when the menu-open search resolves after them', async () => {
     mockGetResourcePermission.mockResolvedValue({ EditAll: true });
     const authorHits = (name: string, displayName: string) =>

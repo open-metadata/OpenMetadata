@@ -30,11 +30,7 @@ export const InspectorSection = ({
   children,
   testId,
 }: InspectorSectionProps) => (
-  <Box
-    className="tw:rounded-xl tw:bg-secondary tw:px-4 tw:pt-3 tw:pb-4"
-    data-testid={testId}
-    direction="col"
-    gap={2}>
+  <Box className="tw:py-1" data-testid={testId} direction="col" gap={2}>
     {children}
   </Box>
 );

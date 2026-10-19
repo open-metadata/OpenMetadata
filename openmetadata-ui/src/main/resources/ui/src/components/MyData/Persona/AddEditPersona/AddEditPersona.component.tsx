@@ -37,7 +37,6 @@ import { createPersona } from '../../../../rest/PersonaAPI';
 import { getUserById } from '../../../../rest/userAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { DrawerPopupContainerProvider } from '../../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import { UserSelectableList } from '../../../common/UserSelectableList/UserSelectableList.component';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
@@ -135,65 +134,65 @@ export const AddEditPersonaForm = ({
       width={750}
       onCancel={onCancel}
       onOk={form.handleSubmit(handleSubmit)}>
-      <DrawerPopupContainerProvider>
-        <HookForm
-          className="tw:flex tw:flex-col tw:gap-4"
-          form={form}
-          onSubmit={form.handleSubmit(handleSubmit)}>
-          {renderTextField('name', t('label.name'), NAME_FIELD_REGISTER_RULES)}
-          {renderTextField(
-            'displayName',
-            t('label.display-name'),
-            DISPLAY_NAME_FIELD_REGISTER_RULES
-          )}
-          <Box direction="col" gap={1}>
-            <FormItemLabel label={t('label.description')} />
-            <RichTextEditor
-              data-testid="description"
-              initialValue=""
-              onTextChange={setDescription}
-            />
-          </Box>
-          <FormField control={form.control} name="users">
-            {({ field }) => (
-              <Box direction="col" gap={1}>
-                <Box align="center" gap={2}>
-                  <FormItemLabel label={t('label.user-plural')} />
-                  <UserSelectableList
-                    hasPermission
-                    multiSelect
-                    selectedUsers={field.value}
-                    onUpdate={async (users) => field.onChange(users ?? [])}>
-                    <ButtonUtility
-                      aria-label={t('label.add-entity', {
-                        entity: t('label.user-plural'),
-                      })}
-                      data-testid="add-users"
-                      icon={Plus}
-                    />
-                  </UserSelectableList>
-                </Box>
-                {usersList.length > 0 && (
-                  <Box
-                    align="center"
-                    data-testid="users-container"
-                    gap={2}
-                    wrap="wrap">
-                    {usersList.map((user) => (
-                      <UserTag
-                        id={user.name ?? user.id}
-                        key={user.id}
-                        name={getEntityName(user)}
-                        size={UserTagSize.small}
-                      />
-                    ))}
-                  </Box>
-                )}
+      <HookForm
+        className="tw:flex tw:flex-col tw:gap-4"
+        form={form}
+        onSubmit={form.handleSubmit(handleSubmit)}>
+        {renderTextField('name', t('label.name'), NAME_FIELD_REGISTER_RULES)}
+        {renderTextField(
+          'displayName',
+          t('label.display-name'),
+          DISPLAY_NAME_FIELD_REGISTER_RULES
+        )}
+        <Box direction="col" gap={1}>
+          <FormItemLabel label={t('label.description')} />
+          <RichTextEditor
+            data-testid="description"
+            initialValue=""
+            onTextChange={setDescription}
+          />
+        </Box>
+        <FormField control={form.control} name="users">
+          {({ field }) => (
+            <Box direction="col" gap={1}>
+              <Box align="center" gap={2}>
+                <FormItemLabel label={t('label.user-plural')} />
+                <UserSelectableList
+                  hasPermission
+                  multiSelect
+                  selectedUsers={field.value}
+                  onUpdate={(users) =>
+                    Promise.resolve(field.onChange(users ?? []))
+                  }>
+                  <ButtonUtility
+                    aria-label={t('label.add-entity', {
+                      entity: t('label.user-plural'),
+                    })}
+                    data-testid="add-users"
+                    icon={Plus}
+                  />
+                </UserSelectableList>
               </Box>
-            )}
-          </FormField>
-        </HookForm>
-      </DrawerPopupContainerProvider>
+              {usersList.length > 0 && (
+                <Box
+                  align="center"
+                  data-testid="users-container"
+                  gap={2}
+                  wrap="wrap">
+                  {usersList.map((user) => (
+                    <UserTag
+                      id={user.name ?? user.id}
+                      key={user.id}
+                      name={getEntityName(user)}
+                      size={UserTagSize.small}
+                    />
+                  ))}
+                </Box>
+              )}
+            </Box>
+          )}
+        </FormField>
+      </HookForm>
     </SimpleModal>
   );
 };

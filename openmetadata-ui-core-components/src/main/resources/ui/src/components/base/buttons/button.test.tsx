@@ -23,6 +23,40 @@ describe('Button', () => {
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
+  it('calls onFocus and onBlur as keyboard focus enters and leaves', async () => {
+    const handleFocus = vi.fn();
+    const handleBlur = vi.fn();
+    render(
+      <>
+        <Button onBlur={handleBlur} onFocus={handleFocus}>
+          Click me
+        </Button>
+        <Button>Next</Button>
+      </>
+    );
+
+    await userEvent.tab();
+
+    expect(handleFocus).toHaveBeenCalledTimes(1);
+
+    await userEvent.tab();
+
+    expect(handleBlur).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onFocus on the link variant', () => {
+    const handleFocus = vi.fn();
+    render(
+      <Button href="/somewhere" onFocus={handleFocus}>
+        Go
+      </Button>
+    );
+
+    screen.getByRole('link', { name: 'Go' }).focus();
+
+    expect(handleFocus).toHaveBeenCalledTimes(1);
+  });
+
   it('omits focus outline classes only when explicitly requested', () => {
     const { rerender } = render(<Button>Click me</Button>);
     const button = screen.getByRole('button', { name: 'Click me' });
