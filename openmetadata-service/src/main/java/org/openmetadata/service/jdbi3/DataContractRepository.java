@@ -56,6 +56,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
@@ -1678,13 +1679,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         : null;
   }
 
+  // A missing contract reads as null; only an unreadable stored contract is skipped, so a parent
+  // with corrupt JSON does not take its children's contracts down with it.
   private DataContract loadContractOf(EntityReference parent) {
     DataContract contract = null;
     try {
       contract = loadEntityDataContract(parent);
-    } catch (Exception e) {
-      LOG.debug(
-          "No contract found for {} {}: {}", parent.getType(), parent.getId(), e.getMessage());
+    } catch (JsonParsingException e) {
+      LOG.warn(
+          "Unreadable contract for {} {}: {}", parent.getType(), parent.getId(), e.getMessage());
     }
     return contract;
   }
