@@ -12,7 +12,6 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
-import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -96,8 +95,8 @@ test.describe(
   'Data contract on a database schema',
   { tag: [DOMAIN_TAGS.GOVERNANCE] },
   () => {
-    // Each table gets its own service, so the contracts set on its schema
-    // cannot leak into the shared schema other specs' tables live in.
+    // Each TableClass creates its own service, database and schema, so the
+    // contracts set on a schema here reach only this spec's tables.
     let approvedSchemaTable: TableClass;
     let draftSchemaTable: TableClass;
     let contractTable: TableClass;
@@ -109,15 +108,9 @@ test.describe(
       table.schemaResponseData.fullyQualifiedName ?? '';
 
     test.beforeAll(async ({ browser }) => {
-      approvedSchemaTable = new TableClass({
-        service: new DatabaseServiceClass(),
-      });
-      draftSchemaTable = new TableClass({
-        service: new DatabaseServiceClass(),
-      });
-      contractTable = new TableClass({
-        service: new DatabaseServiceClass(),
-      });
+      approvedSchemaTable = new TableClass();
+      draftSchemaTable = new TableClass();
+      contractTable = new TableClass();
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
         await settleAll([
