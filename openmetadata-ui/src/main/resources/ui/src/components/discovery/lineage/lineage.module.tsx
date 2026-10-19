@@ -20,8 +20,13 @@ import { AppModule } from '../../platform/ai-shell/AppModule.types';
 /**
  * Lineage module — the AI sidebar's entry to the main Lineage page. The page
  * itself is served by the shell's page-table fallback, like Explore; this
- * module only surfaces the sidebar icon and points it at `/lineage`. Sorted
- * after Context Center so it lands in "More" once the sidebar overflows.
+ * module only surfaces the sidebar icon and points it at `/lineage`.
+ *
+ * `navOrder` sits after Context Center (80) and before AI Studio / SQL Studio
+ * (90+). Design wants Context Center visible by default: with Collate's extra
+ * modules the default sidebar fills its `APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT`
+ * (10) slots at Context Center, so Lineage overflows into "More" instead. A new
+ * module sorting below 80 pushes Context Center back into "More".
  */
 export const lineageModule: AppModule = {
   id: 'lineage',
