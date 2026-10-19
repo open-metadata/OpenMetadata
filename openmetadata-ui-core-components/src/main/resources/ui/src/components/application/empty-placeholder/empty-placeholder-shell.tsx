@@ -27,9 +27,8 @@ export const EMPTY_PLACEHOLDER_ICON_BOX =
   // default glyph color so a bare component icon stays visible in both themes
   // instead of inheriting the ambient text color (invisible dark-on-dark).
   // Icons passed as elements with their own `text-*` class still override it.
-  // No border or shadow: `bg-primary` is the page colour, so the tile disappears on light
-  // surfaces and reads as a darker well on dark `bg-surface` cards.
-  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:bg-primary tw:text-featured-icon-light-fg-gray tw:*:data-icon:size-7';
+  // No background, border or shadow: the icon sits directly on whatever surface hosts it.
+  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:text-featured-icon-light-fg-gray tw:*:data-icon:size-7';
 
 export interface EmptyPlaceholderAction extends Omit<ButtonProps, 'children'> {
   key: string;
