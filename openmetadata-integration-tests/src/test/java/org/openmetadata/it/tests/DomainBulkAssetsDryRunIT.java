@@ -18,8 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,6 +44,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -67,62 +68,81 @@ import org.openmetadata.sdk.network.HttpMethod;
 public class DomainBulkAssetsDryRunIT {
 
   @Test
-  void test_add_withMultipleDomainsAllowed_keepsExistingDomains(TestNamespace ns) throws Exception {
+  void test_add_withMultipleDomainsAllowed_keepsExistingDomainsAndDataProducts(TestNamespace ns)
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     boolean ruleWasEnabled = EntityRulesUtil.isMultiDomainRuleEnabled(client);
     EntityRulesUtil.toggleMultiDomainRule(client, false);
     try {
       Domain domainA = createDomain(ns, client, "domainA");
       Domain domainB = createDomain(ns, client, "domainB");
+      Domain domainC = createDomain(ns, client, "domainC");
       Table table = createTable(ns);
-      BulkAssets request =
-          new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
-      client
-          .getHttpClient()
-          .execute(
-              HttpMethod.PUT,
-              "/v1/domains/" + domainA.getFullyQualifiedName() + "/assets/add",
-              request,
-              BulkOperationResult.class);
-
-      BulkOperationResult dryRun =
+      editAssets(client, "domains", domainA.getFullyQualifiedName(), table, false);
+      DataProduct dataProduct =
           client
-              .getHttpClient()
-              .execute(
-                  HttpMethod.PUT,
-                  "/v1/domains/" + domainB.getFullyQualifiedName() + "/assets/add",
-                  new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true),
-                  BulkOperationResult.class);
-      BulkResponse preview = dryRun.getSuccessRequest().get(0);
-      assertFalse(
-          Boolean.TRUE.equals(preview.getHasSideEffects()),
-          "Adding beside an existing domain is not a move: " + preview.getMessage());
-      assertTrue(
-          preview.getMessage().contains("will be added to the domain"),
-          "Message should say the asset is added: " + preview.getMessage());
+              .dataProducts()
+              .create(
+                  new CreateDataProduct()
+                      .withName(ns.prefix("dp"))
+                      .withDomains(List.of(domainA.getFullyQualifiedName()))
+                      .withDescription("Data product in domainA"));
+      editAssets(client, "dataProducts", dataProduct.getFullyQualifiedName(), table, false);
 
-      client
-          .getHttpClient()
-          .execute(
-              HttpMethod.PUT,
-              "/v1/domains/" + domainB.getFullyQualifiedName() + "/assets/add",
-              request,
-              BulkOperationResult.class);
+      assertAddedWithoutSideEffects(
+          editAssets(client, "domains", domainB.getFullyQualifiedName(), table, true));
+      editAssets(client, "domains", domainB.getFullyQualifiedName(), table, false);
+      assertDomainsAndDataProduct(client, table, dataProduct, domainA, domainB);
 
-      Table refreshed =
-          client
-              .getHttpClient()
-              .execute(
-                  HttpMethod.GET,
-                  "/v1/tables/" + table.getId() + "?fields=domains",
-                  null,
-                  Table.class);
-      assertEquals(
-          Set.of(domainA.getId(), domainB.getId()),
-          refreshed.getDomains().stream().map(d -> d.getId()).collect(Collectors.toSet()));
+      // An asset already in two domains: the preview reads all of them, not a single one.
+      assertAddedWithoutSideEffects(
+          editAssets(client, "domains", domainC.getFullyQualifiedName(), table, true));
+      editAssets(client, "domains", domainC.getFullyQualifiedName(), table, false);
+      assertDomainsAndDataProduct(client, table, dataProduct, domainA, domainB, domainC);
     } finally {
       EntityRulesUtil.toggleMultiDomainRule(client, ruleWasEnabled);
     }
+  }
+
+  private static BulkOperationResult editAssets(
+      OpenMetadataClient client, String collection, String fqn, Table table, boolean dryRun)
+      throws Exception {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/" + collection + "/" + fqn + "/assets/add",
+            new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(dryRun),
+            BulkOperationResult.class);
+  }
+
+  private static void assertAddedWithoutSideEffects(BulkOperationResult dryRun) {
+    BulkResponse preview = dryRun.getSuccessRequest().get(0);
+    assertFalse(
+        Boolean.TRUE.equals(preview.getHasSideEffects()),
+        "Adding beside existing domains moves nothing and drops nothing: " + preview.getMessage());
+    assertTrue(
+        preview.getMessage().contains("will be added to the domain"),
+        "Message should say the asset is added: " + preview.getMessage());
+  }
+
+  private static void assertDomainsAndDataProduct(
+      OpenMetadataClient client, Table table, DataProduct dataProduct, Domain... domains)
+      throws Exception {
+    Table refreshed =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/tables/" + table.getId() + "?fields=domains,dataProducts",
+                null,
+                Table.class);
+    assertEquals(
+        Arrays.stream(domains).map(Domain::getId).collect(Collectors.toSet()),
+        refreshed.getDomains().stream().map(EntityReference::getId).collect(Collectors.toSet()));
+    assertEquals(
+        List.of(dataProduct.getId()),
+        refreshed.getDataProducts().stream().map(EntityReference::getId).toList());
   }
 
   @Test
