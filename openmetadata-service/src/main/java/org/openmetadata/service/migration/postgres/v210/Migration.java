@@ -15,6 +15,8 @@ package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
@@ -35,7 +37,6 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v206.ActivityFeedAlertMigration;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
@@ -129,7 +130,7 @@ public class Migration extends MigrationProcessImpl {
     runOnce(
         migrationDAO,
         getVersion(),
-        ActivityFeedAlertMigration.STEP_NAME,
-        () -> ActivityFeedAlertMigration.migrate(handle));
+        ACTIVITY_FEED_ALERT_STEP,
+        () -> addContractAndStatusToActivityFeedAlert(handle));
   }
 }

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-19 (initial)
 - **Deciders:** Governance (OpenMetadata)
-- **Guard:** `ActivityResourceIT.test_getEntityActivity_includesItsDataContractActivity`, `ActivityStreamRepositoryTest.createFieldEventsFromChangeEventRecordsStatusChanges`, `EntityFieldUtilsTest.setEntityFieldCreatesPatchAndChangeEventWhenEntityChanges`, `ActivityFeedAlertMigrationTest`
+- **Guard:** `ActivityResourceIT.test_getEntityActivity_includesItsDataContractActivity`, `ActivityStreamRepositoryTest.createFieldEventsFromChangeEventRecordsStatusChanges`, `EntityFieldUtilsTest.setEntityFieldCreatesPatchAndChangeEventWhenEntityChanges`, `MigrationUtilTest` (`migration/utils/v206`)
 - **Related:** #35662, ADR:2026-10-19-a-table-inherits-its-schemas-approved-data-contract
 
 ## Context
