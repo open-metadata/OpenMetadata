@@ -359,10 +359,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     LOG.debug("Handling OAuth GET request: {}", request.getRequestURI());
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     // Handle OAuth GET routes (exact path matching to prevent path confusion attacks)
-    if (path.equals("/mcp/.well-known/oauth-authorization-server")) {
+    // openid-configuration appended to the issuer is the one authorization server discovery URL
+    // the MCP spec lists that stays inside a non-root BASE_PATH; the others sit at the host root.
+    if (path.equals("/mcp/.well-known/oauth-authorization-server")
+        || path.equals("/mcp/.well-known/openid-configuration")) {
       handleMetadataRequest(request, response);
     } else if (path.equals("/mcp/.well-known/oauth-protected-resource")) {
       handleProtectedResourceMetadataRequest(request, response);
@@ -554,7 +557,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     LOG.debug("Handling OAuth POST request: {}", request.getRequestURI());
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     // Handle OAuth POST routes (exact path matching to prevent path confusion attacks)
     if (path.equals("/mcp/token")) {

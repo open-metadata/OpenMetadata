@@ -6,7 +6,9 @@ import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
+import java.net.URI;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -147,6 +149,7 @@ public class McpServer implements McpServerProvider {
       // Get base URL from MCP configuration or system settings
       String baseUrl = getBaseUrlFromConfig();
       LOG.info("MCP OAuth initialized with base URL: {}", baseUrl);
+      warnIfBaseUrlMissesContextPath(baseUrl, contextHandler.getContextPath());
 
       org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
           org.openmetadata.service.security.jwt.JWTTokenGenerator.getInstance();
@@ -395,6 +398,25 @@ public class McpServer implements McpServerProvider {
       LOG.warn("Failed to get base URL from MCP config: {}", e.getMessage());
     }
     return getBaseUrlFromSettings();
+  }
+
+  /**
+   * Under a non-root BASE_PATH every URL the MCP OAuth flow advertises is built from baseUrl, so it
+   * has to carry that path. Only warns: behind a proxy that rewrites the path, a baseUrl without
+   * it is correct, and appending it here would break that setup.
+   */
+  private static void warnIfBaseUrlMissesContextPath(String baseUrl, String contextPath) {
+    boolean subPathContext = contextPath.length() > 1;
+    String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
+    if (subPathContext && !baseUrlPath.startsWith(contextPath)) {
+      LOG.warn(
+          "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
+              + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
+              + " in {}.",
+          baseUrl,
+          contextPath,
+          contextPath);
+    }
   }
 
   private List<String> getAllowedOriginsFromConfig() {

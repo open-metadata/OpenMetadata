@@ -61,6 +61,26 @@ public class McpOAuthIT extends McpTestBase {
   }
 
   @Test
+  @Order(1)
+  void testOpenIdConfigurationAppendedToIssuer_servesTheSameMetadata() throws Exception {
+    assertThat(getJson("/mcp/.well-known/openid-configuration"))
+        .isEqualTo(getJson("/mcp/.well-known/oauth-authorization-server"));
+  }
+
+  private JsonNode getJson(String path) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(getMcpUrl(path)))
+            .header("Accept", "application/json")
+            .GET()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertThat(response.statusCode()).isEqualTo(200);
+    return OBJECT_MAPPER.readTree(response.body());
+  }
+
+  @Test
   @Order(2)
   void testWellKnownProtectedResourceMetadata() throws Exception {
     HttpRequest request =
