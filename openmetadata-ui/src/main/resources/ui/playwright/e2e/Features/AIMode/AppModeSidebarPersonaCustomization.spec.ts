@@ -161,9 +161,9 @@ const seedSidebarWithContextCenterUnderMore = async (
       entityType: 'Page',
       data: {
         askCollateSidebar: [
-          ...APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS.filter((key) => key !== 'context-center').map(
-            toNavigationItem
-          ),
+          ...APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS.filter(
+            (key) => key !== 'context-center'
+          ).map(toNavigationItem),
           {
             ...toNavigationItem('more'),
             children: [toNavigationItem('context-center')],
