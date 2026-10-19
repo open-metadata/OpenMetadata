@@ -127,8 +127,8 @@ cd "$(dirname "$0")/../../../../.." || {
     exit 1
 }
 
-# quicktype is fetched on demand (pinned) instead of via a root package.json;
-# resolved once so the parallel jobs don't each go through npx.
+# quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
+# keep the version identical to json2ts.sh. Resolved once so the parallel jobs skip npx.
 QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
     echo "Error: Failed to resolve quicktype via npx" >&2
     exit 1

@@ -65,7 +65,8 @@ if [ "$#" -eq 0 ]; then
     exit 1
 fi
 
-# quicktype is fetched on demand (pinned) instead of via a root package.json.
+# quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
+# keep the version identical to json2ts-generate-all.sh.
 QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
     echo "Failed to resolve quicktype via npx" >&2
     exit 1
