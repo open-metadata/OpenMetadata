@@ -46,8 +46,8 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
-import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
 import CoreInputWidget from '../../../../common/FormBuilderV1/widgets/CoreInputWidget';
