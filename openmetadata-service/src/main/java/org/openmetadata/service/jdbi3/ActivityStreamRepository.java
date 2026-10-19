@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -29,6 +30,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -872,13 +874,28 @@ public class ActivityStreamRepository {
         .withEventType(eventType)
         .withEntity(entityRef)
         .withAbout(about)
-        .withDomains(entity.getDomains())
+        .withDomains(domainsOf(entity))
         .withActor(actorRef)
         .withTimestamp(changeEvent.getTimestamp())
         .withSummary(summary)
         .withFieldName(fieldName)
         .withOldValue(oldValue)
         .withNewValue(newValue);
+  }
+
+  // A data contract has no domains of its own. Its activity takes its asset's, so a feed filtered
+  // by domain (a selected domain, a domain-only role) keeps the contract's events with the asset's.
+  private static List<EntityReference> domainsOf(EntityInterface<?> entity) {
+    if (!(entity instanceof DataContract contract) || contract.getEntity() == null) {
+      return entity.getDomains();
+    }
+    try {
+      EntityInterface<?> asset = Entity.getEntity(contract.getEntity(), FIELD_DOMAINS, Include.ALL);
+      return asset.getDomains();
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Asset of data contract {} not found: {}", contract.getId(), e.getMessage());
+      return null;
+    }
   }
 
   private EntityReference buildActorReference(String userName) {
