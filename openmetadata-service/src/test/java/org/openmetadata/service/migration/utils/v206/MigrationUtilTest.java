@@ -8,7 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
 
-class ActivityFeedAlertMigrationTest {
+class MigrationUtilTest {
 
   // The alert as stored before this release, with one admin setting changed (enabled: false).
   private static final String STORED_ALERT =
@@ -39,7 +39,7 @@ class ActivityFeedAlertMigrationTest {
   void addsEntityStatusAndDataContractAndKeepsAdminSettings() {
     ObjectNode alert = (ObjectNode) JsonUtils.readTree(STORED_ALERT);
 
-    assertTrue(ActivityFeedAlertMigration.addMissingValues(alert));
+    assertTrue(MigrationUtil.addMissingValues(alert));
 
     assertEquals(
         "matchAnyFieldChange({'description', 'owners', 'entityStatus'})", conditionOf(alert, 1));
@@ -58,10 +58,10 @@ class ActivityFeedAlertMigrationTest {
   @Test
   void secondRunChangesNothing() {
     ObjectNode alert = (ObjectNode) JsonUtils.readTree(STORED_ALERT);
-    ActivityFeedAlertMigration.addMissingValues(alert);
+    MigrationUtil.addMissingValues(alert);
     String once = alert.toString();
 
-    assertFalse(ActivityFeedAlertMigration.addMissingValues(alert));
+    assertFalse(MigrationUtil.addMissingValues(alert));
     assertEquals(once, alert.toString());
   }
 

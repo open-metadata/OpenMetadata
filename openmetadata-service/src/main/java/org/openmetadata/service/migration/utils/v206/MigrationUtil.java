@@ -31,8 +31,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
  * changed, such as {@code enabled}.
  */
 @Slf4j
-public final class ActivityFeedAlertMigration {
-  public static final String STEP_NAME = "activityFeedAlertAdmitsContractsAndStatus";
+public final class MigrationUtil {
   static final String ALERT_NAME = "ActivityFeedAlert";
 
   // Rule name → value its set condition must contain.
@@ -49,9 +48,9 @@ public final class ActivityFeedAlertMigration {
   private static final String UPDATE_POSTGRES =
       "UPDATE event_subscription_entity SET json = :json::jsonb WHERE name = :n";
 
-  private ActivityFeedAlertMigration() {}
+  private MigrationUtil() {}
 
-  public static void migrate(Handle handle) {
+  public static void addContractAndStatusToActivityFeedAlert(Handle handle) {
     handle
         .createQuery(SELECT)
         .bind("n", ALERT_NAME)
