@@ -373,7 +373,7 @@ test.describe('Connection config layout', () => {
 
     await expect(
       connectionOptions.locator('.core-wrap-if-additional-key input')
-    ).toHaveAttribute('placeholder', 'option');
+    ).toHaveAttribute('placeholder', 'key');
     await expect(
       connectionOptions.locator(
         '.core-wrap-if-additional-value .design-field-label'
