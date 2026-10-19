@@ -372,7 +372,7 @@ class UnitycatalogLineageSource(Source):
         The system tables cover the whole metastore, so an edge into this service can
         start at a table another service ingested. Only the upstream side looks further:
         a target is always this service's own, since the other service's run emits the
-        edges that end in its tables.
+        edges that end in its tables (ADR:2026-10-19-unity-catalog-lineage-resolves-only-upstreams-across-services).
         """
         service_names = [model_str(self.config.serviceName)]
         if self.source_config.processCrossDatabaseLineage and self.source_config.crossDatabaseServiceNames:
