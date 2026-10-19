@@ -170,12 +170,8 @@ export const userMentionItemWithAvatar = (
 /**
  * if entity field is columns::name::description
  * return columns > name > description
- * `withLeadingSeparator` prefixes a separator, for a path that follows the entity name.
  */
-export const getEntityFieldDisplay = (
-  entityField: string,
-  withLeadingSeparator = false
-) => {
+export const getEntityFieldDisplay = (entityField: string) => {
   if (entityField && entityField.length) {
     const entityFields = entityField.split(ENTITY_LINK_SEPARATOR);
     const separator = (
@@ -190,7 +186,6 @@ export const getEntityFieldDisplay = (
     return entityFields.map((field, i) => {
       return (
         <span key={`field-${field}`}>
-          {withLeadingSeparator && i === 0 ? separator : null}
           {t(`label.${field}`, { defaultValue: field })}
           {i < entityFields.length - 1 ? separator : null}
         </span>

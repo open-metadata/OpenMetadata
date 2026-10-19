@@ -40,6 +40,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
+import FeedFieldPath from '../../../../../components/ActivityFeed/Shared/FeedFieldPath/FeedFieldPath';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
@@ -62,7 +63,6 @@ import {
   formatDateTime,
   formatDateTimeLong,
 } from '../../../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../../../utils/EntityLink';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
@@ -177,30 +177,10 @@ const getActivityBadge = (activity?: ActivityEvent): ActivityBadge =>
       ACTIVITY_EVENT_BADGE[ActivityEventType.EntityUpdated]
     : CONVERSATION_BADGE;
 
-/**
- * Where the asset line points. A column-level change reads "table.column" and
- * links to the column; anything else names and links to the entity itself.
- */
-const getEntityTarget = (
-  entity: EntityReference | undefined,
-  entityName: string | undefined,
-  about: string | undefined
-) => {
-  const isColumn = about ? EntityLink.split(about)[2] === 'columns' : false;
-  const fqn =
-    isColumn && about
-      ? EntityLink.getEntityColumnFqn(about)
-      : entity?.fullyQualifiedName;
-
-  return {
-    parent: isColumn ? `${entityName}.` : '',
-    leaf: isColumn && about ? EntityLink.getTableColumnName(about) : entityName,
-    path:
-      entity?.type && fqn
-        ? entityUtilClassBase.getEntityLink(entity.type, fqn)
-        : undefined,
-  };
-};
+const getEntityPath = (entity: EntityReference | undefined) =>
+  entity?.type && entity.fullyQualifiedName
+    ? entityUtilClassBase.getEntityLink(entity.type, entity.fullyQualifiedName)
+    : undefined;
 
 // "Hide replies" while open; otherwise how many there are, or "Reply" while
 // there are none.
@@ -444,11 +424,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const cardTimeFormat = getCardTimeFormat(timeFormat, timestamp, feed);
   const { icon: KindIcon, badgeClassName: kindClassName } =
     getActivityBadge(activity);
-  const target = getEntityTarget(
-    entity,
-    entityName,
-    activity?.about ?? feed?.about
-  );
+  const entityPath = getEntityPath(entity);
+  const about = activity?.about ?? feed?.about;
   const change = useMemo(
     () => (activity ? getActivityChange(activity) : undefined),
     [activity]
@@ -579,7 +556,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 timestamp={timestamp}
               />
             </Box>
-            {target.leaf && (
+            {entityName && (
               <Box align="center" className="tw:min-w-0 tw:gap-1.5">
                 {entity?.type && (
                   <span className={INBOX_ENTITY_ICON_CLASS}>
@@ -590,21 +567,25 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                   className="tw:truncate tw:text-quaternary"
                   size="text-sm"
                   weight="medium">
-                  {target.parent}
-                  {target.path ? (
+                  {entityPath ? (
                     <Link
                       // `!`: the Typography's prose styles color its links.
                       className="tw:font-normal tw:text-brand-secondary! tw:no-underline! tw:hover:underline!"
                       data-testid="activity-entity-link"
-                      to={target.path}>
-                      {target.leaf}
+                      to={entityPath}>
+                      {entityName}
                     </Link>
                   ) : (
                     <span className="tw:font-semibold tw:text-primary">
-                      {target.leaf}
+                      {entityName}
                     </span>
                   )}
                 </Typography>
+                <FeedFieldPath
+                  about={about}
+                  entityType={entity?.type}
+                  showField={!isActivity}
+                />
               </Box>
             )}
           </Box>

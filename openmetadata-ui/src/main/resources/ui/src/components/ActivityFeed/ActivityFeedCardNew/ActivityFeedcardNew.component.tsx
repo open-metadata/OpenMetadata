@@ -41,13 +41,9 @@ import {
 } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getActivityEventHeaderText,
-  getEntityFieldDisplay,
-} from '../../../utils/FeedUtils';
+import { getActivityEventHeaderText } from '../../../utils/FeedUtils';
 import {
   entityDisplayName,
-  getEntityField,
   getEntityFQN,
   getEntityType,
   isFeedPostAuthor,
@@ -63,6 +59,7 @@ import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFoot
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+import FeedFieldPath from '../Shared/FeedFieldPath/FeedFieldPath';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -153,7 +150,7 @@ const ActivityFeedCardNew = ({
   const isActivityEvent = !isUndefined(activity);
   const timeFormat = useActiveTimeFormat();
 
-  const { entityFQN, entityType, entityField } = useMemo(() => {
+  const { entityFQN, entityType, about } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
     // `||`, not `??`: the EntityLink accessors return '' for a missing or
     // unparseable link, and an activity event's `about` is optional. `??` would
@@ -163,11 +160,8 @@ const ActivityFeedCardNew = ({
       getEntityFQN(aboutValue) || activity?.entity?.fullyQualifiedName || '';
     const entityType =
       getEntityType(aboutValue) || (activity?.entity?.type as EntityType) || '';
-    // A conversation started on a column reads `columns::<name>::description`;
-    // without it the card only names the table.
-    const entityField = feed?.about ? getEntityField(feed.about) : undefined;
 
-    return { entityFQN, entityType, entityField };
+    return { entityFQN, entityType, about: aboutValue };
   }, [feed?.about, activity?.about, activity?.entity]);
 
   const createdBy = useMemo(() => {
@@ -259,7 +253,7 @@ const ActivityFeedCardNew = ({
       );
     } else {
       return (
-        <>
+        <span className="tw:inline-flex tw:min-w-0 tw:items-center tw:gap-1.5">
           <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
             <div
               className={classNames('text-sm flex-center gap-1', {
@@ -285,18 +279,19 @@ const ActivityFeedCardNew = ({
               </Link>
             </div>
           </EntityPopOverCard>
-          {entityField && (
-            <span className="text-sm" data-testid="entity-field">
-              {getEntityFieldDisplay(entityField, true)}
-            </span>
-          )}
-        </>
+          <FeedFieldPath
+            about={about}
+            entityType={entityType}
+            showField={!isActivityEvent}
+          />
+        </span>
       );
     }
   }, [
     entityType,
     entityFQN,
-    entityField,
+    about,
+    isActivityEvent,
     isUserOrTeam,
     entityRef,
     createdBy,
