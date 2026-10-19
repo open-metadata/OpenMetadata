@@ -17,10 +17,7 @@ import { FieldProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { forwardRef, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  transformErrors,
-  translateFormString,
-} from '../../../utils/formPureUtils';
+import { transformErrors } from '../../../utils/formPureUtils';
 import { formatFormDataForRender } from '../../../utils/JSONSchemaFormUtils';
 import CoreArrayField from './fields/CoreArrayField';
 import CoreBooleanField from './fields/CoreBooleanField';
@@ -176,7 +173,6 @@ const FormBuilderV1 = forwardRef<Form, FormBuilderV1Props>(
           showErrorList={false}
           templates={mergedTemplates}
           transformErrors={transformErrors}
-          translateString={translateFormString}
           uiSchema={uiSchema}
           validator={props.validator ?? validator}
           widgets={mergedWidgets}

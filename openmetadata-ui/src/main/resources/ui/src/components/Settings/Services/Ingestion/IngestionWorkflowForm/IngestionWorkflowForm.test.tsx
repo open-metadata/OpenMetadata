@@ -82,7 +82,8 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
       expect.objectContaining({ bq_catalog: 'my-gcp-project' })
     );
     expect(Object.keys(catalogMapping)).toHaveLength(2);
-    expect(catalogMapping.newKey).toBe('');
+    // RJSF's visible default, so an untouched row is noticed before it is saved
+    expect(catalogMapping.newKey).toBe('New Value');
   });
 });
 

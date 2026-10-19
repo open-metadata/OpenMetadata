@@ -45,10 +45,7 @@ import {
 } from '../../../../../interface/service.interface';
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
-import {
-  transformErrors,
-  translateFormString,
-} from '../../../../../utils/formPureUtils';
+import { transformErrors } from '../../../../../utils/formPureUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
@@ -424,7 +421,6 @@ const IngestionWorkflowForm = forwardRef<
           WrapIfAdditionalTemplate: CoreWrapIfAdditionalTemplate,
         }}
         transformErrors={transformErrors}
-        translateString={translateFormString}
         uiSchema={uiSchema}
         validator={validator}
         widgets={widgets}
