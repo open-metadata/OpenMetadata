@@ -120,20 +120,20 @@ def test_process_file_bags_the_deployed_dag(dags_folder):
     assert dag_bag.size() == 1
 
 
-def _process_in_request_thread(dag_bag, dag_file):
+def _in_request_thread(fn):
     """The API server runs deploy handlers on worker threads, never the main thread"""
     from openmetadata_managed_apis.api import utils
 
-    found = []
+    result = []
 
     def deploy():
-        with utils.import_timeout_disabled_off_main_thread():
-            found.extend(dag_bag.process_file(str(dag_file)))
+        utils.skip_import_timeout_off_main_thread()
+        result.append(fn())
 
     thread = threading.Thread(target=deploy)
     thread.start()
     thread.join()
-    return found
+    return result[0]
 
 
 @patch.dict(os.environ, {"AIRFLOW_HOME": "/tmp"})
@@ -148,28 +148,24 @@ def test_deploy_thread_import_logs_no_signal_traceback(dags_folder, caplog):
     with patch.object(utils.settings, "DAGS_FOLDER", str(dags_folder)):
         dag_bag = utils.get_dagbag()
 
-    with caplog.at_level(logging.WARNING):
-        found_dags = _process_in_request_thread(dag_bag, deployed)
+    with (
+        patch.object(utils.settings, "get_dagbag_import_timeout", utils.settings.get_dagbag_import_timeout),
+        caplog.at_level(logging.WARNING),
+    ):
+        found_dags = _in_request_thread(lambda: dag_bag.process_file(str(deployed)))
 
     assert [dag.dag_id for dag in found_dags] == ["the_deployed_dag"]
     assert not [record for record in caplog.records if "timeout can't be used" in record.getMessage()]
 
 
-def test_import_timeout_is_kept_on_main_thread_and_restored():
+def test_import_timeout_is_kept_on_main_thread_and_skipped_off_it():
     from openmetadata_managed_apis.api import utils
 
-    original = utils.settings.get_dagbag_import_timeout
-    with utils.import_timeout_disabled_off_main_thread():
-        assert utils.settings.get_dagbag_import_timeout is original
+    with patch.object(utils.settings, "get_dagbag_import_timeout", lambda _path: 30):
+        utils.skip_import_timeout_off_main_thread()
+        wrapper = utils.settings.get_dagbag_import_timeout
+        utils.skip_import_timeout_off_main_thread()
 
-    timeouts = []
-
-    def deploy():
-        with utils.import_timeout_disabled_off_main_thread():
-            timeouts.append(utils.settings.get_dagbag_import_timeout("any.py"))
-
-    thread = threading.Thread(target=deploy)
-    thread.start()
-    thread.join()
-    assert timeouts == [0]
-    assert utils.settings.get_dagbag_import_timeout is original
+        assert utils.settings.get_dagbag_import_timeout is wrapper
+        assert utils.settings.get_dagbag_import_timeout("any.py") == 30
+        assert _in_request_thread(lambda: utils.settings.get_dagbag_import_timeout("any.py")) == 0

@@ -15,7 +15,6 @@ import re
 import sys
 import threading
 import traceback
-from contextlib import contextmanager
 from multiprocessing import get_context
 
 from airflow import settings
@@ -161,30 +160,27 @@ def get_dagbag():
     return dagbag
 
 
-_IMPORT_TIMEOUT_LOCK = threading.Lock()
-
-
-@contextmanager
-def import_timeout_disabled_off_main_thread():
+def skip_import_timeout_off_main_thread():
     """
     Airflow enforces the DAG import timeout with SIGALRM, which Python only allows on
     the main thread. Deploys run on API server worker threads, so the timeout was never
     applied there and Airflow logged a `signal only works in main thread` traceback on
-    every deploy (#35460). Report a zero timeout so Airflow skips it instead.
+    every deploy (#35460). Report a zero timeout off the main thread so Airflow skips it.
+
+    The wrapper is installed once and decides per call, so concurrent deploys need no
+    lock around the DAG import (which calls back to the OpenMetadata server).
     """
-    if threading.current_thread() is threading.main_thread() or not hasattr(settings, "get_dagbag_import_timeout"):
-        yield
+    original = getattr(settings, "get_dagbag_import_timeout", None)
+    if original is None or getattr(original, "skips_off_main_thread", False):
         return
 
-    # The hook is module-global: serialize concurrent deploys so one cannot restore
-    # another's patch.
-    with _IMPORT_TIMEOUT_LOCK:
-        original = settings.get_dagbag_import_timeout
-        settings.get_dagbag_import_timeout = lambda _filepath: 0
-        try:
-            yield
-        finally:
-            settings.get_dagbag_import_timeout = original
+    def get_dagbag_import_timeout(dag_file_path):
+        if threading.current_thread() is threading.main_thread():
+            return original(dag_file_path)
+        return 0
+
+    get_dagbag_import_timeout.skips_off_main_thread = True
+    settings.get_dagbag_import_timeout = get_dagbag_import_timeout
 
 
 # Deployment requests can run while other threads own file locks or database connections.
