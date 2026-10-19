@@ -460,6 +460,22 @@ class TestTagAnalyzer:
 
         assert analysis.score == 1.0
 
+    def test_analyze_content_detects_upper_cased_names(self, person_tag_analyzer: TagAnalyzer):
+        names = ["SERGE DUPONT", "GENEVIÈVE DURAND", "CÉLINE FOURNIER", "NATHALIE MERCIER"]
+
+        analysis = person_tag_analyzer.analyze(str_values=names)
+
+        assert analysis.score >= 0.8
+        assert {result.entity_type for result in analysis.recognizer_results} == {PIIEntity.PERSON.value}
+
+    def test_analyze_content_does_not_tag_upper_cased_status_values(self, person_tag_analyzer: TagAnalyzer):
+        statuses = ["ACTIVE", "PENDING", "CLOSED", "ARCHIVED", "CANCELLED", "APPROVED", "REJECTED"]
+
+        analysis = person_tag_analyzer.analyze(str_values=statuses)
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
     def test_analyze_content_corroborates_each_spacy_entity_type_independently(self, column: Column):
         spacy_recognizer = RecognizerFactory.create(
             name="SpacyRecognizer",
