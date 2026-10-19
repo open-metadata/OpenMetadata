@@ -139,7 +139,17 @@ jobs:
 
       - name: Install dependencies
         run: |
-          yarn install --frozen-lockfile
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Generate TypeScript types
         run: |
@@ -160,7 +170,15 @@ jobs:
           # skips preinstall (core-components build) and postinstall (js-antlr), neither
           # of which parseSchemas.js needs.
           rm -f node_modules
-          yarn install --frozen-lockfile --ignore-scripts
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --ignore-scripts --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
           yarn parse-schema
 
       - name: Check for changes

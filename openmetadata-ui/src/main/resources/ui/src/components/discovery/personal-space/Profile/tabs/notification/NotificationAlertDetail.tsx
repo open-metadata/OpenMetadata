@@ -109,7 +109,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box className="tw:mb-2" direction="col">
+    <Box className="tw:mb-2" direction="col" gap={2}>
       <Box align="center" direction="row" gap={2}>
         <Typography className="tw:text-primary" weight="medium">
           {t('label.description')}

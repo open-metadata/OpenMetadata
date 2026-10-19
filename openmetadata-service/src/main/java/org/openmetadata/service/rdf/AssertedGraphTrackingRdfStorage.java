@@ -128,6 +128,15 @@ final class AssertedGraphTrackingRdfStorage extends ForwardingRdfStorage {
     }
   }
 
+  @Override
+  public void replaceGraph(final String graph, final Model model) {
+    try {
+      delegate.replaceGraph(graph, model);
+    } finally {
+      assertedOnlyQueries.graphsWritten(Set.of(graph));
+    }
+  }
+
   /**
    * The named graphs an update can add triples to, or empty when they cannot be determined.
    * Writes to the default graph are left out: with a union default graph, Fuseki answers no query

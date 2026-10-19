@@ -51,7 +51,7 @@ const CHIP_CLASS = 'tw:cursor-pointer';
 /**
  * One chip. Resting is the neutral `modern` badge the design draws — white
  * surface, hairline edge; selected swaps to the brand `color` badge, which
- * carries the same `rounded-md` shape and `sm` padding, so only the fill and
+ * carries the same shape and `lg` padding, so only the fill and
  * the label colour move. Written as four returns rather than two spread props
  * because `modern` is typed to `gray` alone: it has no other colour to take.
  */
@@ -72,7 +72,7 @@ const TypeChip = ({
         className={CHIP_CLASS}
         color="brand"
         iconLeading={icon}
-        size="sm"
+        size="lg"
         type="color">
         {label}
       </BadgeWithIcon>
@@ -81,7 +81,7 @@ const TypeChip = ({
         className={CHIP_CLASS}
         color="gray"
         iconLeading={icon}
-        size="sm"
+        size="lg"
         type="modern">
         {label}
       </BadgeWithIcon>
@@ -89,11 +89,11 @@ const TypeChip = ({
   }
 
   return isSelected ? (
-    <BadgeWithDot className={CHIP_CLASS} color="brand" size="sm" type="color">
+    <BadgeWithDot className={CHIP_CLASS} color="brand" size="lg" type="color">
       {label}
     </BadgeWithDot>
   ) : (
-    <BadgeWithDot className={CHIP_CLASS} color="gray" size="sm" type="modern">
+    <BadgeWithDot className={CHIP_CLASS} color="gray" size="lg" type="modern">
       {label}
     </BadgeWithDot>
   );

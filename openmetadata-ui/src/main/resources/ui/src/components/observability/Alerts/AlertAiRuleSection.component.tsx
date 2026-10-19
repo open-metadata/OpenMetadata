@@ -316,15 +316,30 @@ const AiArgumentAutocomplete = ({
     [hasNoResults, items, t]
   );
 
+  // Read through a ref so a new source search (the server re-answers capabilities whenever the
+  // filters change) does not recreate, and so cancel, a search the user is still typing.
+  const searchParamsRef = useRef({
+    argument,
+    containerEntities: stableContainerEntities,
+    selectedSource,
+    sourceSearch,
+  });
+
+  useEffect(() => {
+    searchParamsRef.current = {
+      argument,
+      containerEntities: stableContainerEntities,
+      selectedSource,
+      sourceSearch,
+    };
+  }, [argument, selectedSource, sourceSearch, stableContainerEntities]);
+
   const debouncedSearch = useMemo(
     () =>
       debounce(async (searchText: string) => {
         const nextItems = await searchAlertAiArgumentOptions({
-          argument,
-          containerEntities: stableContainerEntities,
+          ...searchParamsRef.current,
           searchText,
-          selectedSource,
-          sourceSearch,
         });
 
         setHasNoResults(searchText.trim() !== '' && nextItems.length === 0);
@@ -336,7 +351,7 @@ const AiArgumentAutocomplete = ({
           )
         );
       }, 500),
-    [argument, selectedSource, sourceSearch, stableContainerEntities]
+    []
   );
 
   useEffect(

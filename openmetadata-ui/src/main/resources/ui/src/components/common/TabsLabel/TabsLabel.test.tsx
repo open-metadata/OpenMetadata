@@ -92,13 +92,13 @@ describe('TabsLabel component', () => {
     const badge = (id: string) =>
       screen.getByTestId(id).querySelector('[data-testid="count"] > span');
 
-    expect(badge('first')).toHaveClass('bg-primary', 'text-white');
-    expect(badge('second')).toHaveClass('ant-tag');
+    expect(badge('first')).toHaveClass('tw:bg-utility-brand-50');
+    expect(badge('second')).toHaveClass('tw:bg-utility-gray-50');
 
     fireEvent.click(screen.getByRole('tab', { name: /Second/ }));
 
-    expect(badge('second')).toHaveClass('bg-primary', 'text-white');
-    expect(badge('first')).toHaveClass('ant-tag');
+    expect(badge('second')).toHaveClass('tw:bg-utility-brand-50');
+    expect(badge('first')).toHaveClass('tw:bg-utility-gray-50');
   });
 
   it('Count badge stays neutral inside a non-card tab list', () => {
@@ -116,7 +116,7 @@ describe('TabsLabel component', () => {
       .getByTestId('first')
       .querySelector('[data-testid="count"] > span');
 
-    expect(badge).not.toHaveClass('bg-primary');
-    expect(badge).not.toHaveClass('ant-tag');
+    expect(badge).not.toHaveClass('tw:bg-utility-brand-50');
+    expect(badge).not.toHaveClass('tw:bg-utility-gray-50');
   });
 });

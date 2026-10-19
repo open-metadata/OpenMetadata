@@ -114,6 +114,7 @@ def _(elements, compiler, **kwargs):
 
 
 @compiles(DatetimeAddFn, Dialects.Doris)
+@compiles(DatetimeAddFn, Dialects.StarRocks)
 def _(elements, compiler, **kwargs):
     """Doris date and datetime function"""
     return doris_function(elements, compiler, **kwargs)
@@ -205,6 +206,7 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
 
 
 @compiles(TimestampAddFn, Dialects.Doris)
+@compiles(TimestampAddFn, Dialects.StarRocks)
 def _(elements, compiler, **kwargs):
     """Doris timestamp function"""
     return doris_function(elements, compiler, **kwargs)

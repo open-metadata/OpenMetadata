@@ -63,6 +63,7 @@ import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.ontology.LlmOntologyAiCompletionGateway;
+import org.openmetadata.service.ontology.NativeOntologyChanges;
 import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.ontology.OntologyAiService;
 import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
@@ -320,6 +321,10 @@ public final class OntologyAiResource {
   }
 
   private static String operationLabel(final OntologyChangeOperation operation) {
+    final var definition = NativeOntologyChanges.definition(operation);
+    if (definition != null) {
+      return Objects.requireNonNullElse(definition.getDisplayName(), definition.getName());
+    }
     if (operation.getTerm() != null) {
       return Objects.requireNonNullElse(
           operation.getTerm().getDisplayName(), operation.getTerm().getName());

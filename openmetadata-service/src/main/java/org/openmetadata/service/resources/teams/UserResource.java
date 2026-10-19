@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationTo
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
+import static org.openmetadata.service.util.UserUtil.validateEmailDomain;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -710,6 +711,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addAuthMechanismToBot(user, create, uriInfo);
       addRolesToBot(user, uriInfo);
     }
+    // Outside the try below, which would turn this 400 into a 409
+    validateEmailDomain(
+        user,
+        SecurityConfigurationManager.getCurrentAuthConfig(),
+        SecurityConfigurationManager.getCurrentAuthzConfig());
 
     try {
       validateEmailAlreadyExists(user.getEmail());
@@ -834,6 +840,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
     if (existingUser == null) {
+      validateEmailDomain(
+          user,
+          SecurityConfigurationManager.getCurrentAuthConfig(),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
       limits.enforceLimits(
           securityContext,
           getResourceContextByName(user.getFullyQualifiedName()),
