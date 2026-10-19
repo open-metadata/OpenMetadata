@@ -25,51 +25,6 @@ import { getPastDaysRange } from '../../utils/date-time/calendarDate.utils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
-jest.mock('../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../common/EmptyPlaceholder/PermissionPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      PermissionPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoSearchResultsPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      SomethingWentWrongPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
 jest.mock('../common/NextPrevious/NextPrevious', () => {
   return jest
     .fn()
@@ -196,11 +151,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({
       title,
       description,
+      'data-testid': testId = 'empty-placeholder',
     }: {
+      'data-testid'?: string;
       title?: React.ReactNode;
       description?: React.ReactNode;
     }) => (
-      <div data-testid="empty-placeholder">
+      <div data-testid={testId}>
         <span>{title}</span>
         <span>{description}</span>
       </div>

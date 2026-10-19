@@ -18,37 +18,6 @@ import { TeamsPageTab } from './team.interface';
 import TeamDetailsV1 from './TeamDetailsV1';
 import { TeamDetailsProp } from './TeamDetailsV1.interface';
 
-jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoSearchResultsPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => jest.fn(),

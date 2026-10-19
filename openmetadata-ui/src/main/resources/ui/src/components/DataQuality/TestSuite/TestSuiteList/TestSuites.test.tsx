@@ -24,55 +24,6 @@ import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { TestSuites } from './TestSuites.component';
 
-jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      PermissionPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoSearchResultsPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 const testSuitePermission = {
   Create: true,
   Delete: true,
@@ -299,7 +250,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     title,
     description,
     actions,
+    'data-testid': testId = 'empty-placeholder',
   }: {
+    'data-testid'?: string;
     title?: React.ReactNode;
     description?: React.ReactNode;
     actions?: {
@@ -308,7 +261,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
       onPress?: () => void;
     }[];
   }) => (
-    <div data-testid="empty-placeholder">
+    <div data-testid={testId}>
       <span>{title}</span>
       <span>{description}</span>
       {(actions ?? []).map((action) => (

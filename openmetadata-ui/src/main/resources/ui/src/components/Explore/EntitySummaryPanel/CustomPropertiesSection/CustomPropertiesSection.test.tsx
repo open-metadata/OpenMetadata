@@ -16,55 +16,6 @@ import { CustomProperty } from '../../../../generated/entity/type';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 
-jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      PermissionPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoSearchResultsPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
 jest.mock('../../../common/Loader/Loader', () =>

@@ -28,59 +28,6 @@ import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import SelectServiceType from './SelectServiceType';
 import { SelectServiceTypeProps } from './Steps.interface';
 
-jest.mock('../../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      PermissionPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          NoSearchResultsPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
-jest.mock(
-  '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 const mockHandleServiceTypeClick = jest.fn();
 
 const mockSelectServiceTypeProps: SelectServiceTypeProps = {

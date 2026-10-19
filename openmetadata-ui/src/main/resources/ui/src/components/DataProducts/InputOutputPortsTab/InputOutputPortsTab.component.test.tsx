@@ -18,51 +18,6 @@ import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { InputOutputPortsTab } from './InputOutputPortsTab.component';
 import { InputOutputPortsTabProps } from './InputOutputPortsTab.types';
 
-jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      PermissionPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoSearchResultsPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      SomethingWentWrongPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
 // Consumer via prop — `permissions` stays the raw OperationPermission fed from
 // DataProductUtils.tsx's `dataProductPermission` (DataProductsDetailsPage's
 // useEntityPermissions owner, Batch 1). No prior test coverage existed for this

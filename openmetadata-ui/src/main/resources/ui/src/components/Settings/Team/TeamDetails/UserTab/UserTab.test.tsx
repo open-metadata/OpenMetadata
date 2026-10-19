@@ -19,41 +19,6 @@ import { getUsers } from '../../../../../rest/userAPI';
 import { UserTab } from './UserTab.component';
 import { UserTabProps } from './UserTab.interface';
 
-jest.mock('../../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          NoSearchResultsPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
-jest.mock(
-  '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 const mockOnRemoveUser = jest.fn().mockResolvedValue('removed');
 
 const props: UserTabProps = {

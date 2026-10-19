@@ -25,63 +25,6 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import MetricDetailsPage from './MetricDetailsPage';
 
-jest.mock('../../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../components/common/EmptyPlaceholder/PermissionPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          PermissionPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
-jest.mock('../../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          NoSearchResultsPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
-jest.mock(
-  '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 // No prior test coverage existed for this page — this is a new characterization suite
 // written as part of converting the permission fetch onto useEntityPermissions. Mirrors
 // TableDetailsPageV1.test.tsx's approach: mock useEntityPermissions directly rather than

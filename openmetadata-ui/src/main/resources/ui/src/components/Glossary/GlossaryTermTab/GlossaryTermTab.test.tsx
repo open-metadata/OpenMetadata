@@ -172,11 +172,6 @@ jest.mock('../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder', () => ({
     )),
 }));
 
-jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(() => <div />),
-}));
-
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
 );

@@ -24,63 +24,6 @@ import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
 
-jest.mock('../../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      NoDataPlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../components/common/EmptyPlaceholder/PermissionPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          PermissionPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
-jest.mock('../../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
-  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-    <div data-testid={testId}>
-      CreatePlaceholder
-      {permissionValue}
-    </div>
-  ))
-);
-
-jest.mock(
-  '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          NoSearchResultsPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
-jest.mock(
-  '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
-        <div data-testid={testId}>
-          SomethingWentWrongPlaceholder
-          {permissionValue}
-        </div>
-      ))
-);
-
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });

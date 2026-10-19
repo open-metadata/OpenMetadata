@@ -33,6 +33,7 @@ const CreatePlaceholder = ({
   title,
   description,
   actions,
+  footer,
   permission,
   heading,
   doc,
@@ -52,7 +53,8 @@ const CreatePlaceholder = ({
         title={title}
         {...props}
         // The denied state keeps the permission test id whatever the caller passed for the
-        // create state, so "no access" is distinguishable from "nothing here yet".
+        // create state, so "no access" is distinguishable from "nothing here yet". `actions`
+        // and `footer` are destructured out above so create controls never reach it.
         data-testid="permission-error-placeholder"
       />
     );
@@ -94,6 +96,7 @@ const CreatePlaceholder = ({
           </>
         )
       }
+      footer={footer}
       icon={icon ?? <Plus className="tw:text-secondary" />}
       title={title}
       variant="blank"
