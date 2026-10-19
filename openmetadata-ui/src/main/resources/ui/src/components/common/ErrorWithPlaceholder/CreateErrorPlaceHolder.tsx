@@ -50,7 +50,7 @@ const CreateErrorPlaceHolder = ({
       align="center"
       className={classNames(
         className,
-        'h-full border-default border-radius-sm tw:bg-surface tw:p-6 w-full'
+        'h-full border-default border-radius-sm tw:bg-surface w-full'
       )}
       data-testid={`create-error-placeholder-${heading}`}
       justify="center">

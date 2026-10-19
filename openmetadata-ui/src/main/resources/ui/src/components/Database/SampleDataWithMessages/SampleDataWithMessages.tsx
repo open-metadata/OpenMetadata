@@ -63,7 +63,7 @@ const SampleDataWithMessages: FC<{
   if (isUndefined(data) || !data.messages?.length) {
     return (
       <div
-        className="border-default border-radius-sm p-y-lg tw:bg-surface"
+        className="border-default border-radius-sm p-y-lg"
         data-testid="no-data">
         <ErrorPlaceHolder>
           <Typography as="p">

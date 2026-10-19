@@ -229,7 +229,7 @@ export const CustomPropertyTable = <T extends ExtentionEntitiesKeys>({
     !isRenderedInRightPanel
   ) {
     return (
-      <div className="border-default border-radius-sm h-full tw:relative tw:min-h-90 tw:bg-surface">
+      <div className="h-full tw:relative tw:min-h-90">
         <CreatePlaceholder
           actions={[
             {

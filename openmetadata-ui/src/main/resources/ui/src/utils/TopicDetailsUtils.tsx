@@ -112,7 +112,7 @@ export const getTopicDetailsPageTabs = ({
       children: viewSampleDataPermission ? (
         sampleDataTab
       ) : (
-        <div className="border-default border-radius-sm p-y-lg tw:bg-surface">
+        <div className="border-default border-radius-sm p-y-lg">
           <ErrorPlaceHolder
             className="border-none"
             permissionValue={i18n.t('label.view-entity', {
