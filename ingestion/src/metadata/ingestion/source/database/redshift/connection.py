@@ -374,11 +374,6 @@ def _database_not_found(error: BaseException) -> bool:
     return 'database "' in text_ and "does not exist" in text_
 
 
-def _ssl_disabled_rejection(error: BaseException) -> bool:
-    text_ = chain_text(error)
-    return "no pg_hba.conf entry" in text_ and "ssl off" in text_
-
-
 # The GetQueries check raises a message carrying this token when the privilege
 # probe reports a missing grant; the error pack matches on it. Shared here so the
 # producer and the matcher cannot drift apart.
@@ -390,7 +385,7 @@ _QUERY_HISTORY_PRIVILEGE_TOKEN = "query-history views"
 # psycopg2 surfaces on ``.pgcode``. Bad host / port raise before the driver and are
 # caught by the TCP preflight in ``ping`` via NETWORK_ERRORS.
 REDSHIFT_ERRORS = ErrorPack(
-    when(_ssl_disabled_rejection).diagnose(
+    when(Matchers.all_of(Matchers.contains("no pg_hba.conf entry"), Matchers.contains("ssl off"))).diagnose(
         "Connection rejected without SSL",
         fix="The server rejected an unencrypted connection. Under Advanced Config, set SSL Mode to require and retry.",
         doc="https://docs.aws.amazon.com/redshift/latest/mgmt/connecting-ssl-support.html",
