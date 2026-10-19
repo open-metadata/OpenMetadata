@@ -24,7 +24,11 @@ import { useTranslation } from 'react-i18next';
 import type { CreateOntologyChangeSet } from '../../../../generated/api/data/createOntologyChangeSet';
 import { Format } from '../../../../generated/api/data/previewNativeOntologyImport';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
-import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
+import type { OntologyChangeSet } from '../../../../generated/entity/data/ontologyChangeSet';
+import {
+  OntologyChangeSetState,
+  OperationStatus,
+} from '../../../../generated/entity/data/ontologyChangeSet';
 import {
   applyOntologyChangeSet,
   createOntologyChangeSet,
@@ -76,12 +80,16 @@ const OntologyNativeImportPanel = ({
   });
 
   const finishApply = useCallback(
-    (state: OntologyChangeSetState) => {
-      if (state === OntologyChangeSetState.Applied) {
+    (draft: OntologyChangeSet) => {
+      if (draft.state === OntologyChangeSetState.Applied) {
         showSuccessToast(t('label.ontology-applied'));
         onApplied();
       } else {
-        setError(t('server.unexpected-error'));
+        setError(
+          draft.applicationResult?.results.find(
+            (result) => result.status === OperationStatus.Failed
+          )?.message ?? t('server.unexpected-error')
+        );
       }
     },
     [onApplied, t]
@@ -98,13 +106,13 @@ const OntologyNativeImportPanel = ({
       version: lease.lock.version,
     };
     applyOntologyChangeSet(draftId, { lease: token })
-      .then((result) => finishApply(result.state))
+      .then(finishApply)
       .catch(async (applyError: unknown) => {
         const draft = await getOntologyChangeSet(draftId).catch(
           () => undefined
         );
         if (draft?.state === OntologyChangeSetState.Applied) {
-          finishApply(draft.state);
+          finishApply(draft);
 
           return;
         }
@@ -158,7 +166,7 @@ const OntologyNativeImportPanel = ({
       if (draftId) {
         const draft = await getOntologyChangeSet(draftId);
         if (draft.state === OntologyChangeSetState.Applied) {
-          finishApply(draft.state);
+          finishApply(draft);
 
           return;
         }
@@ -214,7 +222,7 @@ const OntologyNativeImportPanel = ({
                       definition?.name ??
                       operation.id}
                     {' · '}
-                    {operation.operationType}
+                    {t(operation.targetId ? 'label.updated' : 'label.added')}
                   </li>
                 );
               })}

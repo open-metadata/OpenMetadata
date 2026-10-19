@@ -157,6 +157,9 @@ test.describe(
               'Party',
               'A person or organization.'
             );
+            await expect(
+              page.getByTestId('ontology-publication-trigger')
+            ).toContainText('(3)');
             const positions = await readNodePositions(page);
             expect(positions).toEqual(
               expect.objectContaining({
@@ -209,6 +212,9 @@ test.describe(
               range: ['http://www.w3.org/2001/XMLSchema#integer'],
             })
           );
+          await expect(
+            page.getByTestId('ontology-publication-trigger')
+          ).toContainText('(4)');
           await expect(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('customer number');

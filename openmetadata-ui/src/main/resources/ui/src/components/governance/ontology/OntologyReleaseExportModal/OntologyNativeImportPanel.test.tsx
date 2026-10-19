@@ -17,7 +17,10 @@ import {
   OperationType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
 import { Format } from '../../../../generated/api/data/previewNativeOntologyImport';
-import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
+import {
+  OntologyChangeSetState,
+  OperationStatus,
+} from '../../../../generated/entity/data/ontologyChangeSet';
 import {
   applyOntologyChangeSet,
   createOntologyChangeSet,
@@ -154,6 +157,38 @@ describe('OntologyNativeImportPanel', () => {
     expect(await screen.findByText('label.no-changes-to-save')).toBeVisible();
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
     expect(createOntologyChangeSet).not.toHaveBeenCalled();
+  });
+
+  it('shows the failed operation reason and retains the draft for retry', async () => {
+    (applyOntologyChangeSet as jest.Mock).mockResolvedValue({
+      applicationResult: {
+        results: [
+          {
+            message: 'Concept IRI is already used',
+            operationId: 'operation-id',
+            status: OperationStatus.Failed,
+          },
+        ],
+      },
+      state: OntologyChangeSetState.ApplyFailed,
+    });
+    render(
+      <OntologyNativeImportPanel
+        canImport
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+    await upload();
+    fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Concept IRI is already used'
+    );
+    expect(
+      screen.getByTestId('ontology-native-import-apply')
+    ).toHaveTextContent('label.retry');
+    expect(createOntologyChangeSet).toHaveBeenCalledTimes(1);
   });
 
   it('renders a bounded page of a large import plan', async () => {
