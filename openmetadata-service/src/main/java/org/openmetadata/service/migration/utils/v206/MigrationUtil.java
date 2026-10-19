@@ -54,7 +54,7 @@ public final class MigrationUtil {
 
   private MigrationUtil() {}
 
-  public static void addContractAndStatusToActivityFeedAlert(Handle handle) {
+  public static void addContractAndStatusToActivityFeedAlert(final Handle handle) {
     handle
         .createQuery(SELECT)
         .bind("n", ALERT_NAME)
@@ -66,7 +66,7 @@ public final class MigrationUtil {
                 LOG.info("{} not stored yet; the seed creates it with the new rules", ALERT_NAME));
   }
 
-  private static void updateIfChanged(Handle handle, ObjectNode alert) {
+  private static void updateIfChanged(final Handle handle, final ObjectNode alert) {
     if (addMissingValues(alert)) {
       handle
           .createUpdate(isMySql() ? UPDATE_MYSQL : UPDATE_POSTGRES)
@@ -78,17 +78,17 @@ public final class MigrationUtil {
   }
 
   /** Adds the values this release admits; returns whether the alert changed. */
-  static boolean addMissingValues(ObjectNode alert) {
+  static boolean addMissingValues(final ObjectNode alert) {
     boolean changed = false;
-    for (JsonNode rule : alert.path("filteringRules").path("rules")) {
-      String value = RULE_ADDITIONS.get(rule.path("name").asText());
+    for (final JsonNode rule : alert.path("filteringRules").path("rules")) {
+      final String value = RULE_ADDITIONS.get(rule.path("name").asText());
       if (value != null) {
         changed |= addToCondition((ObjectNode) rule, value);
       }
     }
-    for (JsonNode filter : alert.path("input").path("filters")) {
-      for (JsonNode argument : filter.path("arguments")) {
-        String value = INPUT_ADDITIONS.get(argument.path("name").asText());
+    for (final JsonNode filter : alert.path("input").path("filters")) {
+      for (final JsonNode argument : filter.path("arguments")) {
+        final String value = INPUT_ADDITIONS.get(argument.path("name").asText());
         if (value != null) {
           changed |= addToList(argument.path("input"), value);
         }
@@ -98,11 +98,11 @@ public final class MigrationUtil {
   }
 
   // A condition is a single call over a literal set, e.g. matchAnySource({'table', 'topic'}).
-  private static boolean addToCondition(ObjectNode rule, String value) {
-    String condition = rule.path("condition").asText();
-    String quoted = "'" + value + "'";
-    int setEnd = condition.lastIndexOf("})");
-    boolean missing = setEnd >= 0 && !condition.contains(quoted);
+  private static boolean addToCondition(final ObjectNode rule, final String value) {
+    final String condition = rule.path("condition").asText();
+    final String quoted = "'" + value + "'";
+    final int setEnd = condition.lastIndexOf("})");
+    final boolean missing = setEnd >= 0 && !condition.contains(quoted);
     if (missing) {
       rule.put(
           "condition",
@@ -111,15 +111,15 @@ public final class MigrationUtil {
     return missing;
   }
 
-  private static boolean addToList(JsonNode list, String value) {
-    boolean missing = list instanceof ArrayNode && !containsText(list, value);
+  private static boolean addToList(final JsonNode list, final String value) {
+    final boolean missing = list instanceof ArrayNode && !containsText(list, value);
     if (missing) {
       ((ArrayNode) list).add(value);
     }
     return missing;
   }
 
-  private static boolean containsText(JsonNode list, String value) {
+  private static boolean containsText(final JsonNode list, final String value) {
     return StreamSupport.stream(list.spliterator(), false)
         .anyMatch(item -> value.equals(item.asText()));
   }

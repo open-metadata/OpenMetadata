@@ -1634,15 +1634,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public DataContract getEffectiveDataContract(EntityInterface entity) {
-    DataContract entityContract = getEntityDataContractSafely(entity);
-    DataContract parentContract = getInheritableContract(entity);
+    final DataContract entityContract = getEntityDataContractSafely(entity);
+    final DataContract parentContract = getInheritableContract(entity);
     return parentContract == null
         ? entityContract
         : applyParentContract(entity, entityContract, parentContract);
   }
 
   private DataContract applyParentContract(
-      EntityInterface entity, DataContract entityContract, DataContract parentContract) {
+      final EntityInterface entity,
+      final DataContract entityContract,
+      final DataContract parentContract) {
     return entityContract == null
         ? inheritFromParentContract(entity, parentContract)
         : mergeContracts(entityContract, parentContract);
@@ -1652,17 +1654,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    * The approved contract an entity inherits from: its Data Product's, else (for a table) its
    * schema's, so one contract set on a schema governs every table under it.
    */
-  private DataContract getInheritableContract(EntityInterface entity) {
-    DataContract dataProductContract = getDataProductContract(entity);
+  private DataContract getInheritableContract(final EntityInterface entity) {
+    final DataContract dataProductContract = getDataProductContract(entity);
     return dataProductContract == null && entity instanceof Table table
         ? loadApprovedContract(table.getDatabaseSchema())
         : dataProductContract;
   }
 
   // An entity in several data products inherits from none of them: which one would be ambiguous.
-  private DataContract getDataProductContract(EntityInterface entity) {
-    List<EntityReference> dataProducts = entity.getDataProducts();
-    boolean inSingleDataProduct = dataProducts != null && dataProducts.size() == 1;
+  private DataContract getDataProductContract(final EntityInterface entity) {
+    final List<EntityReference> dataProducts = entity.getDataProducts();
+    final boolean inSingleDataProduct = dataProducts != null && dataProducts.size() == 1;
     if (!nullOrEmpty(dataProducts) && !inSingleDataProduct) {
       LOG.debug(
           "Entity {} belongs to {} data products. Skipping contract inheritance to avoid ambiguity.",
@@ -1672,8 +1674,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     return inSingleDataProduct ? loadApprovedContract(dataProducts.getFirst()) : null;
   }
 
-  private DataContract loadApprovedContract(EntityReference parent) {
-    DataContract contract = parent == null ? null : loadContractOf(parent);
+  private DataContract loadApprovedContract(final EntityReference parent) {
+    final DataContract contract = parent == null ? null : loadContractOf(parent);
     return contract != null && contract.getEntityStatus() == EntityStatus.APPROVED
         ? contract
         : null;
@@ -1681,7 +1683,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   // A missing contract reads as null; only an unreadable stored contract is skipped, so a parent
   // with corrupt JSON does not take its children's contracts down with it.
-  private DataContract loadContractOf(EntityReference parent) {
+  private DataContract loadContractOf(final EntityReference parent) {
     DataContract contract = null;
     try {
       contract = loadEntityDataContract(parent);
@@ -1693,7 +1695,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   private DataContract inheritFromParentContract(
-      EntityInterface entity, DataContract parentContract) {
+      final EntityInterface entity, final DataContract parentContract) {
     DataContract inherited = JsonUtils.deepCopy(parentContract, DataContract.class);
 
     // Update the entity reference to point to the actual entity, not the parent
