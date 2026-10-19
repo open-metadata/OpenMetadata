@@ -12,6 +12,3 @@ CREATE TABLE IF NOT EXISTS ws_relay_message (
     DEFAULT (TIMESTAMPDIFF(MICROSECOND, '1970-01-01 00:00:00', UTC_TIMESTAMP(6)) DIV 1000)
 );
 CREATE INDEX idx_ws_relay_createdAt ON ws_relay_message (createdAt, id);
-
--- Re-seed ActivityFeedAlert so data contract changes and entityStatus approvals reach the activity feed.
-DELETE FROM event_subscription_entity WHERE name = 'ActivityFeedAlert';
