@@ -159,6 +159,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
     useDomainTableColumns({
+      entities: domainListing.entities,
       onEntityClick: domainListing.actionHandlers.onEntityClick,
     });
 

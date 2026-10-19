@@ -93,6 +93,7 @@ const SubDomainsTable = ({
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
     useDomainTableColumns({
       nameLabelKey: 'label.sub-domain',
+      entities: subdomainListing.entities,
     });
 
   const selectedSubdomainEntities = useMemo(

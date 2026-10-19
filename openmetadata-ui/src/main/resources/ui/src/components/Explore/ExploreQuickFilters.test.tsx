@@ -1510,4 +1510,101 @@ describe('ExploreQuickFilters component', () => {
       );
     });
   });
+
+  describe('entity status filter', () => {
+    const statusField: ExploreQuickFilterField = {
+      label: 'Status',
+      key: EntityFields.ENTITY_STATUS,
+      value: undefined,
+    };
+
+    const statusResponse = (...statuses: string[]) => ({
+      data: {
+        aggregations: {
+          [`sterms#${EntityFields.ENTITY_STATUS}`]: {
+            buckets: statuses.map((key) => ({ key, doc_count: 1 })),
+          },
+        },
+      },
+    });
+
+    const renderStatusFilter = (field = statusField) =>
+      render(
+        <ExploreQuickFilters
+          {...mockProps}
+          aggregations={{}}
+          fields={[...mockFields, field]}
+        />
+      );
+
+    it('hides the filter when every entity is still unprocessed', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        statusResponse('unprocessed')
+      );
+
+      renderStatusFilter();
+
+      await waitFor(() =>
+        expect(mockGetAggregationOptions).toHaveBeenCalledWith(
+          index,
+          EntityFields.ENTITY_STATUS,
+          '',
+          undefined,
+          false,
+          false
+        )
+      );
+
+      expect(
+        screen.queryByTestId(`search-dropdown-${EntityFields.ENTITY_STATUS}`)
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('search-dropdown-columns.name')).toBeVisible();
+    });
+
+    it('shows every status, unprocessed included, once another status exists', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        statusResponse('unprocessed', 'approved')
+      );
+
+      renderStatusFilter();
+
+      const dropdown = await screen.findByTestId(
+        `search-dropdown-${EntityFields.ENTITY_STATUS}`
+      );
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByTestId(
+            `onGetInitialOptions-${EntityFields.ENTITY_STATUS}`
+          )
+        );
+      });
+
+      expect(dropdown).toHaveTextContent('approved');
+      expect(dropdown).toHaveTextContent('unprocessed');
+    });
+
+    it('keeps a filter that already has a selected value visible', async () => {
+      mockGetAggregationOptions.mockResolvedValue(
+        statusResponse('unprocessed')
+      );
+
+      renderStatusFilter({
+        ...statusField,
+        value: [{ key: 'approved', label: 'approved' }],
+      });
+
+      expect(
+        await screen.findByTestId(
+          `search-dropdown-${EntityFields.ENTITY_STATUS}`
+        )
+      ).toBeVisible();
+    });
+
+    it('does not fetch status values when no status filter is configured', () => {
+      render(<ExploreQuickFilters {...mockProps} />);
+
+      expect(mockGetAggregationOptions).not.toHaveBeenCalled();
+    });
+  });
 });
