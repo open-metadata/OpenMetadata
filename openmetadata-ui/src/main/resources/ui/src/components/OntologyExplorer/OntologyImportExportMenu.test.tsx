@@ -62,7 +62,14 @@ describe('OntologyImportExportMenu', () => {
   });
 
   it('opens the active-release export modal for a native ontology', () => {
-    render(<OntologyImportExportMenu kind="ontology" ontology={ontology} />);
+    render(
+      <OntologyImportExportMenu
+        canImport
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
 
     fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
 

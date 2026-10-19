@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -27,6 +21,7 @@ import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getOntology,
+  getOntologyWorkingDiff,
   listOntologies,
   listOntologyAxioms,
   listOntologyConcepts,
@@ -35,6 +30,8 @@ import {
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { showInfoToast } from '../../utils/ToastUtils';
 import OntologyExplorerPage from './OntologyExplorerPage';
+
+const render = renderWithQueryClient;
 
 let mockSearchParams = new URLSearchParams();
 let mockUseRealRouter = false;
@@ -50,6 +47,7 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
   getOntology: jest.fn(),
+  getOntologyWorkingDiff: jest.fn(),
   listOntologyAxioms: jest.fn(),
   listOntologies: jest.fn(),
   listOntologyConcepts: jest.fn(),
@@ -332,6 +330,16 @@ describe('OntologyExplorerPage', () => {
     });
     mockUseRealRouter = true;
     (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      state: {
+        ontologyId: nativeOntology.id,
+        activationRevision: 0,
+        workingRevision: 1,
+        lastReleaseRevision: 0,
+      },
+      data: [],
+      paging: { total: 0 },
+    });
     (listOntologies as jest.Mock).mockResolvedValue({
       data: [nativeOntology],
       paging: { total: 1 },

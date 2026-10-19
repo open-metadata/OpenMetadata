@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "dbt फाइल्स जिथे संग्रहित केल्या आहेत त्या बकेटचे नाव.",
     "name-this-ingestion-description": "तुमच्या अंतर्ग्रहण पाइपलाइनला एक ओळखण्यायोग्य नाव द्या.",
     "name-this-service-description": "{{brandName}} मधील या {{serviceType}} कनेक्शनसाठी एक अद्वितीय नाव. तुम्हाला ते कॅटलॉग आणि वंशावळीत दिसेल.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "नेटिव्ह ऑन्टोलॉजी आयात अद्याप समर्थित नाही. निर्यातीसाठी सक्रिय अपरिवर्तनीय आवृत्ती वापरली जाते.",
     "natural-language-search-active": "नैसर्गिक भाषा शोध सक्रिय आहे. सोप्या वाक्यांशांचा वापर करून मालमत्ता शोधा. शोध मोड रीसेट करण्यासाठी पुन्हा क्लिक करा.",
     "need-help-message": "मदत आवश्यक आहे? <0>{{doc}}</0>.",

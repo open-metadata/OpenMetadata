@@ -35,6 +35,8 @@ interface GlossaryImportExportProps extends ImportExportCounts {
 interface NativeOntologyExportProps {
   readonly kind: 'ontology';
   readonly ontology: Ontology;
+  readonly canImport: boolean;
+  readonly onApplied: () => void;
 }
 
 type OntologyImportExportMenuProps =
@@ -49,7 +51,9 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
     modal =
       props.kind === 'ontology' ? (
         <OntologyReleaseExportModal
+          canImport={props.canImport}
           ontology={props.ontology}
+          onApplied={props.onApplied}
           onClose={() => setIsOpen(false)}
         />
       ) : (

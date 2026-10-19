@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "dbt dosyalarının saklandığı kovanın adı.",
     "name-this-ingestion-description": "Alım pipeline'ınıza tanınabilir bir ad verin.",
     "name-this-service-description": "{{brandName}}'daki bu {{serviceType}} bağlantısı için benzersiz bir ad. Onu kataloğda ve veri soyunda göreceksiniz.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "Yerel ontoloji içe aktarma henüz desteklenmiyor. Dışa aktarma, etkin ve değiştirilemez sürümü kullanır.",
     "natural-language-search-active": "Doğal dil araması aktif. Basit ifadeler kullanarak varlıkları arayın. Arama modunu sıfırlamak için tekrar tıklayın.",
     "need-help-message": "Yardıma mı ihtiyacınız var? <0>{{doc}}</0>.",

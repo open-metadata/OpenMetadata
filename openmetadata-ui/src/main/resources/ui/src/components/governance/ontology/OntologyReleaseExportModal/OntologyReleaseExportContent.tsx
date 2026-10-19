@@ -67,10 +67,6 @@ const OntologyReleaseExportContent = ({
         ) : null}
       </Box>
 
-      <Alert variant="brand">
-        {t('message.native-ontology-import-unavailable')}
-      </Alert>
-
       {state.kind === 'loading' ? (
         <Typography role="status">{t('label.loading')}</Typography>
       ) : null}

@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "儲存 dbt 檔案的儲存桶名稱。",
     "name-this-ingestion-description": "為您的攝取管道提供一個可識別的名稱。",
     "name-this-service-description": "在 {{brandName}} 中此 {{serviceType}} 連接的唯一名稱。您將在資料目錄和資料血統中看到它。",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "目前尚不支援匯入原生本體。匯出會使用目前已啟用的不可變版本。",
     "natural-language-search-active": "自然語言搜尋已啟用。使用簡單的片語搜尋資產。再次點擊以重設搜尋模式。",
     "need-help-message": "需要協助嗎？<0>{{doc}}</0>。",

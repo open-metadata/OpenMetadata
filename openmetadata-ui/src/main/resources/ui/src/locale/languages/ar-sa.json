@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "اسم الحاوية التي يتم فيها تخزين ملفات dbt.",
     "name-this-ingestion-description": "أعطِ مسار الاستيعاب اسمًا مميزًا.",
     "name-this-service-description": "اسم فريد لاتصال {{serviceType}} هذا في {{brandName}}. ستراه في الكتالوج وسلسلة البيانات.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "استيراد الأنطولوجيا الأصلية غير مدعوم حتى الآن. يستخدم التصدير الإصدار النشط غير القابل للتغيير.",
     "natural-language-search-active": "البحث باللغة الطبيعية نشط. ابحث عن الأصول باستخدام عبارات بسيطة. انقر مرة أخرى لإعادة تعيين وضع البحث.",
     "need-help-message": "هل تحتاج مساعدة؟ <0>{{doc}}</0>.",

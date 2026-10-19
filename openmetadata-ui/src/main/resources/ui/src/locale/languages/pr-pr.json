@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "نام مخزن که فایل‌های dbt در آن ذخیره شده‌اند.",
     "name-this-ingestion-description": "Dê à sua pipeline de ingestão um nome reconhecível.",
     "name-this-service-description": "یک نام منحصر به فرد برای این اتصال {{serviceType}} در {{brandName}}. آن را در کاتالوگ و دودمان خواهید دید.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "وارد کردن هستان‌شناسی بومی هنوز پشتیبانی نمی‌شود. خروجی از نسخه فعال و تغییرناپذیر استفاده می‌کند.",
     "natural-language-search-active": "La búsqueda en lenguaje natural está activa. Busca activos usando frases simples. Haz clic de nuevo para restablecer el modo de búsqueda.",
     "need-help-message": "آیا نیاز به کمک دارید؟ <0>{{doc}}</0>.",

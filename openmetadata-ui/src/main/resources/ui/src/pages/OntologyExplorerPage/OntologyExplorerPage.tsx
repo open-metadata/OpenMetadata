@@ -24,6 +24,7 @@ import {
   Plus,
   Share07,
 } from '@openmetadata/ui-core-components/icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -65,7 +66,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useOntologyStudioScopes } from '../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
-import { getOntology } from '../../rest/ontologyAPI';
+import { getOntology, getOntologyWorkingDiff } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   ALL_GLOSSARIES_SCOPE,
@@ -496,6 +497,7 @@ const OntologyExplorerPage: React.FC = () => {
   const isAiMode = useIsAiMode();
   const { isAdminUser } = useAuth();
   const { permissions } = usePermissionProvider();
+  const queryClient = useQueryClient();
   const {
     isEnabled: isOntologyAiEnabled,
     isRdfEnabled,
@@ -513,6 +515,13 @@ const OntologyExplorerPage: React.FC = () => {
   const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
   const selectedOntologyId = selectedOntology?.id ?? '';
+  const workingDiff = useQuery({
+    queryKey: ['ontology-working-diff', selectedOntologyId, undefined],
+    enabled: Boolean(selectedOntologyId),
+    queryFn: ({ signal }) =>
+      getOntologyWorkingDiff(selectedOntologyId, { limit: 25 }, signal),
+    retry: false,
+  });
   const { canEditAll: canEditNativeOntology } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: selectedOntologyId },
@@ -594,6 +603,7 @@ const OntologyExplorerPage: React.FC = () => {
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isPublicationOpen, setIsPublicationOpen] = useState(false);
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
+  const [nativeRefresh, setNativeRefresh] = useState(0);
   const [nativeConceptRequest, setNativeConceptRequest] = useState<{
     key: number;
     ontologyId: string;
@@ -1019,6 +1029,7 @@ const OntologyExplorerPage: React.FC = () => {
           size="xs"
           onPress={() => setIsPublicationOpen(true)}>
           {t('label.publish')}
+          {workingDiff.data ? ` (${workingDiff.data.paging.total})` : ''}
         </Button>
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
@@ -1036,8 +1047,16 @@ const OntologyExplorerPage: React.FC = () => {
           <Box align="center" gap={2} wrap="wrap">
             {!isCreatingOntology && isNativeOntology && selectedOntology ? (
               <OntologyImportExportMenu
+                canImport={canEditNativeOntology}
                 kind="ontology"
                 ontology={selectedOntology}
+                onApplied={() => {
+                  setNativeStats(undefined);
+                  setNativeRefresh((value) => value + 1);
+                  void queryClient.invalidateQueries({
+                    queryKey: ['ontology-working-diff', selectedOntology.id],
+                  });
+                }}
               />
             ) : null}
             {!isCreatingOntology && !isNativeOntology ? (
@@ -1229,7 +1248,7 @@ const OntologyExplorerPage: React.FC = () => {
             : 0
         }
         initialDraftId={initialDraftId}
-        key={selectedOntology?.id ?? 'new'}
+        key={`${selectedOntology?.id ?? 'new'}:${nativeRefresh}`}
         mode={
           mode === 'edit' && editSurface === 'definitions'
             ? 'definitions'

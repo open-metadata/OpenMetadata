@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "Namn på den bucket där dbt-filerna lagras.",
     "name-this-ingestion-description": "Ge din inmatningspipeline ett igenkännbart namn.",
     "name-this-service-description": "Ett unikt namn för den här {{serviceType}}-anslutningen i {{brandName}}. Du ser det i katalogen och datahärkomsten.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "Import av inbyggda ontologier stöds inte ännu. Exporten använder den aktiva oföränderliga versionen.",
     "natural-language-search-active": "Sökning med naturligt språk är aktiv. Sök efter tillgångar med hjälp av enkla fraser. Klicka igen för att återställa sökläget.",
     "need-help-message": "Behöver du hjälp? <0>{{doc}}</0>.",

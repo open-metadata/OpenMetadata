@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "שם הדלי בו נשמרים קבצי dbt.",
     "name-this-ingestion-description": "תן לצינור העיכול שלך שם שניתן לזהות.",
     "name-this-service-description": "שם ייחודי לחיבור {{serviceType}} זה ב-{{brandName}}. תראה אותו בקטלוג ובשושלת הנתונים.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "ייבוא אונטולוגיה מקורית עדיין אינו נתמך. הייצוא משתמש בגרסה הפעילה והבלתי ניתנת לשינוי.",
     "natural-language-search-active": "החיפוש בשפה טבעית פעיל. חפש נכסים באמצעות ביטויים פשוטים. לחץ שוב כדי לאפס את מצב החיפוש.",
     "need-help-message": "צריך עזרה? <0>{{doc}}</0>.",

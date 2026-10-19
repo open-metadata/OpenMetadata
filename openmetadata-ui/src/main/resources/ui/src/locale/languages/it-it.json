@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "Nome del bucket in cui sono archiviati i file dbt.",
     "name-this-ingestion-description": "Dai alla tua pipeline di ingestion un nome riconoscibile.",
     "name-this-service-description": "Un nome univoco per questa connessione {{serviceType}} in {{brandName}}. Lo vedrai nel catalogo e nel lineage.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "L’importazione di ontologie native non è ancora supportata. L’esportazione usa la versione attiva e immutabile.",
     "natural-language-search-active": "La ricerca in linguaggio naturale è attiva. Cerca gli asset usando frasi semplici. Clicca di nuovo per reimpostare la modalità di ricerca.",
     "need-help-message": "Serve aiuto? <0>{{doc}}</0>.",

@@ -62,6 +62,8 @@ import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontolo
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
+import type { OntologyWorkingDiff } from '../generated/api/data/ontologyWorkingDiff';
+import type { PreviewNativeOntologyImport } from '../generated/api/data/previewNativeOntologyImport';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
 import type { Ontology } from '../generated/entity/data/ontology';
@@ -239,6 +241,31 @@ export const getOntologyState = async (
   const response = await APIClient.get<OntologyState>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/state`,
     { signal }
+  );
+
+  return response.data;
+};
+
+export const getOntologyWorkingDiff = async (
+  ontologyId: string,
+  params: Pick<ListParams, 'limit' | 'after'> = {},
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyWorkingDiff>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/working/diff`,
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const previewNativeOntologyImport = async (
+  ontologyId: string,
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<CreateOntologyChangeSet>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/imports/preview`,
+    request
   );
 
   return response.data;

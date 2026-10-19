@@ -423,11 +423,12 @@ test.describe(
 
           await page.getByTestId('ontology-import-export-trigger').click();
           await expect(page.getByRole('dialog')).toContainText(
-            'Native ontology import is not supported yet'
-          );
-          await expect(page.getByRole('dialog')).toContainText(
             'There is no active release to export'
           );
+          await page.getByTestId('ontology-native-import-tab').click();
+          await expect(
+            page.getByTestId('ontology-native-import-file')
+          ).toBeVisible();
           await page
             .getByRole('dialog')
             .getByRole('button', { name: 'Cancel', exact: true })

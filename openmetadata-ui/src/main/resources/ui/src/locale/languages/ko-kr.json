@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "dbt 파일이 저장된 버킷의 이름입니다.",
     "name-this-ingestion-description": "수집 파이프라인에 알아보기 쉬운 이름을 지정하세요.",
     "name-this-service-description": "{{brandName}}에서 이 {{serviceType}} 연결의 고유한 이름입니다. 카탈로그와 데이터 계보에서 확인할 수 있습니다.",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "네이티브 온톨로지 가져오기는 아직 지원되지 않습니다. 내보내기에는 활성 불변 릴리스가 사용됩니다.",
     "natural-language-search-active": "자연어 검색이 활성화되었습니다. 간단한 문구로 자산을 검색하세요. 다시 클릭하면 검색 모드가 초기화됩니다.",
     "need-help-message": "도움이 필요하신가요? <0>{{doc}}</0>.",

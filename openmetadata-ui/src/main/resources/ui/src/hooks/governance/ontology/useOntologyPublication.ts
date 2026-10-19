@@ -24,7 +24,7 @@ import {
   activateOntologyRelease,
   captureOntologyRelease,
   getOntologyRelease,
-  getOntologyState,
+  getOntologyWorkingDiff,
 } from '../../../rest/ontologyAPI';
 import { createTask } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -40,12 +40,11 @@ export const useOntologyPublication = (
   const [selectedId, setSelectedId] = useState<string>();
   const [isBusy, setIsBusy] = useState(false);
   const working = useQuery({
-    queryKey: ['ontology-publication', ontologyId],
+    queryKey: ['ontology-working-diff', ontologyId, undefined],
     retry: false,
     gcTime: 0,
-    queryFn: async ({ signal }) => ({
-      state: await getOntologyState(ontologyId, signal),
-    }),
+    queryFn: ({ signal }) =>
+      getOntologyWorkingDiff(ontologyId, { limit: 25 }, signal),
   });
   const releaseId = selectedId ?? working.data?.state.activeReleaseId;
   const selected = useQuery({
@@ -96,6 +95,7 @@ export const useOntologyPublication = (
         return;
       }
       const candidate = await captureOntologyRelease(ontologyId, {
+        expectedActivationRevision: working.data.state.activationRevision,
         expectedWorkingRevision: working.data.state.workingRevision,
       });
       setSelectedId(candidate.id);

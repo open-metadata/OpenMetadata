@@ -5130,6 +5130,8 @@
     "name-of-the-bucket-dbt-files-stored": "dbtファイルが保存されているバケット名",
     "name-this-ingestion-description": "インジェストパイプラインに分かりやすい名前を付けてください。",
     "name-this-service-description": "{{brandName}} でのこの {{serviceType}} 接続の固有名称です。カタログとデータ系統で確認できます。",
+    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "ネイティブオントロジーのインポートはまだサポートされていません。エクスポートにはアクティブな不変リリースが使用されます。",
     "natural-language-search-active": "自然言語検索が有効になっています。シンプルな文で資産を検索できます。もう一度クリックして検索モードをリセットします。",
     "need-help-message": "お困りですか？ <0>{{doc}}</0>",

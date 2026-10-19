@@ -81,6 +81,7 @@ const initialState: OntologyState = {
 let currentState: OntologyState;
 let currentRelease: OntologyRelease;
 let currentOntology: Ontology;
+let nextWorkingPage: string | undefined;
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
 let downloadedBlob: Blob | undefined;
@@ -111,6 +112,32 @@ const selectRelease = async () => {
   fireEvent.click(await screen.findByTestId('tree-node-release-id'));
 };
 
+const workingDiffPage = (after?: string) => {
+  const isNextPage = after === 'next-page';
+
+  return {
+    data: {
+      state: currentState,
+      data: [
+        {
+          changeType: 'ADDED',
+          entity: {
+            id: isNextPage ? 'account-id' : 'concept-id',
+            name: isNextPage ? 'Account' : 'Customer',
+            type: 'ontologyConcept',
+          },
+          memberKind: 'CONCEPT',
+          ontologyId: ontology.id,
+        },
+      ],
+      paging: {
+        total: nextWorkingPage ? 2 : 1,
+        after: isNextPage ? undefined : nextWorkingPage,
+      },
+    },
+  };
+};
+
 runQueryNotificationsSynchronously();
 
 describe('OntologyReleasePanel', () => {
@@ -134,12 +161,16 @@ describe('OntologyReleasePanel', () => {
     currentState = { ...initialState };
     currentRelease = { ...release };
     currentOntology = { ...ontology };
-    get.mockImplementation(async (url) => {
+    nextWorkingPage = undefined;
+    get.mockImplementation(async (url, config) => {
       if (url === '/ontologies/ontology-id') {
         return { data: currentOntology };
       }
       if (url.endsWith('/state')) {
         return { data: currentState };
+      }
+      if (url.endsWith('/working/diff')) {
+        return workingDiffPage((config?.params as { after?: string })?.after);
       }
       if (url.endsWith('/diff')) {
         return { data: { data: [], paging: { total: 0 } } };
@@ -278,6 +309,10 @@ describe('OntologyReleasePanel', () => {
   it('captures the displayed working revision without approving or activating it', async () => {
     post.mockResolvedValue({ data: release });
     await renderPanel(true, 'changes');
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+    expect(screen.getByText('1 label.pending-changes')).toBeVisible();
+
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'label.capture-release' })
@@ -292,6 +327,7 @@ describe('OntologyReleasePanel', () => {
     await screen.findByTestId('ontology-release-definition');
 
     expect(post).toHaveBeenCalledWith('/ontologies/ontology-id/releases', {
+      expectedActivationRevision: 3,
       expectedWorkingRevision: 7,
     });
     expect(put).not.toHaveBeenCalled();
@@ -301,6 +337,19 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.getByText('message.ontology-consistency-not-run')
     ).toBeInTheDocument();
+  });
+
+  it('pages pending change labels before capture', async () => {
+    nextWorkingPage = 'next-page';
+    await renderPanel(true, 'changes');
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+
+    expect(await screen.findByText(/Account/)).toBeVisible();
+    expect(screen.getByText('2 label.pending-changes')).toBeVisible();
+    expect(screen.queryByText(/Customer/)).not.toBeInTheDocument();
   });
 
   it('submits the whole sealed release through the existing Tasks workflow', async () => {
