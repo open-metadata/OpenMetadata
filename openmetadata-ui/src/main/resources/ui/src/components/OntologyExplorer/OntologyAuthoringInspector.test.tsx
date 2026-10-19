@@ -22,7 +22,6 @@ import {
   ConceptMappingType,
   GlossaryTerm,
 } from '../../generated/entity/data/glossaryTerm';
-import { DataType } from '../../generated/type/ontologyAttribute';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
 import {
   getGlossaryTermAssets,
@@ -52,14 +51,6 @@ jest.mock('../../utils/ToastUtils', () => ({
 const TERM_ID = '11111111-1111-1111-1111-111111111111';
 const TARGET_ID = '22222222-2222-2222-2222-222222222222';
 const TERM: GlossaryTerm = {
-  attributes: [
-    {
-      dataType: DataType.String,
-      id: 'attribute-id',
-      isIdentifier: true,
-      name: 'controlCode',
-    },
-  ],
   conceptMappings: [
     {
       conceptIri: 'https://example.com/aml',
@@ -143,8 +134,8 @@ describe('OntologyAuthoringInspector', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('ontology-attribute-controlCode')
-      ).toBeInTheDocument();
+        screen.queryByTestId('authoring-properties')
+      ).not.toBeInTheDocument();
       expect(screen.getByText('https://example.com/aml')).toBeInTheDocument();
       expect(screen.getByText('transaction_monitoring')).toBeInTheDocument();
     });

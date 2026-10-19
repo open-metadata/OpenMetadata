@@ -1047,6 +1047,7 @@ const LineageMapCanvas = ({
   const {
     activeLayer,
     lineageMutationTick,
+    renderAllNodes,
     selectedColumn,
     selectedQuickFilters,
     setActiveLayer,
@@ -1971,7 +1972,6 @@ const LineageMapCanvas = ({
   return (
     <ReactFlow
       fitView
-      onlyRenderVisibleElements
       className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full tw:overflow-clip! tw:bg-primary"
       deleteKeyCode={null}
       edgeTypes={{}}
@@ -1984,6 +1984,7 @@ const LineageMapCanvas = ({
       nodeTypes={nodeTypes}
       nodes={renderedNodes}
       nodesConnectable={false}
+      onlyRenderVisibleElements={!renderAllNodes}
       ref={wrapperRef}
       selectNodesOnDrag={false}
       onFocus={handleCanvasFocus}

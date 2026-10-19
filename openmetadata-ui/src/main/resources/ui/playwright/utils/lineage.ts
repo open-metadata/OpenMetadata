@@ -628,6 +628,9 @@ export const connectEdgeBetweenNodes = async (
     toEntity: toNode,
   });
   expect((await lineageRefresh).ok()).toBeTruthy();
+  // The canvas mounts only the nodes in view, and the redraw recenters on the
+  // root, so bring the whole graph into view before looking for the new node.
+  await fitToScreen(page);
   await expect(page.getByTestId(`lineage-node-${toNodeFqn}`)).toBeVisible();
 };
 

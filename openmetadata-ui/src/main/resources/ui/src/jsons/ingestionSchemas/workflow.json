@@ -1048,6 +1048,12 @@
                   "default": false,
                   "title": "Use System Table Statistics"
                 },
+                "enableAutoPartitionDetection": {
+                  "description": "Use the partition metadata collected during metadata ingestion to only profile the most recent time or integer range partitions of tables without an explicit partition configuration. Tables with a partition configuration defined in their profiler settings are not affected.",
+                  "type": "boolean",
+                  "default": true,
+                  "title": "Enable Auto Partition Detection"
+                },
                 "profileSampleConfig": {
                   "title": "Profile Sample Config",
                   "javaType": "org.openmetadata.schema.type.ProfileSampleConfig",
@@ -8244,6 +8250,12 @@
                           "type": "boolean",
                           "default": true
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                          "type": "boolean",
+                          "default": true
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "description": "The source service supports the database concept in its hierarchy",
@@ -9242,6 +9254,9 @@
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
+                        },
+                        "supportsLineageExtraction": {
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
                         },
                         "supportsProfiler": {
                           "title": "Supports Profiler",
@@ -10747,6 +10762,12 @@
                           "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                           "default": true
                         },
+                        "includeTemporaryTables": {
+                          "title": "Include Temporary Tables",
+                          "type": "boolean",
+                          "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                          "default": false
+                        },
                         "connectionOptions": {
                           "title": "Connection Options",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
@@ -10966,6 +10987,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -11130,6 +11155,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         },
                         "supportsDatabase": {
                           "title": "Supports Database",
@@ -13286,6 +13315,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsDatabase": {
                           "title": "Supports Database",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDatabase"
@@ -13406,6 +13439,10 @@
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
                         },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
+                        },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsQueryComment"
@@ -13521,6 +13558,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         },
                         "supportsQueryComment": {
                           "title": "Supports Query Comment",
@@ -14458,6 +14499,10 @@
                         "supportsProfiler": {
                           "title": "Supports Profiler",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsProfiler"
+                        },
+                        "supportsAutoPartitionDetection": {
+                          "title": "Supports Auto Partition Detection",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsAutoPartitionDetection"
                         }
                       },
                       "additionalProperties": false,
@@ -15582,13 +15627,13 @@
                         "type": {
                           "title": "Service Type",
                           "description": "Service Type",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/60/definitions/neo4jType",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jType",
                           "default": "Neo4j"
                         },
                         "scheme": {
                           "title": "Connection Scheme",
                           "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
-                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/60/definitions/neo4jScheme",
+                          "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/59/definitions/neo4jScheme",
                           "default": "neo4j"
                         },
                         "hostPort": {

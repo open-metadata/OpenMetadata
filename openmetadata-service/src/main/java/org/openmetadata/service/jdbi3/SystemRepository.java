@@ -9,6 +9,7 @@ import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.get
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -29,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -202,6 +204,13 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   private static final String INDEX_NAME = "table_search_index";
+
+  /**
+   * Login switches that no validation check reads, so changing only these cannot make a security
+   * configuration fail validation. Add a setting here only if no check reads it.
+   */
+  private static final Set<String> UNCHECKED_LOGIN_SWITCHES =
+      Set.of("enableSelfSignup", "enableAutoRedirect", "forceSecureSessionCookie");
 
   public SystemRepository() {
     this.dao = Entity.getCollectionDAO().systemDAO();
@@ -1956,6 +1965,41 @@ public class SystemRepository implements DeploymentSettingPreparer {
     }
   }
 
+  /**
+   * Validates an update to the stored security configuration. An update that changes nothing but
+   * {@link #UNCHECKED_LOGIN_SWITCHES} (the SSO page's self-signup switch, say) is not validated: no
+   * check reads what it changed, and a configuration stored before field validation existed can
+   * fail checks such an update never touches (#28379). Any other update is validated in full and
+   * rejected on any error, an older one included, because validators stop at the first failure and
+   * an older error can hide one the update introduces.
+   */
+  public SecurityValidationResponse validateSecurityConfigurationChange(
+      SecurityConfiguration storedConfig,
+      SecurityConfiguration updatedConfig,
+      OpenMetadataApplicationConfig applicationConfig,
+      String currentUsername) {
+    return changesOnlyUncheckedLoginSwitches(storedConfig, updatedConfig)
+        ? new SecurityValidationResponse().withStatus(SecurityValidationResponse.Status.SUCCESS)
+        : validateSecurityConfiguration(updatedConfig, applicationConfig, currentUsername);
+  }
+
+  private static boolean changesOnlyUncheckedLoginSwitches(
+      SecurityConfiguration storedConfig, SecurityConfiguration updatedConfig) {
+    return Objects.equals(
+            storedConfig.getAuthorizerConfiguration(), updatedConfig.getAuthorizerConfiguration())
+        && Objects.equals(
+            checkedAuthenticationSettings(storedConfig),
+            checkedAuthenticationSettings(updatedConfig));
+  }
+
+  private static JsonNode checkedAuthenticationSettings(SecurityConfiguration config) {
+    JsonNode settings = JsonUtils.valueToTree(config.getAuthenticationConfiguration());
+    if (settings instanceof ObjectNode fields) {
+      fields.remove(UNCHECKED_LOGIN_SWITCHES);
+    }
+    return settings;
+  }
+
   private FieldError validateAuthenticationConfigurationBaseFields(
       AuthenticationConfiguration authConfig) {
     try {
@@ -1964,7 +2008,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
             FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
-      if (nullOrEmpty(authConfig.getProviderName())) {
+      // openmetadata.yaml defines providerName for custom OIDC only and leaves it empty otherwise.
+      if (authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+          && nullOrEmpty(authConfig.getProviderName())) {
         return ValidationErrorBuilder.createFieldError(
             "authenticationConfiguration.providerName", "Provider name is required");
       }
@@ -2135,9 +2181,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
         return providerValidation;
       }
 
-      // Use existing validation method to test actual connectivity only for confidential clients
-      // or when oidcConfiguration is present (some custom OIDC setups)
-      if ("confidential".equals(clientType) || authConfig.getOidcConfiguration() != null) {
+      // Only a confidential client runs the code flow on the server. A public client signs in from
+      // the browser and never builds an OIDC client from its oidcConfiguration, which is often the
+      // yaml's placeholder with no client id or secret.
+      if ("confidential".equals(clientType)) {
         try {
           AuthenticationCodeFlowHandler.validateConfig(authConfig, authzConfig);
         } catch (Exception e) {
@@ -2147,8 +2194,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
               "OIDC flow validation failed: " + e.getMessage());
         }
       } else {
-        LOG.debug(
-            "Skipping AuthenticationCodeFlowHandler validation for public client without oidcConfiguration");
+        LOG.debug("Skipping AuthenticationCodeFlowHandler validation for public client");
       }
 
       return null; // No errors - validation passed

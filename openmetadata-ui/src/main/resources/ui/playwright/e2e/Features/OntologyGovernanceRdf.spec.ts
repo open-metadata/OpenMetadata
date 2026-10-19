@@ -11,16 +11,10 @@
  *  limitations under the License.
  */
 
-import { APIRequestContext } from '@playwright/test';
 import { randomUUID } from 'crypto';
-import {
-  CreateGlossary,
-  Layer,
-} from '../../../src/generated/api/data/createGlossary';
 import { OntologyBulkSubmission } from '../../../src/generated/api/data/ontologyBulkSubmission';
 import { OntologyImpactReport } from '../../../src/generated/api/data/ontologyImpactReport';
 import { OntologyImportResult } from '../../../src/generated/api/data/ontologyImportResult';
-import { Glossary as GlossaryEntity } from '../../../src/generated/entity/data/glossary';
 import { expect, test } from '../../support/fixtures/base';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -59,14 +53,6 @@ const isBulkSubmission = (value: unknown): value is OntologyBulkSubmission =>
   typeof value.result === 'object' &&
   value.result !== null;
 
-const isGlossary = (value: unknown): value is GlossaryEntity =>
-  typeof value === 'object' &&
-  value !== null &&
-  'id' in value &&
-  typeof value.id === 'string' &&
-  'name' in value &&
-  typeof value.name === 'string';
-
 const isImportResult = (value: unknown): value is OntologyImportResult =>
   typeof value === 'object' &&
   value !== null &&
@@ -83,61 +69,6 @@ const isImpactReport = (value: unknown): value is OntologyImpactReport =>
   Array.isArray(value.children) &&
   'impactToken' in value &&
   typeof value.impactToken === 'string';
-
-async function createOntologyModel(
-  apiContext: APIRequestContext,
-  request: CreateGlossary
-): Promise<GlossaryEntity> {
-  const response = await apiContext.post('/api/v1/glossaries', {
-    data: request,
-  });
-  const body: unknown = response.ok() ? await response.json() : undefined;
-
-  expect(response.ok(), await response.text()).toBe(true);
-  expect(isGlossary(body)).toBe(true);
-  if (!isGlossary(body)) {
-    throw new Error(`Ontology model ${request.name} response is invalid`);
-  }
-
-  return body;
-}
-
-function modelRequest(
-  name: string,
-  layer: Layer,
-  imports: GlossaryEntity[] = []
-): CreateGlossary {
-  return {
-    description: `Ontology Studio ${layer} model`,
-    name,
-    ontologyConfiguration: {
-      baseIri: `https://example.com/${name}/`,
-      imports: imports.map((glossary) => ({
-        id: glossary.id,
-        name: glossary.name,
-        type: 'glossary',
-      })),
-      installedPacks: [],
-      iriMintingPattern: '{term}',
-      layer,
-      prefixes: [],
-      readOnly: false,
-    },
-  };
-}
-
-async function deleteModel(
-  apiContext: APIRequestContext,
-  glossary: GlossaryEntity
-): Promise<void> {
-  const response = await apiContext.delete(
-    `/api/v1/glossaries/name/${encodeURIComponent(
-      glossary.fullyQualifiedName ?? glossary.name
-    )}?recursive=true&hardDelete=true`
-  );
-
-  expect(response.ok(), await response.text()).toBe(true);
-}
 
 test.describe(
   'Ontology governance and bulk authoring',
@@ -283,41 +214,33 @@ test.describe(
       }
     });
 
-    test('resolves legal model imports and rejects dependencies toward a less foundational layer', async ({
+    test('rejects ontology configuration on a glossary', async ({
       browser,
     }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      const createdModels: GlossaryEntity[] = [];
-
       try {
-        const foundation = await createOntologyModel(
-          apiContext,
-          modelRequest(`pw_l1_${suffix}`, Layer.L1)
+        const response = await apiContext.patch(
+          `/api/v1/glossaries/${bulkGlossary.responseData.id}`,
+          {
+            data: [
+              {
+                op: 'add',
+                path: '/ontologyConfiguration',
+                value: { layer: 'L3' },
+              },
+            ],
+            headers: { 'Content-Type': 'application/json-patch+json' },
+          }
         );
-        createdModels.push(foundation);
-        const application = await createOntologyModel(
-          apiContext,
-          modelRequest(`pw_l3_${suffix}`, Layer.L3, [foundation])
+        expect(response.status(), await response.text()).toBe(400);
+        const glossary = await apiContext.get(
+          `/api/v1/glossaries/${bulkGlossary.responseData.id}`
         );
-        createdModels.push(application);
-
-        expect(application.ontologyConfiguration?.imports).toEqual([
-          expect.objectContaining({ id: foundation.id, type: 'glossary' }),
-        ]);
-
-        const rejectedResponse = await apiContext.post('/api/v1/glossaries', {
-          data: modelRequest(`pw_invalid_l1_${suffix}`, Layer.L1, [
-            application,
-          ]),
-        });
-        const rejectedMessage = await rejectedResponse.text();
-
-        expect(rejectedResponse.status()).toBe(400);
-        expect(rejectedMessage).toContain('cannot import less foundational');
+        expect(glossary.ok(), await glossary.text()).toBe(true);
+        expect(await glossary.json()).not.toHaveProperty(
+          'ontologyConfiguration'
+        );
       } finally {
-        for (const glossary of createdModels.reverse()) {
-          await deleteModel(apiContext, glossary);
-        }
         await afterAction();
       }
     });

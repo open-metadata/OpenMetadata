@@ -74,6 +74,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -81,6 +82,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -892,6 +894,132 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(
         Exception.class, () -> createEntity(request), "Should fail with invalid parameter name");
+  }
+
+  @Test
+  void post_testWithUnofferedOptionValue_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("bad_strategy"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableCustomSQLQuery");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedColumnType_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("length_on_number"));
+    // createTable's `id` column is INT, which columnValueLengthsToBeBetween does not support.
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  @Test
+  void post_rejectedForConformance_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("post_no_suite"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    assertThrows(Exception.class, () -> createEntity(request));
+    assertNull(tableTestSuite(table));
+  }
+
+  private static EntityReference tableTestSuite(Table table) {
+    return SdkClients.adminClient()
+        .tables()
+        .get(table.getId().toString(), "testSuite")
+        .getTestSuite();
+  }
+
+  @Test
+  void patch_toUnofferedOptionValue_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("patch_bad_strategy"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableCustomSQLQuery");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("ROWS")));
+    TestCase testCase = createEntity(request);
+
+    testCase.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    Exception error =
+        assertThrows(Exception.class, () -> patchEntity(testCase.getId().toString(), testCase));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+  }
+
+  @Test
+  void createMany_withOneUnofferedOptionValue_createsNone(TestNamespace ns) {
+    Table table = createTable(ns);
+    String tableLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
+    CreateTestCase valid = new CreateTestCase();
+    valid.setName(ns.prefix("many_valid"));
+    valid.setEntityLink(tableLink);
+    valid.setTestDefinition("tableRowCountToEqual");
+    valid.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    CreateTestCase invalid = new CreateTestCase();
+    invalid.setName(ns.prefix("many_bad_strategy"));
+    invalid.setEntityLink(tableLink);
+    invalid.setTestDefinition("tableCustomSQLQuery");
+    invalid.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    Exception error =
+        assertThrows(Exception.class, () -> client.testCases().createMany(List.of(valid, invalid)));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+    // The batch wrote nothing: the valid test can still be created on its own.
+    assertEquals(valid.getName(), createEntity(valid).getName());
+  }
+
+  @Test
+  void patch_keepsATestOnARetypedColumnEditable(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("patch_gate"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::name>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+    TestCase testCase = createEntity(request);
+
+    // The stored test now targets a column type its definition does not support, as a row created
+    // before the create-time check, or one whose column was retyped by ingestion, does.
+    table.getColumns().stream()
+        .filter(column -> column.getName().equals("name"))
+        .forEach(column -> column.withDataType(ColumnDataType.INT).withDataLength(null));
+    SdkClients.adminClient().tables().update(table.getId().toString(), table);
+
+    testCase.setDescription("edited");
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+
+    assertEquals("edited", updated.getDescription());
   }
 
   @Test
@@ -3200,6 +3328,126 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertThrows(
         org.openmetadata.sdk.exceptions.OpenMetadataException.class,
         () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void test_failedRowsSampleAcceptedWhenPassingWithinThreshold(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "within_threshold_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, 7L);
+
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+
+    TableData fetchedSample = client.testCases().getFailedRowsSample(testCase.getId().toString());
+    assertEquals(3, fetchedSample.getRows().size());
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenPassingWithoutFailedRows(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "clean_pass_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, 0L);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWithoutResult(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "no_result_sample");
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenPassingWithUnknownFailedRows(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "unknown_failed_rows_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, null);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenAborted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "aborted_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Aborted, 7L);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleReplacedAndClearedOnSuccess(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "sample_lifecycle");
+    long timestamp = System.currentTimeMillis();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp)
+                .withTestCaseStatus(TestCaseStatus.Failed));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp + 1)
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withFailedRows(7L));
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.testCases().getFailedRowsSample(testCase.getId().toString()))
+            .getStatusCode());
+
+    TableData replacement =
+        new TableData().withColumns(List.of("id")).withRows(List.of(List.of("4")));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), replacement);
+    assertEquals(replacement, client.testCases().getFailedRowsSample(testCase.getId().toString()));
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp + 2)
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withFailedRows(0L));
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.testCases().getFailedRowsSample(testCase.getId().toString()))
+            .getStatusCode());
+  }
+
+  private static void addTestCaseResult(
+      OpenMetadataClient client, TestCase testCase, TestCaseStatus status, Long failedRows) {
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(status)
+            .withFailedRows(failedRows);
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+  }
+
+  private static TableData idSample() {
+    return new TableData()
+        .withColumns(List.of("id"))
+        .withRows(List.of(List.of("1"), List.of("2"), List.of("3")));
   }
 
   @Test

@@ -651,6 +651,13 @@ export interface Pipeline {
      */
     computeTableMetrics?: boolean;
     /**
+     * Use the partition metadata collected during metadata ingestion to only profile the most
+     * recent time or integer range partitions of tables without an explicit partition
+     * configuration. Tables with a partition configuration defined in their profiler settings
+     * are not affected.
+     */
+    enableAutoPartitionDetection?: boolean;
+    /**
      * List of metrics to compute. If empty, then all metrics will be computed
      */
     metrics?:             MetricType[];
@@ -4536,6 +4543,7 @@ export interface Connection {
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
     storedProcedureFilterPattern?:          FilterPattern;
+    supportsAutoPartitionDetection?:        boolean;
     supportsDatabase?:                      boolean;
     supportsDataDiff?:                      boolean;
     supportsDBTExtraction?:                 boolean;
@@ -4853,6 +4861,13 @@ export interface Connection {
      * How to run the SQLite database. :memory: by default.
      */
     databaseMode?: string;
+    /**
+     * Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data
+     * dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped.
+     * When enabled, GTTs are ingested with TableType=Local so they can be distinguished from
+     * regular tables.
+     */
+    includeTemporaryTables?: boolean;
     /**
      * This directory will be used to set the LD_LIBRARY_PATH env variable. It is required if
      * you need to enable thick connection mode. By default, we bring instant client 19 and
@@ -6828,15 +6843,16 @@ export interface ConnectionClass {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsProfiler?:             boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
@@ -7476,15 +7492,16 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      */
-    storedProcedureFilterPattern?: FilterPattern;
-    supportsDatabase?:             boolean;
-    supportsDataDiff?:             boolean;
-    supportsDBTExtraction?:        boolean;
-    supportsLineageExtraction?:    boolean;
-    supportsMetadataExtraction?:   boolean;
-    supportsProfiler?:             boolean;
-    supportsQueryComment?:         boolean;
-    supportsUsageExtraction?:      boolean;
+    storedProcedureFilterPattern?:   FilterPattern;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDataDiff?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsLineageExtraction?:      boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsUsageExtraction?:        boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
