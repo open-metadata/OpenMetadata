@@ -41,7 +41,8 @@ eviction was removed.
 The rule does not cover everything. Code that writes one of the following, reads it back and can
 still fail afterwards evicts what it wrote itself:
 
-- **Inserts.** An insert records no key. `OntologyChangeApplicationService` evicts what it created.
+- **Inserts.** An insert records at most a by-id key, through its relationships, so its by-name
+  entries survive a rollback. `OntologyChangeApplicationService` evicts what it created.
 - **Types Redis never caches** (`UNCACHED_ENTITY_TYPES`: user, task, the workflow types,
   testCaseResolutionStatus, bot, domain, dataProduct). Their writes record no key, so a rollback
   leaves an L1 copy cached by such a read until the repair or the TTL.
