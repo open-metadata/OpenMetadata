@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
@@ -76,6 +77,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
+
+  private volatile String contextPath;
 
   static final String BEARER_PREFIX = "Bearer ";
 
@@ -202,6 +205,30 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.basicAuthLoginServlet = servlet;
   }
 
+  /** The servlet context path (BASE_PATH), so a base URL set at runtime is checked against it. */
+  public void setContextPath(String contextPath) {
+    this.contextPath = contextPath;
+  }
+
+  /**
+   * Under a non-root BASE_PATH every URL the MCP OAuth flow advertises is built from baseUrl, so it
+   * has to carry that path. Only warns: behind a proxy that rewrites the path, a baseUrl without
+   * it is correct, and appending it here would break that setup.
+   */
+  public static void warnIfBaseUrlMissesContextPath(String baseUrl, String contextPath) {
+    boolean subPathContext = contextPath != null && contextPath.length() > 1;
+    String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
+    if (subPathContext && !baseUrlPath.startsWith(contextPath)) {
+      LOG.warn(
+          "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
+              + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
+              + " in {}.",
+          baseUrl,
+          contextPath,
+          contextPath);
+    }
+  }
+
   /**
    * ConfigurationChangeListener implementation.
    * Called when configuration is reloaded, updates CORS origins dynamically without restart.
@@ -227,6 +254,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private void rebuildMetadata(String baseUrl) {
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
+    warnIfBaseUrlMissesContextPath(baseUrl, contextPath);
     List<String> supportedScopes = getSupportedScopesForProvider();
     String issuer = baseUrl + mcpEndpoint;
 
