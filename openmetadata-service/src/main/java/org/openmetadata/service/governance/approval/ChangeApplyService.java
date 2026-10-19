@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.WebApplicationException;
 import java.util.ArrayList;
@@ -96,8 +97,7 @@ public final class ChangeApplyService {
     Applicability result;
     try (FreshReadScope.Handle fresh = FreshReadScope.enter();
         EntityCacheBypass.Handle bypass = EntityCacheBypass.skip()) {
-      JsonNode currentTree =
-          JsonUtils.valueToTree(readCurrent(repository, request.getEntityId(), ops));
+      JsonNode currentTree = currentTree(repository, request.getEntityId(), ops);
       MutationPlanner.ConflictSplit split = MutationPlanner.splitConflicts(currentTree, ops);
       result =
           split.gatedConflicts().isEmpty()
@@ -127,12 +127,16 @@ public final class ChangeApplyService {
       ChangeRequest request,
       JsonNode currentTree,
       MutationPlanner.ConflictSplit split) {
-    if (!MutationPlanner.fieldsOf(split.applicable()).contains(CONNECTION)) {
+    List<MutationOp> relationOps = relationOps(repository, split.applicable());
+    List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
+    if (!fieldOps.isEmpty() && !MutationPlanner.fieldsOf(fieldOps).contains(CONNECTION)) {
       JsonPatch patch =
           JsonUtils.getJsonPatch(
-              currentTree.toString(),
-              MutationPlanner.applyTo(currentTree, split.applicable()).toString());
+              currentTree.toString(), MutationPlanner.applyTo(currentTree, fieldOps).toString());
       repository.validatePatch(request.getEntityId(), request.getRequestedBy(), patch);
+    }
+    if (!relationOps.isEmpty()) {
+      repository.validateStagedRelations(request.getEntityId(), relationOps);
     }
     return new Applicability(List.of(), null);
   }
@@ -248,8 +252,7 @@ public final class ChangeApplyService {
       List<MutationOp> open =
           selection(request, ChangeRequestService.activeRevision(request)).open();
       if (!open.isEmpty()) {
-        JsonNode current =
-            JsonUtils.valueToTree(readCurrent(repository, request.getEntityId(), open));
+        JsonNode current = currentTree(repository, request.getEntityId(), open);
         List<MutationOp> published =
             open.stream().filter(op -> MutationPlanner.alreadyPublished(current, op)).toList();
         List<MutationOp> rest = open.stream().filter(op -> !published.contains(op)).toList();
@@ -296,8 +299,7 @@ public final class ChangeApplyService {
     ChangeSelection selection = selection(request, revision);
     ChangeRequest result;
     if (!selection.toApply().isEmpty()) {
-      EntityInterface current = readCurrent(repository, request.getEntityId(), selection.toApply());
-      JsonNode currentTree = JsonUtils.valueToTree(current);
+      JsonNode currentTree = currentTree(repository, request.getEntityId(), selection.toApply());
       MutationPlanner.ConflictSplit split =
           MutationPlanner.splitConflicts(currentTree, selection.toApply());
       result =
@@ -374,6 +376,34 @@ public final class ChangeApplyService {
         false);
   }
 
+  /**
+   * The asset as published now, as the JSON a change request's {@code ops} are judged against: the
+   * entity, with the staged relations they change as list fields.
+   */
+  static JsonNode currentTree(EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
+    // An entity always serializes to a JSON object.
+    ObjectNode tree = (ObjectNode) JsonUtils.valueToTree(readCurrent(repository, entityId, ops));
+    Set<String> relations = new TreeSet<>(MutationPlanner.fieldsOf(ops));
+    relations.retainAll(repository.getStagedRelationFields());
+    if (!relations.isEmpty()) {
+      repository.addStagedRelations(tree, entityId, relations);
+    }
+    return tree;
+  }
+
+  private static List<MutationOp> relationOps(
+      EntityRepository<?> repository, List<MutationOp> ops) {
+    return ops.stream()
+        .filter(op -> repository.getStagedRelationFields().contains(op.getField()))
+        .toList();
+  }
+
+  private static List<MutationOp> fieldOps(EntityRepository<?> repository, List<MutationOp> ops) {
+    return ops.stream()
+        .filter(op -> !repository.getStagedRelationFields().contains(op.getField()))
+        .toList();
+  }
+
   private static ChangeRequest publish(
       EntityRepository<?> repository,
       ChangeRequest request,
@@ -381,14 +411,21 @@ public final class ChangeApplyService {
       JsonNode currentTree,
       MutationPlanner.ConflictSplit split,
       ChangeSelection selection) {
-    JsonPatch patch =
-        JsonUtils.getJsonPatch(
-            currentTree.toString(),
-            MutationPlanner.applyTo(currentTree, split.applicable()).toString());
-    ApprovedApplication approval =
-        new ApprovedApplication(
-            request.getId(), revision.getId(), request.getEntityId(), request.getRequestedBy());
-    EntityInterface published = repository.applyApprovedChange(approval, patch).entity();
+    List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
+    List<MutationOp> relationOps = relationOps(repository, split.applicable());
+    if (!fieldOps.isEmpty()) {
+      JsonPatch patch =
+          JsonUtils.getJsonPatch(
+              currentTree.toString(), MutationPlanner.applyTo(currentTree, fieldOps).toString());
+      ApprovedApplication approval =
+          new ApprovedApplication(
+              request.getId(), revision.getId(), request.getEntityId(), request.getRequestedBy());
+      repository.applyApprovedChange(approval, patch);
+    }
+    if (!relationOps.isEmpty()) {
+      repository.applyStagedRelations(request.getEntityId(), relationOps, request.getRequestedBy());
+    }
+    EntityInterface published = readCurrent(repository, request.getEntityId(), split.applicable());
     ChangeRequestService.dao()
         .changeApplicationDAO()
         .insert(application(request, revision, published, split.applicable(), split.dropped()));

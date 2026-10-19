@@ -30,7 +30,9 @@ import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Lists;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,10 +41,14 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -50,7 +56,8 @@ import org.openmetadata.schema.api.domains.DataProductPortsView;
 import org.openmetadata.schema.api.domains.PaginatedEntities;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
-import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
+import org.openmetadata.schema.governance.changeRequest.MutationOpType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -65,6 +72,9 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
+import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.jdbi3.AssetEditService.AssetEdit;
 import org.openmetadata.service.jdbi3.AssetEditService.Selection;
 import org.openmetadata.service.resources.domains.DataProductResource;
@@ -77,6 +87,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -96,6 +107,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       "An asset of type %s cannot belong to a data product";
   private static final String DATA_PRODUCT_DOMAIN_VALIDATION_RULE =
       "Data Product Domain Validation";
+  // A change request names a data product's ports as these list fields of the data product.
+  private static final String INPUT_PORTS = "inputPorts";
+  private static final String OUTPUT_PORTS = "outputPorts";
+  private static final Map<String, Relationship> PORT_FIELDS_BY_NAME =
+      Map.of(INPUT_PORTS, Relationship.INPUT_PORT, OUTPUT_PORTS, Relationship.OUTPUT_PORT);
 
   // Max assets whose domains/data-products are hydrated at once while reconciling (a level of
   // descendants, or the direct assets that inherit their domain).
@@ -426,23 +442,23 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   }
 
   public BulkOperationResult bulkAddInputPorts(
-      String dataProductName, BulkAssets request, String updatedBy) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, updatedBy);
+      String dataProductName, BulkAssets request, ChangeActor actor) {
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, true, actor);
   }
 
   public BulkOperationResult bulkRemoveInputPorts(
-      String dataProductName, BulkAssets request, String updatedBy) {
-    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, updatedBy);
+      String dataProductName, BulkAssets request, ChangeActor actor) {
+    return bulkPortsOperation(dataProductName, request, Relationship.INPUT_PORT, false, actor);
   }
 
   public BulkOperationResult bulkAddOutputPorts(
-      String dataProductName, BulkAssets request, String updatedBy) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, updatedBy);
+      String dataProductName, BulkAssets request, ChangeActor actor) {
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, true, actor);
   }
 
   public BulkOperationResult bulkRemoveOutputPorts(
-      String dataProductName, BulkAssets request, String updatedBy) {
-    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, updatedBy);
+      String dataProductName, BulkAssets request, ChangeActor actor) {
+    return bulkPortsOperation(dataProductName, request, Relationship.OUTPUT_PORT, false, actor);
   }
 
   @Transaction
@@ -451,9 +467,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       BulkAssets request,
       Relationship relationship,
       boolean isAdd,
-      String updatedBy) {
+      ChangeActor actor) {
     DataProduct dataProduct = resolveDataProduct(dataProductNameOrId);
-    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd, updatedBy);
+    return executeBulkPortsOperation(dataProduct, request, relationship, isAdd, actor);
   }
 
   private DataProduct resolveDataProduct(String nameOrId) {
@@ -465,130 +481,258 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
   }
 
+  // Every eligible port of the request is held, as one change request, when an approval workflow
+  // gates the data product's ports for this user; otherwise they are written at once.
   private BulkOperationResult executeBulkPortsOperation(
       DataProduct dataProduct,
       BulkAssets request,
       Relationship relationship,
       boolean isAdd,
-      String updatedBy) {
-    BulkOperationResult result =
-        new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
-    List<BulkResponse> success = new ArrayList<>();
-    List<BulkResponse> failed = new ArrayList<>();
-
+      ChangeActor actor) {
     List<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
     EntityUtil.populateEntityReferences(assets);
-
-    String fieldName = relationship == Relationship.INPUT_PORT ? "inputPorts" : "outputPorts";
-
-    Relationship oppositeRelationship =
-        relationship == Relationship.INPUT_PORT
-            ? Relationship.OUTPUT_PORT
-            : Relationship.INPUT_PORT;
-
-    Set<UUID> oppositePortIds = Set.of();
-    Set<UUID> dataProductAssetIds = Set.of();
-    if (isAdd) {
-      oppositePortIds =
-          daoCollection
-              .relationshipDAO()
-              .findTo(dataProduct.getId(), DATA_PRODUCT, oppositeRelationship.ordinal())
-              .stream()
-              .map(CollectionDAO.EntityRelationshipRecord::getId)
-              .collect(Collectors.toCollection(HashSet::new));
-      if (relationship == Relationship.OUTPUT_PORT) {
-        dataProductAssetIds =
-            daoCollection
-                .relationshipDAO()
-                .findTo(dataProduct.getId(), DATA_PRODUCT, Relationship.HAS.ordinal())
-                .stream()
-                .map(CollectionDAO.EntityRelationshipRecord::getId)
-                .collect(Collectors.toCollection(HashSet::new));
-      }
+    List<PortRow> rows = checkPorts(dataProduct.getId(), assets, relationship, isAdd);
+    List<EntityReference> eligible =
+        rows.stream().filter(row -> row.failure() == null).map(PortRow::ref).toList();
+    String held =
+        eligible.isEmpty()
+            ? null
+            : stagePorts(dataProduct.getId(), eligible, relationship, isAdd, actor)
+                .map(
+                    staged ->
+                        ApprovalGate.pendingMessage(ChangeRequestService.submit(staged).getId()))
+                .orElse(null);
+    if (held == null && !eligible.isEmpty()) {
+      writePorts(dataProduct, eligible, relationship, isAdd, actor.userName());
     }
+    return portsResult(rows, held);
+  }
 
-    for (EntityReference ref : assets) {
-      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+  /** One port of a request, with the reason it cannot be made, or none. */
+  private record PortRow(EntityReference ref, String failure) {}
 
+  private List<PortRow> checkPorts(
+      UUID dataProductId, List<EntityReference> assets, Relationship relationship, boolean isAdd) {
+    Set<UUID> oppositePorts =
+        isAdd ? relatedIds(dataProductId, oppositePort(relationship)) : Set.of();
+    Set<UUID> ownAssets =
+        isAdd && relationship == Relationship.OUTPUT_PORT
+            ? relatedIds(dataProductId, Relationship.HAS)
+            : Set.of();
+    return assets.stream()
+        .map(
+            ref ->
+                new PortRow(
+                    ref, isAdd ? portFailure(ref, relationship, oppositePorts, ownAssets) : null))
+        .toList();
+  }
+
+  private static String portFailure(
+      EntityReference ref,
+      Relationship relationship,
+      Set<UUID> oppositePorts,
+      Set<UUID> ownAssets) {
+    Relationship opposite = oppositePort(relationship);
+    return Stream.<Supplier<String>>of(
+            () ->
+                isPortEligibleType(ref.getType())
+                    ? null
+                    : "Asset '%s' of type '%s' cannot be added as a port; ports must reference a data asset"
+                        .formatted(ref.getFullyQualifiedName(), ref.getType()),
+            () ->
+                oppositePorts.contains(ref.getId())
+                    ? "Asset '%s' is already part of %s ports and cannot be added to %s"
+                        .formatted(
+                            ref.getFullyQualifiedName(),
+                            opposite == Relationship.INPUT_PORT ? "input" : "output",
+                            portField(relationship))
+                    : null,
+            () ->
+                relationship == Relationship.OUTPUT_PORT && !ownAssets.contains(ref.getId())
+                    ? "Asset '%s' must belong to the data product before it can be added as an output port"
+                        .formatted(ref.getFullyQualifiedName())
+                    : null)
+        .map(Supplier::get)
+        .filter(Objects::nonNull)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private Set<UUID> relatedIds(UUID dataProductId, Relationship relationship) {
+    return daoCollection
+        .relationshipDAO()
+        .findTo(dataProductId, DATA_PRODUCT, relationship.ordinal())
+        .stream()
+        .map(CollectionDAO.EntityRelationshipRecord::getId)
+        .collect(Collectors.toCollection(HashSet::new));
+  }
+
+  private static Relationship oppositePort(Relationship relationship) {
+    return relationship == Relationship.INPUT_PORT
+        ? Relationship.OUTPUT_PORT
+        : Relationship.INPUT_PORT;
+  }
+
+  private static String portField(Relationship relationship) {
+    return relationship == Relationship.INPUT_PORT ? INPUT_PORTS : OUTPUT_PORTS;
+  }
+
+  // The data product as the gate judges it, its ports included, before and after the edit.
+  private Optional<StagedChange> stagePorts(
+      UUID dataProductId,
+      List<EntityReference> ports,
+      Relationship relationship,
+      boolean isAdd,
+      ChangeActor actor) {
+    DataProduct dataProduct = get(null, dataProductId, getPatchFields(), NON_DELETED, false);
+    String field = portField(relationship);
+    // An entity always serializes to a JSON object.
+    ObjectNode base = (ObjectNode) JsonUtils.valueToTree(dataProduct);
+    addStagedRelations(base, dataProductId, Set.of(field));
+    Map<UUID, EntityReference> proposedPorts = new LinkedHashMap<>();
+    currentPorts(dataProductId, relationship).forEach(ref -> proposedPorts.put(ref.getId(), ref));
+    ports.forEach(
+        ref -> {
+          if (isAdd) {
+            proposedPorts.putIfAbsent(ref.getId(), ref);
+          } else {
+            proposedPorts.remove(ref.getId());
+          }
+        });
+    ObjectNode proposed = base.deepCopy();
+    proposed.set(field, JsonUtils.valueToTree(List.copyOf(proposedPorts.values())));
+    return ApprovalGate.admitRelations(dataProduct, base, proposed, actor);
+  }
+
+  private List<EntityReference> currentPorts(UUID dataProductId, Relationship relationship) {
+    return EntityUtil.getEntityReferences(
+        daoCollection
+            .relationshipDAO()
+            .findTo(dataProductId, DATA_PRODUCT, relationship.ordinal()));
+  }
+
+  private void writePorts(
+      DataProduct dataProduct,
+      List<EntityReference> ports,
+      Relationship relationship,
+      boolean isAdd,
+      String updatedBy) {
+    for (EntityReference ref : ports) {
       if (isAdd) {
-        if (!isPortEligibleType(ref.getType())) {
-          String msg =
-              String.format(
-                  "Asset '%s' of type '%s' cannot be added as a port; ports must reference a data asset",
-                  ref.getFullyQualifiedName(), ref.getType());
-          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
-          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
-          continue;
-        }
-
-        if (oppositePortIds.contains(ref.getId())) {
-          String oppositePortType =
-              oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
-          String msg =
-              String.format(
-                  "Asset '%s' is already part of %s ports and cannot be added to %s",
-                  ref.getFullyQualifiedName(), oppositePortType, fieldName);
-          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
-          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
-          continue;
-        }
-
-        if (relationship == Relationship.OUTPUT_PORT
-            && !dataProductAssetIds.contains(ref.getId())) {
-          String msg =
-              String.format(
-                  "Asset '%s' must belong to the data product before it can be added as an output port",
-                  ref.getFullyQualifiedName());
-          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
-          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
-          continue;
-        }
-
         addRelationship(
             dataProduct.getId(), ref.getId(), DATA_PRODUCT, ref.getType(), relationship);
       } else {
         deleteRelationship(
             dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), relationship);
       }
-
-      success.add(new BulkResponse().withRequest(ref));
-      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
       EntityLifecycleEventDispatcher.getInstance()
           .onEntityUpdated(dataProduct.getEntityReference(), null);
     }
-
-    result.withSuccessRequest(success).withFailedRequest(failed);
-
-    if (success.isEmpty() && !failed.isEmpty()) {
-      result.setStatus(ApiStatus.FAILURE);
+    String fieldName = portField(relationship);
+    ChangeDescription change =
+        addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, ports, null);
+    if (!change.getFieldsAdded().isEmpty()) {
+      change.getFieldsAdded().get(0).setName(fieldName);
     }
-
-    if (!success.isEmpty()) {
-      List<EntityReference> successAssets =
-          success.stream().map(r -> (EntityReference) r.getRequest()).collect(Collectors.toList());
-      ChangeDescription change =
-          addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, successAssets, null);
-      if (!change.getFieldsAdded().isEmpty()) {
-        change.getFieldsAdded().get(0).setName(fieldName);
-      }
-      if (!change.getFieldsDeleted().isEmpty()) {
-        change.getFieldsDeleted().get(0).setName(fieldName);
-      }
-      ChangeEvent changeEvent =
-          getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-      DataProduct entityToUpdate = get(null, dataProduct.getId(), getFields("*"));
-      entityToUpdate.setChangeDescription(change);
-      entityToUpdate.setUpdatedBy(updatedBy);
-      storeEntity(entityToUpdate, true);
-      invalidate(entityToUpdate);
+    if (!change.getFieldsDeleted().isEmpty()) {
+      change.getFieldsDeleted().get(0).setName(fieldName);
     }
+    ChangeEvent changeEvent =
+        getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+    DataProduct entityToUpdate = get(null, dataProduct.getId(), getFields("*"));
+    entityToUpdate.setChangeDescription(change);
+    entityToUpdate.setUpdatedBy(updatedBy);
+    storeEntity(entityToUpdate, true);
+    invalidate(entityToUpdate);
+  }
 
-    return result;
+  private static BulkOperationResult portsResult(List<PortRow> rows, String held) {
+    List<BulkResponse> passed = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
+    for (PortRow row : rows) {
+      BulkResponse response = new BulkResponse().withRequest(row.ref());
+      if (row.failure() != null) {
+        failed.add(response.withMessage(row.failure()));
+      } else {
+        passed.add(
+            held == null
+                ? response
+                : response.withStatus(Response.Status.OK.getStatusCode()).withMessage(held));
+      }
+    }
+    return new BulkOperationResult()
+        .withDryRun(false)
+        .withNumberOfRowsProcessed(rows.size())
+        .withNumberOfRowsPassed(passed.size())
+        .withNumberOfRowsFailed(failed.size())
+        .withNumberOfRowsPendingApproval(held == null ? 0 : passed.size())
+        .withSuccessRequest(passed)
+        .withFailedRequest(failed)
+        .withStatus(deriveBulkOperationStatus(passed.size(), rows.size()));
+  }
+
+  @Override
+  public Set<String> getStagedRelationFields() {
+    return PORT_FIELDS_BY_NAME.keySet();
+  }
+
+  @Override
+  public void addStagedRelations(ObjectNode entityJson, UUID entityId, Set<String> fields) {
+    fields.forEach(
+        field ->
+            entityJson.set(
+                field,
+                JsonUtils.valueToTree(currentPorts(entityId, PORT_FIELDS_BY_NAME.get(field)))));
+  }
+
+  // Only additions can have become impossible: a removal of a port that is gone does nothing.
+  @Override
+  public void validateStagedRelations(UUID entityId, List<MutationOp> ops) {
+    List<String> failures = new ArrayList<>();
+    portsByChange(ops)
+        .forEach(
+            (change, ports) -> {
+              if (change.isAdd()) {
+                checkPorts(entityId, ports, change.relationship(), true).stream()
+                    .map(PortRow::failure)
+                    .filter(Objects::nonNull)
+                    .forEach(failures::add);
+              }
+            });
+    if (!failures.isEmpty()) {
+      throw new IllegalArgumentException(String.join("; ", failures));
+    }
+  }
+
+  @Override
+  public void applyStagedRelations(UUID entityId, List<MutationOp> ops, String requestedBy) {
+    validateStagedRelations(entityId, ops);
+    portsByChange(ops)
+        .forEach(
+            (change, ports) ->
+                writePorts(
+                    get(null, entityId, getFields("id")),
+                    ports,
+                    change.relationship(),
+                    change.isAdd(),
+                    requestedBy));
+  }
+
+  /** A kind of port change: which ports, and whether they are added or removed. */
+  private record PortChange(Relationship relationship, boolean isAdd) {}
+
+  private static Map<PortChange, List<EntityReference>> portsByChange(List<MutationOp> ops) {
+    Map<PortChange, List<EntityReference>> byChange = new LinkedHashMap<>();
+    for (MutationOp op : ops) {
+      byChange
+          .computeIfAbsent(
+              new PortChange(
+                  PORT_FIELDS_BY_NAME.get(op.getField()), op.getOp() == MutationOpType.ADD),
+              change -> new ArrayList<>())
+          .add(JsonUtils.readValue(op.getValue(), EntityReference.class));
+    }
+    return byChange;
   }
 
   public ResultList<EntityReference> getDataProductAssets(

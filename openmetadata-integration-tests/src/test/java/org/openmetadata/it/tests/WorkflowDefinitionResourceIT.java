@@ -106,6 +106,7 @@ import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.services.CreateApiService;
@@ -133,6 +134,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -167,6 +169,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -7583,6 +7586,177 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(1, requests.size());
     assertEquals("Pending", requests.get(0).get("status").asText());
     assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
+  }
+
+  @Test
+  void test_dataProductPortAddIsHeldUntilApproved(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portAdd");
+    Table table = portTable(admin, ns, "portAdd");
+    deployHookWorkflow(
+        admin, "dataProduct", product.getFullyQualifiedName(), List.of("inputPorts"));
+
+    BulkOperationResult held = admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+
+    assertEquals(1, held.getNumberOfRowsPendingApproval());
+    assertTrue(
+        held.getSuccessRequest().get(0).getMessage().startsWith("Pending approval: change request"),
+        held.getSuccessRequest().get(0).getMessage());
+    assertTrue(inputPortIds(admin, product).isEmpty(), "The port must be held, not added");
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    JsonNode op = request.get("activeRevision").get("ops").get(0);
+    assertEquals("inputPorts", op.get("field").asText());
+    assertEquals("add", op.get("op").asText());
+    assertEquals(table.getId().toString(), op.get("key").asText());
+
+    approveAs(
+        SdkClients.user1Client(),
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId()));
+
+    awaitRequestStatus(request.get("id").asText(), "Applied");
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  @Test
+  void test_dataProductPortRemovalIsHeldAndARejectionKeepsThePort(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portRemove");
+    Table table = portTable(admin, ns, "portRemove");
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    deployHookWorkflow(
+        admin, "dataProduct", product.getFullyQualifiedName(), List.of("inputPorts"));
+
+    BulkOperationResult held =
+        admin.dataProducts().inputPorts(product.getId()).remove(portsOf(table));
+
+    assertEquals(1, held.getNumberOfRowsPendingApproval());
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    assertEquals("remove", request.get("activeRevision").get("ops").get(0).get("op").asText());
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            awaitOpenApprovalTaskAssignedTo(
+                    admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId())
+                .getId()
+                .toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Rejected)
+                .withComment("keep this port"));
+
+    awaitRequestStatus(request.get("id").asText(), "Rejected");
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  @Test
+  void test_heldDescriptionAndPortChangesApplyTogether(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portMixed");
+    Table table = portTable(admin, ns, "portMixed");
+    deployHookWorkflow(
+        admin,
+        "dataProduct",
+        product.getFullyQualifiedName(),
+        List.of("description", "inputPorts"));
+
+    admin
+        .dataProducts()
+        .patch(
+            product.getId().toString(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"held together\"}]"));
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    List<String> fields = new ArrayList<>();
+    request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
+    assertEquals(List.of("description", "inputPorts"), fields.stream().sorted().toList());
+    approveAs(
+        SdkClients.user1Client(),
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId()));
+
+    awaitRequestStatus(request.get("id").asText(), "Applied");
+    assertEquals(
+        "held together", admin.dataProducts().get(product.getId().toString(), "").getDescription());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  @Test
+  void test_botPortEditIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portBot");
+    Table table = portTable(admin, ns, "portBot");
+    deployHookWorkflow(
+        admin, "dataProduct", product.getFullyQualifiedName(), List.of("inputPorts"));
+
+    BulkOperationResult written =
+        SdkClients.ingestionBotClient()
+            .dataProducts()
+            .inputPorts(product.getId())
+            .add(portsOf(table));
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+  }
+
+  // Reviewed by USER1, in its own domain.
+  private static DataProduct reviewedDataProduct(
+      OpenMetadataClient admin, TestNamespace ns, String tag) {
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix(tag + "Domain"))
+                    .withDescription("Domain of a data product whose ports are gated")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    return admin
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.prefix(tag + "Product"))
+                .withDescription("Data product whose ports are gated")
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withReviewers(List.of(SharedEntities.get().USER1_REF)));
+  }
+
+  private Table portTable(OpenMetadataClient admin, TestNamespace ns, String tag) {
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix(tag + "_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(tag + "_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(tag + "_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    return admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(tag + "_table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+  }
+
+  private static BulkAssets portsOf(Table table) {
+    return new BulkAssets().withAssets(List.of(table.getEntityReference()));
+  }
+
+  private static List<String> inputPortIds(OpenMetadataClient client, DataProduct product) {
+    return client.dataProducts().inputPorts(product.getId()).list().getData().stream()
+        .map(port -> JsonUtils.valueToTree(port).get("id").asText())
+        .toList();
   }
 
   @RetryingTest(2)
