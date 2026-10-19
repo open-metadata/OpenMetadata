@@ -289,6 +289,23 @@ df = spark.read.format("snowflake").option("sfdatabase", "SALES_DB").option("SFS
 
         assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
 
+    def test_empty_option_value_does_not_hide_the_next_setting(self):
+        script = """
+df = spark.read.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema", "RAW").option("preactions", "").option("dbtable", "ORDERS").load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+
+    def test_empty_dict_entry_does_not_hide_the_next_entry(self):
+        script = """
+sf_options = {"preactions": "", "dbtable": "ORDERS", "sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+df = spark.read.format("snowflake").options(**sf_options).load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+
     def test_backslash_continued_chain(self):
         script = """
 sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}

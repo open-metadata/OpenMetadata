@@ -156,10 +156,12 @@ SNOWFLAKE_SCHEMA_PATTERN = re.compile(r"[\"']sfSchema[\"']\s*[:=]\s*[\"']([^\"']
 # Every way a Snowflake option is set, scanned in call order so a later setting
 # wins as it does in Spark: .option("k", "v"), a "k": "v" dict entry, a k="v"
 # keyword, and a shared dict passed as **name or connection_options=name.
+# A value stops at its own closing quote and may be empty (.option("preactions", "")),
+# so it never runs into the next setting.
 OPTION_SETTER_PATTERN = re.compile(
-    r"option\s*\(\s*[\"'](?P<option_key>\w+)[\"']\s*,\s*(?P<oq>[\"'])(?P<option_value>.+?)(?P=oq)"
-    r"|[\"'](?P<entry_key>\w+)[\"']\s*:\s*(?P<eq>[\"'])(?P<entry_value>.+?)(?P=eq)"
-    r"|\b(?P<kwarg_key>\w+)\s*=\s*(?P<kq>[\"'])(?P<kwarg_value>.+?)(?P=kq)"
+    r"option\s*\(\s*[\"'](?P<option_key>\w+)[\"']\s*,\s*(?P<oq>[\"'])(?P<option_value>(?:(?!(?P=oq)).)*)(?P=oq)"
+    r"|[\"'](?P<entry_key>\w+)[\"']\s*:\s*(?P<eq>[\"'])(?P<entry_value>(?:(?!(?P=eq)).)*)(?P=eq)"
+    r"|\b(?P<kwarg_key>\w+)\s*=\s*(?P<kq>[\"'])(?P<kwarg_value>(?:(?!(?P=kq)).)*)(?P=kq)"
     r"|(?:\*\*\s*|connection_options\s*=\s*)(?P<shared_name>[A-Za-z_]\w*)"
 )
 
@@ -483,10 +485,9 @@ def _ordered_options(block: str, source_code: str, expand_shared: bool = True) -
             shared = _shared_options_dict(shared_name, source_code)
             options.update(_ordered_options(shared, source_code, expand_shared=False))
         elif not shared_name:
-            key = match.group("option_key") or match.group("entry_key") or match.group("kwarg_key")
-            options[key.lower()] = (
-                match.group("option_value") or match.group("entry_value") or match.group("kwarg_value")
-            )
+            # pick the value by the form that matched: an empty value is falsy
+            form = next(form for form in ("option", "entry", "kwarg") if match.group(f"{form}_key"))
+            options[match.group(f"{form}_key").lower()] = match.group(f"{form}_value")
     return options
 
 
