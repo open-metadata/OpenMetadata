@@ -33,6 +33,7 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.openmetadata.service.util.jdbi.LazySqlObjectFactory;
 
 /**
  * An on-demand DAO call made from a virtual thread must not pin that thread to its carrier while it
@@ -61,6 +62,19 @@ class JdbiVirtualThreadPinningTest {
       throws Exception {
     Jdbi jdbi = Jdbi.create(JdbiVirtualThreadPinningTest::waitForUnavailableConnection);
     jdbi.installPlugin(new SqlObjectPlugin());
+    assertTheProbeIsNotPinned(jdbi, recordingDir);
+  }
+
+  @Test
+  void lazilyAttachedSqlObjectsDoNotPinTheVirtualThread(@TempDir Path recordingDir)
+      throws Exception {
+    Jdbi jdbi = Jdbi.create(JdbiVirtualThreadPinningTest::waitForUnavailableConnection);
+    jdbi.installPlugin(new SqlObjectPlugin());
+    LazySqlObjectFactory.install(jdbi);
+    assertTheProbeIsNotPinned(jdbi, recordingDir);
+  }
+
+  private static void assertTheProbeIsNotPinned(Jdbi jdbi, Path recordingDir) throws Exception {
     ProbeDao probeDao = jdbi.onDemand(ProbeDao.class);
     AtomicReference<ConnectionException> daoFailure = new AtomicReference<>();
 

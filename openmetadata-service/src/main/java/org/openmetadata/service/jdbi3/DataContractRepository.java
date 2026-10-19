@@ -78,10 +78,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.datacontract.sla.ContractSlaValidator;
 import org.openmetadata.service.datacontract.sla.TableRefreshHistoryLoader;
+import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
@@ -146,6 +146,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                 Entity.getEntity(
                     Entity.TABLE, table.getId(), "columns,lifeCycle", Include.NON_DELETED),
             new TableRefreshHistoryLoader(daoCollection.profilerDataTimeSeriesDao(), clock));
+    supportsSearch = true;
   }
 
   @Override
@@ -886,28 +887,52 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     TestSuiteRepository testSuiteRepository =
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
 
-    // Check if test suite already exists
+    // A non-null reference can point to a suite that was soft-deleted via the DQ API without
+    // clearing DataContract.testSuite; returning null would NPE in updateTestSuiteTests.
     if (contractHasTestSuite(dataContract)) {
-      return Entity.getEntityOrNull(
-          dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
-    } else {
-      // Create new test suite
-      LOG.debug(
-          "Test suite [{}] not found when initializing the Data Contract, creating a new one",
-          testSuiteName);
-      CreateTestSuite createTestSuite =
-          new CreateTestSuite()
-              .withName(testSuiteName)
-              .withDisplayName("Data Contract - " + dataContract.getName())
-              .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
-              .withDataContract(
-                  new EntityReference()
-                      .withId(dataContract.getId())
-                      .withFullyQualifiedName(dataContract.getFullyQualifiedName())
-                      .withType(Entity.DATA_CONTRACT));
-      TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
-      return testSuiteRepository.create(null, newTestSuite);
+      TestSuite existing =
+          Entity.getEntityOrNull(
+              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
+      if (existing != null) {
+        return existing;
+      }
+      TestSuite softDeleted =
+          Entity.getEntityOrNull(
+              dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.ALL);
+      if (softDeleted != null) {
+        // Restore (not re-create): entity tables have a UNIQUE constraint on fqnHash and the
+        // soft-deleted row keeps it, so a fresh insert would collide with the dangling reference.
+        LOG.info(
+            "Test suite {} referenced by data contract {} is soft-deleted; restoring it so the "
+                + "contract update can proceed",
+            softDeleted.getId(),
+            dataContract.getId());
+        testSuiteRepository.restoreEntity(dataContract.getUpdatedBy(), softDeleted.getId());
+        return Entity.getEntityOrNull(
+            dataContract.getTestSuite(), TEST_SUITE_LIFECYCLE_FIELDS, Include.NON_DELETED);
+      }
+      LOG.warn(
+          "Test suite {} referenced by data contract {} no longer exists; creating a new suite "
+              + "to replace the dangling reference",
+          dataContract.getTestSuite(),
+          dataContract.getId());
     }
+    // Create new test suite
+    LOG.debug(
+        "Test suite [{}] not found when initializing the Data Contract, creating a new one",
+        testSuiteName);
+    CreateTestSuite createTestSuite =
+        new CreateTestSuite()
+            .withName(testSuiteName)
+            .withDisplayName("Data Contract - " + dataContract.getName())
+            .withDescription("Logical test suite for Data Contract: " + dataContract.getName())
+            .withDataContract(
+                new EntityReference()
+                    .withId(dataContract.getId())
+                    .withFullyQualifiedName(dataContract.getFullyQualifiedName())
+                    .withType(Entity.DATA_CONTRACT));
+    TestSuite newTestSuite = testSuiteMapper.createToEntity(createTestSuite, ADMIN_USER_NAME);
+    return testSuiteRepository.create(null, newTestSuite);
   }
 
   private Boolean contractHasTestSuite(DataContract dataContract) {
@@ -1429,7 +1454,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .withResultId(result.getId()));
 
     ChangeEvent changeEvent =
-        FormatterUtil.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
+        ChangeEvents.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(dataContract));
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
@@ -1590,7 +1615,15 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
     try {
-      DataContract updated = JsonUtils.deepCopy(dataContract, DataContract.class);
+      // Reload with the relationship fields the search doc is built from: callers pass contracts
+      // fetched without owners/reviewers, and the reindex after this update would blank them.
+      DataContract original =
+          Entity.getEntity(
+              Entity.DATA_CONTRACT,
+              dataContract.getId(),
+              "owners,reviewers,extension",
+              Include.NON_DELETED);
+      DataContract updated = JsonUtils.deepCopy(original, DataContract.class);
       updated.setLatestResult(
           new LatestResult()
               .withTimestamp(result.getTimestamp())
@@ -1598,7 +1631,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               .withMessage(result.getResult())
               .withResultId(result.getId()));
       EntityRepository.EntityUpdater entityUpdater =
-          getUpdater(dataContract, updated, EntityRepository.Operation.PATCH, null);
+          getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
       entityUpdater.update();
     } catch (Exception e) {
       LOG.error(

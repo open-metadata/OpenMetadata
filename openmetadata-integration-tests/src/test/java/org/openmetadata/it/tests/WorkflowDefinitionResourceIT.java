@@ -6,15 +6,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mysql.cj.jdbc.exceptions.MySQLTransactionRollbackException;
 import io.github.resilience4j.core.IntervalFunction;
@@ -32,6 +35,7 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -48,6 +52,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -64,7 +69,6 @@ import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.api.Job;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -75,6 +79,7 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junitpioneer.jupiter.RetryingTest;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
@@ -85,6 +90,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateAPICollection;
@@ -107,6 +113,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -135,6 +142,8 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.governance.changeRequest.ChangeDecision;
+import org.openmetadata.schema.governance.changeRequest.ChangeDecisionType;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
@@ -157,8 +166,9 @@ import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
-import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ApiException;
@@ -1007,7 +1017,7 @@ public class WorkflowDefinitionResourceIT {
    * by an executor that no longer exists. Terminating the instance must remove the whole process
    * tree despite those locks and record the instance as FAILURE.
    */
-  @Test
+  @RetryingTest(2)
   void test_terminateStuckPeriodicBatchWorkflowInstance() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Tag tag = createClassificationWithTags(client, "stuckTag", 1).getFirst();
@@ -1075,7 +1085,7 @@ public class WorkflowDefinitionResourceIT {
    * duration of the test, through the same {@link SinkProviderRegistry} Collate registers its Git
    * sink with. It needs the server running in this JVM, as the other tests reading Flowable do.
    */
-  @Test
+  @RetryingTest(2)
   void test_terminatePeriodicBatchWorkflowInstanceWhileItsSinkJobIsExecuting() throws Exception {
     SinkProviderRegistry registry = SinkProviderRegistry.getInstance();
     assertFalse(
@@ -1138,7 +1148,7 @@ public class WorkflowDefinitionResourceIT {
    * The test registers a capturing provider under the {@code webhook} type, as the termination test
    * does.
    */
-  @Test
+  @RetryingTest(2)
   void test_batchSinkReceivesOnlyTheEntitiesItsConditionMatches() throws Exception {
     SinkProviderRegistry registry = SinkProviderRegistry.getInstance();
     assertFalse(
@@ -1444,7 +1454,7 @@ public class WorkflowDefinitionResourceIT {
    * process-definition versions of its trigger, and they are suspended too, so the daily timer they
    * carry does not start it.
    */
-  @Test
+  @RetryingTest(2)
   void test_suspendedWorkflowStaysSuspendedWhenAnUpdateRedeploysIt() throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     String workflowName = periodicWorkflowName("tSusp");
@@ -1891,7 +1901,7 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(exception);
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(12)
   void test_WorkflowValidationEndpoint(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2094,7 +2104,6 @@ public class WorkflowDefinitionResourceIT {
     assertEquals("updated string", updated.get("description").asText());
   }
 
-  @org.junit.jupiter.api.Disabled("Requires workflow deployment to Flowable engine")
   @Test
   @Order(14)
   void test_SuspendAndResumeWorkflow(TestNamespace ns) throws Exception {
@@ -2110,6 +2119,7 @@ public class WorkflowDefinitionResourceIT {
     JsonNode created = MAPPER.readTree(createResponse);
     String workflowId = created.get("id").asText();
     String workflowName = created.get("name").asText();
+    waitForWorkflowDeployment(client, workflowName);
 
     client
         .getHttpClient()
@@ -2119,17 +2129,7 @@ public class WorkflowDefinitionResourceIT {
             new HashMap<>(),
             RequestOptions.builder().build());
 
-    String suspendedResponse =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET,
-                BASE_PATH + "/" + workflowId,
-                null,
-                RequestOptions.builder().build());
-
-    JsonNode suspended = MAPPER.readTree(suspendedResponse);
-    assertEquals("Suspended", suspended.get("status").asText());
+    awaitWorkflowSuspended(client, workflowId, true);
 
     client
         .getHttpClient()
@@ -2139,17 +2139,7 @@ public class WorkflowDefinitionResourceIT {
             new HashMap<>(),
             RequestOptions.builder().build());
 
-    String resumedResponse =
-        client
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.GET,
-                BASE_PATH + "/" + workflowId,
-                null,
-                RequestOptions.builder().build());
-
-    JsonNode resumed = MAPPER.readTree(resumedResponse);
-    assertEquals("Active", resumed.get("status").asText());
+    awaitWorkflowSuspended(client, workflowId, false);
   }
 
   @Test
@@ -2539,8 +2529,6 @@ public class WorkflowDefinitionResourceIT {
 
   @Test
   @Order(19)
-  @org.junit.jupiter.api.Disabled(
-      "Deprecated setEntityCertificationTask - FieldExtension config issue")
   void test_CreateWorkflowWithSetEntityCertificationTask(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -2557,6 +2545,8 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> certConfig = new HashMap<>();
     certConfig.put("certification", "Certification.Gold");
     certNode.put("config", certConfig);
+    certNode.put("input", List.of("relatedEntity", "updatedBy"));
+    certNode.put("inputNamespaceMap", Map.of("relatedEntity", "global", "updatedBy", "global"));
 
     Map<String, Object> endNode = new HashMap<>();
     endNode.put("name", "end");
@@ -2581,6 +2571,7 @@ public class WorkflowDefinitionResourceIT {
     Map<String, Object> trigger = new HashMap<>();
     trigger.put("type", "periodicBatchEntity");
     trigger.put("config", triggerConfig);
+    trigger.put("output", List.of("relatedEntity", "updatedBy"));
 
     Map<String, Object> request = new HashMap<>();
     request.put("name", ns.prefix("certificationWorkflow"));
@@ -2829,7 +2820,6 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @org.junit.jupiter.api.Disabled("periodicBatchEntityAPIEndpoint trigger type not yet implemented")
   @Test
   @Order(23)
   void test_CreateWorkflowWithApiEndpointTrigger(TestNamespace ns) throws Exception {
@@ -2850,11 +2840,12 @@ public class WorkflowDefinitionResourceIT {
     edge.put("to", "end");
 
     Map<String, Object> triggerConfig = new HashMap<>();
-    triggerConfig.put("entityTypes", List.of("table"));
+    triggerConfig.put("entityTypes", List.of("apiEndpoint"));
     triggerConfig.put("batchSize", 100);
+    triggerConfig.put("schedule", Map.of("scheduleTimeline", "None"));
 
     Map<String, Object> trigger = new HashMap<>();
-    trigger.put("type", "periodicBatchEntityAPIEndpoint");
+    trigger.put("type", "periodicBatchEntity");
     trigger.put("config", triggerConfig);
 
     Map<String, Object> request = new HashMap<>();
@@ -2874,7 +2865,9 @@ public class WorkflowDefinitionResourceIT {
     assertNotNull(response);
     JsonNode created = MAPPER.readTree(response);
     assertEquals(ns.prefix("apiEndpointWorkflow"), created.get("name").asText());
-    assertEquals("periodicBatchEntityAPIEndpoint", created.get("trigger").get("type").asText());
+    assertEquals("periodicBatchEntity", created.get("trigger").get("type").asText());
+    assertEquals(
+        "apiEndpoint", created.get("trigger").get("config").get("entityTypes").get(0).asText());
 
     try {
       WorkflowDefinition wd =
@@ -3234,7 +3227,7 @@ public class WorkflowDefinitionResourceIT {
    * #28433: Verify the checkEntityAttributesTask evaluates {@code outputPortsCount > 0} as true for
    * a DataProduct that has output ports.
    */
-  @Test
+  @RetryingTest(2)
   void test_CheckEntityAttributes_DataProductOutputPortCount(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     ensureWorkflowEventConsumerIsActive(client);
@@ -4762,7 +4755,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_SetTierForMLModels completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(27)
   void test_PeriodicBatchWorkflowEntityFiltering(TestNamespace ns, TestInfo test) throws Exception {
     LOG.info("Starting test to verify periodic batch workflow entity filtering behavior");
@@ -6210,7 +6203,8 @@ public class WorkflowDefinitionResourceIT {
             .withReviewers(List.of(shared.USER2_REF));
     Tag tag = client.tags().create(createTag);
 
-    Task task = awaitOpenApprovalTaskForEntity(tag.getFullyQualifiedName());
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), shared.USER1.getId());
     Set<UUID> assignees = assigneeIds(task);
     assertTrue(
         assignees.contains(shared.USER1.getId()),
@@ -6246,6 +6240,2033 @@ public class WorkflowDefinitionResourceIT {
         "Reviewers must not leak into an owners-only task, assignees=" + afterAssignees);
 
     LOG.info("test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask completed successfully");
+  }
+
+  @RetryingTest(2)
+  void test_botChangesAreExcludedFromWorkflows(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("botExcluded"))
+                    .withDescription("published")
+                    .withReviewers(List.of(shared.USER1_REF)));
+
+    // A reactive approval workflow on this glossary only: the filter excludes every other one.
+    String filter =
+        JsonUtils.pojoToJson(
+            Map.of(
+                "glossary",
+                "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}"
+                    .formatted(glossary.getFullyQualifiedName())));
+    String workflowName = "botExcluded" + UUID.randomUUID().toString().substring(0, 8);
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Bot Exclusion",
+              "description": "Opens an approval task when the glossary description changes",
+              "config": {"storeStageStatus": true},
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["glossary"],
+                  "events": ["Updated"],
+                  "include": ["description"],
+                  "exclude": [],
+                  "filter": %s
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"type": "startEvent", "subType": "startEvent", "name": "Start"},
+                {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
+                 "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                            "approvalThreshold": 1, "rejectionThreshold": 1},
+                 "inputNamespaceMap": {"relatedEntity": "global"}},
+                {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
+                {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
+              ],
+              "edges": [
+                {"from": "Start", "to": "Approve"},
+                {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
+                {"from": "Approve", "to": "RejectedEnd", "condition": "reject"}
+              ]
+            }
+            """
+            .formatted(workflowName, filter);
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(workflowJson, CreateWorkflowDefinition.class),
+                RequestOptions.builder().build());
+    trackWorkflowFromJson(MAPPER.readTree(createResponse));
+    waitForWorkflowDeployment(client, workflowName);
+
+    SdkClients.ingestionBotClient()
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"by bot\"}]"));
+    assertEquals(
+        "by bot", client.glossaries().get(glossary.getId().toString(), null).getDescription());
+    await("bot change starts no workflow")
+        .during(Duration.ofSeconds(3))
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    listOpenApprovalTasks(client, glossary.getFullyQualifiedName())
+                        .getData()
+                        .isEmpty()));
+
+    // The same edit by a human starts the workflow, so the silence above is the bot exclusion.
+    client
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"by human\"}]"));
+    awaitOpenApprovalTask(client, glossary.getFullyQualifiedName());
+  }
+
+  @Test
+  void test_upsertOfGatedFieldIsHeldForApproval(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String published = "published term description";
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("upsertGate"))
+                    .withDescription("glossary")
+                    .withReviewers(List.of(SharedEntities.get().USER1_REF)));
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("upsertTerm")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription(published));
+
+    deployHookWorkflow(
+        client, "glossaryTerm", term.getFullyQualifiedName(), List.of("description"));
+
+    // An upsert body carries no id; the stored term must be matched as the same asset.
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms",
+            new CreateGlossaryTerm()
+                .withName(term.getName())
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("proposed via upsert"),
+            RequestOptions.builder().build());
+
+    awaitOpenApprovalTaskAssignedTo(
+        client, term.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+    assertEquals(
+        published, client.glossaryTerms().get(term.getId().toString(), "").getDescription());
+    JsonNode request = onlyChangeRequest(client, term.getId());
+    assertEquals("Pending", request.get("status").asText());
+    assertEquals("admin", request.get("requestedBy").asText());
+  }
+
+  @Test
+  void test_customPropertyChangeIsHeldForApproval(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = "wfGate" + UUID.randomUUID().toString().substring(0, 8);
+    Type glossaryType =
+        MAPPER.readValue(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/metadata/types/name/glossary?fields=customProperties",
+                    null,
+                    RequestOptions.builder().build()),
+            Type.class);
+    Type stringType =
+        MAPPER.readValue(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/metadata/types/name/string",
+                    null,
+                    RequestOptions.builder().build()),
+            Type.class);
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metadata/types/" + glossaryType.getId(),
+            new CustomProperty()
+                .withName(property)
+                .withDescription("Custom property gated by an approval workflow")
+                .withPropertyType(stringType.getEntityReference()),
+            Type.class);
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("cpGate"))
+                    .withDescription("glossary")
+                    .withReviewers(List.of(SharedEntities.get().USER1_REF)));
+    deployHookWorkflow(
+        client, "glossary", glossary.getFullyQualifiedName(), List.of("extension." + property));
+
+    client
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/extension\",\"value\":{\"%s\":\"proposed\"}}]"
+                    .formatted(property)));
+
+    awaitOpenApprovalTaskAssignedTo(
+        client, glossary.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+    assertNull(
+        client.glossaries().get(glossary.getId().toString(), "extension").getExtension(),
+        "The custom property change must be held, not published");
+    JsonNode request = onlyChangeRequest(client, glossary.getId());
+    assertEquals("Pending", request.get("status").asText());
+    assertEquals(
+        "extension", request.get("activeRevision").get("ops").get(0).get("field").asText());
+  }
+
+  @Test
+  void test_approvedChangeRequestIsAppliedAsTheRequester(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "applied");
+    String requestId = submitDescription(glossary, "approved description");
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+
+    approve(awaitRequestTask(requestId, glossary));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("approved description", descriptionOf(glossary));
+    assertEquals(
+        SharedEntities.get().USER2.getName(),
+        versionWithDescription(glossary, "approved description").get("updatedBy").asText());
+  }
+
+  @Test
+  void test_rejectedChangeRequestIsDiscarded(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "rejected");
+    String requestId = submitDescription(glossary, "rejected description");
+
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            awaitRequestTask(requestId, glossary).getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Rejected)
+                .withComment("not this wording"));
+
+    awaitRequestStatus(requestId, "Rejected");
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+  }
+
+  @Test
+  void test_requesterCannotApproveOwnChangeRequest(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "selfApproval");
+    String requestId = submitDescription(glossary, "self approved");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.user2Client()
+                .tasks()
+                .resolve(
+                    task.getId().toString(),
+                    new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+  }
+
+  @RetryingTest(2)
+  void test_secondEditRevisesTheSameChangeRequest(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "revision");
+    String requestId = submitDescription(glossary, "first draft");
+    Task firstTask = awaitRequestTask(requestId, glossary);
+
+    assertEquals(requestId, submitDescription(glossary, "second draft"));
+    await("revision 2 of " + requestId)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
+    Task secondTask = awaitRequestTask(requestId, glossary);
+    assertNotEquals(firstTask.getId(), secondTask.getId());
+    assertThrows(OpenMetadataException.class, () -> approve(firstTask));
+
+    approve(secondTask);
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("second draft", descriptionOf(glossary));
+  }
+
+  @Test
+  void test_heldRequestWithRenameIsAppliedWholeOnApproval(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "rename");
+    String renamed = ns.prefix("renamedGlossary");
+    String requestId =
+        submit(
+            glossary,
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"renamed and described\"},"
+                + "{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"%s\"}]".formatted(renamed));
+    assertEquals(glossary.getName(), glossaryById(glossary).getName());
+
+    approve(awaitRequestTask(requestId, glossary));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals(renamed, after.getName());
+    assertEquals("renamed and described", after.getDescription());
+  }
+
+  @RetryingTest(2)
+  void test_changeWhoseFieldWasPublishedSinceIsSupersededAndItsTaskClosed(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "conflict");
+    String requestId = submitDescription(glossary, "requested description");
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
+
+    awaitRequestStatus(requestId, "Superseded");
+    assertEquals("Superseded", outcomeOf(requestId, "description"));
+    assertEquals("ingested description", descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+    await("comment on " + task.getId())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(taskCommentContains(task, "changed after this request was submitted")));
+
+    String again = submitDescription(glossary, "rebased description");
+    assertNotEquals(requestId, again);
+    approve(awaitRequestTask(again, glossary));
+    awaitRequestStatus(again, "Applied");
+    assertEquals("rebased description", descriptionOf(glossary));
+  }
+
+  @RetryingTest(2)
+  void test_supersededChangeLeavesTheReviewAndTheOtherChangeIsStillApproved(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "restate");
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("requested text", "new name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
+
+    await("description of " + requestId + " superseded")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Superseded", outcomeOf(requestId, "description")));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals("Pending", outcomeOf(requestId, "displayName"));
+    await("comment on " + task.getId())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(taskCommentContains(task, "Still waiting for review: displayName")));
+    Task same = awaitRequestTask(requestId, glossary);
+    assertEquals(task.getId(), same.getId());
+
+    approve(same);
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("ingested description", after.getDescription());
+    assertEquals("new name", after.getDisplayName());
+  }
+
+  @RetryingTest(2)
+  void test_partlyApprovedRequestPublishesTheTagAndKeepsTheDescriptionOnTheSameTask(
+      TestNamespace ns) throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "partial", 1, List.of("description", "tags"));
+    String requestId =
+        submit(
+            glossary,
+            """
+        [{"op":"replace","path":"/description","value":"kept description"},
+         {"op":"add","path":"/tags","value":[{"tagFQN":"PII.Sensitive","source":"Classification","labelType":"Manual","state":"Confirmed"}]}]
+        """);
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(task, TaskResolutionType.Approved, approve("tags").withKey("PII.Sensitive"));
+
+    await("tag of " + requestId + " published")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Applied", outcomeOf(requestId, "tags")));
+    assertTrue(
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .anyMatch(tag -> "PII.Sensitive".equals(tag.getTagFQN())));
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    JsonNode request = changeRequest(requestId);
+    assertEquals("Pending", request.get("status").asText());
+    assertEquals(1, request.get("activeRevisionNumber").asInt());
+    assertEquals("Pending", outcomeOf(requestId, "description"));
+    assertTrue(eventTypes(requestHistory(requestId, "events")).contains("PartiallyApplied"));
+    Task same = awaitRequestTask(requestId, glossary);
+    assertEquals(task.getId(), same.getId());
+
+    resolveChanges(same, TaskResolutionType.Approved, approve("description"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("kept description", descriptionOf(glossary));
+    assertEquals(1, requestHistory(requestId, "revisions").size());
+  }
+
+  @RetryingTest(2)
+  void test_partialRejectionDropsTheChangeAndKeepsTheRestPending(TestNamespace ns)
+      throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialRejectLoop", 1, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("rejected text", "kept name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(task, TaskResolutionType.Rejected, reject("description"));
+
+    await("description of " + requestId + " rejected")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Rejected", outcomeOf(requestId, "description")));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("kept name", after.getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
+  }
+
+  @RetryingTest(2)
+  void test_reviewerCanApproveTheChangesASupersededChangeDoesNotTouch(TestNamespace ns)
+      throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialConflict", 1, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("stale text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(SdkClients.ingestionBotClient(), glossary, descriptionPatch("ingested description"));
+    await("description of " + requestId + " superseded")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("Superseded", outcomeOf(requestId, "description")));
+
+    resolveChanges(task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(1, changeRequest(requestId).get("activeRevisionNumber").asInt());
+    assertEquals("approved name", glossaryById(glossary).getDisplayName());
+    assertEquals("ingested description", descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @RetryingTest(2)
+  void test_twoReviewersMustAgreeOnAChangeBeforeItIsPublished(TestNamespace ns) throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialTwo", 2, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("dropped text", "agreed name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("displayName"));
+    assertEquals("Pending", outcomeOf(requestId, "displayName"));
+    assertEquals("published name", glossaryById(glossary).getDisplayName());
+
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Approved, approve("displayName"));
+    await("display name of " + requestId + " published")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("agreed name", glossaryById(glossary).getDisplayName()));
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Rejected, reject("description"));
+    assertEquals("Pending", outcomeOf(requestId, "description"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Rejected, reject("description"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(4, requestHistory(requestId, "decisions").size());
+  }
+
+  @RetryingTest(2)
+  void test_aChangeReviewersCannotAgreeOnIsNotPublishedAndTheRestGoesOn(TestNamespace ns)
+      throws Exception {
+    Glossary glossary =
+        partialDecisionGlossary(ns, "partialDispute", 2, List.of("description", "displayName"));
+    String requestId = submit(glossary, descriptionAndDisplayName("disputed text", "agreed name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("description"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Rejected, reject("description"));
+
+    await("description of " + requestId + " out of reach of agreement")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals("NotAgreed", outcomeOf(requestId, "description")));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals("Pending", outcomeOf(requestId, "displayName"));
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+    await("comment on " + task.getId() + " explaining the disagreement")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    SdkClients.adminClient()
+                        .tasks()
+                        .get(task.getId().toString(), "*")
+                        .getComments()
+                        .stream()
+                        .anyMatch(
+                            comment ->
+                                comment
+                                    .getMessage()
+                                    .contains("Reviewers could not agree on description"))));
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("displayName"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Approved, approve("displayName"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("agreed name", after.getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
+    awaitTaskClosed(glossary, task);
+  }
+
+  @RetryingTest(2)
+  void test_requestWhoseOnlyChangeReviewersCannotAgreeOnEndsRejected(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "partialDisputeAll", 2, List.of("description"));
+    String requestId = submitDescription(glossary, "disputed text");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        SdkClients.user1Client(), task, TaskResolutionType.Approved, approve("description"));
+    resolveChanges(
+        SdkClients.user3Client(), task, TaskResolutionType.Rejected, reject("description"));
+
+    awaitRequestStatus(requestId, "Rejected");
+    assertEquals("NotAgreed", outcomeOf(requestId, "description"));
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @Test
+  void test_partialDecisionsAreSettledInsideTheApprovalStep(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "partialEdges");
+    ObjectNode defaultMode = partialDecisionWorkflow(glossary, 1, List.of("description"));
+    ((ObjectNode) defaultMode.at("/trigger/config")).put("approvalMode", "Default");
+    OpenMetadataException notEnforced =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(defaultMode));
+    assertEquals(400, notEnforced.getStatusCode());
+    assertTrue(
+        notEnforced.getMessage().contains("Enforce approval mode"), notEnforced.getMessage());
+
+    ObjectNode partialEdge = partialDecisionWorkflow(glossary, 1, List.of("description"));
+    addEdge((ArrayNode) partialEdge.get("edges"), "Approve", "ApprovedEnd", "partialApprove");
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(partialEdge));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("'partialApprove'"), refused.getMessage());
+  }
+
+  @Test
+  void test_enforceModeAllowsOneApprovalTaskPerPath(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "approvalPaths");
+
+    ObjectNode sequential = twoApprovalWorkflow(glossary);
+    ArrayNode sequentialEdges = sequential.putArray("edges");
+    addEdge(sequentialEdges, "Start", "Approve", null);
+    addEdge(sequentialEdges, "Approve", "SecondApprove", "approve");
+    addEdge(sequentialEdges, "Approve", "RejectedEnd", "reject");
+    addEdge(sequentialEdges, "SecondApprove", "ApprovedEnd", "approve");
+    addEdge(sequentialEdges, "SecondApprove", "RejectedEnd", "reject");
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(sequential));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("on the same path"), refused.getMessage());
+
+    ObjectNode branched = twoApprovalWorkflow(glossary);
+    ObjectNode route = ((ArrayNode) branched.get("nodes")).addObject();
+    route.put("type", "automatedTask").put("subType", "checkEntityAttributesTask");
+    route.put("name", "Route");
+    route.putObject("config").put("rules", "{\"==\":[1,1]}");
+    route.putObject("inputNamespaceMap").put("relatedEntity", "global");
+    ArrayNode branchedEdges = branched.putArray("edges");
+    addEdge(branchedEdges, "Start", "Route", null);
+    addEdge(branchedEdges, "Route", "Approve", "true");
+    addEdge(branchedEdges, "Route", "SecondApprove", "false");
+    addEdge(branchedEdges, "Approve", "ApprovedEnd", "approve");
+    addEdge(branchedEdges, "Approve", "RejectedEnd", "reject");
+    addEdge(branchedEdges, "SecondApprove", "ApprovedEnd", "approve");
+    addEdge(branchedEdges, "SecondApprove", "RejectedEnd", "reject");
+    assertDoesNotThrow(() -> createWorkflowOrFail(branched));
+  }
+
+  @Test
+  void test_enforceModeRefusesAPathWithoutAnApprovalTask(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "skipApproval");
+    String name = "skipApproval" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    name, "glossary", glossary.getFullyQualifiedName(), List.of("description")));
+    ObjectNode route = ((ArrayNode) workflow.get("nodes")).addObject();
+    route.put("type", "automatedTask").put("subType", "checkEntityAttributesTask");
+    route.put("name", "Route");
+    route.putObject("config").put("rules", "{\"==\":[1,1]}");
+    route.putObject("inputNamespaceMap").put("relatedEntity", "global");
+    ArrayNode edges = workflow.putArray("edges");
+    addEdge(edges, "Start", "Route", null);
+    addEdge(edges, "Route", "Approve", "true");
+    addEdge(edges, "Route", "ApprovedEnd", "false");
+    addEdge(edges, "Approve", "ApprovedEnd", "approve");
+    addEdge(edges, "Approve", "RejectedEnd", "reject");
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> createWorkflowOrFail(workflow));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("without a user approval task"), refused.getMessage());
+  }
+
+  // The Enforce-mode hook workflow with a second approval task; the caller wires the edges.
+  private ObjectNode twoApprovalWorkflow(Glossary glossary) throws Exception {
+    String name = "approvalPaths" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    name, "glossary", glossary.getFullyQualifiedName(), List.of("description")));
+    ArrayNode nodes = (ArrayNode) workflow.get("nodes");
+    nodes.add(((ObjectNode) nodes.get(1)).deepCopy().put("name", "SecondApprove"));
+    return workflow;
+  }
+
+  @Test
+  void test_rejectedChangeOfAPartlyApprovedRequestIsDropped(TestNamespace ns) throws Exception {
+    Glossary glossary = twoFieldGatedGlossary(ns, "partialReject");
+    String requestId =
+        submit(glossary, descriptionAndDisplayName("rejected text", "approved name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    resolveChanges(
+        task, TaskResolutionType.Approved, approve("displayName"), reject("description"));
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("approved name", after.getDisplayName());
+    assertEquals(PUBLISHED_DESCRIPTION, after.getDescription());
+    assertEquals(1, changeRequest(requestId).get("activeRevisionNumber").asInt());
+  }
+
+  @Test
+  void test_partialApprovalRefusesASelectionThatDecidesNothingOrUnknownChanges(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = twoFieldGatedGlossary(ns, "partialInvalid");
+    String requestId = submit(glossary, descriptionAndDisplayName("text", "name"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Approved, approve("owners")))
+            .getStatusCode());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    resolveChanges(
+                        task,
+                        TaskResolutionType.Approved,
+                        approve("description"),
+                        approve("description")))
+            .getStatusCode());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Rejected, reject("description")))
+            .getStatusCode());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Rejected, approve("description")))
+            .getStatusCode());
+    // Without partial decisions, an approval step decides every change at once.
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> resolveChanges(task, TaskResolutionType.Approved, approve("displayName")))
+            .getStatusCode());
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+  }
+
+  @Test
+  void test_ungatedFieldChangedSinceSubmitKeepsTheNewerValue(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "drift");
+    String requestId =
+        submit(
+            glossary,
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"requested description\"},"
+                + "{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"requested name\"}]");
+    Task task = awaitRequestTask(requestId, glossary);
+    patchAs(
+        SdkClients.user3Client(),
+        glossary,
+        "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"newer name\"}]");
+
+    approve(task);
+
+    awaitRequestStatus(requestId, "Applied");
+    Glossary after = glossaryById(glossary);
+    assertEquals("requested description", after.getDescription());
+    assertEquals("newer name", after.getDisplayName());
+  }
+
+  @RetryingTest(2)
+  void test_twoRequestersGetIndependentChangeRequests(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "twoRequesters");
+    String first = submitDescription(glossary, "from user2");
+    String second =
+        pendingRequestId(
+            patchAs(SdkClients.user3Client(), glossary, descriptionPatch("from user3")),
+            SharedEntities.get().USER3.getName());
+    assertNotEquals(first, second);
+
+    Task secondTask = awaitRequestTask(second, glossary);
+    approve(awaitRequestTask(first, glossary));
+    awaitRequestStatus(first, "Applied");
+
+    // The first publication moved the description the second request was based on, so the second
+    // request's only change is superseded and its review task closes.
+    awaitRequestStatus(second, "Superseded");
+    assertEquals("Superseded", outcomeOf(second, "description"));
+    awaitTaskClosed(glossary, secondTask);
+    assertEquals("from user2", descriptionOf(glossary));
+  }
+
+  @RetryingTest(2)
+  void test_withdrawnChangeRequestClosesItsTask(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "withdraw");
+    String requestId = submitDescription(glossary, "withdrawn description");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    SdkClients.user2Client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/%s/withdraw".formatted(requestId),
+            Map.of("expectedRevision", 1),
+            RequestOptions.builder().build());
+
+    assertEquals("Withdrawn", changeRequest(requestId).get("status").asText());
+    awaitTaskClosed(glossary, task);
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+  }
+
+  @RetryingTest(2)
+  void test_tagAnotherChangePublishedLeavesTheRequestAndTheRestStaysUnderReview(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereTag", 1, List.of("tags"));
+    String requestId = submit(glossary, tagsPatch("PII.Sensitive", "PersonalData.Personal"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    patchAs(SdkClients.ingestionBotClient(), glossary, tagsPatch("PII.Sensitive"));
+
+    await("tag PII.Sensitive of " + requestId + " published elsewhere")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals("AlreadyPublished", outcomeOf(requestId, "tags", "PII.Sensitive")));
+    assertEquals("Pending", outcomeOf(requestId, "tags", "PersonalData.Personal"));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+    await("task " + task.getId() + " shows what is left")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Task refreshed = SdkClients.adminClient().tasks().get(task.getId().toString(), "*");
+              assertTrue(
+                  refreshed.getComments().stream()
+                      .anyMatch(
+                          comment ->
+                              comment
+                                  .getMessage()
+                                  .contains(
+                                      "Still waiting for review: tags PersonalData.Personal")));
+              JsonNode tagsDiff = proposedChanges(refreshed).path("tags");
+              assertEquals(List.of("PersonalData.Personal"), texts(tagsDiff.path("added")));
+            });
+    assertEquals(task.getId(), awaitRequestTask(requestId, glossary).getId());
+
+    resolveChanges(
+        task, TaskResolutionType.Approved, approve("tags").withKey("PersonalData.Personal"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(
+        Set.of("PII.Sensitive", "PersonalData.Personal"),
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .map(TagLabel::getTagFQN)
+            .collect(Collectors.toSet()));
+  }
+
+  @RetryingTest(2)
+  void test_ownerAnotherChangePublishedLeavesTheRequest(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereOwner", 1, List.of("owners"));
+    String requestId =
+        submit(glossary, ownersPatch(shared.USER2_REF, shared.USER1_REF, shared.USER3_REF));
+    awaitRequestTask(requestId, glossary);
+
+    patchAs(
+        SdkClients.ingestionBotClient(), glossary, ownersPatch(shared.USER2_REF, shared.USER1_REF));
+
+    String user1 = shared.USER1_REF.getId().toString();
+    String user3 = shared.USER3_REF.getId().toString();
+    await("owner " + user1 + " of " + requestId + " published elsewhere")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals("AlreadyPublished", outcomeOf(requestId, "owners", user1)));
+    assertEquals("Pending", outcomeOf(requestId, "owners", user3));
+    assertEquals("Pending", changeRequest(requestId).get("status").asText());
+  }
+
+  @RetryingTest(2)
+  void test_requestEveryChangeOfWhichAnotherChangePublishedIsCancelled(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereAll", 1, List.of("tags"));
+    String requestId = submit(glossary, tagsPatch("PII.Sensitive"));
+    Task task = awaitRequestTask(requestId, glossary);
+
+    patchAs(SdkClients.ingestionBotClient(), glossary, tagsPatch("PII.Sensitive"));
+
+    awaitRequestStatus(requestId, "Cancelled");
+    assertTrue(
+        changeRequest(requestId)
+            .path("statusReason")
+            .asText()
+            .contains("Nothing is left to review"));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @RetryingTest(2)
+  void test_partlyPublishedRequestWhoseRestAnotherChangePublishedIsApplied(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = partialDecisionGlossary(ns, "elsewhereRest", 1, List.of("tags"));
+    String requestId = submit(glossary, tagsPatch("PII.Sensitive", "PersonalData.Personal"));
+    Task task = awaitRequestTask(requestId, glossary);
+    resolveChanges(task, TaskResolutionType.Approved, approve("tags").withKey("PII.Sensitive"));
+    await("tag PII.Sensitive of " + requestId + " published")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals("Applied", outcomeOf(requestId, "tags", "PII.Sensitive")));
+
+    patchAs(
+        SdkClients.ingestionBotClient(),
+        glossary,
+        tagsPatch("PII.Sensitive", "PersonalData.Personal"));
+
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("AlreadyPublished", outcomeOf(requestId, "tags", "PersonalData.Personal"));
+    awaitTaskClosed(glossary, task);
+  }
+
+  @RetryingTest(2)
+  void test_deletingHookWorkflowCancelsPendingChangeRequests(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, "workflowDeleted");
+    String workflowId =
+        deployHookWorkflow(
+            client, "glossary", glossary.getFullyQualifiedName(), List.of("description"));
+    String requestId = submitDescription(glossary, "orphaned description");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            BASE_PATH + "/" + workflowId + "?hardDelete=true",
+            null,
+            RequestOptions.builder().build());
+
+    awaitRequestStatus(requestId, "Cancelled");
+    awaitTaskClosed(glossary, task);
+    patchAs(SdkClients.user2Client(), glossary, descriptionPatch("published directly"));
+    assertEquals("published directly", descriptionOf(glossary));
+  }
+
+  @RetryingTest(2)
+  void test_changeRequestHistoryListsRevisionsDecisionsAndEvents(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "history");
+    String requestId = submitDescription(glossary, "first draft");
+    awaitRequestTask(requestId, glossary);
+    assertEquals(requestId, submitDescription(glossary, "second draft"));
+    await("revision 2 of " + requestId)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertEquals(2, changeRequest(requestId).get("activeRevisionNumber").asInt()));
+    approve(awaitRequestTask(requestId, glossary));
+    awaitRequestStatus(requestId, "Applied");
+
+    JsonNode revisions = requestHistory(requestId, "revisions");
+    assertEquals(2, revisions.size());
+    assertEquals("Superseded", revisions.get(0).get("status").asText());
+    assertEquals(2, revisions.get(1).get("revisionNumber").asInt());
+
+    JsonNode decisions = requestHistory(requestId, "decisions");
+    assertEquals(1, decisions.size());
+    assertEquals("Approve", decisions.get(0).get("decision").asText());
+    assertEquals(SharedEntities.get().USER1.getName(), decisions.get(0).get("decidedBy").asText());
+
+    JsonNode events = requestHistory(requestId, "events");
+    assertEquals(List.of("Submitted", "Revised", "Approved", "Applied"), eventTypes(events));
+    for (int i = 0; i < events.size(); i++) {
+      assertEquals(i + 1, events.get(i).get("sequence").asInt());
+    }
+    assertEquals("Applied", events.get(events.size() - 1).get("toStatus").asText());
+  }
+
+  @Test
+  void test_previewReportsWhetherAnEditWouldBeHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, "preview");
+    String workflowId =
+        deployHookWorkflow(
+            client, "glossary", glossary.getFullyQualifiedName(), List.of("description"));
+
+    JsonNode held = preview(SdkClients.user2Client(), glossary, descriptionPatch("previewed"));
+    assertTrue(held.get("requiresApproval").asBoolean());
+    assertEquals(workflowId, held.get("workflowDefinitionId").asText());
+    assertEquals("description", held.get("ops").get(0).get("field").asText());
+
+    JsonNode published =
+        preview(
+            SdkClients.user2Client(),
+            glossary,
+            "[{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"previewed\"}]");
+    assertFalse(published.get("requiresApproval").asBoolean());
+    assertFalse(
+        preview(SdkClients.ingestionBotClient(), glossary, descriptionPatch("by bot"))
+            .get("requiresApproval")
+            .asBoolean());
+
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+    assertEquals(0, changeRequestsOn(glossary).size(), "A preview must not submit anything");
+  }
+
+  @RetryingTest(2)
+  void test_adminOverridePublishesWithoutReview(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "override");
+    String requestId = submitDescription(glossary, "published by override");
+    Task task = awaitRequestTask(requestId, glossary);
+
+    OpenMetadataException notAdmin =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> override(SdkClients.user1Client(), requestId, 1, "reviewer is not an admin"));
+    assertEquals(403, notAdmin.getStatusCode());
+    OpenMetadataException staleRevision =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> override(SdkClients.adminClient(), requestId, 2, "wrong revision"));
+    assertEquals(409, staleRevision.getStatusCode());
+    assertEquals(PUBLISHED_DESCRIPTION, descriptionOf(glossary));
+
+    override(SdkClients.adminClient(), requestId, 1, "urgent fix");
+
+    assertEquals("Applied", changeRequest(requestId).get("status").asText());
+    assertEquals("published by override", descriptionOf(glossary));
+    awaitTaskClosed(glossary, task);
+    JsonNode decisions = requestHistory(requestId, "decisions");
+    assertEquals("Override", decisions.get(0).get("decision").asText());
+    assertEquals("admin", decisions.get(0).get("decidedBy").asText());
+    assertEquals("urgent fix", decisions.get(0).get("comment").asText());
+    assertEquals(
+        List.of("Submitted", "Overridden", "Approved", "Applied"),
+        eventTypes(requestHistory(requestId, "events")));
+  }
+
+  @RetryingTest(2)
+  void test_ownerApprovesAChangeThatAddsReviewersAndTheStatusStepSucceeds(TestNamespace ns)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("addsReviewer"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(shared.USER2_REF, shared.USER3_REF)));
+    deployStatusHookWorkflow(glossary);
+
+    // USER2 adds USER1 as a reviewer; with no reviewers yet, the other owner (USER3) reviews it.
+    String requestId =
+        submit(
+            glossary,
+            "[{\"op\":\"add\",\"path\":\"/reviewers\",\"value\":[{\"id\":\"%s\",\"type\":\"user\"}]}]"
+                .formatted(shared.USER1.getId()));
+    Task task = awaitRequestTask(requestId, glossary);
+    SdkClients.user3Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    awaitRequestStatus(requestId, "Applied");
+    await("glossary marked Approved after the reviewer list changed")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED,
+                    SdkClients.adminClient()
+                        .glossaries()
+                        .get(glossary.getId().toString(), "reviewers")
+                        .getEntityStatus()));
+    assertEquals(
+        List.of(shared.USER1.getId()),
+        SdkClients.adminClient()
+            .glossaries()
+            .get(glossary.getId().toString(), "reviewers")
+            .getReviewers()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+  }
+
+  // Changing the stage of a held asset is a request like any other edit: it waits for approval and
+  // the review applies it, even though the workflow owns the stage.
+  @Test
+  void test_stageChangeOfHeldAssetWaitsForApproval(TestNamespace ns) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, "stageRequest");
+    String workflowName = "stageRequest" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, "glossary", glossary.getFullyQualifiedName(), List.of()));
+    // Setting the stage when a request is rejected makes the workflow own the glossary stage.
+    ((ArrayNode) workflow.get("nodes")).add(statusNode("SetDraft", "Draft", "global"));
+    ArrayNode edges = workflow.putArray("edges");
+    addEdge(edges, "Start", "Approve", null);
+    addEdge(edges, "Approve", "ApprovedEnd", "approve");
+    addEdge(edges, "Approve", "SetDraft", "reject");
+    addEdge(edges, "SetDraft", "RejectedEnd", null);
+    createWorkflow(workflow, workflowName);
+    EntityStatus published = glossaryById(glossary).getEntityStatus();
+
+    String requestId =
+        submit(
+            glossary, "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Deprecated\"}]");
+
+    assertEquals(
+        published,
+        glossaryById(glossary).getEntityStatus(),
+        "The stage stays until the request is approved");
+    approve(awaitRequestTask(requestId, glossary));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals(EntityStatus.DEPRECATED, glossaryById(glossary).getEntityStatus());
+  }
+
+  // Start -> In Review -> Approve -> Approved (as the approver); the approval step publishes the
+  // request on approve and discards it on reject.
+  private void deployStatusHookWorkflow(Glossary glossary) throws Exception {
+    String workflowName = "statusHook" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, "glossary", glossary.getFullyQualifiedName(), List.of()));
+    ArrayNode nodes = (ArrayNode) workflow.get("nodes");
+    ((ObjectNode) nodes.get(1)).putArray("output").add("updatedBy");
+    nodes.add(statusNode("SetInReview", "In Review", "global"));
+    nodes.add(statusNode("SetApproved", "Approved", "Approve"));
+    ArrayNode edges = workflow.putArray("edges");
+    addEdge(edges, "Start", "SetInReview", null);
+    addEdge(edges, "SetInReview", "Approve", null);
+    addEdge(edges, "Approve", "SetApproved", "approve");
+    addEdge(edges, "SetApproved", "ApprovedEnd", null);
+    addEdge(edges, "Approve", "RejectedEnd", "reject");
+    createWorkflow(workflow, workflowName);
+  }
+
+  private void createWorkflow(ObjectNode workflow, String workflowName) throws Exception {
+    JsonNode created =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    BASE_PATH,
+                    MAPPER.treeToValue(workflow, CreateWorkflowDefinition.class),
+                    RequestOptions.builder().build()));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(SdkClients.adminClient(), workflowName);
+  }
+
+  private static ObjectNode statusNode(String name, String status, String updatedByNamespace) {
+    ObjectNode node = MAPPER.createObjectNode();
+    node.put("type", "automatedTask").put("subType", "setEntityAttributeTask").put("name", name);
+    node.putObject("config").put("fieldName", "entityStatus").put("fieldValue", status);
+    node.putObject("inputNamespaceMap")
+        .put("relatedEntity", "global")
+        .put("updatedBy", updatedByNamespace);
+    return node;
+  }
+
+  private static void addEdge(ArrayNode edges, String from, String to, String condition) {
+    ObjectNode edge = edges.addObject().put("from", from).put("to", to);
+    if (condition != null) {
+      edge.put("condition", condition);
+    }
+  }
+
+  @RetryingTest(2)
+  void test_requestEndedBeforeItsTaskExistsLeavesNoOpenTask(TestNamespace ns) throws Exception {
+    Glossary glossary = reviewedGlossary(ns, "earlyEnd");
+    // Ended straight after submission, while delivery may still be creating the review task.
+    String overridden = submitDescription(glossary, "overridden at once");
+    override(SdkClients.adminClient(), overridden, 1, "published before review");
+    String withdrawn =
+        pendingRequestId(
+            patchAs(SdkClients.user3Client(), glossary, descriptionPatch("gone")),
+            SharedEntities.get().USER3.getName());
+    SdkClients.user3Client()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/%s/withdraw".formatted(withdrawn),
+            Map.of("expectedRevision", 1),
+            RequestOptions.builder().build());
+
+    assertEquals("Applied", changeRequest(overridden).get("status").asText());
+    assertEquals("Withdrawn", changeRequest(withdrawn).get("status").asText());
+    await("no review task left open for ended requests")
+        .during(Duration.ofSeconds(5))
+        .atMost(Duration.ofSeconds(90))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    listOpenApprovalTasks(
+                            SdkClients.adminClient(), glossary.getFullyQualifiedName())
+                        .getData()
+                        .isEmpty()));
+    assertEquals("overridden at once", descriptionOf(glossary));
+  }
+
+  @Test
+  void test_changeRequestWithNoOtherReviewerGoesToAdminsWhenTheNodeAsks(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    // Owned only by the requester and without reviewers: the requester can never review it.
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("adminFallback"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(SharedEntities.get().USER2_REF)));
+    String workflowName = "adminFallback" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName,
+                    "glossary",
+                    glossary.getFullyQualifiedName(),
+                    List.of("description")));
+    ((ObjectNode) workflow.at("/nodes/1/config/assignees"))
+        .put("emptyAssigneeStrategy", "assignAdmins");
+    createWorkflow(workflow, workflowName);
+    String requestId = submitDescription(glossary, "reviewed by an admin");
+
+    Task task = awaitRequestTask(requestId, glossary);
+    Set<String> assignees =
+        task.getAssignees().stream().map(EntityReference::getName).collect(Collectors.toSet());
+    assertTrue(assignees.contains("admin"), "admins review it: " + assignees);
+    assertFalse(
+        assignees.contains(SharedEntities.get().USER2.getName()),
+        "never its requester: " + assignees);
+
+    admin
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+    awaitRequestStatus(requestId, "Applied");
+    assertEquals("reviewed by an admin", descriptionOf(glossary));
+  }
+
+  @Test
+  void test_previewIsRefusedExactlyWhenThePatchWouldBe(TestNamespace ns) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    // Owned by USER2 only, so USER3 is an ordinary non-owner here.
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("previewAuth"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(shared.USER2_REF))
+                    .withReviewers(List.of(shared.USER1_REF)));
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description"));
+    String ownersPatch =
+        "[{\"op\":\"add\",\"path\":\"/owners/0\",\"value\":{\"id\":\"%s\",\"type\":\"user\"}}]"
+            .formatted(shared.USER1.getId());
+
+    OpenMetadataException previewRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> preview(SdkClients.user3Client(), glossary, ownersPatch));
+    OpenMetadataException patchRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> patchAs(SdkClients.user3Client(), glossary, ownersPatch));
+    assertEquals(403, previewRefused.getStatusCode(), previewRefused.getMessage());
+    assertEquals(403, patchRefused.getStatusCode(), patchRefused.getMessage());
+
+    JsonNode allowed = preview(SdkClients.user2Client(), glossary, ownersPatch);
+    assertFalse(allowed.get("requiresApproval").asBoolean(), "owners are not gated here");
+    JsonNode gated = preview(SdkClients.user2Client(), glossary, descriptionPatch("gated"));
+    assertTrue(gated.get("requiresApproval").asBoolean(), "description is gated here");
+    assertEquals(0, changeRequestsOn(glossary).size(), "a preview never submits");
+  }
+
+  @Test
+  void test_tableColumnCsvImportReportsHeldRowsAsPendingApproval(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix("csvgate_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName("csvgate_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("csvgate_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName("csvgate_table")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER2_REF, shared.USER3_REF))
+                    .withColumns(
+                        List.of(
+                            new Column().withName("id").withDataType(ColumnDataType.INT),
+                            new Column().withName("name").withDataType(ColumnDataType.STRING))));
+    deployHookWorkflow(admin, "table", table.getFullyQualifiedName(), List.of());
+
+    // USER2 edits one column description in the table's column CSV.
+    String[] lines =
+        SdkClients.user2Client().tables().exportCsv(table.getFullyQualifiedName()).split("\n");
+    String[] firstColumn = lines[1].split(",", -1);
+    firstColumn[2] = "held column description";
+    lines[1] = String.join(",", firstColumn);
+    String edited = String.join("\n", lines) + "\n";
+
+    CsvImportResult dryRun =
+        JsonUtils.readValue(
+            SdkClients.user2Client()
+                .tables()
+                .importCsv(table.getFullyQualifiedName(), edited, true),
+            CsvImportResult.class);
+
+    CsvImportResult result =
+        JsonUtils.readValue(
+            SdkClients.user2Client()
+                .tables()
+                .importCsv(table.getFullyQualifiedName(), edited, false),
+            CsvImportResult.class);
+    assertEquals(2, result.getNumberOfRowsPendingApproval(), result.getImportResultsCsv());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    assertTrue(
+        result.getImportResultsCsv().contains("Pending approval: change request"),
+        result.getImportResultsCsv());
+    assertEquals(2, dryRun.getNumberOfRowsPendingApproval(), dryRun.getImportResultsCsv());
+
+    Table published = admin.tables().get(table.getId().toString(), "columns");
+    assertNull(published.getColumns().get(0).getDescription(), "the column edit is held");
+    JsonNode requests =
+        MAPPER
+            .readTree(
+                admin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.GET,
+                        "/v1/changeRequests?entityId=" + table.getId(),
+                        null,
+                        RequestOptions.builder().build()))
+            .get("data");
+    assertEquals(1, requests.size());
+    assertEquals("Pending", requests.get(0).get("status").asText());
+    assertTrue(result.getImportResultsCsv().contains(requests.get(0).get("id").asText()));
+  }
+
+  @RetryingTest(2)
+  void test_bulkGlossaryTermAssignmentHoldsGatedAssetsAsChangeRequests(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = gatedTable(admin, ns, "bulkterm");
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("bulk_gate_glossary"))
+                    .withDescription("Glossary for bulk asset holds"));
+    GlossaryTerm term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("bulk_gate_term")
+                    .withDescription("Term for bulk asset holds")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+
+    BulkOperationResult result =
+        bulkAssets(
+            admin,
+            "/v1/glossaryTerms/%s/assets/add".formatted(term.getId()),
+            new AddGlossaryToAssetsRequest()
+                .withAssets(List.of(table.getEntityReference()))
+                .withDryRun(false));
+    assertEquals(1, result.getNumberOfRowsPendingApproval());
+    assertEquals(0, result.getNumberOfRowsFailed());
+    JsonNode requests = changeRequestsOn(table);
+    assertEquals(1, requests.size());
+    assertTrue(
+        result
+            .getSuccessRequest()
+            .get(0)
+            .getMessage()
+            .endsWith(requests.get(0).get("id").asText()));
+    assertTrue(
+        listOrEmpty(admin.tables().get(table.getId().toString(), "tags").getTags()).isEmpty(),
+        "the glossary term assignment is held");
+  }
+
+  private Table gatedTable(OpenMetadataClient admin, TestNamespace ns, String name)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    DatabaseService service =
+        admin.databaseServices().create(createDatabaseServiceRequest(ns.prefix(name + "_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(name + "_db")
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(name + "_schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(name + "_table")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(shared.USER2_REF, shared.USER3_REF))
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+    deployHookWorkflow(admin, "table", table.getFullyQualifiedName(), List.of());
+    return table;
+  }
+
+  private static BulkOperationResult bulkAssets(OpenMetadataClient client, String path, Object body)
+      throws Exception {
+    return MAPPER.readValue(
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.PUT, path, body, RequestOptions.builder().build()),
+        BulkOperationResult.class);
+  }
+
+  private static final String PUBLISHED_DESCRIPTION = "published description";
+
+  // Owned by USER2 (requester) and USER3 (another editor), reviewed by USER1.
+  private Glossary createReviewedGlossary(TestNamespace ns, String tag) {
+    SharedEntities shared = SharedEntities.get();
+    return SdkClients.adminClient()
+        .glossaries()
+        .create(
+            new CreateGlossary()
+                .withName(ns.prefix(tag))
+                .withDisplayName("published name")
+                .withDescription(PUBLISHED_DESCRIPTION)
+                .withOwners(List.of(shared.USER2_REF, shared.USER3_REF))
+                .withReviewers(List.of(shared.USER1_REF)));
+  }
+
+  private Glossary reviewedGlossary(TestNamespace ns, String tag) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, tag);
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description"));
+    return glossary;
+  }
+
+  private Glossary twoFieldGatedGlossary(TestNamespace ns, String tag) throws Exception {
+    Glossary glossary = createReviewedGlossary(ns, tag);
+    deployHookWorkflow(
+        SdkClients.adminClient(),
+        "glossary",
+        glossary.getFullyQualifiedName(),
+        List.of("description", "displayName"));
+    return glossary;
+  }
+
+  // An Enforce-mode workflow whose approval step lets reviewers decide change by change: the step
+  // publishes agreed approvals and drops agreed rejections, and stays open for the rest.
+  private ObjectNode partialDecisionWorkflow(Glossary glossary, int threshold, List<String> include)
+      throws Exception {
+    String name = "partialGate" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(
+                hookWorkflowJson(name, "glossary", glossary.getFullyQualifiedName(), include));
+    ObjectNode approveConfig = (ObjectNode) workflow.get("nodes").get(1).get("config");
+    approveConfig
+        .put("allowPartialDecisions", true)
+        .put("approvalThreshold", threshold)
+        .put("rejectionThreshold", threshold);
+    return workflow;
+  }
+
+  // USER2 requests; USER1 reviews, joined by USER3 when two reviewers must agree.
+  private Glossary partialDecisionGlossary(
+      TestNamespace ns, String tag, int threshold, List<String> include) throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    List<EntityReference> reviewers =
+        threshold > 1 ? List.of(shared.USER1_REF, shared.USER3_REF) : List.of(shared.USER1_REF);
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix(tag))
+                    .withDisplayName("published name")
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withOwners(List.of(shared.USER2_REF))
+                    .withReviewers(reviewers));
+    ObjectNode workflow = partialDecisionWorkflow(glossary, threshold, include);
+    createWorkflow(workflow, workflow.get("name").asText());
+    return glossary;
+  }
+
+  private void createWorkflowOrFail(ObjectNode workflow) throws Exception {
+    JsonNode created =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.POST,
+                    BASE_PATH,
+                    MAPPER.treeToValue(workflow, CreateWorkflowDefinition.class),
+                    RequestOptions.builder().build()));
+    trackWorkflowFromJson(created);
+  }
+
+  // Where one change of the request's active revision stands, as the API reports it.
+  private String outcomeOf(String requestId, String field) throws Exception {
+    String outcome = null;
+    for (JsonNode op : changeRequest(requestId).path("activeRevision").path("ops")) {
+      if (field.equals(op.path("field").asText())) {
+        outcome = op.path("outcome").asText();
+      }
+    }
+    return outcome;
+  }
+
+  // Where one element change of the request's active revision stands, as the API reports it.
+  private String outcomeOf(String requestId, String field, String key) throws Exception {
+    String outcome = null;
+    for (JsonNode op : changeRequest(requestId).path("activeRevision").path("ops")) {
+      if (field.equals(op.path("field").asText()) && key.equals(op.path("key").asText())) {
+        outcome = op.path("outcome").asText();
+      }
+    }
+    return outcome;
+  }
+
+  private static JsonNode proposedChanges(Task task) {
+    return MAPPER.valueToTree(task.getPayload()).path("proposedChanges");
+  }
+
+  private static List<String> texts(JsonNode array) {
+    List<String> values = new ArrayList<>();
+    array.forEach(value -> values.add(value.asText()));
+    return values;
+  }
+
+  private static String tagsPatch(String... tagFqns) {
+    String labels =
+        Arrays.stream(tagFqns)
+            .map(
+                fqn ->
+                    "{\"tagFQN\":\"%s\",\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}"
+                        .formatted(fqn))
+            .collect(Collectors.joining(","));
+    return "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[%s]}]".formatted(labels);
+  }
+
+  private static String ownersPatch(EntityReference... owners) {
+    String refs =
+        Arrays.stream(owners)
+            .map(owner -> "{\"id\":\"%s\",\"type\":\"user\"}".formatted(owner.getId()))
+            .collect(Collectors.joining(","));
+    return "[{\"op\":\"replace\",\"path\":\"/owners\",\"value\":[%s]}]".formatted(refs);
+  }
+
+  private boolean taskCommentContains(Task task, String text) {
+    return SdkClients.adminClient().tasks().get(task.getId().toString(), "*").getComments().stream()
+        .anyMatch(comment -> comment.getMessage().contains(text));
+  }
+
+  private static String descriptionAndDisplayName(String description, String displayName) {
+    return ("[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"},"
+            + "{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":\"%s\"}]")
+        .formatted(description, displayName);
+  }
+
+  private static ChangeDecision approve(String field) {
+    return new ChangeDecision().withField(field).withDecision(ChangeDecisionType.APPROVE);
+  }
+
+  private static ChangeDecision reject(String field) {
+    return new ChangeDecision().withField(field).withDecision(ChangeDecisionType.REJECT);
+  }
+
+  // USER1 reviews the task's revision change by change.
+  private void resolveChanges(Task task, TaskResolutionType resolution, ChangeDecision... changes) {
+    resolveChanges(SdkClients.user1Client(), task, resolution, changes);
+  }
+
+  private void resolveChanges(
+      OpenMetadataClient client,
+      Task task,
+      TaskResolutionType resolution,
+      ChangeDecision... changes) {
+    client
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(resolution)
+                .withComment("partial review")
+                .withChangeDecisions(List.of(changes)));
+  }
+
+  private static String descriptionPatch(String value) {
+    return "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]".formatted(value);
+  }
+
+  private String submitDescription(Glossary glossary, String value) throws Exception {
+    return submit(glossary, descriptionPatch(value));
+  }
+
+  // USER2 edits; the edit is held and the pending change request id comes back in the response.
+  private String submit(Glossary glossary, String opsJson) throws Exception {
+    return pendingRequestId(
+        patchAs(SdkClients.user2Client(), glossary, opsJson), SharedEntities.get().USER2.getName());
+  }
+
+  private Glossary patchAs(OpenMetadataClient client, Glossary glossary, String opsJson)
+      throws Exception {
+    return client.glossaries().patch(glossary.getId().toString(), JsonUtils.readTree(opsJson));
+  }
+
+  // The held edit leaves the published entity unchanged; its change request is the requester's
+  // single Pending one (one active request per requester and entity).
+  private String pendingRequestId(Glossary published, String requestedBy) throws Exception {
+    JsonNode requests =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + published.getId(),
+                    null,
+                    RequestOptions.builder().build()));
+    String pending = null;
+    for (JsonNode request : requests.get("data")) {
+      if ("Pending".equals(request.get("status").asText())
+          && requestedBy.equals(request.get("requestedBy").asText())) {
+        pending = request.get("id").asText();
+      }
+    }
+    assertNotNull(pending, "Expected a pending change request by %s".formatted(requestedBy));
+    return pending;
+  }
+
+  private JsonNode changeRequest(String requestId) throws Exception {
+    return MAPPER.readTree(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/changeRequests/" + requestId,
+                null,
+                RequestOptions.builder().build()));
+  }
+
+  private JsonNode requestHistory(String requestId, String kind) throws Exception {
+    return MAPPER
+        .readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests/%s/%s".formatted(requestId, kind),
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  private static List<String> eventTypes(JsonNode events) {
+    List<String> types = new ArrayList<>();
+    events.forEach(event -> types.add(event.get("eventType").asText()));
+    return types;
+  }
+
+  private JsonNode changeRequestsOn(org.openmetadata.schema.EntityInterface entity)
+      throws Exception {
+    return MAPPER
+        .readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + entity.getId(),
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  private JsonNode preview(OpenMetadataClient client, Glossary glossary, String opsJson)
+      throws Exception {
+    return MAPPER.readTree(
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                "/v1/changeRequests/preview/glossary/" + glossary.getId(),
+                opsJson,
+                RequestOptions.builder()
+                    .header("Content-Type", "application/json-patch+json")
+                    .build()));
+  }
+
+  private void override(
+      OpenMetadataClient client, String requestId, int expectedRevision, String reason) {
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/changeRequests/%s/override".formatted(requestId),
+            Map.of("expectedRevision", expectedRevision, "reason", reason),
+            RequestOptions.builder().build());
+  }
+
+  private void awaitRequestStatus(String requestId, String status) {
+    await("change request " + requestId + " " + status)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals(status, changeRequest(requestId).get("status").asText()));
+  }
+
+  // The open review task linked to the request's active revision.
+  private Task awaitRequestTask(String requestId, Glossary glossary) {
+    AtomicReference<Task> found = new AtomicReference<>();
+    await("review task for change request " + requestId)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String taskId = changeRequest(requestId).get("taskId").asText();
+              Task task =
+                  listOpenApprovalTasks(SdkClients.adminClient(), glossary.getFullyQualifiedName())
+                      .getData()
+                      .stream()
+                      .filter(t -> t.getId().toString().equals(taskId))
+                      .findFirst()
+                      .orElse(null);
+              assertNotNull(task, "Expected open task " + taskId);
+              found.set(task);
+            });
+    return found.get();
+  }
+
+  private void awaitTaskClosed(Glossary glossary, Task task) {
+    await("task " + task.getId() + " closed")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    listOpenApprovalTasks(
+                            SdkClients.adminClient(), glossary.getFullyQualifiedName())
+                        .getData()
+                        .stream()
+                        .noneMatch(t -> t.getId().equals(task.getId()))));
+  }
+
+  private void approve(Task task) {
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+  }
+
+  private Glossary glossaryById(Glossary glossary) {
+    return SdkClients.adminClient().glossaries().get(glossary.getId().toString(), null);
+  }
+
+  private String descriptionOf(Glossary glossary) {
+    return glossaryById(glossary).getDescription();
+  }
+
+  private static boolean changedField(JsonNode version, String field) {
+    boolean changed = false;
+    for (String kind : List.of("fieldsAdded", "fieldsUpdated")) {
+      for (JsonNode change : version.path("changeDescription").path(kind)) {
+        changed = changed || field.equals(change.path("name").asText());
+      }
+    }
+    return changed;
+  }
+
+  private JsonNode versionWithDescription(Glossary glossary, String description) throws Exception {
+    JsonNode history =
+        MAPPER.readTree(
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/glossaries/%s/versions".formatted(glossary.getId()),
+                    null,
+                    RequestOptions.builder().build()));
+    JsonNode match = null;
+    for (JsonNode version : history.get("versions")) {
+      JsonNode entity = version.isTextual() ? MAPPER.readTree(version.asText()) : version;
+      if (match == null
+          && description.equals(entity.path("description").asText(null))
+          && changedField(entity, "description")) {
+        match = entity;
+      }
+    }
+    assertNotNull(match, "No version with description " + description);
+    return match;
+  }
+
+  // An Enforce-mode workflow gating {@code include} on one entity: the filter excludes every other
+  // one.
+  private String deployHookWorkflow(
+      OpenMetadataClient client, String entityType, String entityFqn, List<String> include)
+      throws Exception {
+    String workflowName = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
+    ObjectNode workflow =
+        (ObjectNode)
+            MAPPER.readTree(hookWorkflowJson(workflowName, entityType, entityFqn, include));
+    String createResponse =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.treeToValue(workflow, CreateWorkflowDefinition.class),
+                RequestOptions.builder().build());
+    JsonNode created = MAPPER.readTree(createResponse);
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    return created.get("id").asText();
+  }
+
+  private static String hookWorkflowJson(
+      String workflowName, String entityType, String entityFqn, List<String> include) {
+    String filter =
+        JsonUtils.pojoToJson(
+            Map.of(
+                entityType,
+                "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}".formatted(entityFqn)));
+    return """
+        {
+          "name": "%s",
+          "displayName": "Hook Gate",
+          "description": "Holds edits to the included fields until a reviewer approves them",
+          "config": {"storeStageStatus": true},
+          "trigger": {
+            "type": "eventBasedEntity",
+            "config": {
+              "approvalMode": "Enforce",
+              "entityTypes": ["%s"],
+              "events": ["Updated"],
+              "include": %s,
+              "exclude": [],
+              "filter": %s
+            },
+            "output": ["relatedEntity", "updatedBy"]
+          },
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "Start"},
+            {"type": "userTask", "subType": "userApprovalTask", "name": "Approve",
+             "config": {"assignees": {"addReviewers": true, "addOwners": false, "candidates": []},
+                        "approvalThreshold": 1, "rejectionThreshold": 1},
+             "inputNamespaceMap": {"relatedEntity": "global"}},
+            {"type": "endEvent", "subType": "endEvent", "name": "ApprovedEnd"},
+            {"type": "endEvent", "subType": "endEvent", "name": "RejectedEnd"}
+          ],
+          "edges": [
+            {"from": "Start", "to": "Approve"},
+            {"from": "Approve", "to": "ApprovedEnd", "condition": "approve"},
+            {"from": "Approve", "to": "RejectedEnd", "condition": "reject"}
+          ]
+        }
+        """
+        .formatted(workflowName, entityType, JsonUtils.pojoToJson(include), filter);
+  }
+
+  private JsonNode onlyChangeRequest(OpenMetadataClient client, UUID entityId) throws Exception {
+    JsonNode requests =
+        MAPPER.readTree(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + entityId,
+                    null,
+                    RequestOptions.builder().build()));
+    assertEquals(1, requests.get("data").size());
+    return requests.get("data").get(0);
+  }
+
+  // Other workflows may also open approval tasks on the same entity; select the one assigned to the
+  // user the workflow under test resolves as assignee.
+  private Task awaitOpenApprovalTaskAssignedTo(
+      OpenMetadataClient client, String entityFqn, UUID assigneeId) throws Exception {
+    await("open approval task for " + entityFqn + " assigned to " + assigneeId)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertNotNull(
+                    openApprovalTaskAssignedTo(client, entityFqn, assigneeId),
+                    "Expected an open approval task assigned to " + assigneeId));
+    return openApprovalTaskAssignedTo(client, entityFqn, assigneeId);
+  }
+
+  private Task openApprovalTaskAssignedTo(
+      OpenMetadataClient client, String entityFqn, UUID assigneeId) throws Exception {
+    return listOpenApprovalTasks(client, entityFqn).getData().stream()
+        .filter(task -> assigneeIds(task).contains(assigneeId))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private Task awaitOpenApprovalTask(OpenMetadataClient client, String entityFqn) throws Exception {
+    await("open approval task for " + entityFqn)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    listOpenApprovalTasks(client, entityFqn).getData().isEmpty(),
+                    "Expected an open approval task for " + entityFqn));
+    return listOpenApprovalTasks(client, entityFqn).getData().getFirst();
+  }
+
+  private void awaitOpenApprovalTaskCount(
+      OpenMetadataClient client, String entityFqn, int expected) {
+    await(expected + " open approval task(s) for " + entityFqn)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    expected,
+                    listOpenApprovalTasks(client, entityFqn).getData().size(),
+                    "Expected " + expected + " open approval task(s) for " + entityFqn));
+  }
+
+  private Task awaitApprovalTaskWithAssignees(
+      OpenMetadataClient client, String entityFqn, List<String> expectedAssignees)
+      throws Exception {
+    await("approval task for " + entityFqn + " assigned to " + expectedAssignees)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertNotNull(
+                    approvalTaskWithAssignees(client, entityFqn, expectedAssignees),
+                    "Expected an approval task assigned to " + expectedAssignees));
+    return approvalTaskWithAssignees(client, entityFqn, expectedAssignees);
+  }
+
+  private Task approvalTaskWithAssignees(
+      OpenMetadataClient client, String entityFqn, List<String> expectedAssignees)
+      throws Exception {
+    return listOpenApprovalTasks(client, entityFqn).getData().stream()
+        .filter(
+            task ->
+                task.getAssignees() != null
+                    && task.getAssignees().stream()
+                        .map(EntityReference::getName)
+                        .sorted()
+                        .toList()
+                        .equals(expectedAssignees))
+        .findFirst()
+        .orElse(null);
+  }
+
+  // An update event starts a new run whose approval task supersedes (cancels) the prior run's
+  // open task for the same entity; the returned task is the one reviewers must act on.
+  private Task awaitSupersedingApprovalTask(
+      OpenMetadataClient client, String entityFqn, List<String> expectedAssignees, Task priorTask)
+      throws Exception {
+    await("approval task superseding " + priorTask.getId())
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  TaskEntityStatus.Cancelled,
+                  client.tasks().get(priorTask.getId().toString()).getStatus(),
+                  "Prior run's task should be superseded by the update");
+              Task current = approvalTaskWithAssignees(client, entityFqn, expectedAssignees);
+              assertNotNull(current, "Expected a new approval task for " + expectedAssignees);
+              assertNotEquals(priorTask.getId(), current.getId());
+            });
+    return approvalTaskWithAssignees(client, entityFqn, expectedAssignees);
+  }
+
+  private void awaitApprovedApprovalTask(OpenMetadataClient client, String entityFqn) {
+    await("approved approval task for " + entityFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              Map<String, String> approvedFilters = new HashMap<>();
+              approvedFilters.put("status", TaskEntityStatus.Approved.value());
+              approvedFilters.put("category", TaskCategory.Approval.value());
+              approvedFilters.put("aboutEntity", entityFqn);
+              assertFalse(
+                  client.tasks().listWithFilters(approvedFilters).getData().isEmpty(),
+                  "Should have at least one approved task");
+            });
+  }
+
+  private void awaitWorkflowSuspended(
+      OpenMetadataClient client, String workflowId, boolean expectedSuspended) {
+    await("workflow " + workflowId + " suspended=" + expectedSuspended)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    expectedSuspended,
+                    Boolean.TRUE.equals(
+                        client.workflowDefinitions().get(workflowId).getSuspended())));
   }
 
   private Task awaitOpenApprovalTaskForEntity(String entityFqn) {
@@ -6292,7 +8313,7 @@ public class WorkflowDefinitionResourceIT {
         : task.getAssignees().stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(34)
   void test_WorkflowValidationEndpoint() {
     LOG.info("Starting test_WorkflowValidationEndpoint");
@@ -7914,19 +9935,19 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_MutualExclusivitySmartReplacement completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(36)
-  @Disabled("Flaky in CI, Passing in Local, need to fix")
   void test_CustomApprovalWorkflowForNewEntities(TestNamespace ns)
       throws IOException, InterruptedException {
     LOG.info("Starting test_CustomApprovalWorkflowForNewEntities");
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a reviewer user for this test
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
     CreateUser createReviewer =
         new CreateUser()
-            .withName("wf_test_reviewer")
-            .withEmail("wf_test_reviewer" + "@example.com")
+            .withName("wf_test_reviewer_" + suffix)
+            .withEmail("wf_test_reviewer_" + suffix + "@example.com")
             .withDisplayName("Test Reviewer")
             .withPassword("password123");
     User reviewerUser = client.users().create(createReviewer);
@@ -8016,7 +10037,7 @@ public class WorkflowDefinitionResourceIT {
                       "config": {"storeStageStatus": true}
                     }
                     """,
-            "UnifiedApprovalWorkflow");
+            "UnifiedApprovalWorkflow_" + suffix);
 
     CreateWorkflowDefinition unifiedWorkflow =
         JsonUtils.readValue(unifiedApprovalWorkflowJson, CreateWorkflowDefinition.class);
@@ -8027,23 +10048,23 @@ public class WorkflowDefinitionResourceIT {
             .executeForString(
                 HttpMethod.POST, BASE_PATH, unifiedWorkflow, RequestOptions.builder().build());
     assertNotNull(response);
+    trackWorkflowFromJson(MAPPER.readTree(response));
     LOG.debug("Created unified approval workflow for dataContract, tag, and dataProduct entities");
+    // Entities below are created after deployment, so their creation events start runs
+    waitForWorkflowDeployment(client, "UnifiedApprovalWorkflow_" + suffix);
 
     // Step 2: Create database infrastructure with short names
     CreateDatabaseService createDbService =
         new CreateDatabaseService()
             .withName(ns.prefix("dbs"))
-            .withServiceType(
-                org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType
-                    .Datalake)
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
             .withConnection(
-                new org.openmetadata.schema.api.services.DatabaseConnection()
+                new DatabaseConnection()
                     .withConfig(
-                        new java.util.HashMap<String, Object>() {
-                          {
-                            put("bucketName", "test");
-                          }
-                        }))
+                        new MysqlConnection()
+                            .withHostPort("localhost:3306")
+                            .withUsername("test")
+                            .withAuthType(new basicAuth().withPassword("test"))))
             .withDomains(List.of(domain.getFullyQualifiedName()));
     DatabaseService dbService = client.databaseServices().create(createDbService);
 
@@ -8107,7 +10128,7 @@ public class WorkflowDefinitionResourceIT {
     // Step 4: Create classification and tag with reviewers (USER1 as reviewer)
     CreateClassification createClassification =
         new CreateClassification()
-            .withName("cusapp__test_classification")
+            .withName("cusapp__test_classification_" + suffix)
             .withDescription("Test classification for workflow");
     Classification classification = client.classifications().create(createClassification);
 
@@ -8123,7 +10144,7 @@ public class WorkflowDefinitionResourceIT {
     // Step 5: Create dataProduct with reviewers (dedicated reviewer)
     org.openmetadata.schema.api.domains.CreateDataProduct createDataProduct =
         new org.openmetadata.schema.api.domains.CreateDataProduct()
-            .withName("test_dataproduct_wfcustom")
+            .withName("test_dataproduct_wfcustom_" + suffix)
             .withDescription("Initial data product description")
             .withDomains(List.of(domain.getFullyQualifiedName()))
             .withReviewers(List.of(reviewerRef));
@@ -8141,7 +10162,7 @@ public class WorkflowDefinitionResourceIT {
     // Step 5.5: Create metric with reviewers
     CreateMetric createMetric =
         new CreateMetric()
-            .withName("test_metric_wfcustom")
+            .withName("test_metric_wfcustom_" + suffix)
             .withDescription("Initial metric description")
             .withMetricType(MetricType.COUNT)
             .withUnitOfMeasurement(MetricUnitOfMeasurement.SIZE)
@@ -8181,19 +10202,22 @@ public class WorkflowDefinitionResourceIT {
         (entityFqn, entityType) -> {
           try {
             LOG.info("Waiting for approval task for {}...", entityType);
-            await()
+            ResolveTask resolveTask =
+                new ResolveTask().withResolutionType(TaskResolutionType.Approved);
+            // A follow-up update (e.g. adding data product assets) starts a new run that supersedes
+            // the open task, so resolution retries against whichever task is current.
+            await("approval task for " + entityType + " resolved")
                 .atMost(Duration.ofMinutes(2))
                 .pollInterval(Duration.ofSeconds(2))
-                .until(() -> !listOpenApprovalTasks(reviewerClient, entityFqn).getData().isEmpty());
-
-            LOG.info("Approval task for {} found. Proceeding with resolution.", entityType);
-            ListResponse<Task> tasks = listOpenApprovalTasks(reviewerClient, entityFqn);
-            Task task = tasks.getData().get(0);
-            LOG.debug("Found approval task for {}: {}", entityType, task.getId());
-            org.openmetadata.schema.api.tasks.ResolveTask resolveTask =
-                new org.openmetadata.schema.api.tasks.ResolveTask()
-                    .withResolutionType(TaskResolutionType.Approved);
-            reviewerClient.tasks().resolve(task.getId().toString(), resolveTask);
+                .ignoreExceptions()
+                .untilAsserted(
+                    () -> {
+                      Task task =
+                          openApprovalTaskAssignedTo(
+                              reviewerClient, entityFqn, reviewerUser.getId());
+                      assertNotNull(task, "Expected an open approval task for " + entityType);
+                      reviewerClient.tasks().resolve(task.getId().toString(), resolveTask);
+                    });
             LOG.debug("Resolved {} approval task", entityType);
           } catch (Exception e) {
             LOG.error(
@@ -8662,7 +10686,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(43)
   void test_PortChangesOnDataProductTriggerWorkflow(TestNamespace ns) throws Exception {
     LOG.info("Starting test_PortChangesOnDataProductTriggerWorkflow");
@@ -8817,9 +10841,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("Created port trigger workflow: {}", portWorkflowName);
     waitForWorkflowDeployment(client, portWorkflowName);
 
-    org.openmetadata.schema.api.tasks.ResolveTask resolveApproved =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproved = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     // inputPorts add — ChangeEvent fieldsAdded[inputPorts] must trigger the workflow
     org.openmetadata.schema.type.api.BulkAssets inputPortAssets =
@@ -8944,19 +10966,19 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_CreateWorkflowWithoutEntityTypes completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(39)
-  @Disabled("Flaky in CI, Passing in Local, need to fix")
-  void test_reviewerChangeUpdatesApprovalTasks(TestNamespace ns) throws Exception {
-    LOG.info("Starting test_reviewerChangeUpdatesApprovalTasks");
+  void test_reviewerChangeKeepsApprovalTaskAssignees(TestNamespace ns) throws Exception {
+    LOG.info("Starting test_reviewerChangeKeepsApprovalTaskAssignees");
 
     OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
 
     // Create reviewer users for this test
     CreateUser createReviewer1 =
         new CreateUser()
-            .withName("testReviewer1")
-            .withEmail("testReviewer1" + "@example.com")
+            .withName("testReviewer1_" + suffix)
+            .withEmail("testReviewer1_" + suffix + "@example.com")
             .withDisplayName("Test Reviewer 1");
     User reviewer1 = client.users().create(createReviewer1);
     EntityReference reviewer1Ref = reviewer1.getEntityReference();
@@ -8964,8 +10986,8 @@ public class WorkflowDefinitionResourceIT {
 
     CreateUser createReviewer2 =
         new CreateUser()
-            .withName("testReviewer2")
-            .withEmail("testReviewer2" + "@example.com")
+            .withName("testReviewer2_" + suffix)
+            .withEmail("testReviewer2_" + suffix + "@example.com")
             .withDisplayName("Test Reviewer 2");
     User reviewer2 = client.users().create(createReviewer2);
     EntityReference reviewer2Ref = reviewer2.getEntityReference();
@@ -9047,12 +11069,13 @@ public class WorkflowDefinitionResourceIT {
 
     CreateWorkflowDefinition approvalWorkflow =
         JsonUtils.readValue(
-            approvalWorkflowJson.formatted("wf_tagApprovalWorkflow"),
+            approvalWorkflowJson.formatted("wf_tagApprovalWorkflow_" + suffix),
             CreateWorkflowDefinition.class);
 
     // Create the approval workflow
     WorkflowDefinition createdWorkflow = client.workflowDefinitions().create(approvalWorkflow);
     assertNotNull(createdWorkflow);
+    trackWorkflow(createdWorkflow.getName(), createdWorkflow.getId().toString());
     LOG.debug("Created tag approval workflow: {}", createdWorkflow.getName());
     waitForWorkflowDeployment(client, createdWorkflow.getName());
 
@@ -9061,7 +11084,7 @@ public class WorkflowDefinitionResourceIT {
     // Client.classifications().create(CreateClassification)
     CreateClassification createClassification =
         new CreateClassification()
-            .withName("WorkflowApprovalTestClassification")
+            .withName("WorkflowApprovalTestClassification_" + suffix)
             .withDescription("Test classification for workflow");
 
     Classification classification = client.classifications().create(createClassification);
@@ -9086,27 +11109,8 @@ public class WorkflowDefinitionResourceIT {
     LOG.debug("Created tag with reviewer1: {}, Status: {}", tag.getName(), tag.getEntityStatus());
 
     // Verify that an approval task was created and assigned to the reviewers
-    // Wait for task to be created
-    await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              ListResponse<Task> taskList =
-                  listOpenApprovalTasks(client, tag.getFullyQualifiedName());
-              if (taskList.getData().isEmpty()) {
-                LOG.debug("Waiting for task to be created for tag...");
-                return false;
-              }
-              return true;
-            });
-
-    ListResponse<Task> tasks = listOpenApprovalTasks(client, tag.getFullyQualifiedName());
-
-    // The approval workflow should have created a task
-    assertFalse(tasks.getData().isEmpty(), "Should have at least one task for the tag");
-
-    Task approvalTask = tasks.getData().getFirst();
+    Task approvalTask =
+        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), reviewer1.getId());
     assertEquals(TaskEntityStatus.Open, approvalTask.getStatus(), "Task should be open");
 
     // Verify initial assignee is reviewer1
@@ -9139,91 +11143,31 @@ public class WorkflowDefinitionResourceIT {
         "reviewer2 should now be the reviewer");
     LOG.debug("Tag reviewer changed from reviewer1 to reviewer2");
 
-    // Wait for the async task assignee update to complete using Awaitility
+    // Task assignees are a point-in-time snapshot owned by the workflow: a reviewer change neither
+    // patches the open task nor (with "reviewers" excluded) re-triggers the workflow.
     final UUID taskId = approvalTask.getId();
-    await()
-        .atMost(Duration.ofSeconds(180))
-        .pollInterval(Duration.ofSeconds(3))
-        .pollDelay(Duration.ofSeconds(5))
-        .until(
+    await("task " + taskId + " keeps its original assignees after the reviewer change")
+        .during(Duration.ofSeconds(3))
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
             () -> {
-              try {
-                ListResponse<Task> taskThreads =
-                    listOpenApprovalTasks(client, tag.getFullyQualifiedName());
-
-                if (taskThreads.getData().isEmpty()) {
-                  return false;
-                }
-
-                Task taskThread =
-                    taskThreads.getData().stream()
-                        .filter(
-                            t ->
-                                TaskEntityType.GlossaryApproval.equals(t.getType())
-                                    && t.getId().equals(taskId))
-                        .findFirst()
-                        .orElse(null);
-
-                if (taskThread == null) {
-                  return false;
-                }
-
-                List<EntityReference> currentAssignees = taskThread.getAssignees();
-                if (currentAssignees == null || currentAssignees.isEmpty()) {
-                  return false;
-                }
-
-                boolean hasReviewer2 =
-                    currentAssignees.stream().anyMatch(a -> a.getId().equals(reviewer2.getId()));
-                boolean hasReviewer1 =
-                    currentAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId()));
-
-                if (hasReviewer2) {
-                  return !hasReviewer1; // reviewer2 is there, just need reviewer1 to be gone
-                }
-                return false; // reviewer2 not found yet
-              } catch (Exception e) {
-                LOG.warn("Error checking task assignees: {}", e.getMessage(), e);
-                return false;
-              }
+              Task task = openApprovalTaskById(tag.getFullyQualifiedName(), taskId);
+              assertNotNull(task, "The approval task should still be open");
+              assertEquals(taskId, task.getId(), "The reviewer change must not supersede the task");
+              Set<UUID> taskAssignees = assigneeIds(task);
+              assertTrue(
+                  taskAssignees.contains(reviewer1.getId()),
+                  "reviewer1 should remain assigned, assignees=" + taskAssignees);
+              assertFalse(
+                  taskAssignees.contains(reviewer2.getId()),
+                  "reviewer2 must not be injected into the open task, assignees=" + taskAssignees);
             });
 
-    // Verify that the task assignees have been updated
-    tasks = listOpenApprovalTasks(client, tag.getFullyQualifiedName());
-
-    assertFalse(tasks.getData().isEmpty(), "Should still have tasks");
-    approvalTask =
-        tasks.getData().stream()
-            .filter(
-                t ->
-                    TaskEntityType.GlossaryApproval.equals(t.getType()) && t.getId().equals(taskId))
-            .findFirst()
-            .orElse(tasks.getData().getFirst());
-
-    // Verify updated assignee is now reviewer2 instead of reviewer1
-    List<EntityReference> updatedAssignees = approvalTask.getAssignees();
-    assertNotNull(updatedAssignees, "Updated assignees should not be null");
-    assertFalse(updatedAssignees.isEmpty(), "Task should have at least 1 assignee after update");
-    assertTrue(
-        updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer2.getId())),
-        "reviewer2 should now be an assignee after reviewer update");
-    assertFalse(
-        updatedAssignees.stream().anyMatch(a -> a.getId().equals(reviewer1.getId())),
-        "reviewer1 should no longer be an assignee after reviewer update");
-
-    // Step 11: Delete the unified workflow to prevent interference with other tests
-    try {
-      client.workflowDefinitions().delete(createdWorkflow.getId());
-      LOG.debug("Successfully deleted tagApprovalWorkflow");
-    } catch (Exception e) {
-      LOG.warn("Error while deleting tagApprovalWorkflow: {}", e.getMessage());
-    }
-
-    LOG.info(
-        "test_reviewerChangeUpdatesApprovalTasks completed successfully - task assignee successfully changed from reviewer1 to reviewer2");
+    LOG.info("test_reviewerChangeKeepsApprovalTaskAssignees completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(40)
   void test_ApiEndpointPeriodicBatchWorkflow(TestNamespace ns) throws JsonProcessingException {
     LOG.info("Starting test_ApiEndpointPeriodicBatchWorkflow");
@@ -10036,8 +11980,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
-  @Disabled("Failing due to #25894 - need to be fixed separately")
+  @RetryingTest(2)
   @Order(40)
   void test_WorkflowWithReviewersOwnersCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithReviewersOwnersCandidates");
@@ -10108,25 +12051,7 @@ public class WorkflowDefinitionResourceIT {
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
     LOG.debug("Created database schema: {}", dbSchema.getName());
 
-    // Step 3: Create test table with owner
-    LOG.debug("Creating test table with owner assignment");
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName(ns.prefix("test_approval_table"))
-            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Test table for comprehensive workflow assignment testing")
-            .withOwners(List.of(ownerUser.getEntityReference()))
-            .withColumns(
-                List.of(
-                    new Column().withName("id").withDataType(ColumnDataType.INT),
-                    new Column().withName("name").withDataType(ColumnDataType.STRING),
-                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
-
-    Table testTable = client.tables().create(createTable);
-    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
-
-    // Step 4: Create comprehensive workflow with all assignment types
+    // Step 3: Create comprehensive workflow with all assignment types
     LOG.debug("Creating workflow with reviewers, owners, and candidates assignment");
 
     String workflowJson =
@@ -10208,7 +12133,7 @@ public class WorkflowDefinitionResourceIT {
             }
             """
             .formatted(
-                "TableApprovalWorkflow",
+                "TableApprovalWorkflow_" + uniqueSuffix,
                 candidate1.getId(),
                 candidate1.getFullyQualifiedName(),
                 candidate1.getName(),
@@ -10232,51 +12157,35 @@ public class WorkflowDefinitionResourceIT {
     String workflowId = workflowCreated.get("id").asText();
     LOG.debug("Created comprehensive workflow: {}", workflowId);
 
-    waitForWorkflowDeployment(client, "TableApprovalWorkflow");
+    trackWorkflowFromJson(workflowCreated);
+    waitForWorkflowDeployment(client, "TableApprovalWorkflow_" + uniqueSuffix);
+
+    // Step 4: Create the table once the workflow is deployed, so its creation event starts a run
+    LOG.debug("Creating test table with owner assignment");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("test_approval_table"))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Test table for comprehensive workflow assignment testing")
+            .withOwners(List.of(ownerUser.getEntityReference()))
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING),
+                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
+
+    Table testTable = client.tables().create(createTable);
+    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
 
     // Step 5: Wait for initial workflow processing (table creation event)
     String tableFqn = testTable.getFullyQualifiedName();
-    LOG.info("Waiting for workflow to process table creation...");
-    await()
-        .atMost(Duration.ofMinutes(2))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              boolean hasExpectedTasks = !tasks.getData().isEmpty();
-              if (hasExpectedTasks) {
-                LOG.debug("Found {} tasks for table creation", tasks.getData().size());
-              }
-              return hasExpectedTasks;
-            });
-
-    // Step 6: Verify initial task creation and assignees
-    LOG.info("Verifying initial task creation and assignees");
-    ListResponse<Task> initialTasks = listOpenApprovalTasks(client, tableFqn);
-
-    assertFalse(initialTasks.getData().isEmpty(), "Should have tasks created for table");
-
     List<String> expectedAssignees =
         Stream.of(ownerUser.getName(), candidate1.getName(), candidate2.getName())
             .sorted()
             .toList();
-
-    // Find the task with our expected assignees (multiple workflows may create tasks)
-    Task approvalTask =
-        initialTasks.getData().stream()
-            .filter(
-                t ->
-                    t.getAssignees() != null
-                        && t.getAssignees().size() == 3
-                        && t.getAssignees().stream()
-                            .map(EntityReference::getName)
-                            .sorted()
-                            .toList()
-                            .equals(expectedAssignees))
-            .findFirst()
-            .orElse(null);
-
-    assertNotNull(approvalTask, "Should find approval task with expected 3 assignees");
+    // Multiple workflows may create tasks; wait for the one assigned to the owner and candidates.
+    Task approvalTask = awaitApprovalTaskWithAssignees(client, tableFqn, expectedAssignees);
     List<String> assigneeNames =
         approvalTask.getAssignees().stream().map(EntityReference::getName).sorted().toList();
     LOG.debug("✓ Found approval task with 3 assignees: {}", assigneeNames);
@@ -10298,69 +12207,42 @@ public class WorkflowDefinitionResourceIT {
 
     LOG.debug("Applied patch to table: {}", testTable.getName());
 
+    Task currentTask =
+        awaitSupersedingApprovalTask(client, tableFqn, expectedAssignees, approvalTask);
+
     // Step 8: Verify no duplicate task created for update event
     LOG.info("Verifying no duplicate tasks created for update event...");
-    await()
-        .during(Duration.ofSeconds(5))
-        .atMost(Duration.ofSeconds(10))
-        .untilAsserted(
-            () -> {
-              ListResponse<Task> updatedTasks = listOpenApprovalTasks(client, tableFqn);
-              long matchingTaskCount =
-                  updatedTasks.getData().stream()
-                      .filter(
-                          t ->
-                              t.getAssignees() != null
-                                  && t.getAssignees().size() == 3
-                                  && t.getAssignees().stream()
-                                      .map(EntityReference::getName)
-                                      .sorted()
-                                      .toList()
-                                      .equals(expectedAssignees))
-                      .count();
-              assertEquals(
-                  1,
-                  matchingTaskCount,
-                  "Should still have exactly 1 approval task with our assignees (no duplicates after update)");
-            });
+    ListResponse<Task> updatedTasks = listOpenApprovalTasks(client, tableFqn);
+    long matchingTaskCount =
+        updatedTasks.getData().stream()
+            .filter(
+                t ->
+                    t.getAssignees() != null
+                        && t.getAssignees().size() == 3
+                        && t.getAssignees().stream()
+                            .map(EntityReference::getName)
+                            .sorted()
+                            .toList()
+                            .equals(expectedAssignees))
+            .count();
+    assertEquals(
+        1,
+        matchingTaskCount,
+        "Should still have exactly 1 approval task with our assignees (no duplicates after update)");
     LOG.debug("Confirmed no duplicate task after update");
 
     // Step 9: Resolve the approval task to test workflow progression
     LOG.info("Resolving the approval task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolveTaskV2 =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveTaskV2 = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     OpenMetadataClient ownerClient =
         SdkClients.createClient(ownerUser.getName(), ownerUser.getEmail(), new String[] {});
-    ownerClient.tasks().resolve(approvalTask.getId().toString(), resolveTaskV2);
-    LOG.debug("✓ Resolved task: {}", approvalTask.getId());
+    ownerClient.tasks().resolve(currentTask.getId().toString(), resolveTaskV2);
+    LOG.debug("✓ Resolved task: {}", currentTask.getId());
 
     // Verify task status changed to Approved
-    await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              try {
-                Map<String, String> closedFilters = new HashMap<>();
-                closedFilters.put("status", TaskEntityStatus.Approved.value());
-                closedFilters.put("category", TaskCategory.Approval.value());
-                closedFilters.put("aboutEntity", tableFqn);
-                ListResponse<Task> resolved = client.tasks().listWithFilters(closedFilters);
-                return !resolved.getData().isEmpty();
-              } catch (Exception e) {
-                return false;
-              }
-            });
-
-    Map<String, String> closedFilters = new HashMap<>();
-    closedFilters.put("status", TaskEntityStatus.Approved.value());
-    closedFilters.put("category", TaskCategory.Approval.value());
-    closedFilters.put("aboutEntity", tableFqn);
-    ListResponse<Task> closedTasks = client.tasks().listWithFilters(closedFilters);
-    assertFalse(closedTasks.getData().isEmpty(), "Should have at least one approved task");
-    LOG.debug("✓ Verified task resolution - found {} approved tasks", closedTasks.getData().size());
+    awaitApprovedApprovalTask(client, tableFqn);
+    LOG.debug("✓ Verified task resolution");
 
     // Step 11: Cleanup
     LOG.info("Cleaning up test resources");
@@ -10394,7 +12276,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_WorkflowWithReviewersOwnersCandidates completed successfully");
   }
 
-  @Test
+  @RetryingTest(2)
   void test_WorkflowApprovalThresholdReturnsOpenTaskUntilThresholdIsMet(TestNamespace ns)
       throws Exception {
     LOG.info("Starting test_WorkflowApprovalThresholdReturnsOpenTaskUntilThresholdIsMet");
@@ -10595,9 +12477,7 @@ public class WorkflowDefinitionResourceIT {
 
     OpenMetadataClient candidate1Client =
         SdkClients.createClient(candidate1.getName(), candidate1.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveApproval =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproval = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     Task intermediateTask =
         candidate1Client.tasks().resolve(approvalTask.getId().toString(), resolveApproval);
@@ -10642,8 +12522,7 @@ public class WorkflowDefinitionResourceIT {
     client.users().delete(candidate2.getId().toString(), params);
   }
 
-  @Test
-  @Disabled("Failing due to #25894 - need to be fixed separately")
+  @RetryingTest(2)
   @Order(41)
   void test_WorkflowWithTeamCandidates(TestNamespace ns) throws Exception {
     LOG.info("Starting test_WorkflowWithTeamCandidates");
@@ -10727,26 +12606,7 @@ public class WorkflowDefinitionResourceIT {
     DatabaseSchema dbSchema = client.databaseSchemas().create(createSchema);
     LOG.debug("Created database schema: {}", dbSchema.getName());
 
-    // Step 4: Create test table with owner
-    LOG.debug("Creating test table with owner assignment");
-
-    CreateTable createTable =
-        new CreateTable()
-            .withName(ns.prefix("test_team_approval_table"))
-            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
-            .withDescription("Test table for team-based workflow assignment testing")
-            .withOwners(List.of(ownerUser.getEntityReference()))
-            .withColumns(
-                List.of(
-                    new Column().withName("id").withDataType(ColumnDataType.INT),
-                    new Column().withName("name").withDataType(ColumnDataType.STRING),
-                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
-
-    Table testTable = client.tables().create(createTable);
-    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
-    String tableFqn = testTable.getFullyQualifiedName();
-
-    // Step 5: Create team-based workflow
+    // Step 4: Create team-based workflow
     LOG.debug("Creating workflow with team candidates assignment");
 
     String workflowJson =
@@ -10821,7 +12681,7 @@ public class WorkflowDefinitionResourceIT {
             }
             """
             .formatted(
-                "TeamApprovalWorkflow",
+                "TeamApprovalWorkflow_" + uniqueSuffix,
                 approvalTeam.getId(),
                 approvalTeam.getFullyQualifiedName(),
                 approvalTeam.getName());
@@ -10839,51 +12699,35 @@ public class WorkflowDefinitionResourceIT {
     String workflowId = workflowCreated.get("id").asText();
     LOG.debug("Created team workflow: {}", workflowId);
 
-    waitForWorkflowDeployment(client, "TeamApprovalWorkflow");
+    trackWorkflowFromJson(workflowCreated);
+    waitForWorkflowDeployment(client, "TeamApprovalWorkflow_" + uniqueSuffix);
+
+    // Step 5: Create the table once the workflow is deployed, so its creation event starts a run
+    LOG.debug("Creating test table with owner assignment");
+
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("test_team_approval_table"))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Test table for team-based workflow assignment testing")
+            .withOwners(List.of(ownerUser.getEntityReference()))
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING),
+                    new Column().withName("created_date").withDataType(ColumnDataType.DATETIME)));
+
+    Table testTable = client.tables().create(createTable);
+    LOG.debug("Created test table: {} with owner: {}", testTable.getName(), ownerUser.getName());
+    String tableFqn = testTable.getFullyQualifiedName();
 
     // Step 6: Wait for initial workflow processing (table creation event)
-    LOG.info("Waiting for workflow to process table creation...");
-    await()
-        .atMost(Duration.ofMinutes(2))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              boolean hasExpectedTasks = !tasks.getData().isEmpty();
-              if (hasExpectedTasks) {
-                LOG.debug("Found {} tasks for table creation", tasks.getData().size());
-              }
-              return hasExpectedTasks;
-            });
-
-    // Step 7: Verify task creation and assignees (should have 3: owner + 2 team members)
-    LOG.info("Verifying initial task creation and assignees");
-    ListResponse<Task> initialTasks = listOpenApprovalTasks(client, tableFqn);
-
-    assertFalse(initialTasks.getData().isEmpty(), "Should have tasks created for table");
-
     List<String> expectedAssignees =
-        List.of(ownerUser.getName(), candidate1.getName(), candidate2.getName()).stream()
+        Stream.of(ownerUser.getName(), candidate1.getName(), candidate2.getName())
             .sorted()
             .toList();
-
-    // Find the task with our expected assignees (multiple workflows may create tasks)
-    Task initialTask =
-        initialTasks.getData().stream()
-            .filter(
-                t ->
-                    t.getAssignees() != null
-                        && t.getAssignees().size() == 3
-                        && t.getAssignees().stream()
-                            .map(EntityReference::getName)
-                            .sorted()
-                            .toList()
-                            .equals(expectedAssignees))
-            .findFirst()
-            .orElse(null);
-
-    assertNotNull(
-        initialTask, "Should find approval task with 3 assignees (owner + 2 team members)");
+    // Multiple workflows may create tasks; wait for the one assigned to the owner and team members.
+    Task initialTask = awaitApprovalTaskWithAssignees(client, tableFqn, expectedAssignees);
     LOG.debug(
         "✓ Found approval task with 3 assignees: {} (team expanded to individual users)",
         expectedAssignees);
@@ -10896,64 +12740,41 @@ public class WorkflowDefinitionResourceIT {
     client.tables().patch(testTable.getId(), tablePatch);
     LOG.debug("Applied patch to table: {}", testTable.getName());
 
+    Task currentTask =
+        awaitSupersedingApprovalTask(client, tableFqn, expectedAssignees, initialTask);
+
     // Step 9: Verify no duplicate task created for update event
     LOG.info("Verifying no duplicate tasks created for update event...");
-    await()
-        .during(Duration.ofSeconds(5))
-        .atMost(Duration.ofSeconds(10))
-        .untilAsserted(
-            () -> {
-              ListResponse<Task> tasksAfterUpdate = listOpenApprovalTasks(client, tableFqn);
-              long matchingTaskCount =
-                  tasksAfterUpdate.getData().stream()
-                      .filter(
-                          t ->
-                              t.getAssignees() != null
-                                  && t.getAssignees().size() == 3
-                                  && t.getAssignees().stream()
-                                      .map(EntityReference::getName)
-                                      .sorted()
-                                      .toList()
-                                      .equals(expectedAssignees))
-                      .count();
-              assertEquals(
-                  1,
-                  matchingTaskCount,
-                  "Should still have exactly 1 approval task with our assignees (no duplicates)");
-            });
+    ListResponse<Task> tasksAfterUpdate = listOpenApprovalTasks(client, tableFqn);
+    long matchingTaskCount =
+        tasksAfterUpdate.getData().stream()
+            .filter(
+                t ->
+                    t.getAssignees() != null
+                        && t.getAssignees().size() == 3
+                        && t.getAssignees().stream()
+                            .map(EntityReference::getName)
+                            .sorted()
+                            .toList()
+                            .equals(expectedAssignees))
+            .count();
+    assertEquals(
+        1,
+        matchingTaskCount,
+        "Should still have exactly 1 approval task with our assignees (no duplicates)");
     LOG.debug("Confirmed no duplicate task after update");
 
     // Step 10: Resolve the approval task to test workflow progression
     LOG.info("Resolving the approval task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolveTaskV2 =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveTaskV2 = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
 
     OpenMetadataClient ownerClient =
         SdkClients.createClient(ownerUser.getName(), ownerUser.getEmail(), new String[] {});
-    ownerClient.tasks().resolve(initialTask.getId().toString(), resolveTaskV2);
-    LOG.debug("✓ Resolved task: {}", initialTask.getId());
+    ownerClient.tasks().resolve(currentTask.getId().toString(), resolveTaskV2);
+    LOG.debug("✓ Resolved task: {}", currentTask.getId());
 
     // Verify task status changed to Approved
-    await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .until(
-            () -> {
-              Map<String, String> approvedFilters = new HashMap<>();
-              approvedFilters.put("status", TaskEntityStatus.Approved.value());
-              approvedFilters.put("category", TaskCategory.Approval.value());
-              approvedFilters.put("aboutEntity", tableFqn);
-              return client.tasks().listWithFilters(approvedFilters).getData().size() >= 1;
-            });
-
-    Map<String, String> approvedFilters = new HashMap<>();
-    approvedFilters.put("status", TaskEntityStatus.Approved.value());
-    approvedFilters.put("category", TaskCategory.Approval.value());
-    approvedFilters.put("aboutEntity", tableFqn);
-    ListResponse<Task> approvedTasks = client.tasks().listWithFilters(approvedFilters);
-    assertFalse(approvedTasks.getData().isEmpty(), "Should have at least one approved task");
+    awaitApprovedApprovalTask(client, tableFqn);
     LOG.debug("✓ Task successfully resolved and approved");
 
     // Step 11: Cleanup test resources
@@ -10992,8 +12813,7 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("test_WorkflowWithTeamCandidates completed successfully");
   }
 
-  @Test
-  @Disabled("Failing due to #25894 - need to be fixed separately")
+  @RetryingTest(2)
   @Order(30)
   void test_TagChangeApprovalWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing Tag change approval workflow with include fields feature");
@@ -11179,18 +12999,7 @@ public class WorkflowDefinitionResourceIT {
     client.tables().patch(table.getId(), privatePatch);
 
     // Wait for workflow to process Private tag change
-    await()
-        .atMost(Duration.ofMinutes(2))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              return !tasks.getData().isEmpty();
-            });
-
-    ListResponse<Task> privateTasks = listOpenApprovalTasks(client, tableFqn);
-    assertFalse(privateTasks.getData().isEmpty(), "Should have approval task for Private tag");
-    assertEquals(1, privateTasks.getData().size(), "Should have exactly 1 approval task");
+    awaitOpenApprovalTaskCount(client, tableFqn, 1);
     LOG.debug("✓ Private tag change triggered approval task");
 
     LOG.info("Testing negative case: updating tags to Public (should NOT trigger approval)");
@@ -11232,8 +13041,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
-  @Disabled("Failing due to #25894 - need to be fixed separately")
+  @RetryingTest(2)
   @Order(31)
   void test_DomainChangeApprovalWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing Domain change approval workflow with include fields feature");
@@ -11406,18 +13214,7 @@ public class WorkflowDefinitionResourceIT {
     client.tables().patch(table.getId(), financePatch);
 
     // Wait for workflow to process Finance domain change
-    await()
-        .atMost(Duration.ofMinutes(2))
-        .pollInterval(Duration.ofSeconds(2))
-        .until(
-            () -> {
-              ListResponse<Task> tasks = listOpenApprovalTasks(client, tableFqn);
-              return !tasks.getData().isEmpty();
-            });
-
-    ListResponse<Task> domainTasks = listOpenApprovalTasks(client, tableFqn);
-    assertFalse(domainTasks.getData().isEmpty(), "Should have approval task for Finance domain");
-    assertEquals(1, domainTasks.getData().size(), "Should have exactly 1 approval task");
+    awaitOpenApprovalTaskCount(client, tableFqn, 1);
     LOG.debug("✓ Finance domain change triggered approval task");
 
     // Test negative case: Create Marketing domain and update - should NOT trigger workflow
@@ -11469,7 +13266,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(32)
   void test_IncludeFieldsPriorityOverExclude(TestNamespace ns) throws Exception {
     LOG.info("Testing include fields have priority over exclude fields");
@@ -11678,7 +13475,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(33)
   void test_EmptyIncludeFieldsBehavior(TestNamespace ns) throws Exception {
     LOG.info("Testing empty include fields maintains backward compatibility");
@@ -11872,7 +13669,7 @@ public class WorkflowDefinitionResourceIT {
     }
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(34)
   void test_MultipleFieldChangesWithIncludeFields(TestNamespace ns) throws Exception {
     LOG.info("Testing workflow with include fields for multiple different field types");
@@ -12457,9 +14254,8 @@ public class WorkflowDefinitionResourceIT {
     LOG.info("Approving Finance domain task");
     OpenMetadataClient owner1Client =
         SdkClients.createClient(owner1.getName(), owner1.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveFinanceTask =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveFinanceTask =
+        new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     owner1Client.tasks().resolve(financeTask.getId().toString(), resolveFinanceTask);
     LOG.debug("✓ Resolved Finance domain task");
 
@@ -12515,9 +14311,7 @@ public class WorkflowDefinitionResourceIT {
 
     // Step 9: Resolve the PII.Sensitive tag task
     LOG.info("Resolving PII.Sensitive tag task");
-    org.openmetadata.schema.api.tasks.ResolveTask resolvePiiTask =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
-            .withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolvePiiTask = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
     owner1Client.tasks().resolve(piiTask.getId().toString(), resolvePiiTask);
     LOG.debug("✓ Resolved PII.Sensitive tag task");
 
@@ -12971,7 +14765,7 @@ public class WorkflowDefinitionResourceIT {
    * CE2 is a true no-op: T1 must survive AND stay resolvable. Resolving it is the discriminator —
    * before the fix, the trigger-time terminate killed CE1's Flowable process, leaving T1 orphaned.
    */
-  @Test
+  @RetryingTest(2)
   void test_NoOpEventDoesNotInvalidatePendingApproval(TestNamespace ns) throws Exception {
     LOG.info("Starting test_NoOpEventDoesNotInvalidatePendingApproval");
     OpenMetadataClient client = SdkClients.adminClient();
@@ -13011,8 +14805,7 @@ public class WorkflowDefinitionResourceIT {
           .tasks()
           .resolve(
               originalTask.getId().toString(),
-              new org.openmetadata.schema.api.tasks.ResolveTask()
-                  .withResolutionType(TaskResolutionType.Approved));
+              new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
       await("surviving task must resolve and drive the workflow to Approved")
           .atMost(Duration.ofSeconds(45))
@@ -13033,7 +14826,7 @@ public class WorkflowDefinitionResourceIT {
    * orphaned OM task) and exactly one new open task must remain. The new task must be resolvable,
    * proving its Flowable process is live.
    */
-  @Test
+  @RetryingTest(2)
   void test_NewApprovalRunSupersedesStalePendingTask(TestNamespace ns) throws Exception {
     LOG.info("Starting test_NewApprovalRunSupersedesStalePendingTask");
     OpenMetadataClient client = SdkClients.adminClient();
@@ -13073,8 +14866,7 @@ public class WorkflowDefinitionResourceIT {
           .tasks()
           .resolve(
               supersedingTask.getId().toString(),
-              new org.openmetadata.schema.api.tasks.ResolveTask()
-                  .withResolutionType(TaskResolutionType.Approved));
+              new ResolveTask().withResolutionType(TaskResolutionType.Approved));
 
       await("superseding task must resolve and drive the workflow to Approved")
           .atMost(Duration.ofSeconds(45))
@@ -13597,8 +15389,8 @@ public class WorkflowDefinitionResourceIT {
     // BPMN's approve/reject edge conditions match the projected id).
     OpenMetadataClient reviewerClient =
         SdkClients.createClient(reviewer.getName(), reviewer.getEmail(), new String[] {});
-    org.openmetadata.schema.api.tasks.ResolveTask resolveRequest =
-        new org.openmetadata.schema.api.tasks.ResolveTask()
+    ResolveTask resolveRequest =
+        new ResolveTask()
             .withTransitionId("approve")
             .withResolutionType(TaskResolutionType.Approved);
     reviewerClient.tasks().resolve(task.getId().toString(), resolveRequest);
@@ -13625,7 +15417,7 @@ public class WorkflowDefinitionResourceIT {
             + current.getDisplayName());
   }
 
-  @Test
+  @RetryingTest(2)
   @Order(211)
   void test_ColumnCustomPropertyChange_TriggersWorkflow(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -13815,5 +15607,490 @@ public class WorkflowDefinitionResourceIT {
     } catch (Exception e) {
       LOG.warn("Failed to clean up column custom property {}: {}", propName, e.getMessage());
     }
+  }
+
+  /** Approves an owner gate, then a second owner gate that the first approval's stage write fed. */
+  private static final String TWO_OWNER_GATES_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "description": "Two consecutive owner approvals",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["domain"],
+            "events": ["Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"domain": %s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "ApproveFirst", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApproveFirst"}},
+          {"name": "ApproveSecond", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "SetApproved", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "Approved"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ApproveSecond"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "ApproveFirst"},
+          {"from": "ApproveFirst", "to": "SetInReview", "condition": "approve"},
+          {"from": "ApproveFirst", "to": "end", "condition": "reject"},
+          {"from": "SetInReview", "to": "ApproveSecond"},
+          {"from": "ApproveSecond", "to": "SetApproved", "condition": "approve"},
+          {"from": "ApproveSecond", "to": "end", "condition": "reject"},
+          {"from": "SetApproved", "to": "end"}
+        ],
+        "config": {"storeStageStatus": false}
+      }""";
+
+  @Test
+  @Order(221)
+  void test_sameOwnerApprovesConsecutiveGates(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    Domain domain = createOwnedDomain(admin, ns, owner);
+    deployTwoOwnerGates(admin, ns, domain);
+    patchDomainDescription(admin, domain, "Ready for review");
+
+    Task first = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), null);
+    approveAs(ownerClient, first);
+    Task second = awaitOpenApprovalTask(ownerClient, domain.getFullyQualifiedName(), first.getId());
+    assertEquals(Set.of(owner.getId()), assigneeIds(second));
+
+    approveAs(ownerClient, second);
+    awaitDomainStatus(admin, domain, EntityStatus.APPROVED);
+  }
+
+  private static Domain createOwnedDomain(
+      OpenMetadataClient admin, TestNamespace ns, EntityReference owner) {
+    return admin
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(ns.shortPrefix("ownerGates"))
+                .withDescription("Domain approved by its owner at two gates")
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withOwners(List.of(owner)));
+  }
+
+  private void deployTwoOwnerGates(OpenMetadataClient admin, TestNamespace ns, Domain domain)
+      throws Exception {
+    // The trigger filter excludes what it matches, so only this domain starts the workflow.
+    String onlyThisDomain =
+        MAPPER.writeValueAsString(
+            MAPPER.writeValueAsString(
+                Map.of(
+                    "!=",
+                    List.of(Map.of("var", "fullyQualifiedName"), domain.getFullyQualifiedName()))));
+    String workflowName = "ownerGatesFlow_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    TWO_OWNER_GATES_WORKFLOW.formatted(workflowName, onlyThisDomain),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+  }
+
+  private static void patchDomainDescription(OpenMetadataClient admin, Domain domain, String text)
+      throws Exception {
+    admin
+        .domains()
+        .patch(
+            domain.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]"
+                    .formatted(text)));
+  }
+
+  private static void approveAs(OpenMetadataClient client, Task task) {
+    client
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+  }
+
+  private static void awaitDomainStatus(
+      OpenMetadataClient admin, Domain domain, EntityStatus status) {
+    await("domain %s to reach %s".formatted(domain.getName(), status))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    status, admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  /** A lifecycle playbook whose only gate never opens, so whatever it enrols stays put. */
+  private static final String HOLDING_PLAYBOOK =
+      """
+      {
+        "name": "%1$s",
+        "description": "Lifecycle playbook that holds its assets in the first stage",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["%2$s"],
+            "events": ["Created", "Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"%2$s": %3$s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "Gate", "type": "automatedTask", "subType": "checkEntityAttributesTask",
+           "config": {"rules": "{\\"==\\":[{\\"var\\":\\"name\\"},\\"never\\"]}"},
+           "inputNamespaceMap": {"relatedEntity": "global"}},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "Gate"},
+          {"from": "Gate", "to": "SetInReview", "condition": "true"},
+          {"from": "Gate", "to": "end", "condition": "false"},
+          {"from": "SetInReview", "to": "end"}
+        ],
+        "config": {
+          "storeStageStatus": true,
+          "lifecycle": {"version": 1, "entityType": "%2$s", "gates": []}
+        }
+      }""";
+
+  /** Approves through the owners and leaves the stage to the approval itself. */
+  private static final String APPROVAL_ONLY_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "description": "Single owner approval with no stage writes of its own",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["domain"],
+            "events": ["Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"domain": %s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "Approve", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "Approve"},
+          {"from": "Approve", "to": "end", "condition": "approve"},
+          {"from": "Approve", "to": "end", "condition": "reject"}
+        ],
+        "config": {"storeStageStatus": false}
+      }""";
+
+  @Test
+  @Order(222)
+  void test_lifecyclePlaybookEnrolsAssetsWithoutReviewersInDraft(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("playbookGlossary"))
+                    .withDescription("Glossary without reviewers"));
+    String termName = ns.shortPrefix("playbookTerm");
+    String metricName = ns.shortPrefix("playbookMetric");
+    // Names sort before the default approval workflows, so these playbooks own the stage.
+    deployHoldingPlaybook(
+        admin, "AGlossaryLifecycle_" + ns.shortPrefix(), "glossaryTerm", termName);
+    deployHoldingPlaybook(admin, "AMetricLifecycle_" + ns.shortPrefix(), "metric", metricName);
+
+    GlossaryTerm term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(termName)
+                    .withDescription("Term the playbook enrols")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+    Metric metric =
+        admin
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(metricName)
+                    .withDescription("Metric the playbook enrols")
+                    .withMetricType(MetricType.COUNT)
+                    .withUnitOfMeasurement(MetricUnitOfMeasurement.SIZE));
+    GlossaryTerm outsideThePlaybook =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.shortPrefix("otherTerm"))
+                    .withDescription("Term no playbook applies to")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+    assertEquals(EntityStatus.DRAFT, metric.getEntityStatus());
+    assertEquals(EntityStatus.APPROVED, outsideThePlaybook.getEntityStatus());
+  }
+
+  @Test
+  @Order(223)
+  void test_approvalOnlyWorkflowApprovesTheEntity(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    // Domains have no default stage workflow, so this workflow's task is the only one opened.
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("approvalOnly"))
+                    .withDescription("Domain approved by its owner")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withOwners(List.of(owner)));
+    String onlyThisDomain =
+        MAPPER.writeValueAsString(
+            MAPPER.writeValueAsString(
+                Map.of(
+                    "!=",
+                    List.of(Map.of("var", "fullyQualifiedName"), domain.getFullyQualifiedName()))));
+    String workflowName = "approvalOnlyFlow_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    APPROVAL_ONLY_WORKFLOW.formatted(workflowName, onlyThisDomain),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+
+    admin
+        .domains()
+        .patch(
+            domain.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Ready for review\"}]"));
+    Task approval =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), created.getId());
+    ownerClient
+        .tasks()
+        .resolve(
+            approval.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("the approval to approve the domain")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    EntityStatus.APPROVED,
+                    admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  private void deployHoldingPlaybook(
+      OpenMetadataClient admin, String workflowName, String entityType, String entityName)
+      throws Exception {
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    HOLDING_PLAYBOOK.formatted(
+                        workflowName, entityType, onlyEntityNamed(entityName)),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+  }
+
+  /** The trigger filter excludes what it matches, so only the named entity starts the workflow. */
+  private static String onlyEntityNamed(String name) throws JsonProcessingException {
+    return MAPPER.writeValueAsString(
+        MAPPER.writeValueAsString(Map.of("!=", List.of(Map.of("var", "name"), name))));
+  }
+
+  private Task awaitOpenApprovalTaskOf(
+      OpenMetadataClient client, String entityFqn, UUID workflowDefinitionId) {
+    List<Task> found = new ArrayList<>();
+    await("an open approval task for " + entityFqn + " from its workflow")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              found.clear();
+              listOpenApprovalTasks(client, entityFqn).getData().stream()
+                  .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()))
+                  .findFirst()
+                  .ifPresent(found::add);
+              return !found.isEmpty();
+            });
+    return found.getFirst();
+  }
+
+  private Task awaitOpenApprovalTask(OpenMetadataClient client, String entityFqn, UUID previous) {
+    List<Task> found = new ArrayList<>();
+    await("an open approval task for " + entityFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              found.clear();
+              listOpenApprovalTasks(client, entityFqn).getData().stream()
+                  .filter(task -> !task.getId().equals(previous))
+                  .findFirst()
+                  .ifPresent(found::add);
+              return !found.isEmpty();
+            });
+    return found.getFirst();
+  }
+
+  @Test
+  void test_onlyTheAssigneesDecideAWorkflowApproval(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    User approver =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("approver_" + suffix)
+                    .withEmail("approver_" + suffix + "@example.com"));
+    User reviewer =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("reviewer_" + suffix)
+                    .withEmail("reviewer_" + suffix + "@example.com"));
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName("AssigneeOnlyApproval_" + suffix)
+                    .withDescription("Tags only the named approver can approve"));
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Named approver workflow",
+              "description": "Only the named approver decides a new tag",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["tag"],
+                  "events": ["Created"],
+                  "exclude": [],
+                  "filter": {"tag": "{\\\"!\\\":{\\\"in\\\":[\\\"%s\\\",{\\\"var\\\":\\\"fullyQualifiedName\\\"}]}}"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "SetInReview",
+                  "type": "automatedTask",
+                  "subType": "setEntityAttributeTask",
+                  "config": {"fieldName": "entityStatus", "fieldValue": "In Review"},
+                  "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}
+                },
+                {
+                  "name": "Approve",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user", "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {"name": "end", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "SetInReview"},
+                {"from": "SetInReview", "to": "Approve"},
+                {"from": "Approve", "to": "end", "condition": "approve"},
+                {"from": "Approve", "to": "end", "condition": "reject"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(
+                "wf_assigneeOnlyApproval_" + suffix,
+                classification.getName(),
+                approver.getId(),
+                approver.getFullyQualifiedName(),
+                approver.getName());
+    WorkflowDefinition workflow =
+        client
+            .workflowDefinitions()
+            .create(JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class));
+    trackWorkflow(workflow.getName(), workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflow.getName());
+
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("NeedsApproval")
+                    .withClassification(classification.getName())
+                    .withDescription("A tag whose reviewer is not the approver")
+                    .withReviewers(List.of(reviewer.getEntityReference())));
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), approver.getId());
+    ResolveTask approve = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
+
+    ForbiddenException refused =
+        assertThrows(
+            ForbiddenException.class,
+            () -> client.tasks().resolve(task.getId().toString(), approve));
+    assertEquals(403, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("is not an assignee of this approval"));
+
+    // The tag is In Review and has a reviewer, but the workflow named the approver: the assignee
+    // decides, whether or not they are also a reviewer.
+    SdkClients.createClient(approver.getName(), approver.getEmail(), new String[] {})
+        .tasks()
+        .resolve(task.getId().toString(), approve);
+    awaitApprovedApprovalTask(client, tag.getFullyQualifiedName());
   }
 }

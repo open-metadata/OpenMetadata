@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Popover, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  HoverCard,
+  Popover,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Check, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useRef, useState } from 'react';
@@ -30,6 +36,7 @@ import {
   useIsAiMode,
   writeAppMode,
 } from '../../hooks/useAppMode';
+import { ClassicDeprecationCard } from './ClassicDeprecationNotice';
 
 const OPTION_ICON_BOX =
   'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
@@ -183,35 +190,45 @@ const AppModeSwitcher: React.FC<{
             {t('label.switch-interface')}
           </p>
 
-          <button
-            className={classNames(
-              'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
-              {
-                'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
-                'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
-              }
-            )}
-            data-testid="app-mode-option-classic"
-            type="button"
-            onClick={handleClassicClick}>
-            <Box align="center" className={OPTION_ICON_BOX} justify="center">
-              <AppModeClassicIcon height={23} width={23} />
-            </Box>
-            <Box className="tw:flex-1 tw:min-w-0" direction="col">
-              <Typography
-                className="tw:text-primary"
-                size="text-sm"
-                weight="semibold">
-                {t('label.classic')}
-              </Typography>
-            </Box>
-            {!isAiMode && (
-              <span className={BADGE_CLASS} data-testid="classic-current-badge">
-                <Check height={12} width={12} />
-                {t('label.current')}
-              </span>
-            )}
-          </button>
+          <HoverCard content={<ClassicDeprecationCard />} placement="right">
+            <button
+              className={classNames(
+                'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-2.5 tw:rounded-xl tw:cursor-pointer tw:transition tw:bg-surface tw:border tw:text-left',
+                {
+                  'tw:bg-utility-blue-50 tw:border-utility-blue-200': !isAiMode,
+                  'tw:border-transparent tw:hover:bg-utility-blue-50': isAiMode,
+                }
+              )}
+              data-testid="app-mode-option-classic"
+              type="button"
+              onClick={handleClassicClick}>
+              <Box align="center" className={OPTION_ICON_BOX} justify="center">
+                <AppModeClassicIcon height={23} width={23} />
+              </Box>
+              <Box align="center" className="tw:flex-1 tw:min-w-0" gap={2}>
+                <Typography
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="semibold">
+                  {t('label.classic')}
+                </Typography>
+                <Badge
+                  color="warning"
+                  data-testid="classic-deprecated-badge"
+                  size="sm">
+                  {t('label.deprecated')}
+                </Badge>
+              </Box>
+              {!isAiMode && (
+                <span
+                  className={BADGE_CLASS}
+                  data-testid="classic-current-badge">
+                  <Check height={12} width={12} />
+                  {t('label.current')}
+                </span>
+              )}
+            </button>
+          </HoverCard>
 
           <button
             className={classNames(

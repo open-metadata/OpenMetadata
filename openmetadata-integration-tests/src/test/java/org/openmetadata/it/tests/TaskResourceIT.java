@@ -2483,26 +2483,36 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
 
     // assignedTask is visible to user1 both via /visible and /owned (about a
-    // user1-owned table); createdTask exercises /created (createdBy user1).
+    // user1-owned table); createdTask exercises /created (createdBy user1). Scoped to this
+    // test's domain so tasks other concurrent tests give user1 cannot move total vs page.
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+                .listVisible(
+                    null,
+                    null,
+                    domain.getFullyQualifiedName(),
+                    "assignees,about",
+                    1000,
+                    startTs,
+                    endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+                .listOwned(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         assignedTask.getId(),
         assignedTask.getCreatedAt());
     assertTimeRangeFilters(
         (startTs, endTs) ->
             SdkClients.user1Client()
                 .tasks()
-                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+                .listCreated(
+                    null, null, domain.getFullyQualifiedName(), "about", 1000, startTs, endTs),
         createdTask.getId(),
         createdTask.getCreatedAt());
 

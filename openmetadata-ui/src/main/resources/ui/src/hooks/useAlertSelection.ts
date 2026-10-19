@@ -49,6 +49,8 @@ export interface AlertSelection {
 const NO_SOURCES: string[] = [];
 const NO_CATALOG: SourceOfTheCatalog[] = [];
 
+const splitKey = (key: string): string[] => (key ? key.split('|') : []);
+
 /**
  * The sources an alert watches and what they support, asked once for the whole page. The form or
  * view that shows an alert provides it, and every field inside reads it from there, so the source
@@ -71,9 +73,18 @@ export const useAlertSelection = ({
     () => getSelectionSupport(catalog, sources, capabilities.selection),
     [catalog, sources, capabilities.selection]
   );
+  // Every capabilities answer is a new object, even when it says the same thing. The fields that
+  // search re-run their initial fetch and cancel a pending typed search whenever `search` changes,
+  // so it is keyed by the values it closes over rather than by the arrays that carry them.
+  const sourcesKey = sources.join('|');
+  const containerEntitiesKey = (support.containerEntities ?? []).join('|');
   const search = useMemo(
-    () => getAlertSourceSearch(sources, support.containerEntities),
-    [sources, support.containerEntities]
+    () =>
+      getAlertSourceSearch(
+        splitKey(sourcesKey),
+        splitKey(containerEntitiesKey)
+      ),
+    [sourcesKey, containerEntitiesKey]
   );
 
   return useMemo(

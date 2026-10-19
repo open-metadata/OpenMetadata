@@ -104,9 +104,7 @@ const TopicSummary = ({
   ) : (
     // `!` on the colour: Typography renders `.prose`, whose unlayered `color`
     // rule is emitted after the Tailwind utilities and would otherwise win.
-    <Typography
-      className="tw:text-pretty tw:text-text-secondary!"
-      size="text-sm">
+    <Typography className="tw:text-pretty tw:text-quaternary!" size="text-xs">
       {summary}
     </Typography>
   );
@@ -162,9 +160,10 @@ const TopicContent = ({
     {children}
     {emptyState && (
       <TopicEmptyState
-        action={emptyState.action}
+        action={emptyState.footer ? undefined : emptyState.action}
         description={emptyState.description}
         icon={emptyState.icon}
+        layout={emptyState.footer ? 'footer' : 'body'}
         title={emptyState.title}
         topicKey={topicKey}
       />
@@ -265,7 +264,7 @@ const getHeadline = (
 
   return emptyState
     ? {
-        meta: undefined,
+        meta: emptyState.footer?.meta,
         status: emptyState.needsSetup
           ? { color: 'gray', label: t('label.not-set-up') }
           : undefined,
@@ -367,9 +366,10 @@ const TopicCard: React.FC<TopicCardProps> = ({
 
       {!isCollapsed && (
         // The empty state carries its own call to action; a footer link into
-        // a list with nothing in it would be a second, emptier one.
+        // a list with nothing in it would be a second, emptier one. An empty
+        // state with a footer of its own puts that call to action there.
         <TopicCardFooter
-          action={shownEmptyState ? undefined : action}
+          action={shownEmptyState ? shownEmptyState.footer?.action : action}
           isLoading={isLoading}
           meta={shown.meta}
           topicKey={topicKey}

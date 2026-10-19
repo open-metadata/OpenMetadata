@@ -163,7 +163,7 @@ function EditEmailConfigPage() {
     []
   );
 
-  const handleFieldFocus = useCallback((event: FocusEvent<HTMLFormElement>) => {
+  const handleFieldFocus = useCallback((event: FocusEvent<HTMLElement>) => {
     setActiveField(event.target.id);
   }, []);
 

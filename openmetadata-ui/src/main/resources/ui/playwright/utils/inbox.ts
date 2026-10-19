@@ -108,18 +108,32 @@ export const visitTriage = async (page: Page) => {
 };
 
 /**
- * Open My Data through the sidebar brand: a direct `goto('/my-data')` races
- * the AI-mode route registration as `/inbox` does. The expanded panel and the
- * collapsed rail each draw a brand, so the visible one is used.
+ * Open My Data from the user menu, which shows it in the personal-space panel.
+ * A direct `goto('/my-data')` races the AI-mode route registration as `/inbox`
+ * does, and the sidebar brand leads Home, not here.
  */
 export const visitMyData = async (page: Page) => {
   await openAiHome(page);
-  const brand = page.getByTestId('ask-logo-btn').filter({ visible: true });
-  await expect(brand).toBeVisible({ timeout: AI_SHELL_TIMEOUT });
-  await brand.click();
-  await expect(page.getByTestId('my-data-page')).toBeVisible({
-    timeout: AI_SHELL_TIMEOUT,
-  });
+  const menuTrigger = page
+    .getByTestId('ask-ai-user-menu-trigger')
+    .filter({ visible: true });
+  await expect(menuTrigger).toBeVisible({ timeout: AI_SHELL_TIMEOUT });
+
+  // The sidebar shows before the home page has finished rendering its widgets,
+  // and a re-render then can close the menu, or the My Data panel it just
+  // opened. Repeat the whole open until the panel holds.
+  const myDataItem = page.getByTestId('ai-user-menu-my-data');
+  const myDataPage = page.getByTestId('my-data-page');
+  await expect(async () => {
+    if (await myDataPage.isVisible()) {
+      return;
+    }
+    if (!(await myDataItem.isVisible())) {
+      await menuTrigger.click();
+    }
+    await myDataItem.click({ timeout: 2_000 });
+    await expect(myDataPage).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: AI_SHELL_TIMEOUT });
 };
 
 /** Pick one of the Activity feed's sub-tabs (All, Mentions, …). */

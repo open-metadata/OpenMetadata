@@ -15,29 +15,28 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.factories.GlossaryTestFactory;
-import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
+import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
-import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyRestrictionKind;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -46,39 +45,30 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 /** Live OWL 2 profile and persistence coverage for typed ontology axioms. */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
-public class OntologyAxiomResourceIT {
-  private static final String ONTOLOGY_AXIOM = "ontologyAxiom";
+public class OntologyAxiomResourceIT extends BaseOntologyApprovalIT {
   private static final URI SUBJECT_IRI = URI.create("https://example.org/model/RegulatedProduct");
   private static final URI PROPERTY_IRI = URI.create("https://example.org/model/hasJurisdiction");
   private static final URI FILLER_IRI = URI.create("https://example.org/model/Jurisdiction");
 
-  @AfterEach
-  void cleanup(TestNamespace ns) {
-    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
-  }
-
   @Test
-  void axiomCreatedWithoutAStageStartsInDraft(TestNamespace ns) {
+  void workingAxiomsHaveNoApprovalStage(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = GlossaryTestFactory.createSimple(ns);
-    CreateOntologyAxiom request =
-        restrictionRequest(glossary, ns.prefix("draftByDefault")).withEntityStatus(null);
+    Ontology ontology = createModel(ns);
+    CreateOntologyAxiom request = restrictionRequest(ontology, ns.prefix("workingAxiom"));
 
     OntologyAxiom created = client.ontologyAxioms().create(request);
-    ns.trackRoot(ONTOLOGY_AXIOM, created);
 
-    assertEquals(EntityStatus.DRAFT, created.getEntityStatus());
+    assertNull(created.getEntityStatus());
   }
 
   @Test
   void validatesAndPersistsAQualifiedCardinalityRestriction(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = GlossaryTestFactory.createSimple(ns);
-    CreateOntologyAxiom request = restrictionRequest(glossary, ns.prefix("jurisdictionRule"));
+    Ontology ontology = createModel(ns);
+    CreateOntologyAxiom request = restrictionRequest(ontology, ns.prefix("jurisdictionRule"));
 
     OntologyProfileReport report = client.ontologyAxioms().validate(request);
     OntologyAxiom created = client.ontologyAxioms().create(request);
-    ns.trackRoot(ONTOLOGY_AXIOM, created);
     OntologyAxiom stored = client.ontologyAxioms().get(created.getId().toString());
 
     assertTrue(report.getValid());
@@ -92,9 +82,9 @@ public class OntologyAxiomResourceIT {
   @Test
   void rejectsReservedVocabularyBeforePersistence(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    Ontology ontology = createModel(ns);
     CreateOntologyAxiom request =
-        restrictionRequest(glossary, ns.prefix("reservedRule"))
+        restrictionRequest(ontology, ns.prefix("reservedRule"))
             .withSubjectIri(URI.create("http://www.w3.org/2002/07/owl#Thing"));
 
     OpenMetadataException exception =
@@ -103,7 +93,22 @@ public class OntologyAxiomResourceIT {
     assertFalse(exception.getMessage().isBlank());
   }
 
-  private static CreateOntologyAxiom restrictionRequest(Glossary glossary, String name) {
+  private static Ontology createModel(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    declareClass(ontology, "RegulatedProduct", SUBJECT_IRI);
+    declareClass(ontology, "Jurisdiction", FILLER_IRI);
+    SdkClients.adminClient()
+        .ontologyProperties()
+        .create(
+            new CreateOntologyProperty()
+                .withName("hasJurisdiction")
+                .withOntology(ontology.getFullyQualifiedName())
+                .withIri(PROPERTY_IRI)
+                .withKind(OntologyPropertyKind.OBJECT));
+    return ontology;
+  }
+
+  private static CreateOntologyAxiom restrictionRequest(Ontology ontology, String name) {
     OntologyExpression filler =
         new OntologyExpression()
             .withKind(OntologyExpressionKind.NAMED_CLASS)
@@ -119,11 +124,10 @@ public class OntologyAxiomResourceIT {
         .withName(name)
         .withDisplayName("Jurisdiction requirement")
         .withDescription("Every regulated product has exactly one governing jurisdiction")
-        .withGlossary(glossary.getFullyQualifiedName())
+        .withOntology(ontology.getFullyQualifiedName())
         .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
         .withSubjectIri(SUBJECT_IRI)
         .withExpressions(List.of(restriction))
-        .withProvenance(RelationProvenance.MANUAL)
-        .withEntityStatus(EntityStatus.DRAFT);
+        .withProvenance(RelationProvenance.MANUAL);
   }
 }

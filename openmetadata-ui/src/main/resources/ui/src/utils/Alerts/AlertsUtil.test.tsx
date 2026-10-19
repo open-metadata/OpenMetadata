@@ -58,7 +58,6 @@ import {
   getFormattedDestinations,
   getFunctionDisplayName,
   getLabelsForEventDetails,
-  listLengthValidator,
   normalizeDestinationConfig,
 } from './AlertsUtilPure';
 
@@ -143,12 +142,6 @@ describe('AlertsUtil tests', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.Webhook);
 
     expect(icon).toStrictEqual(<WebhookIcon height={16} width={16} />);
-  });
-
-  it('listLengthValidator should return error function', async () => {
-    const error = listLengthValidator('name', 64);
-
-    expect(typeof error).toBe('function');
   });
 
   it('getAlertActionTypeDisplayName should return correct text for Slack', () => {

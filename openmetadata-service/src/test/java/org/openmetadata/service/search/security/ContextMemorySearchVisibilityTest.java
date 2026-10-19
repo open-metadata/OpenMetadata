@@ -56,6 +56,8 @@ class ContextMemorySearchVisibilityTest {
   private static final UUID USER_ID = UUID.randomUUID();
   private static final UUID TEAM_ID = UUID.randomUUID();
   private static final UUID DOMAIN_ID = UUID.randomUUID();
+  private static final Map<String, List<String>> OWNER_PENDING_REQUESTED =
+      Map.of(ContextMemoryIndex.FIELD_STATUS, List.of("Approved", "Unprocessed", "Draft"));
 
   private SubjectContext nonAdminSubject() {
     User user =
@@ -531,6 +533,120 @@ class ContextMemorySearchVisibilityTest {
                 nonAdminSubject(),
                 ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
                 List.of(anchorId));
+    return serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+  }
+
+  @Test
+  void ownerStatusesKeepOnlyTheRequestedPendingStages() {
+    Map<String, List<String>> filters =
+        Map.of(
+            ContextMemoryIndex.FIELD_STATUS,
+            List.of("Approved", "Draft", "Superseded", "Archived", "unprocessed", "Unprocessed"));
+
+    assertEquals(
+        List.of(ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT),
+        ContextMemorySearchVisibility.ownerStatuses(filters));
+    assertTrue(ContextMemorySearchVisibility.ownerStatuses(null).isEmpty());
+    assertTrue(ContextMemorySearchVisibility.ownerStatuses(Map.of()).isEmpty());
+    assertTrue(
+        ContextMemorySearchVisibility.ownerStatuses(
+                Map.of(ContextMemoryIndex.FIELD_STATUS, List.of("Approved", "Superseded")))
+            .isEmpty(),
+        "only a pending stage widens; a retired one never does");
+  }
+
+  @Test
+  void requestedPendingStagesAdmitTheSubjectsOwnMemoriesOnly() {
+    DocumentContext json =
+        JsonPath.parse(ownerPendingJson(nonAdminSubject(), OWNER_PENDING_REQUESTED));
+    String memoryClause = "$.bool.should[1].bool.must[1].bool.should";
+
+    assertFieldExists(
+        json,
+        memoryClause + "[0].bool.must[?(@.term['entityStatus'].value=='Approved')]",
+        "what the subject may see is still admitted Approved only");
+    assertFieldExists(
+        json,
+        memoryClause
+            + "[1].bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + USER_ID
+            + "')]",
+        "pending memories are admitted through ownership");
+    assertFieldExists(
+        json,
+        memoryClause + "[1].bool.must[?(@.terms['entityStatus'] contains 'Unprocessed')]",
+        "an owner's Unprocessed memories are admitted");
+    assertFieldExists(
+        json,
+        memoryClause + "[1].bool.must[?(@.terms['entityStatus'] contains 'Draft')]",
+        "an owner's Draft memories are admitted");
+    assertFieldDoesNotExist(
+        json,
+        memoryClause + "[0]..terms['entityStatus']",
+        "a pending memory never reaches the subject through visibility alone");
+    assertFieldDoesNotExist(
+        json, memoryClause + "[1]..term['visibility']", "an owner's pending memory needs no grant");
+  }
+
+  @Test
+  void anAdminAskingForPendingStagesIsWidenedToTheirOwnOnly() {
+    User admin = new User().withId(USER_ID).withName("root").withIsAdmin(true);
+    DocumentContext json =
+        JsonPath.parse(ownerPendingJson(new SubjectContext(admin, null), OWNER_PENDING_REQUESTED));
+    String memoryClause = "$.bool.should[1].bool.must[1].bool.should";
+
+    assertFieldExists(
+        json,
+        memoryClause + "[0].bool.must[?(@.term['entityStatus'].value=='Approved')]",
+        "an admin still reads every Approved memory");
+    assertFieldExists(
+        json,
+        memoryClause
+            + "[1].bool.must[?(@.nested.query.term['owners.id'].value=='"
+            + USER_ID
+            + "')]",
+        "an admin's pending memories are their own, never everyone's");
+    assertFieldExists(
+        json,
+        memoryClause + "[1].bool.must[?(@.terms['entityStatus'] contains 'Unprocessed')]",
+        "the admin's own Unprocessed memories are admitted");
+  }
+
+  @Test
+  void noPendingStageRequestedBuildsTheUnwidenedFilter() {
+    SubjectContext admin =
+        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+
+    assertEquals(
+        buildElasticJson(nonAdminSubject()), ownerPendingJson(nonAdminSubject(), Map.of()));
+    assertEquals(buildElasticJson(admin), ownerPendingJson(admin, Map.of()));
+    assertEquals(
+        buildElasticJson(nonAdminSubject()),
+        ownerPendingJson(
+            nonAdminSubject(), Map.of(ContextMemoryIndex.FIELD_STATUS, List.of("Approved"))));
+  }
+
+  @Test
+  void anUnidentifiedSubjectIsNeverWidened() {
+    assertNull(
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(
+                null,
+                ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+                List.of(),
+                ContextMemorySearchVisibility.OWNER_PENDING_STATUSES),
+        "the caller falls back to the org-wide-only filter, which admits no pending memory");
+    assertFalse(orgWideOnlyJson().contains("Unprocessed"));
+  }
+
+  private String ownerPendingJson(SubjectContext subject, Map<String, List<String>> filters) {
+    OMQueryBuilder filter =
+        new ContextMemorySearchVisibility(new ElasticQueryBuilderFactory())
+            .buildVisibilityFilter(
+                subject,
+                ContextMemorySearchVisibility.SEARCHABLE_STATUSES,
+                List.of(),
+                ContextMemorySearchVisibility.ownerStatuses(filters));
     return serializeElasticQuery(((ElasticQueryBuilder) filter).build());
   }
 

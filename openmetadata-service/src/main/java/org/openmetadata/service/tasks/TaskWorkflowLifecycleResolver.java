@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
 
 /** Resolves workflow lifecycle bindings for configurable task forms. */
@@ -237,6 +239,12 @@ public final class TaskWorkflowLifecycleResolver {
       case DataQualityReview -> "DataQualityReviewTaskWorkflow";
       case RecognizerFeedbackApproval -> "RecognizerFeedbackReviewWorkflow";
       case CustomTask -> "CustomTaskWorkflow";
+        // The server opens it and applies its decision synchronously; no workflow drives it
+        // (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
+      case MemoryConflictReview -> null;
+        // Lifecycle workflows open and refresh it, and resolving it only re-checks its fields
+        // (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+      case MetadataCompletion -> null;
       default -> "CustomTaskWorkflow";
     };
   }
@@ -281,11 +289,15 @@ public final class TaskWorkflowLifecycleResolver {
           OwnershipUpdate,
           TierUpdate,
           DomainUpdate,
-          Suggestion -> TaskCategory.MetadataUpdate;
+          Suggestion,
+          MetadataCompletion -> TaskCategory.MetadataUpdate;
       case GlossaryApproval, RequestApproval -> TaskCategory.Approval;
       case DataAccessRequest -> TaskCategory.DataAccess;
       case IncidentResolution, TestCaseResolution -> TaskCategory.Incident;
-      case DataQualityReview, PipelineReview, RecognizerFeedbackApproval -> TaskCategory.Review;
+      case DataQualityReview,
+          PipelineReview,
+          RecognizerFeedbackApproval,
+          MemoryConflictReview -> TaskCategory.Review;
       case CustomTask -> TaskCategory.Custom;
     };
   }
@@ -462,6 +474,21 @@ public final class TaskWorkflowLifecycleResolver {
       transitions = DEFAULT_USER_APPROVAL_TRANSITIONS;
     }
     return transitions;
+  }
+
+  /** An entity-event workflow whose own nodes write the entity's stage. */
+  public static boolean writesItsOwnEntityStage(UUID workflowDefinitionId) {
+    final WorkflowDefinition workflow = loadWorkflowDefinition(workflowDefinitionId);
+    return isEntityEventWorkflow(workflow) && EntityStatusWorkflows.writesStageInANode(workflow);
+  }
+
+  public static boolean isEntityEventWorkflow(UUID workflowDefinitionId) {
+    return isEntityEventWorkflow(loadWorkflowDefinition(workflowDefinitionId));
+  }
+
+  private static boolean isEntityEventWorkflow(WorkflowDefinition workflow) {
+    // Triggers are a polymorphic schema type; only entity-event triggers run per entity change.
+    return workflow != null && workflow.getTrigger() instanceof EventBasedEntityTriggerDefinition;
   }
 
   private static WorkflowDefinition loadWorkflowDefinition(UUID workflowDefinitionId) {

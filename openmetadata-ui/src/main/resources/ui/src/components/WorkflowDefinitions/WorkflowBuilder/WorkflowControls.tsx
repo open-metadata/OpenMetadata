@@ -29,7 +29,6 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
   onCancelWorkflow,
   onRevertAndCancel,
   onRunWorkflow,
-  onDeleteWorkflow,
   isRunLoading = false,
 }) => {
   const { t } = useTranslation();
@@ -56,15 +55,6 @@ export const WorkflowControls: React.FC<WorkflowControlsProps> = ({
 
   return (
     <div className="tw:flex tw:gap-3">
-      {onDeleteWorkflow && (
-        <Button
-          color="tertiary-destructive"
-          data-testid="delete-workflow-button"
-          size="sm"
-          onPress={onDeleteWorkflow}>
-          {t('label.delete-workflow')}
-        </Button>
-      )}
       {showRunButton && onRunWorkflow && (
         <Button
           color="secondary"

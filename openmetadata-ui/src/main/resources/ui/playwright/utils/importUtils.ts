@@ -576,18 +576,28 @@ export const fillUserAndTeamOwnerDetails = async (
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await clickInlineSave(page);
+  // The editor opens its list as soon as the cell does; picking commits it.
+  await page.getByRole('option', { name: entityType, exact: true }).click();
+  await expect(page.getByTestId('entity-type-select')).toHaveCount(0);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
+  const tagSelectorInput = page.getByTestId('tag-selector').locator('input');
+  await expect(bulkPicker.or(tagSelectorInput)).toBeVisible();
+
+  if (await bulkPicker.isVisible()) {
+    await bulkPicker.getByRole('textbox').fill(tag);
+    await bulkPicker.getByTestId(`bulk-edit-picker-option-${tag}`).click();
+    await bulkPicker
+      .getByRole('button', { name: 'Update', exact: true })
+      .click();
+    await expect(bulkPicker).toHaveCount(0);
+
+    return;
+  }
 
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -1034,11 +1044,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;
