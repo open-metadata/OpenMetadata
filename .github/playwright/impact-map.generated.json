@@ -747,7 +747,6 @@
         "playwright/e2e/Features/OntologyExplorerFilters.spec.ts",
         "playwright/e2e/Features/Permission.spec.ts",
         "playwright/e2e/Features/SearchExport.spec.ts",
-        "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/LearningResources.spec.ts"
       ]
@@ -4570,6 +4569,7 @@
         "playwright/e2e/Features/TierDropdown.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Flow/ConditionalPermissions.spec.ts",
+        "playwright/e2e/Flow/ExploreDiscovery.spec.ts",
         "playwright/e2e/Flow/LineageSettings.spec.ts",
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
