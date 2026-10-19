@@ -14,7 +14,6 @@ import {
   Badge,
   Box,
   Button,
-  ButtonUtility,
   Divider,
   Dropdown,
   NavItemBase,
@@ -112,19 +111,8 @@ const LeftSidebar = () => {
       }
     };
 
-    if (isSidebarCollapsed && !item.redirect_url) {
-      return (
-        <Button
-          aria-label={t(item.title)}
-          color="tertiary"
-          data-testid={item.dataTestId}
-          iconLeading={item.icon}
-          size="md"
-          onPress={handleSelect}
-        />
-      );
-    }
-
+    // Every collapsed rail item is the same NavItemButton, so links, actions and group triggers
+    // share one size and the expanded sidebar's solid look.
     if (isSidebarCollapsed) {
       return (
         <span
@@ -135,7 +123,10 @@ const LeftSidebar = () => {
             href={item.redirect_url}
             icon={item.icon}
             label={t(item.title)}
+            size="lg"
+            variant="solid"
             onClick={() => navigateToItem(item, parentKey)}
+            onPress={handleSelect}
           />
         </span>
       );
@@ -173,7 +164,8 @@ const LeftSidebar = () => {
             setCollapsedMenuKey(isOpen ? item.key : undefined)
           }>
           <span
-            className="tw:flex tw:h-10 tw:items-center tw:justify-center"
+            className="tw:flex tw:items-center tw:justify-center"
+            data-testid={item.dataTestId}
             role="presentation"
             onMouseEnter={() => {
               cancelHoverClose();
@@ -190,16 +182,14 @@ const LeftSidebar = () => {
                 }
               }, 150);
             }}>
-            <ButtonUtility
-              aria-label={t(item.title)}
-              color={
-                item.children?.some((child) => selectedKeys.includes(child.key))
-                  ? 'secondary'
-                  : 'tertiary'
-              }
-              data-testid={item.dataTestId}
+            <NavItemButton
+              current={item.children?.some((child) =>
+                selectedKeys.includes(child.key)
+              )}
               icon={item.icon}
-              size="sm"
+              label={t(item.title)}
+              size="lg"
+              variant="solid"
               // Hover has already opened the group before a pointer press reaches its trigger.
               onPress={() => setCollapsedMenuKey(item.key)}
             />

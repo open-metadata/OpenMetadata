@@ -1,8 +1,23 @@
 import { shouldClientNavigate, useRouter } from '@react-aria/utils';
 import type { FC, MouseEvent, MouseEventHandler } from 'react';
-import { Pressable } from 'react-aria-components';
+import { Button as AriaButton, Pressable } from 'react-aria-components';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
+
+// `solid` mirrors NavItemBase's solid variant so a collapsed rail matches the expanded sidebar:
+// rest items sit on the sidebar surface (no white tile) with the same mid-gray icon.
+const variants = {
+  default: {
+    root: 'tw:bg-primary tw:dark:bg-transparent tw:text-fg-quaternary tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover',
+    current:
+      'tw:bg-brand-primary_alt tw:text-fg-brand-secondary_alt tw:hover:bg-brand-primary_alt tw:hover:text-fg-brand-secondary_alt',
+  },
+  solid: {
+    root: 'tw:bg-transparent tw:text-fg-tertiary tw:hover:bg-brand-primary_alt tw:hover:text-fg-brand-secondary_alt',
+    current:
+      'tw:bg-brand-solid tw:text-fg-white tw:hover:bg-brand-solid tw:hover:text-fg-white',
+  },
+};
 
 const styles = {
   md: {
@@ -28,8 +43,12 @@ interface NavItemButtonProps {
   current?: boolean;
   /** Size of the button. */
   size?: 'md' | 'lg';
-  /** Handler for click events. */
+  /** Visual style; `solid` matches NavItemBase's solid variant. */
+  variant?: keyof typeof variants;
+  /** Handler for click events on the link form (`href` set). */
   onClick?: MouseEventHandler;
+  /** Handler for presses on the button form (no `href`), e.g. a menu trigger or an action. */
+  onPress?: () => void;
   /** Additional CSS classes to apply to the button. */
   className?: string;
   /** Placement of the tooltip. */
@@ -44,7 +63,9 @@ export const NavItemButton = ({
   size = 'md',
   className,
   tooltipPlacement = 'right',
+  variant = 'default',
   onClick,
+  onPress,
 }: NavItemButtonProps) => {
   const router = useRouter();
 
@@ -63,31 +84,44 @@ export const NavItemButton = ({
     }
   };
 
+  const buttonClassName = cx(
+    'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+    variants[variant].root,
+    // Same current-page treatment as the expanded NavItemBase, so the
+    // collapsed rail still shows where the user is.
+    current && variants[variant].current,
+    styles[size].root,
+    className
+  );
+  const icon = (
+    <Icon
+      aria-hidden="true"
+      className={cx('tw:shrink-0 tw:transition-inherit-all', styles[size].icon)}
+    />
+  );
+
   return (
     <Tooltip placement={tooltipPlacement} title={label}>
-      <Pressable>
-        <a
+      {href ? (
+        <Pressable>
+          <a
+            aria-label={label}
+            className={buttonClassName}
+            href={href}
+            onClick={handleClick}>
+            {icon}
+          </a>
+        </Pressable>
+      ) : (
+        // Without a destination this is an action or a menu trigger, so it is a real button and
+        // stays keyboard reachable (an anchor without href is not focusable).
+        <AriaButton
           aria-label={label}
-          className={cx(
-            'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:bg-primary tw:dark:bg-transparent tw:p-2 tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
-            // Same current-page treatment as the expanded NavItemBase, so the
-            // collapsed rail still shows where the user is.
-            current &&
-              'tw:bg-brand-primary_alt tw:text-fg-brand-secondary_alt tw:hover:bg-brand-primary_alt tw:hover:text-fg-brand-secondary_alt',
-            styles[size].root,
-            className
-          )}
-          href={href}
-          onClick={handleClick}>
-          <Icon
-            aria-hidden="true"
-            className={cx(
-              'tw:shrink-0 tw:transition-inherit-all',
-              styles[size].icon
-            )}
-          />
-        </a>
-      </Pressable>
+          className={buttonClassName}
+          onPress={onPress}>
+          {icon}
+        </AriaButton>
+      )}
     </Tooltip>
   );
 };
