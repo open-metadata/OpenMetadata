@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
@@ -33,6 +34,8 @@ import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -100,6 +103,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   // response headers unless we expose them, so without this the client cannot start the OAuth flow.
   private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate";
 
+  // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
+  private static final String JWKS_PATH = "/api/v1/system/config/jwks";
+
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
   // For multi-node production deployments, consider database-backed rate limiting.
@@ -159,6 +165,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     metadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
     metadata.setRevocationEndpointAuthMethodsSupported(
         List.of("client_secret_basic", "client_secret_post"));
+    addOpenIdDiscoveryFields(metadata, baseUrl);
 
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
@@ -237,6 +244,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     newMetadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
     newMetadata.setRevocationEndpointAuthMethodsSupported(
         List.of("client_secret_basic", "client_secret_post"));
+    addOpenIdDiscoveryFields(newMetadata, baseUrl);
     this.oauthMetadata = newMetadata;
 
     ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
@@ -446,6 +454,22 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       LOG.warn("Could not determine auth provider for scopes, using default", e);
       return List.of("openid", "profile", "email");
     }
+  }
+
+  /**
+   * The fields OpenID Connect Discovery requires on top of RFC 8414, so one document answers both
+   * the oauth-authorization-server and the openid-configuration routes. The TypeScript MCP SDK
+   * rejects an openid-configuration response without them, and under a non-root BASE_PATH that is
+   * the only discovery URL it can reach.
+   */
+  private static void addOpenIdDiscoveryFields(OAuthMetadata metadata, String baseUrl) {
+    TokenValidationAlgorithm signingAlgorithm =
+        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthConfig())
+            .map(AuthenticationConfiguration::getTokenValidationAlgorithm)
+            .orElse(TokenValidationAlgorithm.RS_256);
+    metadata.setJwksUri(URI.create(baseUrl + JWKS_PATH));
+    metadata.setSubjectTypesSupported(List.of("public"));
+    metadata.setIdTokenSigningAlgValuesSupported(List.of(signingAlgorithm.value()));
   }
 
   /**

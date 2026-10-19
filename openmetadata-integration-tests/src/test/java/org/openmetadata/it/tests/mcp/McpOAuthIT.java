@@ -62,9 +62,16 @@ public class McpOAuthIT extends McpTestBase {
 
   @Test
   @Order(1)
-  void testOpenIdConfigurationAppendedToIssuer_servesTheSameMetadata() throws Exception {
-    assertThat(getJson("/mcp/.well-known/openid-configuration"))
+  void testOpenIdConfigurationAppendedToIssuer_servesOpenIdDiscoveryMetadata() throws Exception {
+    JsonNode openIdConfiguration = getJson("/mcp/.well-known/openid-configuration");
+
+    assertThat(openIdConfiguration)
         .isEqualTo(getJson("/mcp/.well-known/oauth-authorization-server"));
+    // Required by OpenID Connect Discovery; the TypeScript MCP SDK rejects the document without
+    // them
+    assertThat(openIdConfiguration.get("jwks_uri").asText()).endsWith("/api/v1/system/config/jwks");
+    assertThat(openIdConfiguration.get("subject_types_supported").toString()).contains("public");
+    assertThat(openIdConfiguration.has("id_token_signing_alg_values_supported")).isTrue();
   }
 
   private JsonNode getJson(String path) throws Exception {
