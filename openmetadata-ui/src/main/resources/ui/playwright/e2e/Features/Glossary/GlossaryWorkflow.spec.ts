@@ -622,7 +622,7 @@ test(
                   `/api/v1/glossaryTerms/${term.responseData.id}`
                 )
               ).status(),
-            { timeout: 90_000 }
+            { timeout: 30_000 }
           )
           .toBe(404);
       }
