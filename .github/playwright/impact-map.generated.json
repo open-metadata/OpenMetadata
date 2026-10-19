@@ -5508,6 +5508,15 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/ActivityPanelHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1.tsx"
       ],
       "specs": [
@@ -5543,7 +5552,9 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/ActivityFeedPanel/FeedPanelHeader.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Pages/DescriptionVisibility.spec.ts"
       ]
     },
     {
@@ -7217,7 +7228,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
-        "playwright/e2e/Features/ContextCenterArticles.spec.ts"
+        "playwright/e2e/Features/ContextCenterArticles.spec.ts",
+        "playwright/e2e/VersionPages/GlossaryVersionPage.spec.ts"
       ]
     },
     {
@@ -9782,14 +9794,6 @@
       "specs": [
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/ContextCenterArticles.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/IconButtons/EditIconButton.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/EntityRightCollapsablePanel.spec.ts"
       ]
     },
     {
@@ -13290,7 +13294,11 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/LearningResourcesPage/LearningResourceForm.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/LearningResources.spec.ts"
+        "playwright/e2e/Pages/LearningResources.spec.ts",
+        "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts"
       ]
     },
     {
