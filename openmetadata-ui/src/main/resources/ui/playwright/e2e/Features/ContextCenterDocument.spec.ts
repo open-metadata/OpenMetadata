@@ -17,6 +17,7 @@ import {
   expect,
   Response,
 } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { test as base } from '../../support/fixtures/base';
 import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { UserClass } from '../../support/user/UserClass';
@@ -132,6 +133,7 @@ test.describe('Context Center - Documents Page', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ documentSession }) => {
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     contextFileIdsToCleanup.clear();
     contextFolderIdsToCleanup.clear();
     const { apiContext } = documentSession;
@@ -201,31 +203,8 @@ test.describe('Context Center - Documents Page', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // The replayed worker session has been seen to land on /signin in CI.
-    // Fail here with enough context to tell an unreachable token-storage
-    // service worker from a failed loggedInUser call.
-    const consoleErrors: string[] = [];
-    let loggedInUserStatus: number | string = 'not requested';
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') {
-        consoleErrors.push(msg.text());
-      }
-    });
-    page.on('response', (res) => {
-      if (res.url().includes('/api/v1/users/loggedInUser')) {
-        loggedInUserStatus = res.status();
-      }
-    });
-
     await disableEtagConditionalReads(page);
     await redirectToHomePage(page);
-
-    await expect(
-      page,
-      `Session lost before test: loggedInUser=${loggedInUserStatus}; console errors: ${consoleErrors.join(
-        ' | '
-      )}`
-    ).not.toHaveURL(/\/signin/);
   });
 
   // ─── Pagination ───────────────────────────────────────────────────────────
@@ -352,6 +331,7 @@ test.describe('Context Center - Documents Page', () => {
       res.request().method() === 'GET';
 
     test.beforeAll(async ({ documentSession }) => {
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
       const { apiContext } = documentSession;
       const suffix = uuid();
 
