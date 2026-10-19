@@ -28,7 +28,7 @@ const IncidentGroupsLoadError = ({
         actions={[
           {
             key: 'retry',
-            color: 'secondary',
+            color: 'primary',
             label: t('label.retry'),
             onPress: onRetry,
           },

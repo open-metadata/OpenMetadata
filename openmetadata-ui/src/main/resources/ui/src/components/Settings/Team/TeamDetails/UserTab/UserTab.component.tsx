@@ -404,7 +404,7 @@ export const UserTab = ({
                 onUpdate={onAddUser}>
                 <Tooltip arrow placement="top right" title={addUserButtonTitle}>
                   <Button
-                    color="secondary"
+                    color="primary"
                     data-testid="add-new-user"
                     iconLeading={Plus}
                     isDisabled={!editUserPermission || isTeamDeleted}

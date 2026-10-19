@@ -287,7 +287,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             actions={[
               {
                 key: 'clear-filters',
-                color: 'secondary',
+                color: 'primary',
                 label: t('label.clear-filter-plural'),
                 onPress: () =>
                   handleFiltersChange(CLEARED_INCIDENT_GROUP_FILTERS),
@@ -401,7 +401,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
           actions={[
             {
               key: 'back',
-              color: 'secondary',
+              color: 'primary',
               label: t('label.back-to-group-plural'),
               onPress: handleBack,
             },

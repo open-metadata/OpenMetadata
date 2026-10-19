@@ -758,7 +758,7 @@ const TeamDetailsV1 = ({
               </Typography>
               <Tooltip arrow placement="top" title={addTeamButtonTitle}>
                 <Button
-                  color="secondary"
+                  color="primary"
                   data-testid="add-placeholder-button"
                   iconLeading={Plus}
                   isDisabled={!entityPermissions.Create || isTeamDeleted}
@@ -878,7 +878,7 @@ const TeamDetailsV1 = ({
                   : t('label.add-entity', { entity: t('label.role') })
               }>
               <Button
-                color="secondary"
+                color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 isDisabled={isTeamDeleted}
@@ -950,7 +950,7 @@ const TeamDetailsV1 = ({
                   : t('label.add-entity', { entity: t('label.policy') })
               }>
               <Button
-                color="secondary"
+                color="primary"
                 data-testid="add-placeholder-button"
                 iconLeading={Plus}
                 isDisabled={isTeamDeleted}

@@ -206,7 +206,7 @@ const TestSummary: React.FC<TestSummaryProps> = ({ data }) => {
             actions={[
               {
                 key: 'retry',
-                color: 'secondary',
+                color: 'primary',
                 label: t('label.retry'),
                 onPress: () => setRetryCount((count) => count + 1),
               },

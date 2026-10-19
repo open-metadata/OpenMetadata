@@ -323,7 +323,7 @@ const SystemAnnouncementsTable = ({
           <EmptyPlaceholder
             actions={[
               {
-                color: 'secondary' as const,
+                color: 'primary' as const,
                 key: 'retry',
                 label: t('label.retry'),
                 onPress: () => refetch(),

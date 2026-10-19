@@ -125,7 +125,7 @@ const TopicError = ({
         onRetry
           ? [
               {
-                color: 'secondary',
+                color: 'primary',
                 key: 'retry',
                 label: t('label.retry'),
                 onPress: onRetry,

@@ -312,7 +312,7 @@ const KPIChart: FC<Props> = ({
                       description: t('message.no-kpi-available-add-new-one'),
                       footer: (
                         <Button
-                          color="secondary-brand"
+                          color="primary"
                           iconLeading={Plus}
                           onClick={handleAddKpi}>
                           {t('label.add-entity', {

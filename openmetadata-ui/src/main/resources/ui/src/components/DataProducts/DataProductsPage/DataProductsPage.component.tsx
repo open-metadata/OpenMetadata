@@ -339,7 +339,7 @@ const DataProductsPage = () => {
                 </p>
                 <Button
                   className="tw:mt-2"
-                  color="secondary"
+                  color="primary"
                   onPress={() => navigate(getDomainPath())}>
                   {t('label.go-back')}
                 </Button>
