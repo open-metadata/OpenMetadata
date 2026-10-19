@@ -16,16 +16,28 @@ Each test should validate the Success, Failure and Aborted statuses
 """
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
+from unittest.mock import Mock
 from uuid import uuid4
 
 import pytest
 from freezegun import freeze_time
 from pandas import DataFrame
 
+from metadata.data_quality.builders.validator_builder import ValidatorBuilder
+from metadata.data_quality.interface.pandas.pandas_test_suite_interface import PandasTestSuiteInterface
 from metadata.data_quality.validations.base_test_handler import PandasRunner
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
+    DatalakeConnection,
+    LocalConfig,
+)
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.utils import model_str
+from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.importer import import_test_case_class
 
 TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
@@ -41,6 +53,60 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
 }
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
+
+
+@pytest.mark.parametrize(
+    "contents,expected,status",
+    [
+        ('id,name\n1,"unterminated\n', 0, TestCaseStatus.Aborted),
+        ('id,name\n1,"unterminated\n', 2, TestCaseStatus.Aborted),
+        ("id,name\n", 0, TestCaseStatus.Success),
+        ("id,name\n", 1, TestCaseStatus.Failed),
+        ("id,name\n1,one\n2,two\n", 2, TestCaseStatus.Success),
+    ],
+)
+def test_row_count_distinguishes_read_errors_from_empty_tables(
+    tmp_path, monkeypatch, test_case_table_row_count_to_be_equal, contents, expected, status
+):
+    path = tmp_path / "rows.csv"
+    path.write_text(contents)
+    table = Table(
+        id=uuid4(),
+        name=str(path),
+        columns=[],
+        fileFormat="csv",
+        databaseSchema=EntityReference(id=uuid4(), type="databaseSchema", name="local"),
+    )
+    definition = TestDefinition(
+        id=uuid4(),
+        name="tableRowCountToEqual",
+        fullyQualifiedName="tableRowCountToEqual",
+        entityType="TABLE",
+        testPlatforms=["OpenMetadata"],
+        validatorClass="TableRowCountToEqualValidator",
+    )
+    test_case = test_case_table_row_count_to_be_equal
+    test_case.testDefinition = EntityReference(
+        id=definition.id, type="testDefinition", fullyQualifiedName=model_str(definition.fullyQualifiedName)
+    )
+    test_case.parameterValues[0].value = str(expected)
+    metadata = Mock()
+    metadata.get_by_id.return_value = metadata.get_by_name.return_value = definition
+    monkeypatch.setattr("metadata.sampler.pandas.sampler.get_ssl_connection", lambda _: SimpleNamespace(client=None))
+    connection = DatalakeConnection(configSource=LocalConfig())
+    sampler = DatalakeSampler(service_connection_config=connection, ometa_client=metadata, entity=table)
+    interface = PandasTestSuiteInterface(connection, metadata, sampler, table, validator_builder=ValidatorBuilder)
+
+    result = interface.run_test_case(test_case).testCaseResult
+
+    assert result.testCaseStatus == status
+    if status == TestCaseStatus.Aborted:
+        assert result.testResultValue == []
+        assert "Error tokenizing data" in result.result
+    else:
+        assert result.testResultValue[0].value == ("2" if expected == 2 else "0")
+
+
 DL_DATA = (
     [
         "1",

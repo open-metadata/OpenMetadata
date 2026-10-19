@@ -20,6 +20,8 @@ from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from pandas import DataFrame
+from pandas.errors import ParserError
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import DeclarativeBase
 
@@ -35,8 +37,31 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
+from metadata.profiler.processor.runner import PandasRunner
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
+
+
+@pytest.mark.parametrize("error", [ParserError("invalid CSV"), OSError("read failed")])
+@pytest.mark.parametrize("partial", [False, True])
+def test_row_count_propagates_read_errors(error, partial):
+    def frames():
+        if partial:
+            yield DataFrame({"id": [1, 2]})
+        raise error
+
+    with pytest.raises(type(error)) as raised:
+        Metrics.rowCount().df_fn(PandasRunner(frames, frames))
+    assert raised.value is error
+
+
+@pytest.mark.parametrize("chunks,expected", [((), 0), ((0,), 0), ((2, 3), 5)])
+def test_row_count_counts_completed_reads(chunks, expected):
+    def frames():
+        return (DataFrame({"id": range(size)}) for size in chunks)
+
+    assert Metrics.rowCount().df_fn(PandasRunner(frames, frames)) == expected
+    assert Metrics.rowCount().df_fn(None) is None
 
 
 class Base(DeclarativeBase):
