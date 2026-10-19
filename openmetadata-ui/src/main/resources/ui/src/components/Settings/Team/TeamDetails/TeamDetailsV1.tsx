@@ -111,6 +111,7 @@ import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.compon
 import { useApplicationsProvider } from '../../Applications/ApplicationsProvider/ApplicationsProvider';
 import ListEntities from './RolesAndPoliciesList';
 import { TeamsPageTab } from './team.interface';
+import { TEAM_TAB_EMPTY_STATE_CLASS } from './TeamDetailsV1.constants';
 import {
   AddAttribute,
   PlaceholderProps,
@@ -312,7 +313,7 @@ const TeamDetailsV1 = ({
       children,
       type = ERROR_PLACEHOLDER_TYPE.CREATE,
     }: PlaceholderProps) => (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
         <CreatePlaceholder
           data-testid={`${
             type === ERROR_PLACEHOLDER_TYPE.CREATE ? 'create' : 'assign'
@@ -729,7 +730,7 @@ const TeamDetailsV1 = ({
       !isTeamBasicDataLoading;
 
     return showEmptyTeamPlaceholder ? (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
         <EmptyPlaceholder
           data-testid="no-data-placeholder"
           footer={

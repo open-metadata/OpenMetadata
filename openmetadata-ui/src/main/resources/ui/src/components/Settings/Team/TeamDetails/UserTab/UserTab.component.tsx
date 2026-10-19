@@ -65,6 +65,7 @@ import { ColumnsType } from '../../../../common/Table/Table.interface';
 import Table from '../../../../common/Table/TableV2';
 import { UserSelectableList } from '../../../../common/UserSelectableList/UserSelectableList.component';
 import { useEntityExportModalProvider } from '../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { TEAM_TAB_EMPTY_STATE_CLASS } from '../TeamDetailsV1.constants';
 import { UserTabProps } from './UserTab.interface';
 
 export const UserTab = ({
@@ -386,7 +387,7 @@ export const UserTab = ({
 
   const renderEmptyState = () =>
     isGroupType ? (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
         <CreatePlaceholder
           data-testid={`assign-error-placeholder-${t('label.user')}`}
           footer={
@@ -431,7 +432,7 @@ export const UserTab = ({
         />
       </div>
     ) : (
-      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
           description={t('message.no-user-part-of-team', {

@@ -27,6 +27,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
+  DataContract as DataContractIcon,
   Download02,
   PlayCircle,
   Plus,
@@ -39,7 +40,6 @@ import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.svg';
-import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-contract.svg';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
@@ -567,19 +567,8 @@ const ContractDetail: React.FC<{
         <div className="tw:relative tw:h-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <EmptyContractIcon
-                  className="empty-contract-icon"
-                  height={140}
-                />
-                <Typography
-                  as="p"
-                  className="w-80 tw:text-center tw:text-secondary">
-                  {t('message.no-contract-description')}
-                </Typography>
-              </>
-            }
+            description={t('message.no-contract-description')}
+            icon={DataContractIcon}
           />
         </div>
       );
@@ -600,23 +589,11 @@ const ContractDetail: React.FC<{
         <div className="tw:relative tw:h-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
+            description={t('message.create-contract-description')}
             footer={
               <>
-                <EmptyContractIcon
-                  className="empty-contract-icon"
-                  height={140}
-                />
-                <div className="tw:my-4">
-                  <Typography
-                    as="p"
-                    className="w-80 tw:text-tertiary tw:text-center">
-                    {t('message.create-contract-description')}
-                  </Typography>
-                </div>
-
                 <Dropdown.Root>
                   <Button
-                    className="tw:mt-2"
                     color="primary"
                     data-testid="add-contract-button"
                     iconTrailing={ChevronDown}
@@ -672,6 +649,7 @@ const ContractDetail: React.FC<{
                 </Dropdown.Root>
               </>
             }
+            icon={DataContractIcon}
           />
         </div>
       </>

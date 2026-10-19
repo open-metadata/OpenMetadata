@@ -13,9 +13,9 @@
 
 import {
   Box,
+  EmptyPlaceholder,
   Grid,
   Typography,
-  EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
@@ -38,8 +38,8 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
