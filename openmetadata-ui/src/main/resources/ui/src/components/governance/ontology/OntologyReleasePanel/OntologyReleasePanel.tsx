@@ -17,9 +17,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyState } from '../../../../generated/type/ontologyState';
 import { useOntologyPublication } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -32,6 +33,22 @@ interface OntologyReleasePanelProps {
   view: 'changes' | 'releases';
 }
 
+const isSameWorkingState = (
+  first: OntologyState | undefined,
+  current: OntologyState | undefined
+) => {
+  if (!first || !current) {
+    return false;
+  }
+
+  return (
+    current.ontologyId === first.ontologyId &&
+    current.workingRevision === first.workingRevision &&
+    current.activationRevision === first.activationRevision &&
+    current.activeReleaseId === first.activeReleaseId
+  );
+};
+
 const OntologyReleasePanel = ({
   ontology,
   canEdit,
@@ -39,6 +56,7 @@ const OntologyReleasePanel = ({
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
+  const [cursorRevision, setCursorRevision] = useState<string>();
   const {
     working,
     selected,
@@ -51,18 +69,61 @@ const OntologyReleasePanel = ({
     requestApproval,
     activate,
   } = useOntologyPublication(ontology.id, canEdit);
+  const firstPageRevision = working.data
+    ? `${working.data.state.workingRevision}:${working.data.state.activationRevision}`
+    : undefined;
+  useEffect(() => {
+    setCursors([undefined]);
+    setCursorRevision(firstPageRevision);
+  }, [firstPageRevision]);
   const after = cursors[cursors.length - 1];
   const page = useQuery({
     queryKey: ['ontology-working-diff', ontology.id, after],
     queryFn: ({ signal }) =>
       getOntologyWorkingDiff(ontology.id, { limit: 25, after }, signal),
-    enabled: view === 'changes' && cursors.length > 1,
+    enabled:
+      view === 'changes' &&
+      cursors.length > 1 &&
+      cursorRevision === firstPageRevision,
     gcTime: 0,
     retry: false,
   });
   const changes = cursors.length === 1 ? working : page;
-  const canPublish =
-    canEdit && !isBusy && working.isSuccess && !working.isFetching;
+  const previewPagesReady = [working, changes].every(
+    (result) => result.isSuccess && !result.isFetching
+  );
+  const hasCoherentPreview =
+    previewPagesReady &&
+    cursorRevision === firstPageRevision &&
+    isSameWorkingState(working.data?.state, changes.data?.state);
+  const canPublish = [
+    canEdit,
+    !isBusy,
+    working.isSuccess,
+    !working.isFetching,
+  ].every(Boolean);
+  const canCapture = canPublish && hasCoherentPreview;
+  const retryChanges = () => {
+    setCursors([undefined]);
+    void working.refetch();
+  };
+  const renderChangeStatus = () => {
+    if (changes.isPending || changes.isFetching || working.isFetching) {
+      return <Typography role="status">{t('label.loading')}</Typography>;
+    }
+    if (changes.isError || !hasCoherentPreview) {
+      return (
+        <Alert variant={changes.isError ? 'error' : 'warning'}>
+          {t('message.ontology-review-unavailable')}
+          <Button color="secondary" size="sm" onPress={retryChanges}>
+            {t('label.retry')}
+          </Button>
+        </Alert>
+      );
+    }
+
+    return null;
+  };
 
   const renderRelease = () => {
     if (selected.isError) {
@@ -102,20 +163,8 @@ const OntologyReleasePanel = ({
           </Typography>
         </>
       )}
-      {working.isError && cursors.length > 1 && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
-      )}
-      {changes.isError && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
-      )}
-      {changes.isPending && (
-        <Typography role="status">{t('label.loading')}</Typography>
-      )}
-      {changes.data && (
+      {renderChangeStatus()}
+      {hasCoherentPreview && changes.data && (
         <ul className="tw:m-0 tw:list-none tw:p-0">
           {changes.data.data.map((change) => (
             <li key={`${change.memberKind}:${change.entity.id}`}>
@@ -128,14 +177,16 @@ const OntologyReleasePanel = ({
       <Box gap={2}>
         <Button
           color="secondary"
-          isDisabled={cursors.length === 1 || changes.isFetching}
+          data-testid="ontology-working-previous"
+          isDisabled={cursors.length === 1 || !hasCoherentPreview}
           size="sm"
           onPress={() => setCursors((current) => current.slice(0, -1))}>
           {t('label.previous')}
         </Button>
         <Button
           color="secondary"
-          isDisabled={!changes.data?.paging.after || changes.isFetching}
+          data-testid="ontology-working-next"
+          isDisabled={!changes.data?.paging.after || !hasCoherentPreview}
           size="sm"
           onPress={() =>
             setCursors((current) => [...current, changes.data?.paging.after])
@@ -143,7 +194,14 @@ const OntologyReleasePanel = ({
           {t('label.next')}
         </Button>
       </Box>
-      <Button color="primary" isDisabled={!canPublish} onPress={capture}>
+      <Button
+        color="primary"
+        isDisabled={!canCapture}
+        onPress={() => {
+          if (hasCoherentPreview && changes.data) {
+            void capture(changes.data.state);
+          }
+        }}>
         {t('label.capture-release')}
       </Button>
     </Box>

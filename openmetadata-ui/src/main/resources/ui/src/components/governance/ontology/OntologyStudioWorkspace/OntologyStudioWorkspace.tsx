@@ -35,6 +35,7 @@ interface OntologyStudioWorkspaceProps {
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
+  onWorkingChange?: () => void;
 }
 
 const getWorkspaceClassName = (mode: OntologyStudioWorkspaceProps['mode']) =>
@@ -52,6 +53,7 @@ const OntologyStudioWorkspace = ({
   onSaved,
   onRequestEdit,
   onStatsChange,
+  onWorkingChange,
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -86,22 +88,32 @@ const OntologyStudioWorkspace = ({
               <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
             </Tabs.List>
             <Tabs.Panel id="concept">
-              <OntologyAuthoringWorkspace ontology={ontology} />
+              <OntologyAuthoringWorkspace
+                ontology={ontology}
+                onWorkingChange={onWorkingChange}
+              />
             </Tabs.Panel>
             <Tabs.Panel id="property">
               <OntologyAuthoringWorkspace
                 definitionType="property"
                 ontology={ontology}
+                onWorkingChange={onWorkingChange}
               />
             </Tabs.Panel>
             <Tabs.Panel id="axiom">
-              <OntologyAxiomWorkspace ontology={ontology} />
+              <OntologyAxiomWorkspace
+                ontology={ontology}
+                onWorkingChange={onWorkingChange}
+              />
             </Tabs.Panel>
             <Tabs.Panel id="settings">
               <OntologyCreateForm
                 canCreate={canEditAll}
                 ontology={ontology}
-                onSaved={onSaved}
+                onSaved={(saved) => {
+                  onSaved(saved);
+                  onWorkingChange?.();
+                }}
               />
             </Tabs.Panel>
           </Tabs>
@@ -117,6 +129,7 @@ const OntologyStudioWorkspace = ({
             surface={viewSurface}
             onRequestEdit={onRequestEdit}
             onStatsChange={onStatsChange}
+            onWorkingChange={onWorkingChange}
           />
         );
       case 'review':
@@ -127,7 +140,10 @@ const OntologyStudioWorkspace = ({
             canSubmit={canEditAll}
             initialDraftId={initialDraftId}
             ontologyId={ontology.id}
-            onApplied={() => setRevision((value) => value + 1)}
+            onApplied={() => {
+              setRevision((value) => value + 1);
+              onWorkingChange?.();
+            }}
           />
         );
       default:

@@ -515,6 +515,13 @@ const OntologyExplorerPage: React.FC = () => {
   const selectedOntology = getSelectedOntology(ontologyId, loadedOntology);
   const canCreateOntology = canCreateNativeOntology(isAdminUser, permissions);
   const selectedOntologyId = selectedOntology?.id ?? '';
+  const refreshNativeWorkingDiff = useCallback(() => {
+    if (selectedOntologyId) {
+      void queryClient.invalidateQueries({
+        queryKey: ['ontology-working-diff', selectedOntologyId],
+      });
+    }
+  }, [queryClient, selectedOntologyId]);
   const workingDiff = useQuery({
     queryKey: ['ontology-working-diff', selectedOntologyId, undefined],
     enabled: Boolean(selectedOntologyId),
@@ -1048,14 +1055,13 @@ const OntologyExplorerPage: React.FC = () => {
             {!isCreatingOntology && isNativeOntology && selectedOntology ? (
               <OntologyImportExportMenu
                 canImport={canEditNativeOntology}
+                key={selectedOntology.id}
                 kind="ontology"
                 ontology={selectedOntology}
                 onApplied={() => {
                   setNativeStats(undefined);
                   setNativeRefresh((value) => value + 1);
-                  void queryClient.invalidateQueries({
-                    queryKey: ['ontology-working-diff', selectedOntology.id],
-                  });
+                  refreshNativeWorkingDiff();
                 }}
               />
             ) : null}
@@ -1262,6 +1268,7 @@ const OntologyExplorerPage: React.FC = () => {
         }}
         onSaved={selectOntology}
         onStatsChange={setNativeStats}
+        onWorkingChange={refreshNativeWorkingDiff}
       />
     );
   };

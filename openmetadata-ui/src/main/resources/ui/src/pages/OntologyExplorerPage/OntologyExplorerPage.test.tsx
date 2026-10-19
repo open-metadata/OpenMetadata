@@ -239,14 +239,36 @@ jest.mock(
 
 jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
   __esModule: true,
-  default: jest.fn(() => <div data-testid="ontology-import-export" />),
+  default: jest.fn(() => {
+    const { useState } = jest.requireActual<typeof import('react')>('react');
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+      <div data-testid="ontology-import-export">
+        <button type="button" onClick={() => setIsOpen(true)}>
+          Open mock import
+        </button>
+        {isOpen && <div data-testid="open-import-preview" />}
+      </div>
+    );
+  }),
 }));
 
 jest.mock(
   '../../components/governance/ontology/OntologyConceptEditor/OntologyConceptEditor',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="ontology-concept-editor" />,
+    default: ({ onSaved }: { onSaved: (saved: unknown) => void }) => (
+      <div data-testid="ontology-concept-editor">
+        <button
+          type="button"
+          onClick={() =>
+            onSaved({ id: 'saved-concept', name: 'Saved concept', version: 1 })
+          }>
+          Save mock concept
+        </button>
+      </div>
+    ),
   })
 );
 
@@ -441,6 +463,69 @@ describe('OntologyExplorerPage', () => {
     expect(mockUseOntologyEditLease).toHaveBeenLastCalledWith(
       expect.objectContaining({ isActive: false })
     );
+  });
+
+  it('invalidates the header working count after a native definition save', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+
+    expect(
+      screen.getByTestId('ontology-publication-trigger')
+    ).toHaveTextContent('(0)');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+    fireEvent.click(screen.getByTestId('submode-tab-definitions'));
+    fireEvent.click(await screen.findByTestId('ontology-add-concept'));
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      state: {
+        ontologyId: nativeOntology.id,
+        activationRevision: 0,
+        workingRevision: 2,
+        lastReleaseRevision: 0,
+      },
+      data: [],
+      paging: { total: 1 },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save mock concept' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-publication-trigger')
+      ).toHaveTextContent('(1)')
+    );
+  });
+
+  it('closes an import preview when the selected ontology changes', async () => {
+    const otherOntology: Ontology = {
+      ...nativeOntology,
+      id: 'native-other',
+      name: 'Other',
+      fullyQualifiedName: 'Other',
+    };
+    renderNativeStudio('?ontology=native-sales');
+    (getOntology as jest.Mock).mockImplementation(async (id) =>
+      id === otherOntology.id ? otherOntology : nativeOntology
+    );
+    mockUseOntologyStudioScopes.mockReturnValue({
+      glossaries: [],
+      isError: false,
+      isLoading: false,
+      ontologies: [nativeOntology, otherOntology],
+      refetch: jest.fn(),
+    });
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByRole('button', { name: 'Open mock import' }));
+
+    expect(screen.getByTestId('open-import-preview')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-native-other'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent('native-other')
+    );
+
+    expect(screen.queryByTestId('open-import-preview')).not.toBeInTheDocument();
   });
 
   it('uses the shared Studio shell for a native ontology', async () => {

@@ -156,6 +156,37 @@ describe('OntologyNativeImportPanel', () => {
     expect(createOntologyChangeSet).not.toHaveBeenCalled();
   });
 
+  it('renders a bounded page of a large import plan', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      ...preview,
+      operations: Array.from({ length: 1000 }, (_, index) => ({
+        id: `operation-${index}`,
+        operationType: OperationType.UpsertConcept,
+        state: OperationState.Active,
+      })),
+    });
+    render(
+      <OntologyNativeImportPanel
+        canImport
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+    await upload();
+
+    const plan = screen.getByTestId('ontology-native-import-preview');
+
+    expect(plan.querySelectorAll('li')).toHaveLength(25);
+    expect(plan).toHaveTextContent('operation-24');
+    expect(plan).not.toHaveTextContent('operation-25');
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+
+    expect(plan.querySelectorAll('li')).toHaveLength(25);
+    expect(plan).toHaveTextContent('operation-25');
+    expect(plan).not.toHaveTextContent('operation-0 ');
+  });
+
   it('rejects an oversized file before reading or sending it', async () => {
     render(
       <OntologyNativeImportPanel

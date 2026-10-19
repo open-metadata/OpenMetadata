@@ -20,6 +20,7 @@ import {
   TaskType,
 } from '../../../generated/api/tasks/createTask';
 import { EntityStatus } from '../../../generated/entity/data/ontologyRelease';
+import { OntologyState } from '../../../generated/type/ontologyState';
 import {
   activateOntologyRelease,
   captureOntologyRelease,
@@ -89,14 +90,11 @@ export const useOntologyPublication = (
       setIsBusy(false);
     }
   };
-  const capture = () =>
+  const capture = (previewState: OntologyState) =>
     run(async () => {
-      if (!working.data) {
-        return;
-      }
       const candidate = await captureOntologyRelease(ontologyId, {
-        expectedActivationRevision: working.data.state.activationRevision,
-        expectedWorkingRevision: working.data.state.workingRevision,
+        expectedActivationRevision: previewState.activationRevision,
+        expectedWorkingRevision: previewState.workingRevision,
       });
       setSelectedId(candidate.id);
     });

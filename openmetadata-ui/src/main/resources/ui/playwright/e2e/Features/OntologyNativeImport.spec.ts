@@ -36,7 +36,7 @@ test.describe(
         }),
         'Create native import fixture'
       );
-      const rdf = `<${namespace}Customer> a <http://www.w3.org/2002/07/owl#Class> .`;
+      const rdf = `<${namespace}Customer> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .`;
 
       try {
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
@@ -62,7 +62,7 @@ test.describe(
         expect((await applied).status()).toBe(200);
         await expect(
           page.getByTestId('ontology-publication-trigger')
-        ).toContainText('(1)');
+        ).toContainText('(2)');
 
         await page.getByTestId('ontology-publication-trigger').click();
         await expect(
@@ -70,7 +70,7 @@ test.describe(
         ).toContainText('Customer');
         await expect(
           page.getByTestId('ontology-publication-modal')
-        ).toContainText('1 Pending Changes');
+        ).toContainText('2 Pending Changes');
         const state = await okJson<OntologyState>(
           await api.get(`/api/v1/ontologies/${ontology.id}/state`),
           'Read working ontology state'

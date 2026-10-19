@@ -82,6 +82,8 @@ let currentState: OntologyState;
 let currentRelease: OntologyRelease;
 let currentOntology: Ontology;
 let nextWorkingPage: string | undefined;
+let nextPageState: OntologyState | undefined;
+let nextPageError: Error | undefined;
 const originalCreateObjectURL = URL.createObjectURL;
 const originalRevokeObjectURL = URL.revokeObjectURL;
 let downloadedBlob: Blob | undefined;
@@ -92,8 +94,9 @@ const renderPanel = async (
   canEdit = true,
   view: 'changes' | 'releases' = 'releases'
 ) => {
+  let result: ReturnType<typeof renderWithQueryClient> | undefined;
   await act(async () => {
-    renderWithQueryClient(
+    result = renderWithQueryClient(
       <MemoryRouter>
         <OntologyReleasePanel
           canEdit={canEdit}
@@ -103,6 +106,12 @@ const renderPanel = async (
       </MemoryRouter>
     );
   });
+
+  if (!result) {
+    throw new Error('Publication panel did not render');
+  }
+
+  return result;
 };
 
 const selectRelease = async () => {
@@ -117,7 +126,7 @@ const workingDiffPage = (after?: string) => {
 
   return {
     data: {
-      state: currentState,
+      state: isNextPage ? nextPageState ?? currentState : currentState,
       data: [
         {
           changeType: 'ADDED',
@@ -136,6 +145,13 @@ const workingDiffPage = (after?: string) => {
       },
     },
   };
+};
+const fetchWorkingDiffPage = (after?: string) => {
+  if (after && nextPageError) {
+    throw nextPageError;
+  }
+
+  return workingDiffPage(after);
 };
 
 runQueryNotificationsSynchronously();
@@ -162,6 +178,8 @@ describe('OntologyReleasePanel', () => {
     currentRelease = { ...release };
     currentOntology = { ...ontology };
     nextWorkingPage = undefined;
+    nextPageState = undefined;
+    nextPageError = undefined;
     get.mockImplementation(async (url, config) => {
       if (url === '/ontologies/ontology-id') {
         return { data: currentOntology };
@@ -170,7 +188,9 @@ describe('OntologyReleasePanel', () => {
         return { data: currentState };
       }
       if (url.endsWith('/working/diff')) {
-        return workingDiffPage((config?.params as { after?: string })?.after);
+        return fetchWorkingDiffPage(
+          (config?.params as { after?: string })?.after
+        );
       }
       if (url.endsWith('/diff')) {
         return { data: { data: [], paging: { total: 0 } } };
@@ -345,11 +365,97 @@ describe('OntologyReleasePanel', () => {
 
     expect(await screen.findByText(/Customer/)).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+    fireEvent.click(screen.getByTestId('ontology-working-next'));
 
     expect(await screen.findByText(/Account/)).toBeVisible();
     expect(screen.getByText('2 label.pending-changes')).toBeVisible();
     expect(screen.queryByText(/Customer/)).not.toBeInTheDocument();
+  });
+
+  it('blocks capture on a stale cursor and retries from the first page', async () => {
+    nextWorkingPage = 'next-page';
+    post.mockResolvedValue({ data: release });
+    nextPageError = Object.assign(new AxiosError('Stale cursor'), {
+      response: { status: 412 },
+    });
+    await renderPanel(true, 'changes');
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.capture-release' })
+      );
+    });
+
+    expect(
+      await screen.findByRole('button', { name: 'label.request-approval' })
+    ).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('ontology-working-next'));
+
+    expect(
+      await screen.findByText('message.ontology-review-unavailable')
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'label.capture-release' })
+    ).toBeDisabled();
+    expect(
+      await screen.findByRole('button', { name: 'label.request-approval' })
+    ).toBeEnabled();
+    expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
+
+    nextPageError = undefined;
+    fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+    expect(screen.getByTestId('ontology-working-previous')).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'label.capture-release' })
+    ).toBeEnabled();
+  });
+
+  it('resets pagination when the first-page revision changes', async () => {
+    nextWorkingPage = 'next-page';
+    const { queryClient } = await renderPanel(true, 'changes');
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+
+    expect(await screen.findByText(/Account/)).toBeVisible();
+
+    currentState = { ...currentState, workingRevision: 8 };
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ['ontology-working-diff', ontology.id, undefined],
+      });
+    });
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+    expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.previous' })
+    ).toBeDisabled();
+  });
+
+  it('blocks capture if the paged result does not match its first-page revision', async () => {
+    nextWorkingPage = 'next-page';
+    nextPageState = { ...initialState, workingRevision: 8 };
+    await renderPanel(true, 'changes');
+
+    expect(await screen.findByText(/Customer/)).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+
+    expect(
+      await screen.findByText('message.ontology-review-unavailable')
+    ).toBeVisible();
+    expect(screen.queryByText(/Account/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.capture-release' })
+    ).toBeDisabled();
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('submits the whole sealed release through the existing Tasks workflow', async () => {

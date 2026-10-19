@@ -95,6 +95,7 @@ interface OntologyGraphViewProps {
   readonly isEditing?: boolean;
   readonly onRequestEdit?: () => void;
   readonly onStatsChange?: (stats: OntologyModelStats) => void;
+  readonly onWorkingChange?: () => void;
 }
 
 export interface OntologyModelStats {
@@ -115,6 +116,7 @@ const OntologyGraphView = ({
   isEditing = false,
   onRequestEdit,
   onStatsChange,
+  onWorkingChange,
 }: OntologyGraphViewProps) => {
   const { t } = useTranslation();
   const graphRef = useRef<OntologyGraphHandle>(null);
@@ -238,6 +240,19 @@ const OntologyGraphView = ({
 
         return false;
       }
+      const createNewRelationProperty = async () => {
+        const created = await createOntologyProperty(
+          buildObjectPropertyRequest(
+            model,
+            relationType.slice(NEW_RELATION_TYPE_PREFIX.length),
+            from,
+            to
+          )
+        );
+        onWorkingChange?.();
+
+        return created;
+      };
 
       try {
         if (relationType === 'isA') {
@@ -251,14 +266,7 @@ const OntologyGraphView = ({
           );
         } else {
           const property = relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
-            ? await createOntologyProperty(
-                buildObjectPropertyRequest(
-                  model,
-                  relationType.slice(NEW_RELATION_TYPE_PREFIX.length),
-                  from,
-                  to
-                )
-              )
+            ? await createNewRelationProperty()
             : model.properties.find(
                 (candidate) => candidate.iri === relationType
               );
@@ -266,7 +274,6 @@ const OntologyGraphView = ({
             throw new Error('Missing ontology relationship property');
           }
           // A new restriction must use the property IRI minted by the preceding request.
-          // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls
           await createOntologyAxiom(
             buildRestrictionAxiomRequest({
               from,
@@ -279,6 +286,7 @@ const OntologyGraphView = ({
             })
           );
         }
+        onWorkingChange?.();
         await refetch();
 
         return true;
@@ -288,7 +296,15 @@ const OntologyGraphView = ({
         return false;
       }
     },
-    [canCreateAxiom, canCreateProperty, model, refetch, showWriteError, t]
+    [
+      canCreateAxiom,
+      canCreateProperty,
+      model,
+      onWorkingChange,
+      refetch,
+      showWriteError,
+      t,
+    ]
   );
 
   const createDataProperty = useCallback(
@@ -301,6 +317,7 @@ const OntologyGraphView = ({
         await createOntologyProperty(
           buildDataPropertyRequest(model, concept, input)
         );
+        onWorkingChange?.();
         await refetch();
 
         return true;
@@ -310,7 +327,7 @@ const OntologyGraphView = ({
         return false;
       }
     },
-    [canCreateProperty, model, refetch, showWriteError]
+    [canCreateProperty, model, onWorkingChange, refetch, showWriteError]
   );
 
   useEffect(() => {
@@ -399,6 +416,7 @@ const OntologyGraphView = ({
               onSaved={(saved) => {
                 setSelectedId(saved.id);
                 setConceptEditor(undefined);
+                onWorkingChange?.();
                 void refetch();
               }}
             />

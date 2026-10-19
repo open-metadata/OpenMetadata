@@ -42,6 +42,7 @@ interface OntologyNativeImportPanelProps {
 }
 
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
+const PREVIEW_PAGE_SIZE = 25;
 
 const formatFromFile = (name: string, content: string): Format => {
   if (name.toLowerCase().endsWith('.jsonld')) {
@@ -63,6 +64,7 @@ const OntologyNativeImportPanel = ({
   const { t } = useTranslation();
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState<CreateOntologyChangeSet>();
+  const [previewPage, setPreviewPage] = useState(0);
   const [draftId, setDraftId] = useState<string>();
   const [shouldApply, setShouldApply] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
@@ -98,15 +100,13 @@ const OntologyNativeImportPanel = ({
     applyOntologyChangeSet(draftId, { lease: token })
       .then((result) => finishApply(result.state))
       .catch(async (applyError: unknown) => {
-        try {
-          const draft = await getOntologyChangeSet(draftId);
-          if (draft.state === OntologyChangeSetState.Applied) {
-            finishApply(draft.state);
+        const draft = await getOntologyChangeSet(draftId).catch(
+          () => undefined
+        );
+        if (draft?.state === OntologyChangeSetState.Applied) {
+          finishApply(draft.state);
 
-            return;
-          }
-        } catch {
-          // Keep the draft ID so a retry can check its state again.
+          return;
         }
         setError(t('server.unexpected-error'));
         showErrorToast(
@@ -123,6 +123,7 @@ const OntologyNativeImportPanel = ({
     }
     setFileName(file.name);
     setPreview(undefined);
+    setPreviewPage(0);
     setError(undefined);
     if (file.size > MAX_IMPORT_BYTES) {
       setError(t('message.file-size-exceeded', { size: '10 MB' }));
@@ -198,21 +199,49 @@ const OntologyNativeImportPanel = ({
           <ul
             className="tw:m-0 tw:max-h-64 tw:overflow-auto tw:pl-5"
             data-testid="ontology-native-import-preview">
-            {preview.operations.map((operation) => {
-              const definition =
-                operation.concept ?? operation.property ?? operation.axiom;
+            {preview.operations
+              .slice(
+                previewPage * PREVIEW_PAGE_SIZE,
+                (previewPage + 1) * PREVIEW_PAGE_SIZE
+              )
+              .map((operation) => {
+                const definition =
+                  operation.concept ?? operation.property ?? operation.axiom;
 
-              return (
-                <li key={operation.id}>
-                  {definition?.displayName ?? definition?.name ?? operation.id}
-                  {' · '}
-                  {operation.operationType}
-                </li>
-              );
-            })}
+                return (
+                  <li key={operation.id}>
+                    {definition?.displayName ??
+                      definition?.name ??
+                      operation.id}
+                    {' · '}
+                    {operation.operationType}
+                  </li>
+                );
+              })}
           </ul>
         ) : (
           <Alert variant="gray">{t('label.no-changes-to-save')}</Alert>
+        )}
+        {Boolean(preview.operations?.length) && (
+          <Box gap={2}>
+            <Button
+              color="secondary"
+              isDisabled={previewPage === 0}
+              size="sm"
+              onPress={() => setPreviewPage((page) => page - 1)}>
+              {t('label.previous')}
+            </Button>
+            <Button
+              color="secondary"
+              isDisabled={
+                (previewPage + 1) * PREVIEW_PAGE_SIZE >=
+                (preview.operations?.length ?? 0)
+              }
+              size="sm"
+              onPress={() => setPreviewPage((page) => page + 1)}>
+              {t('label.next')}
+            </Button>
+          </Box>
         )}
       </Box>
     );
