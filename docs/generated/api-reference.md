@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1977 endpoints** across 75 resource packages · 1967 carry a summary.
+**1974 endpoints** across 75 resource packages · 1964 carry a summary.
 
 ## (root)
 
@@ -1363,9 +1363,6 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologies/{id}/versions/{version}` | Get an ontology version |
 | `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
 | `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
-| `POST` | `/v1/ontology/ai/memories/jobs` | Queue a reviewable glossary draft from published memories |
-| `GET` | `/v1/ontology/ai/memories/jobs/{jobId}` | Get a memory derivation job |
-| `GET` | `/v1/ontology/ai/memories/{memoryId}/proposals` | List active ontology drafts proposed from a memory |
 | `POST` | `/v1/ontology/ai/relationships/suggestions` | Propose reviewable ontology relationships |
 | `POST` | `/v1/ontology/ai/sparql` | Generate a visible read-only SPARQL query |
 | `POST` | `/v1/ontology/bulk` | Validate or create a Draft from a typed ontology bulk operation |

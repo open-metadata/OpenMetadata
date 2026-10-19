@@ -110,6 +110,7 @@ import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   glossaryTermTableColumnsWidth,
+  isAiGeneratedDraft,
   permissionForApproveOrReject,
 } from '../../../utils/GlossaryPureUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -132,9 +133,11 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import AiGeneratedTermBadge from '../../governance/glossary/AiGeneratedTermBadge/AiGeneratedTermBadge';
 import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
+import { AI_GENERATED_DRAFT_ROW_CLASS_NAME } from './GlossaryTermTab.constants';
 import {
   GlossaryTermMoveConfirmationModalProps,
   GlossaryTermTabProps,
@@ -437,6 +440,11 @@ const GlossaryTermNameCell = ({
         to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
         {name}
       </Link>
+      {isAiGeneratedDraft(record) && (
+        <span className="tw:ml-2">
+          <AiGeneratedTermBadge />
+        </span>
+      )}
       {totalNested > 0 && (
         <span
           className="tw:ml-2 tw:shrink-0 tw:whitespace-nowrap tw:text-xs tw:text-tertiary"
@@ -1636,6 +1644,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       }
       if (isNested || isExpanded) {
         rowClasses.push('glossary-nested-row');
+      }
+      if (isAiGeneratedDraft(record)) {
+        rowClasses.push(AI_GENERATED_DRAFT_ROW_CLASS_NAME);
       }
 
       return rowClasses.join(' ');

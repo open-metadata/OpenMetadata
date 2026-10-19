@@ -37,13 +37,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
-import org.openmetadata.service.ontology.OntologyAiAvailability;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
@@ -177,7 +176,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
-    ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+    glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
     MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
@@ -187,7 +186,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (nullOrEmpty(memories)) {
       return;
     }
-    OntologyMemoryDerivationQueue queue = ontologyQueue();
+    MemoryGlossaryDerivationQueue queue = glossaryDerivationQueue();
     memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
     memories.forEach(memory -> MemoryConflictReviewTasks.afterWrite(null, memory));
   }
@@ -195,10 +194,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postUpdate(ContextMemory previous, ContextMemory updated) {
     super.postUpdate(previous, updated);
-    if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
-        && OntologyAiAvailability.isMemoryDerivationEnabled()
-        && getDerivedEntities(updated).isEmpty()) {
-      ontologyQueue().enqueue(updated, updated.getUpdatedBy());
+    if (MemoryGlossaryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && MemoryGlossaryDerivationQueue.hasDeriver()
+        && !MemoryGlossaryDerivationQueue.hasDerivedGlossaryTerm(getDerivedEntities(updated))) {
+      glossaryDerivationQueue().enqueue(updated, updated.getUpdatedBy());
     }
     MemoryConflictReviewTasks.afterWrite(previous, updated);
   }
@@ -221,9 +220,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return dao.exists(dao.getTableName(), memoryId);
   }
 
-  private OntologyMemoryDerivationQueue ontologyQueue() {
-    return new OntologyMemoryDerivationQueue(
-        Entity.getJobDAO(), OntologyAiAvailability::isMemoryDerivationEnabled);
+  private MemoryGlossaryDerivationQueue glossaryDerivationQueue() {
+    return new MemoryGlossaryDerivationQueue(Entity.getJobDAO());
   }
 
   @Override

@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Queue glossary-term suggestions grounded in published context memories.
- */
-export interface OntologyMemoryDerivationRequest {
-    glossary?: string;
-    memoryIds: string[];
-}
+
+// Clamped descriptions fade into the row colour, so the fade follows the tint and the hover.
+export const AI_GENERATED_DRAFT_ROW_CLASS_NAME =
+  'tw:bg-utility-purple-50 tw:[--markdown-clamp-fade-color:var(--tw-color-utility-purple-50)] tw:hover:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]';

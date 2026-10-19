@@ -1003,16 +1003,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * A term whose parent term or glossary has reviewers starts in Draft until they approve it;
-   * without reviewers there is nothing to approve and it starts Approved, unless a lifecycle playbook
-   * owns its stage and onboards it from Draft. Applied to every new term
-   * whatever stage its request asked for, so creating a term cannot skip the review.
+   * A term whose parent term or glossary has reviewers starts in Draft until they approve it, and so
+   * does a term an automation provides, such as one an AI agent derived from a memory, until a
+   * person accepts it. Otherwise there is nothing to approve and it starts Approved, unless a
+   * lifecycle playbook owns its stage and onboards it from Draft. Applied to every new term whatever
+   * stage its request asked for, so creating a term cannot skip the review.
    */
   @Override
   protected EntityStatus initialEntityStatus(GlossaryTerm entity) {
     final boolean awaitsReview =
-        !nullOrEmpty(inheritedReviewers(entity)) || playbookOwnsStage(entity);
+        isProvidedByAutomation(entity)
+            || !nullOrEmpty(inheritedReviewers(entity))
+            || playbookOwnsStage(entity);
     return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
+  }
+
+  /**
+   * An automation's Draft term is usually written by a bot, and bot changes never start the approval
+   * workflow, so people decide it directly instead of waiting for a task that is never opened.
+   */
+  @Override
+  protected boolean isStageDecidedByPeople(GlossaryTerm current, String from) {
+    return isProvidedByAutomation(current) && EntityStatus.DRAFT.value().equals(from);
+  }
+
+  private static boolean isProvidedByAutomation(GlossaryTerm term) {
+    return ProviderType.AUTOMATION.equals(term.getProvider());
   }
 
   private List<EntityReference> inheritedReviewers(GlossaryTerm term) {

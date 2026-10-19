@@ -61,6 +61,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
+import {
+  canDecideAiGeneratedDraft,
+  isAiGeneratedDraft,
+} from '../../../utils/GlossaryPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
@@ -84,6 +88,7 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
+import AiGeneratedTermCard from '../../governance/glossary/AiGeneratedTermCard/AiGeneratedTermCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -459,6 +464,41 @@ const GlossaryHeaderModals = ({
   </>
 );
 
+interface GlossaryTermAiDraftNoticeProps {
+  term: GlossaryTerm;
+  isGlossary: boolean;
+  isVersionView?: boolean;
+  canEditAll: boolean;
+  onUpdate: (updatedData: GlossaryTerm) => Promise<void>;
+}
+
+const GlossaryTermAiDraftNotice = ({
+  term,
+  isGlossary,
+  isVersionView,
+  canEditAll,
+  onUpdate,
+}: GlossaryTermAiDraftNoticeProps) => {
+  const { currentUser } = useApplicationStore();
+
+  if (isGlossary || isVersionView || !isAiGeneratedDraft(term)) {
+    return null;
+  }
+
+  return (
+    <div className="tw:mb-3">
+      <AiGeneratedTermCard
+        canDecide={
+          !term.deleted &&
+          canDecideAiGeneratedDraft(term, currentUser, canEditAll)
+        }
+        term={term}
+        onDecide={(entityStatus) => onUpdate({ ...term, entityStatus })}
+      />
+    </div>
+  );
+};
+
 const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
@@ -814,6 +854,13 @@ const GlossaryHeader = ({
           entityId={selectedData.id}
         />
       )}
+      <GlossaryTermAiDraftNotice
+        canEditAll={canEditAll}
+        isGlossary={isGlossary}
+        isVersionView={isVersionView}
+        term={selectedData}
+        onUpdate={onUpdate}
+      />
       <PageHeader
         actions={
           <GlossaryHeaderActions

@@ -20,10 +20,14 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { omit } from 'lodash';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import {
+  EntityStatus,
+  ProviderType,
+} from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
@@ -269,6 +273,7 @@ interface MockTableProps {
     onExpand?: (expanded: boolean, record: unknown) => void;
   };
   extraTableFilters?: ReactNode;
+  rowClassName?: (record: Record<string, unknown>, index: number) => string;
   'data-testid'?: string;
 }
 
@@ -281,6 +286,7 @@ jest.mock('../../common/Table/TableV2', () =>
       locale,
       expandable,
       extraTableFilters,
+      rowClassName,
     } = props;
 
     return (
@@ -291,6 +297,7 @@ jest.mock('../../common/Table/TableV2', () =>
           ? !loading && locale?.emptyText
           : dataSource.map((record, index) => (
               <div
+                className={rowClassName?.(record, index)}
                 data-testid={`glossary-row-${index}`}
                 key={record.fullyQualifiedName as string}>
                 {expandable?.expandIcon?.({
@@ -489,6 +496,33 @@ describe('Test GlossaryTermTab component', () => {
           'description of Business Glossary.Clothing'
         );
       });
+    });
+
+    it('highlights a term an AI agent created until it is approved', async () => {
+      const [aiDraft, curated]: ModifiedGlossaryTerm[] =
+        mockedGlossaryTerms.map((term) => omit(term, 'children'));
+      mockUseGlossaryStore.glossaryChildTerms = [
+        {
+          ...aiDraft,
+          provider: ProviderType.Automation,
+          entityStatus: EntityStatus.Draft,
+        },
+        curated,
+      ];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const badges = await screen.findAllByTestId('ai-generated-term-badge');
+
+      expect(badges).toHaveLength(1);
+      expect(screen.getByTestId('glossary-row-0')).toHaveClass(
+        'tw:bg-utility-purple-50'
+      );
+      expect(screen.getByTestId('glossary-row-1')).not.toHaveClass(
+        'tw:bg-utility-purple-50'
+      );
     });
 
     it('should render status badges for each term', async () => {

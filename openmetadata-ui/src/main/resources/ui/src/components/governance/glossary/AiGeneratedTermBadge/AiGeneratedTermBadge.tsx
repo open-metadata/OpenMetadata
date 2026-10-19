@@ -11,21 +11,24 @@
  *  limitations under the License.
  */
 
-import { OntologyMemoryProposalStatus } from '../../../../generated/api/data/ontologyMemoryProposalStatus';
-import { ContextMemory } from '../../../../generated/entity/context/contextMemory';
+import { BadgeWithIcon } from '@openmetadata/ui-core-components';
+import { AskCollateSparkle } from '@openmetadata/ui-core-components/icons';
+import { useTranslation } from 'react-i18next';
 
-export interface MemoryDerivedOntologyProps {
-  memory: ContextMemory;
-  status?: OntologyMemoryProposalStatus;
-  canPropose: boolean;
-  isProposing: boolean;
-  proposeError?: string;
-  onNavigate: () => void;
-  onPropose: () => void;
-}
+const AiGeneratedTermBadge = () => {
+  const { t } = useTranslation();
 
-export interface ProposeAccess {
-  isOwner: boolean;
-  canCreateDrafts: boolean;
-  isViewOnly: boolean;
-}
+  return (
+    <span className="tw:shrink-0" data-testid="ai-generated-term-badge">
+      <BadgeWithIcon
+        color="purple"
+        iconLeading={AskCollateSparkle}
+        size="sm"
+        type="pill-color">
+        {t('label.ai-generated')}
+      </BadgeWithIcon>
+    </span>
+  );
+};
+
+export default AiGeneratedTermBadge;

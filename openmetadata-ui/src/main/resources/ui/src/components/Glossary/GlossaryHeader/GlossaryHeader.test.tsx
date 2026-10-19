@@ -13,6 +13,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  EntityStatus,
+  GlossaryTerm,
+  ProviderType,
+} from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
@@ -167,7 +172,7 @@ const mockOnDelete = jest.fn();
 const mockOnUpdateVote = jest.fn();
 
 const mockContext = {
-  data: { displayName: 'glossaryTest' } as Glossary,
+  data: { displayName: 'glossaryTest' } as Glossary | GlossaryTerm,
   onUpdate: jest.fn(),
   isVersionView: false,
   type: EntityType.GLOSSARY,
@@ -535,6 +540,76 @@ describe('GlossaryHeader component', () => {
       });
 
       expect(screen.getByText('label.rename')).toBeInTheDocument();
+    });
+  });
+
+  describe('AI-generated drafts', () => {
+    const aiDraft = {
+      id: 'term-id',
+      name: 'churn',
+      displayName: 'Churn',
+      description: 'Customers who cancel every subscription.',
+      glossary: { id: 'glossary-id', type: EntityType.GLOSSARY },
+      provider: ProviderType.Automation,
+      entityStatus: EntityStatus.Draft,
+      updatedAt: Date.now(),
+    } as GlossaryTerm;
+
+    beforeEach(() => {
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+      mockContext.onUpdate = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('approves an AI draft from its card', async () => {
+      mockContext.data = aiDraft;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.getByTestId('ai-generated-term-card')).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('approve-ai-generated-term'));
+      });
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith({
+        ...aiDraft,
+        entityStatus: EntityStatus.Approved,
+      });
+    });
+
+    it('shows no card once the term is approved or for a person-made draft', () => {
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
+      const { rerender } = render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
+
+      mockContext.data = { ...aiDraft, provider: ProviderType.User };
+      rerender(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
     });
   });
 });

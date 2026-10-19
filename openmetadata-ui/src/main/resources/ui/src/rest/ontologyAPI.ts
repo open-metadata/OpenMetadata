@@ -50,8 +50,6 @@ import { OntologyInferenceExplanation } from '../generated/api/data/ontologyInfe
 import { OntologyInferenceExplanationRequest } from '../generated/api/data/ontologyInferenceExplanationRequest';
 import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMappingSuggestionList';
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
-import { OntologyMemoryDerivationRequest } from '../generated/api/data/ontologyMemoryDerivationRequest';
-import { OntologyMemoryProposalStatus } from '../generated/api/data/ontologyMemoryProposalStatus';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
@@ -74,7 +72,6 @@ import type { OntologyConcept } from '../generated/entity/data/ontologyConcept';
 import type { OntologyProperty } from '../generated/entity/data/ontologyProperty';
 import type { OntologyRelease } from '../generated/entity/data/ontologyRelease';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
-import { BackgroundJob } from '../generated/jobs/backgroundJob';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import {
   MemberKind,
@@ -365,23 +362,6 @@ export const getOntologyReleaseDiff = async (
   const response = await APIClient.get<OntologyReleaseDiff>(
     `${ONTOLOGY_RELEASES_PATH}/${id}/diff`,
     { params, signal }
-  );
-
-  return response.data;
-};
-
-export const proposeTermFromMemory = async (memoryId: string) => {
-  const response = await APIClient.post<
-    OntologyMemoryDerivationRequest,
-    AxiosResponse<BackgroundJob>
-  >(`${ONTOLOGY_AI_PATH}/memories/jobs`, { memoryIds: [memoryId] });
-
-  return response.data;
-};
-
-export const getMemoryOntologyProposalStatus = async (memoryId: string) => {
-  const response = await APIClient.get<OntologyMemoryProposalStatus>(
-    `${ONTOLOGY_AI_PATH}/memories/${memoryId}/proposals`
   );
 
   return response.data;
