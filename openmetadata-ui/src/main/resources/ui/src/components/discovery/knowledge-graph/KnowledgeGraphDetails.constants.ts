@@ -14,7 +14,10 @@
 import type { BadgeColors } from '@openmetadata/ui-core-components';
 import { RelationCategory } from './KnowledgeGraph.relations';
 
-/** Chips shown per cell before the rest collapse behind "+N more". */
+/**
+ * Chips shown per cell before the rest collapse behind "+N more".
+ * ADR:2026-10-19-kg-inspector-expands-relationships-inline
+ */
 export const CHIP_LIMIT = 5;
 
 export const FAMILY_BADGE_COLORS: Record<RelationCategory, BadgeColors> = {

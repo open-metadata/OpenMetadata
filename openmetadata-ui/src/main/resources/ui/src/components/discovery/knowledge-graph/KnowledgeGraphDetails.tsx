@@ -82,7 +82,7 @@ interface DetailCell {
   href?: string;
   /** Renders the text as a coloured badge. */
   badge?: BadgeColors;
-  /** Renders a column data-type badge; \`text\` is the display form. */
+  /** Renders a column data-type badge; `text` is the display form. */
   dataType?: string;
   /** Renders tag / glossary-term chips instead of the text. */
   chips?: KnowledgeGraphChip[];

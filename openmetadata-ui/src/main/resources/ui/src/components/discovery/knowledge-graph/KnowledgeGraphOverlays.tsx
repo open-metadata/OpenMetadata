@@ -194,6 +194,7 @@ const PREVIEW_RELATIONSHIPS = 3;
 /**
  * Most rows "View all" expands in the drawer. Past this the paged details
  * table takes over, so a 300-column table never renders 300 drawer rows.
+ * ADR:2026-10-19-kg-inspector-expands-relationships-inline
  */
 const INLINE_RELATIONSHIPS = 40;
 
