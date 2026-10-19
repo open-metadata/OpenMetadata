@@ -62,13 +62,13 @@ import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
 import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
 import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ExpandableConfig } from '../components/common/Table/Table.interface';
+import ConstraintIcon from '../components/discovery/database/ConstraintIcon/ConstraintIcon';
 import { ConstraintTypes } from '../enums/table.enum';
 import {
   ConstraintType,
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { t } from './i18next/LocalUtil';
 
 // These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer

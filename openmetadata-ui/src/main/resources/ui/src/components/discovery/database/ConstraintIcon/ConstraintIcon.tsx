@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { ReactComponent as IconDistribution } from '../../../assets/svg/icon-distribution.svg';
-import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
-import { ReactComponent as IconSort } from '../../../assets/svg/icon-sort.svg';
-import { ReactComponent as IconUnique } from '../../../assets/svg/icon-unique.svg';
+import { ReactComponent as IconDistribution } from '../../../../assets/svg/icon-distribution.svg';
+import { ReactComponent as IconKey } from '../../../../assets/svg/icon-key.svg';
+import { ReactComponent as IconSort } from '../../../../assets/svg/icon-sort.svg';
+import { ReactComponent as IconUnique } from '../../../../assets/svg/icon-unique.svg';
 
-import { ReactComponent as SectionLine } from '../../../assets/svg/section-line-medium.svg';
+import { ReactComponent as SectionLine } from '../../../../assets/svg/section-line-medium.svg';
 
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConstraintType } from '../../../generated/entity/data/table';
+import { ConstraintType } from '../../../../generated/entity/data/table';
 
 interface ConstraintIconProps {
   constraintType: ConstraintType;
@@ -71,7 +71,7 @@ const ConstraintIcon = ({
           }),
         };
     }
-  }, [constraintType]);
+  }, [constraintType, t]);
 
   return (
     <div
