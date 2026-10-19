@@ -55,6 +55,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
     <Box direction="col" gap={3}>
       <Table
         columns={userColumns}
+        containerClassName="tw:rounded-none tw:border-0"
         data-testid="team-users-table"
         dataSource={filteredTeamUsers}
         extraTableFilters={

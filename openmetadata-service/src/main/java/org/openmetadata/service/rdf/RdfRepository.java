@@ -501,6 +501,14 @@ public class RdfRepository {
     createOrUpdate(entity);
   }
 
+  public void refreshOntologyGraph(final UUID ontologyId) {
+    projectionLoaders.ontologyGraphs().get().refresh(ontologyId, storageService);
+  }
+
+  public void rebuildOntologyGraphs() {
+    projectionLoaders.ontologyGraphs().get().rebuild(storageService);
+  }
+
   /**
    * Projects a lineage edge with the details stored for it now, including column lineage, so live
    * edits and reindexing write the same triples. A replay that finds the edge gone, such as an add

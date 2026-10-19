@@ -53,14 +53,14 @@ const DOMAINS = [
     fullyQualifiedName: 'finance',
     id: 'finance',
     name: 'Finance',
-    ownerName: 'Dale Kim',
+    owners: [{ id: 'dale-kim', name: 'Dale Kim', type: 'user' }],
   },
   {
     assetCount: 0,
     fullyQualifiedName: 'marketing',
     id: 'marketing',
     name: 'Marketing',
-    ownerName: undefined,
+    owners: [],
   },
 ];
 

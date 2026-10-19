@@ -277,7 +277,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
 
     if (view.type === 'providers') {
       return (
-        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8">
+        <div className="tw:flex-1 tw:px-8 tw:pb-8">
           <SsoProviderGrid
             onSelect={(provider) => onNavigate({ type: 'new', provider })}
           />
@@ -300,7 +300,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
 
     return (
       <Tabs
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:gap-6"
+        className="tw:flex tw:flex-1 tw:flex-col tw:gap-6"
         selectedKey={view.type}
         onSelectionChange={(key) => {
           if (key === 'overview') {
@@ -309,7 +309,10 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
           }
           onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
         }}>
-        <Tabs.List className="tw:px-8" size="sm" type="underline">
+        <Tabs.List
+          className="tw:sticky tw:top-0 tw:z-10 tw:bg-surface tw:px-8"
+          size="sm"
+          type="underline">
           <Tabs.Item data-testid="sso-tab-overview" id="overview">
             {t('label.overview')}
           </Tabs.Item>
@@ -326,9 +329,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
             onSelfSignupChange={handleSelfSignupChange}
           />
         </Tabs.Panel>
-        <Tabs.Panel
-          className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
-          id="configure">
+        <Tabs.Panel className="tw:flex tw:flex-1 tw:flex-col" id="configure">
           <SsoConfigureForm
             isReadOnly={isReadOnly}
             managedPaths={managedPaths}
@@ -343,7 +344,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
 
   return (
     <Box
-      className="tw:min-h-0 tw:flex-1 tw:overflow-hidden"
+      className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
       data-testid="sso-panel"
       direction="col">
       <SettingsSourceBanner
