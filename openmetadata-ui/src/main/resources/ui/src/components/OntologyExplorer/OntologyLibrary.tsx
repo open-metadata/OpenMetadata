@@ -13,7 +13,6 @@
 
 import {
   Alert,
-  Badge,
   Box,
   Button,
   ButtonUtility,
@@ -34,7 +33,6 @@ import { useTranslation } from 'react-i18next';
 import { InstallOntologyPack } from '../../generated/api/data/installOntologyPack';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
-import { OntologyPackInstallation } from '../../generated/type/ontologyPackInstallation';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
@@ -48,25 +46,19 @@ import OntologyLibraryDetail, {
 
 interface OntologyLibraryProps {
   canInstall?: boolean;
-  installedPacks?: OntologyPackInstallation[];
   onClose?: () => void;
   onOpenGlossary?: (glossaryName: string) => void;
 }
 
-const EMPTY_INSTALLATIONS: OntologyPackInstallation[] = [];
 const LIBRARY_DIALOG_WIDTH = 1120;
 
 const OntologyLibrary = ({
   canInstall = false,
-  installedPacks,
   onClose,
   onOpenGlossary,
 }: OntologyLibraryProps) => {
   const { t } = useTranslation();
   const [packs, setPacks] = useState<OntologyPackManifest[]>([]);
-  const [installations, setInstallations] = useState<
-    OntologyPackInstallation[]
-  >(installedPacks ?? EMPTY_INSTALLATIONS);
   const [selectedPack, setSelectedPack] = useState<OntologyPackManifest>();
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [targetGlossaryName, setTargetGlossaryName] = useState('');
@@ -98,10 +90,6 @@ const OntologyLibrary = ({
   useEffect(() => {
     void loadPacks();
   }, [loadPacks]);
-
-  useEffect(() => {
-    setInstallations(installedPacks ?? EMPTY_INSTALLATIONS);
-  }, [installedPacks]);
 
   const clearImportResults = useCallback(() => {
     setPreviewResult(undefined);
@@ -162,16 +150,6 @@ const OntologyLibrary = ({
             setInstalledResult(undefined);
           } else {
             setInstalledResult(result);
-            const installation = result.installation;
-            if (installation) {
-              setInstallations((current) => [
-                ...current.filter(
-                  (currentInstallation) =>
-                    currentInstallation.packId !== installation.packId
-                ),
-                installation,
-              ]);
-            }
             showSuccessToast(t('message.ontology-pack-installed-success'));
           }
         } catch (error) {
@@ -198,9 +176,6 @@ const OntologyLibrary = ({
   const sentenceCaseLibraryTitle = `${libraryTitle.charAt(0)}${libraryTitle
     .slice(1)
     .toLocaleLowerCase()}`;
-  const installedCount = new Set(
-    installations.map((installation) => installation.packId)
-  ).size;
 
   let libraryBody: JSX.Element;
   if (isLoading) {
@@ -235,11 +210,6 @@ const OntologyLibrary = ({
         activeAction={activeAction}
         canInstall={canInstall}
         installedResult={installedResult}
-        installedVersion={
-          installations.find(
-            (installation) => installation.packId === selectedPack.id
-          )?.version
-        }
         pack={selectedPack}
         previewResult={previewResult}
         selectedModuleIds={selectedModuleIds}
@@ -254,11 +224,7 @@ const OntologyLibrary = ({
     );
   } else {
     libraryBody = (
-      <OntologyLibraryCatalogue
-        installations={installations}
-        packs={packs}
-        onSelect={handleSelectPack}
-      />
+      <OntologyLibraryCatalogue packs={packs} onSelect={handleSelectPack} />
     );
   }
 
@@ -299,13 +265,6 @@ const OntologyLibrary = ({
                   {t('message.ontology-library-description')}
                 </Typography>
               </Box>
-              <Badge
-                color={installedCount > 0 ? 'success' : 'gray'}
-                data-testid="ontology-library-installed-count"
-                size="sm"
-                type="pill-color">
-                {installedCount} {t('label.installed-lowercase')}
-              </Badge>
               <ButtonUtility
                 color="tertiary"
                 data-testid="ontology-library-close"

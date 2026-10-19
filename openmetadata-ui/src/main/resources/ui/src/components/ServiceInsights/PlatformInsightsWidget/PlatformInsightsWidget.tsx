@@ -85,7 +85,7 @@ function PlatformInsightsWidget({
   const gridColumns =
     GRID_COLUMNS[variant][filteredCharts.length === 4 ? 4 : 5];
   const cardClass = classNames(
-    'widget-info-card other-charts-card tw:p-3',
+    'widget-info-card other-charts-card',
     variant === 'default' && 'tw:bg-secondary'
   );
 
@@ -112,52 +112,56 @@ function PlatformInsightsWidget({
         {isLoading
           ? filteredCharts.map((chartType) => (
               <Card className={cardClass} key={chartType}>
-                <SkeletonParagraph rows={2} />
+                <Card.Content>
+                  <SkeletonParagraph rows={2} />
+                </Card.Content>
               </Card>
             ))
           : filteredChartsData.map((chart) => (
               <Card className={cardClass} key={chart.chartType}>
-                <Typography size="text-sm" weight="semibold">
-                  {getTitleByChartType(chart.chartType)}
-                </Typography>
-                <Box align="start" className="tw:mt-2" justify="between">
-                  <Typography
-                    className="current-percentage"
-                    size="text-xl"
-                    weight="semibold">
-                    {getReadableCountString(chart.currentPercentage)}%
+                <Card.Content>
+                  <Typography size="text-sm" weight="semibold">
+                    {getTitleByChartType(chart.chartType)}
                   </Typography>
-                  {!isUndefined(chart.percentageChange) && (
-                    <Box align="end" direction="col" gap={1}>
-                      <Badge
-                        className="percent-change-tag tw:gap-1"
-                        color={chart.isIncreased ? 'success' : 'error'}
-                        size="sm"
-                        type="color">
-                        {chart.percentageChange !== 0 && (
-                          <ArrowUp
-                            className={classNames(
-                              !chart.isIncreased && 'flip-vertical'
-                            )}
-                            height={11}
-                            width={11}
-                          />
-                        )}
-                        {getReadableCountString(chart.percentageChange)}%
-                      </Badge>
-                      <Typography
-                        className="tw:whitespace-nowrap"
-                        color="secondary"
-                        size="text-xs">
-                        {chart.numberOfDays === 1
-                          ? t('label.in-the-last-day')
-                          : t('label.in-last-number-of-days', {
-                              numberOfDays: chart.numberOfDays,
-                            })}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
+                  <Box align="start" className="tw:mt-2" justify="between">
+                    <Typography
+                      className="current-percentage"
+                      size="text-xl"
+                      weight="semibold">
+                      {getReadableCountString(chart.currentPercentage)}%
+                    </Typography>
+                    {!isUndefined(chart.percentageChange) && (
+                      <Box align="end" direction="col" gap={1}>
+                        <Badge
+                          className="percent-change-tag tw:gap-1"
+                          color={chart.isIncreased ? 'success' : 'error'}
+                          size="sm"
+                          type="color">
+                          {chart.percentageChange !== 0 && (
+                            <ArrowUp
+                              className={classNames(
+                                !chart.isIncreased && 'flip-vertical'
+                              )}
+                              height={11}
+                              width={11}
+                            />
+                          )}
+                          {getReadableCountString(chart.percentageChange)}%
+                        </Badge>
+                        <Typography
+                          className="tw:whitespace-nowrap"
+                          color="secondary"
+                          size="text-xs">
+                          {chart.numberOfDays === 1
+                            ? t('label.in-the-last-day')
+                            : t('label.in-last-number-of-days', {
+                                numberOfDays: chart.numberOfDays,
+                              })}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                </Card.Content>
               </Card>
             ))}
       </div>
@@ -168,8 +172,8 @@ function PlatformInsightsWidget({
   // instead of disabling an interactive collapse header through CSS.
   if (variant === 'embedded') {
     return (
-      <Box className="platform-insights-card tw:bg-surface" direction="col">
-        <Box className="tw:py-3 tw:pr-4">{header}</Box>
+      <Box className="platform-insights-card" direction="col" gap={4}>
+        {header}
         {content}
       </Box>
     );
