@@ -45,10 +45,7 @@ import { ClassicDeprecationCard } from './ClassicDeprecationNotice';
 const OPTION_ICON_BOX =
   'tw:w-9 tw:h-9 tw:rounded-[10px] tw:bg-utility-blue-50 tw:border tw:border-utility-blue-100 tw:shrink-0';
 
-const BADGE_CLASS =
-  'tw:inline-flex tw:items-center tw:gap-1 tw:px-2 tw:py-0.5 tw:rounded-full ' +
-  'tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:text-utility-blue-700 tw:text-xs tw:font-semibold ' +
-  'tw:whitespace-nowrap tw:shrink-0';
+const CURRENT_CHECK_CLASS = 'tw:shrink-0 tw:text-fg-brand-primary';
 
 const AppModeSwitcherTrigger: React.FC<{
   compact?: boolean;
@@ -231,12 +228,14 @@ const AppModeSwitcher: React.FC<{
                 </Badge>
               </Box>
               {!isAiMode && (
-                <span
-                  className={BADGE_CLASS}
-                  data-testid="classic-current-badge">
-                  <Check height={12} width={12} />
-                  {t('label.current')}
-                </span>
+                <Check
+                  aria-hidden={false}
+                  aria-label={t('label.current')}
+                  className={CURRENT_CHECK_CLASS}
+                  data-testid="classic-current-badge"
+                  role="img"
+                  size={16}
+                />
               )}
             </button>
           </HoverCard>
@@ -264,10 +263,14 @@ const AppModeSwitcher: React.FC<{
               </Typography>
             </Box>
             {isAiMode && (
-              <span className={BADGE_CLASS} data-testid="ai-current-badge">
-                <Check height={12} width={12} />
-                {t('label.current')}
-              </span>
+              <Check
+                aria-hidden={false}
+                aria-label={t('label.current')}
+                className={CURRENT_CHECK_CLASS}
+                data-testid="ai-current-badge"
+                role="img"
+                size={16}
+              />
             )}
           </button>
 
