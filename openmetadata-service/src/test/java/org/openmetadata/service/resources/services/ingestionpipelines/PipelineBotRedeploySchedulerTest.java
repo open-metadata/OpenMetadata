@@ -91,7 +91,7 @@ class PipelineBotRedeploySchedulerTest {
         .when(
             () ->
                 Entity.getEntity(
-                    any(EntityReference.class), eq("ingestionRunner"), eq(Include.ALL)))
+                    any(EntityReference.class), eq("ingestionRunner"), eq(Include.NON_DELETED)))
         .thenReturn(service);
 
     SecretsManager secretsManager = mock(SecretsManager.class);
@@ -172,7 +172,8 @@ class PipelineBotRedeploySchedulerTest {
   void agentDeletedSinceTheUpgradeIsUnmarked() {
     UUID deletedAgent = UUID.randomUUID();
     pending.add(deletedAgent.toString());
-    when(pipelineRepository.get(isNull(), eq(deletedAgent), any(), eq(Include.ALL), eq(false)))
+    when(pipelineRepository.get(
+            isNull(), eq(deletedAgent), any(), eq(Include.NON_DELETED), eq(false)))
         .thenThrow(EntityNotFoundException.byMessage("gone"));
 
     assertFalse(scheduler.redeployPending());
@@ -184,7 +185,8 @@ class PipelineBotRedeploySchedulerTest {
   void agentThatCannotBeDeployedDoesNotStrandTheOthers() {
     UUID brokenAgent = UUID.randomUUID();
     pending.add(brokenAgent.toString());
-    when(pipelineRepository.get(isNull(), eq(brokenAgent), any(), eq(Include.ALL), eq(false)))
+    when(pipelineRepository.get(
+            isNull(), eq(brokenAgent), any(), eq(Include.NON_DELETED), eq(false)))
         .thenThrow(new IllegalStateException("broken service relationship"));
     IngestionPipeline agent = markedAgent(PipelineType.USAGE);
 
@@ -241,7 +243,8 @@ class PipelineBotRedeploySchedulerTest {
             .withFullyQualifiedName("autopilot_service.agent")
             .withPipelineType(pipelineType)
             .withService(service.getEntityReference());
-    when(pipelineRepository.get(isNull(), eq(agent.getId()), any(), eq(Include.ALL), eq(false)))
+    when(pipelineRepository.get(
+            isNull(), eq(agent.getId()), any(), eq(Include.NON_DELETED), eq(false)))
         .thenAnswer(
             invocation -> {
               readsFresh.add(FreshReadScope.isActive());

@@ -151,13 +151,16 @@ public final class PipelineBotRedeployScheduler implements Managed {
   private boolean deploy(UUID pipelineId) {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-    // A soft-deleted pipeline keeps running on schedule, so it is redeployed like any other.
     IngestionPipeline pipeline =
         repository.get(
-            null, pipelineId, repository.getFields(Entity.FIELD_OWNERS), Include.ALL, false);
+            null,
+            pipelineId,
+            repository.getFields(Entity.FIELD_OWNERS),
+            Include.NON_DELETED,
+            false);
     IngestionPipelineSecrets.prepareForPipelineService(config, pipeline);
     ServiceEntityInterface service =
-        Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.ALL);
+        Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.NON_DELETED);
     PipelineServiceClientResponse response = repository.deployIngestionPipeline(pipeline, service);
     boolean deployed = response.getCode() == 200;
     if (deployed) {

@@ -76,9 +76,10 @@ class IngestionPipelineBotRedeployMigrationIT {
     assertNull(marker(userProfiler));
   }
 
-  // A soft-deleted pipeline keeps running on schedule, so it still writes as ingestion-bot.
+  // Until 2.0.1 a soft delete also removed the agent from the pipeline service; redeploying it
+  // would bring back runs the user deleted.
   @Test
-  void marksASoftDeletedAgentToo(TestNamespace ns) {
+  void leavesASoftDeletedAgentAlone(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     IngestionPipeline agent =
         deployed(ns, service, PipelineType.USAGE, ProviderType.AUTOMATION, "Usage Agent");
@@ -86,7 +87,7 @@ class IngestionPipelineBotRedeployMigrationIT {
 
     PipelineBotRedeployMigration.markAutoPilotAgentsForRedeploy(Entity.getCollectionDAO());
 
-    assertNotNull(marker(agent));
+    assertNull(marker(agent));
   }
 
   @Test

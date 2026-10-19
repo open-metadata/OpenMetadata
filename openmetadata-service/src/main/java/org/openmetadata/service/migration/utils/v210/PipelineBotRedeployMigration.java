@@ -36,7 +36,8 @@ import org.openmetadata.service.jdbi3.ListFilter;
  * the agents it deployed before keep the token they were deployed with until they are deployed
  * again. This marks them for {@code PipelineBotRedeployScheduler}, which redeploys them once the
  * server is up: the pipeline service is often not reachable while migrations run. Soft-deleted
- * agents are marked too, since they keep running on schedule.
+ * agents are left alone: until 2.0.1 a soft delete also removed the agent from the pipeline service,
+ * and redeploying would bring back the runs the user deleted.
  * ADR:2026-10-19-migrations-mark-pipelines-for-redeploy-and-the-server-redeploys-them
  */
 @Slf4j
@@ -110,7 +111,7 @@ public final class PipelineBotRedeployMigration {
       CollectionDAO collectionDAO, String afterName, String afterId) {
     return collectionDAO
         .ingestionPipelineDAO()
-        .listAfter(new ListFilter(Include.ALL), BATCH_SIZE, afterName, afterId)
+        .listAfter(new ListFilter(Include.NON_DELETED), BATCH_SIZE, afterName, afterId)
         .stream()
         .map(json -> JsonUtils.readValueLenient(json, Agent.class))
         .toList();
