@@ -100,6 +100,8 @@ interface ServiceMainTabContentProps {
    * service page) passes false, and the table then stands as its own rounded card.
    */
   wrapInCard?: boolean;
+  /** Skips the right panel for a host that renders its own (the AI-mode data assets tab). */
+  hideRightPanel?: boolean;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
@@ -119,6 +121,7 @@ function ServiceMainTabContent({
   pagingInfo,
   isVersionPage = false,
   wrapInCard = true,
+  hideRightPanel = false,
   onDataProductUpdate,
   setFilters,
   setIsServiceLoading,
@@ -396,6 +399,7 @@ function ServiceMainTabContent({
         className="layout-column tw:block tab-content-height-with-resizable-panel"
         style={{ maxWidth: '100%', flex: '0 0 100%' }}>
         <ResizablePanels
+          hideSecondPanel={hideRightPanel}
           firstPanel={{
             className: 'entity-resizable-panel-container',
             wrapInCard,

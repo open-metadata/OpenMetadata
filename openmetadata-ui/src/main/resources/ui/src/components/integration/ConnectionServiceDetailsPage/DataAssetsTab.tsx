@@ -89,6 +89,7 @@ const DataAssetsTab = ({
         <div className="data-assets-table-wrapper">
           <ServiceMainTabContent
             {...rest}
+            hideRightPanel
             saveUpdatedServiceData={saveUpdatedServiceData}
             serviceDetails={serviceDetails}
             serviceName={serviceDetails.name ?? ''}

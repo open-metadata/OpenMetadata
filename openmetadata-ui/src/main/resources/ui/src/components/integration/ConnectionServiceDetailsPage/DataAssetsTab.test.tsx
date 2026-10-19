@@ -168,12 +168,13 @@ describe('DataAssetsTab — layout', () => {
     );
   });
 
-  // The tab already sits in the page's frame; a card around the table would be a box in a box.
-  it('shows the asset table without a card of its own', () => {
+  // The tab already sits in the page's frame, and renders its own right panel: a card around the
+  // table would be a box in a box, and a second right panel a duplicate fetch.
+  it('shows the asset table without a card or right panel of its own', () => {
     renderTab();
 
     expect(mockServiceMainTabContent).toHaveBeenCalledWith(
-      expect.objectContaining({ wrapInCard: false })
+      expect.objectContaining({ wrapInCard: false, hideRightPanel: true })
     );
   });
 
