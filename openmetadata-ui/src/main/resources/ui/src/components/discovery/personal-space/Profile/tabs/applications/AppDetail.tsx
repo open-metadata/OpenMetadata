@@ -75,6 +75,13 @@ import McpApplicationConfiguration from '../../../../../Settings/Applications/Mc
 import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
 import ConfirmDialog from '../platform-settings/ConfirmDialog';
 import { HintToggle } from './AppConfigForm';
+import {
+  TAB_CONFIGURATION,
+  TAB_LABEL_KEYS,
+  TAB_LIVE_INDEXING,
+  TAB_RUNS,
+  TAB_SCHEDULE,
+} from './AppDetail.constants';
 import type { ApplicationsViewProps } from './Applications.types';
 import {
   getConfigTabKind,
@@ -85,18 +92,12 @@ import {
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
 
-const TAB_SCHEDULE = 'schedule';
-const TAB_CONFIGURATION = 'configuration';
-const TAB_RUNS = 'recent-runs';
-const TAB_LIVE_INDEXING = 'live-indexing';
-
 interface AppDetailProps extends ApplicationsViewProps {
   fqn: string;
 }
 
 interface DetailTab {
   id: string;
-  label: string;
   content: ReactNode;
 }
 
@@ -152,31 +153,29 @@ const AppManageMenu: FC<{
   );
 };
 
+/** Tab strip shown in the modal header; the panel renders the active tab's content. */
 const AppDetailTabs: FC<{
-  tabs: DetailTab[];
+  tabIds: string[];
   activeTab?: Key;
   onSelectionChange: (key: Key) => void;
-}> = ({ tabs, activeTab, onSelectionChange }) =>
-  tabs.length > 0 ? (
+}> = ({ tabIds, activeTab, onSelectionChange }) => {
+  const { t } = useTranslation();
+
+  return (
     <Tabs
-      className="tw:gap-4"
       data-testid="tabs"
       selectedKey={activeTab}
       onSelectionChange={onSelectionChange}>
       <Tabs.List size="sm" type="underline">
-        {tabs.map(({ id, label }) => (
+        {tabIds.map((id) => (
           <Tabs.Item id={id} key={id}>
-            {label}
+            {t(TAB_LABEL_KEYS[id])}
           </Tabs.Item>
         ))}
       </Tabs.List>
-      {tabs.map(({ id, content }) => (
-        <Tabs.Panel id={id} key={id}>
-          {content}
-        </Tabs.Panel>
-      ))}
     </Tabs>
-  ) : null;
+  );
+};
 
 const MetaItem: FC<{
   icon: FC<{ size?: number }>;
@@ -393,7 +392,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       {
         id: TAB_SCHEDULE,
         show: showSchedule,
-        label: t('label.schedule'),
         content: (
           <AppSchedule
             appData={appData}
@@ -416,7 +414,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       {
         id: TAB_CONFIGURATION,
         show: Boolean(configKind),
-        label: t('label.configuration'),
         content:
           configKind === 'mcp' ? (
             <McpApplicationConfiguration
@@ -440,13 +437,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       {
         id: TAB_RUNS,
         show: isAvailable && showSchedule,
-        label: t('label.recent-run-plural'),
         content: <AppRunsHistory appData={appData} jsonSchema={jsonSchema} />,
       },
       {
         id: TAB_LIVE_INDEXING,
         show: isAvailable && appData.name === SEARCH_INDEXING_APPLICATION,
-        label: t('label.live-indexing'),
         content: <AppLiveIndexing appData={appData} />,
       },
     ];
@@ -457,6 +452,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const PluginDetails = getPluginDetails(plugins, appData);
 
   const activeTab = selectedTab ?? tabs[0]?.id;
+  // Joined to a string so the header effect only re-runs when the set of tabs changes.
+  const headerTabIds = PluginDetails ? '' : tabs.map(({ id }) => id).join(',');
 
   useEffect(() => {
     if (!appData) {
@@ -527,12 +524,20 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           )}
         </Box>
       ),
+      tabs: headerTabIds ? (
+        <AppDetailTabs
+          activeTab={activeTab}
+          tabIds={headerTabIds.split(',')}
+          onSelectionChange={setSelectedTab}
+        />
+      ) : undefined,
     });
   }, [
     activeTab,
     appData,
     canDelete,
     fqn,
+    headerTabIds,
     isLoading,
     onHeaderChange,
     runtimeDisabled,
@@ -578,18 +583,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   };
 
   return (
-    <Box
-      className="tw:px-8 tw:pt-4 tw:pb-8"
-      data-testid="app-detail"
-      direction="col">
+    <Box className="tw:px-8 tw:pb-8" data-testid="app-detail" direction="col">
       {PluginDetails ? (
         <PluginDetails />
       ) : (
-        <AppDetailTabs
-          activeTab={activeTab}
-          tabs={tabs}
-          onSelectionChange={setSelectedTab}
-        />
+        tabs.find(({ id }) => id === activeTab)?.content
       )}
 
       <ConfirmDialog

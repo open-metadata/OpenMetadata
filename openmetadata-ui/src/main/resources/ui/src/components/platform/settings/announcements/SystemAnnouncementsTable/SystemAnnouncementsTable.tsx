@@ -371,7 +371,7 @@ const SystemAnnouncementsTable = ({
       <TableCard.Root
         className="tw:flex tw:flex-col"
         data-testid="system-announcements-table"
-        size="compact">
+        size="sm">
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"
@@ -433,7 +433,7 @@ const SystemAnnouncementsTable = ({
             // long titles would spill into Author; the wrapper scrolls instead.
             className="tw:table-fixed tw:min-w-220"
             data-testid="system-announcements-list"
-            size="compact">
+            size="sm">
             <Table.Header columns={columns}>
               {(column) => (
                 // The row-actions column has no visible heading, as in the

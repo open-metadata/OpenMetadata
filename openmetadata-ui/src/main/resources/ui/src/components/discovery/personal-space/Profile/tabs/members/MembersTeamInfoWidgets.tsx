@@ -69,7 +69,10 @@ const InfoWidget: FC<{
       </Typography>
       {action}
     </Box>
-    {children}
+    {/* min-w-0 lets long values (owner names, emails) truncate inside the card. */}
+    <Box className="tw:w-full tw:min-w-0 tw:overflow-hidden" direction="col">
+      {children}
+    </Box>
   </Card>
 );
 

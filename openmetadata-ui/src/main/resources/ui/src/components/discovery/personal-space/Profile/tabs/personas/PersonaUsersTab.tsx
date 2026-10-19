@@ -250,18 +250,24 @@ const PersonaUsersTab = ({
           </Card.Content>
         </Card>
       )}
-      {canEdit && !isAdding && (
-        <Box justify="end">
-          <Button
-            color="primary"
-            data-testid="add-persona-user"
-            size="xs"
-            onPress={() => setIsAdding(true)}>
-            {t('label.add-entity', { entity: t('label.user') })}
-          </Button>
-        </Box>
-      )}
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+        size="compact">
+        {canEdit && !isAdding && (
+          <TableCard.Header
+            className="tw:py-3"
+            contentTrailing={
+              <Button
+                color="primary"
+                data-testid="add-persona-user"
+                size="xs"
+                onPress={() => setIsAdding(true)}>
+                {t('label.add-entity', { entity: t('label.user') })}
+              </Button>
+            }
+            title=""
+          />
+        )}
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.user-plural')}

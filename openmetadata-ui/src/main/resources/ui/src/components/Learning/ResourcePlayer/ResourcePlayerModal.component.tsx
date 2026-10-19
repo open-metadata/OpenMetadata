@@ -16,8 +16,10 @@ import {
   Box,
   ButtonUtility,
   Dialog,
+  EmptyPlaceholder,
   Modal,
   ModalOverlay,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -25,6 +27,7 @@ import {
   Minimize01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
@@ -34,6 +37,7 @@ import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
 import { getLearningResourceById } from '../../../rest/learningResourceAPI';
 import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   CATEGORY_BADGE_COLORS,
   LEARNING_CATEGORIES,
@@ -81,7 +85,7 @@ interface ResourceHeaderProps {
   resource: LearningResource;
   isFullScreen: boolean;
   onFullScreenToggle: () => void;
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
@@ -140,13 +144,15 @@ const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
           }
           onClick={onFullScreenToggle}
         />
-        <ButtonUtility
-          aria-label={t('label.close')}
-          data-testid="close-resource-player"
-          icon={XClose}
-          size="lg"
-          onClick={onClose}
-        />
+        {onClose && (
+          <ButtonUtility
+            aria-label={t('label.close')}
+            data-testid="close-resource-player"
+            icon={XClose}
+            size="lg"
+            onClick={onClose}
+          />
+        )}
       </Box>
     </Box>
   );
@@ -220,27 +226,86 @@ const ResourceHeader: FC<ResourceHeaderProps> = ({
   </Box>
 );
 
-export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
-  open,
+interface ResourcePlayerProps {
+  /** Shown while the full resource loads; the player fetches it by id. */
+  resource?: LearningResource;
+  resourceId: string;
+  /** Renders a close button in the header when set. */
+  onClose?: () => void;
+  className?: string;
+}
+
+/** Header (title, badges, meta) plus the player for one learning resource. */
+export const ResourcePlayer: FC<ResourcePlayerProps> = ({
   resource,
+  resourceId,
   onClose,
+  className,
 }) => {
   const { t } = useTranslation();
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [fetchedResource, setFetchedResource] =
     useState<LearningResource | null>(null);
 
+  const [hasFetchFailed, setHasFetchFailed] = useState(false);
+  const hasFallback = Boolean(resource);
+
+  // Only the current id's response may land, and a failure matters only when
+  // there is no list row to fall back on (the settings sub-page).
   useEffect(() => {
-    if (open && resource?.id) {
-      getLearningResourceById(resource.id)
-        .then(setFetchedResource)
-        .catch(() => setFetchedResource(null));
-    } else {
-      setFetchedResource(null);
-    }
-  }, [open, resource?.id]);
+    let isCurrent = true;
+    setFetchedResource(null);
+    setHasFetchFailed(false);
+    getLearningResourceById(resourceId)
+      .then((data) => {
+        if (isCurrent) {
+          setFetchedResource(data);
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setHasFetchFailed(true);
+          if (!hasFallback) {
+            showErrorToast(error as AxiosError);
+          }
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [resourceId, hasFallback]);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullScreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (document.fullscreenElement) {
+        void document.exitFullscreen();
+      }
+    };
+  }, []);
 
   const displayResource = fetchedResource ?? resource;
+
+  if (!displayResource) {
+    return hasFetchFailed ? (
+      <Box className="tw:relative tw:min-h-90">
+        <EmptyPlaceholder
+          data-testid="resource-not-found"
+          title={t('label.no-entity-found', {
+            entity: t('label.learning-resource'),
+          })}
+        />
+      </Box>
+    ) : (
+      <Skeleton height={400} variant="rounded" width="100%" />
+    );
+  }
 
   const handleFullScreenToggle = async () => {
     const element = document.getElementById(FULLSCREEN_CONTAINER_ID);
@@ -259,22 +324,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       setIsFullScreen((prev) => !prev);
     }
   };
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullScreen(Boolean(document.fullscreenElement));
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-    return () =>
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  useEffect(() => {
-    if (!open && document.fullscreenElement) {
-      document.exitFullscreen();
-    }
-  }, [open]);
 
   const renderPlayer = () => {
     switch (displayResource.resourceType) {
@@ -296,43 +345,56 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   };
 
   return (
-    <ModalOverlay
-      isDismissable
-      isOpen={open}
-      onOpenChange={(isOpenState) => {
-        if (!isOpenState) {
-          onClose();
-        }
-      }}>
-      <Modal>
-        <Dialog data-testid="resource-player-dialog" width={1143}>
-          <Box
-            className={classNames(
-              'tw:flex tw:flex-col tw:min-h-0',
-              isFullScreen
-                ? 'tw:h-screen tw:w-screen tw:overflow-hidden tw:bg-tertiary'
-                : 'tw:max-h-[90vh] tw:overflow-auto'
-            )}
-            direction="col"
-            id={FULLSCREEN_CONTAINER_ID}>
-            <ResourceHeader
-              isFullScreen={isFullScreen}
-              resource={displayResource}
-              onClose={onClose}
-              onFullScreenToggle={handleFullScreenToggle}
-            />
+    <Box
+      className={classNames(
+        'tw:flex tw:flex-col tw:min-h-0',
+        isFullScreen
+          ? 'tw:h-screen tw:w-screen tw:overflow-hidden tw:bg-tertiary'
+          : className
+      )}
+      direction="col"
+      id={FULLSCREEN_CONTAINER_ID}>
+      <ResourceHeader
+        isFullScreen={isFullScreen}
+        resource={displayResource}
+        onClose={onClose}
+        onFullScreenToggle={handleFullScreenToggle}
+      />
 
-            <Box
-              className={classNames(
-                'tw:w-full tw:bg-tertiary',
-                isFullScreen && FULLSCREEN_PLAYER_CLASS
-              )}
-              direction="col">
-              {renderPlayer()}
-            </Box>
-          </Box>
-        </Dialog>
-      </Modal>
-    </ModalOverlay>
+      <Box
+        className={classNames(
+          'tw:w-full tw:bg-tertiary',
+          isFullScreen && FULLSCREEN_PLAYER_CLASS
+        )}
+        direction="col">
+        {renderPlayer()}
+      </Box>
+    </Box>
   );
 };
+
+export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
+  open,
+  resource,
+  onClose,
+}) => (
+  <ModalOverlay
+    isDismissable
+    isOpen={open}
+    onOpenChange={(isOpenState) => {
+      if (!isOpenState) {
+        onClose();
+      }
+    }}>
+    <Modal>
+      <Dialog data-testid="resource-player-dialog" width={1143}>
+        <ResourcePlayer
+          className="tw:max-h-[90vh] tw:overflow-auto"
+          resource={resource}
+          resourceId={resource.id}
+          onClose={onClose}
+        />
+      </Dialog>
+    </Modal>
+  </ModalOverlay>
+);

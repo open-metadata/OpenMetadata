@@ -353,44 +353,47 @@ const AppLayoutEditor = ({
                 </Box>
               </Box>
             ))}
-            <Box className="tw:px-5 tw:py-3">
-              <Dropdown.Root>
-                <Button
-                  className="tw:text-[13px] tw:leading-5"
-                  color="link-color"
-                  data-testid="add-view-mode-page"
-                  iconLeading={Plus}
-                  isDisabled={isEmpty(addablePages)}
-                  size="md">
-                  {t('label.add-entity', { entity: t('label.page') })}
-                </Button>
-                <Dropdown.Popover className="tw:w-80" placement="bottom left">
-                  <Dropdown.Menu
-                    selectionMode="none"
-                    onAction={(page) =>
-                      setPageViewMode(
-                        page as ViewModePage,
-                        DEFAULT_PAGE_VIEW_MODE
-                      )
-                    }>
-                    <Dropdown.Section>
-                      <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
-                        {t('label.select-entity', { entity: t('label.page') })}
-                      </Dropdown.SectionHeader>
-                      {addablePages.map(({ page, labelKey }) => (
-                        <Dropdown.Item
-                          data-testid={`add-view-mode-page-${page}`}
-                          id={page}
-                          key={page}
-                          label={t(labelKey)}
-                          textValue={t(labelKey)}
-                        />
-                      ))}
-                    </Dropdown.Section>
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </Box>
+            {!isEmpty(addablePages) && (
+              <Box className="tw:px-5 tw:py-3">
+                <Dropdown.Root>
+                  <Button
+                    className="tw:text-[13px] tw:leading-5"
+                    color="link-color"
+                    data-testid="add-view-mode-page"
+                    iconLeading={Plus}
+                    size="md">
+                    {t('label.add-entity', { entity: t('label.page') })}
+                  </Button>
+                  <Dropdown.Popover className="tw:w-80" placement="bottom left">
+                    <Dropdown.Menu
+                      selectionMode="none"
+                      onAction={(page) =>
+                        setPageViewMode(
+                          page as ViewModePage,
+                          DEFAULT_PAGE_VIEW_MODE
+                        )
+                      }>
+                      <Dropdown.Section>
+                        <Dropdown.SectionHeader className="tw:px-4 tw:pt-2 tw:pb-1 tw:text-sm tw:font-semibold tw:text-tertiary">
+                          {t('label.select-entity', {
+                            entity: t('label.page'),
+                          })}
+                        </Dropdown.SectionHeader>
+                        {addablePages.map(({ page, labelKey }) => (
+                          <Dropdown.Item
+                            data-testid={`add-view-mode-page-${page}`}
+                            id={page}
+                            key={page}
+                            label={t(labelKey)}
+                            textValue={t(labelKey)}
+                          />
+                        ))}
+                      </Dropdown.Section>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              </Box>
+            )}
           </Card>
         </PreferenceRow>
       </Card.Content>
