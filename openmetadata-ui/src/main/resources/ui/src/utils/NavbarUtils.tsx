@@ -11,42 +11,56 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
+import { formatDate } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import navbarUtilClassBase from './NavbarUtilClassBase';
+import {
+  getSimplifiedVersion,
+  getVersionReleaseTimestamp,
+} from './Version/Version';
 
 const getHelpDropdownLabelContentRenderer = (
   item: SupportItem,
   version?: string
 ) => {
+  const isVersion = item.key === HELP_ITEMS_ENUM.VERSION;
+  const releaseTimestamp = isVersion
+    ? getVersionReleaseTimestamp(version)
+    : undefined;
+
   return (
-    <Row className="cursor-pointer" onClick={item.handleSupportItemClick}>
-      <Col span={4}>
-        <Icon
-          className="align-middle"
-          component={item.icon}
-          style={{ fontSize: '18px' }}
-        />
-      </Col>
-      <Col className="flex items-center" span={20}>
-        <Typography.Text className="text-base-color">
-          {t(item.label)}{' '}
-          {item.key === HELP_ITEMS_ENUM.VERSION && (version ?? '?')}
-        </Typography.Text>
+    <Grid
+      className="layout-row layout-grid cursor-pointer"
+      onClick={item.handleSupportItemClick}>
+      <Grid.Item className="layout-column" span={4}>
+        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
+      </Grid.Item>
+      <Grid.Item className="layout-column flex items-center" span={20}>
+        {isVersion ? (
+          <div className="flex flex-col">
+            <Typography className="text-base-color">
+              {t('label.version')} {getSimplifiedVersion(version)}
+            </Typography>
+            {releaseTimestamp && (
+              <Typography className="text-grey-muted text-xs">
+                {t('label.released')} {formatDate(releaseTimestamp)}
+              </Typography>
+            )}
+          </div>
+        ) : (
+          <Typography className="text-base-color">{t(item.label)}</Typography>
+        )}
 
         {item.isExternal && (
-          <Icon
-            className="m-l-xss text-base-color"
-            component={IconExternalLink}
-            style={{ fontSize: '16px' }}
-          />
+          <IconExternalLink className="tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0" />
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

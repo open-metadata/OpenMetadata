@@ -21,15 +21,17 @@ import {
   InferenceRuleStatus,
 } from '../generated/api/configuration/rdf/inferenceRuleStatus';
 import { AcquireOntologyEditLock } from '../generated/api/data/acquireOntologyEditLock';
+import { ActivateOntologyRelease } from '../generated/api/data/activateOntologyRelease';
 import { ApplyOntologyChangeSet } from '../generated/api/data/applyOntologyChangeSet';
-import { BuildOntologySubset } from '../generated/api/data/buildOntologySubset';
+import { CaptureOntologyRelease } from '../generated/api/data/captureOntologyRelease';
+import { CreateOntology } from '../generated/api/data/createOntology';
 import { CreateOntologyAxiom } from '../generated/api/data/createOntologyAxiom';
 import { CreateOntologyChangeSet } from '../generated/api/data/createOntologyChangeSet';
+import { CreateOntologyConcept } from '../generated/api/data/createOntologyConcept';
+import { CreateOntologyProperty } from '../generated/api/data/createOntologyProperty';
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
-import { InstantiateOntologyPattern } from '../generated/api/data/instantiateOntologyPattern';
-import { MergeOntologyStructure } from '../generated/api/data/mergeOntologyStructure';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -46,36 +48,50 @@ import {
 import { OntologyImpactReport } from '../generated/api/data/ontologyImpactReport';
 import { OntologyInferenceExplanation } from '../generated/api/data/ontologyInferenceExplanation';
 import { OntologyInferenceExplanationRequest } from '../generated/api/data/ontologyInferenceExplanationRequest';
-import { OntologyIRIPreview } from '../generated/api/data/ontologyIriPreview';
-import { OntologyIRIPreviewRequest } from '../generated/api/data/ontologyIriPreviewRequest';
 import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMappingSuggestionList';
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
+import { OntologyMemoryDerivationRequest } from '../generated/api/data/ontologyMemoryDerivationRequest';
+import { OntologyMemoryProposalStatus } from '../generated/api/data/ontologyMemoryProposalStatus';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackList } from '../generated/api/data/ontologyPackList';
 import { OntologyPackManifest } from '../generated/api/data/ontologyPackManifest';
-import { OntologyPatternInstantiationResult } from '../generated/api/data/ontologyPatternInstantiationResult';
-import { OntologyPatternList } from '../generated/api/data/ontologyPatternList';
 import { OntologyProfileReport } from '../generated/api/data/ontologyProfileReport';
 import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontologyRelationshipSuggestionList';
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
-import { OntologyStructuralDiff } from '../generated/api/data/ontologyStructuralDiff';
-import { OntologyStructuralDiffRequest } from '../generated/api/data/ontologyStructuralDiffRequest';
-import { OntologyStructuralMergeResult } from '../generated/api/data/ontologyStructuralMergeResult';
-import { OntologySubsetResult } from '../generated/api/data/ontologySubsetResult';
+import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
+import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
+import type { Ontology } from '../generated/entity/data/ontology';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
-import { OntologyChangeSet } from '../generated/entity/data/ontologyChangeSet';
+import {
+  OntologyChangeSet,
+  OntologyChangeSetState,
+} from '../generated/entity/data/ontologyChangeSet';
+import type { OntologyConcept } from '../generated/entity/data/ontologyConcept';
+import type { OntologyProperty } from '../generated/entity/data/ontologyProperty';
+import type { OntologyRelease } from '../generated/entity/data/ontologyRelease';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
+import { BackgroundJob } from '../generated/jobs/backgroundJob';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
+import {
+  MemberKind,
+  OntologyReleaseMember,
+} from '../generated/type/ontologyReleaseMember';
+import { OntologyState } from '../generated/type/ontologyState';
 import { ListParams } from '../interface/API.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
+import { EXPORT_FORMAT_TO_ACCEPT_HEADER, OntologyExportFormat } from './rdfAPI';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
+const ONTOLOGIES_PATH = '/ontologies';
+const ONTOLOGY_CONCEPTS_PATH = '/ontologyConcepts';
+const ONTOLOGY_PROPERTIES_PATH = '/ontologyProperties';
 const ONTOLOGY_AXIOMS_PATH = '/ontologyAxioms';
+const ONTOLOGY_RELEASES_PATH = '/ontologyReleases';
 const CHANGE_SETS_PATH = '/ontologyChangeSets';
 const EDIT_LOCKS_PATH = '/ontologyEditLocks';
 const INFERENCE_RULES_PATH = '/rdf/rules';
@@ -83,15 +99,293 @@ const ONTOLOGY_PACKS_PATH = '/ontologyPacks';
 const ONTOLOGY_AI_PATH = '/ontology/ai';
 const ONTOLOGY_BULK_PATH = '/ontology/bulk';
 const ONTOLOGY_IMPACTS_PATH = '/ontology/impacts/glossaryTerms';
-const ONTOLOGY_MODELING_PATH = '/ontology/modeling';
-const ONTOLOGY_PATTERNS_PATH = '/ontology/patterns';
 const ONTOLOGY_REASONING_PATH = '/ontology/reasoning';
-const ONTOLOGY_STRUCTURE_PATH = '/ontology/structure';
-const ONTOLOGY_SUBSETS_PATH = '/ontology/subsets';
+
+const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
+
+export const createOntology = async (request: CreateOntology) => {
+  const response = await APIClient.post<Ontology>(ONTOLOGIES_PATH, request);
+
+  return response.data;
+};
+
+export const patchOntology = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<Ontology>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`,
+    patch,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+export const createOntologyConcept = async (request: CreateOntologyConcept) => {
+  const response = await APIClient.post<OntologyConcept>(
+    ONTOLOGY_CONCEPTS_PATH,
+    request
+  );
+
+  return response.data;
+};
+
+export const patchOntologyConcept = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,
+    patch,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+export const createOntologyProperty = async (
+  request: CreateOntologyProperty
+) => {
+  const response = await APIClient.post<OntologyProperty>(
+    ONTOLOGY_PROPERTIES_PATH,
+    request
+  );
+
+  return response.data;
+};
+
+export const patchOntologyProperty = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<OntologyProperty>(
+    `${ONTOLOGY_PROPERTIES_PATH}/${encodeURIComponent(id)}`,
+    patch,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+export const listOntologyProperties = async (
+  params?: ListParams & { ontology?: string },
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<PagingResponse<OntologyProperty[]>>(
+    ONTOLOGY_PROPERTIES_PATH,
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const listOntologies = async (
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<PagingResponse<Ontology[]>>(
+    ONTOLOGIES_PATH,
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const getOntology = async (
+  ontologyId: string,
+  fields?: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<Ontology>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}`,
+    { params: { fields }, signal }
+  );
+
+  return response.data;
+};
+
+export const listOntologyConcepts = async (
+  params?: ListParams & { ontology?: string },
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<PagingResponse<OntologyConcept[]>>(
+    ONTOLOGY_CONCEPTS_PATH,
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const captureOntologyRelease = async (
+  ontologyId: string,
+  request: CaptureOntologyRelease
+) => {
+  const response = await APIClient.post<OntologyRelease>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/releases`,
+    request
+  );
+
+  return response.data;
+};
+
+export const activateOntologyRelease = async (
+  ontologyId: string,
+  request: ActivateOntologyRelease
+) => {
+  const response = await APIClient.put<OntologyState>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/activation`,
+    request
+  );
+
+  return response.data;
+};
+
+export const getOntologyState = async (
+  ontologyId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyState>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/state`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const listOntologyReleaseMembers = async (
+  releaseId: string,
+  kind: MemberKind,
+  params?: Pick<ListParams, 'limit' | 'after'>,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<PagingResponse<OntologyReleaseMember[]>>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(
+      releaseId
+    )}/members/${kind}`,
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const listOntologyReleases = async (
+  ontologyId: string,
+  params?: Pick<ListParams, 'limit' | 'after'>,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<PagingResponse<OntologyRelease[]>>(
+    ONTOLOGY_RELEASES_PATH,
+    { params: { ...params, ontologyId }, signal }
+  );
+
+  return response.data;
+};
+
+export const getOntologyRelease = async (
+  releaseId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyRelease>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const exportOntologyRelease = async (
+  releaseId: string,
+  format: OntologyExportFormat
+) => {
+  const response = await APIClient.get<string>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
+    {
+      params: { format },
+      headers: { Accept: EXPORT_FORMAT_TO_ACCEPT_HEADER[format] },
+      responseType: 'text',
+    }
+  );
+
+  return response.data;
+};
 
 type OntologyChangeSetCreation =
   | CreateOntologyChangeSet
   | CreateOntologyChangeSetRequest;
+
+export type OntologyReviewDefinition =
+  | Ontology
+  | OntologyConcept
+  | OntologyProperty
+  | OntologyAxiom
+  | OntologyRelease;
+
+export const getOntologyReleaseVersion = async (
+  id: string,
+  version: number,
+  signal?: AbortSignal
+): Promise<OntologyRelease> => {
+  if (!Number.isFinite(version) || version <= 0) {
+    throw new Error('Invalid ontology review target');
+  }
+  const response = await APIClient.get<OntologyRelease>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(id)}/versions/${version}`,
+    { signal }
+  );
+  if (response.data.id !== id || response.data.version !== version) {
+    throw new Error(
+      'Ontology history does not match the submitted review target'
+    );
+  }
+
+  return response.data;
+};
+
+export const getOntologyReleaseMember = async (
+  releaseId: string,
+  kind: MemberKind,
+  memberId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyReleaseMember>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(
+      releaseId
+    )}/members/${kind}/${encodeURIComponent(memberId)}`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const getOntologyReleaseStructure = async (id: string) => {
+  const response = await APIClient.get<OntologyReleaseStructureReport>(
+    `${ONTOLOGY_RELEASES_PATH}/${id}/structure`
+  );
+
+  return response.data;
+};
+
+export const getOntologyReleaseDiff = async (
+  id: string,
+  params: { baseReleaseId?: string; limit?: number; after?: string } = {},
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyReleaseDiff>(
+    `${ONTOLOGY_RELEASES_PATH}/${id}/diff`,
+    { params, signal }
+  );
+
+  return response.data;
+};
+
+export const proposeTermFromMemory = async (memoryId: string) => {
+  const response = await APIClient.post<
+    OntologyMemoryDerivationRequest,
+    AxiosResponse<BackgroundJob>
+  >(`${ONTOLOGY_AI_PATH}/memories/jobs`, { memoryIds: [memoryId] });
+
+  return response.data;
+};
+
+export const getMemoryOntologyProposalStatus = async (memoryId: string) => {
+  const response = await APIClient.get<OntologyMemoryProposalStatus>(
+    `${ONTOLOGY_AI_PATH}/memories/${memoryId}/proposals`
+  );
+
+  return response.data;
+};
 
 export const listRelationshipTypes = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<RelationshipType[]>>(
@@ -146,12 +440,13 @@ export const deleteRelationshipType = async (id: string) => {
 };
 
 export const listOntologyAxioms = async (
-  glossary: string,
-  params?: ListParams
+  ontologyId: string,
+  params?: ListParams,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<PagingResponse<OntologyAxiom[]>>(
     ONTOLOGY_AXIOMS_PATH,
-    { params: { ...params, glossary } }
+    { params: { ...params, ontologyId }, signal }
   );
 
   return response.data;
@@ -175,10 +470,35 @@ export const createOntologyAxiom = async (request: CreateOntologyAxiom) => {
   return response.data;
 };
 
-export const listOntologyChangeSets = async (params?: ListParams) => {
+export const patchOntologyAxiom = async (id: string, patch: Operation[]) => {
+  const response = await APIClient.patch<OntologyAxiom>(
+    `${ONTOLOGY_AXIOMS_PATH}/${encodeURIComponent(id)}`,
+    patch,
+    { headers: { 'Content-Type': JSON_PATCH_CONTENT_TYPE } }
+  );
+
+  return response.data;
+};
+
+export const listOntologyChangeSets = async (
+  params?: ListParams & {
+    // Several states are sent comma-separated, which the server accepts.
+    state?: OntologyChangeSetState | OntologyChangeSetState[];
+    memorySourced?: boolean;
+  }
+) => {
   const response = await APIClient.get<PagingResponse<OntologyChangeSet[]>>(
     CHANGE_SETS_PATH,
     { params }
+  );
+
+  return response.data;
+};
+
+export const getOntologyChangeSet = async (id: string, fields?: string) => {
+  const response = await APIClient.get<OntologyChangeSet>(
+    `${CHANGE_SETS_PATH}/${id}`,
+    { params: fields ? { fields } : undefined }
   );
 
   return response.data;
@@ -284,67 +604,6 @@ export const getOntologyEditLock = async (
   const response = await APIClient.get<OntologyEditLock>(
     `${EDIT_LOCKS_PATH}/${resourceType}/${resourceId}`
   );
-
-  return response.data;
-};
-
-export const previewOntologyIri = async (
-  request: OntologyIRIPreviewRequest
-) => {
-  const response = await APIClient.post<
-    OntologyIRIPreviewRequest,
-    AxiosResponse<OntologyIRIPreview>
-  >(`${ONTOLOGY_MODELING_PATH}/iris/preview`, request);
-
-  return response.data;
-};
-
-export const listOntologyPatterns = async () => {
-  const response = await APIClient.get<OntologyPatternList>(
-    ONTOLOGY_PATTERNS_PATH
-  );
-
-  return response.data;
-};
-
-export const instantiateOntologyPattern = async (
-  request: InstantiateOntologyPattern
-) => {
-  const response = await APIClient.post<
-    InstantiateOntologyPattern,
-    AxiosResponse<OntologyPatternInstantiationResult>
-  >(`${ONTOLOGY_PATTERNS_PATH}/instantiate`, request);
-
-  return response.data;
-};
-
-export const buildOntologySubset = async (request: BuildOntologySubset) => {
-  const response = await APIClient.post<
-    BuildOntologySubset,
-    AxiosResponse<OntologySubsetResult>
-  >(ONTOLOGY_SUBSETS_PATH, request);
-
-  return response.data;
-};
-
-export const diffOntologyStructure = async (
-  request: OntologyStructuralDiffRequest
-) => {
-  const response = await APIClient.post<
-    OntologyStructuralDiffRequest,
-    AxiosResponse<OntologyStructuralDiff>
-  >(`${ONTOLOGY_STRUCTURE_PATH}/diff`, request);
-
-  return response.data;
-};
-
-export const mergeOntologyStructure = async (
-  request: MergeOntologyStructure
-) => {
-  const response = await APIClient.post<
-    MergeOntologyStructure,
-    AxiosResponse<OntologyStructuralMergeResult>
-  >(`${ONTOLOGY_STRUCTURE_PATH}/merge`, request);
 
   return response.data;
 };

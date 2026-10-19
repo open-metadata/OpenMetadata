@@ -283,6 +283,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           a.click();
           URL.revokeObjectURL(url);
         },
+        clearEdgeSelection: () => setClickedEdgeId(null),
       }),
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );

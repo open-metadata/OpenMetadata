@@ -12,11 +12,9 @@
  */
 
 import { screen, waitFor } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { getTopicByFqn } from '../../rest/topicsAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';

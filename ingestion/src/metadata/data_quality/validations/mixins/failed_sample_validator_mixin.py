@@ -12,9 +12,11 @@
 """
 Mixin that orchestrates failed row sampling for test case validators.
 
-When a test case has computePassedFailedRowCount=True and the result is Failed,
-this mixin fetches a sample of failed rows and the inspection query (for SQL
-sources), attaching them directly to the TestCaseResult instance.
+When a test case has computePassedFailedRowCount=True and the run found failed
+rows, this mixin fetches a sample of failed rows and the inspection query (for SQL
+sources), attaching them directly to the TestCaseResult instance. A run that passes
+within its failure threshold still has failed rows worth inspecting, so it is
+sampled too.
 
 BaseTestValidator.run_validation() calls self.result_with_failed_samples()
 which is a no-op by default. This mixin overrides it to do the actual work.
@@ -52,15 +54,12 @@ class FailedSampleValidatorMixin(ABC):
         Called by BaseTestValidator.run_validation() at the end of validation.
         Only fetches samples when:
           - test_case.computePassedFailedRowCount is True
-          - result.testCaseResult.testCaseStatus is Failed
+          - the run found failed rows (see `_has_failed_rows`)
 
         Attaches failedRowsSample and inspectionQuery directly on the
         TestCaseResult instance for the runner/sink to pick up.
         """
-        if not (
-            getattr(result.testCase, "computePassedFailedRowCount", False)
-            and result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
-        ):
+        if not (getattr(result.testCase, "computePassedFailedRowCount", False) and self._has_failed_rows(result)):
             return
 
         try:
@@ -74,3 +73,16 @@ class FailedSampleValidatorMixin(ABC):
         except Exception:
             logger.debug(traceback.format_exc())
             logger.error("Failed to get inspection query")
+
+    @staticmethod
+    def _has_failed_rows(result: TestCaseResultResponse) -> bool:
+        """Whether the run left failed rows to sample
+
+        A Failed run always does. A Success run does only when it passed within its
+        failure threshold, which `failedRows > 0` tells apart from a clean pass: sampling
+        a clean pass would cost a query and return nothing. See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
+        """
+        test_case_result = result.testCaseResult
+        if test_case_result.testCaseStatus == TestCaseStatus.Failed:
+            return True
+        return test_case_result.testCaseStatus == TestCaseStatus.Success and (test_case_result.failedRows or 0) > 0

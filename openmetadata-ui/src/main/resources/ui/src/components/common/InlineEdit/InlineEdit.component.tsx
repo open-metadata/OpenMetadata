@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';
 
@@ -26,6 +27,7 @@ const InlineEdit = ({
   cancelButtonProps,
   saveButtonProps,
 }: InlineEditProps) => {
+  const { t } = useTranslation();
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -33,38 +35,44 @@ const InlineEdit = ({
     }
   };
 
+  const isVertical = direction === 'vertical';
+
   return (
-    <Space
+    <Box
+      align={isVertical ? undefined : 'center'}
       className={classNames(className, 'inline-edit-container')}
       data-testid="inline-edit-container"
-      direction={direction}
+      direction={isVertical ? 'col' : 'row'}
+      gap={2}
       // Used onClick to stop click propagation event anywhere in the component to parent
       // TeamDetailsV1 and User.component collapsible panel.
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}>
       {children}
 
-      <Space className="w-full justify-end" data-testid="buttons" size={4}>
+      <Box data-testid="buttons" gap={1} justify="end">
         <Button
+          aria-label={t('label.cancel')}
+          color="primary"
           data-testid="inline-cancel-btn"
-          disabled={isLoading}
-          icon={<CloseOutlined />}
-          size="small"
-          type="primary"
-          onClick={onCancel}
+          iconLeading={XClose}
+          isDisabled={isLoading}
+          size="xs"
+          onPress={onCancel}
           {...cancelButtonProps}
         />
         <Button
+          aria-label={t('label.save')}
+          color="primary"
           data-testid="inline-save-btn"
-          icon={<CheckOutlined />}
-          loading={isLoading}
-          size="small"
-          type="primary"
-          onClick={onSave}
+          iconLeading={Check}
+          isLoading={isLoading}
+          size="xs"
+          onPress={onSave}
           {...saveButtonProps}
         />
-      </Space>
-    </Space>
+      </Box>
+    </Box>
   );
 };
 

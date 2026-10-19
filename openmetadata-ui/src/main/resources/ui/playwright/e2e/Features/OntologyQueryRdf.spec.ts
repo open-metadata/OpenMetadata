@@ -20,6 +20,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { OntologyRdfFixture } from '../../support/ontology/OntologyRdfFixture';
 import { performAdminLogin } from '../../utils/admin';
+import { fillCodeEditor } from '../../utils/codeEditor';
 import { selectOptionWithRetry, uuid } from '../../utils/common';
 import {
   navigateToOntologyStudio,
@@ -28,12 +29,6 @@ import {
 
 interface SparqlAskResult {
   boolean: boolean;
-}
-
-interface CodeMirrorElement extends HTMLElement {
-  CodeMirror?: {
-    setValue: (value: string) => void;
-  };
 }
 
 const suffix = uuid().replaceAll('-', '');
@@ -94,16 +89,7 @@ async function removeSavedQuery(apiContext: APIRequestContext): Promise<void> {
 }
 
 async function setSparqlEditorValue(page: Page, query: string): Promise<void> {
-  await page
-    .getByTestId('ontology-sparql-editor')
-    .locator('.CodeMirror')
-    .evaluate((element, value) => {
-      const codeMirrorElement = element as CodeMirrorElement;
-      if (!codeMirrorElement.CodeMirror) {
-        throw new Error('SPARQL CodeMirror instance is unavailable');
-      }
-      codeMirrorElement.CodeMirror.setValue(value);
-    }, query);
+  await fillCodeEditor(page, page.getByTestId('ontology-sparql-editor'), query);
 }
 
 test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
@@ -279,7 +265,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
       await fixture.selectInStudio(page);
       await page.getByTestId('mode-tab-query').click();
       await page.getByTestId('ontology-query-new').click();
+      await expect(page.getByTestId('ontology-query-update')).toBeDisabled();
       await setSparqlEditorValue(page, query);
+      await expect(page.getByTestId('ontology-query-update')).toBeEnabled();
 
       const responsePromise = page.waitForResponse(
         (response) =>
@@ -290,7 +278,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
             ) && response.request().method() === 'POST'
       );
       await page.getByTestId('ontology-sparql-run').click();
-      expect((await responsePromise).ok()).toBe(true);
+      const response = await responsePromise;
+      expect(response.ok(), await response.text()).toBe(true);
+      expect(response.request().postDataJSON()).toMatchObject({ query });
       await page.getByRole('tab', { name: 'Graph' }).click();
       await expect(
         page.getByTestId('ontology-sparql-result-graph')

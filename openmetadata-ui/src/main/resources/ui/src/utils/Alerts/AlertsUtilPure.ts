@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
-import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
-import { isEmpty, isEqual, isUndefined, map, omitBy, startCase } from 'lodash';
-import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import {
-  DESTINATION_DROPDOWN_TABS,
-  DESTINATION_SOURCE_ITEMS,
-  EXTERNAL_CATEGORY_OPTIONS,
-} from '../../constants/Alerts.constants';
+  isBoolean,
+  isEmpty,
+  isEqual,
+  isUndefined,
+  map,
+  omitBy,
+  startCase,
+} from 'lodash';
+import type { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import { EXTERNAL_CATEGORY_OPTIONS } from '../../constants/Alerts.constants';
+import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import type { EventSubscriptionDiagnosticInfo } from '../../generated/events/api/eventSubscriptionDiagnosticInfo';
@@ -55,25 +59,6 @@ export const getFunctionDisplayName = (func: string): string => {
 
   return displayNameByFunction[func] ?? '';
 };
-
-/**
- *
- * @param name Field name used to identify which field has error
- * @param minLengthRequired how many item should be there in the list
- * @returns If validation failed throws an error else resolve
- */
-export const listLengthValidator =
-  <T>(name: string, minLengthRequired = 1) =>
-  async (_: RuleObject, list: T[]) => {
-    if (!list || list.length < minLengthRequired) {
-      throw new Error(
-        t('message.length-validator-error', {
-          length: minLengthRequired,
-          field: name,
-        })
-      );
-    }
-  };
 
 export const getAlertActionTypeDisplayName = (
   alertActionType: SubscriptionType
@@ -267,50 +252,6 @@ export const getFormattedDestinations = (
   return formattedDestinations;
 };
 
-// Destination category exclusions by entity type
-const DESTINATION_CATEGORY_EXCLUDES: Record<string, SubscriptionCategory[]> = {
-  // Most entity events have neither participants nor mention recipients.
-  __default__: [SubscriptionCategory.Assignees, SubscriptionCategory.Mentions],
-  task: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-  ],
-  conversation: [
-    SubscriptionCategory.Followers,
-    SubscriptionCategory.Admins,
-    SubscriptionCategory.Users,
-    SubscriptionCategory.Teams,
-    SubscriptionCategory.Assignees,
-  ],
-  announcement: [SubscriptionCategory.Assignees],
-};
-
-export const getFilteredDestinationOptions = (
-  key: keyof typeof DESTINATION_SOURCE_ITEMS,
-  selectedSource: string
-) => {
-  const options = DESTINATION_SOURCE_ITEMS[key];
-  const isExternalDestination = !isEqual(
-    key,
-    DESTINATION_DROPDOWN_TABS.internal
-  );
-
-  if (isExternalDestination) {
-    return options;
-  }
-
-  const excludedCategories =
-    DESTINATION_CATEGORY_EXCLUDES[selectedSource] ||
-    DESTINATION_CATEGORY_EXCLUDES.__default__;
-
-  return options.filter(
-    (option) =>
-      !excludedCategories.includes(option.value as SubscriptionCategory)
-  );
-};
-
 export const getAlertEventsFilterLabels = (status: AlertRecentEventFilters) => {
   switch (status) {
     case AlertRecentEventFilters.SUCCESSFUL:
@@ -355,21 +296,43 @@ export const getChangeEventDataFromTypedEvent = (
   changeEventData: ChangeEvent;
   changeEventDataToDisplay: AlertEventDetailsToDisplay;
 } => {
-  let changeEventData = typedEvent.data[0];
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
 
   // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
   }
 
   const { eventType, entityId, userName, previousVersion, currentVersion } =
     changeEventData;
 
   // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+  const { reason, source, failingSubscriptionId } = outer;
 
   return {
     changeEventData,
@@ -420,6 +383,15 @@ export const getDiagnosticItems = (
     description: t('message.processed-all-events-description'),
   },
 ];
+
+/** Formats a diagnostic value for display: Yes/No for flags, a placeholder when unset. */
+export const formatDiagnosticValue = (value?: number | boolean) => {
+  if (isBoolean(value)) {
+    return t(value ? 'label.yes' : 'label.no');
+  }
+
+  return isUndefined(value) ? NO_DATA_PLACEHOLDER : String(value);
+};
 
 export const getRandomizedAlertName = () => {
   return `${OPEN_METADATA}_alert_${cryptoRandomString({

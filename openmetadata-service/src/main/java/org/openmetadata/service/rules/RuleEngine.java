@@ -52,15 +52,15 @@ public class RuleEngine {
   /**
    * Evaluates the default platform entity semantics rules against the provided entity
    */
-  public void evaluate(EntityInterface facts) {
+  public void evaluate(EntityInterface<?> facts) {
     evaluate(facts, null, true, false);
   }
 
-  public void evaluate(EntityInterface facts, boolean enforcePlatform, boolean enforceContract) {
+  public void evaluate(EntityInterface<?> facts, boolean enforcePlatform, boolean enforceContract) {
     evaluate(facts, null, enforcePlatform, enforceContract);
   }
 
-  public void evaluateUpdate(EntityInterface original, EntityInterface updated) {
+  public void evaluateUpdate(EntityInterface<?> original, EntityInterface<?> updated) {
     List<SemanticsRule> originalErrors = evaluateAndReturn(original, null, true, false);
     List<SemanticsRule> updatedErrors = evaluateAndReturn(updated, null, true, false);
 
@@ -71,7 +71,7 @@ public class RuleEngine {
   }
 
   public void evaluate(
-      EntityInterface facts,
+      EntityInterface<?> facts,
       List<SemanticsRule> rules,
       boolean enforcePlatform,
       boolean enforceContract) {
@@ -91,7 +91,7 @@ public class RuleEngine {
   }
 
   public List<SemanticsRule> evaluateAndReturn(
-      EntityInterface facts,
+      EntityInterface<?> facts,
       List<SemanticsRule> rules,
       boolean enforcePlatform,
       boolean enforceContract) {
@@ -113,7 +113,7 @@ public class RuleEngine {
   }
 
   private List<SemanticsRule> getRulesToEvaluate(
-      EntityInterface facts,
+      EntityInterface<?> facts,
       List<SemanticsRule> rules,
       boolean enforcePlatform,
       boolean enforceContract) {
@@ -139,7 +139,7 @@ public class RuleEngine {
     return rulesToEvaluate;
   }
 
-  public Boolean shouldApplyRule(EntityInterface facts, SemanticsRule rule) {
+  public Boolean shouldApplyRule(EntityInterface<?> facts, SemanticsRule rule) {
     if (!rule.getEnabled()) {
       return false; // If the rule is not enabled, skip it
     }
@@ -153,7 +153,7 @@ public class RuleEngine {
     }
     // Finally, check if the rule is not ignored for the entity type
     if (!nullOrEmpty(rule.getIgnoredEntities())) {
-      List<? extends Class<? extends EntityInterface>> ignoredEntities =
+      List<? extends Class<? extends EntityInterface<?>>> ignoredEntities =
           rule.getIgnoredEntities().stream()
               .map(Entity::getEntityRepository)
               .map(EntityRepository::getEntityClass)
@@ -197,7 +197,7 @@ public class RuleEngine {
     }
   }
 
-  private DataContract getEntityDataContractSafely(EntityInterface entity) {
+  private DataContract getEntityDataContractSafely(EntityInterface<?> entity) {
     try {
       return ((DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT))
           .getEffectiveDataContract(entity);

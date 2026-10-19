@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "RedpandaConnection",
   "description": "Redpanda Connection Config",
   "type": "object",
@@ -68,7 +67,6 @@
       "title": "SASL Mechanism",
       "description": "sasl.mechanism Consumer Config property",
       "default": "PLAIN",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "javaType": "org.openmetadata.schema.services.connections.messaging.SaslMechanismType",
       "type": "string",
       "enum": [

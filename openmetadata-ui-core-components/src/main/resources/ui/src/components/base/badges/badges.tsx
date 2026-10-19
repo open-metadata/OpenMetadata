@@ -1,7 +1,7 @@
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { Dot } from '@/components/foundations/dot-icon';
 import { cx } from '@/utils/cx';
-import { X as CloseX } from '@untitledui/icons';
+import { X as CloseX } from '../../../icons';
 import type {
   CSSProperties,
   HTMLAttributes,
@@ -229,10 +229,10 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         sizes[type][size],
         colors.styles[color].root,
         bordered && 'tw:outline-1 tw:-outline-offset-1',
-        // A linked badge must look identical to a non-linked one — no
-        // browser default underline/link color, and it must inherit the
-        // badge's own text color rather than react-aria-components' link styles.
-        href && 'tw:text-inherit tw:no-underline',
+        // A linked badge must look identical to a non-linked one: no underline,
+        // and the color root's text class sets its color. `tw:text-inherit` here
+        // would win the tailwind-merge conflict and drop that color.
+        href && 'tw:no-underline',
         className
       )}
       data-testid={dataTestId}
@@ -589,6 +589,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
     buttonTestId,
     children,
     isDisabled,
+    onButtonClick,
     onButtonKeyDown,
     tooltip,
     tooltipPlacement = 'top',
@@ -656,7 +657,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         data-testid={buttonTestId}
         disabled={isDisabled}
         type="button"
-        onClick={props.onButtonClick}
+        onClick={onButtonClick}
         onKeyDown={onButtonKeyDown}>
         <Icon className="tw:size-3 tw:stroke-[3px] tw:transition-inherit-all" />
       </button>

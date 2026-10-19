@@ -16,35 +16,86 @@ package org.openmetadata.service.util;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Slf4j
 public class JsonPatchUtils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String PATH_KEY = "path";
+  private static final String DOMAINS_PATH = "/" + Entity.FIELD_DOMAINS;
+  private static final String DOMAINS_PATH_PREFIX = DOMAINS_PATH + "/";
+  private static final String FROM_MEMBER = "from";
 
   private JsonPatchUtils() {}
+
+  /**
+   * Domains the entity will carry once {@code patch} is applied, or null when the patch leaves the
+   * domain assignment alone. An update is authorized against the stored entity, so this is what lets
+   * a caller re-run the decision against the domain an asset is moving into.
+   *
+   * <p>Takes the resource context rather than the entity so the patch is inspected before anything
+   * is loaded: a patch that never mentions domains — nearly all of them — costs one scan of the
+   * operation list and no entity resolution.
+   */
+  public static List<EntityReference> getPatchedDomains(
+      ResourceContextInterface resourceContext, JsonPatch patch) {
+    if (resourceContext == null || patch == null || !patchTouchesDomains(patch)) {
+      return null;
+    }
+    EntityInterface entity = resourceContext.getEntity();
+    if (entity == null) {
+      return null;
+    }
+    return readDomains(JsonUtils.applyPatch(entity, patch));
+  }
+
+  private static boolean patchTouchesDomains(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .map(JsonPatchUtils::patchPath)
+        .anyMatch(JsonPatchUtils::isDomainsPath);
+  }
+
+  private static String patchPath(JsonValue jsonValue) {
+    if (jsonValue instanceof JsonObject operation
+        && operation.get(PATH_KEY) instanceof JsonString path) {
+      return path.getString();
+    }
+    return null;
+  }
+
+  private static boolean isDomainsPath(String path) {
+    return path != null && (path.equals(DOMAINS_PATH) || path.startsWith(DOMAINS_PATH_PREFIX));
+  }
+
+  private static List<EntityReference> readDomains(JsonValue patchedEntity) {
+    JsonValue domains = patchedEntity.asJsonObject().get(Entity.FIELD_DOMAINS);
+    return domains == null || domains.getValueType() == JsonValue.ValueType.NULL
+        ? List.of()
+        : JsonUtils.readObjects(domains.toString(), EntityReference.class);
+  }
 
   public static Set<MetadataOperation> getMetadataOperations(
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
-    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    EntityInterface<?> originalEntity = resourceContextInterface.getEntity();
     String resourceType = resourceContextInterface.getResource();
     boolean tagsAffected = false;
 
@@ -60,40 +111,40 @@ public class JsonPatchUtils {
       }
     }
     if (tagsAffected) {
-      try {
-        JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
-        JsonNode patchedEntityJson = applyPatch(originalEntityJson, jsonPatch);
-        Set<TagLabel> originalTags = extractTags(originalEntityJson);
-        Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
-        Set<TagLabel> addedTags = new HashSet<>(patchedTags);
-        addedTags.removeAll(originalTags);
+      JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
+      // Same engine as EntityRepository.patch, so the tags checked are the tags that get written.
+      JsonNode patchedEntityJson =
+          JsonUtils.readTree(JsonUtils.applyPatch(originalEntity, jsonPatch).toString());
+      Set<TagLabel> originalTags = extractTags(originalEntityJson);
+      Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
+      Set<TagLabel> addedTags = new HashSet<>(patchedTags);
+      addedTags.removeAll(originalTags);
 
-        Set<TagLabel> removedTags = new HashSet<>(originalTags);
-        removedTags.removeAll(patchedTags);
+      Set<TagLabel> removedTags = new HashSet<>(originalTags);
+      removedTags.removeAll(patchedTags);
 
-        for (TagLabel addedTag : addedTags) {
-          uniqueOperations.add(mapTagToOperation(addedTag));
-        }
-        for (TagLabel removedTag : removedTags) {
-          uniqueOperations.add(mapTagToOperation(removedTag));
-        }
-        LOG.debug("Returning patch operations {}", uniqueOperations);
-      } catch (JsonPatchException | IOException e) {
-        LOG.error("Failed to process JSON Patch for MetadataOperations", e);
-        throw new RuntimeException("Error processing JSON Patch", e);
+      for (TagLabel addedTag : addedTags) {
+        uniqueOperations.add(mapTagToOperation(addedTag));
       }
+      for (TagLabel removedTag : removedTags) {
+        uniqueOperations.add(mapTagToOperation(removedTag));
+      }
+      LOG.debug("Returning patch operations {}", uniqueOperations);
     }
 
     return uniqueOperations;
   }
 
-  private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)
-      throws JsonPatchException, IOException {
-    String patchString = patch.toString();
-    JsonNode patchNode = OBJECT_MAPPER.readTree(patchString);
-    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
-        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
-    return jacksonPatch.apply(targetJson);
+  /**
+   * Whether an operation of {@code jsonPatch} reads a value from another location of the document,
+   * as {@code copy} and {@code move} do through their {@code from} member.
+   */
+  public static boolean readsFromAnotherPath(JsonPatch jsonPatch) {
+    // jakarta JsonPatch exposes its operations as untyped JsonValues; each operation is a JSON
+    // object.
+    return jsonPatch.toJsonArray().stream()
+        .anyMatch(
+            operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
   }
 
   private static Set<TagLabel> extractTags(JsonNode entityJson) {
@@ -168,7 +219,7 @@ public class JsonPatchUtils {
 
     // Handle jakarta JSON patch objects efficiently
     if (jsonPatchObject instanceof JsonObject jsonPatchObj) {
-      JsonValue pathValue = jsonPatchObj.get("path");
+      JsonValue pathValue = jsonPatchObj.get(PATH_KEY);
       if (pathValue instanceof JsonString) {
         path = ((JsonString) pathValue).getString();
       } else {
@@ -177,7 +228,7 @@ public class JsonPatchUtils {
     } else {
       // Fallback for other object types
       Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
-      path = jsonPatchMap.get("path").toString();
+      path = jsonPatchMap.get(PATH_KEY).toString();
     }
 
     return getMetadataOperation(path, resourceType);

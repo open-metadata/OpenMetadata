@@ -37,7 +37,7 @@ variants to handle.
 | `type="dashed"` | — | 0 occurrences anywhere — drop, no mapping needed |
 | `danger` | fold into `color`: `primary`+`danger` → `color="primary-destructive"`, `default`+`danger` → `color="secondary-destructive"`, `text`+`danger` → `color="tertiary-destructive"`, `link`+`danger` → `color="link-destructive"` | **not a rename** — the codemod must read the base `type` first, then branch to the `-destructive` variant; `danger` alone (no explicit `type`) implies antd's default `type="default"` base |
 | `size="small"` | `size="xs"` | approved 2026-07-30 — see Size mapping below |
-| `size="middle"` | `size="sm"` (core's own default) | approved 2026-07-30 — see Size mapping below |
+| `size="middle"` | `size="sm"` | approved 2026-07-30 — see Size mapping below |
 | `size="large"` | `size="md"` | approved 2026-07-30 — see Size mapping below |
 | `ghost` (boolean modifier) | `color="tertiary"` | approved 2026-07-30 — per-site mapping, no new core variant |
 | `type="ghost"` (string literal) | `color="tertiary"` | approved 2026-07-30 — same as above |
@@ -69,7 +69,7 @@ same pass, on every `<Button>` element:
 
 ### Size mapping — approved 2026-07-30
 
-Core has 6 sizes (`xxs | xs | sm | md | lg | xl`, default `'sm'`) vs antd's 3
+Core has 5 sizes (`xs | sm | md | lg | xl`, default `'md'`) vs antd's 3
 (`small | middle | large`). Approved mapping (2026-07-30, as proposed):
 
 | antd | core size |
@@ -92,7 +92,7 @@ triage regardless of which literal mapping is chosen (example:
 | `shape="round"` (pill, 1 usage) | GAP — no pill variant. Example: `components/ActivityFeed/Reactions/Emoji.tsx:116` |
 | `block` (25 usages, all R1) | `className="tw:w-full"` — mechanical move, but needs visual QA since it's no longer a first-class prop. Example: `components/NotificationBox/NotificationBox.component.tsx:271` |
 | `Button.Group` (5 legacy sites: `ClassificationDetails.tsx:1038`, `GlossaryHeader.component.tsx`, `DataProductsDetailsPage.component.tsx`, `GithubStarCard.component.tsx`, `DomainDetails.component.tsx:1038`) | These group **independent action buttons** (vote/star controls), not single-select toggle state. Core `ButtonGroup`/`ButtonGroupItem` is a react-aria `ToggleButtonGroup` (single-select) — semantic mismatch, not a drop-in. Replace with a plain flex row of `Button`s (`className="tw:flex tw:gap-*"`), one per site, by hand. (5 *already-migrated* core `ButtonGroup` usages exist as precedent in R1 lineage components and 2 in R2 — those are genuine toggle groups and are correct as-is; do not touch) |
-| `ref={...}` (5 live usages) | core `Button` is now `forwardRef`-wrapped — **landed in main** (ui-core-components). `<Button ref={...}>` passes through directly; these 5 call sites are unblocked and safe to convert. Sites: `components/Alerts/DestinationFormItem/TeamAndUserSelectItem/TeamAndUserSelectItem.tsx:238`, `components/common/AvatarCarouselItem/AvatarCarouselItem.tsx:62`, plus 3 more (see gap-check §1.9/§4.6) |
+| `ref={...}` (4 live usages) | core `Button` is now `forwardRef`-wrapped — **landed in main** (ui-core-components). `<Button ref={...}>` passes through directly; these 4 call sites are unblocked and safe to convert. Sites: `components/common/AvatarCarouselItem/AvatarCarouselItem.tsx:62`, plus 3 more (see gap-check §1.9/§4.6) |
 
 ## Before / after examples
 
@@ -242,7 +242,7 @@ written ones.
 - **`Button.Group`** — 5 legacy sites (file:line list above) — semantic
   mismatch with core's single-select `ButtonGroup`, redesign per site as a
   flex row of `Button`s
-- **`ref`** — 5 live usages — unblocked (ui-core-components `forwardRef`
+- **`ref`** — 4 live usages — unblocked (ui-core-components `forwardRef`
   landed in main); convert directly, per-site
 - **`block`** — 25 usages (R1) — mechanical `tw:w-full` move but every site
   needs visual QA

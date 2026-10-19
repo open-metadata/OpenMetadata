@@ -22,7 +22,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
@@ -136,21 +136,30 @@ const TestSuiteAddTestCaseDialog = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: t('label.test-case-plural'),
             })}
             onClose={onClose}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTests ?? []}
-                getPopupContainer={(trigger) =>
-                  (trigger.closest('[role="dialog"]') as HTMLElement) ??
-                  document.body
-                }
-                onCancel={onClose}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTests ?? []}
+              getPopupContainer={(trigger) =>
+                (trigger.closest('[role="dialog"]') as HTMLElement) ??
+                document.body
+              }
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={onClose}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -193,7 +202,7 @@ const TestSuiteDetail = () => {
     canAddMultipleDomains,
     canAddMultipleUserOwners,
     canAddMultipleTeamOwner,
-    fetchTestCases,
+    handleTestCasesRemoved,
     handleSortTestCase,
     handleAddTestCaseSubmit,
     onUpdateOwner,
@@ -282,9 +291,8 @@ const TestSuiteDetail = () => {
         {renderDescription()}
         <div className="tw:w-full">
           <DataQualityTab
-            afterDeleteAction={fetchTestCases}
+            afterDeleteAction={handleTestCasesRemoved}
             breadcrumbData={incidentUrlState}
-            editVariant="modal"
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
@@ -305,7 +313,7 @@ const TestSuiteDetail = () => {
     permissions.hasEditDescriptionPermission,
     onDescriptionUpdate,
     flags,
-    fetchTestCases,
+    handleTestCasesRemoved,
     incidentUrlState,
     handleSortTestCase,
     isLoading,
@@ -341,7 +349,7 @@ const TestSuiteDetail = () => {
       data-testid="test-suite-detail-page"
       header={
         <Box
-          className="tw:relative tw:mx-4 tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
+          className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
           data-testid="test-suite-header-container"
           direction="col"
           gap={4}>
@@ -367,7 +375,7 @@ const TestSuiteDetail = () => {
                   className={classNames(
                     'tw:relative tw:size-9 tw:shrink-0',
                     'tw:overflow-hidden tw:rounded-full',
-                    'tw:bg-primary tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
+                    'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
                   )}
                   justify="center">
                   <TestSuiteIcon className="tw:size-5" />
@@ -429,16 +437,16 @@ const TestSuiteDetail = () => {
                 entityFqn={testSuite?.fullyQualifiedName ?? ''}
                 entityId={testSuite?.id ?? ''}
                 entityType={EntityType.TEST_SUITE}
-                hasPermission={flags.canEditAll}
+                hasPermission={flags.canEditDomains}
+                labelClassName="tw:text-secondary!"
                 multiple={canAddMultipleDomains}
-                textClassName="render-domain-lebel-style"
+                textClassName="render-domain-lebel-style tw:text-secondary!"
                 onUpdate={handleDomainUpdate}
               />
               <HeaderDotSeparator />
               <Owner
                 showDashPlaceholder
                 avatarSize={24}
-                className="header-owner-heading"
                 hasPermission={Boolean(permissions.hasEditOwnerPermission)}
                 isCompactView={false}
                 maxVisibleOwners={3}

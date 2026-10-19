@@ -13,7 +13,6 @@
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import type { ComponentType } from 'react';
 import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
-import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import {
@@ -53,6 +52,7 @@ import { ExplorePageTabs } from '../enums/Explore.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { QuickLink } from '../generated/api/data/createPage';
 import { TestSuite } from '../generated/tests/testCase';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { PageType } from '../interface/knowledge-center.interface';
 import {
   KnowledgePageSearchSource,
@@ -160,6 +160,7 @@ class SearchClassBase {
       [EntityType.TEST_SUITE]: SearchIndex.TEST_SUITE,
       [EntityType.GLOSSARY]: SearchIndex.GLOSSARY,
       [EntityType.INGESTION_PIPELINE]: SearchIndex.INGESTION_PIPELINE,
+      [EntityType.DATA_CONTRACT]: SearchIndex.DATA_CONTRACT,
       [EntityType.API_SERVICE]: SearchIndex.API_SERVICE,
       [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION,
       [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT,
@@ -207,6 +208,7 @@ class SearchClassBase {
       [SearchIndex.TEST_SUITE]: EntityType.TEST_SUITE,
       [SearchIndex.GLOSSARY]: EntityType.GLOSSARY,
       [SearchIndex.INGESTION_PIPELINE]: EntityType.INGESTION_PIPELINE,
+      [SearchIndex.DATA_CONTRACT]: EntityType.DATA_CONTRACT,
       [SearchIndex.API_SERVICE]: EntityType.API_SERVICE,
       [SearchIndex.API_COLLECTION]: EntityType.API_COLLECTION,
       [SearchIndex.API_ENDPOINT]: EntityType.API_ENDPOINT,

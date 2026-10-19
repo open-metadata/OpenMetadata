@@ -108,35 +108,13 @@ describe('OntologyLibrary', () => {
     );
   });
 
-  it('restores an installed version from glossary provenance', async () => {
-    render(
-      <OntologyLibrary
-        installedPacks={[
-          {
-            installedAt: 1,
-            installedBy: 'admin',
-            license: 'CC0-1.0',
-            licenseUrl: FHIR_PACK.licenseUrl,
-            modules: [
-              {
-                moduleId: 'core',
-                sha256: 'a'.repeat(64),
-              },
-            ],
-            packId: FHIR_PACK.id,
-            sourceUrl: FHIR_PACK.sourceUrl,
-            version: FHIR_PACK.version,
-          },
-        ]}
-      />
-    );
+  it('shows the vocabulary catalogue without glossary installation metadata', async () => {
+    render(<OntologyLibrary />);
 
-    expect(await screen.findByTestId('ontology-pack-fhir')).toHaveTextContent(
-      'label.installed'
-    );
+    expect(await screen.findByTestId('ontology-pack-fhir')).toBeVisible();
     expect(
-      screen.getByTestId('ontology-library-installed-count')
-    ).toHaveTextContent('1 label.installed-lowercase');
+      screen.queryByTestId('ontology-library-installed-count')
+    ).not.toBeInTheDocument();
   });
 
   it('closes from the library header and Escape key', async () => {
@@ -145,7 +123,9 @@ describe('OntologyLibrary', () => {
 
     await screen.findByTestId('ontology-pack-fhir');
     fireEvent.click(screen.getByTestId('ontology-library-close'));
-    fireEvent.keyDown(document, { key: 'Escape' });
+    fireEvent.keyDown(screen.getByTestId('ontology-library'), {
+      key: 'Escape',
+    });
 
     expect(onClose).toHaveBeenCalledTimes(2);
   });

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { EntityTabs } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 
 export interface DomainDetailsProps {
   domain: Domain;
@@ -40,5 +40,9 @@ export interface DomainDetailsProps {
    */
   onNavigate?: (path: string) => void;
   refreshDomains?: () => void;
+  /**
+   * Reloads the domain, e.g. after a task on it is decided from its Activity tab.
+   */
+  onRefresh?: () => void;
   isTreeView?: boolean;
 }

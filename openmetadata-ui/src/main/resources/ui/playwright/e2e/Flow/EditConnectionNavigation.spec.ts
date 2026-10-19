@@ -31,10 +31,12 @@ const openEditConnection = async (page: Page) => {
   const servicePath = `/service/databaseServices/${service.entityResponseData.name}`;
 
   await redirectToHomePage(page);
-  await page.goto(servicePath);
+  await page.goto(servicePath, { waitUntil: 'domcontentloaded' });
   await waitForAllLoadersToDisappear(page);
 
-  await page.goto(`${servicePath}/connection/edit-connection`);
+  await page.goto(`${servicePath}/connection/edit-connection`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   await waitForServiceConnectionForm(page);
 };

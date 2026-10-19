@@ -1,6 +1,6 @@
 FROM mysql:8.3 AS mysql
 
-FROM apache/airflow:3.3.1-python3.12
+FROM apache/airflow:3.3.2-python3.12
 USER root
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
@@ -12,7 +12,6 @@ RUN apt-get -qq update \
   && apt-get -qq install -y \
   build-essential \
   default-libmysqlclient-dev \
-  freetds-bin \
   freetds-dev \
   gcc \
   gnupg \
@@ -32,8 +31,6 @@ RUN apt-get -qq update \
   openssl \
   # To ensure compatibility with unixodbc package
   odbcinst=2.3.11-2+deb12u1 \
-  postgresql \
-  postgresql-contrib \
   tdsodbc \
   unixodbc=2.3.11-2+deb12u1 \
   unixodbc-dev=2.3.11-2+deb12u1 \
@@ -127,7 +124,7 @@ ENV PIP_NO_CACHE_DIR=1
 ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
 RUN pip install --upgrade "pip>=26.2,<27" "setuptools>=83"
-RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.1/constraints-3.12.txt"
+RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint "https://raw.githubusercontent.com/apache/airflow/constraints-3.3.2/constraints-3.12.txt"
 RUN pip install "openmetadata-ingestion[${INGESTION_DEPENDENCY}]~=${RI_VERSION}"
 
 
@@ -144,14 +141,23 @@ RUN pip install "py-spy>=0.3.14"
 
 # bump python-daemon for https://github.com/apache/airflow/pull/29916
 RUN pip install "python-daemon>=3.0.0"
-# remove all airflow providers except for docker, cncf kubernetes, and standard (required in Airflow 3.x)
-RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard" | xargs pip uninstall -y
+# Keep SMTP and standard providers required by Airflow core, alongside our runtime providers.
+RUN pip freeze | grep "apache-airflow-providers" | grep --invert-match -E "docker|http|cncf|fab|common|standard|smtp" | xargs pip uninstall -y
+# The removed Amazon provider was the only consumer of this driver.
+RUN pip uninstall -y redshift-connector
 # Uninstalling psycopg2-binary and installing psycopg2 instead 
 # because the psycopg2-binary generates a architecture specific error 
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
 RUN pip install psycopg2 mysqlclient==2.1.1
 
+
+# Models are opt-in so the default image remains unchanged. Run this after the
+# package installs and before the spaCy cleanup below, while using the runtime user.
+ARG AUTO_CLASSIFICATION_LANGUAGES=""
+RUN if [ -n "$AUTO_CLASSIFICATION_LANGUAGES" ]; then \
+      metadata install-classification-models --languages "$AUTO_CLASSIFICATION_LANGUAGES"; \
+    fi
 
 # Strip spaCy's bundled test fixture, which scanners misreport as an installed black.
 # See ingestion/scripts/strip_spacy_test_fixture.sh for the rationale. Must run after the
@@ -166,6 +172,14 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 # spaCy strip -- after the final pip install, or a later install restores them.
 COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
 RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
+
+# Native Python extensions still need their shared libraries after header/tool cleanup.
+USER root
+RUN apt-mark manual libpq5 libmariadb3 mariadb-common libgcc-s1 libstdc++6 libgomp1 xz-utils bzip2 make \
+  && apt-get -qq purge -y --autoremove build-essential gcc default-libmysqlclient-dev libpq-dev freetds-bin \
+  && rm -rf /var/lib/apt/lists/*
+USER airflow
+RUN python -c "import MySQLdb, psycopg2"
 
 # Make required folders for openmetadata-airflow-apis
 RUN mkdir -p /opt/airflow/dag_generated_configs

@@ -12,7 +12,7 @@
  */
 
 import { Alert, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { Stars02 } from '@untitledui/icons';
+import { AskCollateSparkle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
@@ -46,7 +46,7 @@ const OntologyAiAssistant = ({
       <div className="tw:mx-auto tw:flex tw:max-w-screen-2xl tw:flex-col tw:gap-6">
         <div className="tw:flex tw:items-start tw:gap-4">
           <div className="tw:grid tw:size-11 tw:shrink-0 tw:place-items-center tw:rounded-xl tw:bg-brand-solid tw:text-fg-white">
-            <Stars02 aria-hidden="true" className="tw:size-6" />
+            <AskCollateSparkle aria-hidden="true" className="tw:size-6" />
           </div>
           <div>
             <Typography as="h1" size="display-xs" weight="semibold">

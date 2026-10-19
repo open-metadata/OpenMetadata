@@ -38,7 +38,7 @@ export const useOntologyAiCapability = (): OntologyAiCapability => {
         const status = await fetchRdfConfig();
         if (isMounted) {
           setCapability({
-            isEnabled: status.askCollateEnabled,
+            isEnabled: status.aiEnabled,
             isRdfEnabled: status.enabled,
             isLoading: false,
           });

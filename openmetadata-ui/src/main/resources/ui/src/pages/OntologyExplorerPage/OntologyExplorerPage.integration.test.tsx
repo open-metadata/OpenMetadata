@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { OntologyNode } from '../../components/OntologyExplorer/OntologyExplorer.interface';
 import { ProjectionState, RDFStatus } from '../../generated/api/rdf/rdfStatus';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -29,7 +29,7 @@ import {
   getOntologySummary,
 } from '../../rest/glossaryAPI';
 import { getMetrics } from '../../rest/metricsAPI';
-import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import { getOntology, listRelationshipTypes } from '../../rest/ontologyAPI';
 import {
   checkRdfEnabled,
   fetchRdfConfig,
@@ -67,8 +67,9 @@ jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => {
     )),
   };
 });
-jest.mock('react-codemirror2', () => ({
-  Controlled: () => <div data-testid="query-editor" />,
+jest.mock('@uiw/react-codemirror', () => ({
+  __esModule: true,
+  default: () => <div data-testid="query-editor" />,
 }));
 jest.mock('../../rest/glossaryAPI');
 jest.mock('../../rest/metricsAPI');
@@ -82,6 +83,7 @@ const mockGetGlossaryTerms = getGlossaryTerms as jest.MockedFunction<
   typeof getGlossaryTerms
 >;
 const mockGetMetrics = getMetrics as jest.MockedFunction<typeof getMetrics>;
+const mockGetOntology = getOntology as jest.MockedFunction<typeof getOntology>;
 const mockListRelationshipTypes = listRelationshipTypes as jest.MockedFunction<
   typeof listRelationshipTypes
 >;
@@ -110,7 +112,7 @@ const glossary: Glossary = {
   termCount: 2,
 };
 const rdfStatus: RDFStatus = {
-  askCollateEnabled: false,
+  aiEnabled: false,
   baseUri: 'https://open-metadata.org/',
   enabled: true,
   inference: {
@@ -163,6 +165,44 @@ describe('Ontology Studio mode-switch integration', () => {
       totalTerms: 2,
     });
   });
+
+  it.each([403, 404])(
+    'returns to the glossary graph when an ontology deep link fails with %s',
+    async (status) => {
+      mockGetOntology.mockRejectedValueOnce({ response: { status } });
+      mockCheckRdfEnabled.mockResolvedValue(false);
+      mockFetchRdfConfig.mockResolvedValue({ ...rdfStatus, enabled: false });
+      const Location = () => (
+        <output data-testid="location">{useLocation().search}</output>
+      );
+
+      render(
+        <MemoryRouter
+          initialEntries={[
+            '/?ontology=unavailable&draft=native-draft&source=context-center',
+          ]}>
+          <OntologyExplorerPage />
+          <Location />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByText('label.loading')).toBeVisible();
+
+      await waitFor(() =>
+        expect(screen.getByTestId('graph-nodes')).toBeVisible()
+      );
+
+      expect(screen.getByTestId('graph-nodes')).toHaveTextContent('Account');
+      expect(screen.getByTestId('location').textContent).toBe(
+        '?source=context-center'
+      );
+      expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+      expect(screen.queryByText('label.loading')).not.toBeInTheDocument();
+    }
+  );
 
   it.each([true, false])(
     'keeps loaded terms, relations and search when Query is visited (RDF enabled: %s)',

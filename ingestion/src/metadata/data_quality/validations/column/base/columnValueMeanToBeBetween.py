@@ -173,13 +173,13 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         min_bound = test_params[self.MIN_BOUND]
         max_bound = test_params[self.MAX_BOUND]
 
-        if dimension_info:
-            return (
-                f"Dimension {dimension_info['dimension_name']}={dimension_info['dimension_value']}: "
-                f"Found mean={mean_value} vs. the expected min={min_bound}, max={max_bound}"
-            )
-        else:  # noqa: RET505
-            return f"Found mean={mean_value} vs. the expected min={min_bound}, max={max_bound}."
+        return self.format_statistic_message(
+            f"Mean of {self.column_label()}",
+            mean_value,
+            (min_bound, max_bound),
+            self._matched(metric_values, test_params),
+            dimension_info,
+        )
 
     def _get_test_result_values(self, metric_values: dict) -> list[TestResultValue]:
         """Get test result values for mean-to-be-between test

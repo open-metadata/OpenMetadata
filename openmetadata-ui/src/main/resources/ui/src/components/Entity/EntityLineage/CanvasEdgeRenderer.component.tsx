@@ -14,7 +14,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Edge, Node } from 'reactflow';
 import { useReactFlow, useViewport } from 'reactflow';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
 import { useCanvasEdgeRenderer } from '../../../hooks/useCanvasEdgeRenderer';
 import { useCanvasMouseEvents } from '../../../hooks/useCanvasMouseEvents';
@@ -54,14 +53,10 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const {
-    isEditMode,
-    columnsInCurrentPages,
-    isCanvasReady,
-    tracedNodes,
-    tracedColumns,
-  } = useLineageStore();
-  const { edges: providerEdges, nodes: providerNodes } = useLineageProvider();
+  const { columnsInCurrentPages, isCanvasReady, tracedNodes, tracedColumns } =
+    useLineageStore();
+  const providerEdges = useLineageStore((s) => s.edges);
+  const providerNodes = useLineageStore((s) => s.nodes);
   const edges = edgesOverride ?? providerEdges;
   const nodes = nodesOverride ?? providerNodes;
   const { getNode } = useReactFlow();
@@ -162,6 +157,9 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       tracedNodes,
       tracedColumns
     );
+    // `nodes` is a recompute trigger: getNode is identity-stable, so it is the
+    // only signal that node positions moved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isPlaywright,
     edges,
@@ -222,7 +220,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       pane.removeEventListener('mousemove', handleMouseMove);
       pane.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [isEditMode, handleClick, handleMouseMove, handleMouseLeave]);
+  }, [handleClick, handleMouseMove, handleMouseLeave]);
 
   return (
     <div
@@ -262,22 +260,20 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
           />
         ) : null
       )}
-      {hoveredButton?.type === ECanvasButtonType.Pipeline &&
-        hoveredEdge &&
-        !isEditMode && (
-          <CanvasButtonPopover
-            hoverTimeoutRef={hoverTimeoutRef}
-            hoveredButton={hoveredButton}
-            hoveredEdge={hoveredEdge}
-            isOverPopoverRef={isOverPopoverRef}
-            viewport={viewport}
-            onMouseLeave={() => {
-              isOverPopoverRef.current = false;
-              setHoveredButton(null);
-              onEdgeHoverRef.current?.(null);
-            }}
-          />
-        )}
+      {hoveredButton?.type === ECanvasButtonType.Pipeline && hoveredEdge && (
+        <CanvasButtonPopover
+          hoverTimeoutRef={hoverTimeoutRef}
+          hoveredButton={hoveredButton}
+          hoveredEdge={hoveredEdge}
+          isOverPopoverRef={isOverPopoverRef}
+          viewport={viewport}
+          onMouseLeave={() => {
+            isOverPopoverRef.current = false;
+            setHoveredButton(null);
+            onEdgeHoverRef.current?.(null);
+          }}
+        />
+      )}
     </div>
   );
 };

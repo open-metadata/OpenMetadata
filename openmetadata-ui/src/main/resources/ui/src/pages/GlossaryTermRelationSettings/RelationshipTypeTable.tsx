@@ -18,7 +18,13 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, Edit05, Lock01, Trash01, XClose } from '@untitledui/icons';
+import {
+  Check,
+  Edit01,
+  Lock01,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
@@ -192,8 +198,9 @@ const RelationshipTypeRow = ({
           ) : null}
           <Typography
             as="span"
-            className="tw:font-semibold tw:text-primary"
-            data-testid={`relation-name-${relationshipType.name}`}>
+            className="tw:text-primary"
+            data-testid={`relation-name-${relationshipType.name}`}
+            weight="medium">
             {relationshipType.name}
           </Typography>
         </div>
@@ -237,7 +244,7 @@ const RelationshipTypeRow = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`edit-${relationshipType.name}-btn`}
-            icon={Edit05}
+            icon={Edit01}
             isDisabled={!isAdminUser || relationshipType.systemDefined}
             size="sm"
             tooltip={

@@ -90,6 +90,9 @@ export const DEFAULT_PERSONA_CONTEXT_DEFINITION: PersonaContextDefinition = {
 
 export const DEFAULT_PERSONA_CONTEXT_MAX_ASSETS = 200;
 
+/** Mirrors `maxLength` on `personaContextDefinition.prompt`. */
+export const PERSONA_CONTEXT_PROMPT_MAX_LENGTH = 8000;
+
 export const PERSONA_CONTEXT_ASSET_TYPES = [
   EntityType.TABLE,
   EntityType.TOPIC,

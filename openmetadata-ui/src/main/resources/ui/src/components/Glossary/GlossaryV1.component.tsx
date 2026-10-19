@@ -20,12 +20,10 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { EntityAction, EntityTabs, EntityType } from '../../enums/entity.enum';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
@@ -49,7 +47,7 @@ import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
-import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
+import GlossaryTermDrawer from './GlossaryTermDrawer/GlossaryTermDrawer';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
@@ -242,6 +240,11 @@ const GlossaryV1 = ({
       setActiveGlossaryTerm(glossaryTerm);
       setIsEditModalOpen(true);
     },
+    []
+  );
+
+  const handleGlossaryTermDrawerClose = useCallback(
+    () => setIsEditModalOpen(false),
     []
   );
 
@@ -547,11 +550,10 @@ const GlossaryV1 = ({
       )}
 
       {isEditModalOpen && (
-        <GlossaryTermModal
+        <GlossaryTermDrawer
           editMode={editMode}
           glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
-          visible={isEditModalOpen}
-          onCancel={() => setIsEditModalOpen(false)}
+          onCancel={handleGlossaryTermDrawerClose}
           onSave={handleGlossaryTermSave}
         />
       )}

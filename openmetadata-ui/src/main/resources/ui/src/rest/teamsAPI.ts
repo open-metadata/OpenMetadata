@@ -14,13 +14,15 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, RestoreRequestType } from 'Models';
-import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { CreateTeam } from '../generated/api/teams/createTeam';
 import { EntityReference } from '../generated/entity/data/table';
 import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { ListParams } from '../interface/API.interface';
-import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
+import {
+  CSVExportResponse,
+  CSVImportAsyncResponse,
+} from '../interface/entity/csv.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 

@@ -39,7 +39,10 @@ class SchemaRegistry:
     def get_avro_serializer(self, schema: str) -> AvroSerializer:
         schema_registry_conf = {"url": self.url}
         schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-        return AvroSerializer(schema_registry_client, schema_str=schema)
+        # confluent_kafka.schema_registry.avro stacks `import *` from _async, _sync and
+        # common, so a type checker binds AvroSerializer to the wrong class; at runtime
+        # _sync wins and takes these arguments.
+        return AvroSerializer(schema_registry_client, schema_str=schema)  # pyright: ignore[reportCallIssue]
 
 
 def delivery_report(err, msg):

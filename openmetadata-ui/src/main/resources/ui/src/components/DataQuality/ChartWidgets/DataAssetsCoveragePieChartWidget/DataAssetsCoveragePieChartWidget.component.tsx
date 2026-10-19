@@ -17,10 +17,6 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../../assets/svg/ic-data-assets-coverage.svg';
-import {
-  DQ_CHART_FAILED_COLOR,
-  DQ_CHART_SUCCESS_COLOR,
-} from '../../../../constants/Color.constants';
 import { ROUTES } from '../../../../constants/constants';
 import { INITIAL_DATA_ASSETS_COVERAGE_STATES } from '../../../../constants/profiler.constant';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
@@ -90,12 +86,12 @@ const DataAssetsCoveragePieChartWidget = ({
         {
           name: t('label.covered'),
           value: dataAssetsCoverageStates.covered,
-          color: DQ_CHART_SUCCESS_COLOR,
+          status: 'success' as const,
         },
         {
           name: t('label.not-covered'),
           value: dataAssetsCoverageStates.notCovered,
-          color: DQ_CHART_FAILED_COLOR,
+          status: 'failed' as const,
         },
       ],
       chartLabel: getPieChartLabel(
@@ -111,7 +107,9 @@ const DataAssetsCoveragePieChartWidget = ({
       <Card
         className={className}
         data-testid="data-assets-coverage-pie-chart-widget">
-        <Skeleton height={200} width="100%" />
+        <Card.Content>
+          <Skeleton height={200} width="100%" />
+        </Card.Content>
       </Card>
     );
   }
@@ -120,23 +118,26 @@ const DataAssetsCoveragePieChartWidget = ({
     <Card
       className={className}
       data-testid="data-assets-coverage-pie-chart-widget">
-      <div className="d-flex flex-column items-center">
-        <div className="d-flex items-center gap-2">
-          <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">
-            <DataAssetsCoverageIcon />
+      <Card.Content>
+        <div className="d-flex flex-column items-center">
+          <div className="d-flex items-center gap-2">
+            <div className="custom-chart-icon-background data-assets-coverage-icon icon-container">
+              <DataAssetsCoverageIcon />
+            </div>
+            <Typography as="span" className="font-semibold text-sm">
+              {t('label.data-asset-plural-coverage')}
+            </Typography>
           </div>
-          <Typography as="span" className="font-semibold text-sm">
-            {t('label.data-asset-plural-coverage')}
-          </Typography>
+          <CustomPieChart
+            showLegends
+            ariaLabel={t('label.data-asset-plural-coverage')}
+            data={data}
+            label={chartLabel}
+            name="data-assets-coverage"
+            onSegmentClick={handleSegmentClick}
+          />
         </div>
-        <CustomPieChart
-          showLegends
-          data={data}
-          label={chartLabel}
-          name="data-assets-coverage"
-          onSegmentClick={handleSegmentClick}
-        />
-      </div>
+      </Card.Content>
     </Card>
   );
 };

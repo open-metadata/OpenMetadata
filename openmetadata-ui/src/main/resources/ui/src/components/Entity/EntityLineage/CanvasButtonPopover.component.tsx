@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tag } from 'antd';
+import { Badge } from '@openmetadata/ui-core-components';
 import React, { MutableRefObject, useCallback } from 'react';
 import { Edge, Viewport } from 'reactflow';
+import { PIPELINE_STATUS_BADGE_COLOR } from '../../../constants/Lineage.constants';
 import { CanvasButton } from '../../../utils/CanvasButtonUtils';
 import { getPipelineStatusClass } from '../../../utils/PipelineStatusUtils';
 import { getAbsolutePosition } from '../../../utils/ViewportUtils';
@@ -51,6 +52,9 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
 
   const pipelineData = hoveredEdge.data?.edge?.pipeline;
   const pipelineStatus = pipelineData?.pipelineStatus;
+  const pipelineStatusClass = getPipelineStatusClass(
+    pipelineStatus?.executionStatus
+  );
 
   return (
     <button
@@ -72,12 +76,13 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         entityType={hoveredEdge.data?.edge?.pipelineEntityType ?? ''}
         extraInfo={
           pipelineStatus && (
-            <Tag
-              className={getPipelineStatusClass(
-                pipelineStatus.executionStatus
-              )}>
+            <Badge
+              color={PIPELINE_STATUS_BADGE_COLOR[pipelineStatusClass]}
+              data-testid="pipeline-status-badge"
+              size="sm"
+              type="pill-color">
               {pipelineStatus.executionStatus}
-            </Tag>
+            </Badge>
           )
         }>
         <div style={{ width: '36px', height: '36px' }} />

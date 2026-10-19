@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/ontologyProfileViolation.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyProfileViolation",
   "description": "A typed OWL 2 DL profile guardrail finding.",
   "type": "object",
@@ -9,7 +9,10 @@
     "severity": {
       "javaType": "org.openmetadata.schema.type.OntologyProfileViolationSeverity",
       "type": "string",
-      "enum": ["ERROR", "WARNING"]
+      "enum": [
+        "ERROR",
+        "WARNING"
+      ]
     },
     "code": {
       "javaType": "org.openmetadata.schema.type.OntologyProfileViolationCode",
@@ -21,7 +24,12 @@
         "TRANSITIVE_CARDINALITY",
         "NON_SIMPLE_CARDINALITY",
         "ILLEGAL_PUNNING",
-        "PROPERTY_CHAIN_REGULARITY"
+        "PROPERTY_CHAIN_REGULARITY",
+        "UNDECLARED_PROPERTY",
+        "NON_SIMPLE_PROPERTY",
+        "UNDECLARED_CLASS",
+        "INVALID_CLASS_KIND",
+        "SUBCLASS_CYCLE"
       ]
     }
   },
@@ -39,6 +47,11 @@
       "type": "string"
     }
   },
-  "required": ["severity", "code", "path", "message"],
+  "required": [
+    "severity",
+    "code",
+    "path",
+    "message"
+  ],
   "additionalProperties": false
 }

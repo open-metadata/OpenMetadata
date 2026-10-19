@@ -12,11 +12,13 @@
  */
 
 import {
+  act,
   fireEvent,
   getByText,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -716,6 +718,43 @@ describe('Test GlossaryTermTab component', () => {
         undefined
       );
     });
+
+    it('should not let a first-level page in flight overwrite the expanded tree', async () => {
+      let resolveFirstLevel!: (value: unknown) => void;
+      mockGetFirstLevelGlossaryTermsPaginated.mockReturnValue(
+        new Promise((resolve) => {
+          resolveFirstLevel = resolve;
+        })
+      );
+      const staleFirstLevelPage = [mockedGlossaryTerms[1]];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() =>
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled()
+      );
+
+      fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+      await waitFor(() =>
+        expect(mockSetGlossaryChildTerms).toHaveBeenLastCalledWith(
+          mockedGlossaryTerms
+        )
+      );
+
+      await act(async () => {
+        resolveFirstLevel({ data: staleFirstLevelPage, paging: {} });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalledWith(
+        staleFirstLevelPage
+      );
+      expect(
+        screen.getByTestId('expand-collapse-all-button')
+      ).toHaveTextContent('label.collapse-all');
+    });
   });
 
   describe('Actions', () => {
@@ -1028,6 +1067,55 @@ describe('Test GlossaryTermTab component', () => {
       expect(mockShowSuccessToast).toHaveBeenCalledWith('Vote recorded.');
       expect(mockSetGlossaryChildTerms).not.toHaveBeenCalled();
     });
+
+    it('should require and submit a comment when rejecting from the glossary list', async () => {
+      const term = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: 'In Review',
+      };
+      mockUseGlossaryStore.glossaryChildTerms = [term];
+      mockListTasks.mockResolvedValue({
+        data: [
+          {
+            id: 'task-1',
+            about: { fullyQualifiedName: term.fullyQualifiedName },
+            assignees: [{ id: 'user-1' }],
+          },
+        ],
+      });
+      mockPermissionForApproveOrReject.mockReturnValue({
+        permission: true,
+        taskId: 'task-1',
+      });
+      mockResolveTask.mockResolvedValue({ id: 'task-1', status: 'Rejected' });
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const rejectButton = await screen.findByTestId(`${term.name}-reject-btn`);
+      fireEvent.click(rejectButton);
+
+      const confirmButton = screen.getByTestId('confirm-reject-glossary-term');
+
+      expect(confirmButton).toBeDisabled();
+
+      fireEvent.change(
+        within(screen.getByTestId('glossary-term-reject-comment')).getByRole(
+          'textbox'
+        ),
+        { target: { value: 'Duplicate glossary term' } }
+      );
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+          comment: 'Duplicate glossary term',
+          newValue: 'rejected',
+          resolutionType: 'Rejected',
+        });
+      });
+    });
   });
 
   describe('Advanced Pagination', () => {
@@ -1072,32 +1160,96 @@ describe('Test GlossaryTermTab component', () => {
       mockUseGlossaryStore.glossaryChildTerms = mockedGlossaryTerms;
     });
 
-    it('should handle status selection save action', async () => {
+    const reopenStatusFilter = () => {
+      fireEvent.click(screen.getByTestId('glossary-status-dropdown'));
+
+      return screen.findByTestId('glossary-status-dropdown-menu');
+    };
+
+    const openStatusFilter = async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
-        fireEvent.click(statusDropdown);
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled();
+      });
 
-        // The dropdown menu should be rendered but we can't easily test the save action
-        // due to the complex dropdown structure
-        expect(statusDropdown).toBeInTheDocument();
+      return reopenStatusFilter();
+    };
+
+    const getStatusCheckbox = (value: string) =>
+      within(screen.getByTestId(`glossary-status-option-${value}`)).getByRole(
+        'checkbox'
+      );
+
+    it('should reflect the default status selection in the filter popover', async () => {
+      await openStatusFilter();
+
+      expect(getStatusCheckbox(EntityStatus.Approved)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.InReview)).toBeChecked();
+      expect(getStatusCheckbox(EntityStatus.Rejected)).not.toBeChecked();
+      expect(getStatusCheckbox('all')).not.toBeChecked();
+    });
+
+    it('should refetch with the saved status selection', async () => {
+      await openStatusFilter();
+      mockGetFirstLevelGlossaryTermsPaginated.mockClear();
+
+      fireEvent.click(getStatusCheckbox(EntityStatus.Draft));
+      fireEvent.click(screen.getByTestId('glossary-status-save-btn'));
+
+      await waitFor(() => {
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalledWith(
+          mockedGlossaryTerms[0].fullyQualifiedName,
+          expect.any(Number),
+          undefined,
+          `${EntityStatus.Approved},${EntityStatus.InReview}`,
+          undefined
+        );
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('glossary-status-dropdown-menu')
+        ).not.toBeInTheDocument();
       });
     });
 
-    it('should handle status selection cancel action', async () => {
-      render(<GlossaryTermTab isGlossary={false} />, {
-        wrapper: MemoryRouter,
-      });
+    it('should discard unsaved status changes on cancel', async () => {
+      await openStatusFilter();
+      mockGetFirstLevelGlossaryTermsPaginated.mockClear();
+
+      fireEvent.click(getStatusCheckbox(EntityStatus.Draft));
+      fireEvent.click(screen.getByTestId('glossary-status-cancel-btn'));
 
       await waitFor(() => {
-        const statusDropdown = screen.getByTestId('glossary-status-dropdown');
-        fireEvent.click(statusDropdown);
-
-        expect(statusDropdown).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('glossary-status-dropdown-menu')
+        ).not.toBeInTheDocument();
       });
+
+      expect(mockGetFirstLevelGlossaryTermsPaginated).not.toHaveBeenCalled();
+
+      await reopenStatusFilter();
+
+      expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
+    });
+
+    it('should select every general status when "all" is checked', async () => {
+      await openStatusFilter();
+
+      expect(screen.queryByText('Superseded')).not.toBeInTheDocument();
+      expect(screen.queryByText('Invalidated')).not.toBeInTheDocument();
+
+      fireEvent.click(getStatusCheckbox('all'));
+
+      Object.values(EntityStatus)
+        .filter((status) => !['Superseded', 'Invalidated'].includes(status))
+        .forEach((status) => {
+          expect(getStatusCheckbox(status)).toBeChecked();
+        });
     });
   });
 

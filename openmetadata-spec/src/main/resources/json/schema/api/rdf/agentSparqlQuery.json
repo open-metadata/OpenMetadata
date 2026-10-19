@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/rdf/agentSparqlQuery.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "AgentSparqlQuery",
   "description": "Permissioned read-only SPARQL SELECT request for agent tools. The server selects the dataset, inference policy, and protective limits; only the query text is caller-controlled.",
   "type": "object",

@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 import test, { expect, Locator, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import {
   getApiContext,
   redirectToHomePage,
-  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
@@ -29,7 +30,7 @@ const TEST_DEFINITION_DESCRIPTION =
   'Aaro This is a custom test definition for E2E testing';
 
 // Only for the multi-select combobox — its popup is typing-driven, so
-// selectOptionWithRetry's aria-expanded guard does not apply.
+// chooseSelectOption's aria-expanded guard does not apply.
 const selectOptionWithMouse = async (page: Page, option: Locator) => {
   await expect(option).toBeVisible();
 
@@ -52,12 +53,17 @@ const selectOptionWithMouse = async (page: Page, option: Locator) => {
 const selectEntityType = async (page: Page, entityType: string) => {
   const entityTypeTrigger = page.getByTestId('entity-type').getByRole('button');
 
-  await selectOptionWithRetry(
-    entityTypeTrigger,
-    page.getByRole('option', { name: entityType, exact: true })
-  );
+  await entityTypeTrigger.focus();
+  await expect(entityTypeTrigger).toBeFocused();
+  await entityTypeTrigger.click();
+  const entityTypeOption = page.getByRole('option', {
+    name: entityType,
+    exact: true,
+  });
+  await expect(entityTypeOption).toBeVisible();
+  await entityTypeOption.click();
 
-  await expect(entityTypeTrigger).toContainText(entityType);
+  await expect(entityTypeTrigger).toHaveText(entityType);
 };
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -72,12 +78,12 @@ test.describe(
 
     test('should navigate to Test Library page', async ({ page }) => {
       // Navigate directly to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for page to load
       await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
-        timeout: 30000,
+        timeout: ACTION_TIMEOUT,
       });
 
       // Verify URL
@@ -94,7 +100,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify table is displayed
@@ -109,7 +115,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       await responsePromise;
 
       // Verify at least one test definition is displayed
@@ -125,7 +131,7 @@ test.describe(
     }) => {
       await test.step('Create a new test definition', async () => {
         // Navigate to Test Library
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         const testDefinitionFormDoc = page.waitForResponse(
           '/locales/en-US/OpenMetadata/TestDefinitionForm.md'
@@ -140,21 +146,17 @@ test.describe(
           .waitFor({ state: 'visible' });
         await testDefinitionFormDoc;
 
-        // The form body + doc panel confirm the drawer opened. We don't assert
-        // the "Add Test Definition" title text because it also matches the list
-        // page's Add button (strict-mode ambiguity).
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toBeVisible();
+        // The form body + Show Hint toggle confirm the drawer opened. We don't
+        // assert the "Add Test Definition" title text because it also matches
+        // the list page's Add button (strict-mode ambiguity).
+        await expect(page.getByTestId('show-hint-toggle')).toBeChecked();
 
         // Fill in form fields
         await page
           .getByTestId('test-definition-name')
           .locator('input')
           .fill(TEST_DEFINITION_NAME);
-        await expect(
-          page.locator('.drawer-doc-panel.service-doc-panel')
-        ).toContainText('Name');
+        await expectFormHint(page, 'Name');
         await page
           .getByTestId('display-name')
           .locator('input')
@@ -218,11 +220,9 @@ test.describe(
           state: 'visible',
         });
 
-        // Find and click edit button on first row
-        const firstEditButton = page
+        await page
           .getByTestId(`edit-test-definition-${TEST_DEFINITION_NAME}`)
-          .first();
-        await firstEditButton.click();
+          .click();
 
         // Wait for drawer to open (form body confirms the edit drawer opened).
         await page
@@ -290,10 +290,7 @@ test.describe(
         await toastNotification(page, /updated successfully/i);
 
         // Verify switch state changed
-        await expect(firstSwitch).toHaveAttribute(
-          'aria-checked',
-          String('false')
-        );
+        await expect(firstSwitch.getByRole('switch')).not.toBeChecked();
       });
 
       await test.step('should delete a test definition', async () => {
@@ -340,7 +337,7 @@ test.describe(
 
     test('should validate required fields in create form', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -367,7 +364,7 @@ test.describe(
 
       try {
         await test.step('Open create form', async () => {
-          await page.goto('/test-library');
+          await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
           await page.getByTestId('add-test-definition-button').click();
           await page
             .getByTestId('test-definition-form-body')
@@ -411,7 +408,7 @@ test.describe(
 
     test('should cancel form and close drawer', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Click add button
       await page.getByTestId('add-test-definition-button').click();
@@ -446,7 +443,7 @@ test.describe(
           response.request().method() === 'GET'
       );
 
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -465,18 +462,19 @@ test.describe(
 
     test('should display test platform badges correctly', async ({ page }) => {
       // Navigate to Test Library
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
       // Wait for table to load
       await page.getByTestId('test-definition-table').waitFor({
         state: 'visible',
       });
 
-      // Verify test platform tags/badges are displayed
-      const platformTags = page.locator('.ant-tag, .ant-badge');
-      const tagCount = await platformTags.count();
+      // Verify the platform column lists test platforms
+      const platformCells = page
+        .getByTestId('test-definition-table')
+        .getByRole('gridcell', { name: /OpenMetadata/ });
 
-      expect(tagCount).toBeGreaterThan(0);
+      expect(await platformCells.count()).toBeGreaterThan(0);
     });
 
     test('should keep system test definitions editable but not deletable', async ({
@@ -547,10 +545,7 @@ test.describe(
       expect(disableResponse.status()).toBe(200);
 
       // Verify switch state changed
-      await expect(enabledSwitch).toHaveAttribute(
-        'aria-checked',
-        String('false')
-      );
+      await expect(enabledSwitch.getByRole('switch')).not.toBeChecked();
 
       const patchResponse2 = page.waitForResponse(
         (response) =>
@@ -573,7 +568,7 @@ test.describe(
           response.url().includes('/api/v1/dataQuality/testDefinitions') &&
           response.request().method() === 'GET'
       );
-      await page.goto('/test-library');
+      await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
       const response = await responsePromise;
       const data = await response.json();
 
@@ -587,7 +582,7 @@ test.describe(
           `enable-switch-${externalTest.name}`
         );
 
-        await expect(enableSwitch).toBeDisabled();
+        await expect(enableSwitch.getByRole('switch')).toBeDisabled();
 
         const switchParent = enableSwitch.locator('..');
         await switchParent.hover();
@@ -606,7 +601,7 @@ test.describe(
       let createdTestDisplayName = EXTERNAL_TEST_DISPLAY_NAME;
 
       await test.step('Create external test definition', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -752,9 +747,14 @@ test.describe(
           exact: true,
         });
 
-        await selectOptionWithRetry(dimensionTrigger, accuracyOption);
-
-        await expect(dimensionTrigger).toContainText('Accuracy');
+        await dimensionTrigger.focus();
+        await expect(dimensionTrigger).toBeFocused();
+        await dimensionTrigger.click();
+        await expect(accuracyOption).toBeVisible();
+        await accuracyOption.click();
+        // The field's hidden native select contains every option's text even
+        // when empty, so only the visible trigger proves selection succeeded.
+        await expect(dimensionTrigger).toHaveText('Accuracy');
 
         // Save without providing parameter dataType or description — both are optional.
         const patchResponse = page.waitForResponse(
@@ -812,12 +812,16 @@ test.describe(
     test('should handle supported services field correctly', async ({
       page,
     }) => {
+      // Creates a test definition, filters the library, edits, deletes —
+      // 4+ heavy modal round-trips. Under load the 60 s default is tight.
+      test.slow();
+
       const SUPPORTED_SERVICES_TEST_NAME = `AaaaServiceFilterTest${uuid()}`;
       const SUPPORTED_SERVICES_DISPLAY_NAME = `Aaaa Service Filter Test ${uuid()}`;
       let createdTestId: string;
 
       await test.step('Create test definition with specific supported services', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
 
         await page.getByTestId('add-test-definition-button').click();
 
@@ -1157,7 +1161,7 @@ test.describe(
       const UPDATED_DISPLAY_NAME = `Updated ${PAGINATION_TEST_DISPLAY_NAME}`;
 
       await test.step('Create a test definition starting with "z"', async () => {
-        await page.goto('/test-library');
+        await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
         await page.getByTestId('add-test-definition-button').click();
         await expect(
           page.getByTestId('test-definition-form-body')
@@ -1214,7 +1218,7 @@ test.describe(
             response.request().method() === 'GET'
         );
         // Wait for dropdown to open and select 25
-        await page.locator('.ant-dropdown:visible').getByText('25').click();
+        await page.getByRole('menuitem', { name: /^25 \// }).click();
         await pageChangeResponse;
       });
 

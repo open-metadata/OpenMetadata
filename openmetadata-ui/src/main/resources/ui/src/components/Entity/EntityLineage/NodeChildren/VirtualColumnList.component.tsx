@@ -11,22 +11,30 @@
  *  limitations under the License.
  */
 import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { ChevronDown, ChevronUp } from '@untitledui/icons';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LINEAGE_CHILD_ITEMS_PER_PAGE } from '../../../../constants/Lineage.constants';
+import { LineageDirection } from '../../../../generated/api/lineage/lineageDirection';
 import { TestSummary } from '../../../../generated/tests/testCase';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
+import {
+  EntityChildren,
+  EntityChildrenItem,
+} from '../../../../interface/lineage.interface';
 import EntityLink from '../../../../utils/EntityLink';
 import { ColumnContent } from '../CustomNode.utils';
-import { EntityChildren, EntityChildrenItem } from './NodeChildren.interface';
 
 export interface VirtualColumnListProps {
   flatItems: EntityChildren;
-  isConnectable: boolean;
   isLoading: boolean;
   nodeId?: string;
   onColumnHover?: (columnFqn?: string) => void;
   onColumnSelect?: (columnFqn?: string) => void;
+  onColumnLineageEdit?: (
+    columnFqn: string,
+    direction: LineageDirection,
+    triggerRef: React.RefObject<HTMLElement>
+  ) => void;
   showDataObservabilitySummary: boolean;
   summary?: TestSummary;
   pageSize?: number;
@@ -34,11 +42,11 @@ export interface VirtualColumnListProps {
 
 const VirtualColumnList = ({
   flatItems,
-  isConnectable,
   isLoading,
   nodeId,
   onColumnHover,
   onColumnSelect,
+  onColumnLineageEdit,
   showDataObservabilitySummary,
   summary,
   pageSize = LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -135,12 +143,12 @@ const VirtualColumnList = ({
           className={className}
           column={column}
           depth={depth}
-          isConnectable={isConnectable}
           isLoading={isLoading}
           key={column.fullyQualifiedName}
           showDataObservabilitySummary={showDataObservabilitySummary}
           summary={columnSummary}
           onColumnHover={onColumnHover}
+          onColumnLineageEdit={onColumnLineageEdit}
           onColumnSelect={onColumnSelect}
         />
       );
@@ -148,9 +156,9 @@ const VirtualColumnList = ({
     // selectedColumn triggers re-render when column selection changes
     [
       getColumnSummary,
-      isConnectable,
       isLoading,
       onColumnHover,
+      onColumnLineageEdit,
       onColumnSelect,
       showDataObservabilitySummary,
       selectedColumn,

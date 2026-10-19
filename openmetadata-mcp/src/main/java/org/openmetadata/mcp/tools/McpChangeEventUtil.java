@@ -6,20 +6,21 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.formatter.util.FormatterUtil;
+import org.openmetadata.service.events.ChangeEvents;
 
 @Slf4j
 public final class McpChangeEventUtil {
   private McpChangeEventUtil() {}
 
-  public static <T extends EntityInterface> void publishChangeEvent(
+  public static <T extends EntityInterface<?>> void publishChangeEvent(
       T entity, EventType changeType, String userName) {
     if (entity == null || changeType == null || changeType.equals(EventType.ENTITY_NO_CHANGE)) {
       return;
     }
     try {
       ChangeEvent changeEvent =
-          FormatterUtil.createChangeEventForEntity(userName, changeType, entity);
+          ChangeEvents.createChangeEventForEntity(
+              userName, changeType, McpResponseUtils.maskSecrets(entity));
       changeEvent.setUserName(userName);
 
       if (changeEvent.getEntity() != null) {

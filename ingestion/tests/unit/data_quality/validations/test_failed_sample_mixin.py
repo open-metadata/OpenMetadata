@@ -2,7 +2,8 @@
 Unit tests for the FailedSampleValidatorMixin and row sampler mixins.
 
 Tests the orchestration logic of result_with_failed_samples():
-  - Only fetches samples when computePassedFailedRowCount=True AND status=Failed
+  - Only fetches samples when computePassedFailedRowCount=True AND the run found
+    failed rows: status=Failed, or status=Success with failedRows > 0 (within threshold)
   - Handles exceptions gracefully
   - Stashes data on the result object
 """
@@ -48,16 +49,17 @@ def _make_test_case(compute_row_count=True):
     return tc
 
 
-def _make_test_case_result(status=TestCaseStatus.Failed):
+def _make_test_case_result(status=TestCaseStatus.Failed, failed_rows=None):
     result = MagicMock(spec=TestCaseResult)
     result.testCaseStatus = status
+    result.failedRows = failed_rows
     return result
 
 
-def _make_response(compute_row_count=True, status=TestCaseStatus.Failed):
+def _make_response(compute_row_count=True, status=TestCaseStatus.Failed, failed_rows=None):
     response = MagicMock(spec=TestCaseResultResponse)
     response.testCase = _make_test_case(compute_row_count)
-    response.testCaseResult = _make_test_case_result(status)
+    response.testCaseResult = _make_test_case_result(status, failed_rows)
     response.failedRowsSample = None
     response.inspectionQuery = None
     return response
@@ -74,10 +76,47 @@ class TestFailedSampleValidatorMixin:
         assert response.failedRowsSample == sample
         assert response.inspectionQuery == "SELECT 1"
 
-    def test_no_samples_when_status_is_success(self):
+    def test_samples_fetched_when_success_within_threshold(self):
+        sample = TableData(columns=["a"], rows=[["1"]])
+        validator = ConcreteValidator(sample_data=sample, inspection_query="SELECT 1")
+        response = _make_response(compute_row_count=True, status=TestCaseStatus.Success, failed_rows=7)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.failedRowsSample == sample
+        assert response.inspectionQuery == "SELECT 1"
+
+    def test_no_samples_when_success_without_failed_rows(self):
         sample = TableData(columns=["a"], rows=[["1"]])
         validator = ConcreteValidator(sample_data=sample)
-        response = _make_response(compute_row_count=True, status=TestCaseStatus.Success)
+        response = _make_response(compute_row_count=True, status=TestCaseStatus.Success, failed_rows=0)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.failedRowsSample is None
+
+    def test_no_samples_when_success_with_unknown_failed_rows(self):
+        sample = TableData(columns=["a"], rows=[["1"]])
+        validator = ConcreteValidator(sample_data=sample)
+        response = _make_response(compute_row_count=True, status=TestCaseStatus.Success, failed_rows=None)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.failedRowsSample is None
+
+    def test_no_samples_when_success_within_threshold_and_flag_is_false(self):
+        sample = TableData(columns=["a"], rows=[["1"]])
+        validator = ConcreteValidator(sample_data=sample)
+        response = _make_response(compute_row_count=False, status=TestCaseStatus.Success, failed_rows=7)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.failedRowsSample is None
+
+    def test_no_samples_when_status_is_aborted(self):
+        sample = TableData(columns=["a"], rows=[["1"]])
+        validator = ConcreteValidator(sample_data=sample)
+        response = _make_response(compute_row_count=True, status=TestCaseStatus.Aborted, failed_rows=7)
 
         validator.result_with_failed_samples(response)
 
@@ -108,6 +147,30 @@ class TestFailedSampleValidatorMixin:
         validator.result_with_failed_samples(response)
 
         assert response.failedRowsSample is None
+
+    def test_sampling_error_preserves_success_with_failed_rows(self):
+        validator = ConcreteValidator(raise_on_fetch=True)
+        response = _make_response(status=TestCaseStatus.Success, failed_rows=7)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Success
+        assert response.failedRowsSample is None
+
+    def test_inspection_query_error_preserves_sample_and_success(self):
+        class QueryErrorValidator(ConcreteValidator):
+            def get_inspection_query(self):
+                raise RuntimeError("inspection query error")
+
+        sample = TableData(columns=["a"], rows=[["1"]])
+        validator = QueryErrorValidator(sample_data=sample)
+        response = _make_response(status=TestCaseStatus.Success, failed_rows=7)
+
+        validator.result_with_failed_samples(response)
+
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Success
+        assert response.failedRowsSample == sample
+        assert response.inspectionQuery is None
 
     def test_inspection_query_none_by_default(self):
         sample = TableData(columns=["a"], rows=[["1"]])

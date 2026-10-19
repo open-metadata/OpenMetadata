@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export const GLOSSARY_ROUTE = '/glossary';
+
 export enum SidebarItem {
   EXPLORE = 'explore',
   OBSERVABILITY = 'observability',
@@ -78,3 +80,29 @@ export const SIDEBAR_LIST_ITEMS = {
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],
 };
+
+// OSS app-mode sidebar default order; every item fits, so there is no "More".
+export const APP_MODE_SIDEBAR_DEFAULT_NAV_KEYS = [
+  'home',
+  'explore',
+  'connections',
+  'observability',
+  'govern',
+  'marketplace',
+  'context-center',
+  'lineage',
+];
+
+// Collate app-mode sidebar default visible order; the rest overflow under "More".
+export const COLLATE_APP_MODE_SIDEBAR_DEFAULT_VISIBLE_NAV_KEYS = [
+  'chat',
+  'home',
+  'explore',
+  'connections',
+  'govern',
+  'observability',
+  'dashboards',
+  'automations',
+  'marketplace',
+  'context-center',
+];

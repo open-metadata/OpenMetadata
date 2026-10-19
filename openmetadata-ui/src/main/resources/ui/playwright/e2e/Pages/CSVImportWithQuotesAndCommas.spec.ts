@@ -40,9 +40,7 @@ const cleanupTempFile = (filePath: string | undefined): void => {
 const selectGlossaryManageItem = async (page: Page, itemTestId: string) => {
   await page.getByTestId('manage-button').click();
 
-  const manageDropdown = page
-    .locator('.glossary-manage-dropdown-list-container')
-    .last();
+  const manageDropdown = page.getByTestId('manage-dropdown-list-container');
 
   await expect(manageDropdown).toBeVisible();
   await manageDropdown.getByTestId(itemTestId).click();
@@ -71,7 +69,9 @@ const waitForGlossaryTerms = async (
         );
 
         if (!response.ok()) {
-          return [];
+          throw new Error(
+            `HTTP ${response.status()} querying ${response.url()}`
+          );
         }
 
         const data = (await response.json()) as GlossaryTermsResponse;
@@ -133,13 +133,15 @@ test.describe(
           tempFilePath = tempFile;
 
           await expect(
-            page.getByRole('gridcell', { name: 'Term1' }).first()
-          ).toBeVisible();
+            page
+              .getByRole('gridcell', { name: 'Term1' })
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
           await expect(
             page
               .getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
-              .first()
-          ).toBeVisible();
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
 
           const validationResponse = page.waitForResponse(
             (response) =>
@@ -233,13 +235,15 @@ test.describe(
           });
 
           await expect(
-            page.getByRole('gridcell', { name: 'Term1' }).first()
-          ).toBeVisible();
+            page
+              .getByRole('gridcell', { name: 'Term1' })
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
           await expect(
             page
               .getByRole('gridcell', { name: 'TermWithComma,AndQuote' })
-              .first()
-          ).toBeVisible();
+              .filter({ visible: true })
+          ).not.toHaveCount(0);
 
           const validationResponse = page.waitForResponse(
             (response) =>

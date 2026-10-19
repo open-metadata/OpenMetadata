@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  LineageNodeType,
-  NodeData,
-} from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TagSource } from '../../generated/type/tagLabel';
+import { LineageNodeType, NodeData } from '../../interface/lineage.interface';
 import { TableSearchSource } from '../../interface/search.interface';
 import {
   getSearchNameEsQuery,

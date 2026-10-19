@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/ontologyConfiguration.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyConfiguration",
   "description": "Ontology modeling and namespace settings inherited by every term in a glossary.",
   "type": "object",
@@ -23,8 +23,7 @@
           "pattern": "^[A-Za-z][A-Za-z0-9._-]*$"
         },
         "namespace": {
-          "type": "string",
-          "format": "uri"
+          "$ref": "ontologyIri.json"
         }
       },
       "required": ["prefix", "namespace"],
@@ -34,8 +33,7 @@
   "properties": {
     "baseIri": {
       "description": "Absolute base IRI used when minting governed concepts.",
-      "type": "string",
-      "format": "uri"
+      "$ref": "ontologyIri.json"
     },
     "layer": {
       "$ref": "#/definitions/layer"

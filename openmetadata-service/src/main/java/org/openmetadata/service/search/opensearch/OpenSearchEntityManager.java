@@ -45,16 +45,19 @@ import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.entityRelationship.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
-import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.SearchPropagationLimits;
 import org.openmetadata.service.search.SearchRetryUtil;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.UpdateByQueryOutcome;
+import org.openmetadata.service.search.UpdateByQueryReconciler;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.json.JsonData;
@@ -68,6 +71,7 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.Result;
+import os.org.opensearch.client.opensearch._types.SlicesCalculation;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -412,11 +416,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
     }
 
-    UpdateByQueryResponse response =
-        client.updateByQuery(
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
             u ->
                 u.index(indexNames)
                     .query(q -> q.bool(boolQueryBuilder.build()))
+                    .conflicts(Conflicts.Proceed)
                     .script(
                         s ->
                             s.inline(
@@ -431,18 +436,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                         .params(Map.of())))
                     .refresh(Refresh.True));
 
+    UpdateByQueryOutcome outcome = runReconciled("softDeleteOrRestoreChildren", request, true);
+
     LOG.info(
         "Successfully soft deleted/restored children in OpenSearch for indices: {}, updated documents: {}",
         indexNames,
-        response.updated());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
-    }
+        outcome.updatedDocuments());
   }
 
   @Override
@@ -552,6 +551,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
    * scan and trips {@code socketTimeoutSecs} with a {@link java.net.SocketTimeoutException};
    * submitting it as a background task returns immediately and lets the cluster finish the
    * propagation and the post-task {@code refresh} on its own.
+   *
+   * <p>Sliced and throttled because the widest parent here is a service, whose children are every
+   * asset it ever ingested. Unsliced, that is a single-threaded scroll over millions of documents;
+   * unthrottled, it runs as fast as the cluster allows and starves concurrent ingestion and search
+   * for the duration. {@code slices=auto} gives one slice per shard and
+   * {@link SearchPropagationLimits#REQUESTS_PER_SECOND} caps the sustained write rate.
    */
   UpdateByQueryRequest buildUpdateChildrenRequest(
       List<String> indexNames,
@@ -565,6 +570,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                 .query(exactFieldQuery(fieldAndValue))
                 .conflicts(Conflicts.Proceed)
                 .waitForCompletion(false)
+                .slices(s -> s.calculation(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
                 .script(
                     s ->
                         s.inline(
@@ -595,11 +602,70 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     Map<String, JsonData> params =
         convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
+            u ->
+                u.index(indexNames)
+                    .query(anyOfFieldQuery(field, values))
+                    .conflicts(Conflicts.Proceed)
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(
+                                            l ->
+                                                l.builtin(
+                                                    os.org.opensearch.client.opensearch._types
+                                                        .BuiltinScriptLanguage.Painless))
+                                        .source(updates.getKey())
+                                        .params(params)))
+                    .refresh(Refresh.True));
+
+    runReconciled("updateChildren", request, true);
+
+    LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
+  }
+
+  /**
+   * Same request shape as {@link #buildUpdateChildrenRequest}: an async, sliced, rate-limited
+   * update-by-query, because a target referenced by many documents fans out widely. Each path is a
+   * nested field in every index that maps it, so it is matched with a nested query only.
+   */
+  @Override
+  public void updateChildrenByNestedField(
+      List<String> indexNames,
+      List<String> docIds,
+      List<String> nestedPaths,
+      String field,
+      List<String> values,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update nested children.");
+      return;
+    }
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+    List<FieldValue> fieldValues = values.stream().map(FieldValue::of).toList();
+    List<Query> matches = new ArrayList<>();
+    if (!docIds.isEmpty()) {
+      matches.add(Query.of(q -> q.ids(i -> i.values(docIds))));
+    }
+    for (String path : nestedPaths) {
+      Query terms =
+          Query.of(
+              q -> q.terms(t -> t.field(path + "." + field).terms(tv -> tv.value(fieldValues))));
+      matches.add(Query.of(q -> q.nested(n -> n.path(path).ignoreUnmapped(true).query(terms))));
+    }
     client.updateByQuery(
         u ->
             u.index(indexNames)
-                .query(anyOfFieldQuery(field, values))
+                .query(q -> q.bool(b -> b.should(matches).minimumShouldMatch("1")))
                 .conflicts(Conflicts.Proceed)
+                .waitForCompletion(false)
+                .slices(sl -> sl.calculation(SlicesCalculation.Auto))
+                .requestsPerSecond(SearchPropagationLimits.REQUESTS_PER_SECOND)
                 .script(
                     s ->
                         s.inline(
@@ -611,10 +677,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                 os.org.opensearch.client.opensearch._types
                                                     .BuiltinScriptLanguage.Painless))
                                     .source(updates.getKey())
-                                    .params(params)))
-                .refresh(Refresh.True));
-
-    LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
+                                    .params(params))));
   }
 
   private Query anyOfFieldQuery(String field, List<String> values) {
@@ -644,12 +707,9 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return getResponse(Response.Status.NOT_FOUND, "Document not found.");
     }
 
+    String index = Entity.getSearchRepository().getIndexOrAliasName(indexName);
     try {
-      GetResponse<Map> response =
-          client.get(
-              g ->
-                  g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
-              Map.class);
+      GetResponse<Map> response = client.get(g -> g.index(index).id(entityId), Map.class);
 
       // This path runs no query and has no SubjectContext, so it cannot tell whose restricted
       // memory a document is: a non-org-wide memory reads as not found rather than leaking.
@@ -660,8 +720,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to find doc with id %s", entityId));
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
       }
@@ -686,8 +745,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   "entityRelationshipData", JsonData.of(entityRelationshipData))
               : Map.of();
 
-      UpdateByQueryResponse response =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               u ->
                   u.index(indexName)
                       .query(exactFieldQuery(fieldAndValue))
@@ -706,15 +765,9 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
-      LOG.info("Successfully updated entity relationship in OpenSearch for index: {}", indexName);
+      runReconciled("updateEntityRelationship", request, true);
 
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("updated entity relationship encountered failures: {}", failureDetails);
-      }
+      LOG.info("Successfully updated entity relationship in OpenSearch for index: {}", indexName);
 
     } catch (IOException | OpenSearchException e) {
       LOG.error("Failed to update entity relationship in OpenSearch for index: {}", indexName, e);
@@ -760,8 +813,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldParentFQN", JsonData.of(oldParentFQN),
               "newParentFQN", JsonData.of(newParentFQN));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
@@ -779,16 +832,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
+      runReconciled("updateByFqnPrefix", request, !newParentFQN.contains(oldParentFQN));
+
       LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
 
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update FQN prefix: {}", errorMessage);
-      }
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
           null, newParentFQN, SearchIndexRetryQueue.failureReason("updateByFqnPrefix", e));
@@ -832,8 +879,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
     Query lineageQuery = buildLineageUpdateQuery(fieldAndValue);
 
-    UpdateByQueryResponse response =
-        client.updateByQuery(
+    UpdateByQueryRequest request =
+        UpdateByQueryRequest.of(
             u ->
                 u.index(indexName)
                     .query(lineageQuery)
@@ -852,15 +899,9 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                         .params(params)))
                     .refresh(Refresh.True));
 
-    LOG.info("Successfully updated lineage in OpenSearch for index: {}", indexName);
+    runReconciled("updateLineage", request, true);
 
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("Update lineage encountered failures: {}", failureDetails);
-    }
+    LOG.info("Successfully updated lineage in OpenSearch for index: {}", indexName);
   }
 
   @Override
@@ -1039,6 +1080,36 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         failures);
   }
 
+  private UpdateByQueryOutcome runReconciled(
+      String operation, UpdateByQueryRequest request, boolean replaySafe) throws IOException {
+    UpdateByQueryOutcome outcome =
+        UpdateByQueryReconciler.reconcile(
+            () -> updateByQueryOutcome(operation, request.index(), client.updateByQuery(request)),
+            () -> client.indices().refresh(r -> r.index(request.index())),
+            replaySafe);
+    outcome.report();
+    return outcome;
+  }
+
+  private static UpdateByQueryOutcome updateByQueryOutcome(
+      String operation, List<String> indices, UpdateByQueryResponse response) {
+    List<String> failures =
+        new ArrayList<>(
+            response.failures().stream()
+                .map(BulkByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .toList());
+    if (Boolean.TRUE.equals(response.timedOut())) {
+      failures.add(operation + " timed out");
+    }
+    return new UpdateByQueryOutcome(
+        operation,
+        indices,
+        zeroIfNull(response.updated()),
+        zeroIfNull(response.versionConflicts()),
+        failures);
+  }
+
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
@@ -1056,8 +1127,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldParentFQN", JsonData.of(oldFqnPrefix),
               "newParentFQN", JsonData.of(newFqnPrefix));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
@@ -1075,19 +1146,16 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateGlossaryTermByFqnPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqnPrefix, newFqnPrefix));
+
       LOG.info(
           "Successfully updated glossary term FQN for index: {}, updated: {}",
           indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update glossary term FQN: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1116,8 +1184,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldParentFQN", JsonData.of(oldFqnPrefix),
               "newParentFQN", JsonData.of(newFqnPrefix));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
                       .query(prefixQuery)
@@ -1135,19 +1203,16 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateClassificationTagByFqnPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqnPrefix, newFqnPrefix));
+
       LOG.info(
           "Successfully updated classification tag FQN for index: {}, updated: {}",
           indexName,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update classification tag FQN: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1180,8 +1245,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldFqn", JsonData.of(oldFqn),
               "newFqn", JsonData.of(newFqn));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
                       .query(termQuery)
@@ -1199,20 +1264,13 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
+      UpdateByQueryOutcome outcome = runReconciled("updateDataProductReferences", request, true);
+
       LOG.info(
           "Successfully updated data product references from {} to {}, updated: {}",
           oldFqn,
           newFqn,
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update data product references: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1258,8 +1316,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldDomainFqns", JsonData.of(oldDomainFqns),
               "newDomains", JsonData.of(newDomainsData));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(
                           Entity.getSearchRepository()
@@ -1281,21 +1339,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
+      UpdateByQueryOutcome outcome =
+          runReconciled("updateAssetDomainsForDataProduct", request, true);
+
       LOG.info(
           "Successfully updated asset domains for data product {}: removed {}, added {}, updated {} documents",
           dataProductFqn,
           oldDomainFqns,
           newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update asset domains: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
@@ -1341,8 +1393,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldDomainFqns", JsonData.of(oldDomainFqns),
               "newDomains", JsonData.of(newDomainsData));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(
                           Entity.getSearchRepository()
@@ -1364,21 +1416,16 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
+      UpdateByQueryOutcome outcome = runReconciled("updateAssetDomainsByIds", request, true);
+
+      outcome.requeueIfConflicted(idValues);
+
       LOG.info(
           "Successfully updated asset domains by IDs: {} assets, oldFqns={}, newFqns={}, updated {} documents",
           assetIds.size(),
           oldDomainFqns,
           newDomains.stream().map(EntityReference::getFullyQualifiedName).toList(),
-          updateResponse.updated());
-
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update asset domains: {}", errorMessage);
-      }
+          outcome.updatedDocuments());
 
     } catch (Exception e) {
       for (UUID assetId : assetIds) {
@@ -1416,8 +1463,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldFqn", JsonData.of(oldFqn),
               "newFqn", JsonData.of(newFqn));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getWriteFanoutTargets(domainIndexName))
                       .query(combinedQuery)
@@ -1435,20 +1482,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
-      LOG.info(
-          "Updated domain FQNs: total={}, updated={}, noops={}",
-          updateResponse.total(),
-          updateResponse.updated(),
-          updateResponse.noops());
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateDomainFqnByPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqn, newFqn));
 
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update domain FQNs: {}", errorMessage);
-      }
+      LOG.info("Updated domain FQNs: updated={}", outcome.updatedDocuments());
+
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, SearchIndexRetryQueue.failureReason("updateDomainFqnByPrefix", e));
@@ -1478,8 +1519,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               "oldFqn", JsonData.of(oldFqn),
               "newFqn", JsonData.of(newFqn));
 
-      UpdateByQueryResponse updateResponse =
-          client.updateByQuery(
+      UpdateByQueryRequest request =
+          UpdateByQueryRequest.of(
               req ->
                   req.index(Entity.getSearchRepository().getWriteFanoutTargets(indexName))
                       .query(matchingDomainQuery)
@@ -1498,20 +1539,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
-      LOG.info(
-          "Updated asset domain FQNs in search: total={}, updated={}, noops={}",
-          updateResponse.total(),
-          updateResponse.updated(),
-          updateResponse.noops());
+      UpdateByQueryOutcome outcome =
+          runReconciled(
+              "updateAssetDomainFqnByPrefix",
+              request,
+              UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldFqn, newFqn));
 
-      if (!updateResponse.failures().isEmpty()) {
-        String errorMessage =
-            updateResponse.failures().stream()
-                .map(BulkByScrollFailure::cause)
-                .map(ErrorCause::reason)
-                .collect(Collectors.joining(", "));
-        LOG.error("Failed to update asset domain FQNs: {}", errorMessage);
-      }
+      LOG.info("Updated asset domain FQNs in search: updated={}", outcome.updatedDocuments());
+
     } catch (Exception e) {
       SearchIndexRetryQueue.enqueue(
           null, newFqn, SearchIndexRetryQueue.failureReason("updateAssetDomainFqnByPrefix", e));
@@ -1533,7 +1568,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     List<BulkOperation> operations = new ArrayList<>();
 
     for (EntityReference entityRef : entities) {
-      EntityInterface entity = Entity.getEntity(entityRef, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityRef, "*", Include.ALL);
       IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityRef.getType());
       String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
 

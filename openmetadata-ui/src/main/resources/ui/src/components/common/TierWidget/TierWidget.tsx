@@ -11,22 +11,19 @@
  *  limitations under the License.
  */
 import { ClassificationTag } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
 import { cloneDeep } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getTierTags } from '../../../utils/TablePureUtils';
 import {
   getTagName,
   getTagRedirectLink,
   updateTierTag,
 } from '../../../utils/TagsPureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TierCard from '../TierCard/TierCard';
 import {
@@ -34,7 +31,6 @@ import {
   WidgetPlusButton,
 } from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
-import './TierWidget.less';
 const TierWidget = () => {
   const {
     data: entity,
@@ -59,17 +55,17 @@ const TierWidget = () => {
       const updatedEntity = cloneDeep(entity);
       updatedEntity.tags = updatedTags;
       await onUpdate(updatedEntity);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+    } catch {
+      // The page-level updater already toasts before rethrowing, so toasting
+      // here would duplicate it. Swallow rather than rethrow so TierCard's
+      // post-await cleanup runs and the popover doesn't stay stuck loading.
     } finally {
       setIsEditing(false);
     }
   };
 
   const canEdit = useMemo(
-    () =>
-      getPrioritizedEditPermission(permissions, Operation.EditTier) &&
-      !isVersionView,
+    () => getDerivedPermissionFlags(permissions).canEditTier && !isVersionView,
     [permissions, isVersionView]
   );
 
@@ -77,48 +73,39 @@ const TierWidget = () => {
     <WidgetEditButton
       data-testid="edit-tier"
       title={t('label.edit-entity', { entity: t('label.tier') })}
-      onClick={() => setIsEditing(true)}
     />
   ) : (
     <WidgetPlusButton
       data-testid="add-tier"
       title={t('label.add-entity', { entity: t('label.tier') })}
-      onClick={() => setIsEditing(true)}
     />
   );
 
-  const headerExtra = canEdit ? tierEditControl : null;
-
-  const tierDisplay = tier ? (
-    <ClassificationTag
-      color={tier.style?.color}
-      data-testid="Tier"
-      href={getTagRedirectLink(tier)}
-      icon={tier.style?.iconURL}
-      label={getTagName(tier)}
-      maxWidth={200}
-      size="sm"
-      tooltip={getTagName(tier)}
-    />
-  ) : null;
-
-  const content = (
+  // Anchored to the header button, like the Certification widget; the
+  // button's click opens it through TierCard's trigger.
+  const headerExtra = canEdit ? (
     <TierCard
       currentTier={tier?.tagFQN}
-      footerActionButtonsClassName="p-x-md"
-      popoverProps={{
-        open: isEditing,
-        onOpenChange: (visible: boolean) => {
-          if (!visible) {
-            setIsEditing(false);
-          }
-        },
-      }}
-      tierCardClassName="tier-widget-popover"
+      open={isEditing}
       updateTier={handleTierUpdate}
-      onClose={() => setIsEditing(false)}>
-      {tier && <div data-testid="tier-selector-display">{tierDisplay}</div>}
+      onOpenChange={setIsEditing}>
+      {tierEditControl}
     </TierCard>
+  ) : null;
+
+  const content = tier && (
+    <div data-testid="tier-selector-display">
+      <ClassificationTag
+        color={tier.style?.color}
+        data-testid="Tier"
+        href={getTagRedirectLink(tier)}
+        icon={tier.style?.iconURL}
+        label={getTagName(tier)}
+        maxWidth={200}
+        size="sm"
+        tooltip={getTagName(tier)}
+      />
+    </div>
   );
 
   return (

@@ -30,8 +30,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   },
 }));
 
+const mockFetchTree = jest.fn();
+
 jest.mock('./useGlossaryTreeData', () => ({
-  useGlossaryTreeData: () => jest.fn(),
+  useGlossaryTreeData: () => mockFetchTree,
 }));
 
 const APPLIED_TERM: TagLabel = {
@@ -61,6 +63,67 @@ const emit = (
 describe('GlossaryTermPicker', () => {
   beforeEach(() => {
     mockTreeSelect.mockClear();
+    mockFetchTree.mockReset();
+  });
+
+  // `total` is the server's count, but the row counts what the user can see,
+  // and the tree keeps only the newest page's total — so drops must accumulate.
+  it('counts only the terms that survive excludeFqns', async () => {
+    const node = (id: string) => ({ id, label: id, value: id });
+    mockFetchTree
+      .mockResolvedValueOnce({
+        nodes: [node('g.a'), node('g.b')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c1',
+      })
+      .mockResolvedValueOnce({
+        nodes: [node('g.c'), node('g.d')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c2',
+      });
+
+    render(<GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />);
+
+    const first = await lastProps().fetchData({ parentId: 'g' });
+    const second = await lastProps().fetchData({ parentId: 'g', after: 'c1' });
+
+    expect(first.nodes.map((n: TreeSelectNode<unknown>) => n.id)).toEqual([
+      'g.b',
+    ]);
+    expect(first.total).toBe(136);
+    expect(second.total).toBe(135);
+  });
+
+  // Callers pass an inline array, so a per-identity memo would rebuild the
+  // exclude set every render and wipe the tally between pages.
+  it('keeps the pruned tally across re-renders', async () => {
+    const node = (id: string) => ({ id, label: id, value: id });
+    mockFetchTree
+      .mockResolvedValueOnce({
+        nodes: [node('g.a'), node('g.b')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c1',
+      })
+      .mockResolvedValueOnce({
+        nodes: [node('g.c'), node('g.d')],
+        hasMore: true,
+        total: 137,
+        nextCursor: 'c2',
+      });
+
+    const { rerender } = render(
+      <GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />
+    );
+    await lastProps().fetchData({ parentId: 'g' });
+
+    // A fresh inline array with the same contents, as a parent re-render gives.
+    rerender(<GlossaryTermPicker excludeFqns={['g.a', 'g.c']} />);
+    const second = await lastProps().fetchData({ parentId: 'g', after: 'c1' });
+
+    expect(second.total).toBe(135);
   });
 
   it('seeds the tree with the glossary labels only', () => {
@@ -96,7 +159,7 @@ describe('GlossaryTermPicker', () => {
       },
     ]);
 
-    expect(onChange).toHaveBeenCalledWith([APPLIED_TERM]);
+    expect(onChange).toHaveBeenCalledWith([APPLIED_TERM], expect.anything());
   });
 
   it('reports a newly picked term from its node data', () => {
@@ -117,7 +180,38 @@ describe('GlossaryTermPicker', () => {
       },
     ]);
 
-    expect(onChange).toHaveBeenCalledWith([newTerm]);
+    expect(onChange).toHaveBeenCalledWith([newTerm], expect.anything());
+  });
+
+  // A stray UI-only field makes the server reject the whole PATCH.
+  it('keeps the picker-only fields out of the reported tag', () => {
+    const onChange = jest.fn();
+    render(<GlossaryTermPicker value={[]} onChange={onChange} />);
+
+    emit([
+      {
+        id: 'Finance.ARR',
+        label: 'ARR',
+        value: 'Finance.ARR',
+        data: {
+          tagFQN: 'Finance.ARR',
+          name: 'ARR',
+          source: TagSource.Glossary,
+          entity: { id: 'uuid-1', name: 'ARR' },
+          isGlossaryRoot: false,
+        },
+      },
+    ]);
+
+    const [tags, nodes] = onChange.mock.calls[0];
+
+    expect(tags).toEqual([
+      { tagFQN: 'Finance.ARR', name: 'ARR', source: TagSource.Glossary },
+    ]);
+    expect(tags[0]).not.toHaveProperty('entity');
+    expect(tags[0]).not.toHaveProperty('isGlossaryRoot');
+    // The entity stays available to callers that resolve ids from it.
+    expect(nodes[0].entity).toEqual({ id: 'uuid-1', name: 'ARR' });
   });
 
   it('drops glossary rows, which are containers rather than terms', () => {
@@ -134,7 +228,7 @@ describe('GlossaryTermPicker', () => {
       },
     ]);
 
-    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onChange).toHaveBeenCalledWith([], expect.anything());
   });
 
   it('normalises a single-select pick into an array', () => {
@@ -155,7 +249,7 @@ describe('GlossaryTermPicker', () => {
       data: term,
     });
 
-    expect(onChange).toHaveBeenCalledWith([term]);
+    expect(onChange).toHaveBeenCalledWith([term], expect.anything());
     expect(lastProps().multiple).toBe(false);
   });
 
@@ -165,7 +259,17 @@ describe('GlossaryTermPicker', () => {
 
     emit(null);
 
-    expect(onChange).toHaveBeenCalledWith([]);
+    expect(onChange).toHaveBeenCalledWith([], expect.anything());
+  });
+
+  // A programmatically opened picker is never clicked, so nothing else focuses it.
+  it('forwards autoFocus so an already-open picker can be typed into', () => {
+    render(
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- the prop under test
+      <GlossaryTermPicker autoFocus value={[]} />
+    );
+
+    expect(lastProps().autoFocus).toBe(true);
   });
 
   it('forwards the popover controls to the tree', () => {

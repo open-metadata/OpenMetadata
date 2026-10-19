@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   applyProviderConfig,
   fetchSecurityConfig,
@@ -115,7 +116,10 @@ export const ldapProviderFixture: SsoProviderFixture = {
   supportsSelfSignup: false,
   supportsSilentCallback: false,
   usesBackendRefresh: true,
+  hasBackendIssuedRefreshCookie: true,
+  usesPkce: false,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: false,
 
   // The compose service is expected up when this profile runs; when it is
   // not, the container is unreachable and the configureBackend PUT will
@@ -136,12 +140,12 @@ export const ldapProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByLabel(/email/i).fill(LDAP_USER_EMAIL);
     await page.getByLabel(/password/i).fill(LDAP_USER_PASSWORD);
     await page.getByRole('button', { name: /^(sign in|log in)$/i }).click();
     await expect(page.getByTestId('app-bar-item-my-data')).toBeVisible({
-      timeout: 30_000,
+      timeout: ACTION_TIMEOUT,
     });
   },
 

@@ -287,8 +287,6 @@ export interface CollateAIAppConfig {
     bulkIndexSettings?: BulkIndexOverrides;
     /**
      * Number of threads to use for reindexing
-     *
-     * Number of consumer threads to use for non-distributed RDF reindexing
      */
     consumerThreads?: number;
     /**
@@ -331,9 +329,6 @@ export interface CollateAIAppConfig {
     /**
      * Number of entities per partition for distributed indexing. Smaller values create more
      * partitions for better distribution across servers. Range: 1000-50000.
-     *
-     * Number of entities per partition for distributed RDF indexing. Smaller values create more
-     * partitions for better distribution across servers.
      */
     partitionSize?: number;
     /**
@@ -343,13 +338,12 @@ export interface CollateAIAppConfig {
     /**
      * Number of threads to use for reindexing
      *
-     * Number of producer threads to use for non-distributed RDF reindexing
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
-     *
-     * Queue size to use internally for non-distributed RDF reindexing.
      */
     queueSize?: number;
     /**
@@ -376,7 +370,7 @@ export interface CollateAIAppConfig {
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      *
-     * Materialize every enabled rule even when its durable dirty flag is clear.
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -414,12 +408,8 @@ export interface CollateAIAppConfig {
      */
     relationshipIsolationMaxFailures?: number;
     /**
-     * Enable distributed RDF indexing across multiple servers with partition coordination and
-     * recovery.
-     */
-    useDistributedIndexing?: boolean;
-    /**
-     * Optional rule name for an on-demand single-rule run.
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
      */
     ruleName?: string;
     /**
@@ -1518,7 +1508,9 @@ export interface CreateEventSubscription {
      */
     batchSize?: number;
     /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     * Id of the registered consumer that runs this Event Subscription. Will use `alert`, the
+     * consumer that sends its notifications, if not provided. A Java class name a consumer was
+     * once stored under is accepted and saved as its id; any other name is rejected.
      */
     className?: string;
     config?:    { [key: string]: any };
@@ -1593,6 +1585,12 @@ export enum AlertType {
  */
 export interface Destination {
     category: SubscriptionCategory;
+    /**
+     * Id of the registered channel that serves this destination, when it is not the one
+     * registered for its type. A save that names a channel not registered on the server is
+     * rejected.
+     */
+    channel?: string;
     config?:  Webhook;
     /**
      * Maximum depth for downstream stakeholder notification traversal. If null, traverses

@@ -28,14 +28,16 @@ import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDa
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
-import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
+import {
+  EMPTY_CHART_DATA,
+  TEST_CASE_STATUS_CHART_STATUS,
+} from '../ChartWidgets.constants';
 import './test-case-status-area-chart-widget.less';
 
 const TestCaseStatusAreaChartWidget = ({
   testCaseStatus,
   name,
   title,
-  chartColorScheme,
   chartFilter,
   height,
   redirectPath,
@@ -117,17 +119,18 @@ const TestCaseStatusAreaChartWidget = ({
         </div>
 
         {showEmptyFooter ? (
-          <Tooltip title={t('label.no-data')}>
+          <Tooltip title={t('label.no-data')} triggerClassName="tw:w-full">
             <div className="test-case-status-widget-footer">
               {footerWhenEmpty}
             </div>
           </Tooltip>
         ) : (
           <CustomAreaChart
-            colorScheme={chartColorScheme}
+            ariaLabel={title}
             data={chartData}
             height={height}
             name={name}
+            status={TEST_CASE_STATUS_CHART_STATUS[testCaseStatus]}
           />
         )}
       </>
@@ -136,7 +139,6 @@ const TestCaseStatusAreaChartWidget = ({
     title,
     chartData,
     name,
-    chartColorScheme,
     height,
     footerWhenEmpty,
     isChartLoading,

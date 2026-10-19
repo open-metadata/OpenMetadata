@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AzureConfig",
   "description": "Azure storage config for pbit files",
   "type": "object",
@@ -15,7 +14,6 @@
     },
     "securityConfig": {
       "title": "Azure Config Source",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Azure Cloud Credentials",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
@@ -56,7 +54,6 @@
     },
     "prefixConfig": {
       "title": "Prefix Config",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "description": "Details of the bucket where the .pbit files are stored",
       "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.bucketDetails",
       "type": "object",

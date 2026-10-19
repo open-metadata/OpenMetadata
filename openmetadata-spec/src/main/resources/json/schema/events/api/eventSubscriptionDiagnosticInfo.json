@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/events/api/eventSubscriptionDiagnosticInfo.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Event Subscription Diagnostic Info",
   "description": "Schema defining the response for event subscription diagnostics, including details about processed and unprocessed events.",
   "type": "object",

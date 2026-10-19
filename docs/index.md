@@ -19,34 +19,53 @@ verdict cites an artifact that was checked to still exist):
 
 | Guide | What it is |
 |---|---|
-| `CLAUDE.md` | Always-loaded session guidance; the pointer index to `.claude/rules/*` and skills |
+| `AGENTS.md` | Always-loaded session guidance for every harness; the pointer index to `.claude/rules/*` and skills. `CLAUDE.md` and `.github/copilot-instructions.md` are symlinks to it |
 | `ARCHITECTURE.md` | System map — modules, the request/ingestion/search paths, the invariants that hold |
 | `DEVELOPER.md` | How to build, test, and add an entity or connector (end-to-end checklists) |
-| `AGENTS.md` | Codex entry doc — **carries known contradictions** (Webpack→Vite, antd, Python ceiling); see `docs/tech-debt.md` #6 |
 
 ## Backend & platform design docs (`docs/`)
 
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
 | `docs/impersonation-design.md` | Bot→user impersonation: `updatedBy`=user / `impersonatedBy`=bot, gated by `allowImpersonation` + RBAC `Impersonate` policy scoping | Touching bot impersonation auth — the flag, `BotImpersonationPolicy` seeds, `checkImpersonationAuthorization` (§4.4 is authoritative) | 2026-06-16 | CURRENT ⚠¹ |
+| `docs/settings-config-source-design.md` | Which source wins for settings defined in both yaml/env and `openmetadata_settings`: AUTO/ENV/DB modes, per-field three-way merge, write guard (409), secrets at rest, the cross-server watcher, status/adopt API | Touching a dual-source setting (auth, authorizer, email, base URL, SCIM, MCP, app), `config/source/*`, `SettingsCache` seeding, or the security settings endpoints | 2026-10-06 | CURRENT |
 | `docs/session-management-multi-node-design.md` | Shipped multi-node server-side session + websocket system: shared JDBC/Redis store, `OM_SESSION` cookie, session-bound JWTs, CAS refresh | Working on login/refresh/logout across pods, `SessionService`/`SessionStore`, JWT session validation, websocket handshake | 2026-06-03 | CURRENT |
 | `docs/streamable-logs.md` | S3/MinIO-backed streamable ingestion logs: HTTP append/close, `partial.txt`→`logs.txt`, SSE live tail, abandoned-run sweeper | Working on ingestion log storage/streaming — `S3LogStorage`, `LogStorageInterface`, `/logs/{fqn}/{runId}` endpoints | 2026-05-15 | CURRENT |
 | `docs/ingestion-log-streaming.md` | Live log tail over SSE: `LogStreamEvent` schema, resume cursors, one shared reader per run, and the limits that bound every stream | Building or debugging a client that tails ingestion logs live — `/logs/{fqn}/stream/{runId}`, `IngestionLogTailer`, `LogStreamSettings` | 2026-08-10 | CURRENT |
 | `docs/rdf-local-development.md` | Run RDF/knowledge-graph support locally with Apache Jena Fuseki — startup scripts, env vars, `rdf.*` config, `/api/v1/rdf/*`, `RdfIndexApp` | Setting up or debugging local RDF/Fuseki development | 2026-07-16 | CURRENT |
+| `docs/rdf-fuseki-image-release.md` | Building, publishing and deploying the OpenMetadata Fuseki image (`docker/rdf-store/`) — what it adds over stock Fuseki, the readiness probe and its failures, cutover steps | Building or publishing the Fuseki image; debugging "RDF storage is not ready"; migrating off an upstream Jena | 2026-09-22 | CURRENT |
 | `docs/rdf-production-setup.md` | Production sizing/tuning for a remote Fuseki triple store — TDB2 heap vs page-cache, batch/timeout, weekly recreate, compaction | Sizing, scheduling, or troubleshooting a prod Fuseki deployment; tuning RDF bulk-write | 2026-07-16 | CURRENT |
 | `docs/rdf-ontology-contract.md` | RDF predicate availability, canonical lineage direction, extension key/value projection, and contract tests | Adding RDF predicates or upgrading an existing RDF store | 2026-09-08 | CURRENT |
 | `docs/rdf-scale-validation.md` | Full catalog RDF rebuild, query latency, resource sampling, interrupted rebuild, and restart validation | Reproducing RDF capacity measurements or evaluating #32057 | 2026-09-08 | CURRENT |
 | `docs/csv-relation-types-plan.md` | Carry glossary term relation types through CSV export/import via a `relationType:termFQN` prefix (default `relatedTo`) | Modifying glossary CSV round-tripping — `CsvUtil.addTermRelations`, `GlossaryRepository.getTermRelationsFromCsv` | 2026-03-17 | CURRENT |
 | `docs/auto-classification/add-support-for-another-entity.md` | Step-by-step: extend auto-classification (PII + sample data) to a new entity across schema/Java/Python/UI via the `EntityAdapter` registry | Adding auto-classification/sample-data support for a new entity type | 2026-05-19 | CURRENT |
+| `docs/perf/lineage-scale-validation.md` | Lineage scene p95, first-render and map-interaction benchmark, plus per-API latency recorded from every Java suite, the nightly trend page and regression gate, and benchmarking a `scripts/lineage_seed` graph: what each scenario measures, why cold vs warm differs, the `jpw.lineage.*` / `jpw.bench.*` knobs | Running or reading the lineage scale benchmark — `LineageScenePerformanceScaleIT`, `ApiLatencyRecorder`, `benchmark_trend.py`, `scripts/lineage_seed`, `compare_benchmark_metrics.py`; evaluating #32050 | 2026-10-09 | CURRENT (no numbers published yet) |
+| `docs/auto-classification/model-provisioning.md` | Provision spaCy models for Auto Classification before a workflow runs | Building an air-gapped classification environment or a tailored ingestion image | 2026-09-22 | CURRENT |
+| `docs/perf/lineage-scale-validation.md` | Lineage scene p95 + first-render benchmark: what each scenario measures, why cold vs warm differs, the `jpw.lineage.*` knobs, and how to compare two releases | Running or reading the lineage scale benchmark — `LineageScenePerformanceScaleIT`, `scripts/lineage-scale-benchmark.sh`, `compare_benchmark_metrics.py`; evaluating #32050 | 2026-09-23 | CURRENT (no numbers published yet) |
 | `docs/perf/cdn-deployment-guide.md` | AWS design proposal: per-customer/per-release UI bundles from one CloudFront + S3 via an embedded CloudFront Function router (no Lambda@Edge) | Planning/reviewing CDN delivery of the UI bundle + per-customer version pinning — infra design, not existing code | 2026-05-25 | CURRENT (unimplemented proposal) |
+
+## Decision records (`docs/decisions/`)
+
+Dated, append-only records of the choices that shape the code. `ls docs/decisions/` is their
+index, so only the entry point is listed here. A comment citing `ADR:<date>-<slug>` points at
+`docs/decisions/<date>-<slug>.md`; read it before re-deciding what it settled.
+
+| Doc | Purpose | Read when | Modified | Freshness |
+|---|---|---|---|---|
+| `docs/decisions/README.md` | When a PR needs a record, the record format, `ADR:` citations (also into Collate's repos), and what checks them | Writing or citing a record; a choice in the code looks arbitrary | 2026-10-08 | CURRENT |
 
 ## Plans & specs (`docs/plans/`, `docs/superpowers/`)
 
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
+| `docs/plans/2026-10-14-organizational-ontology-design.md` | Approved pre-release scope: native ontology entities, whole-release workflow approval, immutable SQL captures, activation/rollback and active-only Fuseki; metadata labels are a separate follow-up, imports and per-definition reviews are excluded | Planning Ontology Studio's entity boundaries, storage, publication lifecycle, glossary Relations Graph continuity and readiness gates | 2026-10-15 | CURRENT (implementation and validation in progress; baseline `d099f6f553b`) |
+| `docs/decisions/2026-10-15-fuseki-holds-only-the-active-ontology-release.md` | Active-release graph isolation, transactional activation delivery, rollback and rebuild behavior | Changing ontology publication or Fuseki projection | 2026-10-15 | CURRENT (accepted contract; implementation and validation in progress) |
+| `docs/decisions/2026-10-17-glossaries-do-not-own-ontology-models.md` | Retirement of unreleased glossary ontology fields and modeling tools; released relations, vocabulary identity and native ontology storage remain | Changing glossary/native model boundaries or cleaning development data | 2026-10-17 | CURRENT |
+| `docs/plans/2026-10-07-fuseki-native-reasoning.md` | Design and nine implementation phases for reasoning packaged in the `openmetadata/fuseki` image built in the open-metadata/jena fork (reasoner worker JVMs with an owned HermiT build plus ELK, no sidecar): rule-input fixes, full ontology semantics, asset mappings, snapshots/freshness, memory budget and container sizing, HTTP/MCP contracts, open decisions | Planning or implementing removal of inference from the OM JVM; checking phase dependencies, current-state gaps, and acceptance criteria | 2026-10-08 | CURRENT (execution design; phase status predates the 2026-10-14 organizational ontology assessment) |
 | `docs/plans/2026-01-27-search-indexing-stats-redesign.md` | Rework `SearchIndexingApp` stats into a per-stage pipeline model (`StageStatsTracker`/`StageCounter`), index-alias promotion, vector bulk processor | Before touching search reindex stats, `search_index_server_stats`, index promotion, vector indexing | 2026-01-29 | CURRENT (shipped design) |
 | `docs/plans/2026-06-22-bulk-deletion-redesign.md` | Fast, orphan-free, resumable service-level recursive hard-deletion by id-set; self-audits what landed on `main` vs remaining gaps | Before working on recursive/bulk deletion, `entity_relationship` orphan cleanup, the deletion-lock gate | 2026-06-26 | CURRENT (shipped design) |
 | `docs/plans/2026-09-17-entity-repository-epic.md` | The `EntityRepository` decomposition epic (#32946): why PR #33248 was closed, the measured baseline on `main`, the ~20-PR salvage inventory, the 13-pain list, and the wave order | Before touching `EntityRepository` or picking up any #32946 sub-issue; to find which salvage PR already covers a bug/perf fix from #33248 | 2026-09-17 | CURRENT (active plan) |
+| `docs/plans/2026-10-07-policy-revocation-cache-invalidation.md` | Fix plan for #34826: post-commit authorization invalidation, MCP cleanup, shard retirement, and provider verification | Investigating stale authorization after a policy rule is removed, especially MCP-first requests | 2026-10-13 | CURRENT (review follow-up, acceptance coverage, and ADR recorded in section 10) |
 | `docs/superpowers/specs/2026-06-22-logviewer-modal-design.md` | Design spec for the reusable `LogViewerModal` (dark terminal modal over `@melloware/react-logviewer`); self-marked "Implemented; revised 2026-06-24" | Before modifying `LogViewerModal`, its log-level parser, theming, or streaming container/hook | 2026-07-16 | CURRENT |
 | `docs/superpowers/plans/2026-06-22-logviewer-modal.md` | Original TDD build plan for `LogViewerModal` (built-in LazyLog search, `CopyToClipboardButton`) | Historical context only — the shipped component follows the revised spec, not this plan | 2026-07-16 | SUPERSEDED ² |
 
@@ -54,8 +73,8 @@ verdict cites an artifact that was checked to still exist):
 
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
-| `docs/generated/entity-index.md` | Auto-generated: 81 first-class entities → schema JSON, Java POJO, Python model, TS type, REST resource class | Locate every codegen artifact / the REST resource for an entity without grepping four trees | 2026-07-24 | CURRENT (by construction) ³ |
-| `docs/generated/api-reference.md` | Auto-generated: all 1748 REST endpoints (method + path + `@Operation` summary) grouped by resource package | Find an endpoint's exact path/method, or enumerate a package's routes without reading JAX-RS classes | 2026-07-24 | CURRENT (by construction) ³ |
+| `docs/generated/entity-index.md` | Auto-generated: 91 first-class entities → schema JSON, Java POJO, Python model, TS type, REST resource class | Locate every codegen artifact / the REST resource for an entity without grepping four trees | 2026-10-15 | CURRENT (by construction) ³ |
+| `docs/generated/api-reference.md` | Auto-generated: all 1961 REST endpoints (method + path + `@Operation` summary) grouped by resource package | Find an endpoint's exact path/method, or enumerate a package's routes without reading JAX-RS classes | 2026-10-15 | CURRENT (by construction) ³ |
 
 ## Repo audit & quality (`docs/`)
 
@@ -76,6 +95,7 @@ verdict cites an artifact that was checked to still exist):
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
 | `openmetadata-ui/src/main/resources/ui/DEVELOPER_HANDBOOK.md` | **UI folder structure + file naming spec.** Layers (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) stay top-level, grouped inside by `domain/feature/`; five domains (`discovery`, `governance`, `observability`, `insights`, `platform`) with cross-cutting features at the domain level. New files use one stem + role suffix (`GlossaryList.tsx`, `.types.ts`, `.utils.ts`, `.test.tsx`); legacy uses `.component.tsx`/`.interface.ts`. Also covers imports, barrels, routing and state locations | **Before creating any new file under `ui/src/`**, or when deciding where code belongs | 2026-08-21 | CURRENT |
+| `openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md` | What a review of a UI pull request checks: type safety, i18n, design-system use, React patterns, file naming (`.types.ts` for new files) | Reviewing a UI PR, or before asking for review of one | 2026-10-06 | CURRENT |
 | `openmetadata-ui/src/main/resources/ui/specs/` | **Machine-readable design system** (41 files). `README.md` declares two stacks — **go-forward = UntitledUI + Tailwind (`tw:`)**, **legacy (deprecated) = Ant Design + Less** — plus `foundations/*` (color, spacing, typography, radius, elevation, motion), `tokens/*` (Tailwind-utility + master token reference), `untitled/*` (go-forward component specs), and legacy `components/*` | **Before writing or modifying any UI code** — start at `specs/README.md`, then the `foundations`/`tokens` and the `untitled/<component>.md` (or legacy `components/*`) spec for what you touch | 2026-07-27 | CURRENT ⁶ |
 | `openmetadata-ui/src/main/resources/ui/docs/colors.md` | Semantic color-token system (`tw:bg-primary`, `tw:text-fg-*`, `tw:border-*`) with light/dark values + the mandatory `ring`→`border` migration (§2.3.1) | Before writing/reviewing any Tailwind color class or dark-mode styling, or when tempted to use `ring-*` or a raw hex | 2026-07-23 | CURRENT |
 | `openmetadata-ui/src/main/resources/ui/docs/formutils.md` | The modern react-hook-form + react-aria form stack (`FieldProp`, `getField`/`FormFields`/`HookForm`) vs the legacy antd `@utils/formUtils` API | Before building/modifying any UI form — which API to use, and wiring to `useFormDrawerWithHook` + a pure transform | 2026-07-15 | CURRENT |
@@ -86,7 +106,7 @@ verdict cites an artifact that was checked to still exist):
 | Doc | Purpose | Read when | Modified | Freshness |
 |---|---|---|---|---|
 | `ingestion/docs/design/ingestion-diagnostics.md` | DEBUG-gated ingestion diagnostics subsystem (operation registry, watchdog, heartbeat, memory tracker, HTTP introspection, stage backpressure, signal dumps) | Understand why/how the diagnostics subsystem works before instrumenting ingestion hangs/OOMs | 2026-05-20 | CURRENT ⚠⁴ |
-| `bootstrap/MIGRATION_SYSTEM.md` | Hybrid DB-migration architecture — Flyway→native→extension execution order, `SERVER_CHANGE_LOG` tracking, file layout (Flyway *parsers* only, not the Flyway runner) | Before adding/debugging a migration under `bootstrap/sql/migrations/`, or reasoning about ordering / tracking tables / MySQL+Postgres dual paths | 2025-10-28 | CURRENT ⚠⁵ |
+| `bootstrap/MIGRATION_SYSTEM.md` | Hybrid DB-migration architecture — one version-sorted execution order (Flyway `0.0.x` first, native before extension on equal versions), `SERVER_CHANGE_LOG` tracking, file layout (Flyway *parsers* only, not the Flyway runner) | Before adding/debugging a migration under `bootstrap/sql/migrations/`, or reasoning about ordering / tracking tables / MySQL+Postgres dual paths | 2026-10-09 | CURRENT ⚠⁵ |
 
 ## Caveats (verification notes)
 

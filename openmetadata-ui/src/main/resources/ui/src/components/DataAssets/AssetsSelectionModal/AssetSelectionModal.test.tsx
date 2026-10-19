@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { AssetSelectionModal } from './AssetSelectionModal';
 import { useAssetSelectionState } from './useAssetSelectionState';
 
