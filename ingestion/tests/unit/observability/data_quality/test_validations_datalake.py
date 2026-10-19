@@ -56,17 +56,17 @@ EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
 
 
 @pytest.mark.parametrize(
-    "contents,expected,status",
+    "contents,expected,status,values",
     [
-        ('id,name\n1,"unterminated\n', 0, TestCaseStatus.Aborted),
-        ('id,name\n1,"unterminated\n', 2, TestCaseStatus.Aborted),
-        ("id,name\n", 0, TestCaseStatus.Success),
-        ("id,name\n", 1, TestCaseStatus.Failed),
-        ("id,name\n1,one\n2,two\n", 2, TestCaseStatus.Success),
+        ('id,name\n1,"unterminated\n', 0, TestCaseStatus.Aborted, []),
+        ('id,name\n1,"unterminated\n', 2, TestCaseStatus.Aborted, []),
+        ("id,name\n", 0, TestCaseStatus.Success, ["0"]),
+        ("id,name\n", 1, TestCaseStatus.Failed, ["0"]),
+        ("id,name\n1,one\n2,two\n", 2, TestCaseStatus.Success, ["2"]),
     ],
 )
 def test_row_count_distinguishes_read_errors_from_empty_tables(
-    tmp_path, monkeypatch, test_case_table_row_count_to_be_equal, contents, expected, status
+    tmp_path, monkeypatch, test_case_table_row_count_to_be_equal, contents, expected, status, values
 ):
     path = tmp_path / "rows.csv"
     path.write_text(contents)
@@ -100,11 +100,9 @@ def test_row_count_distinguishes_read_errors_from_empty_tables(
     result = interface.run_test_case(test_case).testCaseResult
 
     assert result.testCaseStatus == status
+    assert [value.value for value in result.testResultValue] == values
     if status == TestCaseStatus.Aborted:
-        assert result.testResultValue == []
         assert "Error tokenizing data" in result.result
-    else:
-        assert result.testResultValue[0].value == ("2" if expected == 2 else "0")
 
 
 DL_DATA = (

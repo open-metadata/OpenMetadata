@@ -42,9 +42,11 @@ from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 
-@pytest.mark.parametrize("error", [ParserError("invalid CSV"), OSError("read failed")])
+@pytest.mark.parametrize("error_type", [ParserError, OSError])
 @pytest.mark.parametrize("partial", [False, True])
-def test_row_count_propagates_read_errors(error, partial):
+def test_row_count_propagates_read_errors(error_type, partial):
+    error = error_type("read failed")
+
     def frames():
         if partial:
             yield DataFrame({"id": [1, 2]})
@@ -55,13 +57,13 @@ def test_row_count_propagates_read_errors(error, partial):
     assert raised.value is error
 
 
-@pytest.mark.parametrize("chunks,expected", [((), 0), ((0,), 0), ((2, 3), 5)])
+@pytest.mark.parametrize("chunks,expected", [(None, None), ((), 0), ((0,), 0), ((2, 3), 5)])
 def test_row_count_counts_completed_reads(chunks, expected):
     def frames():
         return (DataFrame({"id": range(size)}) for size in chunks)
 
-    assert Metrics.rowCount().df_fn(PandasRunner(frames, frames)) == expected
-    assert Metrics.rowCount().df_fn(None) is None
+    runner = None if chunks is None else PandasRunner(frames, frames)
+    assert Metrics.rowCount().df_fn(runner) == expected
 
 
 class Base(DeclarativeBase):
