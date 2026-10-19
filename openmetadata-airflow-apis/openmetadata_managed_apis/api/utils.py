@@ -162,13 +162,9 @@ def get_dagbag():
 
 def skip_import_timeout_off_main_thread():
     """
-    Airflow enforces the DAG import timeout with SIGALRM, which Python only allows on
-    the main thread. Deploys run on API server worker threads, so the timeout was never
-    applied there and Airflow logged a `signal only works in main thread` traceback on
-    every deploy (#35460). Report a zero timeout off the main thread so Airflow skips it.
-
-    The wrapper is installed once and decides per call, so concurrent deploys need no
-    lock around the DAG import (which calls back to the OpenMetadata server).
+    Airflow enforces the DAG import timeout with SIGALRM, which only works on the main
+    thread, so off it the timeout never applied and only logged a traceback. Report 0
+    there so Airflow skips the signal; deciding per call means no lock around the import.
     """
     original = getattr(settings, "get_dagbag_import_timeout", None)
     if original is None or getattr(original, "skips_off_main_thread", False):

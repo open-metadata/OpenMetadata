@@ -124,16 +124,21 @@ def _in_request_thread(fn):
     """The API server runs deploy handlers on worker threads, never the main thread"""
     from openmetadata_managed_apis.api import utils
 
-    result = []
+    outcome = {}
 
     def deploy():
         utils.skip_import_timeout_off_main_thread()
-        result.append(fn())
+        try:
+            outcome["result"] = fn()
+        except BaseException as exc:
+            outcome["error"] = exc
 
     thread = threading.Thread(target=deploy)
     thread.start()
     thread.join()
-    return result[0]
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["result"]
 
 
 @patch.dict(os.environ, {"AIRFLOW_HOME": "/tmp"})
