@@ -726,7 +726,7 @@ describe('BulkEntityImportPage', () => {
   });
 
   describe('User Interactions - CSV Upload', () => {
-    it('downloads the CSV template as a UTF-8 CSV with a BOM', async () => {
+    it('downloads the CSV template through downloadCsv', async () => {
       renderComponent();
 
       const templateButton = await screen.findByRole('button', {
