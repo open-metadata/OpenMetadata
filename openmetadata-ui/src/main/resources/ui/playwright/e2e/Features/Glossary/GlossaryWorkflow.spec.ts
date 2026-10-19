@@ -611,6 +611,22 @@ test(
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
+      // The async endpoint only queues the delete job; re-opening the glossary
+      // before the job commits renders the terms that are still in the DB.
+      for (const term of [parentTerm, childTerm]) {
+        await expect
+          .poll(
+            async () =>
+              (
+                await apiContext.get(
+                  `/api/v1/glossaryTerms/${term.responseData.id}`
+                )
+              ).status(),
+            { timeout: 90_000 }
+          )
+          .toBe(404);
+      }
+
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
