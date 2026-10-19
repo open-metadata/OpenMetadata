@@ -94,6 +94,7 @@ const SubDomainsTable = ({
     useDomainTableColumns({
       nameLabelKey: 'label.sub-domain',
       tagSize: 'lg',
+      onEntityClick: subdomainListing.actionHandlers.onEntityClick,
     });
 
   const selectedSubdomainEntities = useMemo(
