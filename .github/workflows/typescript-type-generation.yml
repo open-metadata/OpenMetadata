@@ -144,7 +144,7 @@ jobs:
         # the deletion of every generated file.
         run: |
           ./openmetadata-ui/src/main/resources/ui/json2ts-generate-all.sh -l true
-          find openmetadata-ui/src/main/resources/ui/src/generated -name '*.ts' | grep -q . || {
+          [ -n "$(find openmetadata-ui/src/main/resources/ui/src/generated -name '*.ts' -print -quit 2>/dev/null)" ] || {
             echo "::error::No TypeScript types were generated — rebase the branch on main."
             exit 1
           }
