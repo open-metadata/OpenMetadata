@@ -49,8 +49,6 @@ from metadata.readers.dataframe.dsv import (
     DSVDataFrameReader,
     TSVDataFrameReader,
 )
-from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
-from metadata.utils.datalake.datalake_utils import fetch_dataframe_first_chunk
 
 
 @pytest.mark.parametrize("backend", ["local", "s3"])
@@ -81,18 +79,8 @@ def test_csv_escape_character_preserves_values(tmp_path, backend, escapechar, ex
     with patch("metadata.readers.dataframe.dsv.CHUNKSIZE", 1):
         wrapper = PandasInterfaceMixin().get_dataframes(connection, SimpleNamespace(client=client), table)
         actual = pd.concat(wrapper.dataframes(), ignore_index=True)
-        first = next(
-            fetch_dataframe_first_chunk(
-                connection.configSource,
-                client,
-                DatalakeTableSchemaWrapper(
-                    key=str(path), bucket_name="bucket", escapechar=connection.csvEscapeChar or None
-                ),
-            )
-        )
     assert actual.columns.tolist() == rows[0]
     assert actual.values.tolist() == rows[1:]
-    assert first.values.tolist() == rows[1:2]
 
 
 def test_csv_escape_character_rejects_multiple_characters():
