@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.TypeRegistry;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jobs.EnumCleanupHandler;
 import org.openmetadata.service.resources.types.TypeResource;
@@ -164,6 +165,16 @@ public class TypeRepository extends EntityRepository<Type> {
 
   public PutResponse<Type> addCustomProperty(
       UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    return addCustomProperty(uriInfo, updatedBy, id, property, true);
+  }
+
+  public PutResponse<Type> createCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property) {
+    return addCustomProperty(uriInfo, updatedBy, id, property, false);
+  }
+
+  private PutResponse<Type> addCustomProperty(
+      UriInfo uriInfo, String updatedBy, UUID id, CustomProperty property, boolean updateExisting) {
     Lock lock = TYPE_PROPERTY_LOCKS.get(id);
     lock.lock();
     try {
@@ -180,11 +191,13 @@ public class TypeRepository extends EntityRepository<Type> {
 
       find(property.getPropertyType().getId(), NON_DELETED); // Validate customProperty type exists
 
-      // If property already exists, then update it. Else add the new property.
       List<CustomProperty> updatedProperties = new ArrayList<>(List.of(property));
       for (CustomProperty existing : type.getCustomProperties()) {
         if (!existing.getName().equals(property.getName())) {
           updatedProperties.add(existing);
+        } else if (!updateExisting) {
+          throw new BadRequestException(
+              String.format("Custom property '%s' already exists", property.getName()));
         }
       }
 
@@ -464,6 +477,10 @@ public class TypeRepository extends EntityRepository<Type> {
               Relationship.HAS.ordinal());
       // Delete all the data stored in the entity extension for the custom property
       daoCollection.entityExtensionDAO().deleteExtension(customPropertyFQN);
+      if (CustomPropertyReferences.REFERENCE_TYPES.contains(property.getPropertyType().getName())) {
+        new CustomPropertyReferences(daoCollection)
+            .deleteProperty(updated.getName(), property.getName());
+      }
 
       if (Entity.hasEntityRepository(Entity.INTAKE_FORM)) {
         IntakeFormRepository intakeFormRepository =

@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, Typography } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -214,7 +212,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const descriptionHeader = (
     <div className="description-header">
       <div className="description-title-row">
-        <span className="description-title">{t('label.description')}</span>
+        <Typography size="text-xs" weight="semibold">
+          {t('label.description')}
+        </Typography>
         {headerBadge}
       </div>
       {canShowEditButton && (
@@ -222,7 +222,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           newLook
           data-testid="edit-description"
           disabled={false}
-          icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
           size="small"
           title={t('label.edit-entity', {
             entity: t('label.description'),

@@ -27,13 +27,20 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.exception.BadCursorException;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.LikeEscape;
 import org.openmetadata.service.util.RestUtil;
 
 /** Builds parameterized SQL predicates for Conversation V2 root listing. */
 @Builder
 @Getter
 public class ConversationFilter {
+  // An entity link and the links of its fields (`<#E::table::fqn::columns::c>`).
+  private static final String ABOUT_ENTITY_OR_FIELDS =
+      "(c.about = :entityLink OR c.about LIKE :fieldLinkPrefix ESCAPE '!')";
+
   private String entityLink;
+  // With entityLink: also the conversations about the entity's fields, such as its columns.
+  private boolean includeFields;
   private UUID userId;
   private ConversationFilterType filterType;
   private Boolean resolved;
@@ -73,9 +80,19 @@ public class ConversationFilter {
       return;
     }
     MessageParser.EntityLink parsed = MessageParser.EntityLink.parse(entityLink);
-    predicates.add("c.aboutFqnHash = :aboutFqnHash AND c.about = :entityLink");
+    predicates.add(
+        "c.aboutFqnHash = :aboutFqnHash AND "
+            + (includeFields ? ABOUT_ENTITY_OR_FIELDS : "c.about = :entityLink"));
     params.put("aboutFqnHash", FullyQualifiedName.buildHash(parsed.getEntityFQN()));
     params.put("entityLink", entityLink);
+    if (includeFields) {
+      params.put("fieldLinkPrefix", fieldLinkPrefix(entityLink));
+    }
+  }
+
+  // `<#E::table::fqn>` -> `<#E::table::fqn::%`, escaped so `_` in an FQN is no wildcard.
+  private static String fieldLinkPrefix(String entityLink) {
+    return LikeEscape.escape(entityLink.substring(0, entityLink.length() - 1)) + "::%";
   }
 
   private void addUserPredicate(List<String> predicates, Map<String, Object> params) {

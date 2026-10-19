@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   isBoolean,
@@ -60,25 +59,6 @@ export const getFunctionDisplayName = (func: string): string => {
 
   return displayNameByFunction[func] ?? '';
 };
-
-/**
- *
- * @param name Field name used to identify which field has error
- * @param minLengthRequired how many item should be there in the list
- * @returns If validation failed throws an error else resolve
- */
-export const listLengthValidator =
-  <T>(name: string, minLengthRequired = 1) =>
-  async (_: RuleObject, list: T[]) => {
-    if (!list || list.length < minLengthRequired) {
-      throw new Error(
-        t('message.length-validator-error', {
-          length: minLengthRequired,
-          field: name,
-        })
-      );
-    }
-  };
 
 export const getAlertActionTypeDisplayName = (
   alertActionType: SubscriptionType
@@ -316,21 +296,43 @@ export const getChangeEventDataFromTypedEvent = (
   changeEventData: ChangeEvent;
   changeEventDataToDisplay: AlertEventDetailsToDisplay;
 } => {
-  let changeEventData = typedEvent.data[0];
+  const outer = typedEvent.data[0];
+
+  if (!outer) {
+    // Status is part of the id so a failed and a successful unreadable row
+    // sharing a timestamp still get distinct React keys.
+    const fallbackId = `unreadable-${typedEvent.status}-${typedEvent.timestamp}`;
+
+    return {
+      changeEventData: {
+        id: fallbackId,
+        timestamp: typedEvent.timestamp,
+      },
+      changeEventDataToDisplay: {
+        eventType: undefined,
+        entityId: undefined,
+        userName: undefined,
+        previousVersion: undefined,
+        currentVersion: undefined,
+        reason: undefined,
+        source: undefined,
+        failingSubscriptionId: undefined,
+      },
+    };
+  }
+
+  let changeEventData: ChangeEvent = outer;
 
   // If the event is failed, the changeEventData object is nested inside the changeEventData object.
-  if (
-    typedEvent.status === Status.Failed &&
-    !isUndefined(changeEventData.changeEvent)
-  ) {
-    changeEventData = changeEventData.changeEvent;
+  if (typedEvent.status === Status.Failed && !isUndefined(outer.changeEvent)) {
+    changeEventData = outer.changeEvent;
   }
 
   const { eventType, entityId, userName, previousVersion, currentVersion } =
     changeEventData;
 
   // Extracting the reason, source, and failingSubscriptionId from the failed changeEventData object.
-  const { reason, source, failingSubscriptionId } = typedEvent.data[0];
+  const { reason, source, failingSubscriptionId } = outer;
 
   return {
     changeEventData,

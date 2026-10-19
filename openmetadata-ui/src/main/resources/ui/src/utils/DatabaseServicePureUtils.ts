@@ -38,14 +38,14 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/clickzettaConnection.json'),
   [DatabaseServiceType.Cockroach]: () =>
     loadConnectionSchema('connections/database/cockroachConnection.json'),
+  [DatabaseServiceType.Databend]: () =>
+    loadConnectionSchema('connections/database/databendConnection.json'),
   [DatabaseServiceType.Databricks]: () =>
     loadConnectionSchema('connections/database/databricksConnection.json'),
   [DatabaseServiceType.Datalake]: () =>
     loadConnectionSchema('connections/database/datalakeConnection.json'),
   [DatabaseServiceType.Db2]: () =>
     loadConnectionSchema('connections/database/db2Connection.json'),
-  [DatabaseServiceType.DeltaLake]: () =>
-    loadConnectionSchema('connections/database/deltaLakeConnection.json'),
   [DatabaseServiceType.Doris]: () =>
     loadConnectionSchema('connections/database/dorisConnection.json'),
   [DatabaseServiceType.StarRocks]: () =>
@@ -128,6 +128,8 @@ const databaseSchemaLoaders: Partial<
     loadConnectionSchema('connections/database/microsoftFabricConnection.json'),
   [DatabaseServiceType.Iomete]: () =>
     loadConnectionSchema('connections/database/iometeConnection.json'),
+  [DatabaseServiceType.Neo4J]: () =>
+    loadConnectionSchema('connections/database/neo4jConnection.json'),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

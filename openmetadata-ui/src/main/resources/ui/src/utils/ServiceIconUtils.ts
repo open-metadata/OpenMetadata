@@ -21,9 +21,9 @@ import clickzetta from '../assets/img/service-icon-clickzetta.svg';
 import cockroach from '../assets/img/service-icon-cockroach.webp';
 import couchbase from '../assets/img/service-icon-couchbase.svg';
 import data360 from '../assets/img/service-icon-data360.png';
+import databend from '../assets/img/service-icon-databend.webp';
 import databrick from '../assets/img/service-icon-databrick.webp';
 import datalake from '../assets/img/service-icon-datalake.webp';
-import deltalake from '../assets/img/service-icon-delta-lake.webp';
 import doris from '../assets/img/service-icon-doris.webp';
 import druid from '../assets/img/service-icon-druid.webp';
 import dynamodb from '../assets/img/service-icon-dynamodb.webp';
@@ -37,6 +37,7 @@ import iomete from '../assets/img/service-icon-iomete.webp';
 import mariadb from '../assets/img/service-icon-mariadb.webp';
 import mongodb from '../assets/img/service-icon-mongodb.webp';
 import mssql from '../assets/img/service-icon-mssql.webp';
+import neo4j from '../assets/img/service-icon-neo4j.svg';
 import oracle from '../assets/img/service-icon-oracle.webp';
 import pinot from '../assets/img/service-icon-pinot.webp';
 import postgres from '../assets/img/service-icon-post.webp';
@@ -163,6 +164,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   clickhouse: clickhouse,
   clickzetta: clickzetta,
   databricks: databrick,
+  databend: databend,
   unitycatalog: unitycatalog,
   db2: ibmdb2,
   doris: doris,
@@ -174,7 +176,6 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   data360: data360,
   saphana: saphana,
   saperp: saperp,
-  deltalake: deltalake,
   pinotdb: pinot,
   datalake: datalake,
   exasol: exasol,
@@ -188,6 +189,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   burstiq: burstiq,
   sas: sas,
   iomete: iomete,
+  neo4j: neo4j,
   questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,

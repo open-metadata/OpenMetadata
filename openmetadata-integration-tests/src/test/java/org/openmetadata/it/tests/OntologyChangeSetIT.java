@@ -41,17 +41,18 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
+import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.OntologyMemoryProposalStatus;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
-import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationResult;
 import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
@@ -84,8 +85,8 @@ public class OntologyChangeSetIT {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm term = createTerm(client, glossary, ns.prefix("governedConcept"));
-    OntologyAttribute attribute = attribute();
-    OntologyChangeOperation operation = operation(term, attribute);
+    ConceptMapping mapping = mapping();
+    OntologyChangeOperation operation = operation(term, mapping);
     OntologyChangeSet changeSet = createChangeSet(client, glossary, operation, ns);
     OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("editorSession"));
     OntologyChangeSetCommand command = new OntologyChangeSetCommand().withLease(lease);
@@ -101,10 +102,10 @@ public class OntologyChangeSetIT {
     assertEquals(1, redone.getUndoCursor());
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
     assertEquals(1, applied.getApplicationResult().getOperationsApplied());
-    GlossaryTerm updated = client.glossaryTerms().get(term.getId().toString(), "attributes");
+    GlossaryTerm updated = client.glossaryTerms().get(term.getId().toString(), "conceptMappings");
     assertTrue(
-        updated.getAttributes().stream()
-            .anyMatch(value -> value.getId().equals(attribute.getId())));
+        updated.getConceptMappings().stream()
+            .anyMatch(value -> value.getConceptIri().equals(mapping.getConceptIri())));
     assertThrows(
         OpenMetadataException.class,
         () -> client.ontologyEditLocks().get(ONTOLOGY_CHANGE_SET, changeSet.getId()));
@@ -123,7 +124,7 @@ public class OntologyChangeSetIT {
   }
 
   @Test
-  void appliedTermAppearsOnItsSourceMemory(TestNamespace ns) {
+  void keepsGlossaryDraftEvidenceWithoutAddingOntologyFieldsToTerms(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ContextMemoryService memories = new ContextMemoryService(client.getHttpClient());
     ContextMemory memory =
@@ -132,7 +133,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("revenueMemory"))
-                    .withEntityStatus(EntityStatus.APPROVED)
+                    .withEntityStatus(ContextMemoryStatus.APPROVED)
                     .withDescription("Subscription revenue definition")
                     .withQuestion("What is monthly recurring revenue?")
                     .withAnswer("Recurring subscription revenue in a month.")));
@@ -184,12 +185,17 @@ public class OntologyChangeSetIT {
 
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
     assertEquals(
-        Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+        Set.of(memory.getId()),
+        client
+            .ontologyChangeSets()
+            .get(changeSet.getId().toString())
+            .getOperations()
+            .getFirst()
+            .getSourceMemoryIds());
     assertEquals(
-        List.of(termId),
-        memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities().stream()
-            .map(ref -> ref.getId())
-            .toList());
+        List.of(),
+        listOrEmpty(
+            memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities()));
     assertTrue(
         client
             .getHttpClient()
@@ -206,12 +212,17 @@ public class OntologyChangeSetIT {
         JsonUtils.readTree(
             "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"Rejected\"}]"));
     assertEquals(
-        Set.of(memory.getId()), client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+        Set.of(memory.getId()),
+        client
+            .ontologyChangeSets()
+            .get(changeSet.getId().toString())
+            .getOperations()
+            .getFirst()
+            .getSourceMemoryIds());
     assertEquals(
-        List.of(termId),
-        memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities().stream()
-            .map(ref -> ref.getId())
-            .toList());
+        List.of(),
+        listOrEmpty(
+            memories.get(memory.getId().toString(), "derivedEntities").getDerivedEntities()));
   }
 
   @Test
@@ -224,7 +235,7 @@ public class OntologyChangeSetIT {
             memories.create(
                 new CreateContextMemory()
                     .withName(ns.prefix("retiredSource"))
-                    .withEntityStatus(EntityStatus.APPROVED)
+                    .withEntityStatus(ContextMemoryStatus.APPROVED)
                     .withQuestion("What is the canonical orders table?")
                     .withAnswer("sales.orders is canonical.")));
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
@@ -258,7 +269,8 @@ public class OntologyChangeSetIT {
     assertEquals(
         OntologyChangeSetState.DRAFT,
         client.ontologyChangeSets().get(changeSet.getId()).getState());
-    assertEquals(EntityStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
+    assertEquals(
+        ContextMemoryStatus.REJECTED, memories.get(memory.getId().toString()).getEntityStatus());
   }
 
   @Test
@@ -267,8 +279,8 @@ public class OntologyChangeSetIT {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm parent = createTerm(client, glossary, ns.prefix("atomicParent"));
     createChildTerm(client, glossary, parent, ns.prefix("atomicChild"));
-    OntologyAttribute attribute = attribute();
-    OntologyChangeOperation upsert = operation(parent, attribute);
+    ConceptMapping mapping = mapping();
+    OntologyChangeOperation upsert = operation(parent, mapping);
     OntologyChangeOperation invalidDelete = deleteOperation(parent);
     OntologyChangeSet changeSet =
         createChangeSetWithOperations(client, glossary, List.of(upsert, invalidDelete), ns);
@@ -287,10 +299,11 @@ public class OntologyChangeSetIT {
         failed.getApplicationResult().getResults().stream()
             .map(OntologyChangeOperationResult::getStatus)
             .toList());
-    GlossaryTerm unchanged = client.glossaryTerms().get(parent.getId().toString(), "attributes");
+    GlossaryTerm unchanged =
+        client.glossaryTerms().get(parent.getId().toString(), "conceptMappings");
     assertFalse(
-        listOrEmpty(unchanged.getAttributes()).stream()
-            .anyMatch(value -> value.getId().equals(attribute.getId())));
+        listOrEmpty(unchanged.getConceptMappings()).stream()
+            .anyMatch(value -> value.getConceptIri().equals(mapping.getConceptIri())));
   }
 
   @Test
@@ -431,7 +444,12 @@ public class OntologyChangeSetIT {
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
     assertEquals(
         Set.of(rejected.getId(), approved.getId()),
-        client.glossaryTerms().get(termId.toString()).getSourceMemoryIds());
+        client
+            .ontologyChangeSets()
+            .get(changeSet.getId().toString())
+            .getOperations()
+            .getFirst()
+            .getSourceMemoryIds());
   }
 
   @Test
@@ -517,6 +535,71 @@ public class OntologyChangeSetIT {
             .anyMatch(draft -> draft.getId().equals(memoryDraft.getId())));
   }
 
+  @Test
+  void mappingUpsertDoesNotWipeUnloadedRelationships(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    // Mapping edits must preserve relations that the field-scoped read did not load.
+    GlossaryTerm related = createTerm(client, glossary, ns.prefix("relatedConcept"));
+    String termName = ns.prefix("conceptWithRelation");
+    GlossaryTerm term =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(termName)
+                    .withDescription("Concept carrying a term relationship")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withIri(URI.create("https://example.org/change-set/" + termName))
+                    .withRelatedTerms(List.of(related.getFullyQualifiedName())));
+    assertEquals(
+        1,
+        listOrEmpty(
+                client
+                    .glossaryTerms()
+                    .get(term.getId().toString(), "relatedTerms")
+                    .getRelatedTerms())
+            .size(),
+        "relatedTerms must be present before the change-set apply");
+
+    ConceptMapping mapping = mapping();
+    OntologyChangeSet changeSet = createChangeSet(client, glossary, operation(term, mapping), ns);
+    OntologyEditLeaseToken lease = acquire(client, changeSet, ns.prefix("editorSession"));
+    OntologyChangeSet applied =
+        client
+            .ontologyChangeSets()
+            .apply(changeSet.getId(), new ApplyOntologyChangeSet().withLease(lease));
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+
+    GlossaryTerm after =
+        client.glossaryTerms().get(term.getId().toString(), "conceptMappings,relatedTerms");
+    assertTrue(
+        after.getConceptMappings().stream()
+            .anyMatch(value -> value.getConceptIri().equals(mapping.getConceptIri())),
+        "the upserted mapping must be applied");
+    assertEquals(
+        1,
+        listOrEmpty(after.getRelatedTerms()).size(),
+        "UPSERT_MAPPING must not wipe the term's relationship-backed relatedTerms");
+
+    // A mapping edit must not record deletions for unloaded relationships.
+    GlossaryTerm versioned =
+        client.glossaryTerms().getVersion(term.getId().toString(), after.getVersion());
+    ChangeDescription change = versioned.getChangeDescription();
+    if (change != null) {
+      Set<String> deletedFields =
+          listOrEmpty(change.getFieldsDeleted()).stream()
+              .map(FieldChange::getName)
+              .collect(java.util.stream.Collectors.toSet());
+      assertFalse(
+          deletedFields.contains("relatedTerms"),
+          "UPSERT_MAPPING must not record a fieldDeleted for relatedTerms: " + deletedFields);
+      assertFalse(
+          deletedFields.contains("reviewers"),
+          "UPSERT_MAPPING must not record a fieldDeleted for reviewers: " + deletedFields);
+    }
+  }
+
   private static Set<UUID> listedIds(OpenMetadataClient client, String query) {
     JsonNode page =
         client
@@ -531,7 +614,7 @@ public class OntologyChangeSetIT {
   private static CreateContextMemory memoryRequest(String name) {
     return new CreateContextMemory()
         .withName(name)
-        .withEntityStatus(EntityStatus.APPROVED)
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withDescription("Memory behind an ontology draft")
         .withQuestion("What is an active subscriber?")
         .withAnswer("A customer with a paid subscription this month.");
@@ -622,22 +705,19 @@ public class OntologyChangeSetIT {
                 .withIri(URI.create("https://example.org/change-set/" + name)));
   }
 
-  private static OntologyAttribute attribute() {
-    return new OntologyAttribute()
-        .withId(UUID.randomUUID())
-        .withName("regulatoryCode")
-        .withIri(URI.create("https://example.org/change-set/regulatoryCode"))
-        .withDataType(OntologyAttributeDataType.STRING)
-        .withIsIdentifier(false);
+  private static ConceptMapping mapping() {
+    return new ConceptMapping()
+        .withConceptIri(URI.create("https://example.org/change-set/" + UUID.randomUUID()))
+        .withMappingType(ConceptMapping.ConceptMappingType.CLOSE_MATCH);
   }
 
-  private static OntologyChangeOperation operation(GlossaryTerm term, OntologyAttribute attribute) {
+  private static OntologyChangeOperation operation(GlossaryTerm term, ConceptMapping mapping) {
     return new OntologyChangeOperation()
         .withId(UUID.randomUUID())
-        .withOperationType(OntologyChangeOperationType.UPSERT_ATTRIBUTE)
+        .withOperationType(OntologyChangeOperationType.UPSERT_MAPPING)
         .withTargetId(term.getId())
         .withBaseVersion(term.getVersion())
-        .withAttribute(attribute)
+        .withMapping(mapping)
         .withState(OntologyChangeOperationState.ACTIVE);
   }
 

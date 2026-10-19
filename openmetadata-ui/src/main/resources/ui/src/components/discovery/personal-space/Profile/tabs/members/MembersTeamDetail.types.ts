@@ -25,7 +25,13 @@ import type {
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import type { MembersHeaderPatch, MembersView } from './Members.types';
 
-export type TeamTab = 'teams' | 'users' | 'assets' | 'roles' | 'policies';
+export type TeamTab =
+  | 'teams'
+  | 'users'
+  | 'assets'
+  | 'roles'
+  | 'policies'
+  | 'custom-properties';
 
 export type AssetsQueryFilter = ReturnType<typeof getTermQuery>;
 
@@ -112,6 +118,8 @@ export interface MembersInlineEntityTabProps {
   }>;
   entityLabel: string;
   entityPluralLabel: string;
+  /** Subtitle under the tab table's title, as on the Roles / Policies pages. */
+  entityDescription: string;
   tableTestId: string;
   addButtonTestId: string;
   addSelectTestId: string;

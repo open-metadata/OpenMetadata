@@ -55,14 +55,6 @@ const AssetsTabs = withSuspenseFallback(
   )
 );
 
-const GlossaryTermRealizedAssets = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermRealizedAssets.component'
-    ).then((module) => ({ default: module.GlossaryTermRealizedAssets }))
-  )
-);
-
 const GlossaryTermTab = withSuspenseFallback(
   lazy(
     () =>
@@ -147,7 +139,7 @@ export const getGlossaryTermDetailPageTabs = (
       </div>
     ),
     key: EntityTabs.OVERVIEW,
-    children: <GenericTab type={PageType.GlossaryTerm} variant="flat" />,
+    children: <GenericTab type={PageType.GlossaryTerm} />,
   });
 
   const buildTermsTab = (): TabProps => ({
@@ -190,7 +182,6 @@ export const getGlossaryTermDetailPageTabs = (
           className: 'glossary-term-resizable-panel-container',
           children: (
             <>
-              <GlossaryTermRealizedAssets termId={glossaryTerm.id} />
               <AssetsTabs
                 addDisabledMessage={assetsAddDisabledMessage}
                 assetCount={assetCount}

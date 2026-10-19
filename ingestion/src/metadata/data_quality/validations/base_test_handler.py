@@ -23,6 +23,7 @@ import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from decimal import Decimal
+from functools import partial
 from typing import (
     TYPE_CHECKING,
     TypedDict,
@@ -44,6 +45,7 @@ from metadata.data_quality.validations.models import EvaluationScopeRuntimeParam
 from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.data_quality.validations.thresholds import (
     DIMENSION_FAILURE_POLICY_PARAM,
+    MIN_ROWS_PER_DIMENSION_PARAM,
     THRESHOLD_PARAM,
     THRESHOLD_UNIT_PARAM,
     DimensionFailurePolicy,
@@ -54,6 +56,7 @@ from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
     TestCaseErrorDetails,
+    TestCaseEvaluationScope,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -186,6 +189,7 @@ class BaseTestValidator(ABC):
     # Memoized reading of the failure threshold parameters. Declared on the class so that
     # validators overriding __init__ without calling super() still get the default.
     _failure_threshold: FailureThreshold | None = None
+    _min_rows_per_dimension: float | None = None
 
     # Memoized reading of the evaluation scope, and the last widening the threshold produced as
     # `(effective bounds, configured bounds)`. Declared on the class for the same reason.
@@ -245,6 +249,7 @@ class BaseTestValidator(ABC):
         test_result = self._run_validation()
         if test_result.result:
             test_result.result = self.with_evaluation_scope(test_result.result, test_result.testCaseStatus)
+        test_result.evaluationScope = self.result_evaluation_scope(test_result.testCaseStatus)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():
@@ -302,6 +307,51 @@ class BaseTestValidator(ABC):
             )
             return DimensionFailurePolicy.OVERALL_ONLY
 
+    def get_min_rows_per_dimension(self) -> float:
+        """Rows a dimension group needs to take part in the `ANY_DIMENSION` roll-up
+
+        Only a PERCENTAGE threshold is distorted by a small group: 1 violation in a 3-row group is
+        33%. An ABSOLUTE threshold compares the same violation count whatever the group size, and
+        under `OVERALL_ONLY` nothing rolls up, so both read 0 and exempt nothing. The parameters
+        cannot change while the test case runs, so the reading is memoized like the threshold.
+        """
+        minimum = self._min_rows_per_dimension
+        if minimum is None:
+            minimum = self._min_rows_per_dimension = self._read_min_rows_per_dimension()
+        return minimum
+
+    def _read_min_rows_per_dimension(self) -> float:
+        """Parse `minRowsPerDimension`, falling back to exempting no group"""
+        if self.get_dimension_failure_policy() is not DimensionFailurePolicy.ANY_DIMENSION:
+            return 0.0
+        if self.get_failure_threshold().unit is not ThresholdUnit.PERCENTAGE:
+            return 0.0
+
+        try:
+            raw_minimum = self.get_test_case_param_value(
+                self.test_case.parameterValues or [], MIN_ROWS_PER_DIMENSION_PARAM, float, default=0.0
+            )
+        except (TypeError, ValueError):
+            raw_minimum = None
+        minimum = raw_minimum if isinstance(raw_minimum, float) else None
+
+        # Infinity would exempt every group and silently turn ANY_DIMENSION into OVERALL_ONLY.
+        if minimum is None or not thresholds.is_usable(minimum):
+            logger.warning(
+                "Unreadable or out of range %s '%s' for %s. It has to be a finite, non-negative "
+                "number. Rolling every dimension group up.",
+                MIN_ROWS_PER_DIMENSION_PARAM,
+                raw_minimum,
+                self.test_case.fullyQualifiedName,
+            )
+            return 0.0
+        return minimum
+
+    def _is_excluded_from_roll_up(self, group_rows: int | None) -> bool:
+        """Whether a dimension group is too small to fail the test case under `ANY_DIMENSION`"""
+        minimum = self.get_min_rows_per_dimension()
+        return bool(minimum) and group_rows is not None and group_rows < minimum
+
     def _roll_up_dimension_results(
         self,
         test_result: TestCaseResult,
@@ -310,25 +360,41 @@ class BaseTestValidator(ABC):
         """Fail a passing test case when a dimension group failed and the policy asks for it
 
         Only a `Success` is ever turned into a `Failed`: an aborted run computed nothing to roll
-        up, and a failed one already is. The `Others` group takes part like any other group, but
-        it is the aggregate of every group beyond `topDimensions`, so those groups are only ever
-        checked together.
+        up, and a failed one already is. A failed aggregate still gets the explanation for any
+        excluded failing groups. The `Others` group takes part like any other group, but it is the
+        aggregate of every group beyond `topDimensions`, so those groups are only ever checked
+        together.
+
+        A group below `minRowsPerDimension` keeps its own `Failed` status but does not fail the
+        test case. The message names it, so a failing small group is never silently ignored.
         """
-        if test_result.testCaseStatus is not TestCaseStatus.Success:
+        if test_result.testCaseStatus is TestCaseStatus.Aborted:
             return
         if self.get_dimension_failure_policy() is not DimensionFailurePolicy.ANY_DIMENSION:
             return
 
-        failed_groups = [
-            dimension_result.dimensionKey
-            for dimension_result in dimension_results
-            if dimension_result.testCaseStatus is TestCaseStatus.Failed
-        ]
-        if not failed_groups:
+        failed_groups: list[str] = []
+        excluded_failed_groups: list[str] = []
+        for dimension_result in dimension_results:
+            if dimension_result.testCaseStatus is not TestCaseStatus.Failed:
+                continue
+            if dimension_result.excludedFromRollUp:
+                excluded_failed_groups.append(dimension_result.dimensionKey)
+            else:
+                failed_groups.append(dimension_result.dimensionKey)
+
+        sentences = []
+        if failed_groups and test_result.testCaseStatus is TestCaseStatus.Success:
+            test_result.testCaseStatus = TestCaseStatus.Failed
+            sentences.append(result_messages.dimension_rollup_sentence(failed_groups))
+        if excluded_failed_groups:
+            sentences.append(
+                result_messages.excluded_dimensions_sentence(excluded_failed_groups, self.get_min_rows_per_dimension())
+            )
+        if not sentences:
             return
 
-        test_result.testCaseStatus = TestCaseStatus.Failed
-        rollup = result_messages.dimension_rollup_sentence(failed_groups)
+        rollup = " ".join(sentences)
         test_result.result = f"{test_result.result} {rollup}" if test_result.result else rollup
 
     @staticmethod
@@ -607,12 +673,20 @@ class BaseTestValidator(ABC):
             )
             return FailureThreshold()
 
+        return FailureThreshold(value=threshold, unit=self.get_threshold_unit())
+
+    def get_threshold_unit(self) -> ThresholdUnit:
+        """Parse `thresholdUnit`, falling back to ABSOLUTE when it is unset or unknown
+
+        Readable on its own for the tests whose `threshold` is not a failure tolerance, and so
+        cannot go through `get_failure_threshold()`.
+        """
         raw_unit = self.get_test_case_param_value(
-            param_values, THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
+            self.test_case.parameterValues or [], THRESHOLD_UNIT_PARAM, str, default=ThresholdUnit.ABSOLUTE.value
         )
         unit_value = raw_unit if isinstance(raw_unit, str) else ThresholdUnit.ABSOLUTE.value
         try:
-            unit = ThresholdUnit(unit_value.upper())
+            return ThresholdUnit(unit_value.upper())
         except ValueError:
             logger.warning(
                 "Unknown %s '%s' for %s. Reading the threshold as %s.",
@@ -621,9 +695,7 @@ class BaseTestValidator(ABC):
                 self.test_case.fullyQualifiedName,
                 ThresholdUnit.ABSOLUTE.value,
             )
-            unit = ThresholdUnit.ABSOLUTE
-
-        return FailureThreshold(value=threshold, unit=unit)
+            return ThresholdUnit.ABSOLUTE
 
     def _needs_row_count(self) -> bool:
         """Whether the total row count has to be computed
@@ -754,6 +826,20 @@ class BaseTestValidator(ABC):
         except Exception as exc:
             logger.debug("Could not describe the evaluation scope of %s: %s", self.test_case, exc)
             return message
+
+    def result_evaluation_scope(self, status: TestCaseStatus | None) -> TestCaseEvaluationScope | None:
+        """The scope to record on the result, or none for an aborted run, which read no rows
+
+        Like the scope sentence, this is reporting: a scope that cannot be resolved is left off
+        the result rather than failing the run.
+        """
+        if status is TestCaseStatus.Aborted:
+            return None
+        try:
+            return self.get_evaluation_scope().to_result_scope(self.BYPASSES_SAMPLER)
+        except Exception as exc:
+            logger.debug("Could not record the evaluation scope of %s: %s", self.test_case, exc)
+            return None
 
     @staticmethod
     def _dimension_prefix(dimension_info: DimensionInfo | None) -> str:
@@ -1005,6 +1091,11 @@ class BaseTestValidator(ABC):
         params = test_params or {}
         min_bound_param = getattr(self, "MIN_BOUND", None)
         max_bound_param = getattr(self, "MAX_BOUND", None)
+        # The group's row count rather than the evaluation's denominator: some validators count
+        # violations against the non-null values only, and the minimum is set in rows.
+        group_rows = row.get(DIMENSION_TOTAL_COUNT_KEY)
+        if group_rows is None:
+            group_rows = evaluation.get("total_rows")
 
         return self.get_dimension_result_object(
             dimension_values={dimension_col_name: dimension_value},
@@ -1017,6 +1108,7 @@ class BaseTestValidator(ABC):
             impact_score=impact_score,
             min_bound=params.get(min_bound_param) if min_bound_param else None,
             max_bound=params.get(max_bound_param) if max_bound_param else None,
+            excluded_from_roll_up=self._is_excluded_from_roll_up(group_rows),
         )
 
     @staticmethod
@@ -1114,6 +1206,7 @@ class BaseTestValidator(ABC):
                 impactScore=dim_result.impactScore,  # Include the impact score
                 minBound=dim_result.minBound,
                 maxBound=dim_result.maxBound,
+                excludedFromRollUp=dim_result.excludedFromRollUp,
             )
 
             test_case_dimension_results.append(test_case_dim_result)
@@ -1169,6 +1262,7 @@ class BaseTestValidator(ABC):
         impact_score: float | None = None,
         min_bound: float | None = None,
         max_bound: float | None = None,
+        excluded_from_roll_up: bool = False,
     ) -> "DimensionResult":  # noqa: UP037
         """Returns a DimensionResult object with automatic percentage calculations
 
@@ -1183,6 +1277,7 @@ class BaseTestValidator(ABC):
             impact_score: Optional impact score for this dimension (0-1 range)
             min_bound: lower bound the dimension was evaluated against
             max_bound: upper bound the dimension was evaluated against
+            excluded_from_roll_up: whether the dimension is below `minRowsPerDimension`
 
         Returns:
             DimensionResult: Dimension result object with calculated percentages
@@ -1218,6 +1313,8 @@ class BaseTestValidator(ABC):
             impactScore=round(impact_score, 4) if impact_score is not None else None,
             minBound=reportable_bound(min_bound),
             maxBound=reportable_bound(max_bound),
+            # Left out rather than False, so results without the parameter stay unchanged.
+            excludedFromRollUp=True if excluded_from_roll_up else None,
         )
 
         return dimension_result  # noqa: RET504
@@ -1259,6 +1356,21 @@ class BaseTestValidator(ABC):
             float,
             default=float("inf"),
         )
+
+    def get_set_param_value(self, param_name: str) -> list:
+        """An allowed or forbidden set, typed by the column it is checked against"""
+        return self.get_test_case_param_value(
+            self.test_case.parameterValues,  # type: ignore
+            param_name,
+            partial(utils.parse_set_values, column_type=self.get_set_values_type()),
+        )
+
+    def get_set_values_type(self):
+        """The column type a set is parsed against, or None to keep its values as written.
+
+        Implementation provided by SQAValidatorMixin or PandasValidatorMixin via MRO chain.
+        """
+        return super().get_set_values_type()  # type: ignore
 
     def get_bounds(self, min_param_name: str, max_param_name: str) -> tuple[float | None, float | None]:
         """Resolve the test case bounds and widen them by the failure threshold.

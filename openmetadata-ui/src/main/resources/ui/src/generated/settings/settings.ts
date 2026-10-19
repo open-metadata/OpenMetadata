@@ -39,6 +39,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
@@ -112,10 +113,14 @@ export enum SettingType {
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
  *
+ * Catalog-wide preferences for glossary terms.
+ *
  * Administrator-managed SPARQL query templates available across the installation.
  *
- * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
- * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ * App-wide UI configuration. It exists both in the server configuration (yaml/env) and in
+ * the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one
+ * wins. In DB mode the stored value wins, and the server configuration only fills values
+ * the stored setting lacks.
  *
  * Fingerprints of bundled resources successfully applied during server startup.
  */
@@ -678,6 +683,13 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
+    /**
      * Name of the MCP server
      */
     mcpServerName?: string;
@@ -707,6 +719,11 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?: GlossaryTermRelationType[];
     /**
+     * Apply classification tags from glossary terms to their associated assets. Changes to
+     * existing search results require reindexing.
+     */
+    enableTagPropagation?: boolean;
+    /**
      * Installation query templates visible to SPARQL console users.
      */
     queryTemplates?: SavedSparqlQuery[];
@@ -716,6 +733,16 @@ export interface PipelineServiceClientConfiguration {
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -1630,12 +1657,9 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
-     * End the OpenMetadata session when the identity provider ends its own. OpenMetadata then
-     * renews the provider's tokens on the provider's schedule while the user is active, and
-     * signs the user out once the provider rejects its refresh token: after the provider's idle
-     * or maximum session lifetime, or a sign-out on providers that revoke refresh tokens with
-     * the session (Keycloak does; Microsoft Entra ID does not). When off, a session lasts the
-     * configured session expiry whatever the provider does. Applies to confidential clients.
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
      */
     endSessionWithProvider?: boolean;
     /**
@@ -1688,7 +1712,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Lifetime in seconds of the OpenMetadata JWT issued after OIDC authentication.
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -1952,6 +1978,19 @@ export interface Aws {
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**

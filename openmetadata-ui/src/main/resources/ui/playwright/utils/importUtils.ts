@@ -576,18 +576,28 @@ export const fillUserAndTeamOwnerDetails = async (
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await clickInlineSave(page);
+  // The editor opens its list as soon as the cell does; picking commits it.
+  await page.getByRole('option', { name: entityType, exact: true }).click();
+  await expect(page.getByTestId('entity-type-select')).toHaveCount(0);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
   await page.keyboard.press('Enter', { delay: 100 });
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
+  const tagSelectorInput = page.getByTestId('tag-selector').locator('input');
+  await expect(bulkPicker.or(tagSelectorInput)).toBeVisible();
+
+  if (await bulkPicker.isVisible()) {
+    await bulkPicker.getByRole('textbox').fill(tag);
+    await bulkPicker.getByTestId(`bulk-edit-picker-option-${tag}`).click();
+    await bulkPicker
+      .getByRole('button', { name: 'Update', exact: true })
+      .click();
+    await expect(bulkPicker).toHaveCount(0);
+
+    return;
+  }
 
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -647,35 +657,17 @@ const openActiveCellPopover = async (
   await expect(targetLocator).toBeVisible();
 };
 
-const openRadioCardEditor = async (
-  page: Page,
-  radioTestId: string,
-  responseUrlPattern: string
-) => {
-  await openActiveCellPopover(
-    page,
-    page.getByTestId(radioTestId),
-    responseUrlPattern
-  );
-};
-
-const clickRadioCardUpdate = async (page: Page, updateButtonTestId: string) => {
-  const updateButton = page.getByTestId(updateButtonTestId);
-
-  await updateButton.click();
-  await updateButton.waitFor({ state: 'detached' });
-};
-
 export const fillTierDetails = async (
   page: Page,
   tier: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${tier}`;
-  await openRadioCardEditor(page, radioTestId, '/api/v1/tags?parent=Tier*');
+  const option = page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`);
+  await openActiveCellPopover(page, option, '/api/v1/tags?parent=Tier*');
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-tier-card');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillCertificationDetails = async (
@@ -683,15 +675,16 @@ export const fillCertificationDetails = async (
   certification: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${certification}`;
-  await openRadioCardEditor(
+  const option = page.getByTestId('drop-down-menu').getByTestId(certification);
+  await openActiveCellPopover(
     page,
-    radioTestId,
-    '/api/v1/tags?parent=Certification*'
+    option,
+    '/api/v1/search/query?*index=tag&*'
   );
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-certification');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
@@ -808,7 +801,7 @@ export const fillExtensionDetails = async (
   });
 
   // Verify header text
-  await expect(customPropertyEditor.getByTestId('header')).toContainText(
+  await expect(customPropertyEditor.getByTestId('dialog-title')).toContainText(
     'Edit CustomProperty'
   );
 
@@ -1051,11 +1044,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;

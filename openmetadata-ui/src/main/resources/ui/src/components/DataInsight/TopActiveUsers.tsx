@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
+import {
+  Card,
+  SkeletonParagraph,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,27 +127,36 @@ const TopActiveUsers: FC<Props> = ({ chartFilter }) => {
   return (
     <Card
       className="data-insight-card"
-      data-testid="entity-summary-card-percentage"
-      loading={isLoading}
-      title={
-        <PageHeader
-          data={{
-            header: t('label.data-insight-active-user-summary'),
-            subHeader: t('message.most-active-users'),
-          }}
-        />
-      }>
-      <Table
-        className="data-insight-table-wrapper"
-        columns={columns}
-        dataSource={mostActiveUsers}
-        loading={isLoading}
-        locale={{
-          emptyText: <EmptyGraphPlaceholder />,
-        }}
-        pagination={false}
-        size="small"
+      data-testid="entity-summary-card-percentage">
+      <Card.Header
+        title={
+          <PageHeader
+            data={{
+              header: t('label.data-insight-active-user-summary'),
+              subHeader: t('message.most-active-users'),
+            }}
+          />
+        }
       />
+      <Card.Content>
+        {isLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <>
+            <Table
+              className="data-insight-table-wrapper"
+              columns={columns}
+              dataSource={mostActiveUsers}
+              loading={isLoading}
+              locale={{
+                emptyText: <EmptyGraphPlaceholder />,
+              }}
+              pagination={false}
+              size="small"
+            />
+          </>
+        )}
+      </Card.Content>
     </Card>
   );
 };

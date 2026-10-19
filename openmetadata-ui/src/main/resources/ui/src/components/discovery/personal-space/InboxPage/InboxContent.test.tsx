@@ -83,27 +83,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
   const TabsItem = ({
     id,
+    badge,
     children,
   }: {
     id: string;
-    children: (state: { isSelected: boolean }) => ReactNode;
+    badge?: string;
+    children: ReactNode;
   }) => (
     <button
+      data-selected={id === tabsSelectedKey}
       data-testid={`tab-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
-      {children({ isSelected: id === tabsSelectedKey })}
+      {children}
+      {badge !== undefined && (
+        <span data-testid="tab-count">{`:${badge}`}</span>
+      )}
     </button>
   );
 
   const Tabs = Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
 
   return {
-    Badge: ({ children, color }: { children?: ReactNode; color?: string }) => (
-      <span data-color={color} data-testid="tab-count">
-        {`:${children}`}
-      </span>
-    ),
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -203,15 +204,16 @@ describe('InboxContent', () => {
     );
   });
 
-  // The selected tab's count is brand-tinted; the other stays gray.
-  it('tints the selected tab count', () => {
+  // The route picks the tab; the tab draws its own count.
+  it('selects the Triage tab on its route', () => {
     mockPathname = '/inbox/tasks';
     render(<InboxContent />);
 
-    const [activityCount, tasksCount] = screen.getAllByTestId('tab-count');
-
-    expect(activityCount).toHaveAttribute('data-color', 'gray');
-    expect(tasksCount).toHaveAttribute('data-color', 'brand');
+    expect(screen.getByTestId('tab-tasks')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getAllByTestId('tab-count')).toHaveLength(2);
   });
 
   it('starts on the default window, unfiltered', () => {

@@ -11,11 +11,14 @@ import { createContext, forwardRef, isValidElement } from 'react';
 import type { SelectProps as AriaSelectProps } from 'react-aria-components';
 import {
   Button as AriaButton,
-  ListBox as AriaListBox,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
 } from 'react-aria-components';
 import { ComboBox } from './combobox';
+import {
+  SELECT_VIRTUALIZATION_THRESHOLD,
+  SelectListBox,
+} from './select-list-box';
 import { Popover } from './popover';
 import { SelectItem } from './select-item';
 
@@ -59,6 +62,11 @@ interface SelectProps
   items?: SelectItemType[];
   popoverClassName?: string;
   icon?: FC | ReactNode;
+  /**
+   * Drop the trigger's own surface and border (keyboard focus still shows),
+   * for a select inside a container that already draws them (e.g. a search bar).
+   */
+  borderless?: boolean;
   children: ReactNode | ((item: SelectItemType) => ReactNode);
 }
 
@@ -70,6 +78,7 @@ interface SelectValueProps {
   isDisabled: boolean;
   placeholder?: string;
   icon?: FC | ReactNode;
+  borderless?: boolean;
 }
 
 export const sizes = {
@@ -85,19 +94,25 @@ const SelectValue = ({
   fontSize,
   placeholder,
   icon,
+  borderless,
 }: SelectValueProps) => {
   return (
     <AriaButton
-      className={cx(
-        // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
-        // a ring thins/vanishes in Safari when zoomed out. `outline-hidden` is gone — the
-        // outline IS the border and focus indicator here, as in input.tsx.
-        'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
-        (isFocused || isOpen) &&
-          'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
-        isDisabled &&
-          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled'
-      )}>
+      className={({ isFocusVisible }) =>
+        cx(
+          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow, so
+          // a ring thins/vanishes in Safari when zoomed out. `outline-hidden` is gone — the
+          // outline IS the border and focus indicator here, as in input.tsx.
+          'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:rounded-lg tw:bg-primary tw:shadow-xs tw:outline-1 tw:-outline-offset-1 tw:outline-primary tw:transition tw:duration-100 tw:ease-linear',
+          (isFocused || isOpen) &&
+            'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
+          isDisabled &&
+            'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled',
+          borderless &&
+            !isFocusVisible &&
+            'tw:bg-transparent tw:shadow-none tw:outline-0'
+        )
+      }>
       <AriaSelectValue<SelectItemType>
         className={cx(
           'tw:flex tw:h-max tw:w-full tw:items-center tw:justify-start tw:gap-2 tw:truncate tw:text-left tw:align-middle',
@@ -191,6 +206,7 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
       tooltip,
       emptyState,
       className,
+      borderless,
       // Without this react-aria keeps an empty list closed, so `emptyState`
       // would never render.
       allowsEmptyCollection = true,
@@ -198,6 +214,9 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
     },
     ref
   ) {
+    const isVirtualized =
+      (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
+
     return (
       <SelectContext.Provider value={{ fontSize, size }}>
         <AriaSelect
@@ -221,18 +240,25 @@ const Select = forwardRef<HTMLDivElement, Omit<SelectProps, 'ref'>>(
               <SelectValue
                 {...state}
                 {...{ size, fontSize, placeholder }}
+                borderless={borderless}
                 icon={icon}
               />
 
-              <Popover className={rest.popoverClassName} size={size}>
-                <AriaListBox
-                  className="tw:size-full tw:outline-hidden"
+              <Popover
+                className={cx(
+                  isVirtualized && 'tw:overflow-hidden tw:py-0',
+                  rest.popoverClassName
+                )}
+                size={size}>
+                <SelectListBox
                   items={items}
                   renderEmptyState={() => (
                     <SelectEmptyState emptyState={emptyState} />
-                  )}>
+                  )}
+                  size={size}
+                  virtualize={isVirtualized}>
                   {children}
-                </AriaListBox>
+                </SelectListBox>
               </Popover>
 
               {hint && <HintText isInvalid={state.isInvalid}>{hint}</HintText>}

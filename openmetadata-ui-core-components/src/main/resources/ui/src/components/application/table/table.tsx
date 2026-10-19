@@ -156,7 +156,7 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:outline-subtle',
+          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:-outline-offset-1 tw:outline-subtle',
           className
         )}>
         {children}
@@ -297,6 +297,9 @@ const TableHeader = <T extends object>({
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
             'tw:[&>tr>th]:after:pointer-events-none tw:[&>tr>th]:after:absolute tw:[&>tr>th]:after:inset-x-0 tw:[&>tr>th]:after:bottom-0 tw:[&>tr>th]:after:h-px tw:[&>tr>th]:after:bg-border-secondary tw:[&>tr>th]:focus-visible:after:bg-transparent',
+          // Dark: the 8% white divider resolves to the body-row surface under the darker
+          // header band, so the edge vanishes; border-primary keeps it visible.
+          bordered && 'tw:dark:[&>tr>th]:after:bg-border-primary',
 
           typeof className === 'function' ? className(state) : className
         )

@@ -435,7 +435,6 @@ const IncidentManagerDetailPage = ({
         <TestCaseFormDrawer
           open={isDimensionEdit}
           testCase={testCase}
-          variant="drawer"
           onClose={handleCancelDimension}
           onUpdate={setTestCase}
         />

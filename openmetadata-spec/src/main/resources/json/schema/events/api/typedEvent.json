@@ -4,7 +4,7 @@
   "title": "Typed Event",
   "description": "Schema defining a Typed Event with its status, data, and timestamp.",
   "type": "object",
-  "javaType": "org.openmetadata.service.resources.events.subscription.TypedEvent",
+  "javaType": "org.openmetadata.schema.api.events.TypedEvent",
   "properties": {
     "status": {
       "description": "The status of the event, such as 'failed', 'successful', or 'unprocessed'.",

@@ -56,6 +56,10 @@ describe('TestCaseConfigurationCard', () => {
     expect(screen.getByTestId('configuration-test-name')).toHaveTextContent(
       'Column Values To Be Between'
     );
+    // Titled like the rail's other cards.
+    expect(screen.getByTestId('configuration-title')).toHaveClass(
+      'tw:text-quaternary'
+    );
     expect(screen.getByTestId('configuration-parameter-min')).toHaveTextContent(
       '90001'
     );
@@ -201,6 +205,50 @@ describe('TestCaseConfigurationCard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('names the data quality dimension in the category line, not as a row', () => {
+    renderCard({
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        dataQualityDimension: {
+          id: 'dimension',
+          type: 'dataQualityDimension',
+          name: 'Completeness',
+        },
+      } as TestCase,
+    });
+
+    expect(screen.getByTestId('configuration-category')).toHaveTextContent(
+      'label.column-test-with-column · Completeness'
+    );
+  });
+
+  it('puts a dynamic assertion callout above the rows', () => {
+    renderCard({
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        useDynamicAssertion: true,
+      } as TestCase,
+      parameterRows: [{ label: 'label.compute-row-count', value: 'false' }],
+    });
+
+    const callout = screen.getByTestId('dynamic-assertion');
+    const rows = screen.getByTestId('configuration-parameter-rows');
+
+    expect(
+      callout.compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
+  it('keys a row on the parameter name, and labels it with the display name', () => {
+    renderCard({
+      parameterRows: [{ name: 'minValue', label: 'Min', value: '1' }],
+    });
+
+    expect(
+      screen.getByTestId('configuration-parameter-minValue')
+    ).toHaveTextContent('Min1');
+  });
+
   it('falls back to a start-cased definition name when no display name is set', () => {
     renderCard({
       testDefinition: { name: 'tableRowCountToEqual' } as TestDefinition,
@@ -209,5 +257,42 @@ describe('TestCaseConfigurationCard', () => {
     expect(screen.getByTestId('configuration-test-name')).toHaveTextContent(
       'Table Row Count To Equal'
     );
+  });
+
+  describe('threshold sentence', () => {
+    const thresholdProps: Partial<TestCaseConfigurationCardProps> = {
+      testCaseData: {
+        entityLink: COLUMN_ENTITY_LINK,
+        parameterValues: [{ name: 'threshold', value: '1' }],
+      } as TestCase,
+      testDefinition: {
+        name: 'columnValuesToBeNotNull',
+        parameterDefinition: [{ name: 'threshold' }, { name: 'thresholdUnit' }],
+      } as TestDefinition,
+    };
+
+    it('restates the configured threshold', () => {
+      renderCard(thresholdProps);
+
+      expect(
+        screen.getByTestId('configuration-threshold-sentence')
+      ).toHaveTextContent('message.dq-threshold-preview-row-countable');
+    });
+
+    it('leaves it out on the version page, which shows the diff instead', () => {
+      renderCard({ ...thresholdProps, isVersionPage: true });
+
+      expect(
+        screen.queryByTestId('configuration-threshold-sentence')
+      ).not.toBeInTheDocument();
+    });
+
+    it('has none for a test without a threshold parameter', () => {
+      renderCard();
+
+      expect(
+        screen.queryByTestId('configuration-threshold-sentence')
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormInstance } from 'antd';
 import { AxiosError } from 'axios';
 import { castArray, isEmpty, uniq } from 'lodash';
 import {
@@ -35,18 +34,19 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../rest/testAPI';
-import { getTestCaseFiltersValue } from '../../../utils/DataQuality/DataQualityPureUtils';
+import { getTestCaseListFilterParams } from '../../../utils/DataQuality/DataQualityPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { TestCaseSearchParams } from '../DataQuality.interface';
+import { TestCaseFilterForm } from './useTestCaseFilters';
 
 export interface UseTestCaseListProps {
   params: TestCaseSearchParams;
   selectedFilter: string[];
   setSelectedFilter: Dispatch<SetStateAction<string[]>>;
   searchValue: string;
-  form: FormInstance;
+  form?: TestCaseFilterForm;
   getInitialOptions: (key: string, isLengthCheck?: boolean) => void;
   tab: DataQualityPageTabs;
   testCasePermission: OperationPermission;
@@ -63,8 +63,8 @@ export interface UseTestCaseListProps {
  * Owns the DATA concern: the test-case rows, their loading flag, the sort
  * options and the fetch pipeline. The driving fetch effect stays co-located
  * with {@link fetchTestCases} and the paging handler so the fetch is issued
- * from a single place (no double-fetch). Filter state, the form and the paging
- * bag are injected.
+ * from a single place (no double-fetch). Filter state, the optional classic form
+ * and the paging bag are injected.
  */
 export const useTestCaseList = ({
   params,
@@ -103,9 +103,10 @@ export const useTestCaseList = ({
       // Visibility, filters, and sorting can overlap requests; only the newest
       // response may update the rows or clear the shared loading state.
       const requestId = ++latestRequestId.current;
-      const updatedParams = getTestCaseFiltersValue(
+      const filterParams = getTestCaseListFilterParams(
         params,
-        activeFilters ?? selectedFilter
+        activeFilters ?? selectedFilter,
+        searchValue
       );
 
       setIsLoading(true);
@@ -115,11 +116,8 @@ export const useTestCaseList = ({
           paging: pagingResponse,
           entityPermissions: listPermissions,
         } = await getListTestCaseBySearch({
-          ...updatedParams,
+          ...filterParams,
           ...sortOptions,
-          testCaseStatus: isEmpty(params?.testCaseStatus)
-            ? undefined
-            : params?.testCaseStatus,
           limit: pageSize,
           includeAllTests: true,
           includePermissions: true,
@@ -129,7 +127,6 @@ export const useTestCaseList = ({
             TabSpecificField.INCIDENT_ID,
             TabSpecificField.INCIDENT_STATUS,
           ],
-          q: searchValue || undefined,
           offset: (page - 1) * pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
           ...apiParams,
@@ -214,7 +211,7 @@ export const useTestCaseList = ({
       fetchTestCases(currentPage, updatedValue);
       // AntD multi-select requires an array even when the URL contains the
       // legacy single-value status format.
-      form.setFieldsValue({
+      form?.setFieldsValue({
         ...params,
         testCaseStatus: params.testCaseStatus
           ? castArray(params.testCaseStatus)

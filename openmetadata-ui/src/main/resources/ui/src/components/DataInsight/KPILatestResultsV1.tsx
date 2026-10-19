@@ -11,14 +11,23 @@
  *  limitations under the License.
  */
 
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Grid,
+  ProgressBar,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Col, Progress, Row, Space, Tooltip } from 'antd';
+
+import {
+  CheckCircle,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -40,11 +49,14 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
   }, [kpiLatestResultsRecord]);
 
   return (
-    <Space
-      className="w-full p-t-lg p-r-xs"
+    <Box
+      inline
+      align="stretch"
+      className="layout-space w-full p-t-lg p-r-xs"
       data-testid="kpi-latest-result-container"
-      direction="vertical"
-      size={48}>
+      direction="col"
+      gap={12}
+      itemClassName="layout-space-item">
       {latestResultsList.map((result, index) => {
         const name = result[0];
         const resultData = result[1];
@@ -74,8 +86,11 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
         const backgroundColor = hexToRgba(seriesColor, 0.1);
 
         return (
-          <Row data-testid={name} key={name}>
-            <Col className="d-flex items-center" span={24}>
+          <Grid
+            className="layout-row layout-grid"
+            data-testid={name}
+            key={name}>
+            <Grid.Item className="layout-column d-flex items-center" span={24}>
               <div
                 className="kpi-days-section"
                 style={{
@@ -87,7 +102,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
-                      <CheckCircleOutlined style={{ fontSize: '20px' }} />
+                      <CheckCircle className="tw:shrink-0" size={20} />
                     </Typography>
                   </>
                 ) : (
@@ -104,28 +119,39 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                 )}
               </div>
               <div className="m-l-sm flex-1">
-                <Space className="w-full justify-between">
+                <Box
+                  inline
+                  align="center"
+                  className="layout-space layout-space-horizontal w-full justify-between"
+                  gap={2}
+                  itemClassName="layout-space-item">
                   <Typography className="text-xs">
                     {resultData.displayName ?? name}
                   </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
                     <Tooltip
+                      arrow
+                      excludeTriggerFromTabOrder
                       placement="bottom"
                       title={getKpiResultFeedback(
                         daysLeft,
                         Boolean(isTargetMet)
                       )}
-                      trigger="hover">
-                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                      triggerClassName="tw:inline-flex">
+                      <InfoCircle className="tw:shrink-0" size={14} />
                     </Tooltip>
                   ) : null}
-                </Space>
-                <Progress
-                  percent={Number(currentProgress)}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={seriesColor}
-                />
+                </Box>
+                <div>
+                  <ProgressBar
+                    className="tw:h-1.5"
+                    color={seriesColor}
+                    value={Math.min(
+                      100,
+                      Math.max(0, Number(currentProgress) || 0)
+                    )}
+                  />
+                </div>
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
                     <Typography className="text-xs">
@@ -141,11 +167,11 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   </div>
                 </div>
               </div>
-            </Col>
-          </Row>
+            </Grid.Item>
+          </Grid>
         );
       })}
-    </Space>
+    </Box>
   );
 };
 

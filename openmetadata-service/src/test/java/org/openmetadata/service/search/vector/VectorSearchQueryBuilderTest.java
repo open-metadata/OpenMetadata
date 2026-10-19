@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -80,6 +81,32 @@ class VectorSearchQueryBuilderTest {
             .path("must");
     assertTrue(termClauseExists(must, "sourceType", "FileExtraction"));
     assertTrue(termClauseExists(must, "visibility", MemoryVisibility.SHARED.value()));
+  }
+
+  @Test
+  void testMemoryKindFiltersReachTheKnnFilter() throws Exception {
+    Map<String, List<String>> filters =
+        Map.of(
+            "memoryScope", List.of("UserGlobal"),
+            "memoryType", List.of("Note", "Learning"),
+            "pinned", List.of("false"));
+
+    JsonNode must =
+        MAPPER
+            .readTree(
+                VectorSearchQueryBuilder.build(new float[] {0.1f, 0.2f}, 10, 0, 100, filters, 0.0))
+            .path("query")
+            .path("knn")
+            .path("embedding")
+            .path("filter")
+            .path("bool")
+            .path("must");
+
+    assertTrue(termClauseExists(must, "memoryScope", "UserGlobal"));
+    assertTrue(termClauseExists(must, "pinned", "false"));
+    assertTrue(
+        must.toString().contains("{\"terms\":{\"memoryType\":[\"Note\",\"Learning\"]}}"),
+        must.toString());
   }
 
   @Test
@@ -1315,6 +1342,156 @@ class VectorSearchQueryBuilderTest {
     assertNotNull(clause, "admin search must also exclude retired memories");
     assertTrue(clause.toString().contains("\"entityStatus\":\"Approved\""));
     assertFalse(clause.toString().contains("visibility"), "admins bypass visibility");
+  }
+
+  @Test
+  void testReadablePinnedAnchorAdmitsItsMemoriesOnBothEngines() throws Exception {
+    String anchorId = UUID.randomUUID().toString();
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            null,
+            Map.of("primaryEntityId", List.of(anchorId)),
+            5,
+            0,
+            5,
+            0.0,
+            null,
+            nonAdminSubject(),
+            null);
+    float[] vector = {0.1f};
+
+    List<JsonNode> clauses =
+        List.of(
+            memoryVisibilityClause(
+                MAPPER.readTree(
+                    VectorSearchQueryBuilder.buildQuery(vector, parameters, Set.of(anchorId)))),
+            memoryVisibilityClause(
+                MAPPER
+                    .readTree(VectorSearchQueryBuilder.build(vector, parameters, Set.of(anchorId)))
+                    .path("query")),
+            memoryVisibilityClause(
+                MAPPER.readTree(
+                    VectorSearchQueryBuilder.buildNativeESQuery(
+                        vector, parameters, 2, Set.of(anchorId)))));
+
+    for (JsonNode clause : clauses) {
+      JsonNode branches = clause.path("bool").path("should");
+      JsonNode anchored =
+          branches.get(1).path("bool").path("must").get(1).path("bool").path("should").get(3);
+      assertNotNull(anchored, "the memory branch gains an anchored-to clause");
+      JsonNode anchoredMust = anchored.path("bool").path("must");
+      assertTrue(
+          termClauseExists(
+              anchoredMust.get(0).path("bool").path("should"),
+              "visibility",
+              MemoryVisibility.ENTITY.value()));
+      assertTrue(
+          termClauseExists(
+              anchoredMust.get(0).path("bool").path("should"),
+              "visibility",
+              MemoryVisibility.PUBLIC.value()));
+      assertEquals(anchorId, anchoredMust.get(1).path("terms").path("anchorId").get(0).asText());
+      assertFalse(
+          branches.get(2).toString().contains("anchorId"),
+          "a pinned anchor never widens the file branch");
+    }
+  }
+
+  @Test
+  void testUnreadablePinnedAnchorLeavesTheMemoryBranchUnchanged() throws Exception {
+    String anchorId = UUID.randomUUID().toString();
+    VectorSearchParameters parameters =
+        new VectorSearchParameters(
+            null,
+            Map.of("primaryEntityId", List.of(anchorId)),
+            5,
+            0,
+            5,
+            0.0,
+            null,
+            nonAdminSubject(),
+            null);
+
+    JsonNode clause =
+        memoryVisibilityClause(
+            MAPPER.readTree(
+                VectorSearchQueryBuilder.buildQuery(new float[] {0.1f}, parameters, Set.of())));
+
+    JsonNode memoryBranches =
+        clause.path("bool").path("should").get(1).path("bool").path("must").get(1);
+    assertEquals(3, memoryBranches.path("bool").path("should").size());
+    assertFalse(memoryBranches.toString().contains(anchorId));
+  }
+
+  @Test
+  void testRequestedPendingStagesAdmitTheSubjectsOwnMemoriesOnBothEngines() throws Exception {
+    for (SubjectContext subject : List.of(nonAdminSubject(), adminSubject())) {
+      for (JsonNode clause : memoryClausesOnEveryEngine(ownerPendingParameters(subject))) {
+        JsonNode branches = clause.path("bool").path("should");
+        JsonNode own = branches.get(3).path("bool").path("must");
+        assertEquals(4, branches.size(), "the owner's branch is added last");
+        assertTrue(termClauseExists(own, "entityType", Entity.CONTEXT_MEMORY));
+        JsonNode nested = own.get(1).path("nested");
+        assertEquals(
+            USER_ID.toString(), nested.path("query").path("term").path("owners.id").asText());
+        assertTrue(nested.path("ignore_unmapped").asBoolean(false));
+        assertEquals(
+            List.of("Unprocessed", "Draft"),
+            MAPPER.convertValue(own.get(2).path("terms").path("entityStatus"), List.class));
+        assertFalse(
+            branches.get(1).toString().contains("Unprocessed"),
+            "a pending memory never reaches the subject through visibility alone");
+        assertTrue(branches.get(1).toString().contains("\"entityStatus\":\"Approved\""));
+      }
+    }
+  }
+
+  @Test
+  void testPendingStagesAreNeverAdmittedWithoutASubjectOrARequest() throws Exception {
+    List<VectorSearchParameters> unwidened =
+        List.of(
+            ownerPendingParameters(null),
+            new VectorSearchParameters(
+                null,
+                Map.of("entityStatus", List.of(EntityStatus.APPROVED.value())),
+                5,
+                0,
+                5,
+                0.0,
+                null,
+                nonAdminSubject(),
+                null));
+    for (VectorSearchParameters parameters : unwidened) {
+      for (JsonNode clause : memoryClausesOnEveryEngine(parameters)) {
+        assertEquals(3, clause.path("bool").path("should").size());
+        assertFalse(clause.toString().contains("Unprocessed"));
+      }
+    }
+  }
+
+  private static VectorSearchParameters ownerPendingParameters(SubjectContext subject) {
+    return new VectorSearchParameters(
+        null,
+        Map.of("entityStatus", List.of("Approved", "Unprocessed", "Draft")),
+        5,
+        0,
+        5,
+        0.0,
+        null,
+        subject,
+        null);
+  }
+
+  private static List<JsonNode> memoryClausesOnEveryEngine(VectorSearchParameters parameters)
+      throws Exception {
+    float[] vector = {0.1f};
+    return List.of(
+        memoryVisibilityClause(
+            MAPPER.readTree(VectorSearchQueryBuilder.buildQuery(vector, parameters, Set.of()))),
+        memoryVisibilityClause(
+            MAPPER.readTree(VectorSearchQueryBuilder.build(vector, parameters)).path("query")),
+        memoryVisibilityClause(
+            MAPPER.readTree(VectorSearchQueryBuilder.buildNativeESQuery(vector, parameters, 2))));
   }
 
   /** Elasticsearch is a separate public method; a miss here leaks on every ES deployment. */

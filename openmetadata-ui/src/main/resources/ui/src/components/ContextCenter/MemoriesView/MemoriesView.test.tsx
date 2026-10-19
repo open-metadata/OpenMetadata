@@ -13,9 +13,19 @@
 import { render, screen } from '@testing-library/react';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import MemoriesView from './MemoriesView.component';
+
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({
+    // Echoes the count, so a test can tell which count a label shows.
+    t: (key: string, options?: { count?: number }) =>
+      options?.count === undefined ? key : `${key}:${options.count}`,
+    i18n: { language: 'en-US' },
+  }),
+}));
 
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
   jest.fn(() => <div data-testid="profile-picture" />)
@@ -87,9 +97,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   TooltipTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
-  Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <span>{children}</span>
-  )),
+  Typography: jest.fn(
+    ({
+      children,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <span data-testid={testId}>{children}</span>
+  ),
+}));
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ThumbsDown: jest.fn(() => <svg />),
+  ThumbsUp: jest.fn(() => <svg />),
 }));
 
 const mockMemories: ContextMemory[] = [
@@ -140,13 +161,18 @@ describe('MemoriesView', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows a retired memory status and its reason', () => {
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Rejected, 'label.rejected'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+    [ContextMemoryStatus.Invalidated, 'label.invalidated'],
+  ])('shows the %s memory status and its reason', (status, label) => {
     render(
       <MemoriesView
         data={[
           {
             ...mockMemories[0],
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: status,
             statusReason: 'The replacement has the corrected definition.',
           },
         ]}
@@ -154,7 +180,7 @@ describe('MemoriesView', () => {
       />
     );
 
-    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
+    expect(screen.getByText(label)).toBeInTheDocument();
     expect(
       screen.getByText(/The replacement has the corrected definition/)
     ).toBeInTheDocument();
@@ -181,5 +207,151 @@ describe('MemoriesView', () => {
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+  });
+
+  it('shows the votes and corrections of a memory whose outcomes are counted', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              positiveCount: 3,
+              negativeCount: 1,
+              correctedCount: 2,
+              countedAt: 1778756959299,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:12'
+    );
+    expect(screen.getByTestId('memory-helpful-count')).toHaveTextContent('3');
+    expect(screen.getByTestId('memory-unhelpful-count')).toHaveTextContent('1');
+    expect(screen.getByTestId('memory-corrected-count')).toHaveTextContent(
+      'label.corrected-n-times:2'
+    );
+  });
+
+  it('names each vote count for screen readers, not just its icon and number', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              positiveCount: 3,
+              negativeCount: 1,
+              countedAt: 1778756959299,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByText('label.helpful-vote-count:3')).toHaveClass(
+      'tw:sr-only'
+    );
+    expect(screen.getByText('label.unhelpful-vote-count:1')).toHaveClass(
+      'tw:sr-only'
+    );
+    expect(screen.getByText('3')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByText('1')).toHaveAttribute('aria-hidden', 'true');
+  });
+
+  it('shows no vote or correction count that is zero', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: { appliedCount: 4, countedAt: 1778756959299 },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-helpful-count')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-unhelpful-count')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-corrected-count')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the legacy usage of a memory whose outcomes are not counted yet', () => {
+    render(
+      <MemoriesView
+        data={[{ ...mockMemories[0], usageCount: 5 }]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:5'
+    );
+  });
+
+  it('shows the legacy usage of a search-listed memory never counted', () => {
+    // A search hit carries the indexed usage and, until a recount, no outcomes.
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            usageCount: 37,
+            lastUsedAt: 1778756959299,
+            entityStatus: ContextMemoryStatus.Approved,
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:37'
+    );
+  });
+
+  it('shows the legacy usage when no recount stamped the outcomes', () => {
+    render(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            usageCount: 37,
+            outcomes: {
+              appliedCount: 0,
+              positiveCount: 0,
+              negativeCount: 0,
+              correctedCount: 0,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info')).toHaveTextContent(
+      'label.cited-n-times:37'
+    );
+  });
+
+  it('shows no usage for a memory never cited', () => {
+    render(<MemoriesView data={[mockMemories[1]]} isLoading={false} />);
+
+    expect(screen.queryByTestId('memory-usage-info')).not.toBeInTheDocument();
   });
 });

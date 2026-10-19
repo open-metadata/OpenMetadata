@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from './common/layout.utils';
+
 import { get, isEmpty } from 'lodash';
 import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -22,7 +22,7 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { CustomizeEntityType } from '../constants/Customize.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -184,7 +184,7 @@ export const getTitle = (
           ellipsis={{ tooltip: true }}>
           {title}
         </Typography>
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
       </div>
     </Link>
   ) : (
@@ -491,38 +491,38 @@ const getDashboardSummary = (
 
   return (
     <>
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid="charts-header">
             {t('label.chart-plural')}
           </Typography>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SummaryList
             formattedEntityData={formattedChartsData}
             loading={loading}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid="data-model-header">
             {t('label.data-model-plural')}
           </Typography>
-        </Col>
-        <Col span={24}>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SummaryList formattedEntityData={formattedDataModelData} />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </>
   );
 };
@@ -603,18 +603,20 @@ export const getEntityChildDetails = (
 
   if (childDetails) {
     return (
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
           <Typography
             className="summary-panel-section-title"
             data-testid={childDetails.headingTestId}>
             {childDetails.heading}
           </Typography>
-        </Col>
-        <Col span={24}>{childDetails.childComponent}</Col>
-      </Row>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {childDetails.childComponent}
+        </Grid.Item>
+      </Grid>
     );
   }
 

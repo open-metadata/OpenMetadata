@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Select, Space } from 'antd';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -323,24 +322,37 @@ const SampleDataTable: FC<SampleDataProps> = ({
       })}
       data-testid="sample-data"
       id="sampleDataDetails">
-      <Space className="m-y-xss justify-between w-full">
-        <Space>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-y-xss justify-between w-full"
+        gap={2}
+        itemClassName="layout-space-item">
+        <Box
+          inline
+          align="center"
+          className="layout-space layout-space-horizontal"
+          gap={2}
+          itemClassName="layout-space-item">
           <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
-            className="w-28"
+            aria-label={t('label.row-limit')}
+            className="tw:w-28"
             data-testid="row-limit-select"
-            value={rowLimit}
-            onChange={setRowLimit}>
+            selectedKey={String(rowLimit)}
+            onSelectionChange={(key) =>
+              key !== null && setRowLimit(Number(key))
+            }>
             {ROW_LIMIT_OPTIONS.map((limit) => (
-              <Select.Option
+              <Select.Item
                 data-testid={`row-limit-option-${limit}`}
+                id={String(limit)}
                 key={limit}
-                value={limit}>
-                {limit}
-              </Select.Option>
+                label={String(limit)}
+              />
             ))}
           </Select>
-        </Space>
+        </Box>
         <ManageMenu
           data-testid="sample-data-manage-button"
           isOpen={showActions}
@@ -350,7 +362,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
           })}
           onOpenChange={setShowActions}
         />
-      </Space>
+      </Box>
 
       <TableComponent
         columns={sampleData?.columns}

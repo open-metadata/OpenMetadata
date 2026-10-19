@@ -1087,7 +1087,7 @@ public class OpenLineageLineageResolutionIT {
    * Entity audit fields follow the entity contract, not the edge one: the principal that posted the
    * event and the moment OpenMetadata created the entity, never the OpenLineage eventTime.
    */
-  private static void assertAuditFieldsStamped(EntityInterface entity, long notBefore) {
+  private static void assertAuditFieldsStamped(EntityInterface<?> entity, long notBefore) {
     String fqn = entity.getFullyQualifiedName();
     assertEquals("admin", entity.getUpdatedBy(), "updatedBy of auto-created " + fqn);
     assertNotNull(entity.getUpdatedAt(), "updatedAt of auto-created " + fqn);

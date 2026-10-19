@@ -16,9 +16,11 @@ package org.openmetadata.service.migration.mysql.v210;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
+import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
@@ -34,9 +36,13 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
+import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -47,6 +53,9 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // First, so no later step loads an entity still typed DeltaLake:
+    // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
+    retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
     alignFlowableTableCharsets(handle);
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
@@ -78,10 +87,20 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // entityReference / entityReferenceList values move to custom_property_reference, their only
+    // home from 2.1 on, so a hard delete can remove references to the deleted entity. Restartable.
+    CustomPropertyReferenceMigration.migrate(handle, collectionDAO, MYSQL);
     // MlModelRepository now indexes feature tags into tag_usage like every other type with inline
     // children. That fires only on write, so features tagged before this upgrade would read back
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
     backfillMlFeatureTags(collectionDAO);
+    // Authentication secrets were stored in clear text; new writes encrypt them, this encrypts what
+    // is already stored. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        AuthenticationSecretsEncryptionMigration.STEP_NAME,
+        () -> encryptAuthenticationSecrets(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -94,6 +113,16 @@ public class Migration extends MigrationProcessImpl {
         () -> removeCreatedSentinel(handle, MYSQL));
     // Alerts the previous release stopped sending, because it could not build one of their
     // destinations, send again from this release; they start from the upgrade, not their backlog.
-    skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        AlertBacklogMigration.STEP_NAME,
+        () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    // Alerts name their consumer by its registered id, no longer by its Java class.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ConsumerIdMigration.STEP_NAME,
+        () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
   }
 }

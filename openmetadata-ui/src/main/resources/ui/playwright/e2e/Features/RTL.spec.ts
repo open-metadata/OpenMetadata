@@ -12,14 +12,10 @@
  */
 
 import { expect } from '@playwright/test';
-import { toLower } from 'lodash';
 import { ACTION_TIMEOUT } from '../../constant/common';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import {
-  clickOutside,
-  redirectToHomePage,
-  waitForAntdPopupToSettle,
-} from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
+import { waitForLandingPageWidget } from '../../utils/customizeLandingPage';
 import {
   followEntity,
   validateFollowedEntityToWidget,
@@ -33,48 +29,41 @@ test.describe('Verify RTL Layout for landing page', () => {
     await redirectToHomePage(page);
 
     await page.getByTestId('language-selector-button').click();
-    // The language menu is long enough that Ant's scaleY(0.8)->scaleY(1) entry
-    // shifts every item; clicking mid-animation computes the point against the
-    // scaled menu and lands on the option above Hebrew, so the handler never
-    // runs and the `load` below waits out the hook.
-    await waitForAntdPopupToSettle(page);
     await Promise.all([
       page.waitForEvent('load'),
-      page.locator('.ant-dropdown:visible [data-menu-id*="-he-HE"]').click(),
+      page.getByRole('menu').locator('[data-key="he-HE"]').click(),
     ]);
-    await expect(page.getByTestId('domain-selector')).toBeVisible();
-    // wait for translation to reflect in the UI
-    await expect(page.getByTestId('domain-selector')).toHaveText(
+    // The landing header's own domain control went with the header; the navbar
+    // one is on every page now, home included.
+    await expect(page.getByTestId('domain-dropdown')).toBeVisible();
+    // wait for translation to reflect in the UI. `toContainText`, as every
+    // other spec driving this trigger uses: the testid is on the DomainSelect
+    // root, which also carries the globe icon and its popover, so an exact
+    // match is asserting more than the label.
+    await expect(page.getByTestId('domain-dropdown')).toContainText(
       'כל הדומיינים',
       { timeout: ACTION_TIMEOUT }
     );
   });
 
-  test('Verify DataAssets widget functionality', async ({ page }) => {
+  // Replaces a Data Assets widget check: that widget is excluded from the
+  // landing page now, and nothing on the page exposes per-service tiles. The
+  // Hebrew-locale assertion that mattered — the landing page's own widgets
+  // render translated — moves onto the topic cards that took its place.
+  test('Verify landing page widgets render under an RTL locale', async ({
+    page,
+  }) => {
     test.slow();
-    const serviceType = toLower(table.service.serviceType);
 
-    await clickOutside(page);
-    const quickFilterResponse = page.waitForResponse(
-      `/api/v1/search/query?q=&index=dataAsset*${serviceType}*`
+    const dataEstateWidget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.DataEstate'
     );
 
-    await page
-      .locator(`[data-testid="data-asset-service-${serviceType}"]`)
-      .click();
-
-    await quickFilterResponse;
-
-    await expect(page.getByTestId('search-dropdown-סוג השירות')).toBeAttached();
-    await expect(page.getByTestId('filter-count-badge')).toHaveText('1');
-
+    await expect(dataEstateWidget).toContainText('נכסי הנתונים שלך');
     await expect(
-      page
-        .getByTestId('explore-tree')
-        .getByRole('row')
-        .filter({ hasText: serviceType })
-        .first()
-    ).toHaveAttribute('aria-selected', 'true');
+      dataEstateWidget.getByTestId('data-estate-total')
+    ).toBeVisible();
   });
 
   test('Verify Following widget functionality', async ({ page }) => {

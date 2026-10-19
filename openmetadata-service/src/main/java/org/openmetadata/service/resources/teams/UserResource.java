@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationTo
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
+import static org.openmetadata.service.util.UserUtil.validateEmailDomain;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -195,12 +196,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
   private final UserPreferencesRepository preferencesRepository;
-  private AuthenticationConfiguration authenticationConfiguration;
-  private AuthorizerConfiguration authorizerConfiguration;
   private final AuthenticatorHandler authHandler;
-  private boolean isSelfSignUpEnabled = false;
   static final String FIELDS =
-      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,personaPreferences,extension";
+      "profile,roles,teams,follows,owns,domains,personas,defaultPersona,defaultDomain,personaPreferences,extension";
 
   @Override
   public User addHref(UriInfo uriInfo, User user) {
@@ -234,10 +232,21 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.repository.initializeUsers(config);
-    this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();
+  }
+
+  /**
+   * Read per request from the configuration in effect: a change saved in the UI, or applied from
+   * another server, then holds here too instead of only after a restart.
+   */
+  private static boolean usesRolesFromProvider() {
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    return authorizer != null && Boolean.TRUE.equals(authorizer.getUseRolesFromProvider());
+  }
+
+  private static boolean isSelfSignUpEnabled() {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    return authConfig != null && Boolean.TRUE.equals(authConfig.getEnableSelfSignup());
   }
 
   public static class UserList extends ResultList<User> {
@@ -569,10 +578,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
             uriInfo, catalogSecurityContext.getUserPrincipal().getName(), currentEmail, fields);
 
     // Sync the Roles from token to User
-    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && !(user.getIsBot() != null && user.getIsBot())) {
+    if (usesRolesFromProvider() && !(user.getIsBot() != null && user.getIsBot())) {
       reSyncUserRolesFromToken(
-          uriInfo, user, getRolesFromAuthorizationToken(catalogSecurityContext));
+          uriInfo,
+          user,
+          getRolesFromAuthorizationToken(catalogSecurityContext),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
     }
     return addHref(uriInfo, user);
   }
@@ -700,6 +711,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addAuthMechanismToBot(user, create, uriInfo);
       addRolesToBot(user, uriInfo);
     }
+    // Outside the try below, which would turn this 400 into a 409
+    validateEmailDomain(
+        user,
+        SecurityConfigurationManager.getCurrentAuthConfig(),
+        SecurityConfigurationManager.getCurrentAuthzConfig());
 
     try {
       validateEmailAlreadyExists(user.getEmail());
@@ -721,7 +737,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     try {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
-      if (isSelfSignUpEnabled) {
+      if (isSelfSignUpEnabled()) {
         if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
           User created =
               addHref(
@@ -774,8 +790,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       User user, ContainerRequestContext containerRequestContext) {
     CatalogSecurityContext catalogSecurityContext =
         (CatalogSecurityContext) containerRequestContext.getSecurityContext();
-    if (Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider())
-        && !(user.getIsBot() != null && user.getIsBot())) {
+    if (usesRolesFromProvider() && !(user.getIsBot() != null && user.getIsBot())) {
       user.setRoles(validateAndGetRolesRef(getRolesFromAuthorizationToken(catalogSecurityContext)));
     }
   }
@@ -799,7 +814,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
   private boolean isBasicAuth() {
     return SecurityConfigurationManager.isNativePasswordProvider(
-        authenticationConfiguration.getProvider());
+        SecurityConfigurationManager.getCurrentAuthConfig().getProvider());
   }
 
   @PUT
@@ -825,6 +840,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
     if (existingUser == null) {
+      validateEmailDomain(
+          user,
+          SecurityConfigurationManager.getCurrentAuthConfig(),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
       limits.enforceLimits(
           securityContext,
           getResourceContextByName(user.getFullyQualifiedName()),
@@ -1129,6 +1148,9 @@ public class UserResource extends EntityResource<User, UserRepository> {
         continue;
       }
       String path = patchOpObject.getString("path");
+      if (path.startsWith("/defaultDomain") && !isSelf) {
+        throw new AuthorizationException("Users can only update their own default domain");
+      }
       if (isPrivilegedUserPatchPath(path)) {
         authorizer.authorizeAdmin(securityContext);
         continue;
@@ -1244,8 +1266,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   // updateUserRolesIfRequired() discards the request body roles in favour of the ones in the
   // authorization token when useRolesFromProvider is on, so there the body has no effect.
   private boolean grantsRolesFromRequestBody(CreateUser create) {
-    return !nullOrEmpty(create.getRoles())
-        && !Boolean.TRUE.equals(authorizerConfiguration.getUseRolesFromProvider());
+    return !nullOrEmpty(create.getRoles()) && !usesRolesFromProvider();
   }
 
   // The principal is not in the database yet during self sign-up, and authorizeAdmin() resolves the
@@ -1527,7 +1548,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getUserAssets(id, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1565,7 +1592,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
+    return Response.ok(
+            repository.getUserAssetsByName(name, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @POST
@@ -2125,7 +2158,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       User user, CreateUser create, UriInfo uriInfo, SecurityContext securityContext) {
     User original = retrieveBotUser(user, uriInfo);
     String botName = create.getBotName();
-    EntityInterface bot = retrieveBot(botName);
+    EntityInterface<?> bot = retrieveBot(botName);
     // check if the bot user exists
     if (original != null
         && (original.getIsBot() == null || Boolean.FALSE.equals(original.getIsBot()))) {
@@ -2168,7 +2201,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return response.toResponse();
   }
 
-  private EntityInterface retrieveBot(String botName) {
+  private EntityInterface<?> retrieveBot(String botName) {
     try {
       return Entity.getEntityRepository(Entity.BOT).getByName(null, botName, Fields.EMPTY_FIELDS);
     } catch (Exception e) {
@@ -2176,7 +2209,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     }
   }
 
-  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface botUser) {
+  private boolean userHasRelationshipWithAnyBot(User user, EntityInterface<?> botUser) {
     List<CollectionDAO.EntityRelationshipRecord> userBotRelationship =
         retrieveBotRelationshipsFor(user);
     return !userBotRelationship.isEmpty()
@@ -2189,7 +2222,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
-  private boolean botHasRelationshipWithUser(EntityInterface bot, User user) {
+  private boolean botHasRelationshipWithUser(EntityInterface<?> bot, User user) {
     if (bot == null || user == null) {
       return false;
     }
@@ -2200,7 +2233,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   }
 
   private List<CollectionDAO.EntityRelationshipRecord> retrieveBotRelationshipsFor(
-      EntityInterface bot) {
+      EntityInterface<?> bot) {
     return repository.findToRecords(bot.getId(), Entity.BOT, Relationship.CONTAINS, Entity.USER);
   }
 

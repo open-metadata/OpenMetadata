@@ -13,15 +13,15 @@
 import { expect, Page } from '@playwright/test';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { MetricClass } from '../support/entity/MetricClass';
-import { uuid } from './common';
+import { selectOptionWithRetry, uuid } from './common';
 import { hardDeleteEntity } from './entity';
-import { clickUntilVisible } from './waitHelpers';
+import { clickUntilVisible, waitForAriaOverlayToSettle } from './waitHelpers';
 
 const openMetricDefinitionEditor = async (page: Page) => {
-  await page.getByTestId('metric-definition-edit').click();
-
   const dialog = page.getByTestId('metric-definition-edit-dialog');
-  await expect(dialog).toBeVisible();
+  // Same re-layout as the related-metrics trigger: the press can be dropped.
+  await clickUntilVisible(page.getByTestId('metric-definition-edit'), dialog);
+  await waitForAriaOverlayToSettle(page);
 
   return dialog;
 };
@@ -241,8 +241,12 @@ export const addMetric = async (page: Page) => {
 
     const trigger = field.getByRole('button');
 
-    await trigger.click();
-    await page.getByRole('option', { name: optionName }).click();
+    // The listbox popover closes when the option click scrolls the form, which
+    // detaches the option mid-click; this settles the trigger and reopens.
+    await selectOptionWithRetry(
+      trigger,
+      page.getByRole('option', { name: optionName })
+    );
     await expect(trigger).toContainText(optionName);
   };
 

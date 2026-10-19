@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Team } from '../../../../../../generated/entity/teams/team';
+import { render, screen } from '@testing-library/react';
+import { ReactElement } from 'react';
+import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import {
+  getAvailableTabs,
+  getChildTeamColumns,
+  getTabLabel,
   updateTeamsHierarchy,
   withTeamChildrenPlaceholder,
 } from './MembersTeamDetail.utils';
@@ -51,5 +56,67 @@ describe('updateTeamsHierarchy', () => {
     updateTeamsHierarchy(tree, 'missing', [team('x')]);
 
     expect(tree[0].children).toEqual([]);
+  });
+});
+
+describe('getAvailableTabs', () => {
+  it.each([
+    [TeamType.Organization],
+    [TeamType.Group],
+    [TeamType.Department],
+    [undefined],
+  ])('offers custom properties for team type %s', (teamType) => {
+    expect(getAvailableTabs(teamType)).toContain('custom-properties');
+  });
+
+  it('keeps the first tab stable so the default selection is unchanged', () => {
+    expect(getAvailableTabs(TeamType.Organization)[0]).toBe('teams');
+    expect(getAvailableTabs(TeamType.Group)[0]).toBe('users');
+  });
+});
+
+describe('getTabLabel', () => {
+  const t = (key: string) => key;
+
+  it('labels custom properties without a count', () => {
+    const label = getTabLabel('custom-properties', t, {} as Team, 0, 0);
+
+    expect(label).toBe('label.custom-property-plural');
+  });
+
+  it('still counts the native tabs', () => {
+    expect(getTabLabel('roles', t, { defaultRoles: [{}] } as Team, 0, 0)).toBe(
+      'label.role-plural (1)'
+    );
+  });
+});
+
+describe('getChildTeamColumns', () => {
+  const t = (key: string) => key;
+
+  const renderAssetCount = (
+    record: Team,
+    teamAssetCounts: Record<string, number>
+  ) => {
+    const column = getChildTeamColumns(t, jest.fn(), teamAssetCounts).find(
+      (col) => col.key === 'assets'
+    ) as {
+      render: (value: unknown, record: Team, index: number) => ReactElement;
+    };
+
+    // Antd hands render the dataIndex value first, then the row.
+    render(column.render(record.fullyQualifiedName, record, 0));
+
+    return screen.getByTestId(`team-asset-count-${record.name}`);
+  };
+
+  it('shows a sub-team asset count from the team asset counts', () => {
+    expect(
+      renderAssetCount(team('org.eng'), { 'org.eng': 7 })
+    ).toHaveTextContent('7');
+  });
+
+  it('shows zero for a sub-team missing from the team asset counts', () => {
+    expect(renderAssetCount(team('org.eng'), {})).toHaveTextContent('0');
   });
 });

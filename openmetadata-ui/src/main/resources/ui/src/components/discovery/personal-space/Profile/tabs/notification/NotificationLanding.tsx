@@ -22,6 +22,8 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
+import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
 import type {
   NotificationLandingCard,
   NotificationLandingProps,
@@ -46,15 +48,14 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
       view: { type: 'list' },
     };
 
-    // Downstream builds (e.g. Collate) contribute extra Notification sections;
-    // their cards come from the global-settings Notifications menu.
-    const contributions = getContributions<NotificationSectionContribution>(
-      EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
-    );
-
-    if (contributions.length === 0) {
-      return [alertsCard];
-    }
+    // Native sections, then those downstream builds (e.g. Collate) contribute;
+    // every card comes from the global-settings Notifications menu.
+    const contributions = [
+      ...NATIVE_NOTIFICATION_SECTIONS,
+      ...getContributions<NotificationSectionContribution>(
+        EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+      ),
+    ];
 
     return [
       alertsCard,
@@ -69,7 +70,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
     <div
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
-      {cards.map((card) => {
+      {cards.map((card, index) => {
         const Icon = card.icon;
 
         return (
@@ -79,6 +80,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => onNavigate(card.view)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -94,9 +96,11 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
-                  <Icon className="tw:size-6 tw:text-secondary" />
+                  <Icon className="tw:size-6" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
                   <Box align="center" direction="row" gap={2}>

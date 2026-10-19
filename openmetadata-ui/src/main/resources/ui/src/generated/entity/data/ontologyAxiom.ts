@@ -20,13 +20,11 @@ export interface OntologyAxiom {
     deleted?:           boolean;
     description:        string;
     displayName:        string;
-    entityStatus:       EntityStatus;
     /**
      * Class expressions participating in the axiom, ordered from left to right.
      */
     expressions:        OntologyExpression[];
     fullyQualifiedName: string;
-    glossary:           EntityReference;
     href?:              string;
     id:                 string;
     /**
@@ -36,11 +34,11 @@ export interface OntologyAxiom {
     incrementalChangeDescription?: ChangeDescription;
     literal?:                      Literal;
     name:                          string;
+    ontology:                      EntityReference;
     owners?:                       EntityReference[];
     propertyIri?:                  string;
     provenance:                    Provenance;
     provider?:                     ProviderType;
-    reviewers?:                    EntityReference[];
     subjectIri:                    string;
     targetIri?:                    string;
     updatedAt?:                    number;
@@ -118,21 +116,6 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
-}
-
-/**
- * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
- * property. Entity types without that property have no lifecycle. When a create request
- * omits the stage, the server assigns the entity type's initial stage.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**
