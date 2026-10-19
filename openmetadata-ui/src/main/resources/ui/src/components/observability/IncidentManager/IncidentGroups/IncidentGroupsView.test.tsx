@@ -172,6 +172,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../../utils/i18next/LocalUtilClassBase');
+
 jest.mock('../../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({

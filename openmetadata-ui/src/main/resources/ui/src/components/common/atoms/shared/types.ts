@@ -149,6 +149,8 @@ export interface ListingData<T> {
   actionHandlers: ActionHandlers<T>;
   filterOptions?: FilterOptions;
   aggregations?: Aggregations | null;
+  /** The listing's fixed scope (e.g. one parent's sub-domains), as an ES query JSON. */
+  baseFilter?: string;
   handleSearchChange: (query: string) => void;
   handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handleClearAll: () => void;

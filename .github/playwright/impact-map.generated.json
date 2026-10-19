@@ -8742,6 +8742,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/AddService/Steps/SelectServiceType.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts"
       ]
     },

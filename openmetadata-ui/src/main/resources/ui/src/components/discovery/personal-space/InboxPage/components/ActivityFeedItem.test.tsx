@@ -120,7 +120,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 jest.mock('components/ActivityFeed/Reactions/Reactions', () => ({

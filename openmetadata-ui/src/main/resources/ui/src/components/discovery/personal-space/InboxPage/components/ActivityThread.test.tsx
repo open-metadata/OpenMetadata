@@ -46,7 +46,9 @@ jest.mock('fast-json-patch', () => ({
   compare: () => [{ op: 'replace', path: '/message', value: 'edited' }],
 }));
 
-jest.mock('utils/ToastUtils', () => ({ showErrorToast: mockShowErrorToast }));
+jest.mock('utils/ToastUtils', () => ({
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
+}));
 
 jest.mock('utils/FeedUtilsPure', () => ({
   getFrontEndFormat: (m: string) => m,
