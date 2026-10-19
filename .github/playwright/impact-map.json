@@ -255,7 +255,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/AddIngestionPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/EditIngestionPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteIngestionPage/**"
+        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteIngestionPage/**",
+        "openmetadata-ui/src/main/resources/ui/public/jsons/connectionSchemas/**",
+        "openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DatabaseServicePureUtils.ts"
       ],
       "projects": ["Ingestion"],
       "specs": [
@@ -271,6 +274,7 @@
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/TestSuite*.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/HealthCheck.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"
