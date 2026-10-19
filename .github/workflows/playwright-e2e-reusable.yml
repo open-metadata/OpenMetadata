@@ -562,7 +562,11 @@ jobs:
           retention-days: 1
 
   plan-playwright:
-    needs: [build, detect-changes]
+    # Planning reads sources and detect-changes' selection, nothing from build,
+    # so it runs alongside build instead of after it. detect-changes carries
+    # build's `if:`, so this job still skips exactly when build does; shards
+    # still wait for build through playwright-ci's needs.
+    needs: [detect-changes]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
