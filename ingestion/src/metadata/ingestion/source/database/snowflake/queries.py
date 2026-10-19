@@ -43,7 +43,7 @@ from (
             ELSE TABLE_TYPE
         END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = :database
@@ -133,7 +133,7 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
@@ -159,7 +159,7 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
@@ -184,7 +184,7 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where  TABLE_CATALOG = :database
@@ -207,7 +207,7 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where  TABLE_CATALOG = :database
@@ -294,7 +294,7 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
@@ -320,7 +320,7 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
         ) as ROW_NUMBER
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'

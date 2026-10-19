@@ -15,6 +15,7 @@ from unittest.mock import Mock
 
 import pytest
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect
+from sqlalchemy import create_engine, text
 
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
@@ -116,6 +117,71 @@ def test_incremental_view_query_only_passes_actual_bind_parameters():
         "schema": "PUBLIC",
         "date": 123456789,
     }
+
+
+def _list_incremental_names(list_names, table_type, rows, **kwargs):
+    """Run the real incremental names query against an in-memory ACCOUNT_USAGE.tables
+    holding `rows` of (LAST_DDL epoch ms, DELETED) for one object named T."""
+    dialect = SnowflakeDialect()
+    dialect._current_database_schema = Mock(return_value=("ANALYTICS", "PUBLIC"))
+    with create_engine("sqlite://").connect() as connection:
+        # Shim Snowflake's DATE_PART(epoch_millisecond, LAST_DDL); LAST_DDL is stored as epoch ms.
+        connection.connection.create_function("DATE_PART", 2, lambda _unit, value: value)
+        connection.execute(
+            text(
+                "create table tables (TABLE_CATALOG, TABLE_SCHEMA, TABLE_NAME, TABLE_TYPE, IS_TRANSIENT,"
+                " IS_DYNAMIC, IS_ICEBERG, LAST_DDL, DELETED, epoch_millisecond)"
+            )
+        )
+        for last_ddl, deleted in rows:
+            connection.execute(
+                text(
+                    "insert into tables values ('ANALYTICS', 'PUBLIC', 'T', :table_type, 'NO', 'NO', 'NO',"
+                    " :last_ddl, :deleted, NULL)"
+                ),
+                {"table_type": table_type, "last_ddl": last_ddl, "deleted": deleted},
+            )
+        return list_names(
+            dialect,
+            connection,
+            schema="PUBLIC",
+            incremental=IncrementalConfig(enabled=True, start_timestamp=0),
+            account_usage="main",
+            include_views=True,
+            **kwargs,
+        )
+
+
+INCREMENTAL_NAME_LISTERS = pytest.mark.parametrize(
+    ("table_type", "list_names", "kwargs"),
+    [
+        ("BASE TABLE", get_table_names, {}),
+        ("VIEW", get_view_names, {}),
+        ("MATERIALIZED VIEW", get_view_names, {"materialized_views": True}),
+    ],
+    ids=["tables", "views", "materialized_views"],
+)
+
+
+@INCREMENTAL_NAME_LISTERS
+def test_incremental_names_keep_alive_row_of_replaced_object(table_type, list_names, kwargs):
+    """#28053: after CREATE OR REPLACE the dropped row's LAST_DDL (its drop time) is later
+    than the new row's create time; it must not win the dedup and mark T deleted."""
+    result = _list_incremental_names(list_names, table_type, [(1_000, None), (1_001, "2026-05-12 06:10:20")], **kwargs)
+
+    assert [table.deleted for table in result.tables] == [None]
+
+
+@INCREMENTAL_NAME_LISTERS
+def test_incremental_names_still_report_object_dropped_after_replace(table_type, list_names, kwargs):
+    result = _list_incremental_names(
+        list_names,
+        table_type,
+        [(1_001, "2026-05-12 06:10:20"), (2_000, "2026-05-12 07:00:00")],
+        **kwargs,
+    )
+
+    assert [table.deleted.hour for table in result.tables] == [7]
 
 
 @pytest.mark.parametrize(
