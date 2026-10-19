@@ -14,5 +14,9 @@
  * Capture one committed working revision as an immutable ontology release candidate.
  */
 export interface CaptureOntologyRelease {
-    expectedWorkingRevision: number;
+    /**
+     * Optional activation revision observed with the working diff.
+     */
+    expectedActivationRevision?: number;
+    expectedWorkingRevision:     number;
 }

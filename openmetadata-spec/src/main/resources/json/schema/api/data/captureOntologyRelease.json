@@ -8,6 +8,10 @@
   "properties": {
     "expectedWorkingRevision": {
       "$ref": "../../type/ontologyState.json#/properties/workingRevision"
+    },
+    "expectedActivationRevision": {
+      "description": "Optional activation revision observed with the working diff.",
+      "$ref": "../../type/ontologyState.json#/properties/activationRevision"
     }
   },
   "required": [
