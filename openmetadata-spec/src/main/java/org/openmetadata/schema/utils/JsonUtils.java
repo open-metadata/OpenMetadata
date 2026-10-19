@@ -51,6 +51,9 @@ import jakarta.validation.ValidatorFactory;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -65,6 +68,7 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -548,6 +552,61 @@ public final class JsonUtils {
   private static String rootReason(JsonMappingException e) {
     String message = e.getOriginalMessage();
     return message == null ? e.toString() : message;
+  }
+
+  /**
+   * Says why {@link #convertValue} rejected a document: the path of the offending field and the
+   * constraint its value broke. Jackson's own message quotes the rejected value, which may be a
+   * credential, so it is never used here. Empty when the failure is not a binding failure.
+   */
+  public static Optional<String> describeBindingFailure(Throwable failure) {
+    return findCause(failure, JsonMappingException.class).map(JsonUtils::bindingFailureMessage);
+  }
+
+  private static String bindingFailureMessage(JsonMappingException e) {
+    String message;
+    if (e instanceof UnrecognizedPropertyException) {
+      message = String.format("unknown field '%s'", mappingFieldPath(e));
+    } else {
+      message =
+          String.format(
+              "'%s' must be %s%s", mappingFieldPath(e), expectedValue(e), uriSyntaxReason(e));
+    }
+    return message;
+  }
+
+  private static String expectedValue(JsonMappingException e) {
+    Class<?> target = rejectedTargetType(e);
+    List<String> allowed = allowedValuesFor(e);
+    String expected;
+    if (!allowed.isEmpty()) {
+      expected = "one of: " + String.join(", ", allowed);
+    } else if (URI.class.equals(target) || URL.class.equals(target)) {
+      expected = "a valid URI";
+    } else {
+      expected = target == null ? "a valid value" : "a valid " + target.getSimpleName();
+    }
+    return expected;
+  }
+
+  /** Locates a URI parse failure by reason and index, without quoting the input. */
+  private static String uriSyntaxReason(JsonMappingException e) {
+    return findCause(e, URISyntaxException.class)
+        .map(
+            syntax ->
+                syntax.getIndex() < 0
+                    ? String.format(" (%s)", syntax.getReason())
+                    : String.format(" (%s at index %d)", syntax.getReason(), syntax.getIndex()))
+        .orElse("");
+  }
+
+  private static <T extends Throwable> Optional<T> findCause(Throwable failure, Class<T> type) {
+    Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+    Throwable current = failure;
+    while (current != null && visited.add(current) && !type.isInstance(current)) {
+      current = current.getCause();
+    }
+    return type.isInstance(current) ? Optional.of(type.cast(current)) : Optional.empty();
   }
 
   /**
