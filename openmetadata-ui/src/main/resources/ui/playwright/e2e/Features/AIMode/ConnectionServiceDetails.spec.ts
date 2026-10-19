@@ -19,9 +19,8 @@
  * switch, a soft-deleted service's children, the list after a restore and after a search is
  * cleared, only the top level of nesting assets, and drive directories. It also offers classic's
  * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets),
- * each counted in its label before it is opened, and the service's data products in metadata
- * details that open expanded. A service name too long for the header ends in an ellipsis, with
- * the full name on hover.
+ * each counted in its label before it is opened, and the service's data products in its right
+ * panel. A service name too long for the header ends in an ellipsis, with the full name on hover.
  *
  * Its header carries the current version, which opens the version history as Context Center
  * articles do, and, for a database service, Follow; the service's active announcement shows under

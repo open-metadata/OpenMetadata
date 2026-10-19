@@ -29,11 +29,10 @@
       background-color: transparent;
     }
 
-    [data-testid='description-container'] {
-      display: none;
-    }
-
-    .entity-resizable-right-panel-container {
+    // The tab renders its own description card and right panel beside this list.
+    [data-testid='description-container'],
+    .entity-resizable-right-panel-container,
+    .right-panel-splitter {
       display: none;
     }
 
