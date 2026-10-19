@@ -6332,6 +6332,60 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         "Version should not change when referredColumns order changes but content is the same");
   }
 
+  /**
+   * Columns and referred columns of a multi-column foreign key are paired by position. An update
+   * must store them as sent, not sort each list on its own and cross the pairs.
+   */
+  @Test
+  void put_multiColumnForeignKeyKeepsColumnPairing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable parentRequest = new CreateTable();
+    parentRequest.setName(ns.prefix("fk_pair_parent"));
+    parentRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    parentRequest.setColumns(
+        List.of(
+            new Column().withName("country").withDataType(ColumnDataType.CHAR).withDataLength(2),
+            new Column().withName("type").withDataType(ColumnDataType.CHAR).withDataLength(3)));
+    Table parent = client.tables().create(parentRequest);
+    String countryFqn = parent.getColumns().get(0).getFullyQualifiedName();
+    String typeFqn = parent.getColumns().get(1).getFullyQualifiedName();
+
+    // alt_type -> type and country -> country: the two sides do not sort in the same order
+    TableConstraint foreignKey =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(List.of("alt_type", "country"))
+            .withReferredColumns(List.of(typeFqn, countryFqn));
+
+    CreateTable childRequest = new CreateTable();
+    childRequest.setName(ns.prefix("fk_pair_child"));
+    childRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    childRequest.setColumns(
+        List.of(
+            new Column().withName("alt_type").withDataType(ColumnDataType.CHAR).withDataLength(3),
+            new Column().withName("country").withDataType(ColumnDataType.CHAR).withDataLength(2)));
+    childRequest.setTableConstraints(List.of(foreignKey));
+    Table child = client.tables().create(childRequest);
+    assertEquals(
+        List.of(typeFqn, countryFqn), child.getTableConstraints().get(0).getReferredColumns());
+
+    // Re-ingestion sends the same table again with a PUT
+    childRequest.setDescription("re-ingested");
+    client.tables().createOrUpdate(childRequest);
+
+    TableConstraint stored =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .get(0);
+    assertEquals(List.of("alt_type", "country"), stored.getColumns());
+    assertEquals(List.of(typeFqn, countryFqn), stored.getReferredColumns());
+  }
+
   // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================

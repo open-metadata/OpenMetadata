@@ -2401,21 +2401,13 @@ public class TableRepository extends EntityRepository<Table> {
         }
         checkDuplicateTableConstraints(origTable, newConstraints);
       }
+      // Columns and referred columns are paired by position, so they are stored as sent: the
+      // matcher compares them as pairs, in any order.
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
