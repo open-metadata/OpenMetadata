@@ -13784,28 +13784,8 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/Glossary/GlossaryTermUtils.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/BulkEditEntity.spec.ts",
-        "playwright/e2e/Features/ClassificationTagUsage.spec.ts",
-        "playwright/e2e/Features/DataProductDomainMigration.spec.ts",
-        "playwright/e2e/Features/DataProductRename.spec.ts",
-        "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
-        "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
-        "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
-        "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
-        "playwright/e2e/Features/MetricAssets.spec.ts",
-        "playwright/e2e/Pages/DataContractInheritance.spec.ts",
-        "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
-        "playwright/e2e/Pages/DomainAdvanced.spec.ts",
-        "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
-        "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/InputOutputPorts.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts",
-        "playwright/e2e/Pages/Teams.spec.ts"
+        "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
     {
