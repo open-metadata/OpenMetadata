@@ -34,6 +34,6 @@ so the final commit or rollback evicts them too.
 
 Eviction is always safe: the next read loads the committed row. A failed write now costs the same
 Redis round trips as a committed one, and failures after a write are rare. Code no longer needs to
-evict on its own failure paths, so the ContextMemory decision's own eviction is redundant. Readers
+evict on its own failure paths, so the ContextMemory decision's own eviction was removed. Readers
 on other threads can still see the uncommitted copy between the in-transaction read and the
 rollback; closing that window would mean not caching reads of keys the open transaction wrote.
