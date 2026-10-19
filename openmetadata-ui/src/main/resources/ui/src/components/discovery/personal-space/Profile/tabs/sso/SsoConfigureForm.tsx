@@ -194,7 +194,7 @@ const SsoConfigureFooter = ({
 
   return (
     <Box
-      className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
+      className="tw:sticky tw:bottom-0 tw:z-10 tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
       data-testid="sso-configure-footer"
       direction="row"
       gap={3}
@@ -299,7 +299,8 @@ const SsoConfigureForm = ({
     securityConfig,
     selectedProvider,
     onChangeProvider,
-    scrollContainer: `[data-testid="${FORM_BODY_TEST_ID}"]`,
+    // The whole SSO panel scrolls, so the banner and tabs move with the form.
+    scrollContainer: '[data-testid="sso-panel"]',
     errorSelector: `[data-testid="${FORM_BODY_TEST_ID}"] [aria-invalid="true"]`,
   });
 
@@ -377,12 +378,9 @@ const SsoConfigureForm = ({
   }
 
   return (
-    <Box
-      className="tw:min-h-0 tw:flex-1"
-      data-testid="sso-configure-form"
-      direction="col">
+    <Box className="tw:flex-1" data-testid="sso-configure-form" direction="col">
       <div
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-6"
+        className="tw:flex-1 tw:px-8 tw:pb-6"
         data-testid={FORM_BODY_TEST_ID}>
         <Box className="tw:w-full tw:max-w-[50%]" direction="col" gap={5}>
           {currentProvider === AuthProvider.Saml &&
