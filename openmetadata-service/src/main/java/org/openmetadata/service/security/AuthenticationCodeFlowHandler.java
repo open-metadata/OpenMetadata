@@ -613,6 +613,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
 
+      // The identity below must come from the ID token the back-channel exchange returns, and that
+      // exchange only runs when the callback carries an authorization code. Reject a callback that
+      // brings only a front-channel token: it never passed through the provider's token endpoint.
+      requireAuthorizationCode(pendingSession, credentials);
+
       // Validations
       validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
 
@@ -912,6 +917,32 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     authParams.put(OidcConfiguration.CLIENT_ID, configuration.getClientId());
 
     return new HashMap<>(authParams);
+  }
+
+  private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
+    if (expectsAuthorizationCode() && credentials.getCode() == null) {
+      LOG.warn(
+          "Rejecting OIDC callback without an authorization code for session {}",
+          SessionService.truncateId(session.getId()));
+      throw new IllegalArgumentException("Authorization code is required");
+    }
+  }
+
+  private boolean expectsAuthorizationCode() {
+    // The default and documented confidential mode is the authorization-code flow. Per OIDC, any
+    // response_type that includes "code" (plain or hybrid) returns an authorization code, so the
+    // callback must carry one. A response_type configured for pure implicit delivery is not a code
+    // flow and keeps its existing handling.
+    String responseType = client.getConfiguration().getResponseType();
+    if (nullOrEmpty(responseType)) {
+      return true;
+    }
+    for (String part : responseType.trim().split("\\s+")) {
+      if ("code".equalsIgnoreCase(part)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private void validateAndSendTokenRequest(

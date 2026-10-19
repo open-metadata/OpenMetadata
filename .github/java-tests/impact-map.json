@@ -685,7 +685,8 @@
         "openmetadata-spec/src/main/resources/json/schema/api/validateGlossaryTagsRequest.json",
         "openmetadata-spec/src/main/resources/json/schema/api/data/glossary*",
         "openmetadata-spec/src/main/resources/json/schema/api/data/loadGlossary.json",
-        "openmetadata-spec/src/main/resources/json/schema/api/data/updateTermRelation.json"
+        "openmetadata-spec/src/main/resources/json/schema/api/data/updateTermRelation.json",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Glossary*IT.java"
       ],
       "tests": [
         "*Glossary*IT",
@@ -703,9 +704,11 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/ontology/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Ontology*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/RelationshipType*",
+        "openmetadata-spec/src/main/resources/json/schema/entity/data/ontology*.json",
         "openmetadata-service/src/main/resources/json/data/ontology/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/*Ontology*",
-        "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*"
+        "openmetadata-spec/src/main/resources/json/schema/api/data/ontology*",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Ontology*IT.java"
       ],
       "tests": [
         "*Ontology*IT",
@@ -724,7 +727,8 @@
         "openmetadata-service/src/main/resources/rdf/**",
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**",
         "openmetadata-spec/src/main/resources/json/schema/api/data/rdf*",
-        "openmetadata-spec/src/main/resources/rdf/**"
+        "openmetadata-spec/src/main/resources/rdf/**",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/Rdf*IT.java"
       ],
       "tests": [
         "*Rdf*IT",

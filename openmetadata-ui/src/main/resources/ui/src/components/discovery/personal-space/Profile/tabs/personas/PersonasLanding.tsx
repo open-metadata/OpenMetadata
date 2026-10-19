@@ -33,6 +33,7 @@ import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
+import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -62,6 +63,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     new Map()
   );
   const fetchRequestIdRef = useRef(0);
+  const navigationRef = useRef(0);
 
   const showPagination = useMemo(
     () => Boolean(paging.before || paging.after) || paging.total > pageSize,
@@ -112,10 +114,43 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     }
   };
 
+  // A page never visited has no cursor yet: walk the pages in between, keeping
+  // each one's cursors, then open the target with the last `after`
+  // (ADR:2026-10-16-cursor-paged-lists-jump-by-walking).
+  const jumpForward = async (targetPage: number, navigation: number) => {
+    // Any other load or page change supersedes this walk.
+    const startedAt = fetchRequestIdRef.current;
+    const isStale = () =>
+      startedAt !== fetchRequestIdRef.current ||
+      navigation !== navigationRef.current;
+    let after: string | undefined;
+    try {
+      after = await walkToAfterCursor({
+        target: targetPage,
+        pagingFor: (pageNumber) => cursorCache.get(pageNumber),
+        remember: cacheCursor,
+        fetchPaging: async (cursor) =>
+          (
+            await getAllPersonas({ limit: pageSize, after: cursor })
+          ).paging,
+        isStale,
+      });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+
+      return;
+    }
+    if (after && !isStale()) {
+      setHashPage(targetPage, 'after', after, pageSize);
+      void fetchPersonas({ after }, targetPage);
+    }
+  };
+
   const handlePageNavigation = (newPage: number) => {
     if (newPage === currentPage) {
       return;
     }
+    const navigation = ++navigationRef.current;
 
     if (newPage === 1) {
       setHashPage(1, undefined, undefined, pageSize);
@@ -125,10 +160,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     }
 
     const prevPaging = cursorCache.get(newPage - 1);
-    const cursor =
-      newPage > currentPage
-        ? prevPaging?.after
-        : cursorCache.get(newPage)?.before;
+    // Page N opens from page N-1's `after`, or from page N+1's `before`.
+    const backCursor =
+      cursorCache.get(newPage + 1)?.before ??
+      (newPage === currentPage - 1 ? paging.before : undefined);
+    const cursor = newPage > currentPage ? prevPaging?.after : backCursor;
 
     if (newPage > currentPage && prevPaging?.after) {
       setHashPage(newPage, 'after', prevPaging.after, pageSize);
@@ -136,6 +172,8 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     } else if (cursor) {
       setHashPage(newPage, 'before', cursor, pageSize);
       void fetchPersonas({ before: cursor }, newPage);
+    } else if (newPage > currentPage) {
+      void jumpForward(newPage, navigation);
     }
   };
 
@@ -178,94 +216,105 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
 
   return (
     <Box
-      className="tw:h-full tw:px-8 tw:pb-8"
+      className="tw:min-h-0 tw:flex-1"
       data-testid="personas-landing"
-      direction="col"
-      gap={5}>
-      <Box className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
-        {isLoading
-          ? Array.from({ length: 3 }, (_, i) => (
-              <Skeleton height={96} key={i} variant="rounded" />
-            ))
-          : personas.map((persona) => (
-              <Card
-                isClickable
-                data-testid={`persona-card-${persona.name}`}
-                key={persona.id}
-                role="button"
-                size="md"
-                tabIndex={0}
-                variant="muted"
-                onClick={() =>
-                  onNavigate({
-                    type: 'detail',
-                    fqn: persona.fullyQualifiedName ?? persona.name,
-                    name: getEntityName(persona),
-                  })
-                }
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
+      direction="col">
+      <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pt-1 tw:pb-8">
+        <Box className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
+          {isLoading
+            ? Array.from({ length: 3 }, (_, i) => (
+                <Skeleton height={96} key={i} variant="rounded" />
+              ))
+            : personas.map((persona) => (
+                <Card
+                  isClickable
+                  data-testid={`persona-card-${persona.name}`}
+                  key={persona.id}
+                  role="button"
+                  size="md"
+                  tabIndex={0}
+                  variant="muted"
+                  onClick={() =>
                     onNavigate({
                       type: 'detail',
                       fqn: persona.fullyQualifiedName ?? persona.name,
                       name: getEntityName(persona),
-                    });
+                    })
                   }
-                }}>
-                <Card.Content>
-                  <Box className="tw:min-w-0" direction="col" gap={2}>
-                    <Box
-                      align="center"
-                      direction="row"
-                      gap={2}
-                      justify="between">
-                      <Typography
-                        className="tw:text-primary tw:truncate"
-                        size="text-sm"
-                        tooltip={getEntityName(persona)}
-                        weight="semibold">
-                        {getEntityName(persona)}
-                      </Typography>
-                      {persona.default && (
-                        <Badge
-                          color="blue"
-                          data-testid="default-persona-tag"
-                          size="sm"
-                          type="color">
-                          {t('label.default')}
-                        </Badge>
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onNavigate({
+                        type: 'detail',
+                        fqn: persona.fullyQualifiedName ?? persona.name,
+                        name: getEntityName(persona),
+                      });
+                    }
+                  }}>
+                  <Card.Content>
+                    <Box className="tw:min-w-0" direction="col" gap={2}>
+                      <Box
+                        align="center"
+                        direction="row"
+                        gap={2}
+                        justify="between">
+                        <Typography
+                          className="tw:text-primary tw:truncate"
+                          size="text-sm"
+                          tooltip={getEntityName(persona)}
+                          weight="semibold">
+                          {getEntityName(persona)}
+                        </Typography>
+                        {persona.default && (
+                          <Badge
+                            color="blue"
+                            data-testid="default-persona-tag"
+                            size="sm"
+                            type="color">
+                            {t('label.default')}
+                          </Badge>
+                        )}
+                      </Box>
+                      {persona.description ? (
+                        <RichTextEditorPreviewerV1
+                          className="tw:text-tertiary tw:line-clamp-2"
+                          markdown={persona.description}
+                          maxLength={120}
+                        />
+                      ) : (
+                        <Typography
+                          className="tw:text-tertiary"
+                          size="text-sm"
+                          weight="regular">
+                          {t('label.no-description')}
+                        </Typography>
                       )}
                     </Box>
-                    {persona.description ? (
-                      <RichTextEditorPreviewerV1
-                        className="tw:text-tertiary tw:line-clamp-2"
-                        markdown={persona.description}
-                        maxLength={120}
-                      />
-                    ) : (
-                      <Typography
-                        className="tw:text-tertiary"
-                        size="text-sm"
-                        weight="regular">
-                        {t('label.no-description')}
-                      </Typography>
-                    )}
-                  </Box>
-                </Card.Content>
-              </Card>
-            ))}
-      </Box>
+                  </Card.Content>
+                </Card>
+              ))}
+        </Box>
+      </div>
 
+      {/* Pinned under the scrolling cards, like the other modal footers. */}
       {showPagination && (
-        <PaginationCardWithControls
-          page={currentPage}
-          pageSize={pageSize}
-          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
-          total={totalPages}
-          onPageChange={handlePageNavigation}
-          onPageSizeChange={handlePageSizeChange}
-        />
+        <Box
+          className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
+          data-testid="personas-pagination">
+          <PaginationCardWithControls
+            className="tw:rounded-none tw:border-0 tw:bg-transparent tw:p-0 tw:shadow-none"
+            page={currentPage}
+            pageSize={pageSize}
+            pageSizeOptions={[
+              PAGE_SIZE_BASE,
+              PAGE_SIZE_MEDIUM,
+              PAGE_SIZE_LARGE,
+            ]}
+            total={totalPages}
+            onPageChange={handlePageNavigation}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        </Box>
       )}
     </Box>
   );

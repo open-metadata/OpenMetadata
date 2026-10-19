@@ -2002,6 +2002,73 @@ class AuthenticationCodeFlowHandlerTest {
     return user.getRoles().stream().map(EntityReference::getName).toList();
   }
 
+  @Test
+  void handleCallback_codeFlowFrontChannelTokenWithoutCode_rejectedWithoutActivatingSession()
+      throws Exception {
+    UserSession pendingSession =
+        UserSession.builder()
+            .id("pending-session")
+            .state("state-abc")
+            .redirectUri(TEST_SERVER_URL + "/auth/callback")
+            .build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    when(oidcConfiguration.isWithState()).thenReturn(false);
+    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
+    when(metadata.supportsAuthorizationResponseIssuerParam()).thenReturn(false);
+    IOidcOpMetadataResolver metadataResolver = mock(IOidcOpMetadataResolver.class);
+    when(metadataResolver.load()).thenReturn(metadata);
+    when(oidcConfiguration.getOpMetadataResolver()).thenReturn(metadataResolver);
+    AuthenticationConfiguration authConfig = mock(AuthenticationConfiguration.class);
+    when(authConfig.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+
+    // A syntactically valid but unsigned, claim-less token stands in for a front-channel token that
+    // never passed through the provider's token endpoint. The callback carries it with no code.
+    String frontChannelToken = new PlainJWT(new JWTClaimsSet.Builder().build()).serialize();
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "state", new String[] {"state-abc"},
+                "id_token", new String[] {frontChannelToken}));
+
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    setField(handler, "authenticationConfiguration", authConfig);
+
+    handler.handleCallback(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    assertTrue(captureOutputStream.getCapturedOutput().contains("Authorization code is required"));
+    verify(sessionService, never())
+        .activatePendingSession(any(), any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void expectsAuthorizationCode_trueForCodeAndHybridAndDefault_falseForImplicit() throws Exception {
+    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    Method expectsCode =
+        AuthenticationCodeFlowHandler.class.getDeclaredMethod("expectsAuthorizationCode");
+    expectsCode.setAccessible(true);
+
+    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
+
+    when(oidcConfiguration.getResponseType()).thenReturn("code id_token");
+    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
+
+    when(oidcConfiguration.getResponseType()).thenReturn(null);
+    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
+
+    when(oidcConfiguration.getResponseType()).thenReturn("id_token");
+    assertEquals(Boolean.FALSE, expectsCode.invoke(handler));
+  }
+
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(
       SessionService sessionService, OidcClient client) throws Exception {
     sun.misc.Unsafe unsafe = getUnsafe();
