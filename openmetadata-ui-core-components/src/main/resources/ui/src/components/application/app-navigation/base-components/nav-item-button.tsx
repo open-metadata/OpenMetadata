@@ -2,22 +2,25 @@ import { shouldClientNavigate, useRouter } from '@react-aria/utils';
 import type { FC, MouseEvent, MouseEventHandler } from 'react';
 import { Button as AriaButton, Pressable } from 'react-aria-components';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
-import { cx } from '@/utils/cx';
+import { cx, sortCx } from '@/utils/cx';
 
 // `solid` mirrors NavItemBase's solid variant so a collapsed rail matches the expanded sidebar:
 // rest items sit on the sidebar surface (no white tile) with the same mid-gray icon.
-const variants = {
+const variants = sortCx({
   default: {
     root: 'tw:bg-primary tw:dark:bg-transparent tw:text-fg-quaternary tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover',
+    // An open flyout keeps its trigger in the hover state after the pointer moves onto the menu.
+    open: 'tw:bg-primary_hover tw:text-fg-quaternary_hover',
     current:
       'tw:bg-brand-primary_alt tw:text-fg-brand-secondary_alt tw:hover:bg-brand-primary_alt tw:hover:text-fg-brand-secondary_alt',
   },
   solid: {
     root: 'tw:bg-transparent tw:text-fg-tertiary tw:hover:bg-brand-primary_alt tw:hover:text-fg-brand-secondary_alt',
+    open: 'tw:bg-brand-primary_alt tw:text-fg-brand-secondary_alt',
     current:
       'tw:bg-brand-solid tw:text-fg-white tw:hover:bg-brand-solid tw:hover:text-fg-white',
   },
-};
+});
 
 const styles = {
   md: {
@@ -57,6 +60,7 @@ interface NavItemButtonProps {
 
 export const NavItemButton = ({
   current: current,
+  open,
   label,
   href,
   icon: Icon,
@@ -87,6 +91,7 @@ export const NavItemButton = ({
   const buttonClassName = cx(
     'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     variants[variant].root,
+    open && variants[variant].open,
     // Same current-page treatment as the expanded NavItemBase, so the
     // collapsed rail still shows where the user is.
     current && variants[variant].current,

@@ -188,6 +188,7 @@ const LeftSidebar = () => {
               )}
               icon={item.icon}
               label={t(item.title)}
+              open={collapsedMenuKey === item.key}
               size="lg"
               variant="solid"
               // Hover has already opened the group before a pointer press reaches its trigger.

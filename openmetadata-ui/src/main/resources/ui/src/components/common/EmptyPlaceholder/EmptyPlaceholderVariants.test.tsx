@@ -242,6 +242,7 @@ describe('CreatePlaceholder', () => {
   it('should not render create controls in the denied state', () => {
     render(
       <CreatePlaceholder
+        description="message.adding-a-role"
         footer={<button type="button">label.add-role</button>}
         permission={false}
         onCreate={jest.fn()}
@@ -252,5 +253,9 @@ describe('CreatePlaceholder', () => {
       screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByText('message.adding-a-role')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-access-placeholder')
+    ).toBeInTheDocument();
   });
 });

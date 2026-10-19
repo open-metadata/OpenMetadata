@@ -47,14 +47,12 @@ const CreatePlaceholder = ({
   if (permission === false) {
     return (
       <PermissionPlaceholder
-        description={description}
-        icon={icon}
         permissionValue={permissionValue}
-        title={title}
         {...props}
-        // The denied state keeps the permission test id whatever the caller passed for the
-        // create state, so "no access" is distinguishable from "nothing here yet". `actions`
-        // and `footer` are destructured out above so create controls never reach it.
+        // The denied state shows only the no-access message: the caller's create icon, title,
+        // description, `actions` and `footer` describe the create state and never reach it. It
+        // keeps the permission test id whatever the caller passed, so "no access" stays
+        // distinguishable from "nothing here yet".
         data-testid="permission-error-placeholder"
       />
     );
