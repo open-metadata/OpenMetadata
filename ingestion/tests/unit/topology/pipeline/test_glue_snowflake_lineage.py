@@ -262,6 +262,52 @@ df = spark.read.format("snowflake").options(**sf_options).option("dbtable", '"OR
 
         assert result.snowflake_sources == [SnowflakeRef(table="ORDERS.V2", database="SALES_DB", schema="RAW")]
 
+    def test_later_setting_overrides_an_earlier_one(self):
+        """Spark keeps the last value: the shared dict passed after .option() wins."""
+        script = """
+target_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED", "dbtable": "ORDERS_DAILY"}
+df.write.format("snowflake").option("sfSchema", "RAW").options(**target_options).save()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")]
+
+    def test_repeated_dbtable_keeps_the_last(self):
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").option("dbtable", "CUSTOMERS").load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="CUSTOMERS", database="SALES_DB", schema="RAW")]
+
+    def test_option_keys_are_case_insensitive(self):
+        script = """
+df = spark.read.format("snowflake").option("sfdatabase", "SALES_DB").option("SFSCHEMA", "RAW").option("DBTABLE", "ORDERS").load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+
+    def test_backslash_continued_chain(self):
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}
+orders = spark.read \\
+    .format("snowflake") \\
+    .options(**sf_options) \\
+    .option("dbtable", "ORDERS") \\
+    .load()
+orders.write \\
+    .format("snowflake") \\
+    .options(**sf_options) \\
+    .option("dbtable", "ORDERS_DAILY") \\
+    .save()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="RAW")]
+
 
 class TestSnowflakeStudioNode:
     def test_visual_nodes_are_mapped(self):
@@ -430,3 +476,49 @@ class TestResolveSnowflakeEntities:
         assert len(lineage_details["targets"]) == 1
         searched = {call.kwargs["fqn"] for call in glue_source.metadata.get_entity_reference.call_args_list}
         assert searched == {"svc.SALES_DB.RAW.ORDERS", "svc.SALES_DB.CURATED.ORDERS_DAILY"}
+
+
+VISUAL_NODES = {
+    "node-src": {
+        "SnowflakeSource": {
+            "Name": "Snowflake orders",
+            "Data": {"SourceType": "table", "Database": "SALES_DB", "Schema": "RAW", "Table": "ORDERS"},
+        }
+    },
+    "node-tgt": {
+        "SnowflakeTarget": {
+            "Name": "Snowflake orders daily",
+            "Inputs": ["node-src"],
+            "Data": {"Database": "SALES_DB", "Schema": "CURATED", "Table": "ORDERS_DAILY"},
+        }
+    },
+}
+
+
+class TestVisualSnowflakeLineage:
+    def test_nodes_resolve_through_the_snowflake_resolver(self, glue_source):
+        glue_source.metadata.get_entity_reference.return_value = ORDERS_REF
+        lineage_details = {"sources": [], "targets": []}
+
+        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+            build.side_effect = lambda **kwargs: [
+                f"svc.{kwargs['database_name']}.{kwargs['schema_name']}.{kwargs['table_name']}"
+            ]
+            glue_source._extract_visual_etl_lineage(VISUAL_NODES, lineage_details)
+
+        assert lineage_details == {"sources": [ORDERS_REF], "targets": [ORDERS_REF]}
+        assert all(call.kwargs["fetch_multiple_entities"] for call in build.call_args_list)
+
+    def test_same_table_in_two_services_is_not_linked(self, glue_source):
+        """The visual path must not link whichever configured service is listed first."""
+        glue_source.get_db_service_names = MagicMock(return_value=["snowflake_prod", "snowflake_dr"])
+        glue_source.metadata.get_entity_reference.return_value = ORDERS_REF
+        lineage_details = {"sources": [], "targets": []}
+
+        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+            build.side_effect = lambda **kwargs: [
+                f"{kwargs['service_name']}.{kwargs['database_name']}.{kwargs['schema_name']}.{kwargs['table_name']}"
+            ]
+            glue_source._extract_visual_etl_lineage(VISUAL_NODES, lineage_details)
+
+        assert lineage_details == {"sources": [], "targets": []}

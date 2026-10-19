@@ -62,6 +62,7 @@ from metadata.ingestion.source.pipeline.gluepipeline.models import (
     SnowflakeNode,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
+    SnowflakeRef,
     parse_glue_script,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
@@ -218,26 +219,8 @@ class GluepipelineSource(PipelineServiceSource):
                     table_model = CatalogSource.model_validate(entity)
                 elif key in STORAGE_MODEL_MAP:
                     storage_model = STORAGE_MODEL_MAP[key].model_validate(entity)
-                # a Snowflake source of type "query" carries no table: nothing to link
-                if table_model and table_model.table_name:
-                    for db_service_name in self.get_db_service_names() or ["*"]:
-                        table_entity = self.metadata.get_entity_reference(
-                            entity=Table,
-                            fqn=fqn.build(
-                                metadata=self.metadata,
-                                entity_type=Table,
-                                table_name=table_model.table_name,
-                                database_name=table_model.database_name,
-                                schema_name=table_model.schema_name,
-                                service_name=db_service_name,
-                            ),
-                        )
-                        if table_entity:
-                            if key.endswith("Source"):
-                                lineage_details["sources"].append(table_entity)
-                            else:
-                                lineage_details["targets"].append(table_entity)
-                            break
+                if table_model:
+                    self._add_visual_table_lineage(key, table_model, lineage_details)
                 if storage_model:
                     for path in storage_model.Paths or [storage_model.Path]:
                         container = self.metadata.es_search_container_by_path(full_path=path)
@@ -254,6 +237,39 @@ class GluepipelineSource(PipelineServiceSource):
                                 else:
                                     lineage_details["targets"].append(storage_entity)
                                 break
+
+    def _add_visual_table_lineage(self, key: str, table_model, lineage_details: dict):
+        # a Snowflake source of type "query" carries no table: nothing to link
+        if not table_model.table_name:
+            return
+        direction = "sources" if key.endswith("Source") else "targets"
+        if isinstance(table_model, SnowflakeNode):
+            # same resolver as script refs: every configured service, unique match only
+            table_entity = self._resolve_snowflake_ref(
+                SnowflakeRef(
+                    table=table_model.table_name,
+                    database=table_model.database_name,
+                    schema=table_model.schema_name,
+                )
+            )
+            if table_entity:
+                lineage_details[direction].append(table_entity)
+            return
+        for db_service_name in self.get_db_service_names() or ["*"]:
+            table_entity = self.metadata.get_entity_reference(
+                entity=Table,
+                fqn=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    table_name=table_model.table_name,
+                    database_name=table_model.database_name,
+                    schema_name=table_model.schema_name,
+                    service_name=db_service_name,
+                ),
+            )
+            if table_entity:
+                lineage_details[direction].append(table_entity)
+                break
 
     def _extract_script_lineage(self, script_location: str, lineage_details: dict):
         script_content = self._download_s3_script(script_location)
@@ -385,21 +401,23 @@ class GluepipelineSource(PipelineServiceSource):
         another schema. Every attempt requires an unambiguous match.
         """
         for ref in refs:
-            table_entity = None
-            for database_name, schema_name in self._snowflake_lookup_attempts(ref):
-                table_entity = self._search_unique_table(ref.table, database_name, schema_name)
-                if table_entity:
-                    break
+            table_entity = self._resolve_snowflake_ref(ref)
             if table_entity:
                 lineage_details[direction].append(table_entity)
-            else:
-                logger.warning(
-                    "Could not find table entity for Snowflake reference %s.%s.%s. "
-                    "Ensure the Snowflake service has been ingested.",
-                    ref.database,
-                    ref.schema,
-                    ref.table,
-                )
+
+    def _resolve_snowflake_ref(self, ref: SnowflakeRef) -> EntityReference | None:
+        for database_name, schema_name in self._snowflake_lookup_attempts(ref):
+            table_entity = self._search_unique_table(ref.table, database_name, schema_name)
+            if table_entity:
+                return table_entity
+        logger.warning(
+            "Could not find table entity for Snowflake reference %s.%s.%s. "
+            "Ensure the Snowflake service has been ingested.",
+            ref.database,
+            ref.schema,
+            ref.table,
+        )
+        return None
 
     @staticmethod
     def _snowflake_lookup_attempts(ref) -> list:
