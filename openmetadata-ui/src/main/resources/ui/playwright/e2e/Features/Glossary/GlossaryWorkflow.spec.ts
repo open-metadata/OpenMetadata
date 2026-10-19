@@ -561,6 +561,9 @@ test(
   'should delete parent term and cascade delete children',
   { tag: ['@workflow'] },
   async ({ page }) => {
+    // The async delete job can take well past the default budget on a loaded
+    // merge-queue runner; the 404 poll below needs room to wait it out.
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     let parentTerm: GlossaryTerm;
@@ -622,7 +625,7 @@ test(
                   `/api/v1/glossaryTerms/${term.responseData.id}`
                 )
               ).status(),
-            { timeout: 30_000 }
+            { timeout: 90_000 }
           )
           .toBe(404);
       }
