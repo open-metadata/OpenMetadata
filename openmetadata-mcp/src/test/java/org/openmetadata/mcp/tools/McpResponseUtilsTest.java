@@ -2,17 +2,35 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.tests.TestSuiteConnection;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 class McpResponseUtilsTest {
@@ -51,6 +69,58 @@ class McpResponseUtilsTest {
     assertTrue(
         JsonUtils.pojoToJson(workflow).contains(GetEntityToolTest.GIT_TOKEN),
         "masking must not mutate the entity the repository returned");
+  }
+
+  @Test
+  void readsMaskServiceConnectionPasswords() {
+    String storedPassword = "fernet:stored-ciphertext";
+    DatabaseService service =
+        new DatabaseService()
+            .withName("mysqlService")
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
+            .withConnection(
+                new DatabaseConnection()
+                    .withConfig(
+                        new MysqlConnection()
+                            .withHostPort("localhost:3306")
+                            .withUsername("test")
+                            .withAuthType(new basicAuth().withPassword(storedPassword))));
+    DatabaseServiceRepository repository = mock(DatabaseServiceRepository.class);
+    when(repository.getServiceType()).thenReturn(ServiceType.DATABASE);
+    EntityMaskerFactory.createEntityMasker();
+    EntityInterface<?> masked;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityTypeFromObject(service))
+          .thenReturn(Entity.DATABASE_SERVICE);
+      entities
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(repository);
+      masked = McpResponseUtils.maskSecrets(service);
+    }
+
+    var config = JsonUtils.valueToTree(masked).at("/connection/config");
+    assertEquals(PasswordEntityMasker.PASSWORD_MASK, config.at("/authType/password").asText());
+    assertEquals("localhost:3306", config.at("/hostPort").asText());
+    assertTrue(
+        JsonUtils.pojoToJson(service).contains(storedPassword),
+        "masking must not mutate the entity the repository returned");
+  }
+
+  @Test
+  void readsPassTestSuitePlaceholderConnectionThrough() {
+    TestSuite suite = new TestSuite().withName("suite").withConnection(new TestSuiteConnection());
+    TestSuiteRepository repository = mock(TestSuiteRepository.class);
+    EntityInterface<?> masked;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(() -> Entity.getEntityTypeFromObject(suite)).thenReturn(Entity.TEST_SUITE);
+      entities.when(() -> Entity.getEntityRepository(Entity.TEST_SUITE)).thenReturn(repository);
+      masked = McpResponseUtils.maskSecrets(suite);
+    }
+
+    assertSame(suite, masked);
   }
 
   @Test

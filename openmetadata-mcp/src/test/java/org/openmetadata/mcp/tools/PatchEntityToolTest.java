@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DatabaseServiceRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -324,6 +325,35 @@ class PatchEntityToolTest {
           .hasMessageContaining("Nothing was changed");
     }
     verifyNoInteractions(authorizer);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "[{\"op\":\"replace\",\"path\":\"/connection/config/authType/password\",\"value\":\"*\"}]",
+        "[{\"op\":\"replace\",\"path\":\"/connection\",\"value\":{}}]",
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{}}]",
+        "[{\"op\":\"copy\",\"from\":\"/connection/config/authType/password\",\"path\":\"/description\"}]",
+        "[{\"op\":\"test\",\"path\":\"/connection/config/authType/password\",\"value\":\"guess\"}]"
+      })
+  void execute_rejectsPatchesThatReachAServiceConnection(String patch) {
+    DatabaseServiceRepository serviceRepository = mock(DatabaseServiceRepository.class);
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", patch);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(serviceRepository);
+
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("'/connection'")
+          .hasMessageContaining("Nothing was changed");
+    }
+    verifyNoInteractions(authorizer, serviceRepository);
   }
 
   @ParameterizedTest
