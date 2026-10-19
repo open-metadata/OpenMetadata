@@ -55,6 +55,10 @@ class OpenMetadataDBTConfig(BaseModel):
     openmetadata_dbt_classification_name: Optional[str] = Field(  # noqa: UP045
         default=None, description="Custom classification name for DBT tags"
     )
+    openmetadata_catalog_mapping: dict[str, str] | None = Field(
+        default=None,
+        description="Map from a database name in the dbt manifest to the database it is ingested under in OpenMetadata",
+    )
 
     # Filter patterns - standardized to dict format only
     openmetadata_database_filter_pattern: Optional[Dict[str, List[str]]] = Field(  # noqa: UP006, UP045
@@ -108,6 +112,7 @@ class OpenMetadataDBTConfig(BaseModel):
             "include_tags": self.openmetadata_include_tags,
             "search_across_databases": self.openmetadata_search_across_databases,
             "classification_name": self.openmetadata_dbt_classification_name,
+            "catalog_mapping": self.openmetadata_catalog_mapping,
             "database_filter": self.database_filter.model_dump(exclude_none=True),
             "schema_filter": self.schema_filter.model_dump(exclude_none=True),
             "table_filter": self.table_filter.model_dump(exclude_none=True),
@@ -269,6 +274,9 @@ def create_dbt_workflow_config(dbt_project_path: Path, om_config: OpenMetadataDB
     # Add optional classification name if provided
     if om_config.openmetadata_dbt_classification_name:
         source_config["dbtClassificationName"] = om_config.openmetadata_dbt_classification_name
+
+    if om_config.openmetadata_catalog_mapping:
+        source_config["catalogMapping"] = om_config.openmetadata_catalog_mapping
 
     # Create workflow configuration
     config = {

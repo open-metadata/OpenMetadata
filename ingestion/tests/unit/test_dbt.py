@@ -2,6 +2,7 @@
 Test dbt
 """
 
+import fnmatch
 import json
 import uuid
 from copy import deepcopy
@@ -11,6 +12,7 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
 
+import pytest
 from collate_dbt_artifacts_parser.parser import (
     parse_catalog,
     parse_manifest,
@@ -22,7 +24,7 @@ from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -40,6 +42,7 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
@@ -2758,6 +2761,7 @@ class DbtUnitTest(TestCase):
             if table_fqn == expected_fqn:
                 table = MagicMock()
                 table.id.root = uuid.uuid4()
+                table.fullyQualifiedName.root = table_fqn
                 return table
             return None
 
@@ -5026,3 +5030,271 @@ class TestDbtV12MetricAggregationAndCumulative:
         )
         expression, _ = DbtSource._cumulative_metric_expression(type_params)
         assert expression is None
+
+
+class TestCatalogMapping:
+    """
+    dbt-trino writes the Trino catalog name into the manifest database, while the BigQuery
+    connector ingests the same table under the GCP project id. catalogMapping states which
+    OpenMetadata database a manifest database is (issue #34633).
+    """
+
+    BQ_MODEL = "bq_svc.my-gcp-project.analytics.stg_customers"
+    BQ_SOURCE = "bq_svc.my-gcp-project.raw.customers"
+    MANIFEST_FQN = "trino_svc.bq_catalog.analytics.stg_customers"
+
+    @staticmethod
+    def _source(*ingested_fqns, catalog_mapping=None, search_across_databases=False):
+        """A DbtSource built from an agent config, whose search answers wildcard FQN queries."""
+        config = {
+            "type": "dbt",
+            "serviceName": "trino_svc",
+            "sourceConfig": {
+                "config": {
+                    "type": "DBT",
+                    "dbtConfigSource": {"dbtConfigType": "local", "dbtManifestFilePath": "/dbt/manifest.json"},
+                    "searchAcrossDatabases": search_across_databases,
+                    **({"catalogMapping": catalog_mapping} if catalog_mapping is not None else {}),
+                }
+            },
+        }
+        tables = [
+            Table(id=uuid.uuid4(), name=ingested.split(".")[-1], columns=[], fullyQualifiedName=ingested)
+            for ingested in ingested_fqns
+        ]
+
+        def _search(*_args, fqn_search_string, **_kwargs):
+            return [
+                table
+                for table in tables
+                if fnmatch.fnmatchcase(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ] or None
+
+        metadata = MagicMock()
+        metadata.es_search_from_fqn.side_effect = _search
+        return DbtSource.create(config, metadata)
+
+    @staticmethod
+    def _manifest_node(name, database, schema, resource_type="model", depends_on=(), meta=None):
+        return SimpleNamespace(
+            name=name,
+            alias=name,
+            database=database,
+            schema_=schema,
+            resource_type=resource_type,
+            package_name="trino_bq",
+            meta=meta or {},
+            tags=[],
+            description=None,
+            columns={},
+            original_file_path=f"models/{name}.sql",
+            raw_code=f"select * from {name}",
+            compiled_code=f"select * from {name}",
+            config=SimpleNamespace(materialized="table"),
+            depends_on=SimpleNamespace(nodes=list(depends_on)),
+        )
+
+    def test_agent_config_accepts_catalog_mapping(self):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source.source_config.catalogMapping == {"bq_catalog": "my-gcp-project"}
+        assert self._source().source_config.catalogMapping is None
+
+    def test_mapped_catalog_resolves_in_another_service_without_search_across_databases(self):
+        source = self._source(self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == self.BQ_MODEL
+
+    @pytest.mark.parametrize(
+        "mapped_catalog, manifest_fqn",
+        [
+            ("BQ_Catalog", "trino_svc.bq_catalog.analytics.stg_customers"),
+            ("bq_catalog", "trino_svc.BQ_Catalog.analytics.stg_customers"),
+        ],
+    )
+    def test_catalog_is_matched_ignoring_case(self, mapped_catalog, manifest_fqn):
+        source = self._source(self.BQ_MODEL, catalog_mapping={mapped_catalog: "my-gcp-project"})
+
+        assert source._get_table_entity(manifest_fqn).fullyQualifiedName.root == self.BQ_MODEL
+
+    def test_mapping_picks_its_database_where_the_same_schema_and_table_exist_in_two(self):
+        source = self._source(
+            "bq_svc.proj-a.analytics.stg_customers",
+            "bq_svc.proj-b.analytics.stg_customers",
+            catalog_mapping={"bq_catalog": "proj-b"},
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == "bq_svc.proj-b.analytics.stg_customers"
+
+    def test_mapping_prefers_the_configured_service(self):
+        source = self._source(
+            "bq_other.my-gcp-project.analytics.stg_customers",
+            "trino_svc.my-gcp-project.analytics.stg_customers",
+            catalog_mapping={"bq_catalog": "my-gcp-project"},
+        )
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == "trino_svc.my-gcp-project.analytics.stg_customers"
+
+    def test_mapping_that_finds_nothing_falls_back_to_the_manifest_database(self):
+        source = self._source(self.MANIFEST_FQN, catalog_mapping={"bq_catalog": "no-such-project"})
+
+        table = source._get_table_entity(self.MANIFEST_FQN)
+
+        assert table.fullyQualifiedName.root == self.MANIFEST_FQN
+
+    def test_unmapped_catalog_is_looked_up_as_before(self):
+        source = self._source(
+            self.BQ_MODEL, "trino_svc.hive.default.hive_model", catalog_mapping={"bq_catalog": "my-gcp-project"}
+        )
+
+        assert source._get_table_entity("trino_svc.hive.default.hive_model") is not None
+        assert source._get_table_entity("trino_svc.other_catalog.analytics.stg_customers") is None
+
+    def test_without_a_mapping_the_aliased_table_stays_unresolved(self):
+        source = self._source(self.BQ_MODEL, search_across_databases=True)
+
+        assert source._get_table_entity(self.MANIFEST_FQN) is None
+
+    def test_upstream_is_recorded_under_the_table_that_was_found(self):
+        """Lineage, dbt tests and exposures all reuse the upstream FQN, so it must be the real one."""
+        parent = self._manifest_node("customers", "bq_catalog", "raw", resource_type="source")
+        parent.source_name = "bq_raw"
+        model = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", depends_on=["source.trino_bq.bq_raw.customers"]
+        )
+        source = self._source(self.BQ_SOURCE, self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        upstream_nodes = source.parse_upstream_nodes_with_names({"source.trino_bq.bq_raw.customers": parent}, model)
+
+        assert [node.fqn for node in upstream_nodes] == [self.BQ_SOURCE]
+        assert upstream_nodes[0].table_id is not None
+
+    def test_meta_domain_is_keyed_by_the_table_that_was_found(self):
+        """Domain, data products and custom properties are applied by the resolved table's FQN."""
+        node = self._manifest_node(
+            "stg_customers", "bq_catalog", "analytics", meta={"openmetadata": {"domain": "Finance"}}
+        )
+        source = self._source(self.BQ_MODEL, catalog_mapping={"bq_catalog": "my-gcp-project"})
+        source.context = MagicMock()
+        dbt_objects = SimpleNamespace(
+            dbt_manifest=SimpleNamespace(
+                sources={},
+                nodes={"model.trino_bq.stg_customers": node},
+                exposures={},
+                metadata=SimpleNamespace(project_name="trino_bq"),
+            ),
+            dbt_catalog=None,
+            dbt_run_results=None,
+            dbt_sources=None,
+        )
+
+        with (
+            patch.object(DbtSource, "get_dbt_domain", return_value=None),
+            patch.object(DbtSource, "_collect_dbt_metrics"),
+        ):
+            links = [either.right for either in source.yield_data_models(dbt_objects)]
+
+        assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
+        assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
+
+    @pytest.mark.parametrize(
+        ("compiled_sql", "lineage_sql"),
+        [
+            (
+                'select id from "bq_catalog"."raw"."customers"',
+                'select id from "my-gcp-project"."raw"."customers"',
+            ),
+            ("select id from BQ_Catalog.raw.customers", 'select id from "my-gcp-project".raw.customers'),
+            (
+                'select * from bq_catalog.raw.a join "bq_catalog" . "raw" . "b" using (id)',
+                'select * from "my-gcp-project".raw.a join "my-gcp-project" . "raw" . "b" using (id)',
+            ),
+            # a schema or column that shares the catalog's name is not a catalog
+            ("select bq_catalog.id from raw.bq_catalog", "select bq_catalog.id from raw.bq_catalog"),
+            ("select id from bq_catalog_dev.raw.customers", "select id from bq_catalog_dev.raw.customers"),
+            ('select id from "other"."bq_catalog"."t"', 'select id from "other"."bq_catalog"."t"'),
+        ],
+    )
+    def test_mapped_catalog_is_swapped_in_compiled_sql(self, compiled_sql, lineage_sql):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source._map_catalogs_in_sql(compiled_sql) == lineage_sql
+
+    @pytest.mark.parametrize(
+        ("catalog_mapping", "column_links"),
+        [
+            (
+                {"bq_catalog": "my-gcp-project"},
+                [
+                    ("bq_svc.my-gcp-project.raw.customers.id", "bq_svc.my-gcp-project.analytics.stg_customers.id"),
+                    ("bq_svc.my-gcp-project.raw.customers.name", "bq_svc.my-gcp-project.analytics.stg_customers.name"),
+                ],
+            ),
+            (None, []),
+        ],
+    )
+    def test_query_lineage_links_the_columns_of_the_mapped_source(self, catalog_mapping, column_links):
+        def table(table_fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=table_fqn.split(".")[-1],
+                fullyQualifiedName=table_fqn,
+                columns=[
+                    Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
+                    for name in ("id", "name")
+                ],
+            )
+
+        tables = [table(self.BQ_SOURCE), table(self.BQ_MODEL)]
+        source = self._source(catalog_mapping=catalog_mapping)
+        source.metadata.es_search_from_fqn.side_effect = lambda *_args, fqn_search_string, **_kwargs: (
+            [
+                ingested
+                for ingested in tables
+                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ]
+            or None
+        )
+        source.metadata.get_by_name.return_value = None
+        source.config = SimpleNamespace(
+            serviceName="trino_svc",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+            ),
+        )
+        data_model_link = SimpleNamespace(
+            table_entity=tables[1],
+            datamodel=SimpleNamespace(
+                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
+            ),
+        )
+
+        requests = [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(data_model_link)
+            if either.right is not None
+        ]
+
+        assert [
+            (model_str(link.fromColumns[0]), model_str(link.toColumn))
+            for request in requests
+            for link in request.lineage_details.columnsLineage
+        ] == column_links
+
+    def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
+        source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})
+
+        assert source._map_catalogs_in_sql("select * from hive.raw.a join warehouse.raw.b using (id)") == (
+            'select * from "warehouse".raw.a join "warehouse_prod".raw.b using (id)'
+        )
+
+    def test_without_a_mapping_compiled_sql_is_unchanged(self):
+        sql = 'select id from "bq_catalog"."raw"."customers"'
+
+        assert self._source()._map_catalogs_in_sql(sql) == sql

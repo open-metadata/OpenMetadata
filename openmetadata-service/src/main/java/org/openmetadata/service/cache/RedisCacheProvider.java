@@ -2,6 +2,7 @@ package org.openmetadata.service.cache;
 
 import io.lettuce.core.LettuceFutures;
 import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisCommandExecutionException;
 import io.lettuce.core.RedisFuture;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.ScriptOutputType;
@@ -9,9 +10,12 @@ import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.async.RedisAsyncCommands;
 import io.lettuce.core.api.sync.RedisCommands;
+import io.lettuce.core.cluster.SlotHash;
+import io.lettuce.core.codec.StringCodec;
 import io.micrometer.core.instrument.Timer;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -22,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -50,6 +55,12 @@ public class RedisCacheProvider implements CacheProvider {
   private static final int FAILURE_THRESHOLD = 5;
   private static final long FAILURE_WINDOW_MS = 30_000L;
   private static final int RECOVERY_THRESHOLD = 3;
+  private static final String CROSSSLOT_ERROR_PREFIX = "CROSSSLOT";
+
+  // One DEL keeps an eviction atomic where the server allows it. A cluster refuses keys from
+  // different slots in one command, so one command per slot is the best available there.
+  // ADR:2026-10-15-redis-commands-keep-their-keys-in-one-hash-slot
+  private volatile boolean evictsPerSlot;
 
   private final CacheConfig config;
   private final CacheKeys keys;
@@ -342,7 +353,7 @@ public class RedisCacheProvider implements CacheProvider {
     CacheMetrics m = metrics();
     Timer.Sample sample = startWriteTimer(m);
     try {
-      syncCommands.del(keys);
+      evict(keys, syncCommands::del, asyncCommands::del);
       if (m != null) m.recordEviction();
       recordSuccess();
     } catch (Exception e) {
@@ -352,6 +363,40 @@ public class RedisCacheProvider implements CacheProvider {
     } finally {
       stopWriteTimer(m, sample);
     }
+  }
+
+  private long evict(
+      String[] keys,
+      Function<String[], Long> command,
+      Function<String[], RedisFuture<Long>> asyncCommand) {
+    if (!evictsPerSlot) {
+      try {
+        return command.apply(keys);
+      } catch (RedisCommandExecutionException e) {
+        if (!isCrossSlot(e)) {
+          throw e;
+        }
+        evictsPerSlot = true;
+        LOG.info(
+            "Redis rejected a multi-key eviction with CROSSSLOT; evicting per slot from now on");
+      }
+    }
+    return evictPerSlot(keys, asyncCommand);
+  }
+
+  private long evictPerSlot(String[] keys, Function<String[], RedisFuture<Long>> asyncCommand) {
+    Map<Integer, List<String>> keysBySlot =
+        SlotHash.partition(StringCodec.UTF8, Arrays.asList(keys));
+    List<RedisFuture<Long>> futures = new ArrayList<>(keysBySlot.size());
+    for (List<String> slotKeys : keysBySlot.values()) {
+      futures.add(asyncCommand.apply(slotKeys.toArray(new String[0])));
+    }
+    awaitAll(futures);
+    return futures.stream().mapToLong(future -> future.toCompletableFuture().join()).sum();
+  }
+
+  private static boolean isCrossSlot(RedisCommandExecutionException e) {
+    return e.getMessage() != null && e.getMessage().startsWith(CROSSSLOT_ERROR_PREFIX);
   }
 
   @Override
@@ -557,7 +602,7 @@ public class RedisCacheProvider implements CacheProvider {
     }
   }
 
-  private void awaitAll(List<RedisFuture<?>> futures) {
+  private void awaitAll(List<? extends RedisFuture<?>> futures) {
     long timeoutMs = Math.max(1000L, (long) config.redis.commandTimeoutMs * 10);
     RedisFuture<?>[] array = futures.toArray(new RedisFuture[0]);
     boolean completed = LettuceFutures.awaitAll(timeoutMs, TimeUnit.MILLISECONDS, array);
@@ -846,7 +891,8 @@ public class RedisCacheProvider implements CacheProvider {
           // UNLINK is async-delete on the Redis side — same effect as DEL but doesn't block the
           // event loop on large value reclamation. Falls back to DEL on Redis < 4.0, which we do
           // not target.
-          deleted += syncCommands.unlink(keys.toArray(new String[0]));
+          deleted +=
+              evict(keys.toArray(new String[0]), syncCommands::unlink, asyncCommands::unlink);
           CacheMetrics m = metrics();
           if (m != null) {
             for (int i = 0; i < keys.size(); i++) m.recordEviction();
