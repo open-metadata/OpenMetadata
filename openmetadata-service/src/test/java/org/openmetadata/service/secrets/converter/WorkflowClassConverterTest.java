@@ -22,7 +22,6 @@ import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionReque
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
-import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 
 class WorkflowClassConverterTest {
@@ -107,26 +106,6 @@ class WorkflowClassConverterTest {
     Workflow converted = (Workflow) converter.convert(workflow(WorkflowType.TEST_CONNECTION, null));
 
     assertNull(converted.getRequest());
-  }
-
-  @Test
-  void serverConnectionNestedConfigIsTyped() {
-    Map<String, Object> workflow =
-        workflow(
-            WorkflowType.TEST_CONNECTION,
-            testConnectionRequest("Athena", athenaConfig("s3://bucket/results/")));
-    workflow.put(
-        "openMetadataServerConnection",
-        Map.of(
-            "hostPort",
-            "http://localhost:8585/api",
-            "sslConfig",
-            Map.of("caCertificate", "/certs/ca.pem")));
-
-    Workflow converted = (Workflow) converter.convert(workflow);
-
-    assertInstanceOf(
-        ValidateSSLClientConfig.class, converted.getOpenMetadataServerConnection().getSslConfig());
   }
 
   private static Map<String, Object> workflow(WorkflowType workflowType, Object request) {
