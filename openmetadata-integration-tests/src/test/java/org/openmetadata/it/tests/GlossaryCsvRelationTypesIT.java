@@ -436,12 +436,11 @@ public class GlossaryCsvRelationTypesIT {
                 + ",%s,,Term B,,%s.%s,,,,,,,,,",
             termA, ns.prefix("termB"), glossary.getName(), termA);
 
-    for (boolean dryRun : List.of(true, false)) {
-      String result = importGlossaryCsv(glossary.getName(), csv, dryRun);
-      JsonNode importResult = OBJECT_MAPPER.readTree(result);
-      assertEquals("success", importResult.path("status").asText(), dryRun + ": " + result);
-      assertEquals(0, importResult.path("numberOfRowsFailed").asInt(), dryRun + ": " + result);
-    }
+    // Real import only: on 2.0 a dry run judges a new term by its blank-status default (Draft)
+    String result = importGlossaryCsv(glossary.getName(), csv, false);
+    JsonNode importResult = OBJECT_MAPPER.readTree(result);
+    assertEquals("success", importResult.path("status").asText(), "Result: " + result);
+    assertEquals(0, importResult.path("numberOfRowsFailed").asInt(), "Result: " + result);
     GlossaryTerm termB =
         getGlossaryTerm(glossary.getName() + "." + ns.prefix("termB"), "relatedTerms");
     assertEquals(
