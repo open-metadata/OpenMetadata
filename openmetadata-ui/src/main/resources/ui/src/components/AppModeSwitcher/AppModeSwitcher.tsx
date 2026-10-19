@@ -18,7 +18,11 @@ import {
   Popover,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, ChevronUp } from '@openmetadata/ui-core-components/icons';
+import {
+  Check,
+  ChevronRight,
+  ChevronUp,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
@@ -65,7 +69,7 @@ const AppModeSwitcherTrigger: React.FC<{
   triggerRef,
   onClick,
 }) => {
-  const iconSize = compact ? 12 : 16;
+  const iconSize = compact ? 12 : 20;
   const modeLabelText = compact ? modeLabel : modeLabelSentence;
 
   return (
@@ -75,7 +79,7 @@ const AppModeSwitcherTrigger: React.FC<{
       className={
         compact
           ? 'tw:flex tw:items-center tw:gap-1 tw:px-2 tw:py-1 tw:bg-utility-blue-50 tw:border tw:border-utility-blue-200 tw:rounded-full tw:cursor-pointer tw:text-left'
-          : 'tw:flex tw:items-center tw:gap-1.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
+          : 'tw:flex tw:items-center tw:gap-2.5 tw:w-full tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:text-left'
       }
       data-testid="app-mode-switcher-trigger"
       ref={triggerRef}
@@ -100,19 +104,26 @@ const AppModeSwitcherTrigger: React.FC<{
         className={
           compact
             ? 'tw:text-[10px] tw:text-utility-blue-700 tw:font-semibold'
-            : 'tw:flex-1 tw:text-xs tw:text-secondary tw:font-semibold'
+            : 'tw:flex-1 tw:text-sm tw:text-secondary tw:font-medium'
         }>
         {modeLabelText}
       </span>
-      <ChevronUp
-        className={classNames(
-          'tw:shrink-0 tw:transition-transform tw:duration-150',
-          compact ? 'tw:text-utility-blue-500' : undefined,
-          { 'tw:rotate-180': isOpen }
-        )}
-        height={compact ? 10 : 11}
-        width={compact ? 10 : 11}
-      />
+      {compact ? (
+        <ChevronUp
+          className={classNames(
+            'tw:shrink-0 tw:text-utility-blue-500 tw:transition-transform tw:duration-150',
+            { 'tw:rotate-180': isOpen }
+          )}
+          height={10}
+          width={10}
+        />
+      ) : (
+        <ChevronRight
+          className="tw:shrink-0 tw:text-tertiary"
+          height={16}
+          width={16}
+        />
+      )}
     </button>
   );
 };
@@ -175,7 +186,7 @@ const AppModeSwitcher: React.FC<{
       <Popover
         containerClassName="tw:w-60"
         isOpen={isOpen}
-        placement={compact ? 'right' : 'top start'}
+        placement={compact ? 'right' : 'right bottom'}
         shouldCloseOnInteractOutside={(element) =>
           !triggerRef.current?.contains(element) &&
           !cardRef?.current?.contains(element)
