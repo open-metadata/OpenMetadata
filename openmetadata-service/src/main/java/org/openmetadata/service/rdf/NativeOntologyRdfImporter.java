@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -152,6 +153,14 @@ public final class NativeOntologyRdfImporter {
                   FullyQualifiedName.add(working.root().getFullyQualifiedName(), name))
               .withOntology(working.root().getEntityReference())
               .withVersion(0.1)
+              .withDisplayName(
+                  "Imported "
+                      + parsedAxiom
+                          .getAxiomType()
+                          .value()
+                          .replace('_', ' ')
+                          .toLowerCase(Locale.ROOT))
+              .withDescription("Imported from native RDF")
               .withProvenance(RelationProvenance.IMPORTED);
       operations.add(operation(OntologyChangeOperationType.UPSERT_AXIOM, null).withAxiom(proposed));
     }

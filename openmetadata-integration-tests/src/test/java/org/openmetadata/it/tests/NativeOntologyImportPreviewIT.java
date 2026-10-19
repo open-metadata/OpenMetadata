@@ -1,13 +1,14 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -21,9 +22,12 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationResult;
 import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
@@ -55,29 +59,69 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
                 .withReleaseId(active.getId())
                 .withExpectedActivationRevision(0L));
     final var before = client.ontologies().state(ontology.getId());
-    final String conceptIri = "https://example.org/model/" + ns.shortPrefix() + "/Imported";
+    final String baseIri = "https://example.org/model/" + ns.shortPrefix() + "/";
 
     final CreateOntologyChangeSet preview =
-        client.ontologies().previewImport(ontology.getId(), turtle(conceptIri));
+        client.ontologies().previewImport(ontology.getId(), graphTurtle(baseIri));
 
     assertEquals(ontology.getFullyQualifiedName(), preview.getOntology());
     assertEquals(before.getWorkingRevision(), preview.getBaseWorkingRevision());
-    assertEquals(1, preview.getOperations().size());
-    final var operation = preview.getOperations().getFirst();
-    assertEquals(OntologyChangeOperationType.UPSERT_CONCEPT, operation.getOperationType());
-    assertEquals(conceptIri, operation.getConcept().getIri().toString());
-    assertNotNull(operation.getConcept().getId());
+    assertEquals(4, preview.getOperations().size());
+    final List<OntologyChangeOperation> concepts =
+        preview.getOperations().stream()
+            .filter(
+                operation ->
+                    operation.getOperationType() == OntologyChangeOperationType.UPSERT_CONCEPT)
+            .toList();
+    assertEquals(2, concepts.size());
+    assertEquals(
+        Set.of(baseIri + "Customer", baseIri + "Party"),
+        concepts.stream()
+            .map(operation -> operation.getConcept().getIri().toString())
+            .collect(Collectors.toSet()));
+    final OntologyChangeOperation propertyOperation =
+        preview.getOperations().stream()
+            .filter(
+                operation ->
+                    operation.getOperationType() == OntologyChangeOperationType.UPSERT_PROPERTY)
+            .findFirst()
+            .orElseThrow();
+    final OntologyChangeOperation axiomOperation =
+        preview.getOperations().stream()
+            .filter(
+                operation ->
+                    operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(baseIri + "knows", propertyOperation.getProperty().getIri().toString());
+    assertEquals(OntologyAxiomType.SUBCLASS_OF, axiomOperation.getAxiom().getAxiomType());
+    assertEquals("Imported subclass of", axiomOperation.getAxiom().getDisplayName());
+    assertEquals("Imported from native RDF", axiomOperation.getAxiom().getDescription());
     assertEquals(
         before.getWorkingRevision(),
         client.ontologies().state(ontology.getId()).getWorkingRevision());
     assertEquals(active.getId(), client.ontologies().state(ontology.getId()).getActiveReleaseId());
     assertEquals(
         0, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
+    for (final OntologyChangeOperation operation : concepts) {
+      assertEquals(
+          404,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> client.ontologyConcepts().get(operation.getConcept().getId().toString()))
+              .getStatusCode());
+    }
     assertEquals(
         404,
         assertThrows(
                 OpenMetadataException.class,
-                () -> client.ontologyConcepts().get(operation.getConcept().getId().toString()))
+                () -> client.ontologyProperties().get(propertyOperation.getProperty().getId()))
+            .getStatusCode());
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.ontologyAxioms().get(axiomOperation.getAxiom().getId()))
             .getStatusCode());
 
     final OntologyChangeSet draft =
@@ -88,14 +132,31 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
         OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "importEditor");
 
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
-    assertEquals(1, applied.getApplicationResult().getOperationsApplied());
-    final OntologyConcept concept =
-        client.ontologyConcepts().get(operation.getConcept().getId().toString());
-    assertEquals(conceptIri, concept.getIri().toString());
-    assertEquals(ontology.getFullyQualifiedName(), concept.getOntology().getFullyQualifiedName());
+    assertEquals(4, applied.getApplicationResult().getOperationsApplied());
+    for (final OntologyChangeOperation operation : concepts) {
+      final OntologyConcept concept =
+          client.ontologyConcepts().get(operation.getConcept().getId().toString());
+      assertEquals(operation.getConcept().getIri(), concept.getIri());
+      assertEquals(ontology.getFullyQualifiedName(), concept.getOntology().getFullyQualifiedName());
+    }
+    final OntologyProperty property =
+        client.ontologyProperties().get(propertyOperation.getProperty().getId());
+    assertEquals(baseIri + "knows", property.getIri().toString());
+    assertEquals(List.of(URI.create(baseIri + "Customer")), property.getDomain());
+    assertEquals(List.of(URI.create(baseIri + "Party")), property.getRange());
+    final OntologyAxiom axiom = client.ontologyAxioms().get(axiomOperation.getAxiom().getId());
+    assertEquals(URI.create(baseIri + "Customer"), axiom.getSubjectIri());
+    assertEquals(URI.create(baseIri + "Party"), axiom.getExpressions().getFirst().getClassIri());
     assertEquals(active.getId(), client.ontologies().state(ontology.getId()).getActiveReleaseId());
     assertEquals(
-        1, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
+        4, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
+    assertEquals(
+        0,
+        client
+            .ontologies()
+            .previewImport(ontology.getId(), graphTurtle(baseIri))
+            .getOperations()
+            .size());
   }
 
   @Test
@@ -205,5 +266,21 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
             <%s> a owl:Class ; rdfs:label "Imported" .
             """
                 .formatted(conceptIri));
+  }
+
+  private static PreviewNativeOntologyImport graphTurtle(String baseIri) {
+    return new PreviewNativeOntologyImport()
+        .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+        .withData(
+            """
+            @prefix ex: <%s> .
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            <https://external.example/source> a owl:Ontology .
+            ex:Customer a owl:Class ; rdfs:label "Customer" ; rdfs:subClassOf ex:Party .
+            ex:Party a owl:Class ; rdfs:label "Party" .
+            ex:knows a owl:ObjectProperty ; rdfs:label "knows" ; rdfs:domain ex:Customer ; rdfs:range ex:Party .
+            """
+                .formatted(baseIri));
   }
 }
