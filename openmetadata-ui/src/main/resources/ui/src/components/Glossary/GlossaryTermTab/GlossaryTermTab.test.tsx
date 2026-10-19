@@ -518,10 +518,10 @@ describe('Test GlossaryTermTab component', () => {
 
       expect(badges).toHaveLength(1);
       expect(screen.getByTestId('glossary-row-0')).toHaveClass(
-        'tw:bg-utility-purple-50'
+        'glossary-ai-draft-row'
       );
       expect(screen.getByTestId('glossary-row-1')).not.toHaveClass(
-        'tw:bg-utility-purple-50'
+        'glossary-ai-draft-row'
       );
     });
 

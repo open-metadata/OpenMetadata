@@ -137,7 +137,6 @@ import AiGeneratedTermBadge from '../../governance/glossary/AiGeneratedTermBadge
 import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
-import { AI_GENERATED_DRAFT_ROW_CLASS_NAME } from './GlossaryTermTab.constants';
 import {
   GlossaryTermMoveConfirmationModalProps,
   GlossaryTermTabProps,
@@ -1646,7 +1645,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         rowClasses.push('glossary-nested-row');
       }
       if (isAiGeneratedDraft(record)) {
-        rowClasses.push(AI_GENERATED_DRAFT_ROW_CLASS_NAME);
+        rowClasses.push('glossary-ai-draft-row');
       }
 
       return rowClasses.join(' ');

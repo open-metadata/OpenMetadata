@@ -219,6 +219,25 @@
     background-color: @grey-100;
   }
 
+  // Cell backgrounds, like the antd hover, paint over a row's, so an AI draft
+  // tints its cells to stay purple when hovered or nested. Clamped descriptions
+  // fade into the same tint.
+  tbody > tr.glossary-ai-draft-row {
+    --markdown-clamp-fade-color: var(--tw-color-utility-purple-50);
+
+    > td {
+      background-color: var(--tw-color-utility-purple-50);
+    }
+
+    &:hover {
+      --markdown-clamp-fade-color: var(--tw-color-utility-purple-100);
+
+      > td {
+        background-color: var(--tw-color-utility-purple-100);
+      }
+    }
+  }
+
   table {
     overflow-x: visible;
   }
