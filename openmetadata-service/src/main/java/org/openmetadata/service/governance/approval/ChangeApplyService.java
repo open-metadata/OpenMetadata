@@ -127,8 +127,8 @@ public final class ChangeApplyService {
       ChangeRequest request,
       JsonNode currentTree,
       MutationPlanner.ConflictSplit split) {
-    List<MutationOp> relationOps = relationOps(repository, split.applicable());
-    List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
+    final List<MutationOp> relationOps = relationOps(repository, split.applicable());
+    final List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
     if (!fieldOps.isEmpty() && !MutationPlanner.fieldsOf(fieldOps).contains(CONNECTION)) {
       JsonPatch patch =
           JsonUtils.getJsonPatch(
@@ -380,10 +380,12 @@ public final class ChangeApplyService {
    * The asset as published now, as the JSON a change request's {@code ops} are judged against: the
    * entity, with the staged relations they change as list fields.
    */
-  static JsonNode currentTree(EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
+  static JsonNode currentTree(
+      final EntityRepository<?> repository, final UUID entityId, final List<MutationOp> ops) {
     // An entity always serializes to a JSON object.
-    ObjectNode tree = (ObjectNode) JsonUtils.valueToTree(readCurrent(repository, entityId, ops));
-    Set<String> relations = new TreeSet<>(MutationPlanner.fieldsOf(ops));
+    final ObjectNode tree =
+        (ObjectNode) JsonUtils.valueToTree(readCurrent(repository, entityId, ops));
+    final Set<String> relations = new TreeSet<>(MutationPlanner.fieldsOf(ops));
     relations.retainAll(repository.getStagedRelationFields());
     if (!relations.isEmpty()) {
       repository.addStagedRelations(tree, entityId, relations);
@@ -392,13 +394,14 @@ public final class ChangeApplyService {
   }
 
   private static List<MutationOp> relationOps(
-      EntityRepository<?> repository, List<MutationOp> ops) {
+      final EntityRepository<?> repository, final List<MutationOp> ops) {
     return ops.stream()
         .filter(op -> repository.getStagedRelationFields().contains(op.getField()))
         .toList();
   }
 
-  private static List<MutationOp> fieldOps(EntityRepository<?> repository, List<MutationOp> ops) {
+  private static List<MutationOp> fieldOps(
+      final EntityRepository<?> repository, final List<MutationOp> ops) {
     return ops.stream()
         .filter(op -> !repository.getStagedRelationFields().contains(op.getField()))
         .toList();
@@ -411,13 +414,13 @@ public final class ChangeApplyService {
       JsonNode currentTree,
       MutationPlanner.ConflictSplit split,
       ChangeSelection selection) {
-    List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
-    List<MutationOp> relationOps = relationOps(repository, split.applicable());
+    final List<MutationOp> fieldOps = fieldOps(repository, split.applicable());
+    final List<MutationOp> relationOps = relationOps(repository, split.applicable());
     if (!fieldOps.isEmpty()) {
       JsonPatch patch =
           JsonUtils.getJsonPatch(
               currentTree.toString(), MutationPlanner.applyTo(currentTree, fieldOps).toString());
-      ApprovedApplication approval =
+      final ApprovedApplication approval =
           new ApprovedApplication(
               request.getId(), revision.getId(), request.getEntityId(), request.getRequestedBy());
       repository.applyApprovedChange(approval, patch);
@@ -425,7 +428,8 @@ public final class ChangeApplyService {
     if (!relationOps.isEmpty()) {
       repository.applyStagedRelations(request.getEntityId(), relationOps, request.getRequestedBy());
     }
-    EntityInterface published = readCurrent(repository, request.getEntityId(), split.applicable());
+    final EntityInterface published =
+        readCurrent(repository, request.getEntityId(), split.applicable());
     ChangeRequestService.dao()
         .changeApplicationDAO()
         .insert(application(request, revision, published, split.applicable(), split.dropped()));

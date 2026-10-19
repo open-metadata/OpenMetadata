@@ -6307,24 +6307,27 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Relations an approval can hold that the entity's JSON does not carry, such as a data product's
    * ports. A change request names them as list fields of the entity.
+   * ADR:2026-10-19-a-data-product-port-change-is-held-as-a-list-field-of-the-data-product
    */
   public Set<String> getStagedRelationFields() {
     return Set.of();
   }
 
   /** Adds {@code fields}, relations of {@link #getStagedRelationFields()}, to the entity's JSON. */
-  public void addStagedRelations(ObjectNode entityJson, UUID entityId, Set<String> fields) {
+  public void addStagedRelations(
+      final ObjectNode entityJson, final UUID entityId, final Set<String> fields) {
     // Entities without staged relations carry everything a change request names in their JSON.
   }
 
   /** Refuses, without saving anything, staged relation changes that can no longer be made. */
-  public void validateStagedRelations(UUID entityId, List<MutationOp> ops) {
+  public void validateStagedRelations(final UUID entityId, final List<MutationOp> ops) {
     throw new IllegalArgumentException(
         "%s has no relations an approval can hold".formatted(entityType));
   }
 
   /** Publishes approved changes of staged relations, as {@code requestedBy} would have. */
-  public void applyStagedRelations(UUID entityId, List<MutationOp> ops, String requestedBy) {
+  public void applyStagedRelations(
+      final UUID entityId, final List<MutationOp> ops, final String requestedBy) {
     throw new IllegalArgumentException(
         "%s has no relations an approval can hold".formatted(entityType));
   }

@@ -149,12 +149,15 @@ public final class ApprovalGate {
    * those relations as list fields.
    */
   public static Optional<StagedChange> admitRelations(
-      EntityInterface entity, JsonNode base, JsonNode proposed, ChangeActor actor) {
-    String entityType = Entity.getEntityTypeFromObject(entity);
-    List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+      final EntityInterface entity,
+      final JsonNode base,
+      final JsonNode proposed,
+      final ChangeActor actor) {
+    final String entityType = Entity.getEntityTypeFromObject(entity);
+    final List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
     Optional<StagedChange> staged = Optional.empty();
     if (!rules.isEmpty() && !isBotChange(actor.userName(), actor.impersonatedBy())) {
-      Timer.Sample sample = ChangeRequestMetrics.startAdmission();
+      final Timer.Sample sample = ChangeRequestMetrics.startAdmission();
       staged =
           stage(
               rules,
@@ -347,12 +350,12 @@ public final class ApprovalGate {
   }
 
   private static Optional<StagedChange> stage(
-      List<GatingRule> rules,
-      String entityType,
-      Edited edited,
-      String user,
-      String impersonatedBy) {
-    List<GatedBy> gating =
+      final List<GatingRule> rules,
+      final String entityType,
+      final Edited edited,
+      final String user,
+      final String impersonatedBy) {
+    final List<GatedBy> gating =
         gatingWorkflows(
             rules,
             entityType,
@@ -364,7 +367,7 @@ public final class ApprovalGate {
       rejectMutuallyExclusiveTags(edited.published(), edited.changed());
       rejectStageMoveOutsideLifecycle(
           entityType, edited.original(), edited.published(), edited.changed());
-      GatedBy review = gating.get(0);
+      final GatedBy review = gating.get(0);
       staged =
           Optional.of(
               new StagedChange(
@@ -381,8 +384,8 @@ public final class ApprovalGate {
     return staged;
   }
 
-  private static Set<String> differingFields(JsonNode base, JsonNode proposed) {
-    Set<String> names = new TreeSet<>();
+  private static Set<String> differingFields(final JsonNode base, final JsonNode proposed) {
+    final Set<String> names = new TreeSet<>();
     base.fieldNames().forEachRemaining(names::add);
     proposed.fieldNames().forEachRemaining(names::add);
     names.removeIf(name -> !MutationPlanner.differs(base.get(name), proposed.get(name)));

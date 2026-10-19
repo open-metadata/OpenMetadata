@@ -7636,8 +7636,7 @@ public class WorkflowDefinitionResourceIT {
     OpenMetadataClient admin = SdkClients.adminClient();
     DataProduct product = reviewedDataProduct(admin, ns, "portAdd");
     Table table = portTable(admin, ns, "portAdd");
-    deployHookWorkflow(
-        admin, "dataProduct", product.getFullyQualifiedName(), List.of("inputPorts"));
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
 
     BulkOperationResult held = admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
 
@@ -7648,7 +7647,7 @@ public class WorkflowDefinitionResourceIT {
     assertTrue(inputPortIds(admin, product).isEmpty(), "The port must be held, not added");
     JsonNode request = onlyChangeRequest(admin, product.getId());
     JsonNode op = request.get("activeRevision").get("ops").get(0);
-    assertEquals("inputPorts", op.get("field").asText());
+    assertEquals(INPUT_PORTS, op.get("field").asText());
     assertEquals("add", op.get("op").asText());
     assertEquals(table.getId().toString(), op.get("key").asText());
 
@@ -7668,8 +7667,7 @@ public class WorkflowDefinitionResourceIT {
     DataProduct product = reviewedDataProduct(admin, ns, "portRemove");
     Table table = portTable(admin, ns, "portRemove");
     admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
-    deployHookWorkflow(
-        admin, "dataProduct", product.getFullyQualifiedName(), List.of("inputPorts"));
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
 
     BulkOperationResult held =
         admin.dataProducts().inputPorts(product.getId()).remove(portsOf(table));
@@ -7698,10 +7696,7 @@ public class WorkflowDefinitionResourceIT {
     DataProduct product = reviewedDataProduct(admin, ns, "portMixed");
     Table table = portTable(admin, ns, "portMixed");
     deployHookWorkflow(
-        admin,
-        "dataProduct",
-        product.getFullyQualifiedName(),
-        List.of("description", "inputPorts"));
+        admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of("description", INPUT_PORTS));
 
     admin
         .dataProducts()
@@ -7714,7 +7709,7 @@ public class WorkflowDefinitionResourceIT {
     JsonNode request = onlyChangeRequest(admin, product.getId());
     List<String> fields = new ArrayList<>();
     request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
-    assertEquals(List.of("description", "inputPorts"), fields.stream().sorted().toList());
+    assertEquals(List.of("description", INPUT_PORTS), fields.stream().sorted().toList());
     approveAs(
         SdkClients.user1Client(),
         awaitOpenApprovalTaskAssignedTo(
@@ -7727,12 +7722,78 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
+  void test_dataProductPortCannotBecomeBothKindsThroughOneRequest(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portBothKinds");
+    Table table = portTable(admin, ns, "portBothKinds");
+    // A data product takes assets of its own domain only.
+    admin
+        .tables()
+        .patch(
+            table.getId().toString(),
+            MAPPER.valueToTree(
+                List.of(
+                    Map.of(
+                        "op",
+                        "add",
+                        "path",
+                        "/domains",
+                        "value",
+                        List.of(
+                            Map.of(
+                                "id", product.getDomains().get(0).getId(), "type", "domain"))))));
+    admin.dataProducts().bulkAddAssets(product.getFullyQualifiedName(), portsOf(table));
+    deployHookWorkflow(
+        admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS, OUTPUT_PORTS));
+
+    // Neither port is published yet, so each is checked alone at submission and both are held.
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    admin.dataProducts().outputPorts(product.getId()).add(portsOf(table));
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approveAs(SdkClients.user1Client(), task));
+    assertTrue(refused.getMessage().contains("is already part of"), refused.getMessage());
+    assertEquals("Pending", changeRequest(request.get("id").asText()).get("status").asText());
+    assertTrue(inputPortIds(admin, product).isEmpty(), "No input port is added");
+    assertTrue(
+        admin.dataProducts().outputPorts(product.getId()).list().getData().isEmpty(),
+        "No output port is added");
+  }
+
+  @Test
+  void test_heldPortToAnAssetDeletedBeforeApprovalIsNotAdded(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portDeleted");
+    Table table = portTable(admin, ns, "portDeleted");
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
+
+    admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    JsonNode request = onlyChangeRequest(admin, product.getId());
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(
+            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
+    admin
+        .tables()
+        .delete(table.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approveAs(SdkClients.user1Client(), task));
+    assertTrue(refused.getMessage().contains("no longer exists"), refused.getMessage());
+    assertEquals("Pending", changeRequest(request.get("id").asText()).get("status").asText());
+    assertTrue(inputPortIds(admin, product).isEmpty(), "No port to the deleted asset is added");
+  }
+
+  @Test
   void test_botPortEditIsNotHeld(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     DataProduct product = reviewedDataProduct(admin, ns, "portBot");
     Table table = portTable(admin, ns, "portBot");
-    deployHookWorkflow(
-        admin, "dataProduct", product.getFullyQualifiedName(), List.of("inputPorts"));
+    deployHookWorkflow(admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS));
 
     BulkOperationResult written =
         SdkClients.ingestionBotClient()
@@ -7888,6 +7949,9 @@ public class WorkflowDefinitionResourceIT {
   }
 
   private static final String PUBLISHED_DESCRIPTION = "published description";
+  private static final String DATA_PRODUCT = "dataProduct";
+  private static final String INPUT_PORTS = "inputPorts";
+  private static final String OUTPUT_PORTS = "outputPorts";
 
   // Owned by USER2 (requester) and USER3 (another editor), reviewed by USER1.
   private Glossary createReviewedGlossary(TestNamespace ns, String tag) {
