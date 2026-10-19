@@ -214,11 +214,15 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * Under a non-root BASE_PATH every URL the MCP OAuth flow advertises is built from baseUrl, so it
    * has to carry that path. Only warns: behind a proxy that rewrites the path, a baseUrl without
    * it is correct, and appending it here would break that setup.
+   * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
   public static void warnIfBaseUrlMissesContextPath(String baseUrl, String contextPath) {
     boolean subPathContext = contextPath != null && contextPath.length() > 1;
     String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
-    if (subPathContext && !baseUrlPath.startsWith(contextPath)) {
+    // Whole segments only, so /om-other does not pass for /om
+    boolean carriesContextPath =
+        baseUrlPath.equals(contextPath) || baseUrlPath.startsWith(contextPath + "/");
+    if (subPathContext && !carriesContextPath) {
       LOG.warn(
           "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
               + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
@@ -489,6 +493,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
    * the oauth-authorization-server and the openid-configuration routes. The TypeScript MCP SDK
    * rejects an openid-configuration response without them, and under a non-root BASE_PATH that is
    * the only discovery URL it can reach.
+   * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
    */
   private static void addOpenIdDiscoveryFields(OAuthMetadata metadata, String baseUrl) {
     TokenValidationAlgorithm signingAlgorithm =
