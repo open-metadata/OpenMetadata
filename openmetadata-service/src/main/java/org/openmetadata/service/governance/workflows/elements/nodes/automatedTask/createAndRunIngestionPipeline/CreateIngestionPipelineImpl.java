@@ -44,18 +44,30 @@ import org.openmetadata.schema.metadataIngestion.SearchServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceAutoClassificationPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
-import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
-import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineSecrets;
 
 @Slf4j
 public class CreateIngestionPipelineImpl {
   private static final List<String> DEFAULT_TIERS_TO_PROCESS = List.of("Tier1", "Tier2");
   private static final Map<PipelineType, String> SUPPORT_FEATURE_MAP = new HashMap<>();
+
+  /**
+   * The display name of the agent AutoPilot creates for each type, which is also how it finds that
+   * agent again. Unchanged since AutoPilot shipped, so it identifies AutoPilot agents created before
+   * they were marked with the AUTOMATION provider.
+   */
+  public static final Map<PipelineType, String> AGENT_DISPLAY_NAMES =
+      Map.of(
+          PipelineType.METADATA, "Metadata Agent",
+          PipelineType.USAGE, "Usage Agent",
+          PipelineType.LINEAGE, "Lineage Agent",
+          PipelineType.PROFILER, "Profiler Agent",
+          PipelineType.AUTO_CLASSIFICATION, "AutoClassification Agent");
 
   static {
     SUPPORT_FEATURE_MAP.put(PipelineType.METADATA, "supportsMetadataExtraction");
@@ -233,21 +245,18 @@ public class CreateIngestionPipelineImpl {
       IngestionPipelineRepository repository,
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service) {
+    // The deployed config carries the token every scheduled run authenticates with, so it must be
+    // the bot of the agent's type, not ingestion-bot: the metadata the agent writes is attributed
+    // to it.
+    IngestionPipelineSecrets.prepareForPipelineService(
+        repository.getOpenMetadataApplicationConfig(), ingestionPipeline);
     PipelineServiceClientResponse response =
         repository.deployIngestionPipeline(ingestionPipeline, service);
     return response.getCode() == 200;
   }
 
   private String getPipelineName(PipelineType pipelineType) {
-    Map<PipelineType, String> pipelineNameByType =
-        Map.of(
-            PipelineType.METADATA, "Metadata Agent",
-            PipelineType.USAGE, "Usage Agent",
-            PipelineType.LINEAGE, "Lineage Agent",
-            PipelineType.PROFILER, "Profiler Agent",
-            PipelineType.AUTO_CLASSIFICATION, "AutoClassification Agent");
-
-    return pipelineNameByType.get(pipelineType);
+    return AGENT_DISPLAY_NAMES.get(pipelineType);
   }
 
   private IngestionPipeline getOrCreateIngestionPipeline(
@@ -309,12 +318,7 @@ public class CreateIngestionPipelineImpl {
           JsonUtils.readOrConvertValue(ingestionPipelineStr, IngestionPipeline.class);
       if (ingestionPipeline.getPipelineType().equals(pipelineType)
           && ingestionPipeline.getDisplayName().equals(displayName)) {
-        OpenMetadataConnection openMetadataServerConnection =
-            new OpenMetadataConnectionBuilder(repository.getOpenMetadataApplicationConfig())
-                .build();
-        return ingestionPipeline
-            .withService(service.getEntityReference())
-            .withOpenMetadataServerConnection(openMetadataServerConnection);
+        return ingestionPipeline.withService(service.getEntityReference());
       }
     }
     return null;
