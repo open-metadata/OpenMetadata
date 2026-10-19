@@ -58,7 +58,11 @@ const InterfaceModeMenuItem = () => {
         {t('label.user-interface')}
       </span>
 
-      <HoverCard content={<ClassicDeprecationCard />} placement="left">
+      <HoverCard
+        arrow
+        content={<ClassicDeprecationCard />}
+        offset={16}
+        placement="left">
         <button
           className={classNames(OPTION_CLASS, {
             'tw:text-utility-blue-700': !isAiMode,

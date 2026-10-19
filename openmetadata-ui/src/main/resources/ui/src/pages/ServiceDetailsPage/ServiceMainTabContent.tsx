@@ -100,6 +100,8 @@ interface ServiceMainTabContentProps {
    * service page) passes false, and the table then stands as its own rounded card.
    */
   wrapInCard?: boolean;
+  /** Skips the right panel for a host that renders its own (the AI-mode data assets tab). */
+  hideRightPanel?: boolean;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
@@ -119,6 +121,7 @@ function ServiceMainTabContent({
   pagingInfo,
   isVersionPage = false,
   wrapInCard = true,
+  hideRightPanel = false,
   onDataProductUpdate,
   setFilters,
   setIsServiceLoading,
@@ -514,6 +517,7 @@ function ServiceMainTabContent({
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
+          hideSecondPanel={hideRightPanel}
           secondPanel={{
             children: (
               <GenericProvider
