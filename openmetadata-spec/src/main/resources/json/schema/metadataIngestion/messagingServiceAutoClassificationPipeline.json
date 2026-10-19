@@ -52,7 +52,7 @@
       "maximum": 100
     },
     "sampleDataCount": {
-      "description": "No. of messages to fetch during sample data ingestion.",
+      "description": "No. of messages to fetch during sample data ingestion. Values above 1000 are capped at 1000.",
       "type": "integer",
       "default": 50,
       "minimum": 1,
