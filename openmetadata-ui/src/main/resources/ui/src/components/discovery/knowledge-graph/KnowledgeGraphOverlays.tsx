@@ -128,7 +128,8 @@ interface InspectorProps {
   onViewRelationships?: (groupId?: string) => void;
 }
 
-interface NodeInspectorProps extends Pick<InspectorProps, 'onExpandGroup'> {
+interface NodeInspectorProps
+  extends Pick<InspectorProps, 'onExpandGroup' | 'onViewRelationships'> {
   node: GraphNode;
   root?: GraphNode;
   connections: KnowledgeGraphG6Edge[];
@@ -175,21 +176,29 @@ interface RelationshipsSectionProps {
   connections: KnowledgeGraphG6Edge[];
   nodeMap: Map<string, GraphNode>;
   onSelectRelationship: (id: string) => void;
+  onViewRelationships?: () => void;
 }
 
 const PREVIEW_RELATIONSHIPS = 3;
+/**
+ * Most rows "View all" expands in the drawer. Past this the paged details
+ * table takes over, so a 300-column table never renders 300 drawer rows.
+ */
+const INLINE_RELATIONSHIPS = 40;
 
 const RelationshipsSection = ({
   node,
   connections,
   nodeMap,
   onSelectRelationship,
+  onViewRelationships,
 }: RelationshipsSectionProps) => {
   const { t } = useTranslation();
   const [showAll, setShowAll] = useState(false);
-  const previewSlice = showAll
-    ? connections
-    : connections.slice(0, PREVIEW_RELATIONSHIPS);
+  const previewSlice = connections.slice(
+    0,
+    showAll ? INLINE_RELATIONSHIPS : PREVIEW_RELATIONSHIPS
+  );
   if (connections.length === 0) {
     return null;
   }
@@ -231,6 +240,15 @@ const RelationshipsSection = ({
             : t('label.kg-view-all-relationships', {
                 count: connections.length,
               })}
+        </Button>
+      )}
+      {showAll && connections.length > INLINE_RELATIONSHIPS && (
+        <Button
+          className="tw:self-start"
+          color="link-color"
+          size="sm"
+          onPress={() => onViewRelationships?.()}>
+          {t('label.kg-view-in-list')}
         </Button>
       )}
     </InspectorSection>
@@ -361,6 +379,7 @@ const GraphNodeInspector = ({
   coverage,
   onDetails,
   onSelectRelationship,
+  onViewRelationships,
 }: NodeInspectorProps) => {
   const canShowGapNotes = hasMappingCoverageSignal(node.type);
   const bodyDescription = node.description ?? null;
@@ -392,6 +411,7 @@ const GraphNodeInspector = ({
           node={node}
           nodeMap={nodeMap}
           onSelectRelationship={onSelectRelationship}
+          onViewRelationships={onViewRelationships}
         />
       </Box>
       <InspectorActions node={node} nodeHref={nodeHref} onDetails={onDetails} />
@@ -675,6 +695,7 @@ const KnowledgeGraphOverlays = ({
                 onDetails={setDetailsNode}
                 onExpandGroup={onExpandGroup}
                 onSelectRelationship={openRelationship}
+                onViewRelationships={onViewRelationships}
               />
             )
           )}

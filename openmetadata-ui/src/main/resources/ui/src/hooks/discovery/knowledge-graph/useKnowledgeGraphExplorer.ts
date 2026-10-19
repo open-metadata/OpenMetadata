@@ -31,7 +31,6 @@ import {
   buildGraphPresentation,
   getGraphDistances,
   getMappingCoverage,
-  relabelGraphNodes,
   restrictToEntityLevel,
   sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -149,10 +148,8 @@ export const useKnowledgeGraphExplorer = ({
 
     return getMappingCoverage(rawData, inspectedIds);
   }, [rawData, rootId, result.appliedQuery?.depth]);
-  const displayData = useMemo(
-    () => relabelGraphNodes(scopedData),
-    [scopedData]
-  );
+  // Labels are already normalised where the graph is fetched (useKnowledgeGraphData).
+  const displayData = scopedData;
   const presented = useMemo(() => {
     if (!displayData || !rawData) {
       return null;

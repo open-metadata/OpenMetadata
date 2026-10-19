@@ -139,3 +139,45 @@ it('drops the way back once the user leaves the relationship', async () => {
   expect(screen.getByText('label.relationship')).toBeVisible();
   expect(screen.queryByTestId('inspector-back')).not.toBeInTheDocument();
 });
+
+it('expands at most 40 relationships in the drawer and hands larger sets to the paged list', async () => {
+  const columns = Array.from({ length: 45 }, (_, index) => ({
+    id: 'c' + index,
+    label: 'col_' + index,
+    type: 'column',
+  }));
+  const wide = {
+    nodes: [root, ...columns],
+    edges: columns.map((column) => ({
+      from: root.id,
+      to: column.id,
+      label: 'Has column',
+      relationType: 'hasColumn',
+    })),
+  };
+  const onViewRelationships = jest.fn();
+  render(
+    <ThemeProvider>
+      <KnowledgeGraphOverlays
+        edges={transformToG6Format(wide).edges}
+        nodes={wide.nodes}
+        selection={{ kind: 'node', id: root.id }}
+        tooltip={null}
+        onSelectionChange={jest.fn()}
+        onViewRelationships={onViewRelationships}
+      />
+    </ThemeProvider>
+  );
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'label.kg-view-all-relationships' })
+  );
+
+  expect(screen.getAllByRole('button', { name: /^Orders / })).toHaveLength(40);
+
+  await userEvent.click(
+    screen.getByRole('button', { name: 'label.kg-view-in-list' })
+  );
+
+  expect(onViewRelationships).toHaveBeenCalled();
+});
