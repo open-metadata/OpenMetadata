@@ -19,6 +19,7 @@ import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import { getContract } from '../../rest/contractAPI';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
+import { getContractAssetFqn } from './DataContractRedirectPage.utils';
 
 /**
  * A data contract has no page of its own: it lives on its asset's Contract
@@ -31,15 +32,22 @@ const DataContractRedirectPage = () => {
 
   useEffect(() => {
     getContract(fqn)
-      .then(({ entity }) =>
+      .then(({ entity, name }) => {
+        const assetFqn = getContractAssetFqn(
+          fqn,
+          name,
+          entity.fullyQualifiedName
+        );
         setPath(
-          getEntityDetailsPath(
-            entity.type as EntityType,
-            entity.fullyQualifiedName ?? '',
-            EntityTabs.CONTRACT
-          )
-        )
-      )
+          assetFqn
+            ? getEntityDetailsPath(
+                entity.type as EntityType,
+                assetFqn,
+                EntityTabs.CONTRACT
+              )
+            : ROUTES.NOT_FOUND
+        );
+      })
       .catch(() => setPath(ROUTES.NOT_FOUND));
   }, [fqn]);
 
