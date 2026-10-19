@@ -177,7 +177,8 @@ public final class DescriptionSanitizer {
     }
     matcher.appendTail(replaced);
 
-    String sanitized = MARKDOWN_POLICY.sanitize(replaced.toString());
+    String toSanitize = replaced.toString();
+    String sanitized = toSanitize.contains("<") ? MARKDOWN_POLICY.sanitize(toSanitize) : toSanitize;
 
     for (int i = 0; i < entityLinks.size(); i++) {
       sanitized =
