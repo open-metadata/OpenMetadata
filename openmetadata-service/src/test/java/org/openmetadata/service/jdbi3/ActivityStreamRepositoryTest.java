@@ -149,6 +149,31 @@ class ActivityStreamRepositoryTest {
   }
 
   @Test
+  void createFieldEventsFromChangeEventRecordsStatusChanges() {
+    ActivityStreamRepository repository =
+        new ActivityStreamRepository(mock(CollectionDAO.ActivityStreamDAO.class));
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("entityStatus")
+                                .withOldValue("In Review")
+                                .withNewValue("Approved"))));
+
+    ActivityEvent event =
+        repository.createFieldEventsFromChangeEvent(changeEvent, tableEntity()).getFirst();
+
+    assertEquals(ActivityEventType.ENTITY_UPDATED, event.getEventType());
+    assertEquals("entityStatus", event.getFieldName());
+    assertEquals("Approved", event.getNewValue());
+    assertTrue(event.getSummary().endsWith("changed to Approved"), event.getSummary());
+  }
+
+  @Test
   void listCountAndRetentionDoNotQueryConversationStorage() {
     CollectionDAO.ActivityStreamDAO dao = mock(CollectionDAO.ActivityStreamDAO.class);
     ActivityStreamRepository repository = new ActivityStreamRepository(dao);

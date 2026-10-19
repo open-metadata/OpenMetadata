@@ -11,3 +11,6 @@ CREATE TABLE IF NOT EXISTS ws_relay_message (
   createdAt BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
 );
 CREATE INDEX IF NOT EXISTS idx_ws_relay_createdAt ON ws_relay_message (createdAt, id);
+
+-- Re-seed ActivityFeedAlert so data contract changes and entityStatus approvals reach the activity feed.
+DELETE FROM event_subscription_entity WHERE name = 'ActivityFeedAlert';
