@@ -160,14 +160,17 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: ({
     onClick,
     tooltip,
+    isSelected,
     ...rest
   }: {
     onClick?: () => void;
     tooltip?: string;
+    isSelected?: boolean;
     'data-testid'?: string;
   }) => (
     <button
       aria-label={tooltip}
+      aria-pressed={isSelected}
       data-testid={rest['data-testid']}
       onClick={onClick}
     />
@@ -324,6 +327,10 @@ describe('CommentComposer', () => {
 
       expect(editorRoot()).toHaveClass(COLLAPSED_CLASS);
       expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
+        'aria-pressed',
+        'false'
+      );
+      expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
         'aria-label',
         'label.show-formatting'
       );
@@ -335,6 +342,10 @@ describe('CommentComposer', () => {
       fireEvent.click(screen.getByTestId('formatting-toggle'));
 
       expect(editorRoot()).not.toHaveClass(COLLAPSED_CLASS);
+      expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
       expect(screen.getByTestId('formatting-toggle')).toHaveAttribute(
         'aria-label',
         'label.hide-formatting'

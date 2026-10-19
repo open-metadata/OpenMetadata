@@ -125,13 +125,11 @@ export const CommentEditor: React.FC<CommentEditorProps> = ({
             className="tw:absolute tw:right-2 tw:bottom-1.5"
             gap={2}>
             <ButtonUtility
-              className={classNames(
-                isFormatting &&
-                  'tw:bg-brand-primary tw:text-brand-secondary tw:hover:bg-brand-primary tw:hover:text-brand-secondary'
-              )}
               color="tertiary"
               data-testid="formatting-toggle"
               icon={Type01}
+              isSelected={isFormatting}
+              size="lg"
               tooltip={t(
                 isFormatting ? 'label.hide-formatting' : 'label.show-formatting'
               )}
@@ -206,7 +204,7 @@ export const CommentEditForm: React.FC<CommentEditFormProps> = ({
         onSave={onSave}
       />
       <Box align="center" className="tw:justify-between" gap={2}>
-        <Typography className="tw:text-tertiary" size="text-xs">
+        <Typography color="secondary" size="text-xs">
           <kbd>{t('label.shift')}</kbd>
           {t('label.plus-symbol')} <kbd>{t('label.return')}</kbd>{' '}
           {t('message.to-add-new-line')}
