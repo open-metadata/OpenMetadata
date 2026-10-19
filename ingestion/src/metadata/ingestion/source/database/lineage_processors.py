@@ -28,9 +28,14 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
     QueryParserType,
 )
-from metadata.generated.schema.type.basic import SqlQuery, Timestamp
+from metadata.generated.schema.type.basic import (
+    FullyQualifiedEntityName,
+    SqlQuery,
+    Timestamp,
+)
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
@@ -282,15 +287,49 @@ def process_chunk_in_subprocess(chunk, processor_fn, queue, *args):
         return False
 
 
-def _query_already_processed(metadata: OpenMetadata, table_query: TableQuery) -> bool:
+def _lineage_endpoints(lineage_request: LineageRequest) -> list[EntityReference]:
+    """References to both ends of a lineage edge, when the request carries their ids"""
+    if isinstance(lineage_request, OMetaFQNLineageRequest):
+        ends = (
+            (lineage_request.from_entity_id, lineage_request.from_entity_type),
+            (lineage_request.to_entity_id, lineage_request.to_entity_type),
+        )
+        return [EntityReference(id=entity_id, type=entity_type) for entity_id, entity_type in ends if entity_id]
+    return [lineage_request.edge.fromEntity, lineage_request.edge.toEntity]
+
+
+def _lineage_is_intact(table_ids: set[str], upstreams: dict[str, set[str]]) -> bool:
     """
-    Check if a query has already been processed by validating if exists
-    in ES with lineageProcessed as True
+    Whether every table recorded on a processed query is still indexed and joined by an
+    edge to another recorded table. Usage and search reindexes rewrite the recorded tables
+    from the current relationships, so a re-created table can be recorded under its new id;
+    it still has no edges, so the query fails this check and is processed again.
     """
-    checksums = metadata.es_get_queries_with_lineage(
-        service_name=table_query.serviceName,
+    if not table_ids or not table_ids <= upstreams.keys():
+        return False
+    joined: set[str] = set()
+    for table_id in table_ids:
+        sources = (upstreams[table_id] & table_ids) - {table_id}
+        if sources:
+            joined |= sources | {table_id}
+    return joined == table_ids
+
+
+def _checksums_with_intact_lineage(
+    metadata: OpenMetadata, service_name: str, table_queries: list[TableQuery]
+) -> set[str]:
+    """
+    Checksums of the queries whose lineage needs no processing: the service processed
+    them before and the edges between the tables they connected are still there.
+    Deleting a table deletes its edges, so a query that connected a deleted or
+    re-created table is processed again, as is one stored before its tables were recorded.
+    See ADR:2026-10-13-processed-lineage-queries-link-the-tables-their-edges-connect.
+    """
+    processed = metadata.es_get_lineage_processed_queries(
+        service_name, {fqn.get_query_checksum(table_query.query) for table_query in table_queries}
     )
-    return fqn.get_query_checksum(table_query.query) in checksums or {}
+    upstreams = metadata.es_get_upstream_entity_ids(Table, set().union(*processed.values()))
+    return {checksum for checksum, table_ids in processed.items() if _lineage_is_intact(table_ids, upstreams)}
 
 
 def query_lineage_processor(
@@ -308,42 +347,53 @@ def query_lineage_processor(
     """
     Generate lineage for a list of table queries
     """
+    table_queries = table_queries or []
+    intact_checksums = _checksums_with_intact_lineage(metadata, serviceName, table_queries)
 
-    for table_query in table_queries or []:
-        if not _query_already_processed(metadata, table_query):
-            # Prepare service names for lineage processing
-            service_names = [table_query.serviceName]
-            if processCrossDatabaseLineage and crossDatabaseServiceNames:
-                service_names.extend(crossDatabaseServiceNames)
+    for table_query in table_queries:
+        if fqn.get_query_checksum(table_query.query) in intact_checksums:
+            continue
+        # Prepare service names for lineage processing
+        service_names = [table_query.serviceName]
+        if processCrossDatabaseLineage and crossDatabaseServiceNames:
+            service_names.extend(crossDatabaseServiceNames)
 
-            lineages: Iterable[Either[LineageRequest]] = get_lineage_by_query(
-                metadata,
-                query=table_query.query,
-                service_names=service_names,
-                database_name=table_query.databaseName,
-                schema_name=table_query.databaseSchema,
-                dialect=dialect,
-                timeout_seconds=parsingTimeoutLimit,
-                graph=graph,
-                parser_type=parser_type,
+        lineages: Iterable[Either[LineageRequest]] = get_lineage_by_query(
+            metadata,
+            query=table_query.query,
+            service_names=service_names,
+            database_name=table_query.databaseName,
+            schema_name=table_query.databaseSchema,
+            dialect=dialect,
+            timeout_seconds=parsingTimeoutLimit,
+            graph=graph,
+            parser_type=parser_type,
+        )
+
+        lineage_found = False
+        endpoints: dict[str, EntityReference] = {}
+        for lineage_request in lineages or []:
+            queue.put(lineage_request)
+            if lineage_request.right:
+                lineage_found = True
+                endpoints.update({model_str(ref.id): ref for ref in _lineage_endpoints(lineage_request.right)})
+
+        # If we identified lineage properly, ingest the original query, linked to the
+        # tables its edges connect so a later run can tell when one of them is gone
+        if lineage_found:
+            queue.put(
+                Either(
+                    left=None,
+                    right=CreateQueryRequest(
+                        query=SqlQuery(table_query.query),
+                        query_type=table_query.query_type,
+                        duration=table_query.duration,
+                        processedLineage=True,
+                        queryUsedIn=EntityReferenceList(root=list(endpoints.values())),
+                        service=FullyQualifiedEntityName(serviceName),
+                    ),
+                )
             )
-
-            for lineage_request in lineages or []:
-                queue.put(lineage_request)
-
-                # If we identified lineage properly, ingest the original query
-                if lineage_request.right:
-                    queue.put(
-                        Either(
-                            right=CreateQueryRequest(
-                                query=SqlQuery(table_query.query),
-                                query_type=table_query.query_type,
-                                duration=table_query.duration,
-                                processedLineage=True,
-                                service=serviceName,
-                            )
-                        )
-                    )
 
 
 def _writes_into_view(lineage_request: LineageRequest, view_fqn: str | None) -> bool:
