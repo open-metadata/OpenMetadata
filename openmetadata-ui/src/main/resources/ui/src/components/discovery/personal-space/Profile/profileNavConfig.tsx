@@ -101,6 +101,8 @@ export interface ProfileHeaderOverride {
   titleSuffix?: React.ReactNode;
   /** Extra row rendered under the description (e.g. installed / developer details). */
   meta?: React.ReactNode;
+  /** Tab strip rendered at the bottom of the header (e.g. an app's detail tabs). */
+  tabs?: React.ReactNode;
 }
 
 /**
