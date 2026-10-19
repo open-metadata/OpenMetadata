@@ -27,20 +27,29 @@ same failure for themselves by evicting on their own failure path.
 
 A transaction that does not commit evicts every key its writes recorded the same way a commit does.
 Those are the keys `invalidate` and `invalidateCacheForEntity` record for updates, restores and
-deletes. The write epochs move, the Redis keys go in one DEL, L1 and the Redis caches derived from
-the entity are evicted, and the repair is re-armed. A deadlock replay keeps the keys of the attempt
-it abandons, so the final commit or rollback evicts them too.
+deletes of an entity type Redis caches. The write epochs move, the Redis keys go in one DEL, L1 and
+the Redis caches derived from the entity are evicted, and the repair is re-armed. A deadlock replay
+keeps the keys of the attempt it abandons, so the final commit or rollback evicts them too.
 
 ## Consequences
 
 Eviction is always safe: the next read loads the committed row. A failed write now costs the same
 Redis round trips as a committed one, and failures after a write are rare. Code whose failed writes
-are updates needs no eviction of its own, so the ContextMemory decision's eviction was removed.
+are updates of a Redis-cached type needs no eviction of its own, so the ContextMemory decision's
+eviction was removed.
 
-The rule does not cover everything:
+The rule does not cover everything. Code that writes one of the following, reads it back and can
+still fail afterwards evicts what it wrote itself:
 
-- An insert records no key. Code that creates an entity, reads it back and can still fail
-  afterwards keeps evicting what it created, as `OntologyChangeApplicationService` does.
+- **Inserts.** An insert records no key. `OntologyChangeApplicationService` evicts what it created.
+- **Types Redis never caches** (`UNCACHED_ENTITY_TYPES`: user, task, the workflow types,
+  testCaseResolutionStatus, bot, domain, dataProduct). Their writes record no key, so a rollback
+  leaves an L1 copy cached by such a read until the repair or the TTL.
+- **Repositories whose update bypasses `store()`.** `TaskRepository` and
+  `TaskFormSchemaRepository` update through the DAO without `invalidate`.
+
+Two further limits apply:
+
 - The post-commit actions still run only on commit. On the writing server they also evict the
   authorization and not-found caches (`CacheBundle.invalidateEntity`), as
   ADR:2026-10-13-authorization-caches-retire-generations-after-commit decides.

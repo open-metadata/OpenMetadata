@@ -3813,7 +3813,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
     // Rename cascades run inside the rename flush transaction. Route each descendant through
     // invalidateCacheForEntity so the Guava-L1 eviction stays inline (cheap) while the Redis-L2
-    // round trip is deferred to the post-commit drain when a flush scope is open — never issued
+    // round trip is deferred to the drain that runs once the transaction commits or rolls back
+    // when a flush scope is open — never issued
     // while the pooled connection is held. The previous per-row pub/sub reason label was
     // informational only (remote listeners evict L1 regardless), so the unified path is equivalent.
     for (EntityDAO.EntityIdFqnPair row : affected) {
@@ -3848,7 +3849,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
-   * post-commit invalidation; the {@code fqn} is carried along (best non-null wins) so the by-name
+   * invalidation when the transaction ends; the {@code fqn} is carried along (best non-null wins) so
+   * the by-name
    * Redis variant is evicted when any caller knew the FQN.
    */
   private static final class CacheInvalidationKey {
@@ -3945,7 +3947,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * <p>The Guava-L1 eviction always runs inline (local, cheap). The Redis-L2 portion (base/by-name
    * hash, relationship, bundle, lineage, pub/sub) issues a blocking {@code syncCommands} round
    * trip, so when a deferral scope is active (a flush is holding a pooled DB connection) it is
-   * recorded and replayed post-commit on the request thread instead — never inside the handle.
+   * recorded and replayed on the request thread once the transaction commits or rolls back instead
+   * — never inside the handle.
    */
   public static void invalidateCacheForEntity(String entityType, UUID id, String fqn) {
     if (entityType == null || id == null) {
@@ -4034,8 +4037,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Issue the Redis-L2 eviction now, or record it for the post-commit drain when a deferral scope is
-   * open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
+   * Issue the Redis-L2 eviction now, or record it for the drain that runs once the transaction
+   * commits or rolls back, when a deferral scope is open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
    * DEL} sent while the writer's transaction is still open is undone by any concurrent reader, which
    * takes the resulting miss, reads the not-yet-committed row, and re-populates the key with the
    * pre-write value. That stale entry then outlives the commit (until TTL), which is how a restored
@@ -4243,7 +4246,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void invalidateCache(T entity) {
     try {
       // Guava L1 is a local map eviction, so it stays inline. The Redis L2 round trip does not:
-      // deferOrInvalidateRedisL2 holds it until the transaction commits when a scope is open.
+      // deferOrInvalidateRedisL2 holds it until the transaction ends when a scope is open.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
       deferOrInvalidateRedisL2(entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -4421,9 +4424,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     entities.forEach(this::assignInitialEntityStatus);
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
-    // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
-    // the
-    // handle is held).
+    // storeRelationshipsInternal are recorded and drained once the transaction ends (no Redis round
+    // trip while the handle is held).
     flushInOneTransaction(
         entities,
         () -> {
@@ -4469,8 +4471,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
-    // invalidations issued here are recorded and drained post-commit so no Redis round trip runs
-    // while the handle is held.
+    // invalidations issued here are recorded and drained once the transaction ends so no Redis
+    // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
           updateMany(updatedEntities);
@@ -5861,9 +5863,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
    * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
    * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
-   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
-   * cheap local Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens
-   * post-commit on the request thread (read-your-write safe).
+   * #beginCacheInvalidationDeferral()} — the lineage writes drained post-commit on the request
+   * thread, the cache keys once the transaction commits or rolls back. Only the cheap local
+   * Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens on the request
+   * thread after the transaction ends (read-your-write safe).
    *
    * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
    * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
