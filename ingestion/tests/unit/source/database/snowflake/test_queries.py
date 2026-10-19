@@ -119,7 +119,7 @@ def test_incremental_view_query_only_passes_actual_bind_parameters():
     }
 
 
-def _list_incremental_names(list_names, table_type, rows, **kwargs):
+def _list_incremental_names(list_names, table_type, rows, start_timestamp=0, **kwargs):
     """Run the real incremental names query against an in-memory ACCOUNT_USAGE.tables
     holding `rows` of (LAST_DDL epoch ms, DELETED) for one object named T."""
     dialect = SnowflakeDialect()
@@ -145,7 +145,7 @@ def _list_incremental_names(list_names, table_type, rows, **kwargs):
             dialect,
             connection,
             schema="PUBLIC",
-            incremental=IncrementalConfig(enabled=True, start_timestamp=0),
+            incremental=IncrementalConfig(enabled=True, start_timestamp=start_timestamp),
             account_usage="main",
             include_views=True,
             **kwargs,
@@ -182,6 +182,24 @@ def test_incremental_names_still_report_object_dropped_after_replace(table_type,
     )
 
     assert [table.deleted.hour for table in result.tables] == [7]
+
+
+@INCREMENTAL_NAME_LISTERS
+def test_incremental_names_keep_alive_row_when_cutoff_splits_the_replace(table_type, list_names, kwargs):
+    """The cutoff lands between the new row's create and the old row's drop: the live row
+    is older than the window but must still outrank its in-window dropped twin."""
+    result = _list_incremental_names(
+        list_names, table_type, [(1_000, None), (1_001, "2026-05-12 06:10:20")], start_timestamp=1_001, **kwargs
+    )
+
+    assert [table.deleted for table in result.tables] == [None]
+
+
+@INCREMENTAL_NAME_LISTERS
+def test_incremental_names_skip_object_unchanged_since_cutoff(table_type, list_names, kwargs):
+    result = _list_incremental_names(list_names, table_type, [(1_000, None)], start_timestamp=1_001, **kwargs)
+
+    assert result.tables == []
 
 
 @pytest.mark.parametrize(
