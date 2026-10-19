@@ -25,15 +25,25 @@ same failure for themselves by evicting on their own failure path.
 
 ## Decision
 
-A transaction that does not commit evicts every key its writes recorded, exactly as a commit does:
-the write epochs move, the Redis keys go in one DEL, L1 and the caches derived from the entity are
-evicted, and the repair is re-armed. A deadlock replay keeps the keys of the attempt it abandons,
-so the final commit or rollback evicts them too.
+A transaction that does not commit evicts every key its writes recorded the same way a commit does.
+Those are the keys `invalidate` and `invalidateCacheForEntity` record for updates, restores and
+deletes. The write epochs move, the Redis keys go in one DEL, L1 and the Redis caches derived from
+the entity are evicted, and the repair is re-armed. A deadlock replay keeps the keys of the attempt
+it abandons, so the final commit or rollback evicts them too.
 
 ## Consequences
 
 Eviction is always safe: the next read loads the committed row. A failed write now costs the same
-Redis round trips as a committed one, and failures after a write are rare. Code no longer needs to
-evict on its own failure paths, so the ContextMemory decision's own eviction was removed. Readers
-on other threads can still see the uncommitted copy between the in-transaction read and the
-rollback; closing that window would mean not caching reads of keys the open transaction wrote.
+Redis round trips as a committed one, and failures after a write are rare. Code whose failed writes
+are updates needs no eviction of its own, so the ContextMemory decision's eviction was removed.
+
+The rule does not cover everything:
+
+- An insert records no key. Code that creates an entity, reads it back and can still fail
+  afterwards keeps evicting what it created, as `OntologyChangeApplicationService` does.
+- The post-commit actions still run only on commit. On the writing server they also evict the
+  authorization and not-found caches (`CacheBundle.invalidateEntity`), as
+  ADR:2026-10-13-authorization-caches-retire-generations-after-commit decides.
+- Readers on other threads can still see the uncommitted copy between the in-transaction read and
+  the rollback, and a replayed attempt can read the row its abandoned attempt cached. Closing that
+  window would mean not caching reads of keys the open transaction wrote.

@@ -3927,7 +3927,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Close the scope without evicting its keys. Only tests reset a scope this way: a transaction that
-   * fails still evicts what it wrote, see ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote.
+   * fails still evicts the keys its writes recorded, see
+   * ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote.
    */
   @VisibleForTesting
   static void clearCacheInvalidations() {
