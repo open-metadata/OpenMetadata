@@ -129,6 +129,34 @@ public class McpIntegrationIT extends McpTestBase {
     assertThat(config.at("/hostPort").asText()).isEqualTo("localhost:3306");
   }
 
+  @Test
+  void testPatchEntityOnServiceSavesTheDescriptionAndLeavesTheConnection() throws Exception {
+    String serviceFqn = testTable.getService().getFullyQualifiedName();
+    String description = "patched through MCP " + UUID.randomUUID().toString().substring(0, 8);
+
+    JsonNode patched =
+        executeMcpRequest(
+            McpTestUtils.createPatchEntityToolCall(
+                Entity.DATABASE_SERVICE,
+                serviceFqn,
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\""
+                    + description
+                    + "\"}]"));
+    JsonNode refused =
+        executeMcpRequest(
+            McpTestUtils.createPatchEntityToolCall(
+                Entity.DATABASE_SERVICE,
+                serviceFqn,
+                "[{\"op\":\"replace\",\"path\":\"/connection/config/hostPort\","
+                    + "\"value\":\"example.invalid:3306\"}]"));
+
+    assertThat(patched.path("result").path("isError").asBoolean(false)).isFalse();
+    assertThat(refused.path("result").path("isError").asBoolean(false)).isTrue();
+    JsonNode stored = get("services/databaseServices/name/" + serviceFqn, JsonNode.class);
+    assertThat(stored.path("description").asText()).isEqualTo(description);
+    assertThat(stored.at("/connection/config/hostPort").asText()).isEqualTo("localhost:3306");
+  }
+
   private static void addStringCustomProperty(String entityType, String propertyName)
       throws Exception {
     JsonNode entityTypeNode =
