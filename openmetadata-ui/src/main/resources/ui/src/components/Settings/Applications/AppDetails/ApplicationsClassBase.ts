@@ -13,26 +13,48 @@
 
 import {
   AppAutopilot,
+  AppAutopilotColored,
   AppCacheWarmup,
+  AppCacheWarmupColored,
   AppCollateAiChat,
+  AppCollateAiChatColored,
   AppDataContractValidation,
+  AppDataContractValidationColored,
   AppDataInsights,
+  AppDataInsightsColored,
   AppDataInsightsReport,
+  AppDataInsightsReportColored,
   AppDataRetention,
+  AppDataRetentionColored,
   AppMcpServer,
+  AppMcpServerColored,
   AppMemberWeeklyEmails,
+  AppMemberWeeklyEmailsColored,
+  AppMemoryReconciliationColored,
   AppMetadataExplorer,
+  AppMetadataExplorerColored,
   AppMicrosoftTeams,
+  AppMicrosoftTeamsColored,
   AppOnboarding,
+  AppOnboardingColored,
   AppQueryRunner,
+  AppQueryRunnerColored,
   AppRdfGraphIndexing,
+  AppRdfGraphIndexingColored,
   AppRdfInferenceMaterialization,
+  AppRdfInferenceMaterializationColored,
   AppReverseMetadata,
+  AppReverseMetadataColored,
   AppSearchIndexing,
+  AppSearchIndexingColored,
   AppSlack,
+  AppSlackColored,
   AppSupport,
+  AppSupportColored,
   AppTelemetry,
+  AppTelemetryColored,
   AppWeeklyInsightsDigest,
+  AppWeeklyInsightsDigestColored,
   LayoutGrid01,
 } from '@openmetadata/ui-core-components/icons';
 import type { RJSFSchema } from '@rjsf/utils';
@@ -99,6 +121,33 @@ const APP_ICONS: Record<string, AppIcon> = {
   TeamsApplication: AppMicrosoftTeams,
   TelemetryApplication: AppTelemetry,
   WeeklyInsightDigestApplication: AppWeeklyInsightsDigest,
+};
+
+// Full-colour tiles for the app landing and marketplace cards. Apps without one
+// keep their monochrome glyph on a neutral tile.
+const APP_COLORED_ICONS: Record<string, AppIcon> = {
+  AIChatApplication: AppCollateAiChatColored,
+  AutoPilotApplication: AppAutopilotColored,
+  CacheWarmupApplication: AppCacheWarmupColored,
+  CollateSupport: AppSupportColored,
+  DataContractValidationApplication: AppDataContractValidationColored,
+  DataInsightsApplication: AppDataInsightsColored,
+  DataInsightsReportApplication: AppDataInsightsReportColored,
+  DataRetentionApplication: AppDataRetentionColored,
+  McpApplication: AppMcpServerColored,
+  MemoryReconciliationApplication: AppMemoryReconciliationColored,
+  MemberWeeklyEmailApplication: AppMemberWeeklyEmailsColored,
+  MetadataExporterApplication: AppMetadataExplorerColored,
+  OnboardingApplication: AppOnboardingColored,
+  QueryRunner: AppQueryRunnerColored,
+  RdfIndexApp: AppRdfGraphIndexingColored,
+  RdfInferenceApp: AppRdfInferenceMaterializationColored,
+  ReverseMetadata: AppReverseMetadataColored,
+  SearchIndexingApplication: AppSearchIndexingColored,
+  SlackApplication: AppSlackColored,
+  TeamsApplication: AppMicrosoftTeamsColored,
+  TelemetryApplication: AppTelemetryColored,
+  WeeklyInsightDigestApplication: AppWeeklyInsightsDigestColored,
 };
 
 // The sentinel the backend expands to every registered index. It is not an index itself, so the
@@ -251,6 +300,10 @@ class ApplicationsClassBase {
    */
   public getAppIcon(appName?: string): AppIcon {
     return (appName && APP_ICONS[appName]) || LayoutGrid01;
+  }
+
+  public getAppColoredIcon(appName?: string): AppIcon | undefined {
+    return appName ? APP_COLORED_ICONS[appName] : undefined;
   }
 
   public getModalAppConfigurationComponent(): ComponentType<AppConfigFormProps> {

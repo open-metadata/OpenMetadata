@@ -18,6 +18,7 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import type { Key } from 'react';
 import React, { FC, useMemo } from 'react';
 
@@ -47,6 +48,8 @@ export interface ProfileContentHeaderProps {
   titleSuffix?: React.ReactNode;
   /** Extra row rendered under the description (e.g. installed / developer details). */
   meta?: React.ReactNode;
+  /** Tab strip rendered flush with the header's bottom border. */
+  tabs?: React.ReactNode;
 }
 
 /**
@@ -65,6 +68,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   titleInput,
   titleSuffix,
   meta,
+  tabs,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -78,7 +82,10 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
 
   return (
     <Box
-      className="ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:py-4 tw:mb-7"
+      className={classNames(
+        'ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:pt-4 tw:mb-7',
+        tabs ? 'tw:pb-0' : 'tw:pb-4'
+      )}
       data-testid="profile-content-header"
       direction="col"
       gap={5}>
@@ -121,17 +128,16 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           </Typography>
           {meta}
         </Box>
-        {/* The header sits under the modal's close button, which core pins to
-            the dialog's top-right corner; the right margin keeps the actions
-            clear of it, as core's own Dialog header does with `pr-12`. */}
         {actions && (
           <Box
-            className="tw:ml-auto tw:mr-12 tw:flex tw:items-center tw:gap-2"
+            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
             direction="row">
             {actions}
           </Box>
         )}
       </Box>
+      {/* -mb-px lays the tab strip's own baseline over the header border. */}
+      {tabs && <div className="tw:-mb-px">{tabs}</div>}
     </Box>
   );
 };
