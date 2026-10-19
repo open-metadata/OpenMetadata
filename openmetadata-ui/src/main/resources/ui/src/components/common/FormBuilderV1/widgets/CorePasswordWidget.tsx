@@ -24,7 +24,11 @@ import {
   getCredentialFileValidationMessages,
   isCredentialFileFieldType,
 } from '../../../../utils/CredentialFileField.utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CorePasswordWidget = (props: WidgetProps) => {
   const {
@@ -102,6 +106,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
 
   return (
     <PasswordInput
+      {...getWidgetAriaProps({ label, schema })}
       // eslint-disable-next-line jsx-a11y/no-autofocus -- RJSF-driven field autofocus
       autoFocus={autofocus}
       hint={hint}

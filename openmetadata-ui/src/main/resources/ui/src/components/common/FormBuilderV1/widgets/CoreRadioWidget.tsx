@@ -19,7 +19,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { useMemo } from 'react';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CoreRadioWidget = ({
   value,
@@ -64,6 +68,7 @@ const CoreRadioWidget = ({
       {displayLabel && <Label isRequired={required}>{displayLabel}</Label>}
 
       <RadioGroup
+        {...getWidgetAriaProps({ label, schema })}
         className={
           isHorizontal
             ? 'tw:flex tw:flex-row tw:flex-wrap tw:gap-3'

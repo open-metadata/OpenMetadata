@@ -45,6 +45,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
       <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_40px]">
         <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
+            aria-label={t('label.key')}
             id={`${id}-key`}
             placeholder={t('label.key').toLowerCase()}
             value={keyValue}

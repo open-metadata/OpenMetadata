@@ -19,7 +19,11 @@ import {
   parseDate,
 } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 // Core's own `parseDate`: the app and the design system resolve separate
 // `@internationalized/date` copies, whose date classes are not interchangeable.
@@ -56,7 +60,11 @@ const CoreDateWidget = ({
         </Label>
       )}
       <DatePicker
-        aria-label={fieldLabel ?? id}
+        aria-label={
+          fieldLabel ??
+          getWidgetAriaProps({ label, schema })['aria-label'] ??
+          id
+        }
         data-testid={`date-widget-${id}`}
         id={id}
         isDisabled={disabled || readonly}

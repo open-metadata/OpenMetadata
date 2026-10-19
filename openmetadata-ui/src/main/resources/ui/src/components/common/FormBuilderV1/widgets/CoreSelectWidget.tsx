@@ -14,7 +14,11 @@
 import { Select } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { Key, useMemo } from 'react';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CoreSelectWidget = ({
   id,
@@ -54,6 +58,7 @@ const CoreSelectWidget = ({
 
   return (
     <Select
+      {...getWidgetAriaProps({ label, schema })}
       className="core-select-widget"
       data-testid={id ? `select-widget-${id}` : undefined}
       fontSize="sm"

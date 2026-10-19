@@ -13,7 +13,11 @@
 
 import { TextArea } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CoreTextAreaWidget = ({
   id,
@@ -37,6 +41,7 @@ const CoreTextAreaWidget = ({
 
   return (
     <TextArea
+      {...getWidgetAriaProps({ label, schema })}
       // eslint-disable-next-line jsx-a11y/no-autofocus -- autofocus is schema-driven per RJSF widget contract
       autoFocus={autofocus}
       hint={getWidgetHint({ rawErrors, schema, options })}

@@ -37,3 +37,10 @@ export const getWidgetLabel = ({
 
   return looksLikeRawKey(label) ? getFormDisplayLabel(label) : label;
 };
+
+// A map entry's value has no visible label, so its key names it for assistive tech.
+export const getWidgetAriaProps = ({
+  label,
+  schema,
+}: Pick<WidgetProps, 'label' | 'schema'>): { 'aria-label'?: string } =>
+  schema && ADDITIONAL_PROPERTY_FLAG in schema ? { 'aria-label': label } : {};
