@@ -36,10 +36,7 @@ const outputDir = `${artifactRoot}/test-results`;
 export default defineConfig({
   captureGitInfo: { commit: false, diff: false },
   testDir: './browser-tests',
-  /* One CI retry: chrome-headless-shell occasionally segfaults at launch in
-   * the sandboxed container, failing a test in 5ms before any code runs. The
-   * retry is still reported as flaky, so a real regression stays visible. */
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   workers: 3,
   fullyParallel: true,
   outputDir,
