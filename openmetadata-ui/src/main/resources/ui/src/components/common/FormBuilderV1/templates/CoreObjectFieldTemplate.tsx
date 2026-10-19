@@ -20,7 +20,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
-import { getUiOptions, ObjectFieldTemplateProps } from '@rjsf/utils';
+import {
+  ADDITIONAL_PROPERTY_FLAG,
+  getUiOptions,
+  ObjectFieldTemplateProps,
+} from '@rjsf/utils';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -500,7 +504,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     return null;
   }
 
-  if (!isRoot && title) {
+  // A map entry's key is already shown beside its value, so it gets no titled panel.
+  if (!isRoot && title && !(ADDITIONAL_PROPERTY_FLAG in schema)) {
     return (
       <NonRootTitledView
         description={description}

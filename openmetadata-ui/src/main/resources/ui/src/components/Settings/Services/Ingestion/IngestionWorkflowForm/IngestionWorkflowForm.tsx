@@ -15,7 +15,7 @@ import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
 import classNames from 'classnames';
-import { capitalize, isUndefined, omit, omitBy } from 'lodash';
+import { capitalize, cloneDeep, isUndefined, omit, omitBy } from 'lodash';
 import {
   forwardRef,
   lazy,
@@ -46,6 +46,7 @@ import {
 import databaseAutoClassificationJson from '../../../../../jsons/ingestionSchemas/databaseServiceAutoClassificationPipeline.json';
 import ProfilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { transformErrors } from '../../../../../utils/formPureUtils';
+import { formatAdditionalProperties } from '../../../../../utils/JSONSchemaFormUtils';
 import { getSchemaByWorkflowType } from '../../../../../utils/IngestionWorkflowUtils';
 import { getFieldSchemaForId } from '../../../../../utils/ServiceConnectionUtils';
 import { withSuspenseFallback } from '../../../../AppRouter/withSuspenseFallback';
@@ -366,7 +367,7 @@ const IngestionWorkflowForm = forwardRef<
 
   const handleSubmit = (e: IChangeEvent<IngestionWorkflowData>) => {
     if (e.formData) {
-      let formData = { ...e.formData };
+      let formData = formatAdditionalProperties(cloneDeep(e.formData));
       if (isElasticSearchPipeline) {
         formData = {
           ...omit(formData, [

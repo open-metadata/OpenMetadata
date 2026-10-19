@@ -76,7 +76,7 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     });
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
-    const { catalogMapping } = onChange.mock.lastCall[0];
+    const { catalogMapping } = onChange.mock.calls.at(-1)[0];
 
     expect(catalogMapping).toEqual(
       expect.objectContaining({ bq_catalog: 'my-gcp-project' })
