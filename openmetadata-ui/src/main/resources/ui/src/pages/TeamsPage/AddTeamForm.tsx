@@ -258,6 +258,7 @@ const AddTeamForm: React.FC<AddTeamFormType> = ({
                     )
                   }>
                   <ButtonUtility
+                    color="primary"
                     data-testid="add-domain"
                     icon={Plus}
                     tooltip={t('label.add-entity', {

@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Edit01,
-  RefreshCcw02,
+  RefreshCw01,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useState } from 'react';
@@ -142,8 +142,8 @@ function AlertDetailsContent({
                   itemClassName="layout-space-item">
                   <ButtonUtility
                     data-testid="sync-button"
-                    icon={RefreshCcw02}
-                    isDisabled={isSyncing}
+                    icon={RefreshCw01}
+                    isLoading={isSyncing}
                     size="lg"
                     tooltip={t('label.sync-alert-offset', {
                       entity: t('label.alert'),

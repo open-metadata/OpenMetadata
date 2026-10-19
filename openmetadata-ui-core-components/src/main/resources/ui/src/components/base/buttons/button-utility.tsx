@@ -2,7 +2,7 @@ import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { styles as buttonStyles } from './button';
+import { ButtonLoadingIcon, styles as buttonStyles } from './button';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -76,6 +76,8 @@ const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
 export interface CommonProps {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
+  /** Replaces the icon with a spinner and disables the button */
+  isLoading?: boolean;
   /** The size variant of the button */
   size?: keyof typeof sizes;
   /** The color variant of the button */
@@ -126,7 +128,8 @@ export const ButtonUtility = forwardRef<
   {
     tooltip,
     className,
-    isDisabled,
+    isDisabled: isDisabledProp,
+    isLoading,
     icon: Icon,
     size = 'sm',
     color = 'tertiary',
@@ -136,6 +139,7 @@ export const ButtonUtility = forwardRef<
   ref
 ) {
   const href = 'href' in otherProps ? otherProps.href : undefined;
+  const isDisabled = isDisabledProp || isLoading;
   const Component = href ? AriaLink : AriaButton;
   // A disabled button with a tooltip stays focusable and keeps its tooltip,
   // which usually says why it is disabled; only the press is dropped.
@@ -183,8 +187,14 @@ export const ButtonUtility = forwardRef<
       )}
       // See the matching cast in button.tsx: `Component` is chosen at runtime.
       ref={ref as never}>
-      {isReactComponent(Icon) && <Icon data-icon />}
-      {isValidElement(Icon) && Icon}
+      {isLoading ? (
+        <ButtonLoadingIcon />
+      ) : (
+        <>
+          {isReactComponent(Icon) && <Icon data-icon />}
+          {isValidElement(Icon) && Icon}
+        </>
+      )}
     </Component>
   );
 

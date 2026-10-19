@@ -216,7 +216,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.edit'),
         hidden: !editPermission,
-        icon: <Edit01 size={18} />,
+        icon: <Edit01 size={12} />,
         onClick: () => {
           handleUpdate(ingestion);
           setIsOpen(false);
@@ -239,7 +239,7 @@ function PipelineActionsDropdown({
       {
         label: t('label.delete'),
         hidden: !deletePermission,
-        icon: <Trash01 size={18} />,
+        icon: <Trash01 size={12} />,
         onClick: () => {
           handleConfirmDelete(id, name, displayName);
           setIsOpen(false);

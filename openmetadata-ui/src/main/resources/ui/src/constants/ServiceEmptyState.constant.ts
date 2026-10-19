@@ -41,7 +41,7 @@ export interface ServiceEmptyStateConfig {
  * component reference — which is what this `.ts` module holds, so it stays free of JSX — has
  * nowhere to carry a className, and `EmptyPlaceholder` merges the class off the rendered element.
  */
-export const SERVICE_EMPTY_STATE_ICON_CLASS = 'tw:text-utility-brand-600';
+export const SERVICE_EMPTY_STATE_ICON_CLASS = 'tw:text-fg-brand-primary';
 
 /**
  * First-run placeholder shown on a service listing that has no services yet — one entry per

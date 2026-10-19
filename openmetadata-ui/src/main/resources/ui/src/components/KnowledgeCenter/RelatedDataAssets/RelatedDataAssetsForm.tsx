@@ -105,9 +105,10 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               onClick={onCancel}
             />
             <ButtonUtility
+              color="primary"
               data-testid="saveDataAssets"
               icon={Check}
-              isDisabled={isSubmitLoading}
+              isLoading={isSubmitLoading}
               tooltip={t('label.save')}
               onClick={handleSubmit}
             />

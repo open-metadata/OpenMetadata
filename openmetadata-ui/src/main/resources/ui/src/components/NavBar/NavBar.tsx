@@ -640,10 +640,7 @@ const NavBar = () => {
                 color="tertiary"
                 iconLeading={
                   <span className="tw:relative tw:inline-flex tw:items-center">
-                    <IconBell
-                      className="tw:size-5"
-                      data-testid="task-notifications"
-                    />
+                    <IconBell data-testid="task-notifications" width={20} />
                     {(hasTaskNotification || hasMentionNotification) && (
                       <Dot
                         aria-label={t('label.notification-plural')}

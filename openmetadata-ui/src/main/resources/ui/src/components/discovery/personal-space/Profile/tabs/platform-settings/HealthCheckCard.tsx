@@ -152,7 +152,7 @@ const HealthCheckCard = ({ name, validation }: HealthCheckCardProps) => {
           data-testid={status.testId}
           direction="row"
           gap={1}>
-          <StatusIcon size={18} />
+          <StatusIcon size={16} />
           <Typography size="text-sm" weight="medium">
             {t(status.labelKey)}
           </Typography>

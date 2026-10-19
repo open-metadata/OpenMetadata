@@ -692,7 +692,7 @@ const MetricListPage = () => {
         className="tw:shrink-0"
         data-testid={`expand-${metric.id}`}
         icon={isExpanded ? ChevronDown : ChevronRight}
-        isDisabled={loadingParentIds.includes(metric.id)}
+        isLoading={loadingParentIds.includes(metric.id)}
         size="xs"
         onClick={() => toggleExpand(!isExpanded, metric)}
       />

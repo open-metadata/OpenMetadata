@@ -110,6 +110,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
           tooltip={data.description}
         />
         <ButtonUtility
+          color="primary"
           data-testid={`add-${data.name}`}
           icon={Plus}
           tooltip={t('label.add-entity', { entity: label })}

@@ -1187,7 +1187,7 @@ const InlineBulkEditReferencePickerEditor = ({
                 </span>
               )}
             </span>
-            {isSelected && <Check size={20} />}
+            {isSelected && <Check size={18} />}
           </button>
         );
       })}
@@ -1206,9 +1206,9 @@ const InlineBulkEditReferencePickerEditor = ({
         type="button"
         onClick={() => openBulkEditPickerPath(config.actionPath)}>
         {config.actionStyle === 'primary' ? (
-          <Plus size={18} />
+          <Plus size={14} />
         ) : (
-          <ArrowUpRight size={18} />
+          <ArrowUpRight size={14} />
         )}
         <span>{config.primaryActionLabel}</span>
       </button>
@@ -1220,7 +1220,7 @@ const InlineBulkEditReferencePickerEditor = ({
             openBulkEditPickerPath(config.secondaryActionPath ?? '')
           }>
           <span>{config.secondaryActionLabel}</span>
-          <ArrowUpRight size={18} />
+          <ArrowUpRight size={14} />
         </button>
       )}
       {config.hint && (
@@ -1724,7 +1724,7 @@ const InlineCustomPropertiesEditor = ({
               className="bulk-edit-custom-property-empty-action"
               type="button"
               onClick={handleOpenCustomPropertySettings}>
-              <ArrowUpRight size={18} />
+              <ArrowUpRight size={14} />
               <span>
                 {t('label.add-a-entity', {
                   entity: t('label.custom-property').toLowerCase(),

@@ -163,6 +163,7 @@ const TeamsHeadingLabel = ({
           gap={1}
           itemClassName="layout-space-item">
           <ButtonUtility
+            color="primary"
             data-testid="cancelAssociatedTag"
             icon={XClose}
             isDisabled={isLoading}
@@ -170,9 +171,10 @@ const TeamsHeadingLabel = ({
             onMouseDown={handleClose}
           />
           <ButtonUtility
+            color="primary"
             data-testid="saveAssociatedTag"
             icon={Check}
-            isDisabled={isLoading}
+            isLoading={isLoading}
             tooltip={t('label.save')}
             onMouseDown={onHeadingSave}
           />

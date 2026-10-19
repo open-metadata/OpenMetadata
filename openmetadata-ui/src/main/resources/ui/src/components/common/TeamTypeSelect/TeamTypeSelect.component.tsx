@@ -73,6 +73,7 @@ function TeamTypeSelect({
         gap={1}
         itemClassName="layout-space-item">
         <ButtonUtility
+          color="primary"
           data-testid="cancel-btn"
           icon={XClose}
           size="sm"
@@ -80,6 +81,7 @@ function TeamTypeSelect({
           onClick={handleCancel}
         />
         <ButtonUtility
+          color="primary"
           data-testid="save-btn"
           icon={Check}
           size="sm"

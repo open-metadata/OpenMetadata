@@ -47,6 +47,7 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
 
         {schema.additionalProperties && (
           <ButtonUtility
+            color="primary"
             data-testid={`add-item-${title}`}
             icon={Plus}
             id={`${idSchema.$id}`}

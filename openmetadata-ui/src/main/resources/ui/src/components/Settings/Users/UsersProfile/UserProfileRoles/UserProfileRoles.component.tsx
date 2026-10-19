@@ -278,6 +278,7 @@ const UserProfileRoles = ({
 
                   <div className="flex justify-end gap-2 mt-4">
                     <ButtonUtility
+                      color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
                       icon={ClosePopoverIcon}
                       size="sm"
@@ -285,9 +286,10 @@ const UserProfileRoles = ({
                       onClick={handleCloseEditRole}
                     />
                     <ButtonUtility
+                      color="primary"
                       data-testid="user-profile-edit-roles-save-button"
                       icon={SavePopoverIcon}
-                      isDisabled={isLoading}
+                      isLoading={isLoading}
                       size="sm"
                       tooltip={t('label.save')}
                       onClick={handleRolesSave}

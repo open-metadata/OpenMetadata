@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -53,3 +53,12 @@ does, so the default icon is 16px:
 `md` (28px box) draws the same 14px icon as `sm` with more padding, so no role uses it; pick `sm`
 or `lg`. Tables with icon actions gain 4px of row height. Icons rendered outside a button keep
 their own sizes; this record does not cover them.
+
+## Amendment: colour, scope and loading (v3, 2026-10-19)
+- Converting an action to `ButtonUtility` keeps a primary action primary (`color="primary"`): save
+  and confirm ✓/×, add-field and send buttons. A secondary icon-only action becomes tertiary.
+- This replaces the menu clause of the Decision: menu and popover item icons, and any text or link,
+  keep their own size and colour. Only icons inside a button follow this record, and only those use
+  `utility-brand-600` for blue.
+- `ButtonUtility` takes `isLoading`, which swaps the icon for `Button`'s spinner and disables the
+  button, so a save action that showed a spinner as a `Button` still does.

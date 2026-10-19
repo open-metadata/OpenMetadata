@@ -281,6 +281,7 @@ export const PersonaSelectableList = ({
 
           <div className="flex justify-end gap-2">
             <ButtonUtility
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
@@ -289,11 +290,12 @@ export const PersonaSelectableList = ({
               onClick={handleCloseEditTeam}
             />
             <ButtonUtility
+              color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
               icon={SavePopoverIcon}
-              isDisabled={isSaving}
+              isLoading={isSaving}
               tooltip={t('label.save')}
               onClick={handlePersonaUpdate}
             />

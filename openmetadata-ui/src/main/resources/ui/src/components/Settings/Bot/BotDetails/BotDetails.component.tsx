@@ -153,6 +153,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                         <div className="flex justify-end" data-testid="buttons">
                           <ButtonUtility
                             className="tw:mr-1"
+                            color="primary"
                             data-testid="cancel-displayName"
                             icon={XClose}
                             tooltip={t('label.cancel')}
@@ -161,6 +162,7 @@ const BotDetails: FC<BotsDetailProps> = ({
 
                           <ButtonUtility
                             className="tw:mr-1"
+                            color="primary"
                             data-testid="save-displayName"
                             icon={Check}
                             tooltip={t('label.save')}

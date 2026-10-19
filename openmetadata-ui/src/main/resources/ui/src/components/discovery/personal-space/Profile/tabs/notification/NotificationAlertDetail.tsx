@@ -232,7 +232,8 @@ function buildHeaderActions({
       <ButtonUtility
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
-        isDisabled={isSyncing || !canEditAll}
+        isDisabled={!canEditAll}
+        isLoading={isSyncing}
         size="lg"
         tooltip={String(
           canEditAll

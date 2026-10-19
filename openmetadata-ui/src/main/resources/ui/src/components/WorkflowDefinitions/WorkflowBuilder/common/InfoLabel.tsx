@@ -50,11 +50,7 @@ export const InfoLabel: React.FC<InfoLabelProps> = ({
               onClick={onInfoClick}
             />
           ) : (
-            <InfoCircle
-              className={`tw:w-4 tw:h-4 tw:text-fg-brand-primary ${
-                onInfoClick ? 'tw:cursor-pointer' : ''
-              }`}
-            />
+            <InfoCircle className="tw:text-fg-brand-primary" size={16} />
           ))}
       </div>
       {description && (

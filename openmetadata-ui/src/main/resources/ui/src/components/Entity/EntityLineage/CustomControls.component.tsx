@@ -532,9 +532,7 @@ const CustomControls: FC<{
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
         <div className="tw:flex tw:items-center tw:gap-4">
           <ButtonUtility
-            className={classNames({
-              'tw:*:data-icon:text-utility-brand-600': filterSelectionActive,
-            })}
+            color={filterSelectionActive ? 'primary' : 'tertiary'}
             data-testid="filters-button"
             icon={FilterLines}
             size="lg"

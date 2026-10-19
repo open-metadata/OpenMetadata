@@ -17,6 +17,36 @@ import type {
 import type { Placement } from 'react-aria';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
+/** The spinner a loading button draws in place of its icon. */
+export const ButtonLoadingIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    data-icon="loading"
+    fill="none"
+    viewBox="0 0 20 20">
+    {/* Background circle */}
+    <circle
+      className="tw:stroke-current tw:opacity-30"
+      cx="10"
+      cy="10"
+      fill="none"
+      r="8"
+      strokeWidth="2"
+    />
+    {/* Spinning circle */}
+    <circle
+      className="tw:origin-center tw:animate-spin tw:stroke-current"
+      cx="10"
+      cy="10"
+      fill="none"
+      r="8"
+      strokeDasharray="12.5 50"
+      strokeLinecap="round"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
 export const styles = sortCx({
   common: {
     // A link button drops the button box by default; `boxed` keeps it.
@@ -381,36 +411,13 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
 
         {loading && (
-          <svg
+          <ButtonLoadingIcon
             className={cx(
               styles.common.icon,
               !showTextWhileLoading &&
                 'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
             )}
-            data-icon="loading"
-            fill="none"
-            viewBox="0 0 20 20">
-            {/* Background circle */}
-            <circle
-              className="tw:stroke-current tw:opacity-30"
-              cx="10"
-              cy="10"
-              fill="none"
-              r="8"
-              strokeWidth="2"
-            />
-            {/* Spinning circle */}
-            <circle
-              className="tw:origin-center tw:animate-spin tw:stroke-current"
-              cx="10"
-              cy="10"
-              fill="none"
-              r="8"
-              strokeDasharray="12.5 50"
-              strokeLinecap="round"
-              strokeWidth="2"
-            />
-          </svg>
+          />
         )}
 
         {hasText && (

@@ -106,12 +106,12 @@ const DropdownItem = ({
             <Icon
               aria-hidden="true"
               className={cx(
-                'tw:size-5 tw:shrink-0',
+                'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
-                  ? 'tw:text-utility-brand-600'
-                  : 'tw:text-quaternary'
+                  ? 'tw:text-fg-brand-secondary_alt'
+                  : 'tw:text-fg-quaternary'
               )}
             />
           )}
@@ -210,7 +210,7 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
 const DropdownDotsButton = forwardRef<
   HTMLButtonElement,
   Omit<ButtonUtilityProps, 'icon' | 'ref'>
->(({ size = 'md', ...props }, ref) => {
+>(({ size = 'lg', ...props }, ref) => {
   const { t } = useCoreTranslation();
 
   return (

@@ -93,6 +93,7 @@ const SuggestionsAlert = ({
               }
             />
             <ButtonUtility
+              color="primary"
               data-testid="accept-suggestion"
               icon={Check}
               size="lg"

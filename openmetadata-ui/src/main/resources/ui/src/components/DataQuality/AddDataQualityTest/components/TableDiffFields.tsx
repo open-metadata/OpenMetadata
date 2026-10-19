@@ -161,6 +161,7 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
           tooltip={data.description}
         />
         <ButtonUtility
+          color="primary"
           data-testid={`add-${data.name}`}
           icon={Plus}
           isDisabled={disabled}

@@ -241,7 +241,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           }}>
           <Box align="center" className="tw:min-w-0 tw:flex-1" gap={2}>
             <span className="tw:flex tw:items-center tw:justify-center tw:h-7 tw:w-7 tw:rounded-md tw:shrink-0 tw:opacity-90 tw:bg-utility-gray-blue-50">
-              <SlashDivider className="tw:text-utility-gray-500" size={18} />
+              <SlashDivider className="tw:text-utility-gray-500" size={14} />
             </span>
 
             <Box

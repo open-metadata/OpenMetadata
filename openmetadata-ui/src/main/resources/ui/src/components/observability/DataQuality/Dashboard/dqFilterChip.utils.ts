@@ -33,7 +33,7 @@ export const chipTriggerClassName = (hasSelection: boolean) =>
     borderAfter,
     'tw:hover:bg-primary_hover tw:dark:hover:bg-raised',
     hasSelection
-      ? 'tw:text-utility-brand-600 tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
+      ? 'tw:text-fg-brand-primary tw:after:outline-brand tw:dark:after:outline-fg-brand-primary_alt'
       : 'tw:text-secondary tw:hover:text-secondary_hover tw:after:outline-primary'
   );
 

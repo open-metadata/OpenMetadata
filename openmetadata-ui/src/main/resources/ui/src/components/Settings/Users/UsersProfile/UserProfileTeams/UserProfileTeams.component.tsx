@@ -149,6 +149,7 @@ const UserProfileTeams = ({
 
                   <Box className="tw:mt-auto" gap={2} justify="end">
                     <ButtonUtility
+                      color="primary"
                       data-testid="teams-edit-close-btn"
                       icon={ClosePopoverIcon}
                       size="sm"
@@ -156,9 +157,10 @@ const UserProfileTeams = ({
                       onClick={handleCloseEditTeam}
                     />
                     <ButtonUtility
+                      color="primary"
                       data-testid="teams-edit-save-btn"
                       icon={SavePopoverIcon}
-                      isDisabled={isLoading}
+                      isLoading={isLoading}
                       size="sm"
                       tooltip={t('label.save')}
                       onClick={handleTeamsSave}

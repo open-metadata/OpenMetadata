@@ -89,7 +89,7 @@ const InterfaceModeMenuItem = () => {
         onClick={handleAi}>
         <img alt="" height={20} src={appModeAIIcon} width={20} />
         <span className="tw:flex-1 tw:text-left">{t('label.ai')}</span>
-        {isAiMode && <Check size={18} />}
+        {isAiMode && <Check height={16} width={16} />}
       </button>
     </div>
   );

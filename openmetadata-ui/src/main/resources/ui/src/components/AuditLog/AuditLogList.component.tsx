@@ -207,7 +207,7 @@ const renderEntityLinks = (
     if (link) {
       return (
         <Link
-          className="tw:text-utility-brand-600 tw:text-sm tw:hover:underline"
+          className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
           key={entityKey}
           to={link}>
           {label}
@@ -287,7 +287,7 @@ const getUserEntityLink = (
 
   return (
     <Link
-      className="tw:text-utility-brand-600 tw:text-sm tw:hover:underline"
+      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
       to={getUserPath(userNameForLink)}>
       {entityLabel ?? userNameForLink}
     </Link>
@@ -309,7 +309,7 @@ const getTypedEntityLink = (
 
   return (
     <Link
-      className="tw:text-utility-brand-600 tw:text-sm tw:hover:underline"
+      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
       to={link}>
       {entityLabel ?? entityFQN}
     </Link>
@@ -339,7 +339,7 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
       {userLink}
       <Typography className="tw:text-quaternary">–</Typography>
       <Typography
-        className="tw:text-utility-brand-600"
+        className="tw:text-fg-brand-primary"
         data-testid="event-type"
         weight="medium">
         {eventType}
@@ -351,7 +351,7 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
             {t('label.impersonated-by-with-colon')}
           </Typography>{' '}
           <Link
-            className="tw:font-semibold tw:text-utility-brand-600 tw:hover:underline"
+            className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
             to={getUserPath(impersonatedBy)}>
             {impersonatedBy}
           </Link>
@@ -412,7 +412,7 @@ const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
     gap={2}>
     {entityType && (
       <Typography
-        className="tw:text-utility-brand-600"
+        className="tw:text-fg-brand-primary"
         data-testid="entity-type-badge"
         size="text-xs">
         {startCase(entityType)}
@@ -664,7 +664,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     if (log.userName) {
       return (
         <Link
-          className="tw:font-semibold tw:text-utility-brand-600 tw:hover:underline"
+          className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
           to={getUserPath(log.userName)}>
           {userName}
         </Link>

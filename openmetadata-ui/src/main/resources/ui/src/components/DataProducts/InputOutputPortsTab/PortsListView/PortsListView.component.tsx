@@ -247,7 +247,6 @@ const PortsListView = forwardRef<PortsListViewRef, PortsListViewProps>(
                         label={t('label.manage-entity', {
                           entity: t('label.port'),
                         })}
-                        triggerSize="md"
                       />
                     ) : undefined
                   }

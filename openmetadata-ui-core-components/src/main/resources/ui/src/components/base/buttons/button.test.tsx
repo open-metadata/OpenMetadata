@@ -447,4 +447,24 @@ describe('ButtonUtility — icon size and color', () => {
 
     expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled();
   });
+
+  it('swaps its icon for a spinner and ignores presses while loading', () => {
+    const onClick = vi.fn();
+    render(
+      <ButtonUtility
+        isLoading
+        aria-label="Save"
+        icon={Edit01}
+        onClick={onClick}
+      />
+    );
+    const button = screen.getByRole('button', { name: 'Save' });
+
+    fireEvent.click(button);
+
+    expect(button).toBeDisabled();
+    expect(button.querySelector('[data-icon="loading"]')).not.toBeNull();
+    expect(button.querySelector('[data-icon="true"]')).toBeNull();
+    expect(onClick).not.toHaveBeenCalled();
+  });
 });

@@ -89,7 +89,7 @@ const TimelineEventRow: React.FC<{ event: TaskTimelineEvent }> = ({
             'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border',
             TONE_ICON_CLASS[event.tone]
           )}>
-          <Icon size={16} />
+          <Icon size={14} />
         </span>
         <Typography
           className={classNames('tw:pt-0.5', TONE_TEXT_CLASS[event.tone])}

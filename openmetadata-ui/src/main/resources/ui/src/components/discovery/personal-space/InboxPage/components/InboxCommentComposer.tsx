@@ -170,6 +170,7 @@ const InboxCommentComposer: React.FC<InboxCommentComposerProps> = ({
           editAction={
             <ButtonUtility
               className="tw:absolute tw:right-2 tw:bottom-1.5"
+              color="primary"
               data-testid="send-button"
               icon={ArrowRight}
               isDisabled={!hasText}

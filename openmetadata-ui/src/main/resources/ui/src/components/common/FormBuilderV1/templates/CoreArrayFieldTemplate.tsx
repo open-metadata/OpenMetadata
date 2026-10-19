@@ -34,6 +34,7 @@ export const CoreArrayFieldTemplate: FunctionComponent<
         </Typography>
         {canAdd && (
           <ButtonUtility
+            color="primary"
             data-testid={`add-item-${title}`}
             icon={Plus}
             id={`${idSchema.$id}`}

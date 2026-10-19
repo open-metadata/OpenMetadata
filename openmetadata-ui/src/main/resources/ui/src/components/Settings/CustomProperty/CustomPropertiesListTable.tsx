@@ -137,7 +137,7 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
                 <Trash01
                   aria-hidden="true"
                   className="tw:shrink-0 tw:text-fg-error-primary"
-                  size={20}
+                  size={16}
                 />
                 <Typography color="danger" size="text-sm">
                   {t('label.delete')}

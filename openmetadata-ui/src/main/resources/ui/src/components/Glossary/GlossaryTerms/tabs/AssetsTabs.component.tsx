@@ -995,7 +995,6 @@ const AssetsTabs = forwardRef(
                       label={t('label.manage-entity', {
                         entity: t('label.asset'),
                       })}
-                      triggerSize="md"
                     />
                   ) : null
                 }

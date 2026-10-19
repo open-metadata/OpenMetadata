@@ -78,7 +78,7 @@ const TaskItem = ({
           {t('label.beta')}
         </Badge>
       )}
-      <Plus className="tw:shrink-0 tw:text-utility-gray-500" size={20} />
+      <Plus className="tw:shrink-0 tw:text-quaternary" size={20} />
     </Card>
   );
 };

@@ -182,7 +182,7 @@ const MetaItem: FC<{
   children: ReactNode;
 }> = ({ icon: Icon, children }) => (
   <Box align="center" className="tw:text-tertiary" direction="row" gap={1}>
-    <Icon size={18} />
+    <Icon size={16} />
     <Typography size="text-xs">{children}</Typography>
   </Box>
 );

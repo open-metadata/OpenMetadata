@@ -129,9 +129,7 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 <Box align="center" gap={2}>
                   <FolderIcon
                     aria-hidden="true"
-                    className="tw:shrink-0 tw:text-quaternary"
-                    height={18}
-                    width={18}
+                    className="tw:size-4 tw:shrink-0"
                   />
                   <div className="tw:max-w-40">
                     <Typography ellipsis size="text-sm">
@@ -142,8 +140,8 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 {isCurrent && (
                   <Check
                     aria-hidden="true"
-                    className="tw:ml-2 tw:shrink-0 tw:text-utility-brand-600"
-                    size={18}
+                    className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
+                    strokeWidth={2}
                   />
                 )}
               </Box>
@@ -320,8 +318,9 @@ const FileActions: FC<FileActionsProps> = ({
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
                           <Share07
-                            className="tw:shrink-0 tw:text-quaternary"
-                            size={18}
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
                           />
                           <Typography
                             ellipsis
@@ -331,8 +330,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:shrink-0 tw:text-quaternary"
-                          size={16}
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -386,9 +385,9 @@ const FileActions: FC<FileActionsProps> = ({
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
                           <MoveFolderIcon
-                            className="tw:shrink-0 tw:text-quaternary"
-                            height={18}
-                            width={18}
+                            className="tw:text-secondary"
+                            height={20}
+                            width={20}
                           />
                           <Typography
                             ellipsis
@@ -398,8 +397,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:shrink-0 tw:text-quaternary"
-                          size={16}
+                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          strokeWidth={2}
                         />
                       </Box>
                     )}
@@ -425,8 +424,8 @@ const FileActions: FC<FileActionsProps> = ({
                   <Box align="center" gap={2}>
                     <Trash01
                       aria-hidden="true"
-                      className="tw:shrink-0 tw:text-fg-error-primary"
-                      size={18}
+                      className="tw:shrink-0 tw:text-error-primary"
+                      size={20}
                     />
                     <Typography
                       ellipsis

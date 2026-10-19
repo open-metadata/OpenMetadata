@@ -170,6 +170,7 @@ export const ContractSemanticFormTab: React.FC<{
           data-testid={`edit-semantic-${index}`}
           icon={Edit01}
           size="lg"
+          tooltip={t('label.edit')}
           onClick={() => setEditingKey(index)}
         />
         <ButtonUtility

@@ -72,7 +72,7 @@ export const CustomPropertyListItem = ({
     return (
       <ButtonUtility
         className={classNames({
-          'tw:opacity-0 tw:group-hover:opacity-100 tw:focus-visible:opacity-100':
+          'tw:opacity-0 tw:group-hover:opacity-100 tw:group-focus-within:opacity-100':
             !isEmptyValue,
         })}
         data-testid="edit-icon"

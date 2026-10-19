@@ -249,6 +249,7 @@ const TeamsInfo = ({
                 </FormField>
                 <Box align="center" gap={1}>
                   <ButtonUtility
+                    color="primary"
                     data-testid="cancel-edit-email"
                     icon={XClose}
                     isDisabled={isLoading}
@@ -256,9 +257,10 @@ const TeamsInfo = ({
                     onClick={() => setIsEmailEdit(false)}
                   />
                   <ButtonUtility
+                    color="primary"
                     data-testid="save-edit-email"
                     icon={Check}
-                    isDisabled={isLoading}
+                    isLoading={isLoading}
                     tooltip={t('label.save')}
                     type="submit"
                   />

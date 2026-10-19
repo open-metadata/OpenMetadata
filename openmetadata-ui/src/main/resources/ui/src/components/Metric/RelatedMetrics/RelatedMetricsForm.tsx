@@ -145,9 +145,10 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
               onClick={onCancel}
             />
             <ButtonUtility
+              color="primary"
               data-testid="saveRelatedMetrics"
               icon={Check}
-              isDisabled={isSubmitting}
+              isLoading={isSubmitting}
               tooltip={t('label.save')}
               type="submit"
             />

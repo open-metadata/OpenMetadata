@@ -92,7 +92,7 @@ const IssueRow = ({
       <Icon
         aria-hidden="true"
         className={`${className} tw:mt-0.5 tw:shrink-0`}
-        size={18}
+        size={16}
       />
       <div className="tw:min-w-0 tw:flex-1">
         <Typography as="p" className="tw:wrap-break-word" size="text-sm">

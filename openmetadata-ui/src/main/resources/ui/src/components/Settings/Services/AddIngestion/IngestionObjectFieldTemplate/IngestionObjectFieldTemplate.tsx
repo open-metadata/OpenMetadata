@@ -190,7 +190,7 @@ const SectionHeader = ({
     {collapsible && (
       <ChevronDown
         className={classNames(
-          'tw:flex-shrink-0 tw:text-utility-gray-500 tw:transition-transform',
+          'tw:flex-shrink-0 tw:text-quaternary tw:transition-transform',
           open && 'tw:rotate-180'
         )}
         size={20}
@@ -405,6 +405,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
             {getMapFieldTitle(schema, t('label.additional-property-plural'))}
           </Typography>
           <ButtonUtility
+            color="primary"
             icon={Plus}
             tooltip={t('label.add-entity', { entity: t('label.property') })}
             onClick={() => onAddClick(schema)()}

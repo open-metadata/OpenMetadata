@@ -621,7 +621,7 @@ export const CoverImageUploadField = ({
                   color="tertiary-destructive"
                   data-testid="cover-image-upload-remove"
                   icon={Trash01}
-                  size="md"
+                  size="lg"
                   tooltip={mergedLabels.remove}
                   onClick={handleRemove}
                 />

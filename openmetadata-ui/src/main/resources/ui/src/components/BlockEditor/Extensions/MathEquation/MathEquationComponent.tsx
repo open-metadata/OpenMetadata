@@ -102,6 +102,7 @@ export const MathEquationComponent: FC<NodeViewProps> = ({
                 onClick={() => setIsEditing(false)}
               />
               <ButtonUtility
+                color="primary"
                 icon={Check}
                 size="sm"
                 tooltip={t('label.save')}

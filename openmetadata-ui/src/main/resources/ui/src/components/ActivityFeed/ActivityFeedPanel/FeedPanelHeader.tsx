@@ -71,6 +71,7 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
       <div className="d-flex items-center">
         {onShowNewConversation ? (
           <ButtonUtility
+            color="primary"
             data-testid="add-new-conversation"
             icon={Plus}
             size="lg"

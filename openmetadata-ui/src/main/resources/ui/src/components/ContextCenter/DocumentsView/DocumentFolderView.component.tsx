@@ -610,9 +610,9 @@ const DocumentFolderView = (
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
               <FolderIcon
-                className="tw:text-quaternary tw:shrink-0"
-                height={14}
-                width={14}
+                className="tw:text-fg-quaternary"
+                height={20}
+                width={20}
               />
             </div>
             <div>
@@ -635,6 +635,7 @@ const DocumentFolderView = (
           </div>
           {canCreate && (
             <ButtonUtility
+              color="secondary"
               data-testid="add-folder-btn"
               icon={Plus}
               size="sm"

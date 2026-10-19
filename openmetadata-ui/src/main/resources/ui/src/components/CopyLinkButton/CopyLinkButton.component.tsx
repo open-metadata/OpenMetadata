@@ -27,7 +27,7 @@ interface CopyLinkButtonProps {
   url: string;
   tooltip?: string;
   className?: string;
-  size?: ButtonUtilityProps['size'];
+  size?: NonNullable<ButtonUtilityProps['size']>;
   testId?: string;
 }
 

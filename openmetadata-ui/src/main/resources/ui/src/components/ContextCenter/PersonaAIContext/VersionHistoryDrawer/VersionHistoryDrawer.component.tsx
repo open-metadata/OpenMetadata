@@ -194,7 +194,7 @@ export const VersionHistoryDrawer = ({
                   <ButtonUtility
                     data-testid={`restore-version-${entry.version}`}
                     icon={RefreshCcw01}
-                    isDisabled={restoringVersion === entry.version}
+                    isLoading={restoringVersion === entry.version}
                     size="lg"
                     tooltip={t('label.restore')}
                     onClick={() => setRestoreTarget(entry)}

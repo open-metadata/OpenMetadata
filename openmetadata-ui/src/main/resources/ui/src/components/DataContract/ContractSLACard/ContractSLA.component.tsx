@@ -43,7 +43,7 @@ import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import './contract-sla.less';
 
-const SLA_ICON_SIZE = 18;
+const SLA_ICON_SIZE = 16;
 
 /** The requirements contract validation checks, and where their outcome is. */
 const SLA_CHECK_OUTCOME: Partial<

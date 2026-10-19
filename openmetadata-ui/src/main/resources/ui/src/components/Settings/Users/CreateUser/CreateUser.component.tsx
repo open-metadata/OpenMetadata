@@ -543,6 +543,7 @@ const CreateUser = ({
                     )
                   }>
                   <ButtonUtility
+                    color="primary"
                     data-testid="add-domain"
                     icon={Plus}
                     tooltip={t('label.add-entity', {

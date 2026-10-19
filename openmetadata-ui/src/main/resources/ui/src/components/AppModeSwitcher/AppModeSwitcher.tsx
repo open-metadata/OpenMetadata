@@ -110,7 +110,8 @@ const AppModeSwitcherTrigger: React.FC<{
           compact ? 'tw:text-utility-blue-500' : undefined,
           { 'tw:rotate-180': isOpen }
         )}
-        size={16}
+        height={compact ? 10 : 11}
+        width={compact ? 10 : 11}
       />
     </button>
   );
@@ -253,7 +254,7 @@ const AppModeSwitcher: React.FC<{
             </Box>
             {isAiMode && (
               <span className={BADGE_CLASS} data-testid="ai-current-badge">
-                <Check size={16} />
+                <Check height={12} width={12} />
                 {t('label.current')}
               </span>
             )}
@@ -279,7 +280,9 @@ const AppModeSwitcher: React.FC<{
               )}
               justify="center"
               role="checkbox">
-              {isRemembered && <Check className="tw:text-white" size={16} />}
+              {isRemembered && (
+                <Check className="tw:text-white" height={13} width={13} />
+              )}
             </Box>
             <span className="tw:text-sm tw:font-medium tw:text-secondary">
               <Trans

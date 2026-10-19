@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Card } from '@openmetadata/ui-core-components';
 import { ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
@@ -66,7 +66,9 @@ const ExpandableCard = ({
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
           {title}
         </div>
-        <div className="expandable-card-extra tw:ml-3 tw:flex tw:items-center tw:font-normal tw:text-primary">
+        <Box
+          align="center"
+          className="expandable-card-extra tw:ml-3 tw:font-normal tw:text-primary">
           <ButtonUtility
             className={classNames('expand-collapse-icon', {
               'tw:rotate-180': !isExpanded,
@@ -78,7 +80,7 @@ const ExpandableCard = ({
             tooltip={isExpanded ? t('label.collapse') : t('label.expand')}
             onClick={handleExpandClick}
           />
-        </div>
+        </Box>
       </div>
       {/* `hidden` (not unmount) keeps collapsed form fields registered. */}
       <div

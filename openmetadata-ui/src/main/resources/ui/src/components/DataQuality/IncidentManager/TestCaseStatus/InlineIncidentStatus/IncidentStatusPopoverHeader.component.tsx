@@ -69,6 +69,7 @@ export const IncidentStatusPopoverHeader = ({
         onClick={onCancel}
       />
       <ButtonUtility
+        color="primary"
         data-testid={submitTestId}
         icon={Check}
         isDisabled={submitDisabled}

@@ -505,6 +505,7 @@ const ProfilerSettingsModal = ({
                 {t('label.include')}:
               </Typography>
               <ButtonUtility
+                color="primary"
                 icon={Plus}
                 size="sm"
                 tooltip={t('label.add-entity', {
@@ -677,6 +678,7 @@ const ProfilerSettingsModal = ({
                   {t('label.value')}:
                 </Typography>
                 <ButtonUtility
+                  color="primary"
                   icon={Plus}
                   size="sm"
                   tooltip={t('label.add-entity', {

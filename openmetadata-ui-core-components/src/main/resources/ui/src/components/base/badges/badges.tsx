@@ -659,7 +659,7 @@ export const BadgeWithButton = <T extends BadgeTypes>(
         type="button"
         onClick={onButtonClick}
         onKeyDown={onButtonKeyDown}>
-        <Icon className="tw:size-4 tw:p-[0.5px] tw:transition-inherit-all" />
+        <Icon className="tw:p-[0.5px] tw:transition-inherit-all" size={16} />
       </button>
     </span>
   );

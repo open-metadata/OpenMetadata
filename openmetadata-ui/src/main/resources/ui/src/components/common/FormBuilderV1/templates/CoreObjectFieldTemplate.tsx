@@ -215,6 +215,7 @@ const getAddButton = (
 
   return (
     <ButtonUtility
+      color="primary"
       data-testid={`add-item-${addEntityLabel}`}
       icon={Plus}
       id={`${idSchema.$id}`}

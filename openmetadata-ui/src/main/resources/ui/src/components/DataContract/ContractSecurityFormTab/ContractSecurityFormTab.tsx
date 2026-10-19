@@ -254,6 +254,7 @@ const ContractPolicyCard = ({
                 data-testid={`edit-policy-${policyIndex}`}
                 icon={Edit01}
                 size="lg"
+                tooltip={t('label.edit')}
                 onClick={() => onEdit(policyIndex)}
               />
               <ButtonUtility

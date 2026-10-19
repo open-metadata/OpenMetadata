@@ -74,8 +74,8 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
             <Box align="center" gap={2}>
               <Trash01
                 aria-hidden="true"
-                className="tw:shrink-0 tw:text-fg-error-primary"
-                size={18}
+                className="tw:shrink-0 tw:text-error-primary"
+                size={20}
               />
               <Typography
                 ellipsis

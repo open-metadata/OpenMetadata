@@ -371,10 +371,20 @@ const ContractDetail: React.FC<{
                       <>
                         <Dropdown.Item
                           data-testid="contract-edit-button"
-                          icon={Edit01}
-                          id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT}
-                          label={t('label.edit')}
-                        />
+                          id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.EDIT}>
+                          <Box align="center" gap={2}>
+                            <Edit01
+                              aria-hidden="true"
+                              className="tw:size-4.5 tw:shrink-0 tw:text-fg-quaternary"
+                            />
+                            <Typography
+                              ellipsis
+                              className="tw:grow tw:text-gray-700"
+                              size="text-sm">
+                              {t('label.edit')}
+                            </Typography>
+                          </Box>
+                        </Dropdown.Item>
                         <Dropdown.Item
                           data-testid="contract-run-now-button"
                           icon={PlayCircle}
@@ -419,8 +429,7 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <Trash01
                               aria-hidden="true"
-                              className="tw:shrink-0 tw:text-fg-error-primary"
-                              size={18}
+                              className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
                             />
                             <Typography
                               ellipsis
@@ -606,7 +615,7 @@ const ContractDetail: React.FC<{
                   <Box align="center" gap={2}>
                     <ImportIconContract
                       aria-hidden="true"
-                      className="tw:size-5 tw:shrink-0 tw:text-quaternary"
+                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
                     />
                     <Typography
                       ellipsis
@@ -622,7 +631,7 @@ const ContractDetail: React.FC<{
                   <Box align="center" gap={2}>
                     <ImportIconContract
                       aria-hidden="true"
-                      className="tw:size-5 tw:shrink-0 tw:text-quaternary"
+                      className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
                     />
                     <Typography
                       ellipsis

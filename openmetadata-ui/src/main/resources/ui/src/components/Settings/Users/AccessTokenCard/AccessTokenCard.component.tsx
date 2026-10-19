@@ -71,7 +71,7 @@ const AccessTokenRevokeModal = ({
           <div className="scim-token-delete-modal">
             <div className="scim-modal-header  mb-4">
               <span className="scim-modal-icon">
-                <Trash01 className="tw:size-6" />
+                <Trash01 size={22} />
               </span>
             </div>
             <div className="flex flex-col gap-2">

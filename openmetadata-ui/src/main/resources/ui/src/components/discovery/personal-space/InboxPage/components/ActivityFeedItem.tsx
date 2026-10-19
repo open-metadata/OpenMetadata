@@ -553,7 +553,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 kindClassName
               )}
               data-testid="activity-kind-badge">
-              <KindIcon className="tw:size-4" />
+              <KindIcon className="tw:size-3" />
             </span>
           </span>
           <Box className="tw:min-w-0 tw:flex-1" direction="col">

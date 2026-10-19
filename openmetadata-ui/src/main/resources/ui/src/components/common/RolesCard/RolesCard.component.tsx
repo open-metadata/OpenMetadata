@@ -133,6 +133,7 @@ const RolesCard = ({
                 <div className="flex justify-end" data-testid="buttons">
                   <ButtonUtility
                     className="tw:mr-1"
+                    color="primary"
                     data-testid="cancel-roles"
                     icon={XClose}
                     size="sm"
@@ -140,6 +141,7 @@ const RolesCard = ({
                     onMouseDown={() => setIsRolesEdit(false)}
                   />
                   <ButtonUtility
+                    color="primary"
                     data-testid="save-roles"
                     icon={Check}
                     size="sm"

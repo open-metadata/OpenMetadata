@@ -1574,7 +1574,7 @@ export const TaskTabNew = ({
               align="center"
               className="text-grey-muted tw:w-1/3 tw:pr-2"
               gap={2}>
-              <UserIcon height={18} width={18} />
+              <UserIcon height={16} />
               <Typography className="incident-manager-details-label">
                 {t('label.created-by')}
               </Typography>
@@ -1601,7 +1601,7 @@ export const TaskTabNew = ({
             ) : (
               <>
                 <Box className="text-grey-muted tw:w-1/3 tw:pr-2" gap={2}>
-                  <AssigneesIcon height={18} width={18} />
+                  <AssigneesIcon height={16} />
                   <Typography className="incident-manager-details-label @grey-8">
                     {t('label.assignee-plural')}
                   </Typography>
@@ -2121,7 +2121,7 @@ export const TaskTabNew = ({
       direction="col"
       gap={5}>
       <Box align="start" className="task-feed-message-container">
-        <TaskStatusIcon className="m-r-xs" height={18} width={18} />
+        <TaskStatusIcon className="m-r-xs" height={14} width={14} />
 
         {taskLinkTitleElement}
       </Box>

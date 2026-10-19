@@ -83,7 +83,7 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
           {items.map((item) => {
             const content = (
               <div className="tw:flex tw:items-start tw:gap-3 tw:px-2.5 tw:py-2">
-                <item.icon className="tw:mt-0.5 tw:size-5 tw:shrink-0 tw:text-quaternary" />
+                <item.icon className="tw:mt-0.5 tw:size-5 tw:shrink-0 tw:text-fg-secondary" />
                 <div className="tw:flex tw:flex-col tw:gap-0.5">
                   <Typography size="text-sm" weight="medium">
                     {item.title}

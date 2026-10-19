@@ -30,6 +30,7 @@ export const ArrayFieldTemplate: FunctionComponent<ArrayFieldTemplateProps> = (
         <Typography className="control-label">{title}</Typography>
         {canAdd && (
           <ButtonUtility
+            color="primary"
             data-testid={`add-item-${title}`}
             icon={Plus}
             id={`${idSchema.$id}`}

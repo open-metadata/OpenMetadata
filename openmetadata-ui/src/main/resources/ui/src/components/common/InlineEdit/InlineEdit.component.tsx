@@ -52,6 +52,7 @@ const InlineEdit = ({
 
       <Box data-testid="buttons" gap={1} justify="end">
         <ButtonUtility
+          color="primary"
           data-testid="inline-cancel-btn"
           icon={XClose}
           isDisabled={isLoading}
@@ -61,9 +62,10 @@ const InlineEdit = ({
           {...cancelButtonProps}
         />
         <ButtonUtility
+          color="primary"
           data-testid="inline-save-btn"
           icon={Check}
-          isDisabled={isLoading}
+          isLoading={isLoading}
           size="sm"
           tooltip={t('label.save')}
           onClick={onSave}

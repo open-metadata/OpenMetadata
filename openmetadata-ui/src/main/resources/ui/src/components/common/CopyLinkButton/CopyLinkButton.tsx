@@ -58,7 +58,7 @@ const CopyLinkButton: FC<CopyLinkButtonProps> = ({
         // Rendered inside clickable rows/cells; copying must not trigger their click handlers.
         e.stopPropagation();
         if (fieldFqn) {
-          handleCopyFieldLink(fieldFqn);
+          void handleCopyFieldLink(fieldFqn);
         }
       }}
     />

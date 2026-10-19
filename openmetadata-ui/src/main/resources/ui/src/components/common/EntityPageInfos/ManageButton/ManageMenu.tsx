@@ -15,14 +15,7 @@ import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
-import {
-  ComponentProps,
-  isValidElement,
-  Key,
-  ReactNode,
-  useCallback,
-  useMemo,
-} from 'react';
+import { isValidElement, Key, ReactNode, useCallback, useMemo } from 'react';
 import { useIsLimitReached } from '../../../../context/LimitsProvider/useLimitsStore';
 
 /**
@@ -57,8 +50,6 @@ interface ManageMenuProps {
   /** Replaces the default icon trigger; must be a single pressable element. */
   trigger?: ReactNode;
   triggerClassName?: string;
-  /** Page-header kebab (`lg`) by default; card and table actions pass `md`. */
-  triggerSize?: ComponentProps<typeof ButtonUtility>['size'];
   isOpen?: boolean;
   onOpenChange?: (isOpen: boolean) => void;
   'data-testid'?: string;
@@ -120,7 +111,6 @@ export const ManageMenu = ({
   label,
   trigger,
   triggerClassName,
-  triggerSize = 'lg',
   isOpen,
   onOpenChange,
   'data-testid': dataTestId = 'manage-button',
@@ -158,7 +148,7 @@ export const ManageMenu = ({
           className={triggerClassName}
           data-testid={dataTestId}
           icon={DotsVertical}
-          size={triggerSize}
+          size="lg"
           tooltip={label}
           tooltipPlacement="top end"
         />

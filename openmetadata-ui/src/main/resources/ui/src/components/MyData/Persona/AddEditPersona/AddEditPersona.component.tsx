@@ -168,6 +168,7 @@ export const AddEditPersonaForm = ({
                     aria-label={t('label.add-entity', {
                       entity: t('label.user-plural'),
                     })}
+                    color="primary"
                     data-testid="add-users"
                     icon={Plus}
                   />
