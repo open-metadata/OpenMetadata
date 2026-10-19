@@ -22,7 +22,7 @@ generateType() {
     tmp_schema_file=$1
     output_file=$2
     echo "Generating $output_file from specification at $tmp_schema_file"
-    ./node_modules/.bin/quicktype -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
+    "$QUICKTYPE" -s schema "$tmp_schema_file" -o "$output_file" --just-types > /dev/null 2>&1
 }
 
 processFile() {
@@ -57,6 +57,12 @@ getTypes() {
 
 # Move to project root directory
 cd "$(dirname "$0")/../../../../.." || exit
+
+# quicktype is fetched on demand (pinned) instead of via a root package.json;
+QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
+    echo "Failed to resolve quicktype via npx" >&2
+    exit 1
+}
 
 echo "Generating TypeScript from OpenMetadata specifications"
 

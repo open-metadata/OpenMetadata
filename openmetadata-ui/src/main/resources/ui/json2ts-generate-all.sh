@@ -71,7 +71,7 @@ generate_typescript() {
     local output_file="$2"
     
     echo "Generating ${output_file} from specification at ${input_schema}"
-    ./node_modules/.bin/quicktype -s schema "$input_schema" -o "$output_file" --just-types > /dev/null 2>&1
+    "$QUICKTYPE" -s schema "$input_schema" -o "$output_file" --just-types > /dev/null 2>&1
 
     # Remove empty output files
     if [[ ! -s "$output_file" ]]; then
@@ -124,6 +124,13 @@ process_schema_files() {
 echo "Starting JSON Schema to TypeScript conversion..."
 cd "$(dirname "$0")/../../../../.." || {
     echo "Error: Failed to change to root directory"
+    exit 1
+}
+
+# quicktype is fetched on demand (pinned) instead of via a root package.json;
+# resolved once so the parallel jobs don't each go through npx.
+QUICKTYPE=$(npx --yes -p quicktype@20.0.27 -c 'command -v quicktype' 2>/dev/null) || {
+    echo "Error: Failed to resolve quicktype via npx" >&2
     exit 1
 }
 
