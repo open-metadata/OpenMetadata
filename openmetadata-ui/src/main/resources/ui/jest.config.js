@@ -41,8 +41,8 @@ module.exports = {
     '<rootDir>/src/enums/*',
   ],
 
-  // SWC transpiles TS/TSX without type-checking, several times faster than
-  // ts-jest. Type errors are tsc's job, not the test runner's.
+  // SWC only transpiles TS/TSX, as ts-jest already did under tsconfig's
+  // isolatedModules, but faster. Jest never type-checks: `yarn tsc:check` does.
   transform: {
     '^.+\\.(ts|tsx)$': [
       '@swc/jest',
