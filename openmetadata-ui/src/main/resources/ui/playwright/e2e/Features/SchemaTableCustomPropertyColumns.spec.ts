@@ -18,6 +18,7 @@ import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   createCustomPropertyForEntity,
   CustomPropertyTypeByName,
+  removeCustomPropertyViaApi,
 } from '../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { openColumnDropdown, selectColumns } from '../../utils/glossary';
@@ -51,6 +52,13 @@ test.describe('Schema table column-level custom property columns', () => {
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
+    if (propertyName) {
+      await removeCustomPropertyViaApi(
+        apiContext,
+        EntityTypeEndpoint.TableColumn,
+        propertyName
+      );
+    }
     await cleanupUser?.(apiContext);
     await table.delete(apiContext);
     await afterAction();

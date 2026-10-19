@@ -208,16 +208,23 @@ jest.mock('./ColumnCustomPropertyCell', () => ({
             {String(record.extension?.[property.name] ?? '')}
           </span>
           {hasEditPermissions && (
-            <button
-              data-testid={`property-cell-save-${property.name}`}
-              onClick={() =>
-                onExtensionUpdate(record, {
-                  ...record.extension,
-                  [property.name]: 'updated',
-                })
-              }>
-              save
-            </button>
+            <>
+              <button
+                data-testid={`property-cell-save-${property.name}`}
+                onClick={() =>
+                  onExtensionUpdate(record, {
+                    ...record.extension,
+                    [property.name]: 'updated',
+                  })
+                }>
+                save
+              </button>
+              <button
+                data-testid={`property-cell-clear-${property.name}`}
+                onClick={() => onExtensionUpdate(record, undefined)}>
+                clear
+              </button>
+            </>
           )}
         </div>
       )
@@ -938,6 +945,39 @@ describe('Test EntityTable Component', () => {
         { extension: { businessOwner: 'updated' } }
       );
       expect(await screen.findByText('updated')).toBeInTheDocument();
+    });
+
+    it('sends an empty extension when the last property value is cleared', async () => {
+      mockGenericContextProps.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ViewCustomFields: true,
+        EditCustomFields: true,
+      };
+      setSelectedTableColumns([
+        'description',
+        'columnCustomProperty.businessOwner',
+      ]);
+      (updateTableColumn as jest.Mock).mockResolvedValue({
+        ...columnsWithExtension[0],
+        extension: {},
+      });
+
+      await act(async () => {
+        render(<SchemaTable />, { wrapper: MemoryRouter });
+      });
+
+      const clearButtons = await screen.findAllByTestId(
+        'property-cell-clear-businessOwner'
+      );
+
+      await act(async () => {
+        fireEvent.click(clearButtons[0]);
+      });
+
+      expect(updateTableColumn).toHaveBeenCalledWith(
+        columnsWithExtension[0].fullyQualifiedName,
+        { extension: {} }
+      );
     });
   });
 });
