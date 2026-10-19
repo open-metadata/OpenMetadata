@@ -20,6 +20,7 @@ permissions:
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
   UI_COVERAGE_DIRECTORY: openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
+  JEST_SHARDS: 3
 concurrency:
   group: yarn-coverage-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
@@ -55,8 +56,77 @@ jobs:
               - 'openmetadata-ui-core-components/src/main/resources/ui/yarn.lock'
               - 'openmetadata-ui-core-components/src/main/resources/ui/vite.config.ts'
 
-  ui-coverage-tests:
+  # Jest takes ~14 min in one job, so it runs in JEST_SHARDS parallel jobs;
+  # ui-coverage-tests merges their output back into the single-run files
+  # (merge_jest_shards.cjs) before the comment and the Sonar scan.
+  ui-jest-shard:
     needs: check-changes
+    runs-on: ubuntu-latest
+    if: |
+      !github.event.pull_request.draft &&
+      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
+      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.9.1
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true # To not auto approve changes
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          filter: blob:none
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: "openmetadata-ui/src/main/resources/ui/.nvmrc"
+      - name: Restore Yarn dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+      - name: Install Antlr4 CLI
+        run: |
+          sudo make install_antlr_cli
+      - name: Install Yarn Packages
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn install
+      - name: Run Jest shard ${{ matrix.shard }}/${{ env.JEST_SHARDS }}
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: |
+          yarn jest --passWithNoTests --coverage --coverageReporters json \
+            --shard=${{ matrix.shard }}/${{ env.JEST_SHARDS }}
+          mkdir -p "$RUNNER_TEMP/jest-shard"
+          cp src/test/unit/coverage/coverage-final.json test-report.xml "$RUNNER_TEMP/jest-shard/"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: jest-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/jest-shard
+          retention-days: 1
+
+  ui-coverage-tests:
+    needs: [check-changes, ui-jest-shard]
     runs-on: ubuntu-latest
     outputs:
       # Parsed from the scanner log: passed | failed | error. Only "failed" (a real
@@ -65,11 +135,21 @@ jobs:
       sonar_gate_status: ${{ steps.sonar_pr_scan.outputs.gate_status }}
       # Exposed so the gate can tell "scanner never ran" apart from "gate passed".
       sonar_scanner_install: ${{ steps.npm_install_sonar_scanner.outcome }}
+    # !cancelled(): must still run (and fail) when a shard fails. Skipping it
+    # would read as "no UI changes" to the ui-coverage required check.
     if: |
+      !cancelled() &&
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.ui-changed == 'true') &&
       (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     steps:
+      - name: Check Jest shards
+        run: |
+          result="${{ needs.ui-jest-shard.result }}"
+          if [[ "$result" != "success" ]]; then
+            echo "Jest shards ended with '$result'."
+            exit 1
+          fi
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@v1.9.1
         if: ${{ github.event_name == 'pull_request_target' }}
@@ -137,10 +217,16 @@ jobs:
       - name: Install Yarn Packages
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: yarn install
-      - name: Run Coverage
+      - name: Download Jest shards
+        uses: actions/download-artifact@v7
+        with:
+          pattern: jest-shard-*
+          path: ${{ runner.temp }}/jest-shards
+      - name: Merge Jest shards
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn test:cov-summary
-        id: yarn_coverage
+        run: |
+          node "$GITHUB_WORKSPACE/.github/scripts/merge_jest_shards.cjs" \
+            "$RUNNER_TEMP/jest-shards" "$JEST_SHARDS" . "$GITHUB_WORKSPACE/$UI_COVERAGE_DIRECTORY"
       - name: Jest coverage comment
         uses: MishaKav/jest-coverage-comment@v1.0.34
         with:
