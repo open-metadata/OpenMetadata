@@ -97,7 +97,7 @@ const CreatePlaceholder = ({
         )
       }
       footer={footer}
-      icon={icon ?? <Plus className="tw:text-secondary" />}
+      icon={icon ?? <Plus />}
       title={title}
       variant="blank"
       {...props}

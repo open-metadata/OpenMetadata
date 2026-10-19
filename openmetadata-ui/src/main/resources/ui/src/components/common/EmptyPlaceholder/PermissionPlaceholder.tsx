@@ -45,7 +45,7 @@ const PermissionPlaceholder = ({
           />
         )
       }
-      icon={icon ?? <Lock01 className="tw:text-secondary" />}
+      icon={icon ?? <Lock01 />}
       title={title ?? t('label.access-denied')}
       variant="blank"
       {...props}

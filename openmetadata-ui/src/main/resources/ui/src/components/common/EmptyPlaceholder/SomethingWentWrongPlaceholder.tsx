@@ -44,7 +44,7 @@ const SomethingWentWrongPlaceholder = ({
         t('label.reload')
       )}
       description={description ?? t('message.temporary-error-try-reloading')}
-      icon={icon ?? <AlertTriangle className="tw:text-secondary" />}
+      icon={icon ?? <AlertTriangle />}
       title={title ?? t('message.something-went-wrong')}
       variant="blank"
       {...props}

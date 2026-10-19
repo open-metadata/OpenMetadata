@@ -34,7 +34,7 @@ const NoDataPlaceholder = ({
   return (
     <EmptyPlaceholder
       description={description ?? t('message.no-data-available')}
-      icon={icon ?? <Database01 className="tw:text-secondary" />}
+      icon={icon ?? <Database01 />}
       title={title}
       variant="blank"
       {...props}

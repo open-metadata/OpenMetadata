@@ -23,12 +23,10 @@ export type EmptyPlaceholderIcon = FC<{ className?: string }> | ReactNode;
 
 /** Shared icon-container styling for both variants */
 export const EMPTY_PLACEHOLDER_ICON_BOX =
-  // `text-featured-icon-light-fg-gray` (gray-500 light / gray-200 dark) is the
-  // default glyph color so a bare component icon stays visible in both themes
-  // instead of inheriting the ambient text color (invisible dark-on-dark).
-  // Icons passed as elements with their own `text-*` class still override it.
-  // No background, border or shadow: the icon sits directly on whatever surface hosts it.
-  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:text-featured-icon-light-fg-gray tw:*:data-icon:size-7';
+  // A borderless tile: `bg-primary` + soft shadow lift it off light surfaces and make it a darker
+  // well on dark `bg-surface` cards. The glyph defaults to the brand colour; icons passed as
+  // elements with their own `text-*` class still override it.
+  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:bg-primary tw:text-fg-brand-primary tw:shadow-empty-placeholder-icon tw:dark:shadow-xs tw:*:data-icon:size-7';
 
 export interface EmptyPlaceholderAction extends Omit<ButtonProps, 'children'> {
   key: string;
