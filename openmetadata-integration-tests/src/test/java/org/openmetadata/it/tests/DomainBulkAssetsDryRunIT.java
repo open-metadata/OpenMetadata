@@ -19,12 +19,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -56,9 +60,70 @@ import org.openmetadata.sdk.network.HttpMethod;
  * - dryRun=false (default) performs actual writes
  * - Warning messages include entity type and data product side effects
  */
+// The move tests rely on the "Multiple Domains are not allowed" rule another test here turns off.
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
+@ResourceLock("MULTI_DOMAIN_RULE")
 public class DomainBulkAssetsDryRunIT {
+
+  @Test
+  void test_add_withMultipleDomainsAllowed_keepsExistingDomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    boolean ruleWasEnabled = EntityRulesUtil.isMultiDomainRuleEnabled(client);
+    EntityRulesUtil.toggleMultiDomainRule(client, false);
+    try {
+      Domain domainA = createDomain(ns, client, "domainA");
+      Domain domainB = createDomain(ns, client, "domainB");
+      Table table = createTable(ns);
+      BulkAssets request =
+          new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(false);
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/domains/" + domainA.getFullyQualifiedName() + "/assets/add",
+              request,
+              BulkOperationResult.class);
+
+      BulkOperationResult dryRun =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.PUT,
+                  "/v1/domains/" + domainB.getFullyQualifiedName() + "/assets/add",
+                  new BulkAssets().withAssets(List.of(table.getEntityReference())).withDryRun(true),
+                  BulkOperationResult.class);
+      BulkResponse preview = dryRun.getSuccessRequest().get(0);
+      assertFalse(
+          Boolean.TRUE.equals(preview.getHasSideEffects()),
+          "Adding beside an existing domain is not a move: " + preview.getMessage());
+      assertTrue(
+          preview.getMessage().contains("will be added to the domain"),
+          "Message should say the asset is added: " + preview.getMessage());
+
+      client
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/domains/" + domainB.getFullyQualifiedName() + "/assets/add",
+              request,
+              BulkOperationResult.class);
+
+      Table refreshed =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  "/v1/tables/" + table.getId() + "?fields=domains",
+                  null,
+                  Table.class);
+      assertEquals(
+          Set.of(domainA.getId(), domainB.getId()),
+          refreshed.getDomains().stream().map(d -> d.getId()).collect(Collectors.toSet()));
+    } finally {
+      EntityRulesUtil.toggleMultiDomainRule(client, ruleWasEnabled);
+    }
+  }
 
   @Test
   void test_dryRunAdd_returnsImpactWithoutWriting(TestNamespace ns) throws Exception {
