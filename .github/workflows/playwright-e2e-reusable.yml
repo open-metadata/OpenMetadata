@@ -764,6 +764,11 @@ jobs:
           # container, so anything written to either dies with the container.
           # Give the run one writable mount and point Playwright's output at it,
           # otherwise a failure here is a single line of `list` output.
+          # Chromium sets DBUS_SESSION_BUS_ADDRESS (main thread) and FC_FONTATIONS
+          # (fontconfig thread) at startup. In this container's minimal env both
+          # are new, so each setenv reallocates `environ` while another thread is
+          # in getenv -- a use-after-free that SIGSEGVs the browser at launch.
+          # Preset, the first is a no-op and the second overwrites in place.
           mkdir -p "$RUNNER_TEMP/browser-helper-results"
           docker run --rm --network none --read-only --shm-size=1g \
             --cap-drop ALL --security-opt no-new-privileges \
@@ -776,6 +781,8 @@ jobs:
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
             --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
+            --env DBUS_SESSION_BUS_ADDRESS=disabled: \
+            --env FC_FONTATIONS=1 \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
             ./node_modules/.bin/playwright test \
             --config=playwright/browser-helper-tests.config.ts
