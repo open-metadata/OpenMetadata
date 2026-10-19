@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -27,9 +33,71 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import Description from '../../common/EntityDescription/Description';
 import DataAssetsTab from './DataAssetsTab';
 
-// The right panel runs on the real GenericProvider and entity-page widgets. Mocked: the hooks
-// that fetch (change summary, entity rules), and the pickers the widgets render — they are where
-// a user's selection enters, so their callbacks stand in for a pick.
+// The right panel runs for real — GenericProvider, the entity-page widgets and their pickers —
+// down to the REST calls, which are mocked here. A test picks a value the way a user does and
+// checks the service handed to the page's save.
+jest.mock('../../../rest/dataProductAPI', () => ({
+  fetchDataProductsElasticSearch: jest.fn().mockResolvedValue({
+    data: [
+      {
+        label: 'revenue',
+        value: {
+          id: 'dp-1',
+          name: 'revenue',
+          displayName: 'Revenue',
+          fullyQualifiedName: 'revenue',
+          domains: [],
+        },
+      },
+    ],
+    paging: { total: 1 },
+  }),
+}));
+
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [
+        {
+          _source: {
+            fullyQualifiedName: 'PII.Sensitive',
+            name: 'Sensitive',
+            displayName: 'Sensitive',
+          },
+        },
+      ],
+      total: { value: 1 },
+    },
+  }),
+}));
+
+jest.mock('../../../rest/glossaryAPI', () => ({
+  getGlossariesList: jest.fn().mockResolvedValue({
+    data: [
+      {
+        id: 'glossary-1',
+        name: 'Business',
+        fullyQualifiedName: 'Business',
+        termCount: 1,
+      },
+    ],
+    paging: { total: 1 },
+  }),
+  getGlossaryTermChildrenLazy: jest.fn().mockResolvedValue({
+    data: [
+      {
+        id: 'term-1',
+        name: 'Revenue',
+        displayName: 'Revenue',
+        fullyQualifiedName: 'Business.Revenue',
+        childrenCount: 0,
+      },
+    ],
+    paging: { total: 1 },
+  }),
+  searchGlossaryTerms: jest.fn().mockResolvedValue([]),
+}));
+
 jest.mock('../../../hooks/useChangeSummary', () => ({
   useChangeSummary: () => ({ changeSummary: {} }),
 }));
@@ -48,29 +116,6 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 jest.mock('../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel', () =>
   jest.fn(() => null)
 );
-
-const mockDataProductsContainer = jest.fn();
-jest.mock(
-  '../../DataProducts/DataProductsContainer/DataProductsContainer.component',
-  () => ({
-    __esModule: true,
-    default: (props: Record<string, unknown>) => {
-      mockDataProductsContainer(props);
-
-      return <div data-testid="data-products-container" />;
-    },
-  })
-);
-
-const mockTagsContainer = jest.fn();
-jest.mock('../../Tag/TagsContainerV2/TagsContainerV2', () => ({
-  __esModule: true,
-  default: (props: { tagType: TagSource }) => {
-    mockTagsContainer(props);
-
-    return <div data-testid={`tags-container-${props.tagType}`} />;
-  },
-}));
 
 const mockServiceMainTabContent = jest.fn();
 jest.mock(
@@ -103,17 +148,19 @@ const tag = (tagFQN: string, source: TagSource): TagLabel => ({
 });
 
 const TIER = tag('Tier.Tier1', TagSource.Classification);
-const PII = tag('PII.Sensitive', TagSource.Classification);
-const TERM = tag('Business.Revenue', TagSource.Glossary);
+const PERSONAL = tag('PersonalData.Personal', TagSource.Classification);
+const OLD_TERM = tag('Business.Cost', TagSource.Glossary);
 
 const SERVICE = {
   id: 'svc-1',
   name: 'svc',
   fullyQualifiedName: 'svc',
   description: 'About svc',
-  tags: [TIER],
+  tags: [TIER, PERSONAL, OLD_TERM],
   dataProducts: [],
 } as unknown as ServicesType;
+
+const EDIT_BUTTON = /^(add-data-product|add-tag|edit-button)$/;
 
 const saveUpdatedServiceData = jest.fn();
 const onDescriptionUpdate = jest.fn();
@@ -149,26 +196,20 @@ const renderTab = ({
     </QueryClientProvider>
   );
 
-// The widgets lazy-load their containers; wait for all three before reading their props.
+// The widgets lazy-load their cards; wait for all three.
 const renderPanel = async (options?: Parameters<typeof renderTab>[0]) => {
   renderTab(options);
   const panel = screen.getByTestId('service-right-panel');
-  await within(panel).findByTestId('data-products-container');
-  await within(panel).findByTestId(
-    `tags-container-${TagSource.Classification}`
-  );
-  await within(panel).findByTestId(`tags-container-${TagSource.Glossary}`);
 
-  return panel;
+  return {
+    panel,
+    dataProducts: await within(panel).findByTestId('data-products-container'),
+    tags: await within(panel).findByTestId('tags-container'),
+    glossaryTerms: await within(panel).findByTestId('glossary-container'),
+  };
 };
 
-const lastTagsProps = (tagType: TagSource) =>
-  mockTagsContainer.mock.calls
-    .filter(([p]) => p.tagType === tagType)
-    .at(-1)?.[0];
-
-const lastDataProductsProps = () =>
-  mockDataProductsContainer.mock.calls.at(-1)?.[0];
+const lastSaved = () => saveUpdatedServiceData.mock.calls.at(-1)?.[0];
 
 const lastDescriptionProps = () =>
   (Description as unknown as jest.Mock).mock.calls.at(-1)?.[0];
@@ -178,29 +219,31 @@ describe('DataAssetsTab', () => {
 
   describe('right panel', () => {
     it('shows data products, tags and glossary terms, in that order', async () => {
-      const panel = await renderPanel();
+      const { panel } = await renderPanel();
 
       expect(
         within(panel)
-          .getAllByTestId(/-container/)
+          .getAllByTestId(/-container$/)
           .map((el) => el.dataset.testid)
       ).toEqual([
         'data-products-container',
-        `tags-container-${TagSource.Classification}`,
-        `tags-container-${TagSource.Glossary}`,
+        'tags-container',
+        'glossary-container',
       ]);
     });
 
-    it('saves a picked data product on the service as a reference', async () => {
-      await renderPanel();
+    it('saves a picked data product on the service', async () => {
+      const { dataProducts } = await renderPanel();
 
-      await act(() =>
-        lastDataProductsProps().onSave([
-          { id: 'dp-1', name: 'revenue', fullyQualifiedName: 'revenue' },
-        ])
+      fireEvent.click(within(dataProducts).getByTestId(EDIT_BUTTON));
+      fireEvent.click(await screen.findByTestId('revenue'));
+      fireEvent.click(screen.getByTestId('update-btn'));
+
+      await waitFor(() =>
+        expect(saveUpdatedServiceData).toHaveBeenCalledTimes(1)
       );
 
-      expect(saveUpdatedServiceData).toHaveBeenCalledWith(
+      expect(lastSaved()).toEqual(
         expect.objectContaining({
           id: 'svc-1',
           dataProducts: [
@@ -213,65 +256,64 @@ describe('DataAssetsTab', () => {
       );
     });
 
-    it('saves picked tags on the service, keeping its tier', async () => {
-      await renderPanel();
+    it('saves a picked tag, keeping the tier, other tags and glossary terms', async () => {
+      const { tags } = await renderPanel();
 
-      await act(() =>
-        lastTagsProps(TagSource.Classification).onSelectionChange([PII])
+      fireEvent.click(within(tags).getByTestId(EDIT_BUTTON));
+      fireEvent.click(await screen.findByTestId('tree-node-PII.Sensitive'));
+      fireEvent.click(screen.getByTestId('update-btn'));
+
+      await waitFor(() =>
+        expect(saveUpdatedServiceData).toHaveBeenCalledTimes(1)
       );
 
-      expect(saveUpdatedServiceData).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: 'svc-1',
-          tags: [TIER, expect.objectContaining({ tagFQN: PII.tagFQN })],
-        })
-      );
-    });
-
-    it('saves picked glossary terms on the service, keeping its tier', async () => {
-      await renderPanel();
-
-      await act(() =>
-        lastTagsProps(TagSource.Glossary).onSelectionChange([TERM])
-      );
-
-      expect(saveUpdatedServiceData).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tags: [
-            TIER,
-            expect.objectContaining({
-              tagFQN: TERM.tagFQN,
-              source: TagSource.Glossary,
-            }),
-          ],
-        })
+      expect(lastSaved().tags.map((t: TagLabel) => t.tagFQN)).toEqual(
+        expect.arrayContaining([
+          TIER.tagFQN,
+          PERSONAL.tagFQN,
+          'PII.Sensitive',
+          OLD_TERM.tagFQN,
+        ])
       );
     });
 
-    it('is editable with the service permissions', async () => {
-      await renderPanel();
+    it('saves a picked glossary term, keeping the tier, tags and other terms', async () => {
+      const { glossaryTerms } = await renderPanel();
 
-      expect(lastDataProductsProps().hasPermission).toBe(true);
-      expect(lastTagsProps(TagSource.Classification).permission).toBe(true);
-      expect(lastTagsProps(TagSource.Glossary).permission).toBe(true);
+      fireEvent.click(within(glossaryTerms).getByTestId(EDIT_BUTTON));
+      fireEvent.click(await screen.findByTestId('tree-expand-btn'));
+      fireEvent.click(await screen.findByTestId('tree-node-Business.Revenue'));
+      fireEvent.click(screen.getByTestId('update-btn'));
+
+      await waitFor(() =>
+        expect(saveUpdatedServiceData).toHaveBeenCalledTimes(1)
+      );
+
+      expect(lastSaved().tags).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ tagFQN: TIER.tagFQN }),
+          expect.objectContaining({ tagFQN: PERSONAL.tagFQN }),
+          expect.objectContaining({ tagFQN: OLD_TERM.tagFQN }),
+          expect.objectContaining({
+            tagFQN: 'Business.Revenue',
+            source: TagSource.Glossary,
+          }),
+        ])
+      );
     });
 
-    it('is read-only on a soft-deleted service', async () => {
-      await renderPanel({ deleted: true });
+    it('offers no edits on a soft-deleted service', async () => {
+      const { panel } = await renderPanel({ deleted: true });
 
-      expect(lastDataProductsProps().hasPermission).toBe(false);
-      expect(lastTagsProps(TagSource.Classification).permission).toBe(false);
-      expect(lastTagsProps(TagSource.Glossary).permission).toBe(false);
+      expect(within(panel).queryAllByTestId(EDIT_BUTTON)).toHaveLength(0);
     });
 
-    it('is read-only without edit permissions', async () => {
-      await renderPanel({
+    it('offers no edits without edit permissions', async () => {
+      const { panel } = await renderPanel({
         permission: { ...DEFAULT_ENTITY_PERMISSION, ViewAll: true },
       });
 
-      expect(lastDataProductsProps().hasPermission).toBe(false);
-      expect(lastTagsProps(TagSource.Classification).permission).toBe(false);
-      expect(lastTagsProps(TagSource.Glossary).permission).toBe(false);
+      expect(within(panel).queryAllByTestId(EDIT_BUTTON)).toHaveLength(0);
     });
   });
 
