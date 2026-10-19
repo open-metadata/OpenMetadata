@@ -25,6 +25,55 @@ import { DataQualityTest } from '../../../common/DataQualitySection/DataQualityS
 import DataQualityTab from './DataQualityTab';
 import { TranslationOptions } from './DataQualityTab.interface';
 
+jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
@@ -972,7 +1021,7 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.no-access-placeholder')
+          screen.getByTestId('permission-error-placeholder')
         ).toBeInTheDocument();
       });
 

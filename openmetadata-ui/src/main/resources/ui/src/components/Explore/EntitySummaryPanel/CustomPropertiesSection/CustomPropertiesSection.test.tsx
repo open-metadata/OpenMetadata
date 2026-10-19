@@ -16,20 +16,60 @@ import { CustomProperty } from '../../../../generated/entity/type';
 import CustomPropertiesSection from './CustomPropertiesSection';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 
+jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div data-testid="loader" />)
 );
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ children, type }) => (
-    <div data-testid="error-placeholder" data-type={type}>
-      {children}
-    </div>
-  )),
-}));
 
 const createProperty = (
   name: string,
@@ -90,23 +130,21 @@ describe('CustomPropertiesSection', () => {
   it('renders the permission placeholder without view permission', () => {
     renderSection({ viewCustomPropertiesPermission: false });
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('searchbar')).not.toBeInTheDocument();
   });
 
   it('renders the empty placeholder when the entity type has no properties', () => {
     renderSection({ entityTypeDetail: { customProperties: [] } });
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'CUSTOM'
-    );
-    expect(screen.getByTestId('error-placeholder')).toHaveTextContent(
-      'message.no-custom-properties-entity'
-    );
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toHaveTextContent('message.no-custom-properties-entity');
     expect(screen.queryByTestId('searchbar')).not.toBeInTheDocument();
   });
 

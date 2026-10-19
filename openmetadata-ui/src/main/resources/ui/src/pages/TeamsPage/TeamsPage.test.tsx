@@ -12,7 +12,6 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TeamType } from '../../generated/entity/teams/team';
@@ -23,6 +22,63 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getTeamByName, getTeams } from '../../rest/teamsAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import TeamsPage from './TeamsPage';
+
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
@@ -67,21 +123,6 @@ jest.mock('../../components/Settings/Team/TeamDetails/TeamDetailsV1', () => {
 jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <p>Loader</p>);
 });
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <p>
-          {type === ERROR_PLACEHOLDER_TYPE.PERMISSION
-            ? 'Permission_Error_Placeholder'
-            : 'No_Data_Error_Placeholder'}
-        </p>
-      ));
-  }
-);
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -192,7 +233,7 @@ describe('Test Teams Page', () => {
     });
 
     expect(
-      screen.getByText('Permission_Error_Placeholder')
+      screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -280,7 +321,7 @@ describe('Test Teams Page', () => {
       render(<TeamsPage />);
     });
 
-    expect(screen.getByText('No_Data_Error_Placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
 
     (getTeamByName as jest.Mock).mockReset();
   });

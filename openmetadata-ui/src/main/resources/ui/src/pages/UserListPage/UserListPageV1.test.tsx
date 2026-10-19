@@ -22,6 +22,63 @@ import { getUsers } from '../../rest/userAPI';
 import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
   // from here, and a wholesale mock leaves them undefined.
@@ -153,17 +210,6 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={`error-placeholder-${type}`}>ErrorPlaceHolder</div>
-      ));
-  }
-);
-
 jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
 });
@@ -216,7 +262,7 @@ describe('Test UserListPage component', () => {
 
     const { findByTestId } = render(<UserListPageV1 />);
 
-    const errorPlaceholder = await findByTestId('error-placeholder-CREATE');
+    const errorPlaceholder = await findByTestId(/create-error-placeholder/);
 
     expect(errorPlaceholder).toBeInTheDocument();
     expect(getUsers).toHaveBeenCalledWith({

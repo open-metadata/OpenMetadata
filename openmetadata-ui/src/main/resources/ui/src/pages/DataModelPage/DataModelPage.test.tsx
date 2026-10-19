@@ -39,13 +39,69 @@ import {
   CREATE_THREAD,
   DATA_MODEL_DELETED,
   ERROR,
-  ERROR_PLACEHOLDER,
   FETCH_ENTITY_PERMISSION_ERROR,
   FOLLOW_DATA_MODEL,
   TOGGLE_DELETE,
   UPDATE_DATA_MODEL,
   UPDATE_VOTE,
 } from './mocks/DataModelPage.mock';
+
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
 
 const mockUpdateTierTag = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
@@ -82,10 +138,6 @@ jest.mock('../../hooks/useApplicationStore', () => ({
     currentUser: mockUserData,
   })),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
-);
 
 jest.mock(
   '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component',
@@ -320,7 +372,11 @@ describe('DataModelPage component', () => {
       renderPage();
     });
 
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(showErrorToast).toHaveBeenCalledWith(FETCH_ENTITY_PERMISSION_ERROR);
   });
 
@@ -342,6 +398,10 @@ describe('DataModelPage component', () => {
       'testFqn',
       expect.objectContaining({ enabled: true })
     );
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

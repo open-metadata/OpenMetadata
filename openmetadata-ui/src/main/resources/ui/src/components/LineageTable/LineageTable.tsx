@@ -44,7 +44,6 @@ import {
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
@@ -83,7 +82,7 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
-import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
@@ -1032,7 +1031,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
           loading={loading}
           locale={{
-            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder data-testid="no-data-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey={

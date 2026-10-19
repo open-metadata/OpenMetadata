@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  EmptyPlaceholder,
   Select,
   Skeleton,
   Table,
@@ -29,7 +30,6 @@ import {
   DEFAULT_SELECTED_RANGE,
   TEST_CASE_STATUS_LABELS,
 } from '../../../../constants/profiler.constant';
-import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
@@ -42,7 +42,6 @@ import {
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import NoDataPlaceholderNew from '../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -284,16 +283,23 @@ const DimensionalityTab = () => {
     }
 
     return (
-      <NoDataPlaceholderNew size={SIZE.LARGE}>
-        <TransWithComponents
-          components={{
-            0: <span className="tw:text-sm" />,
-            1: <span className="tw:text-sm" />,
-            2: <Link to={pipelineLink} />,
-          }}
-          i18nKey="message.no-dimension-description"
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <EmptyPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <TransWithComponents
+                components={{
+                  0: <span className="tw:text-sm" />,
+                  1: <span className="tw:text-sm" />,
+                  2: <Link to={pipelineLink} />,
+                }}
+                i18nKey="message.no-dimension-description"
+              />
+            </>
+          }
         />
-      </NoDataPlaceholderNew>
+      </div>
     );
   }, [isLoading, pipelineLink]);
 

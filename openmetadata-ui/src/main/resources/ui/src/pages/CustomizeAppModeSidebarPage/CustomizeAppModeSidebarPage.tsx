@@ -32,7 +32,7 @@ import { cloneDeep, isEqual } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -328,7 +328,11 @@ const CustomizeAppModeSidebarPage = () => {
   }
 
   if (!hasPersona) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

@@ -26,7 +26,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -44,7 +44,6 @@ import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import {
@@ -388,24 +387,25 @@ const NotificationListPage = () => {
             loading={Boolean(loadingCount)}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
-                  permission
-                  className="p-y-md"
-                  doc={ALERTS_DOCS}
-                  heading={t('label.alert')}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.alert'),
-                  })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={() =>
-                    navigate(
-                      getSettingPath(
-                        GlobalSettingsMenuCategory.NOTIFICATIONS,
-                        GlobalSettingOptions.ADD_NOTIFICATION
+                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <CreatePlaceholder
+                    permission
+                    data-testid={`create-error-placeholder-${t('label.alert')}`}
+                    doc={ALERTS_DOCS}
+                    heading={t('label.alert')}
+                    permissionValue={t('label.create-entity', {
+                      entity: t('label.alert'),
+                    })}
+                    onCreate={() =>
+                      navigate(
+                        getSettingPath(
+                          GlobalSettingsMenuCategory.NOTIFICATIONS,
+                          GlobalSettingOptions.ADD_NOTIFICATION
+                        )
                       )
-                    )
-                  }
-                />
+                    }
+                  />
+                </div>
               ),
             }}
             pagination={false}

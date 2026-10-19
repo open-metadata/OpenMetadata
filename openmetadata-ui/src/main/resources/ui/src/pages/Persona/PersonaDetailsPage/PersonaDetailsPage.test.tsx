@@ -24,6 +24,63 @@ import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { PersonaDetailsPage } from './PersonaDetailsPage';
 
+jest.mock('../../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
@@ -101,15 +158,6 @@ jest.mock('react-router-dom', () => {
     useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   };
 });
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => <div>NoDataPlaceholder.component</div>);
-  }
-);
-
 jest.mock(
   '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => jest.fn().mockImplementation(() => <p>TitleBreadcrumb.component</p>)
@@ -208,7 +256,7 @@ describe('PersonaDetailsPage', () => {
     render(<PersonaDetailsPage />, { wrapper: MemoryRouter });
 
     expect(
-      await screen.findByText('NoDataPlaceholder.component')
+      await screen.findByTestId('no-data-placeholder')
     ).toBeInTheDocument();
   });
 

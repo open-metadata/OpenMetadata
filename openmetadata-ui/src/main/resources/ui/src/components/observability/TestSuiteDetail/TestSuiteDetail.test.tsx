@@ -16,6 +16,51 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import TestSuiteDetail from './TestSuiteDetail';
 
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
 const mockUseTestSuiteDetailsPage = jest.fn();
 const mockNavigate = jest.fn();
 const mockSetActiveTab = jest.fn();
@@ -50,15 +95,6 @@ jest.mock('components/common/DocumentTitle/DocumentTitle', () => ({
 jest.mock('components/common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader">Loader</div>,
-}));
-
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type ?? 'default'}>
-      error-placeholder
-    </div>
-  ),
 }));
 
 jest.mock(
@@ -330,10 +366,9 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 
   it('should render the permission placeholder before the undefined guard when permission is denied and testSuite is undefined', () => {
@@ -350,10 +385,9 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(DocumentTitleMock).not.toHaveBeenCalled();
   });
 
@@ -371,11 +405,12 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'default'
-    );
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-suite-detail-page')
     ).not.toBeInTheDocument();

@@ -25,6 +25,63 @@ import { ResourceEntity } from '../../../enums/permissions.enum';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import MetricDetailsPage from './MetricDetailsPage';
 
+jest.mock('../../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 // No prior test coverage existed for this page — this is a new characterization suite
 // written as part of converting the permission fetch onto useEntityPermissions. Mirrors
 // TableDetailsPageV1.test.tsx's approach: mock useEntityPermissions directly rather than
@@ -102,17 +159,6 @@ const mockShowErrorToast = jest.fn();
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
-
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () =>
-    jest.fn().mockImplementation(({ type, permissionValue, children }) => (
-      <div data-testid="error-placeholder" data-type={type}>
-        {permissionValue}
-        {children}
-      </div>
-    ))
-);
 
 jest.mock('../../../components/Metric/MetricDetails/MetricDetails', () => ({
   __esModule: true,
@@ -192,9 +238,9 @@ describe('MetricDetailsPage', () => {
 
     renderPage();
 
-    const placeholder = await screen.findByTestId('error-placeholder');
-
-    expect(placeholder).toHaveAttribute('data-type', 'PERMISSION');
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(mockGetMetricByFqn).not.toHaveBeenCalled();
   });
 
@@ -250,7 +296,9 @@ describe('MetricDetailsPage', () => {
 
     renderPage();
 
-    const placeholder = await screen.findByTestId('error-placeholder');
+    const placeholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(placeholder).not.toHaveAttribute('data-type', 'PERMISSION');
     expect(screen.queryByTestId('metric-details')).not.toBeInTheDocument();

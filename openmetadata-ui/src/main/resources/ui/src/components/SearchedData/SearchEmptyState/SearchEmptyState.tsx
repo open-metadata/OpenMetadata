@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Grid,
+  Typography,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import Qs from 'qs';
@@ -28,22 +33,18 @@ import {
   OMD_SLACK_LINK,
   TAGS_DOCS,
 } from '../../../constants/docs.constants';
-import {
-  ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE,
-  ERROR_PLACEHOLDER_TYPE,
-  SIZE,
-} from '../../../enums/common.enum';
+import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import ErrorPlaceHolder from './ErrorPlaceHolder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 
 type Props = {
   type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   errorMessage?: string;
   query?: Qs.ParsedQs;
-  size?: SIZE;
 };
 
 const stepsData = [
@@ -73,7 +74,7 @@ const stepsData = [
   },
 ];
 
-const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
+const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
   const { showDeleted, search, queryFilter, quickFilter, browsePath } =
     query ?? {};
   const { tab } = useRequiredParams<{ tab: string }>();
@@ -94,11 +95,9 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
     if (isQuery) {
       return (
         <div className="text-center" data-testid="no-search-results">
-          <ErrorPlaceHolder
-            className="border-none"
-            size={size}
-            type={ERROR_PLACEHOLDER_TYPE.FILTER}
-          />
+          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+          </div>
         </div>
       );
     }
@@ -106,65 +105,71 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
     if (['glossaries', 'tags'].includes(tab)) {
       return (
         <div className="text-center" data-testid="no-search-results">
-          <ErrorPlaceHolder
-            permission
-            className="border-none"
-            doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
-            heading={
-              tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
-            }
-            size={size}
-            type={ERROR_PLACEHOLDER_TYPE.CREATE}
-            onClick={() =>
-              navigate(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
-            }
-          />
+          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <CreatePlaceholder
+              permission
+              data-testid={`create-error-placeholder-${
+                tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
+              }`}
+              doc={tab === 'tags' ? TAGS_DOCS : GLOSSARIES_DOCS}
+              heading={
+                tab === 'tags' ? t('label.tag-plural') : t('label.glossary')
+              }
+              onCreate={() =>
+                navigate(tab === 'tags' ? ROUTES.TAGS : ROUTES.GLOSSARY)
+              }
+            />
+          </div>
         </div>
       );
     }
 
     return (
       <div className="text-center" data-testid="no-search-results">
-        <ErrorPlaceHolder
-          className="border-none"
-          size={size}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="p" style={{ marginBottom: '0' }}>
-            <Transi18next
-              i18nKey="message.no-data-available-entity"
-              renderElement={<b />}
-              values={{
-                entity: activeDomain,
-              }}
-            />
-          </Typography>
-          <Typography as="p" style={{ marginBottom: '0' }}>
-            <Transi18next
-              i18nKey="message.add-data-asset-domain"
-              renderElement={<b />}
-              values={{
-                domain: activeDomain,
-              }}
-            />
-          </Typography>
-          <Typography as="p">
-            <Transi18next
-              i18nKey="message.refer-to-our-doc"
-              renderElement={
-                <a
-                  aria-label={t('label.documentation')}
-                  href={DATA_DISCOVERY_DOCS}
-                  rel="noreferrer"
-                  style={{ color: theme.primaryColor }}
-                  target="_blank"
-                />
-              }
-              values={{
-                doc: t('label.doc-plural-lowercase'),
-              }}
-            />
-          </Typography>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <EmptyPlaceholder
+            data-testid="no-data-placeholder"
+            footer={
+              <>
+                <Typography as="p" style={{ marginBottom: '0' }}>
+                  <Transi18next
+                    i18nKey="message.no-data-available-entity"
+                    renderElement={<b />}
+                    values={{
+                      entity: activeDomain,
+                    }}
+                  />
+                </Typography>
+                <Typography as="p" style={{ marginBottom: '0' }}>
+                  <Transi18next
+                    i18nKey="message.add-data-asset-domain"
+                    renderElement={<b />}
+                    values={{
+                      domain: activeDomain,
+                    }}
+                  />
+                </Typography>
+                <Typography as="p">
+                  <Transi18next
+                    i18nKey="message.refer-to-our-doc"
+                    renderElement={
+                      <a
+                        aria-label={t('label.documentation')}
+                        href={DATA_DISCOVERY_DOCS}
+                        rel="noreferrer"
+                        style={{ color: theme.primaryColor }}
+                        target="_blank"
+                      />
+                    }
+                    values={{
+                      doc: t('label.doc-plural-lowercase'),
+                    }}
+                  />
+                </Typography>
+              </>
+            }
+          />
+        </div>
       </div>
     );
   }, [isQuery, tab, activeDomain]);
@@ -235,4 +240,4 @@ const ErrorPlaceHolderES = ({ type, errorMessage, query, size }: Props) => {
   );
 };
 
-export default ErrorPlaceHolderES;
+export default SearchEmptyState;

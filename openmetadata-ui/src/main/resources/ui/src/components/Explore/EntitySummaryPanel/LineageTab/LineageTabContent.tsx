@@ -12,6 +12,7 @@
  */
 
 import {
+  EmptyPlaceholder,
   Owner,
   Tabs,
   Tooltip,
@@ -24,7 +25,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -34,7 +34,6 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -283,14 +282,21 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           ))
         ) : (
           <div>
-            <ErrorPlaceHolderNew
-              className="text-grey-14 m-t-lg"
-              icon={<AddPlaceHolderIcon height={100} width={100} />}
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography as="p" className="text-center  no-data-placeholder">
-                {t('label.lineage-not-found')}
-              </Typography>
-            </ErrorPlaceHolderNew>
+            <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <EmptyPlaceholder
+                data-testid="no-data-placeholder"
+                footer={
+                  <>
+                    <Typography
+                      as="p"
+                      className="text-center  no-data-placeholder">
+                      {t('label.lineage-not-found')}
+                    </Typography>
+                  </>
+                }
+                icon={<AddPlaceHolderIcon height={100} width={100} />}
+              />
+            </div>
           </div>
         )}
       </div>

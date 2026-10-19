@@ -30,6 +30,51 @@ import { searchQuery } from '../../../rest/searchAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
 
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Button: jest
@@ -65,6 +110,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ChevronDown: () => <span>ChevronDown</span>,
   Plus: () => <span>Plus</span>,
   SortAscending: () => <span>SortAscending</span>,

@@ -20,6 +20,55 @@ import PortNode from './PortNode.component';
 import PortsLineageView from './PortsLineageView.component';
 import { DataProductNodeProps, PortNodeProps } from './PortsLineageView.types';
 
+jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 // React Flow's real <ReactFlow> canvas can't measure itself in jsdom (zero
 // size), which would mask edge/handle wiring bugs. So we keep the real hooks
 // (useNodesState/useEdgesState are pure useState, no provider needed) and the

@@ -29,7 +29,6 @@ import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -41,9 +40,10 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -330,18 +330,23 @@ const TestSuiteDetail = () => {
 
   if (!flags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-suite'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-suite'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testSuite)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

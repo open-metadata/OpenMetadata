@@ -12,6 +12,7 @@
  */
 import {
   Dialog,
+  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tabs,
@@ -21,10 +22,8 @@ import { isEmpty, sortBy } from 'lodash';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import type { WidgetConfig } from '../../../../interface/customization.interface';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AddCustomPropertiesWidgetTabContent } from './AddCustomPropertiesWidgetTabContent';
 import { AddDetailsPageWidgetTabContent } from './AddDetailsPageWidgetTabContent';
 
@@ -85,12 +84,12 @@ function AddDetailsPageWidgetModal({
   const renderBody = () => {
     if (isEmpty(widgetsList)) {
       return (
-        <ErrorPlaceHolder
-          className="h-min-480"
-          data-testid="no-widgets-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.no-widgets-to-add')}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <EmptyPlaceholder
+            data-testid="no-data-placeholder"
+            footer={<>{t('message.no-widgets-to-add')}</>}
+          />
+        </div>
       );
     }
 

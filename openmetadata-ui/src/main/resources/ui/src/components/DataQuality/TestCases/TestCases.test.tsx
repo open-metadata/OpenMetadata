@@ -24,6 +24,51 @@ import { getTags } from '../../../rest/tagAPI';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCases } from './TestCases.component';
 
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
 const mockTestCasePermission = {
   Create: true,
   Delete: true,
@@ -180,17 +225,6 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
         </div>
       )
     ),
-}));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`}>
-        ErrorPlaceHolder.component
-      </div>
-    )),
 }));
 
 const mockOnAddTestCase = jest.fn();
@@ -386,7 +420,7 @@ describe('TestCases component', () => {
       render(<TestCases />);
 
       expect(
-        await screen.findByTestId('error-placeholder-type-PERMISSION')
+        await screen.findByTestId('permission-error-placeholder')
       ).toBeInTheDocument();
     });
 

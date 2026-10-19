@@ -18,7 +18,63 @@ import { getApiCollectionByFQN } from '../../rest/apiCollectionsAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import APICollectionVersionPage from './APICollectionVersionPage';
 
-const ERROR_PLACEHOLDER = 'ErrorPlaceHolder';
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 const LOADER = 'Loader';
 const DATA_ASSET_VERSION_HEADER = 'DataAssetsVersionHeader';
 const ENTITY_VERSION_TIMELINE = 'EntityVersionTimeLine';
@@ -90,10 +146,6 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
   useParams: jest.fn().mockReturnValue({ version: '0.2', tab: 'apiEndpoint' }),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
-);
 
 jest.mock('../../components/common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>{LOADER}</div>)
@@ -219,7 +271,11 @@ describe('APICollectionVersionPage', () => {
       render(<APICollectionVersionPage />);
     });
 
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(getApiCollectionByFQN).not.toHaveBeenCalled();
   });
 

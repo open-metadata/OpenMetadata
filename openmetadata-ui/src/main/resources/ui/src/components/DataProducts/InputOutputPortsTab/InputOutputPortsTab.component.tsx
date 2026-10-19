@@ -17,6 +17,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Button,
+  EmptyPlaceholder,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -35,14 +36,12 @@ import { ReactFlowProvider } from 'reactflow';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
@@ -211,34 +210,38 @@ const InputPortsAccordionSection = ({
               className="tw:flex tw:flex-col tw:pb-2"
               style={{ height: 'calc(100vh - 460px)' }}>
               {inputPortsCount === 0 ? (
-                <ErrorPlaceHolder
-                  className="m-t-0"
-                  icon={
-                    <AddPlaceHolderIcon
-                      className="tw:w-16 tw:h-16"
-                      data-testid="no-input-ports-placeholder"
-                    />
-                  }
-                  size={SIZE.SMALL}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography as="p" className="tw:text-center">
-                    {t('message.no-input-ports-added')}
-                  </Typography>
-                  {canEditAll && (
-                    <Button
-                      className="tw:mt-2"
-                      color="primary"
-                      data-testid="add-input-port-button"
-                      iconLeading={Plus}
-                      onClick={onAddInputPort}>
-                      {t('label.add-entity', {
-                        entity: t('label.entity-port-plural', {
-                          entity: t('label.input'),
-                        }),
-                      })}
-                    </Button>
-                  )}
-                </ErrorPlaceHolder>
+                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <EmptyPlaceholder
+                    data-testid="no-data-placeholder"
+                    footer={
+                      <>
+                        <Typography as="p" className="tw:text-center">
+                          {t('message.no-input-ports-added')}
+                        </Typography>
+                        {canEditAll && (
+                          <Button
+                            className="tw:mt-2"
+                            color="primary"
+                            data-testid="add-input-port-button"
+                            iconLeading={Plus}
+                            onClick={onAddInputPort}>
+                            {t('label.add-entity', {
+                              entity: t('label.entity-port-plural', {
+                                entity: t('label.input'),
+                              }),
+                            })}
+                          </Button>
+                        )}
+                      </>
+                    }
+                    icon={
+                      <AddPlaceHolderIcon
+                        className="tw:w-16 tw:h-16"
+                        data-testid="no-input-ports-placeholder"
+                      />
+                    }
+                  />
+                </div>
               ) : (
                 <PortsListView
                   dataProductFqn={dataProductFqn}
@@ -335,34 +338,38 @@ const OutputPortsAccordionSection = ({
               className="tw:flex tw:flex-col tw:pb-2"
               style={{ height: 'calc(100vh - 460px)' }}>
               {outputPortsCount === 0 ? (
-                <ErrorPlaceHolder
-                  className="m-t-0"
-                  icon={
-                    <AddPlaceHolderIcon
-                      className="tw:w-16 tw:h-16"
-                      data-testid="no-output-ports-placeholder"
-                    />
-                  }
-                  size={SIZE.SMALL}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography as="p" className="tw:text-center">
-                    {emptyStateMessage}
-                  </Typography>
-                  {showEmptyStateAddButton && (
-                    <Button
-                      className="tw:mt-2"
-                      color="primary"
-                      data-testid="add-output-port-button"
-                      iconLeading={Plus}
-                      onClick={onAddOutputPort}>
-                      {t('label.add-entity', {
-                        entity: t('label.entity-port-plural', {
-                          entity: t('label.output'),
-                        }),
-                      })}
-                    </Button>
-                  )}
-                </ErrorPlaceHolder>
+                <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <EmptyPlaceholder
+                    data-testid="no-data-placeholder"
+                    footer={
+                      <>
+                        <Typography as="p" className="tw:text-center">
+                          {emptyStateMessage}
+                        </Typography>
+                        {showEmptyStateAddButton && (
+                          <Button
+                            className="tw:mt-2"
+                            color="primary"
+                            data-testid="add-output-port-button"
+                            iconLeading={Plus}
+                            onClick={onAddOutputPort}>
+                            {t('label.add-entity', {
+                              entity: t('label.entity-port-plural', {
+                                entity: t('label.output'),
+                              }),
+                            })}
+                          </Button>
+                        )}
+                      </>
+                    }
+                    icon={
+                      <AddPlaceHolderIcon
+                        className="tw:w-16 tw:h-16"
+                        data-testid="no-output-ports-placeholder"
+                      />
+                    }
+                  />
+                </div>
               ) : (
                 <PortsListView
                   dataProductFqn={dataProductFqn}

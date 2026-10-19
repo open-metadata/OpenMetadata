@@ -23,6 +23,59 @@ import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
 import { useTableProfiler } from '../TableProfilerProvider';
 import ColumnProfileTable from './ColumnProfileTable';
 
+jest.mock('../../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 jest.mock('@openmetadata/ui-core-components', () => {
   const Table = Object.assign(
     jest
@@ -132,15 +185,6 @@ jest.mock('../NoProfilerBanner/NoProfilerBanner.component', () =>
 
 jest.mock('../SingleColumnProfile', () =>
   jest.fn().mockImplementation(() => <div>SingleColumnProfile</div>)
-);
-
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
-);
-
-jest.mock(
-  '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => jest.fn().mockReturnValue(<div>FilterTablePlaceHolder</div>)
 );
 
 jest.mock('../../../../common/NextPrevious/NextPrevious', () =>
@@ -340,7 +384,11 @@ describe('Test ColumnProfileTable component', () => {
       render(<ColumnProfileTable />, { wrapper: MemoryRouter });
     });
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render NoProfilerBanner when profiling is disabled', async () => {

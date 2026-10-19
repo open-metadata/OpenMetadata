@@ -14,6 +14,7 @@
 import {
   Box,
   Dialog,
+  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tabs,
@@ -27,7 +28,6 @@ import {
   LIGHT_GREEN_COLOR,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
 import { useVisitedTabs } from '../../../../hooks/useVisitedTabs';
@@ -35,7 +35,6 @@ import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import {
   AddWidgetModalProps,
@@ -141,12 +140,12 @@ function AddWidgetModal({
 
     if (isEmpty(widgetsList)) {
       return (
-        <ErrorPlaceHolder
-          className="h-min-480"
-          data-testid="no-widgets-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.no-widgets-to-add')}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <EmptyPlaceholder
+            data-testid="no-data-placeholder"
+            footer={<>{t('message.no-widgets-to-add')}</>}
+          />
+        </div>
       );
     }
 

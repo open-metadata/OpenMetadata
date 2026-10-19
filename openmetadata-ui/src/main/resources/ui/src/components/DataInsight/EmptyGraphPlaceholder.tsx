@@ -11,51 +11,57 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholder,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
 export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
   const { t } = useTranslation();
 
   return (
-    <ErrorPlaceHolder
-      className="border-none"
-      icon={icon}
-      size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography
-        as="p"
-        className="tw:text-primary"
-        style={{ marginBottom: '0' }}>
-        {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-          entity: t('label.data-insight'),
-        })}
-      </Typography>
-      <Typography as="p" className="tw:mb-3.5! tw:text-primary">
-        <Tooltip title={t('label.documentation')}>
-          <span>
-            <Transi18next
-              i18nKey="message.refer-to-our-doc"
-              renderElement={
-                <a
-                  aria-label={t('label.documentation')}
-                  href={DATA_INSIGHT_DOCS}
-                  rel="noreferrer"
-                  target="_blank"
-                />
-              }
-              values={{
-                doc: t('label.doc-plural-lowercase'),
-              }}
-            />
-          </span>
-        </Tooltip>
-      </Typography>
-    </ErrorPlaceHolder>
+    <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <EmptyPlaceholder
+        data-testid="no-data-placeholder"
+        footer={
+          <>
+            <Typography
+              as="p"
+              className="tw:text-primary"
+              style={{ marginBottom: '0' }}>
+              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+                entity: t('label.data-insight'),
+              })}
+            </Typography>
+            <Typography as="p" className="tw:mb-3.5! tw:text-primary">
+              <Tooltip title={t('label.documentation')}>
+                <span>
+                  <Transi18next
+                    i18nKey="message.refer-to-our-doc"
+                    renderElement={
+                      <a
+                        aria-label={t('label.documentation')}
+                        href={DATA_INSIGHT_DOCS}
+                        rel="noreferrer"
+                        target="_blank"
+                      />
+                    }
+                    values={{
+                      doc: t('label.doc-plural-lowercase'),
+                    }}
+                  />
+                </span>
+              </Tooltip>
+            </Typography>
+          </>
+        }
+        icon={icon}
+      />
+    </div>
   );
 };

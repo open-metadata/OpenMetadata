@@ -31,6 +31,51 @@ import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants'
 import AlertDetailsPage from './AlertDetailsPage';
 import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
 const mockNavigate = jest.fn();
 const mockUseAlertDetailsData = jest.fn();
 const mockUseAlertFormData = jest.fn();
@@ -172,6 +217,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
@@ -188,16 +234,6 @@ jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader" />,
 }));
-
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => ({
-    __esModule: true,
-    default: ({ permissionValue }: { permissionValue?: string }) => (
-      <div data-testid="error-placeholder">{permissionValue}</div>
-    ),
-  })
-);
 
 jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
@@ -446,9 +482,11 @@ describe('AlertDetailsPage', () => {
 
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveTextContent(
-      'label.view-entity:label.alert-detail-plural'
-    );
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toHaveTextContent('label.view-entity:label.alert-detail-plural');
   });
 
   it('renders generic error when alert details are unavailable', () => {
@@ -458,7 +496,11 @@ describe('AlertDetailsPage', () => {
 
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('keeps the document title mounted while alert details are loading', () => {

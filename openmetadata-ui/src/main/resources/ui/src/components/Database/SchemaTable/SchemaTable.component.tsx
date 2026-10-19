@@ -98,8 +98,8 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import {
   ColumnsType,
@@ -1047,7 +1047,11 @@ const SchemaTable = () => {
           }
           loading={columnsLoading}
           locale={{
-            emptyText: <FilterTablePlaceHolder />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowClassName={getRowClassName}

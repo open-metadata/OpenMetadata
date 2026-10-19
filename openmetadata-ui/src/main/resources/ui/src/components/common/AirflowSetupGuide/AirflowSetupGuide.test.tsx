@@ -14,7 +14,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
-import ErrorPlaceHolderIngestion from './ErrorPlaceHolderIngestion';
+import AirflowSetupGuide from './AirflowSetupGuide';
 
 jest.mock('../AirflowMessageBanner/AirflowMessageBanner', () => {
   return jest
@@ -37,7 +37,7 @@ jest.mock(
 describe('ErrorPlaceholderIngestion', () => {
   it('should show the error steps', async () => {
     await act(async () => {
-      render(<ErrorPlaceHolderIngestion />);
+      render(<AirflowSetupGuide />);
     });
 
     expect(screen.getByTestId('error-steps')).toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('ErrorPlaceholderIngestion', () => {
     });
 
     await act(async () => {
-      render(<ErrorPlaceHolderIngestion />);
+      render(<AirflowSetupGuide />);
     });
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('ErrorPlaceholderIngestion', () => {
     });
 
     await act(async () => {
-      render(<ErrorPlaceHolderIngestion />);
+      render(<AirflowSetupGuide />);
     });
 
     const errorSteps = screen.getByTestId('error-steps');
@@ -86,7 +86,7 @@ describe('ErrorPlaceholderIngestion', () => {
     });
 
     await act(async () => {
-      render(<ErrorPlaceHolderIngestion />);
+      render(<AirflowSetupGuide />);
     });
 
     const errorSteps = screen.getByTestId('error-steps');

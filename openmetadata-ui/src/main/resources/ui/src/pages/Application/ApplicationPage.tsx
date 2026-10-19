@@ -14,6 +14,7 @@ import {
   Box,
   Button,
   Card,
+  EmptyPlaceholder,
   Grid,
   SkeletonParagraph,
   Toggle,
@@ -24,7 +25,7 @@ import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -36,7 +37,6 @@ import { ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { App } from '../../generated/entity/applications/app';
 import { Include } from '../../generated/type/include';
 import { Paging } from '../../generated/type/paging';
@@ -125,18 +125,25 @@ const ApplicationPage = () => {
     if (showDisabled) {
       return (
         <Grid.Item className="layout-column mt-24 text-center" span={24}>
-          <ErrorPlaceHolder heading={t('label.application-plural')} />
+          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder data-testid="no-data-placeholder" />
+          </div>
         </Grid.Item>
       );
     }
 
     return (
       <Grid.Item className="layout-column mt-24 text-center" span={24}>
-        <ErrorPlaceHolder
-          heading={t('label.application-plural')}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div>{t('message.no-installed-applications-found')}</div>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <EmptyPlaceholder
+            data-testid="no-data-placeholder"
+            footer={
+              <>
+                <div>{t('message.no-installed-applications-found')}</div>
+              </>
+            }
+          />
+        </div>
       </Grid.Item>
     );
   }, [showDisabled]);

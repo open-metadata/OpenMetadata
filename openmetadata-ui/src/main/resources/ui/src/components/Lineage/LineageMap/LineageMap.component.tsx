@@ -18,6 +18,7 @@ import {
   Button,
   ButtonUtility,
   Dialog,
+  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Typography,
@@ -60,7 +61,6 @@ import {
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
@@ -94,7 +94,7 @@ import { onEdgeClick } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -958,12 +958,19 @@ const LineageMapPlaceholder = ({
   if (error && !scene) {
     return (
       <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <span>{t('message.something-went-wrong')}</span>
-          <Button data-testid="lineage-map-retry" onClick={onRetry}>
-            {t('label.try-again')}
-          </Button>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <EmptyPlaceholder
+            data-testid="no-data-placeholder"
+            footer={
+              <>
+                <span>{t('message.something-went-wrong')}</span>
+                <Button data-testid="lineage-map-retry" onClick={onRetry}>
+                  {t('label.try-again')}
+                </Button>
+              </>
+            }
+          />
+        </div>
       </div>
     );
   }
@@ -977,10 +984,12 @@ const LineageMapPlaceholder = ({
 
   return (
     <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-      <ErrorPlaceHolder
-        placeholderText={t('message.no-lineage-data-available')}
-        type={ERROR_PLACEHOLDER_TYPE.FILTER}
-      />
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoSearchResultsPlaceholder
+          data-testid="search-error-placeholder"
+          description={t('message.no-lineage-data-available')}
+        />
+      </div>
     </div>
   );
 };

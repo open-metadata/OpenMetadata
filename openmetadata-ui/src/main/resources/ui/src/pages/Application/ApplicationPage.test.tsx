@@ -17,6 +17,63 @@ import { CursorType } from '../../enums/pagination.enum';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import ApplicationPage from './ApplicationPage';
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
@@ -27,10 +84,6 @@ jest.mock(
   '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component',
   () =>
     jest.fn(({ onClick }) => <button onClick={onClick}>ApplicationCard</button>)
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
@@ -172,7 +225,11 @@ describe('ApplicationPage', () => {
       expect(mockShowErrorToast).toHaveBeenCalledWith('ERROR')
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should call limitWrapper with app as resource', async () => {

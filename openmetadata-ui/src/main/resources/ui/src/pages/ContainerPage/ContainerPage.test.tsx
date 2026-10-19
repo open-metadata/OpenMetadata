@@ -16,7 +16,6 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import {
@@ -31,6 +30,63 @@ import {
   MOCK_CONTAINER_DATA,
   MOCK_CONTAINER_DATA_1,
 } from './ContainerPage.mock';
+
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
 
 // The page now reads permissions via useEntityPermissions rather than the raw
 // PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for
@@ -117,16 +173,6 @@ jest.mock('../../components/common/EntityDescription/Description', () =>
     .mockImplementation(({ onThreadLinkSelect }) => (
       <button onClick={onThreadLinkSelect}>Description</button>
     ))
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ type, children }) => (
-    <div>
-      ErrorPlaceHolder
-      <span>{type}</span>
-      <div>{children}</div>
-    </div>
-  ))
 );
 
 jest.mock(
@@ -419,7 +465,7 @@ describe('Container Page Component', () => {
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     expect(
-      await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -476,7 +522,11 @@ describe('Container Page Component', () => {
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {

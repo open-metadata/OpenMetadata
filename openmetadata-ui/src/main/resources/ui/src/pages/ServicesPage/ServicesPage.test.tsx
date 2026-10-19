@@ -15,6 +15,63 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import ServicesPage from './ServicesPage';
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 jest.mock(
   '../../components/Settings/Services/Ingestion/IngestionPipelineList/IngestionPipelineList.component',
   () => ({
@@ -31,13 +88,6 @@ jest.mock('../../components/Settings/Services/Services', () => {
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <>{children}</>);
 });
-
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<>mockErrorPlaceHolder</>);
-  }
-);
 
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
@@ -144,6 +194,8 @@ describe('ServicesPage', () => {
       );
     });
 
-    expect(await screen.findByText('mockErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 });

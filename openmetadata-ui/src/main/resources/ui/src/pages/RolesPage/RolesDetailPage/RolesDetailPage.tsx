@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   Card,
+  EmptyPlaceholder,
   SimpleModal,
   Tabs,
   Typography,
@@ -28,7 +29,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
@@ -38,7 +38,6 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Role } from '../../../generated/entity/teams/role';
@@ -356,24 +355,29 @@ const RolesDetailPage = () => {
         <TitleBreadcrumb titleLinks={breadcrumb} />
 
         {isEmpty(role) ? (
-          <ErrorPlaceHolder
-            className="h-min-80 border-none"
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <div className="text-center">
-              <p>
-                {t('message.no-entity-found-for-name', {
-                  entity: t('label.role'),
-                  name: fqn,
-                })}
-              </p>
-              <Button
-                className="tw:mt-3"
-                color="secondary-brand"
-                onClick={() => navigate(rolesPath)}>
-                {t('label.go-back')}
-              </Button>
-            </div>
-          </ErrorPlaceHolder>
+          <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <EmptyPlaceholder
+              data-testid="no-data-placeholder"
+              footer={
+                <>
+                  <div className="text-center">
+                    <p>
+                      {t('message.no-entity-found-for-name', {
+                        entity: t('label.role'),
+                        name: fqn,
+                      })}
+                    </p>
+                    <Button
+                      className="tw:mt-3"
+                      color="secondary-brand"
+                      onClick={() => navigate(rolesPath)}>
+                      {t('label.go-back')}
+                    </Button>
+                  </div>
+                </>
+              }
+            />
+          </div>
         ) : (
           <>
             <Box justify="between">

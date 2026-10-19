@@ -13,7 +13,7 @@
 
 import { getByTestId, render, screen } from '@testing-library/react';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import ErrorPlaceHolderES from './ErrorPlaceHolderES';
+import SearchEmptyState from './SearchEmptyState';
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
@@ -24,14 +24,6 @@ jest.mock('../../../utils/useRequiredParams', () => ({
     tab: 'tables',
   }),
 }));
-
-jest.mock('./FilterErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="FilterErrorPlaceHolder">FilterErrorPlaceHolder</div>
-    );
-});
 
 jest.mock('../../../utils/i18next/LocalUtil', () => ({
   Transi18next: jest.fn().mockImplementation(({ i18nKey }) => {
@@ -50,7 +42,7 @@ const mockErrorMessage =
 describe('Test Error placeholder ingestion Component', () => {
   it('Component should render error placeholder', () => {
     const { container } = render(
-      <ErrorPlaceHolderES type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR} />
+      <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR} />
     );
 
     expect(getByTestId(container, 'es-error')).toBeInTheDocument();
@@ -58,7 +50,7 @@ describe('Test Error placeholder ingestion Component', () => {
 
   it('Component should render no data placeholder', () => {
     const { container } = render(
-      <ErrorPlaceHolderES type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+      <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA} />
     );
 
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
@@ -66,7 +58,7 @@ describe('Test Error placeholder ingestion Component', () => {
 
   it('Component should render Filter Placeholder for query search', () => {
     const { container } = render(
-      <ErrorPlaceHolderES
+      <SearchEmptyState
         query={{ search: 'test' }}
         type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
       />
@@ -74,7 +66,7 @@ describe('Test Error placeholder ingestion Component', () => {
     const noDataES = getByTestId(container, 'no-search-results');
     const searchFilterPlaceholder = getByTestId(
       noDataES,
-      'FilterErrorPlaceHolder'
+      'search-error-placeholder'
     );
 
     expect(searchFilterPlaceholder).toBeInTheDocument();
@@ -82,7 +74,7 @@ describe('Test Error placeholder ingestion Component', () => {
 
   it('Component should render error placeholder with ES index', () => {
     const { container } = render(
-      <ErrorPlaceHolderES
+      <SearchEmptyState
         errorMessage={mockErrorMessage}
         type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
       />
@@ -95,7 +87,7 @@ describe('Test Error placeholder ingestion Component', () => {
 
   it('should render with correct brandName keys', () => {
     const { container } = render(
-      <ErrorPlaceHolderES
+      <SearchEmptyState
         errorMessage={mockErrorMessage}
         type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
       />

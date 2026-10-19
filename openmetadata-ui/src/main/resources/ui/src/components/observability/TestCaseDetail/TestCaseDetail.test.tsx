@@ -19,6 +19,51 @@ import { getIngestionPipelines } from '../../../rest/ingestionPipelineAPI';
 import { getNextCronRunTimestamp } from '../../../utils/CronUtils';
 import TestCaseDetail from './TestCaseDetail';
 
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
 const INCIDENT_MANAGER_PAGE_HEADER_TEST_ID = 'incident-manager-page-header';
 const HEADER_BREADCRUMB_TEST_ID = 'header-breadcrumb';
 const BREADCRUMB_COUNT_ATTR = 'data-item-count';
@@ -97,15 +142,6 @@ jest.mock('components/common/DocumentTitle/DocumentTitle', () => ({
 jest.mock('components/common/Loader/Loader', () => ({
   __esModule: true,
   default: () => <div data-testid="loader">Loader</div>,
-}));
-
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type ?? 'default'}>
-      error-placeholder
-    </div>
-  ),
 }));
 
 jest.mock(
@@ -776,10 +812,9 @@ describe('TestCaseDetail', () => {
 
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 
   it('should render the no-data placeholder without a test case', () => {
@@ -790,10 +825,7 @@ describe('TestCaseDetail', () => {
 
     render(<TestCaseDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'default'
-    );
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
   });
 
   it('should render the version button and manage button on detail pages', () => {

@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
 export interface WidgetEmptyStateProps {
   icon?: ReactElement;
@@ -54,38 +57,43 @@ const WidgetEmptyState = ({
       )}
       data-testid={dataTestId}
       justify="center">
-      <ErrorPlaceHolder
-        className="border-none"
-        icon={icon}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Box align="center" direction="col">
-          {title && (
-            <Typography
-              className="tw:mb-3 tw:text-secondary"
-              size="text-md"
-              weight="semibold">
-              {title}
-            </Typography>
-          )}
-          {description && (
-            <Typography
-              className="tw:max-w-75 tw:text-center tw:text-quaternary"
-              size="text-sm">
-              {description}
-            </Typography>
-          )}
-          {showActionButton && (
-            <Button className="tw:mt-4" size="sm" onPress={onActionClick}>
-              {buttonLabel}
-            </Button>
-          )}
-          {actionButtonLink && (
-            <Button className="tw:mt-4" href={actionButtonLink} size="sm">
-              {buttonLabel}
-            </Button>
-          )}
-        </Box>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <EmptyPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <Box align="center" direction="col">
+                {title && (
+                  <Typography
+                    className="tw:mb-3 tw:text-secondary"
+                    size="text-md"
+                    weight="semibold">
+                    {title}
+                  </Typography>
+                )}
+                {description && (
+                  <Typography
+                    className="tw:max-w-75 tw:text-center tw:text-quaternary"
+                    size="text-sm">
+                    {description}
+                  </Typography>
+                )}
+                {showActionButton && (
+                  <Button className="tw:mt-4" size="sm" onPress={onActionClick}>
+                    {buttonLabel}
+                  </Button>
+                )}
+                {actionButtonLink && (
+                  <Button className="tw:mt-4" href={actionButtonLink} size="sm">
+                    {buttonLabel}
+                  </Button>
+                )}
+              </Box>
+            </>
+          }
+          icon={icon}
+        />
+      </div>
     </Box>
   );
 };

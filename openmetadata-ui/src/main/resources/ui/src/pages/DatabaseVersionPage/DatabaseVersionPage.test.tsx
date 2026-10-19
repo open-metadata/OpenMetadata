@@ -17,7 +17,63 @@ import { EntityTabs } from '../../enums/entity.enum';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import DatabaseVersionPage from './DatabaseVersionPage';
 
-const ERROR_PLACEHOLDER = 'ErrorPlaceHolder';
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 const DATA_ASSET_VERSION_HEADER = 'DataAssetVersionHeader';
 const CUSTOM_PROPERTY_TABLE = 'CustomPropertyTable';
 const DATA_PRODUCT_CONTAINER = 'DataProductsContainer';
@@ -49,10 +105,6 @@ jest.mock(
 
 jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>{DESCRIPTION_V1}</div>)
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
 );
 
 jest.mock(
@@ -237,6 +289,10 @@ describe('DatabaseVersionPage', () => {
       );
     });
 
-    expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

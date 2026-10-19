@@ -10,20 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmStateInitialValue } from '../../constants/Feeds.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   AnnouncementEntity,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import {
   AnnouncementThreadBodyProp,
   ConfirmState,
@@ -134,16 +132,21 @@ const AnnouncementThreadBody = ({
 
   if (isEmpty(announcements) && !isThreadLoading) {
     return (
-      <ErrorPlaceHolder
-        className="h-auto mt-24"
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography
-          as="p"
-          className="tw:text-secondary"
-          data-testid="announcement-error">
-          {t('message.no-announcement-message')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <EmptyPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <Typography
+                as="p"
+                className="tw:text-secondary"
+                data-testid="announcement-error">
+                {t('message.no-announcement-message')}
+              </Typography>
+            </>
+          }
+        />
+      </div>
     );
   }
 

@@ -13,6 +13,7 @@
 import type { Selection } from '@openmetadata/ui-core-components';
 import {
   Badge,
+  EmptyPlaceholder,
   Tooltip,
   Tree,
   Typography,
@@ -34,7 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { DATA_DISCOVERY_DOCS } from '../../../constants/docs.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -70,7 +71,6 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import {
@@ -878,34 +878,38 @@ const ExploreTree = ({
 
   if (treeData.length === 0) {
     return (
-      <ErrorPlaceHolder
-        className="h-min-80 d-flex flex-col justify-center border-none"
-        size={SIZE.MEDIUM}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p" className="tw:m-0 tw:font-medium">
-          {t('message.no-data-yet')}
-        </Typography>
-        <Typography as="p" className="tw:m-0">
-          {t('message.add-service-and-data-assets')}
-        </Typography>
-        <Typography as="p" className="tw:mt-0 tw:mb-[1em]">
-          <Transi18next
-            i18nKey="message.need-help-message"
-            renderElement={
-              <a
-                aria-label="Learn more about data discovery"
-                href={DATA_DISCOVERY_DOCS}
-                rel="noreferrer"
-                target="_blank">
-                {t('label.learn-more')}
-              </a>
-            }
-            values={{
-              doc: t('message.see-how-to-get-started'),
-            }}
-          />
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <EmptyPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <Typography as="p" className="tw:m-0 tw:font-medium">
+                {t('message.no-data-yet')}
+              </Typography>
+              <Typography as="p" className="tw:m-0">
+                {t('message.add-service-and-data-assets')}
+              </Typography>
+              <Typography as="p" className="tw:mt-0 tw:mb-[1em]">
+                <Transi18next
+                  i18nKey="message.need-help-message"
+                  renderElement={
+                    <a
+                      aria-label="Learn more about data discovery"
+                      href={DATA_DISCOVERY_DOCS}
+                      rel="noreferrer"
+                      target="_blank">
+                      {t('label.learn-more')}
+                    </a>
+                  }
+                  values={{
+                    doc: t('message.see-how-to-get-started'),
+                  }}
+                />
+              </Typography>
+            </>
+          }
+        />
+      </div>
     );
   }
 

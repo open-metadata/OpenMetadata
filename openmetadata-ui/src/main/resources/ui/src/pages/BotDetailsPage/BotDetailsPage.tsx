@@ -16,10 +16,10 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import BotDetails from '../../components/Settings/Bot/BotDetails/BotDetails.component';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Bot } from '../../generated/entity/bot';
@@ -150,28 +150,39 @@ const BotDetailsPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="text-base" data-testid="error-message">
-          {t('message.no-entity-available-with-name', {
-            entity: t('label.bot-plural'),
-          })}{' '}
-          <span className="font-medium" data-testid="username">
-            {botsName}
-          </span>{' '}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <Typography
+                as="p"
+                className="text-base"
+                data-testid="error-message">
+                {t('message.no-entity-available-with-name', {
+                  entity: t('label.bot-plural'),
+                })}{' '}
+                <span className="font-medium" data-testid="username">
+                  {botsName}
+                </span>{' '}
+              </Typography>
+            </>
+          }
+        />
+      </div>
     );
   }
 
   if (!isAdminUser) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.bot-detail'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.bot-detail'),
+          })}
+        />
+      </div>
     );
   }
 

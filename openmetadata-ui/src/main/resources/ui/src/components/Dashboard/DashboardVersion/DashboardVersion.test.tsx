@@ -23,6 +23,51 @@ import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import DashboardVersion from './DashboardVersion.component';
 import { DashboardVersionProp } from './DashboardVersion.interface';
 
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
 const mockNavigate = jest.fn();
 
 jest.mock('../../common/EntityDescription/Description', () => {
@@ -37,10 +82,6 @@ jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () => {
 
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
-});
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
 });
 
 jest.mock(

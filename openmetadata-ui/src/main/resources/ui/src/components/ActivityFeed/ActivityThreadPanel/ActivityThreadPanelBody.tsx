@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  EmptyPlaceholder,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -32,7 +33,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -57,10 +57,6 @@ const TaskTabNew = withSuspenseFallback(
       default: module.TaskTabNew,
     }))
   )
-);
-
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
 );
 
 const FeedPanelHeader = withSuspenseFallback(
@@ -264,13 +260,20 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
-      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p">
-          {isTaskClosed
-            ? t('message.no-closed-task')
-            : t('message.no-open-task')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <EmptyPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <Typography as="p">
+                {isTaskClosed
+                  ? t('message.no-closed-task')
+                  : t('message.no-open-task')}
+              </Typography>
+            </>
+          }
+        />
+      </div>
     ) : (
       <div className={classNames(className, 'd-flex flex-col gap-3')}>
         {tasks.map((task) => (

@@ -10,32 +10,36 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../assets/svg/no-access-placeholder.svg';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
+import { SIZE } from '../../enums/common.enum';
 
 const AccessNotAllowedPage = () => {
   const { t } = useTranslation();
 
   return (
-    <ErrorPlaceHolder
-      icon={
-        <NoAccessPlaceHolderIcon
-          data-testid="no-data-image"
-          height={SIZE.LARGE}
-          width={SIZE.LARGE}
-        />
-      }
-      size={SIZE.LARGE}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <DocumentTitle title={t('label.access-denied')} />
-      <Typography as="p" className="w-80" style={{ marginBottom: '0' }}>
-        {t('message.error-self-signup-disabled')}
-      </Typography>
-    </ErrorPlaceHolder>
+    <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <EmptyPlaceholder
+        data-testid="no-data-placeholder"
+        footer={
+          <>
+            <DocumentTitle title={t('label.access-denied')} />
+            <Typography as="p" className="w-80" style={{ marginBottom: '0' }}>
+              {t('message.error-self-signup-disabled')}
+            </Typography>
+          </>
+        }
+        icon={
+          <NoAccessPlaceHolderIcon
+            data-testid="no-data-image"
+            height={SIZE.LARGE}
+            width={SIZE.LARGE}
+          />
+        }
+      />
+    </div>
   );
 };
 

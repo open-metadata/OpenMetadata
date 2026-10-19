@@ -56,14 +56,6 @@ jest.mock('../../../rest/tableAPI', () => ({
   deleteSampleDataByTableId: jest.fn(),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockReturnValue(
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    );
-});
-
 jest.mock('../../common/DeleteModal/DeleteModal', () => {
   return jest.fn().mockReturnValue(<p>DeleteModal</p>);
 });

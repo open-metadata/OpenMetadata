@@ -137,22 +137,6 @@ jest.mock('../../../utils/EntityStatusUtils', () => ({
   }),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ onClick }) => (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          onClick?.(e);
-        }
-      }}>
-      ErrorPlaceHolder
-    </div>
-  ))
-);
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   ...jest.requireActual('@openmetadata/ui-core-components'),
   Owner: jest.fn().mockImplementation(() => <div>Owner</div>),

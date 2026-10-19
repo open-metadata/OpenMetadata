@@ -36,7 +36,7 @@ import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -838,11 +838,18 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="tw:text-center tw:m-auto">
-          {error}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          footer={
+            <>
+              <Typography as="p" className="tw:text-center tw:m-auto">
+                {error}
+              </Typography>
+            </>
+          }
+        />
+      </div>
     );
   }
 

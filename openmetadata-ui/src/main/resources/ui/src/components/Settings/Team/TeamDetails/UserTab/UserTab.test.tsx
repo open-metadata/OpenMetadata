@@ -19,6 +19,41 @@ import { getUsers } from '../../../../../rest/userAPI';
 import { UserTab } from './UserTab.component';
 import { UserTabProps } from './UserTab.interface';
 
+jest.mock('../../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 const mockOnRemoveUser = jest.fn().mockResolvedValue('removed');
 
 const props: UserTabProps = {
@@ -29,13 +64,6 @@ const props: UserTabProps = {
   onAddUser: jest.fn(),
   onRemoveUser: mockOnRemoveUser,
 };
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest
-    .fn()
-    .mockImplementation(({ permission }: { permission?: boolean }) => (
-      <div data-permission={String(permission)}>ErrorPlaceHolder</div>
-    ));
-});
 jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
 });
@@ -133,7 +161,11 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('Loader should visible if data is loading', async () => {
@@ -325,10 +357,12 @@ describe('UserTab', () => {
         </BrowserRouter>
       );
 
-      expect(await screen.findByText('ErrorPlaceHolder')).toHaveAttribute(
-        'data-permission',
-        'true'
-      );
+      expect(
+        await screen.findByTestId(/assign-error-placeholder/)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('permission-error-placeholder')
+      ).not.toBeInTheDocument();
     });
 
     it('still denies via explicit deny when EditUsers is explicitly false, even with EditAll true', async () => {
@@ -349,10 +383,9 @@ describe('UserTab', () => {
         </BrowserRouter>
       );
 
-      expect(await screen.findByText('ErrorPlaceHolder')).toHaveAttribute(
-        'data-permission',
-        'false'
-      );
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
     });
   });
 });

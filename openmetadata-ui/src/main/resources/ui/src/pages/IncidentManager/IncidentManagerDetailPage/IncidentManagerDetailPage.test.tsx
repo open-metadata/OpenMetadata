@@ -28,6 +28,63 @@ import { TestCasePageTabs } from '../IncidentManager.interface';
 import IncidentManagerDetailPage from './IncidentManagerDetailPage';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
 
+jest.mock('../../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 // useTestCaseDetailPage (Task 8 Batch 9) now sources permissions from
 // useEntityPermissions rather than reading testCasePermission off the mocked store —
 // mock the hook directly, same pattern as useTestCaseDetailPage.test.tsx itself.
@@ -51,7 +108,6 @@ jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
 const TEST_CASE_FQN =
   'sample_data.ecommerce_db.shopify.dim_address.table_column_count_equals';
 const TEST_SUITE_FQN = 'sample_data.ecommerce_db.shopify.dim_address.testSuite';
-const ERROR_PLACEHOLDER_TEST_ID = 'error-placeholder';
 const HEADER_BREADCRUMB_TEST_ID = 'header-breadcrumb';
 const INCIDENT_MANAGER_HEADER_TEST_ID = 'incident-manager-page-header';
 const LAST_RUN_SUCCESS_BANNER_TEST_ID = 'test-case-last-run-banner-success';
@@ -206,15 +262,6 @@ jest.mock(
   () => ({
     useTestCaseIncidentHeader: jest.fn(),
   })
-);
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () =>
-    jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={ERROR_PLACEHOLDER_TEST_ID} data-type={type} />
-      ))
 );
 jest.mock(
   '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
@@ -477,8 +524,8 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(
-      await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
-    ).toHaveAttribute('data-type', 'PERMISSION');
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
 
     setMockPermissions(MOCK_PERMISSIONS);
   });
@@ -494,7 +541,9 @@ describe('IncidentManagerDetailPage', () => {
     });
 
     expect(
-      await screen.findByTestId(ERROR_PLACEHOLDER_TEST_ID)
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
     ).toBeInTheDocument();
 
     mockUseTestCase.testCase = mockTestCaseData;

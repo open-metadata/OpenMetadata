@@ -12,7 +12,7 @@
  */
 
 import {
-  findAllByText,
+  findAllByTestId,
   findByTestId,
   findByText,
   render,
@@ -29,6 +29,51 @@ import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import MlModelDetailComponent from './MlModelDetail.component';
+
+jest.mock('../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      SomethingWentWrongPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
 
 // The component now reads permissions via useEntityPermissions rather than the raw
 // PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for the
@@ -289,10 +334,6 @@ jest.mock('../../Lineage/EntityLineageTab/EntityLineageTab', () => ({
   EntityLineageTab: jest.fn().mockReturnValue(<div>EntityLineageTab</div>),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-});
-
 jest.mock('../../common/TabsLabel/TabsLabel.component', () => {
   return jest.fn().mockImplementation(({ name }) => <p>{name}</p>);
 });
@@ -448,9 +489,9 @@ describe('Test MlModel entity detail component', () => {
     );
 
     const entityTabs = await findByTestId(container, 'tabs');
-    const emptyTablePlaceholder = await findAllByText(
+    const emptyTablePlaceholder = await findAllByTestId(
       container,
-      'ErrorPlaceHolder'
+      'no-data-placeholder'
     );
 
     expect(entityTabs).toBeInTheDocument();

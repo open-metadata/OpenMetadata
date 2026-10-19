@@ -18,6 +18,55 @@ import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import AddWidgetModal from './AddWidgetModal';
 import { AddWidgetModalProps } from './AddWidgetModal.interface';
 
+jest.mock('../../../common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/PermissionPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      PermissionPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock('../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoSearchResultsPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 const mockProps: AddWidgetModalProps = {
   open: true,
   addedWidgetsList: [],
@@ -30,10 +79,6 @@ const mockProps: AddWidgetModalProps = {
 
 jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
-);
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('./AddWidgetTabContent', () =>
@@ -176,6 +221,10 @@ describe('AddWidgetModal component', () => {
       render(<AddWidgetModal {...mockProps} />);
     });
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

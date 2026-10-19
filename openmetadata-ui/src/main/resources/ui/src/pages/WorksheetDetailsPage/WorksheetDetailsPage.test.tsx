@@ -39,6 +39,63 @@ import { getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import WorksheetDetailsPage from './WorksheetDetailsPage';
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      NoDataPlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          PermissionPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock('../../components/common/EmptyPlaceholder/CreatePlaceholder', () =>
+  jest.fn().mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+    <div data-testid={testId}>
+      CreatePlaceholder
+      {permissionValue}
+    </div>
+  ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          NoSearchResultsPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ 'data-testid': testId, permissionValue }) => (
+        <div data-testid={testId}>
+          SomethingWentWrongPlaceholder
+          {permissionValue}
+        </div>
+      ))
+);
+
 // The page now reads permissions via useEntityPermissions rather than the raw
 // PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for
 // the full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce,
@@ -215,28 +272,6 @@ jest.mock('../../components/DriveService/Worksheet/WorksheetDetails', () =>
     )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        permissionValue,
-        type,
-      }: {
-        children?: React.ReactNode;
-        permissionValue?: string;
-        type?: string;
-      }) => (
-        <div data-testid="error-placeholder">
-          <div data-testid="error-type">{type}</div>
-          <div data-testid="error-permission">{permissionValue}</div>
-          {children}
-        </div>
-      )
-    )
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -347,7 +382,11 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
       expect(getEntityMissingError).toHaveBeenCalledWith(
@@ -380,10 +419,16 @@ describe('WorksheetDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId(
+            /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+          )
+        ).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('error-type')).toHaveTextContent('PERMISSION');
+      expect(
+        screen.getByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
     });
   });
 

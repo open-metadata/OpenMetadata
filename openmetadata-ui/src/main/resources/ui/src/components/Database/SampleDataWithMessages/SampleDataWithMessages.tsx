@@ -25,7 +25,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getSampleDataBySearchIndexId } from '../../../rest/SearchIndexAPI';
 import { getSampleDataByTopicId } from '../../../rest/topicsAPI';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import MessageCard from './MessageCard';
 
@@ -63,27 +63,34 @@ const SampleDataWithMessages: FC<{
   if (isUndefined(data) || !data.messages?.length) {
     return (
       <div
-        className="border-default border-radius-sm p-y-lg"
+        className="border-default border-radius-sm p-y-lg tw:relative tw:min-h-60 tw:bg-surface"
         data-testid="no-data">
-        <ErrorPlaceHolder>
-          <Typography as="p">
-            <Transi18next
-              i18nKey="message.view-sample-data-entity"
-              renderElement={
-                <a
-                  aria-label={t('label.documentation')}
-                  href={WORKFLOWS_METADATA_DOCS}
-                  rel="noreferrer"
-                  style={{ color: theme.primaryColor }}
-                  target="_blank"
-                />
-              }
-              values={{
-                entity: t('label.metadata-ingestion'),
-              }}
-            />
-          </Typography>
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            footer={
+              <>
+                <Typography as="p">
+                  <Transi18next
+                    i18nKey="message.view-sample-data-entity"
+                    renderElement={
+                      <a
+                        aria-label={t('label.documentation')}
+                        href={WORKFLOWS_METADATA_DOCS}
+                        rel="noreferrer"
+                        style={{ color: theme.primaryColor }}
+                        target="_blank"
+                      />
+                    }
+                    values={{
+                      entity: t('label.metadata-ingestion'),
+                    }}
+                  />
+                </Typography>
+              </>
+            }
+          />
+        </div>
       </div>
     );
   }

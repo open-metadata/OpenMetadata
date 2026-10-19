@@ -51,6 +51,9 @@ const CreatePlaceholder = ({
         permissionValue={permissionValue}
         title={title}
         {...props}
+        // The denied state keeps the permission test id whatever the caller passed for the
+        // create state, so "no access" is distinguishable from "nothing here yet".
+        data-testid="permission-error-placeholder"
       />
     );
   }
@@ -62,7 +65,8 @@ const CreatePlaceholder = ({
         onCreate,
         'add',
         t('label.add'),
-        buttonId
+        buttonId,
+        buttonId ?? 'add-placeholder-button'
       )}
       description={
         description ?? (

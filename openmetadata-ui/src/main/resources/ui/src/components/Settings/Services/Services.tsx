@@ -41,7 +41,6 @@ import { OPEN_METADATA } from '../../../constants/Services.constant';
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
@@ -72,7 +71,7 @@ import {
 } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainFilterChip } from '../../common/DomainFilterChip/DomainFilterChip.component';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -291,10 +290,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     // the category has any.
     if (!isEmpty(searchTerm) || serviceQueryFilter || deleted) {
       return (
-        <ErrorPlaceHolder
-          className="mt-24 border-none"
-          type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
-        />
+        <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
       );
     }
 

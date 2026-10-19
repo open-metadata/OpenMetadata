@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Card,
+  EmptyPlaceholder,
   Input,
   Select,
   SelectItem,
@@ -35,7 +36,6 @@ import {
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
@@ -45,7 +45,6 @@ import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -159,13 +158,18 @@ const SelectServiceType = ({
 
         {isEmpty(filteredConnectors) && (
           <div className="flex-center">
-            <ErrorPlaceHolder
-              className="border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography>
-                {t('message.no-connectors-available-for-service')}
-              </Typography>
-            </ErrorPlaceHolder>
+            <div className="tw:relative tw:h-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <EmptyPlaceholder
+                data-testid="no-data-placeholder"
+                footer={
+                  <>
+                    <Typography>
+                      {t('message.no-connectors-available-for-service')}
+                    </Typography>
+                  </>
+                }
+              />
+            </div>
           </div>
         )}
 

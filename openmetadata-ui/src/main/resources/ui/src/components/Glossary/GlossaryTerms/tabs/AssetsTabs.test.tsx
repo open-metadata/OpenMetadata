@@ -99,20 +99,6 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
     .mockImplementation(() => <div>NextPrevious.component</div>),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolder.component</div>),
-}));
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolderNew.component</div>),
-}));
-
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
   __esModule: true,
   default: jest
