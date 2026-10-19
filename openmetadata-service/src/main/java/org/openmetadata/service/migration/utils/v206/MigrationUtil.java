@@ -37,11 +37,15 @@ public final class MigrationUtil {
 
   // Rule name → value its set condition must contain.
   private static final Map<String, String> RULE_ADDITIONS =
-      Map.of("matchAnyFieldChange", Entity.FIELD_ENTITY_STATUS, "matchAnySource", "dataContract");
+      Map.of(
+          "matchAnyFieldChange",
+          Entity.FIELD_ENTITY_STATUS,
+          "matchAnySource",
+          Entity.DATA_CONTRACT);
 
   // Input filter argument (shown when the alert is opened) → value its list must contain.
   private static final Map<String, String> INPUT_ADDITIONS =
-      Map.of("fieldChangeList", Entity.FIELD_ENTITY_STATUS, "sourceList", "dataContract");
+      Map.of("fieldChangeList", Entity.FIELD_ENTITY_STATUS, "sourceList", Entity.DATA_CONTRACT);
 
   private static final String SELECT = "SELECT json FROM event_subscription_entity WHERE name = :n";
   private static final String UPDATE_MYSQL =
