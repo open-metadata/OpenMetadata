@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-18T03:18:25Z",
+  "generatedAt": "2026-10-19T03:21:08Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37720017171",
-      "sourceSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
-      "recordedAt": "2026-10-08T03:48:55Z"
-    },
     {
       "runId": "37876815560",
       "sourceSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
@@ -53,9 +48,24 @@
       "runId": "39091104477",
       "sourceSha": "38286a8af62e39573727bf879248f413ddca1b10",
       "recordedAt": "2026-10-18T03:18:25Z"
+    },
+    {
+      "runId": "39191651889",
+      "sourceSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
+      "recordedAt": "2026-10-19T03:21:08Z"
     }
   ],
   "entries": {
+    "Basic :: Features/CustomizeDetailPage.spec.ts :: Persona customization \u203a customize tab label should only render if it's customize by user": {
+      "observations": [
+        "39191651889"
+      ],
+      "project": "Basic",
+      "file": "Features/CustomizeDetailPage.spec.ts",
+      "title": "Persona customization \u203a customize tab label should only render if it's customize by user",
+      "lastSeenSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
+      "hardFailure": false
+    },
     "Basic :: Features/DescriptionSuggestion.spec.ts :: Description Task Workflows \u203a should add and accept a requested table description": {
       "observations": [
         "38502607895"
@@ -105,6 +115,16 @@
       "file": "Features/BulkImport.spec.ts",
       "title": "Bulk Import Export \u203a Database service",
       "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "hardFailure": false
+    },
+    "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a filters the queue across the Open, All and Closed statuses": {
+      "observations": [
+        "39191651889"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/InboxTasks.spec.ts",
+      "title": "Inbox \u2014 Triage \u203a filters the queue across the Open, All and Closed statuses",
+      "lastSeenSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
       "hardFailure": false
     },
     "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved": {
@@ -215,16 +235,6 @@
       "file": "Pages/AppStopRunModal.spec.ts",
       "title": "App Stop Run Modal \u203a should open stop modal when stop button is clicked and call stop API with runId",
       "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
-      "hardFailure": false
-    },
-    "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Add and update Security and SLA tabs": {
-      "observations": [
-        "37720017171"
-      ],
-      "project": "chromium",
-      "file": "Pages/DataContracts.spec.ts",
-      "title": "Data Contracts \u203a Add and update Security and SLA tabs",
-      "lastSeenSha": "278e4abf6fb0c3027d5f1878bac92839995ef75c",
       "hardFailure": false
     },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for Database Schema": {
