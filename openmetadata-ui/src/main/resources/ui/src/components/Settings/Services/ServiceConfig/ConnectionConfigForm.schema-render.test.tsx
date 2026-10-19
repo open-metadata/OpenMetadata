@@ -202,7 +202,9 @@ describe('ConnectionConfigForm schema rendering', () => {
 
     fireEvent.change(input, { target: { value: '' } });
 
-    expect(onChange.mock.lastCall?.[0].formData.csvEscapeChar).toBe('');
+    const change = onChange.mock.calls[onChange.mock.calls.length - 1][0];
+
+    expect(change.formData.csvEscapeChar).toBe('');
   });
 
   it.each(['Cassandra', 'Cockroach', 'Databricks', 'Glue', 'Greenplum'])(
