@@ -2,6 +2,7 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,39 @@ class SafeRdfModelParserTest {
                  {"@id":"relative","https://example.org/name":"lost"}]
                 """,
                 RdfSerializationFormat.JSON_LD));
+  }
+
+  @Test
+  void rejectsExplicitJsonLdTextDirection() {
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                parser.parse(
+                    """
+                    {"@id":"urn:example:C","@type":"http://www.w3.org/2002/07/owl#Class",
+                     "http://www.w3.org/2000/01/rdf-schema#label":
+                       {"@value":"Customer","@language":"en","@direction":"rtl"}}
+                    """,
+                    RdfSerializationFormat.JSON_LD));
+    assertTrue(exception.getMessage().contains("@direction"));
+  }
+
+  @Test
+  void rejectsContextInheritedJsonLdTextDirection() {
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                parser.parse(
+                    """
+                    {"@context":{"label":{"@id":"http://www.w3.org/2000/01/rdf-schema#label",
+                                          "@language":"en","@direction":"rtl"}},
+                     "@id":"urn:example:C","@type":"http://www.w3.org/2002/07/owl#Class",
+                     "label":"Customer"}
+                    """,
+                    RdfSerializationFormat.JSON_LD));
+    assertTrue(exception.getMessage().contains("@direction"));
   }
 
   @Test

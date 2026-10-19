@@ -198,6 +198,9 @@ public final class SafeJsonLdModelParser {
     switch (value.getValueType()) {
       case OBJECT -> {
         final JsonObject object = value.asJsonObject();
+        if (object.containsKey("@direction")) {
+          throw new BadRequestException("Native JSON-LD does not support @direction");
+        }
         if (object.containsKey("@graph") && object.containsKey("@id")) {
           throw new BadRequestException("Named RDF graphs are not supported");
         }
