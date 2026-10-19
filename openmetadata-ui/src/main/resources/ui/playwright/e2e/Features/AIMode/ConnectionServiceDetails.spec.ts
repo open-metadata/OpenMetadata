@@ -806,26 +806,24 @@ test.describe(
         await afterAction();
       });
 
-      test('assigns a data product to the service from its metadata details', async ({
+      test('assigns a data product to the service from its right panel', async ({
         page,
       }) => {
         const serviceFqn = service.entityResponseData.fullyQualifiedName;
         const dataProductFqn =
           dataProduct.responseData.fullyQualifiedName ?? '';
-        const section = page.getByTestId('service-data-products');
+        const section = page
+          .getByTestId('service-right-panel')
+          .getByTestId('data-products-container');
         expect(dataProductFqn).not.toBe('');
         await enableAiAppMode(page);
         await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
           fqn: serviceFqn,
         });
-        // Open from the start; clicking it here would close it.
-        await expect(
-          page.getByRole('button', { name: 'Metadata Details' })
-        ).toHaveAttribute('aria-expanded', 'true');
 
         await test.step('pick it and apply', async () => {
-          await section.getByTestId('edit-data-products').click();
+          await section.getByTestId('add-data-product').click();
           const picker = page.getByTestId('drop-down-menu');
           const option = picker.getByTestId(dataProductFqn);
           await expect(option).toBeVisible();
@@ -855,7 +853,6 @@ test.describe(
             category: 'databaseServices',
             fqn: serviceFqn,
           });
-          await page.getByRole('button', { name: 'Metadata Details' }).click();
 
           await expect(section).toContainText(
             dataProduct.responseData.displayName

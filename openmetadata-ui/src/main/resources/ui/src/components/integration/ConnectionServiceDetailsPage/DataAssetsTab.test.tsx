@@ -10,19 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { ServicesType } from '../../../interface/service.interface';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
-import DataProductsSection from '../../common/DataProductsSection/DataProductsSection';
+import Description from '../../common/EntityDescription/Description';
 import DataAssetsTab from './DataAssetsTab';
-
-jest.mock('../../common/DataProductsSection/DataProductsSection', () =>
-  jest.fn(() => <div data-testid="data-products-section" />)
-);
 
 const mockServiceMainTabContent = jest.fn();
 jest.mock(
@@ -35,58 +32,59 @@ jest.mock(
 );
 
 jest.mock('../../common/EntityDescription/Description', () =>
-  jest.fn(() => null)
+  jest.fn(() => <div data-testid="description" />)
 );
 
-jest.mock('../../common/GlossaryTermsSection/GlossaryTermsSection', () =>
-  jest.fn(() => null)
-);
+const mockGenericProvider = jest.fn();
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  GenericProvider: ({
+    children,
+    ...props
+  }: {
+    children: ReactNode;
+    [key: string]: unknown;
+  }) => {
+    mockGenericProvider(props);
 
-jest.mock('../../common/TagsSection/TagsSection', () => jest.fn(() => null));
+    return <>{children}</>;
+  },
+}));
 
-jest.mock('@openmetadata/ui-core-components', () => {
-  const Passthrough = ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  );
-
-  return {
-    Accordion: ({
-      children,
-      defaultExpandedKeys,
-    }: {
-      children: ReactNode;
-      defaultExpandedKeys?: string[];
-    }) => (
-      <div
-        data-expanded={defaultExpandedKeys?.join(',')}
-        data-testid="accordion">
-        {children}
-      </div>
-    ),
-    AccordionHeader: Passthrough,
-    AccordionItem: Passthrough,
-    AccordionPanel: Passthrough,
-  };
-});
-
-const DOMAIN = { id: 'domain-1', type: 'domain', name: 'Sales' };
-const DATA_PRODUCT = { id: 'dp-1', type: 'dataProduct', name: 'Revenue' };
+jest.mock('../../DataAssets/CommonWidgets/CommonWidgets', () => ({
+  CommonWidgets: ({
+    widgetConfig,
+    entityType,
+  }: {
+    widgetConfig: { i: string };
+    entityType: string;
+  }) => (
+    <div
+      data-entity-type={entityType}
+      data-testid={`widget-${widgetConfig.i}`}
+    />
+  ),
+}));
 
 const EDIT_ALL = {
   ...DEFAULT_ENTITY_PERMISSION,
   EditAll: true,
+  EditDescription: true,
   ViewAll: true,
 } as OperationPermission;
 
-const onDataProductUpdate = jest.fn();
-const onDataProductsChange = jest.fn();
+const saveUpdatedServiceData = jest.fn();
+const onDescriptionUpdate = jest.fn();
+
+const SERVICE = {
+  id: 'svc-1',
+  name: 'svc',
+  description: 'About svc',
+} as unknown as ServicesType;
 
 const renderTab = ({
-  serviceCategory = ServiceCategory.DATABASE_SERVICES,
   permission = EDIT_ALL,
   deleted = false,
 }: {
-  serviceCategory?: ServiceCategory;
   permission?: OperationPermission;
   deleted?: boolean;
 } = {}) =>
@@ -97,88 +95,76 @@ const renderTab = ({
       isServiceLoading={false}
       paging={{ total: 0 }}
       pagingInfo={{} as never}
-      saveUpdatedServiceData={jest.fn()}
-      serviceCategory={serviceCategory}
-      serviceDetails={
-        {
-          id: 'svc-1',
-          name: 'svc',
-          deleted,
-          domains: [DOMAIN],
-          dataProducts: [DATA_PRODUCT],
-        } as unknown as ServicesType
-      }
+      saveUpdatedServiceData={saveUpdatedServiceData}
+      serviceCategory={ServiceCategory.DATABASE_SERVICES}
+      serviceDetails={{ ...SERVICE, deleted }}
       servicePermission={permission}
       setFilters={jest.fn()}
       setIsServiceLoading={jest.fn()}
       showDeleted={false}
-      onDataProductUpdate={onDataProductUpdate}
-      onDataProductsChange={onDataProductsChange}
-      onDescriptionUpdate={jest.fn()}
+      onDataProductUpdate={jest.fn()}
+      onDescriptionUpdate={onDescriptionUpdate}
       onShowDeletedChange={jest.fn()}
     />
   );
 
-const lastDataProductsProps = () =>
-  (DataProductsSection as unknown as jest.Mock).mock.calls.at(-1)?.[0];
-
-describe('DataAssetsTab — data products', () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  // Classic shows these in the right panel, which this tab hides.
-  it("shows the service's data products against its domains", () => {
-    renderTab();
-
-    expect(screen.getByTestId('service-data-products')).toBeInTheDocument();
-    expect(lastDataProductsProps()).toEqual(
-      expect.objectContaining({
-        activeDomains: [DOMAIN],
-        dataProducts: [DATA_PRODUCT],
-        entityId: 'svc-1',
-        entityType: EntityType.DATABASE_SERVICE,
-        hasPermission: true,
-      })
-    );
-  });
-
-  // The section patches the service itself; the page only needs the result mirrored back.
-  it('hands what the section saved back to the page', () => {
-    renderTab();
-
-    lastDataProductsProps().onDataProductsUpdate([DATA_PRODUCT]);
-
-    expect(onDataProductsChange).toHaveBeenCalledWith([DATA_PRODUCT]);
-    expect(onDataProductUpdate).not.toHaveBeenCalled();
-  });
-
-  it('is read-only without EditAll', () => {
-    renderTab({
-      permission: { ...EDIT_ALL, EditAll: false } as OperationPermission,
-    });
-
-    expect(lastDataProductsProps()).toEqual(
-      expect.objectContaining({ hasPermission: false })
-    );
-  });
-
-  it('is read-only on a soft-deleted service', () => {
-    renderTab({ deleted: true });
-
-    expect(lastDataProductsProps()).toEqual(
-      expect.objectContaining({ hasPermission: false })
-    );
-  });
-});
+const lastDescriptionProps = () =>
+  (Description as unknown as jest.Mock).mock.calls.at(-1)?.[0];
 
 describe('DataAssetsTab — layout', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('opens with the metadata details expanded', () => {
+  it('shows the service description as a card above the asset list', () => {
     renderTab();
 
-    expect(screen.getByTestId('accordion')).toHaveAttribute(
-      'data-expanded',
-      'metadata-details'
+    expect(lastDescriptionProps()).toEqual(
+      expect.objectContaining({
+        wrapInCard: true,
+        description: 'About svc',
+        entityType: EntityType.DATABASE_SERVICE,
+        hasEditAccess: true,
+        onDescriptionUpdate,
+      })
+    );
+  });
+
+  it('keeps the description read-only on a soft-deleted service', () => {
+    renderTab({ deleted: true });
+
+    expect(lastDescriptionProps()).toEqual(
+      expect.objectContaining({ hasEditAccess: false, showActions: false })
+    );
+  });
+
+  // Same cards, in the same order, as an entity page's right panel.
+  it('shows data products, tags and glossary terms in the right panel', () => {
+    renderTab();
+
+    const panel = screen.getByTestId('service-right-panel');
+    const widgets = within(panel).getAllByTestId(/^widget-/);
+
+    expect(widgets.map((w) => w.dataset.testid)).toEqual([
+      `widget-${DetailPageWidgetKeys.DATA_PRODUCTS}`,
+      `widget-${DetailPageWidgetKeys.TAGS}`,
+      `widget-${DetailPageWidgetKeys.GLOSSARY_TERMS}`,
+    ]);
+
+    widgets.forEach((w) =>
+      expect(w).toHaveAttribute('data-entity-type', EntityType.DATABASE_SERVICE)
+    );
+  });
+
+  // The widgets read the service and save it through the page's own patch.
+  it('backs the right panel with the service and its save', () => {
+    renderTab();
+
+    expect(mockGenericProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ id: 'svc-1' }),
+        permissions: EDIT_ALL,
+        type: EntityType.DATABASE_SERVICE,
+        onUpdate: saveUpdatedServiceData,
+      })
     );
   });
 
@@ -192,8 +178,8 @@ describe('DataAssetsTab — layout', () => {
   });
 
   // data-assets-tab.less stops the classic tab body sizing itself off the viewport (dead space
-  // below a short table) through these two wrappers. jsdom applies no stylesheet, so this pins the
-  // hook the rule hangs on; the rule's effect is only visible in a browser.
+  // below a short table) and hides its own description and right panel through these wrappers.
+  // jsdom applies no stylesheet, so this pins the hook the rules hang on.
   it('nests the asset list in the wrappers its stylesheet targets', () => {
     renderTab();
 
