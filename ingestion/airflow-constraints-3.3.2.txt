@@ -201,7 +201,7 @@ asana==5.3.0
 asgiref==3.12.1
 asn1crypto==1.5.1
 asttokens==3.0.2
-async-timeout==4.0.3
+async-timeout==5.0.1
 asyncpg==0.31.0
 asyncssh==2.24.0
 atlasclient==1.0.0
