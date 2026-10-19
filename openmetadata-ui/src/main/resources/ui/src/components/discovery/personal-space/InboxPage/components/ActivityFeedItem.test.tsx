@@ -425,6 +425,27 @@ describe('ActivityFeedItem', () => {
     );
   });
 
+  it('names and links the column a conversation was started on', () => {
+    render(
+      <ActivityFeedItem
+        feed={{
+          ...baseFeed,
+          about: '<#E::table::svc.db.sch.dim::columns::email::description>',
+          entityRef: {
+            ...baseFeed.entityRef,
+            fullyQualifiedName: 'svc.db.sch.dim',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText('dim_address.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim.email'
+    );
+  });
+
   it('flags a card that mentions the viewer, and only then', () => {
     const { rerender } = render(
       <ActivityFeedItem isMentioned feed={baseFeed} />

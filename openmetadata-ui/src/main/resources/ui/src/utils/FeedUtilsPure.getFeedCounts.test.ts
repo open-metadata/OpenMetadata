@@ -59,6 +59,12 @@ describe('getFeedCounts', () => {
     expect(received.conversationCount).toBe(1);
     expect(received.activityCount).toBe(2);
     expect(received.totalCount).toBe(3);
+    // Conversations on the entity's fields count toward the entity.
+    expect(listConversations).toHaveBeenCalledWith({
+      entityLink: '<#E::dashboard::sample_superset.10>',
+      includeFields: true,
+      limit: 1,
+    });
   });
 
   it('uses the server conversation total instead of the loaded page length', async () => {

@@ -444,7 +444,11 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const cardTimeFormat = getCardTimeFormat(timeFormat, timestamp, feed);
   const { icon: KindIcon, badgeClassName: kindClassName } =
     getActivityBadge(activity);
-  const target = getEntityTarget(entity, entityName, activity?.about);
+  const target = getEntityTarget(
+    entity,
+    entityName,
+    activity?.about ?? feed?.about
+  );
   const change = useMemo(
     () => (activity ? getActivityChange(activity) : undefined),
     [activity]

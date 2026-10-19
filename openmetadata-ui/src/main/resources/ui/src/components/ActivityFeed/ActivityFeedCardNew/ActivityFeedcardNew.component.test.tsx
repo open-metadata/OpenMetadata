@@ -55,6 +55,8 @@ jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
 
 jest.mock('../../../utils/FeedUtils', () => ({
   getActivityEventHeaderText: jest.fn(() => 'updated description'),
+  getEntityFieldDisplay: jest.requireActual('../../../utils/FeedUtils')
+    .getEntityFieldDisplay,
 }));
 
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
@@ -243,6 +245,35 @@ describe('ActivityFeedCardNew', () => {
 
     expect(body).toHaveClass('activity-feed-card-new-body');
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
+  it('names the field a conversation was started on after the entity', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('table');
+    expect(screen.getByTestId('entity-field')).toHaveTextContent(
+      /columns.*category.*description/
+    );
+  });
+
+  it('shows no field path for a conversation on the entity itself', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('entity-field')).not.toBeInTheDocument();
   });
 
   it('falls back to the activity entity when the event carries no about link', () => {
