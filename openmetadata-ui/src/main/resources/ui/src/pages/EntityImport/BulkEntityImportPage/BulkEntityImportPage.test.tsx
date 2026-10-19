@@ -24,7 +24,7 @@ import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/
 import { ROUTES } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Include } from '../../../generated/type/include';
-import { downloadCsv } from '../../../utils/Export/ExportUtils';
+import { getCsvHeaderKey } from '../../../utils/CSV/CSV.utils';
 import BulkEntityImportPage from './BulkEntityImportPage';
 
 // Mock data
@@ -116,10 +116,6 @@ const mockSocket = {
 
 jest.mock('../../../context/WebSocketProvider/WebSocketProvider', () => ({
   useWebSocketConnector: jest.fn(() => ({ socket: mockSocket })),
-}));
-
-jest.mock('../../../utils/Export/ExportUtils', () => ({
-  downloadCsv: jest.fn(),
 }));
 
 // Mock Papa Parse
@@ -726,7 +722,20 @@ describe('BulkEntityImportPage', () => {
   });
 
   describe('User Interactions - CSV Upload', () => {
-    it('downloads the CSV template through downloadCsv', async () => {
+    it('downloads the CSV template as a BOM-prefixed UTF-8 file with the documented headers', async () => {
+      (getCsvHeaderKey as jest.Mock).mockImplementation(
+        jest.requireActual('../../../utils/CSV/CSV.utils').getCsvHeaderKey
+      );
+      const createObjectURL = jest.fn().mockReturnValue('blob:template');
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        value: createObjectURL,
+      });
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        value: jest.fn(),
+      });
+
       renderComponent();
 
       const templateButton = await screen.findByRole('button', {
@@ -736,7 +745,21 @@ describe('BulkEntityImportPage', () => {
 
       fireEvent.click(templateButton);
 
-      expect(downloadCsv).toHaveBeenCalledWith(expect.any(String), 'table.csv');
+      const template = createObjectURL.mock.calls[0][0] as Blob;
+      const bytes = await new Promise<Uint8Array>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () =>
+          resolve(new Uint8Array(reader.result as ArrayBuffer));
+        reader.readAsArrayBuffer(template);
+      });
+
+      expect(template.type).toBe('text/csv;charset=utf-8');
+      expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+      expect(new TextDecoder().decode(bytes.slice(3)).split(/\r?\n/)[0]).toBe(
+        'name*,description'
+      );
+
+      (getCsvHeaderKey as jest.Mock).mockReset();
     });
 
     it('should handle CSV file upload successfully', async () => {
