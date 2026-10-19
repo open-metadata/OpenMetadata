@@ -34,7 +34,8 @@ export interface MessagingServiceAutoClassificationPipeline {
      */
     enableAutoClassification?: boolean;
     /**
-     * No. of messages to fetch during sample data ingestion.
+     * No. of messages to fetch during sample data ingestion. Values above 1000 are capped at
+     * 1000.
      */
     sampleDataCount?: number;
     /**
