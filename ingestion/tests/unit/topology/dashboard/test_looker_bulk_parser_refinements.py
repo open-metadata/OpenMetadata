@@ -232,6 +232,18 @@ def test_derived_table_refinement_keeps_unset_parameters(tmp_path):
     assert view.derived_table.sql == "SELECT id FROM raw.orders"
 
 
+def test_derived_table_refinement_overrides_the_parameters_it_sets(tmp_path):
+    parser = parse(
+        tmp_path,
+        {
+            "orders.view.lkml": "view: orders { derived_table: { sql: SELECT id FROM raw.orders ;; } }",
+            "refinements.lkml": "view: +orders { derived_table: { sql: SELECT id FROM analytics.orders_clean ;; } }",
+        },
+    )
+
+    assert parser.find_view("orders").derived_table.sql == "SELECT id FROM analytics.orders_clean"
+
+
 def test_refinement_without_a_view_is_dropped(tmp_path):
     parser = parse(tmp_path, {"ghost.view.lkml": "view: +ghost { sql_table_name: nowhere ;; }"})
 
