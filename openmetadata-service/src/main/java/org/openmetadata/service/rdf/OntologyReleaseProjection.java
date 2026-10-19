@@ -51,7 +51,10 @@ public final class OntologyReleaseProjection {
             .map(property -> property.getIri().toString())
             .collect(Collectors.toUnmodifiableSet());
     final OntologyExpressionRdfWriter expressions =
-        new OntologyExpressionRdfWriter(dataProperties::contains);
+        new OntologyExpressionRdfWriter(
+            iri ->
+                dataProperties.contains(iri)
+                    || OwlEntityDeclarations.vocabularyKind(iri) == EntityKind.DATA_PROPERTY);
     final Model model = model(ontology);
     try {
       definitions.forEach(definition -> write(model, release, definition, expressions));

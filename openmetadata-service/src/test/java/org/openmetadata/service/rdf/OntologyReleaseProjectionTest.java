@@ -281,6 +281,54 @@ class OntologyReleaseProjectionTest {
     }
   }
 
+  @ParameterizedTest
+  @MethodSource("fixedVocabularyRestrictions")
+  void fixedVocabularyDataRestrictionsKeepTheirMeaning(
+      String propertyIri, OntologyExpressionKind fillerKind) {
+    final var restriction =
+        new OntologyExpression()
+            .withKind(OntologyExpressionKind.RESTRICTION)
+            .withPropertyIri(URI.create(propertyIri))
+            .withRestrictionKind(OntologyRestrictionKind.EXACT)
+            .withCardinality(1);
+    if (fillerKind != null) {
+      restriction.withFiller(
+          new OntologyExpression()
+              .withKind(fillerKind)
+              .withOperands(
+                  List.of(XSD.xstring, XSD.integer).stream()
+                      .map(
+                          datatype ->
+                              new OntologyExpression()
+                                  .withKind(OntologyExpressionKind.NAMED_CLASS)
+                                  .withClassIri(URI.create(datatype.getURI())))
+                      .toList()));
+    }
+    final var bundle =
+        bundle(
+            List.of(
+                concept("Customer"), axiom("restriction").withExpressions(List.of(restriction))));
+    final var report = OntologyStructureValidator.validate(bundle.release(), bundle.members());
+    assertTrue(report.getValid(), () -> report.getViolations().toString());
+    final Model model = new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    try {
+      assertFalse(model.contains(null, OWL2.onClass));
+      assertEquals(fillerKind != null, model.contains(null, OWL2.onDataRange));
+      assertTrue(modelHasDataCardinality(model));
+      assertEquals(List.of(), OwlApiProjection.dlViolations(OwlApiProjection.parse(model)));
+    } finally {
+      model.close();
+    }
+  }
+
+  static Stream<Arguments> fixedVocabularyRestrictions() {
+    return Stream.of(SKOS.notation.getURI(), OWL2.bottomDataProperty.getURI())
+        .flatMap(
+            iri ->
+                Stream.of(null, OntologyExpressionKind.UNION, OntologyExpressionKind.INTERSECTION)
+                    .map(kind -> Arguments.of(iri, kind)));
+  }
+
   @Test
   void everyAuthoredAxiomHasItsFrozenSourceAndDuplicateMeaningKeepsBothSources() {
     var first = axiom("first");
