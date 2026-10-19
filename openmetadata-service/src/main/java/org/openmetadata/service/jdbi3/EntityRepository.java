@@ -3885,8 +3885,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * #invalidateCacheForEntity} records keys instead of issuing the blocking Redis round trip.
    * Returns {@code true} if this call opened the scope (caller owns draining/closing it), {@code
    * false} if a scope was already open (nested call — the outer owner stays responsible). Pair a
-   * {@code true} result with {@link #drainCacheInvalidations()} after commit and {@link
-   * #clearCacheInvalidations()} on failure.
+   * {@code true} result with {@link #drainCacheInvalidations()} once the transaction ends, whether
+   * it committed or rolled back.
    */
   static boolean beginCacheInvalidationDeferral() {
     boolean opened = DEFERRED_CACHE_INVALIDATIONS.get() == null;
@@ -3901,19 +3901,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     Map<CacheInvalidationKey, CacheInvalidationKey> deferred = DEFERRED_CACHE_INVALIDATIONS.get();
     DEFERRED_CACHE_INVALIDATIONS.remove();
     if (deferred != null) {
-      evictCommittedWrites(List.copyOf(deferred.values()));
+      evictTransactionWrites(List.copyOf(deferred.values()));
     }
   }
 
   /**
-   * Post-commit eviction of everything the transaction wrote. The entity keys leave Redis in one
-   * DEL: evicted one entity at a time, a restored database read fresh while its schemas still served
-   * their soft-deleted copies. The write epochs move before that DEL so a loader holding the
-   * pre-commit row cannot write it back afterwards, and L1 is evicted after it because a reader in
-   * the window re-populated L1 from the stale Redis entry. The repair is re-armed from the commit:
-   * the one armed inside the transaction may already have fired.
+   * Eviction of everything the transaction wrote, once it has committed or rolled back. The entity
+   * keys leave Redis in one DEL: evicted one entity at a time, a restored database read fresh while
+   * its schemas still served their soft-deleted copies. The write epochs move before that DEL so a
+   * loader holding the pre-commit row cannot write it back afterwards, and L1 is evicted after it
+   * because a reader in the window re-populated L1 from the stale Redis entry. The repair is
+   * re-armed from the commit: the one armed inside the transaction may already have fired.
    */
-  private static void evictCommittedWrites(List<CacheInvalidationKey> writes) {
+  private static void evictTransactionWrites(List<CacheInvalidationKey> writes) {
     writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
     evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
     for (CacheInvalidationKey write : writes) {
@@ -3924,7 +3924,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  /** Discard captured keys and close the scope without running them (failed transaction). */
+  /**
+   * Close the scope without evicting its keys. Only tests reset a scope this way: a transaction that
+   * fails still evicts what it wrote, see ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote.
+   */
+  @VisibleForTesting
   static void clearCacheInvalidations() {
     DEFERRED_CACHE_INVALIDATIONS.remove();
   }
@@ -6028,12 +6032,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
-   * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
-   * a replayed body never inherits closures/keys captured by a rolled-back attempt. {@link
+   * #reopenForAttempt()} resets the closure collectors at the start of every deadlock-retry attempt
+   * so a replayed body never inherits closures captured by a rolled-back attempt. {@link
    * #finish(boolean)} drains all three once on success (running the captured work post-commit on the
-   * request thread) or clears all three on failure. A scope only owns (and therefore drains) the
-   * collectors it actually opened — an inner flush nested under an outer scope leaves draining to the
-   * outer owner, so a retried inner flush never double-enqueues into the outer collector.
+   * request thread) or clears them on failure. The cache collector is the exception: it keeps a
+   * rolled-back attempt's keys and evicts them even when the transaction fails, because a read inside
+   * the transaction may have cached the row the rollback undid
+   * (ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote). A scope only owns (and
+   * therefore drains) the collectors it actually opened — an inner flush nested under an outer scope
+   * leaves draining to the outer owner, so a retried inner flush never double-enqueues into the outer
+   * collector.
    */
   private final class DeferralScope {
     private boolean opened;
@@ -6074,7 +6082,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * scope only roll back this flush's own contributions (back to the entry checkpoint) so the
      * inner replay never double-enqueues into the outer owner's collector. The cache collector
      * de-duplicates by (type, id), so re-recording a key on replay is idempotent and needs no
-     * checkpoint.
+     * checkpoint; it keeps the abandoned attempt's keys, which are evicted with the final attempt's.
      */
     private void resetForReplay() {
       if (ownsRdf) {
@@ -6094,10 +6102,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         SearchRepository.beginSearchWriteDeferral();
       } else {
         SearchRepository.rollbackSearchWriteToCheckpoint(searchWriteCheckpoint);
-      }
-      if (ownsCache) {
-        clearCacheInvalidations();
-        beginCacheInvalidationDeferral();
       }
       if (ownsPostCommitActions) {
         PostCommitActionQueue.clear();
@@ -6151,11 +6155,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (ownsSearchWrite) {
         SearchRepository.clearSearchWriteDeferred();
       }
-      if (ownsCache) {
-        clearCacheInvalidations();
-      }
       if (ownsPostCommitActions) {
         PostCommitActionQueue.clear();
+      }
+      if (ownsCache) {
+        runGuarded(EntityRepository::drainCacheInvalidations);
       }
     }
   }
