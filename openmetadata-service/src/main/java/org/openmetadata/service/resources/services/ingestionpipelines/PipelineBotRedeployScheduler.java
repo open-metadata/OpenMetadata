@@ -32,6 +32,7 @@ import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * Redeploys the ingestion pipelines marked {@value #PENDING_REDEPLOY}, so their scheduled runs
@@ -42,6 +43,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
  *
  * <p>Every server runs this. Two of them may deploy the same pipeline at once, which is harmless:
  * a deploy writes the same pipeline definition either time.
+ * ADR:2026-10-19-migrations-mark-pipelines-for-redeploy-and-the-server-redeploys-them
  */
 @Slf4j
 public final class PipelineBotRedeployScheduler implements Managed {
@@ -94,12 +96,18 @@ public final class PipelineBotRedeployScheduler implements Managed {
     }
   }
 
-  /** Returns whether any pipeline is still waiting for its redeploy. */
+  /**
+   * Returns whether any pipeline is still waiting for its redeploy. Reads are fresh: this thread
+   * outlives every scan, so a cached copy of a pipeline the user edited since an earlier failed scan
+   * would otherwise be deployed over the edit.
+   */
   boolean redeployPending() {
-    if (hasPending() && isPipelineServiceReachable()) {
-      redeployAll();
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      if (hasPending() && isPipelineServiceReachable()) {
+        redeployAll();
+      }
+      return hasPending();
     }
-    return hasPending();
   }
 
   private void redeployAll() {
@@ -131,7 +139,7 @@ public final class PipelineBotRedeployScheduler implements Managed {
         extensionDAO.delete(pipelineId, PENDING_REDEPLOY);
       }
     } catch (EntityNotFoundException e) {
-      LOG.info("Ingestion pipeline {} or its service is gone; nothing to redeploy", pipelineId);
+      LOG.info("Ingestion pipeline {} or its service was deleted; nothing to redeploy", pipelineId);
       extensionDAO.delete(pipelineId, PENDING_REDEPLOY);
     } catch (Exception e) {
       // One pipeline that cannot be deployed must not strand the ones behind it.
@@ -142,11 +150,13 @@ public final class PipelineBotRedeployScheduler implements Managed {
   private boolean deploy(UUID pipelineId) {
     IngestionPipelineRepository repository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
+    // A soft-deleted pipeline keeps running on schedule, so it is redeployed like any other.
     IngestionPipeline pipeline =
-        repository.get(null, pipelineId, repository.getFields(Entity.FIELD_OWNERS));
+        repository.get(
+            null, pipelineId, repository.getFields(Entity.FIELD_OWNERS), Include.ALL, false);
     IngestionPipelineSecrets.prepareForPipelineService(config, pipeline);
     ServiceEntityInterface service =
-        Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+        Entity.getEntity(pipeline.getService(), "ingestionRunner", Include.ALL);
     PipelineServiceClientResponse response = repository.deployIngestionPipeline(pipeline, service);
     boolean deployed = response.getCode() == 200;
     if (deployed) {

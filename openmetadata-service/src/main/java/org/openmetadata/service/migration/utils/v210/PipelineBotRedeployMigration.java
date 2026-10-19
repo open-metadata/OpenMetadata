@@ -34,7 +34,9 @@ import org.openmetadata.service.jdbi3.ListFilter;
  * their scheduled runs wrote as ingestion-bot. It now deploys each one as the bot of its type, but
  * the agents it deployed before keep the token they were deployed with until they are deployed
  * again. This marks them for {@code PipelineBotRedeployScheduler}, which redeploys them once the
- * server is up: the pipeline service is often not reachable while migrations run.
+ * server is up: the pipeline service is often not reachable while migrations run. Soft-deleted
+ * agents are marked too, since they keep running on schedule.
+ * ADR:2026-10-19-migrations-mark-pipelines-for-redeploy-and-the-server-redeploys-them
  */
 @Slf4j
 public final class PipelineBotRedeployMigration {
@@ -100,7 +102,7 @@ public final class PipelineBotRedeployMigration {
       CollectionDAO collectionDAO, String afterName, String afterId) {
     return collectionDAO
         .ingestionPipelineDAO()
-        .listAfter(new ListFilter(Include.NON_DELETED), BATCH_SIZE, afterName, afterId)
+        .listAfter(new ListFilter(Include.ALL), BATCH_SIZE, afterName, afterId)
         .stream()
         .map(json -> JsonUtils.readValueLenient(json, Agent.class))
         .toList();

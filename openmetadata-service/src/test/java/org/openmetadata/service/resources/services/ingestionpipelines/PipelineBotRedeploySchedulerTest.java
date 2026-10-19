@@ -38,6 +38,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -49,6 +50,7 @@ import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * The markers live in an in-memory stand-in for entity_extension, so the tests assert on what is
@@ -61,6 +63,7 @@ class PipelineBotRedeploySchedulerTest {
 
   private final NavigableSet<String> pending = new ConcurrentSkipListSet<>();
   private final AtomicInteger scans = new AtomicInteger();
+  private final List<Boolean> readsFresh = new CopyOnWriteArrayList<>();
   private final List<IngestionPipeline> deployed = new CopyOnWriteArrayList<>();
   private final IngestionPipelineRepository pipelineRepository =
       mock(IngestionPipelineRepository.class);
@@ -129,6 +132,18 @@ class PipelineBotRedeploySchedulerTest {
     assertFalse(pending.contains(agent.getId().toString()));
   }
 
+  // The scan thread outlives every scan; a read served from its cache would deploy a pipeline as
+  // it was at an earlier failed scan, over any edit made since.
+  @Test
+  void scanReadsEachPipelineFreshFromTheDatabase() {
+    markedAgent(PipelineType.USAGE);
+
+    scheduler.redeployPending();
+
+    assertEquals(List.of(true), readsFresh);
+    assertFalse(FreshReadScope.isActive());
+  }
+
   @Test
   void failedDeployKeepsTheAgentMarked() {
     IngestionPipeline agent = markedAgent(PipelineType.USAGE);
@@ -154,7 +169,7 @@ class PipelineBotRedeploySchedulerTest {
   void agentDeletedSinceTheUpgradeIsUnmarked() {
     UUID deletedAgent = UUID.randomUUID();
     pending.add(deletedAgent.toString());
-    when(pipelineRepository.get(isNull(), eq(deletedAgent), any()))
+    when(pipelineRepository.get(isNull(), eq(deletedAgent), any(), eq(Include.ALL), eq(false)))
         .thenThrow(EntityNotFoundException.byMessage("gone"));
 
     assertFalse(scheduler.redeployPending());
@@ -166,7 +181,7 @@ class PipelineBotRedeploySchedulerTest {
   void agentThatCannotBeDeployedDoesNotStrandTheOthers() {
     UUID brokenAgent = UUID.randomUUID();
     pending.add(brokenAgent.toString());
-    when(pipelineRepository.get(isNull(), eq(brokenAgent), any()))
+    when(pipelineRepository.get(isNull(), eq(brokenAgent), any(), eq(Include.ALL), eq(false)))
         .thenThrow(new IllegalStateException("broken service relationship"));
     IngestionPipeline agent = markedAgent(PipelineType.USAGE);
 
@@ -223,7 +238,12 @@ class PipelineBotRedeploySchedulerTest {
             .withFullyQualifiedName("autopilot_service.agent")
             .withPipelineType(pipelineType)
             .withService(service.getEntityReference());
-    when(pipelineRepository.get(isNull(), eq(agent.getId()), any())).thenReturn(agent);
+    when(pipelineRepository.get(isNull(), eq(agent.getId()), any(), eq(Include.ALL), eq(false)))
+        .thenAnswer(
+            invocation -> {
+              readsFresh.add(FreshReadScope.isActive());
+              return agent;
+            });
     pending.add(agent.getId().toString());
     return agent;
   }
