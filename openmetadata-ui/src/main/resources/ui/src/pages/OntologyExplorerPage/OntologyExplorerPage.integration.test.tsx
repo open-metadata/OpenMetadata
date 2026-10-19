@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
   fireEvent,
@@ -156,7 +157,12 @@ terms[0].relatedTerms = [
 ];
 
 describe('Ontology Studio mode-switch integration', () => {
+  let queryClient: QueryClient;
+
   beforeEach(() => {
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
     mockGetGlossariesList.mockResolvedValue({
       data: [glossary],
       paging: { total: 1 },
@@ -190,13 +196,15 @@ describe('Ontology Studio mode-switch integration', () => {
       );
 
       render(
-        <MemoryRouter
-          initialEntries={[
-            '/?ontology=unavailable&draft=native-draft&source=context-center',
-          ]}>
-          <OntologyExplorerPage />
-          <Location />
-        </MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter
+            initialEntries={[
+              '/?ontology=unavailable&draft=native-draft&source=context-center',
+            ]}>
+            <OntologyExplorerPage />
+            <Location />
+          </MemoryRouter>
+        </QueryClientProvider>
       );
 
       expect(screen.getByText('label.loading')).toBeVisible();
@@ -226,9 +234,11 @@ describe('Ontology Studio mode-switch integration', () => {
         enabled: rdfEnabled,
       });
       render(
-        <MemoryRouter>
-          <OntologyExplorerPage />
-        </MemoryRouter>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <OntologyExplorerPage />
+          </MemoryRouter>
+        </QueryClientProvider>
       );
 
       await waitFor(() =>
@@ -291,9 +301,11 @@ describe('Ontology Studio mode-switch integration', () => {
       })
     );
     render(
-      <MemoryRouter>
-        <OntologyExplorerPage />
-      </MemoryRouter>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
     );
     await waitFor(() => expect(getGlossaryTerms).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByTestId('mode-tab-query'));
