@@ -42,7 +42,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
 
   return (
     <div className="core-wrap-if-additional-template tw:w-full tw:min-w-0 tw:rounded-lg">
-      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_40px]">
+      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_36px]">
         <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
             aria-label={t('label.key')}

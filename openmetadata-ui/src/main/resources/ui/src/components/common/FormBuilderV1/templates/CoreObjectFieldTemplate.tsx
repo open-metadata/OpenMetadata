@@ -219,7 +219,7 @@ const getAddButton = (
   return (
     <Button
       aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
+      className="core-object-field-template-add-button tw:inline-flex tw:size-9 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
       color="primary"
       data-testid={`add-item-${addEntityLabel}`}
       id={`${idSchema.$id}`}
