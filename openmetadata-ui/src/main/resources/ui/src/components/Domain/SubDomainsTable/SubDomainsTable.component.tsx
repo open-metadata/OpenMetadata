@@ -53,6 +53,7 @@ const SubDomainsTable = ({
 
   const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
+    baseFilter: subdomainListing.baseFilter,
     aggregations: subdomainListing.aggregations || undefined,
     parsedFilters: subdomainListing.parsedFilters,
     onFilterChange: subdomainListing.handleFilterChange,
@@ -93,6 +94,7 @@ const SubDomainsTable = ({
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
     useDomainTableColumns({
       nameLabelKey: 'label.sub-domain',
+      entities: subdomainListing.entities,
       onEntityClick: subdomainListing.actionHandlers.onEntityClick,
     });
 
