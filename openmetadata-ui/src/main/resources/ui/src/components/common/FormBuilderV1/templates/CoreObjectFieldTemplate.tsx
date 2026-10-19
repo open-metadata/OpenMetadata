@@ -349,14 +349,17 @@ const NonRootTitledView: FunctionComponent<NonRootTitledViewProps> = ({
     data-field-id={idSchema.$id}>
     <div className="core-object-field-template-header tw:flex tw:items-start tw:justify-between tw:gap-4">
       <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
-        <Typography
-          as="label"
-          className="core-object-field-template-title tw:text-primary"
-          id={`${idSchema.$id}__title`}
-          size="text-sm"
-          weight="semibold">
-          {title}
-        </Typography>
+        {/* A map entry's key is already shown beside its value. */}
+        {!(ADDITIONAL_PROPERTY_FLAG in schema) && (
+          <Typography
+            as="label"
+            className="core-object-field-template-title tw:text-primary"
+            id={`${idSchema.$id}__title`}
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
+        )}
         {shouldShowDescription && (
           <Typography
             as="span"
@@ -504,8 +507,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     return null;
   }
 
-  // A map entry's key is already shown beside its value, so it gets no titled panel.
-  if (!isRoot && title && !(ADDITIONAL_PROPERTY_FLAG in schema)) {
+  if (!isRoot && title) {
     return (
       <NonRootTitledView
         description={description}

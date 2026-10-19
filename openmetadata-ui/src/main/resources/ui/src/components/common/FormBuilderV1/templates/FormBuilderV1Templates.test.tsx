@@ -215,6 +215,7 @@ describe('FormBuilderV1 templates', () => {
           registry: {} as ObjectFieldTemplateProps['registry'],
           schema: { type: 'object', __additional_property: true },
           title: 'table',
+          description: 'Applies to live indexing only.',
           onAddClick: jest.fn(() => jest.fn()),
           properties: [
             {
@@ -228,6 +229,9 @@ describe('FormBuilderV1 templates', () => {
     );
 
     expect(screen.getByText('batch size')).toBeInTheDocument();
+    expect(
+      screen.getByText('Applies to live indexing only.')
+    ).toBeInTheDocument();
     expect(screen.queryByText('table')).not.toBeInTheDocument();
   });
 
