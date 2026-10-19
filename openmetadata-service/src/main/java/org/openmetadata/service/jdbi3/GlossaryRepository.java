@@ -441,7 +441,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         EntityReference termRef =
             getEntityReference(printer, csvRecord, fieldNumber, GLOSSARY_TERM, termFqn);
         if (termRef != null) {
-          // Resolve by name, not id: dry run gives terms in this CSV a placeholder id not in the DB
+          // By name, not id: an earlier row's term may not be in the DB yet (e.g. dry-run id)
           GlossaryTerm resolvedTerm = (GlossaryTerm) getEntityByName(GLOSSARY_TERM, termFqn);
           if (resolvedTerm.getEntityStatus() != null
               && resolvedTerm.getEntityStatus() != EntityStatus.APPROVED) {
