@@ -477,6 +477,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/constant/sidebar.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AppModeSidebarPersonaCustomization.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
