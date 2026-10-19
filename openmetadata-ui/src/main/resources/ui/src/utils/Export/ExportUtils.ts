@@ -140,6 +140,20 @@ export const downloadFile = (
   document.body.removeChild(link);
 };
 
+const UTF8_BOM = '\uFEFF';
+
+/**
+ * Excel reads a CSV as UTF-8 only when it starts with a byte order mark; without
+ * one it falls back to the system code page and garbles Chinese, Cyrillic and
+ * other non-Latin text (#25764). Re-imports are unaffected: FileReader drops it.
+ */
+export const downloadCsv = (content: string, fileName: string): void =>
+  downloadFile(
+    content.startsWith(UTF8_BOM) ? content : UTF8_BOM + content,
+    fileName,
+    'text/csv;charset=utf-8'
+  );
+
 export const downloadBlob = (
   blob: Blob,
   fileName: string,

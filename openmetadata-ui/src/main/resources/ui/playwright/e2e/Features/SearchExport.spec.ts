@@ -562,6 +562,17 @@ test.describe(
 
         expect(download.suggestedFilename()).toContain(jobId);
         expect(download.suggestedFilename()).toContain('.csv');
+
+        // Excel decodes a CSV as UTF-8 only when it starts with a BOM (#25764).
+        const stream = await download.createReadStream();
+        const chunks: Buffer[] = [];
+        for await (const chunk of stream) {
+          chunks.push(Buffer.from(chunk));
+        }
+
+        expect([...Buffer.concat(chunks).subarray(0, 3)]).toEqual([
+          0xef, 0xbb, 0xbf,
+        ]);
       });
     });
   }
