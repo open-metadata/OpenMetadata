@@ -77,7 +77,7 @@
     "@antv/g6": "^5.1.1",
     "@antv/g6-extension-react": "^0.2.6",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
-    "@auth0/auth0-react": "^1.9.0",
+    "@auth0/auth0-react": "^2.28.2",
     "@azure/msal-browser": "^3.25.0",
     "@azure/msal-react": "^2.1.1",
     "@codemirror/autocomplete": "^6.20.3",
