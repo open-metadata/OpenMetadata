@@ -334,6 +334,8 @@ export { PipelineService } from './PipelineService';
 export { Pipeline } from './Pipeline';
 export { Pipelines2 } from './Pipelines2';
 export { PlannerRouting } from './PlannerRouting';
+export { PlatformLineageActive } from './PlatformLineageActive';
+export { PlatformLineage } from './PlatformLineage';
 export { PlayCircle } from './PlayCircle';
 export { Play } from './Play';
 export { PlusCircle } from './PlusCircle';
