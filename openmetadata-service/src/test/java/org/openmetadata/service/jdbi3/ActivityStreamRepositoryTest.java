@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -135,6 +136,31 @@ class ActivityStreamRepositoryTest {
             ActivityEventType.TAGS_UPDATED,
             ActivityEventType.OWNER_UPDATED),
         deliveredTypes);
+  }
+
+  @Test
+  void createFieldEventsFromChangeEventRecordsStatusChanges() {
+    ActivityStreamRepository repository =
+        new ActivityStreamRepository(mock(CollectionDAO.ActivityStreamDAO.class));
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("entityStatus")
+                                .withOldValue("In Review")
+                                .withNewValue("Approved"))));
+
+    ActivityEvent event =
+        repository.createFieldEventsFromChangeEvent(changeEvent, tableEntity()).getFirst();
+
+    assertEquals(ActivityEventType.ENTITY_UPDATED, event.getEventType());
+    assertEquals("entityStatus", event.getFieldName());
+    assertEquals("Approved", event.getNewValue());
+    assertTrue(event.getSummary().endsWith("changed to Approved"), event.getSummary());
   }
 
   private static ChangeEvent changeEventWith(String userName) {

@@ -26,6 +26,7 @@ import {
 import { ContractValidation } from '../generated/entity/datacontract/contractValidation';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 const BASE_URL = '/dataContracts';
@@ -69,7 +70,7 @@ export const searchContracts = async (
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/dataContracts/name/${fqn}`
+    `/dataContracts/name/${getEncodedFqn(fqn)}`
   );
 
   return response.data;
