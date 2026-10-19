@@ -844,7 +844,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toHaveText('Concept');
     await expect(
       page.getByTestId('node-Orders').getByTestId('label')
-    ).toHaveCSS('font-size', '15px');
+    ).toHaveCSS('font-size', '16px');
     await expect(page.getByTestId('node-Orders')).toHaveCSS(
       'font-family',
       /Inter/
