@@ -592,8 +592,6 @@ const SchemaTable = () => {
         return;
       }
 
-      // The column PUT ignores a missing extension, so clearing the last value
-      // must send an empty object to actually remove it.
       await updateColumnDetails(
         record.fullyQualifiedName,
         { extension: updatedExtension ?? {} },
