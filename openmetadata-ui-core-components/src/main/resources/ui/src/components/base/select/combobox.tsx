@@ -129,7 +129,9 @@ const ComboBoxValue = ({
             aria-hidden="true"
             className={cx(
               'tw:pointer-events-none tw:z-0 tw:flex tw:w-full tw:items-center tw:gap-2 tw:truncate',
-              shortcut ? 'tw:pr-12' : 'tw:pr-5'
+              shortcut ? 'tw:pr-12' : 'tw:pr-5',
+              // Keep the visible text clear of the clear button.
+              showClear && (shortcut ? 'tw:pr-18' : 'tw:pr-12')
             )}>
             {showSearchIcon && (
               <SearchIcon className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />

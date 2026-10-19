@@ -40,46 +40,47 @@ const KnowledgeGraphDetailsFooter = ({
   const { t } = useTranslation();
   const hasMoreRows = total > limit;
   const count = t('label.kg-list-count', { count: total });
-  // Nothing to page: no visible row, but the count stays mounted so screen
-  // readers still hear it change as the search narrows the table.
-  if (!hasMoreRows && unloadedColumns === 0) {
-    return (
+
+  // One live region, always the first child of the same fragment, so React
+  // keeps the node mounted as the paging row comes and goes: screen readers
+  // only announce changes to a region that already exists.
+  return (
+    <>
       <span aria-live="polite" className="tw:sr-only">
         {count}
       </span>
-    );
-  }
-
-  return (
-    <Box
-      align="center"
-      className="tw:min-h-8 tw:shrink-0 tw:border-t tw:border-secondary tw:px-3.5 tw:py-1"
-      gap={3}
-      justify="between"
-      wrap="wrap">
-      <Typography aria-live="polite" color="secondary" size="text-xs">
-        {count}
-      </Typography>
-      <Box align="center" gap={3}>
-        {unloadedColumns > 0 && (
-          <Button
-            color="link-color"
-            isLoading={isLoadingColumns}
-            size="xs"
-            onPress={onLoadColumns}>
-            {t('label.kg-load-columns', { count: unloadedColumns })}
-          </Button>
-        )}
-        {hasMoreRows && (
-          <Button color="link-color" size="xs" onPress={onShowMore}>
-            {t('label.kg-show-more', {
-              count: Math.min(pageSize, total - limit),
-              total,
-            })}
-          </Button>
-        )}
-      </Box>
-    </Box>
+      {(hasMoreRows || unloadedColumns > 0) && (
+        <Box
+          align="center"
+          className="tw:min-h-8 tw:shrink-0 tw:border-t tw:border-secondary tw:px-3.5 tw:py-1"
+          gap={3}
+          justify="between"
+          wrap="wrap">
+          <Typography aria-hidden color="secondary" size="text-xs">
+            {count}
+          </Typography>
+          <Box align="center" gap={3}>
+            {unloadedColumns > 0 && (
+              <Button
+                color="link-color"
+                isLoading={isLoadingColumns}
+                size="xs"
+                onPress={onLoadColumns}>
+                {t('label.kg-load-columns', { count: unloadedColumns })}
+              </Button>
+            )}
+            {hasMoreRows && (
+              <Button color="link-color" size="xs" onPress={onShowMore}>
+                {t('label.kg-show-more', {
+                  count: Math.min(pageSize, total - limit),
+                  total,
+                })}
+              </Button>
+            )}
+          </Box>
+        </Box>
+      )}
+    </>
   );
 };
 

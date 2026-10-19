@@ -125,7 +125,14 @@ interface InspectorProps {
   coverage?: Map<string, MappingCoverage>;
   onSelectionChange: (selection: GraphSelection) => void;
   onExpandGroup?: (id: string) => void;
-  onViewRelationships?: (groupId?: string) => void;
+  /**
+   * Opens the paged relationships table, scoped to a group's bundle
+   * (`groupId`) or to an explicit set of edges (`scope`).
+   */
+  onViewRelationships?: (
+    groupId?: string,
+    scope?: { label: string; edgeIds: string[] }
+  ) => void;
 }
 
 interface NodeInspectorProps
@@ -178,7 +185,7 @@ interface RelationshipsSectionProps {
   connections: KnowledgeGraphG6Edge[];
   nodeMap: Map<string, GraphNode>;
   onSelectRelationship: (id: string) => void;
-  onViewRelationships?: () => void;
+  onViewRelationships?: InspectorProps['onViewRelationships'];
   showAll: boolean;
   onShowAllChange: (showAll: boolean) => void;
 }
@@ -252,7 +259,12 @@ const RelationshipsSection = ({
           className="tw:self-start"
           color="link-color"
           size="sm"
-          onPress={() => onViewRelationships?.()}>
+          onPress={() =>
+            onViewRelationships?.(undefined, {
+              label: node.label,
+              edgeIds: connections.map((edge) => String(edge.id)),
+            })
+          }>
           {t('label.kg-view-in-list')}
         </Button>
       )}

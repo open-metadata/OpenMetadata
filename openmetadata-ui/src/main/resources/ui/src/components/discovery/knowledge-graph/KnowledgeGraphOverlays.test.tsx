@@ -179,7 +179,11 @@ it('expands at most 40 relationships in the drawer and hands larger sets to the 
     screen.getByRole('button', { name: 'label.kg-view-in-list' })
   );
 
-  expect(onViewRelationships).toHaveBeenCalled();
+  expect(onViewRelationships).toHaveBeenCalledWith(undefined, {
+    label: 'Orders',
+    edgeIds: expect.any(Array),
+  });
+  expect(onViewRelationships.mock.calls[0][1].edgeIds).toHaveLength(45);
 });
 
 it('returns to the expanded relationship list after drilling into one of its rows', async () => {

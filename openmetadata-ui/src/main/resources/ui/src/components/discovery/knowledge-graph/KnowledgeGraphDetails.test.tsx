@@ -298,3 +298,22 @@ it('keeps same-named terms from different glossaries as separate chips', () => {
     within(screen.getByRole('grid')).getAllByText('Customer')
   ).toHaveLength(2);
 });
+
+it('keeps one live count region while the search crosses the paging threshold', async () => {
+  openDetails();
+  const live = () =>
+    screen
+      .getAllByText('label.kg-list-count')
+      .find((element) => element.getAttribute('aria-live') === 'polite');
+  const before = live();
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: 'label.search' }),
+    'column_299'
+  );
+
+  expect(
+    screen.queryByRole('button', { name: /label.kg-show-more/ })
+  ).not.toBeInTheDocument();
+  expect(live()).toBe(before);
+}, 30_000);

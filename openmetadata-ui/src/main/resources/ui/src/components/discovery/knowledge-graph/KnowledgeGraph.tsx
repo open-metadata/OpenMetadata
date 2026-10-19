@@ -546,7 +546,13 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
                 tooltip={canvas.tooltip}
                 onExpandGroup={expandGroup}
                 onSelectionChange={setSelection}
-                onViewRelationships={(groupId) => {
+                onViewRelationships={(groupId, scope) => {
+                  if (scope) {
+                    setRelationshipScope(scope);
+                    setDrawer('relationships');
+
+                    return;
+                  }
                   const group = scene.nodes.find((node) => node.id === groupId);
                   const bundle = getGroupRelationship(group, scene.edges);
                   setRelationshipScope(
