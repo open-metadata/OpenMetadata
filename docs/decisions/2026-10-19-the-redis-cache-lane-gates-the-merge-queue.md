@@ -5,7 +5,8 @@
 - **Deciders:** Pere Miquel Brull
 - **Guard:** the `merge-rules` ruleset lists `integration-tests-postgres-elasticsearch-redis` as a
   required check; reviewer for the workflow's skip-everything `pull_request` trigger
-- **Related:** #35761; #35672; #35722 (the rollback cache eviction that made this lane green)
+- **Related:** #35761 (the rollout, steps 1-4 below); #35769 (the PR trigger); #35672; #35722 (the
+  rollback cache eviction that made this lane green)
 
 ## Context
 
@@ -14,8 +15,9 @@ entity cache on (`-Pcache-tests`). That is the configuration production servers 
 run. The workflow already ran in every merge group, but its check was not required, so a failure
 neither ejected the entry nor blocked the merge.
 
-Between 2026-10-16 and 2026-10-19, 9 of 156 completed merge-group runs failed this lane, and the
-queue merged them anyway. Seven of the nine failed only here:
+From 2026-10-16 to 2026-10-18, nine merge-group runs failed this lane. Four of those groups still
+merged with it red: #35582, #35320, #35622 and #35679. The other five failed a required lane too,
+or a later group replaced them. Seven of the nine runs failed only on this lane:
 
 - `LLMModelResourceIT.test_tagUpdateOptimization_PATCH` (twice) and `_LargeScale`
 - `WorkflowDefinitionResourceIT.test_approvalOnlyWorkflowApprovesTheEntity` (twice)
