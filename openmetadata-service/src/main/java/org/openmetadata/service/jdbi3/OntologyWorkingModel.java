@@ -139,6 +139,7 @@ final class OntologyWorkingModel {
                     ontologyId, pending.stream().map(DigestUtils::sha256Hex).toList(), LIMIT + 1);
         requireBound(references.size());
         final var next = new HashSet<String>();
+        includeInversePartners(pending, next);
         for (final var reference : references) {
           if (!pending.contains(reference.getIri().toString())) {
             continue;
@@ -165,6 +166,27 @@ final class OntologyWorkingModel {
         }
         pending.clear();
         pending.addAll(next);
+      }
+    }
+
+    private void includeInversePartners(final Set<String> iris, final Set<String> next) {
+      final var entities = dao.ontologyPropertyDAO();
+      final var rows =
+          entities.findDeclarations(
+              entities.getTableName(),
+              ontologyId,
+              iris.stream().map(DigestUtils::md5Hex).toList(),
+              LIMIT + 1,
+              locking);
+      requireBound(rows.size());
+      for (final var json : rows) {
+        final var property = JsonUtils.readValue(json, OntologyProperty.class);
+        if (iris.contains(property.getIri().toString())) {
+          add(property, true);
+          if (property.getInverse() != null) {
+            next.add(property.getInverse().toString());
+          }
+        }
       }
     }
 

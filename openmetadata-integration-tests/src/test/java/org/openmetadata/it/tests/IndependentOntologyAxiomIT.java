@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -229,6 +232,82 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void propertyEditRevalidatesFunctionalInversePartner(TestNamespace ns) {
+    final var ontology = createModel(ns, "functionalInverse");
+    final var properties = SdkClients.adminClient().ontologyProperties();
+    properties.create(
+        propertyRequest(ontology)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.FUNCTIONAL)));
+    final var inverse =
+        properties.create(
+            propertyRequest(ontology)
+                .withName("knownBy")
+                .withIri(URI.create("https://example.org/model/knownBy")));
+    final long revision = state(ontology).getWorkingRevision();
+    final var failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> properties.patch(inverse.getId(), transitiveInversePatch(PROPERTY)));
+    assertEquals(400, failure.getStatusCode());
+    assertTrue(failure.getMessage().contains("A non-simple object property cannot be functional"));
+    assertEquals(revision, state(ontology).getWorkingRevision());
+    final var stored = properties.get(inverse.getId());
+    assertNull(stored.getInverse());
+    properties.update(stored.getId(), stored.withInverse(PROPERTY));
+    assertEquals(5, capture(ontology).getMemberCount());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void propertyEditRevalidatesInverseCardinalityUsers(boolean indirect, TestNamespace ns) {
+    final var ontology = createModel(ns, "inverseUsers" + indirect);
+    final var client = SdkClients.adminClient();
+    client.ontologyProperties().create(propertyRequest(ontology));
+    URI partner = PROPERTY;
+    if (indirect) {
+      partner = URI.create("https://example.org/model/inversePartner");
+      client
+          .ontologyProperties()
+          .create(
+              propertyRequest(ontology)
+                  .withName("inversePartner")
+                  .withIri(partner)
+                  .withInverse(PROPERTY));
+    }
+    final var inverse =
+        client
+            .ontologyProperties()
+            .create(
+                propertyRequest(ontology)
+                    .withName("knownBy")
+                    .withIri(URI.create("https://example.org/model/knownBy")));
+    client
+        .ontologyAxioms()
+        .create(
+            axiomRequest(ontology)
+                .withExpressions(
+                    List.of(
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.RESTRICTION)
+                            .withPropertyIri(PROPERTY)
+                            .withRestrictionKind(OntologyRestrictionKind.EXACT)
+                            .withCardinality(1)
+                            .withFiller(namedClass(PARTY)))));
+    final var patch = transitiveInversePatch(partner);
+    final long revision = state(ontology).getWorkingRevision();
+    final var failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.ontologyProperties().patch(inverse.getId(), patch));
+    assertEquals(400, failure.getStatusCode());
+    assertTrue(
+        failure.getMessage().contains("cardinality restrictions over non-simple properties"));
+    assertNull(client.ontologyProperties().get(inverse.getId()).getInverse());
+    assertEquals(revision, state(ontology).getWorkingRevision());
+    assertEquals(indirect ? 7 : 6, capture(ontology).getMemberCount());
+  }
+
+  @Test
   void vocabularyChecksAreScopedAndPreserveExactIriSpelling(TestNamespace ns) {
     Ontology ontology = createModel(ns, "reviewedOntology");
     Ontology other = createModel(ns, "other");
@@ -313,6 +392,15 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
         .withOntology(ontology.getFullyQualifiedName())
         .withKind(OntologyPropertyKind.OBJECT)
         .withIri(PROPERTY);
+  }
+
+  private static JsonNode transitiveInversePatch(URI inverse) {
+    return JsonUtils.readTree(
+        """
+        [{"op":"add","path":"/inverse","value":"%s"},
+         {"op":"add","path":"/characteristics","value":["TRANSITIVE"]}]
+        """
+            .formatted(inverse));
   }
 
   private static OntologyExpression namedClass(URI iri) {
