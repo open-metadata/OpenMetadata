@@ -14,6 +14,7 @@ import { startCase } from 'lodash';
 import EntityLink from '../../../../utils/EntityLink';
 
 const COLUMNS_FIELD = 'columns';
+const QUOTED_NAME = /^"(.*)"$/;
 
 // Entity-link field names whose label key is not `label.<field>`.
 const FIELD_LABEL_KEYS: Record<string, string> = {
@@ -38,7 +39,9 @@ export interface FeedFieldPathParts {
 export const getFeedFieldPath = (
   about?: string
 ): FeedFieldPathParts | undefined => {
-  const [, , group, child, childField] = about ? EntityLink.split(about) : [];
+  const [, entityFqn, group, child, childField] = about
+    ? EntityLink.split(about)
+    : [];
   if (!group) {
     return undefined;
   }
@@ -46,12 +49,13 @@ export const getFeedFieldPath = (
     return { field: group };
   }
 
+  // A nested column is linked by its quoted path (`"address.city"`); its fqn
+  // and its name on screen are unquoted.
+  const name = child.replace(QUOTED_NAME, '$1');
   const columnFqn =
-    group === COLUMNS_FIELD
-      ? EntityLink.getEntityColumnFqn(about ?? '')
-      : undefined;
+    group === COLUMNS_FIELD ? `${entityFqn}.${name}` : undefined;
 
-  return { child: { name: child, columnFqn }, field: childField };
+  return { child: { name, columnFqn }, field: childField };
 };
 
 export const getFeedFieldLabelKey = (field: string) =>

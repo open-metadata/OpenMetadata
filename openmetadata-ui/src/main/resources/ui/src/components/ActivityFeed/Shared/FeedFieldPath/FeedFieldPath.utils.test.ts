@@ -29,6 +29,17 @@ describe('getFeedFieldPath', () => {
     });
   });
 
+  it('unquotes a nested column for its name and fqn', () => {
+    expect(
+      getFeedFieldPath(
+        '<#E::table::db.sch.t::columns::"address.city"::description>'
+      )
+    ).toEqual({
+      child: { name: 'address.city', columnFqn: 'db.sch.t.address.city' },
+      field: 'description',
+    });
+  });
+
   // A child named like a field (`description`) must not read as that field
   // of the entity.
   it.each([
