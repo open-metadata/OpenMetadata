@@ -251,6 +251,38 @@ describe('CustomMetricFormDrawer', () => {
     expect(screen.getByTestId('custom-metric-form')).toBeInTheDocument();
   });
 
+  it('hides and restores the profile preview with the Show Hint toggle', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(
+      <CustomMetricFormDrawer
+        open
+        isColumnMetric={false}
+        table={TABLE}
+        onClose={jest.fn()}
+        onSuccess={jest.fn()}
+      />
+    );
+
+    const toggle = await screen.findByTestId('show-hint-toggle');
+
+    expect(
+      screen.getByTestId('custom-metric-profile-preview')
+    ).toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(
+      screen.queryByTestId('custom-metric-profile-preview')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('custom-metric-form')).toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(
+      screen.getByTestId('custom-metric-profile-preview')
+    ).toBeInTheDocument();
+  });
+
   it('rejects a name already used by a table metric', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(
