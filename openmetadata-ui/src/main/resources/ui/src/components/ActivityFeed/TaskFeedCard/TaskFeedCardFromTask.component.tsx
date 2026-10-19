@@ -455,7 +455,7 @@ const TaskFeedCardFromTask = ({
             />
             {taskLinkTitleElement}
           </div>
-          <div className="tw:-mt-2">
+          <div className="tw:mt-1">
             <Typography>
               <UserPopOverCard
                 key={task.createdBy?.name}
