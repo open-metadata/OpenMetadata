@@ -66,6 +66,16 @@ describe('coreWidgetUtils', () => {
     ).toBe('Raw Field Name');
   });
 
+  it('hides the label of a map entry, whose key is already shown beside it', () => {
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'bq_catalog',
+        schema: { type: 'string', __additional_property: true },
+      } as never)
+    ).toBeUndefined();
+  });
+
   it('formats raw camelCase labels and preserves display labels', () => {
     expect(
       getWidgetLabel({

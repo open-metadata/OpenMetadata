@@ -50,7 +50,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
   const isFileOrInput =
     schema.uiFieldType === CredentialFileFieldType.FILE_OR_INPUT;
 
-  const displayLabel = getWidgetLabel({ hideLabel, label });
+  const displayLabel = getWidgetLabel({ hideLabel, label, schema });
   const hint = getWidgetHint({ rawErrors, schema, options });
   const isInvalid = !!rawErrors?.length;
 

@@ -640,7 +640,7 @@ describe('FormBuilderV1 templates', () => {
 
     expect(screen.getByText('value child')).toBeInTheDocument();
     expect(screen.getByText('=')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('label.option')).toHaveValue('myKey');
+    expect(screen.getByPlaceholderText('label.key')).toHaveValue('myKey');
 
     const keyInput = screen.getByDisplayValue('myKey');
 

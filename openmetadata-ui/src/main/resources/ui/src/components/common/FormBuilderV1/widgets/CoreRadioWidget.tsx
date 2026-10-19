@@ -34,7 +34,7 @@ const CoreRadioWidget = ({
   onChange,
 }: WidgetProps) => {
   const hint = getWidgetHint({ rawErrors, schema, options });
-  const displayLabel = getWidgetLabel({ hideLabel, label });
+  const displayLabel = getWidgetLabel({ hideLabel, label, schema });
   const isHorizontal =
     options.inline === true || options.orientation === 'horizontal';
 

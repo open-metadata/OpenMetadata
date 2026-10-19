@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { WidgetProps } from '@rjsf/utils';
+import { ADDITIONAL_PROPERTY_FLAG, WidgetProps } from '@rjsf/utils';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 export const getWidgetHint = ({
@@ -25,10 +25,13 @@ export const getWidgetHint = ({
 export const getWidgetLabel = ({
   hideLabel,
   label,
-}: Pick<WidgetProps, 'hideLabel' | 'label'>) => {
+  schema,
+}: Pick<WidgetProps, 'hideLabel' | 'label' | 'schema'>) => {
   const looksLikeRawKey = (s: string) => /^[a-z][a-zA-Z0-9]*$/.test(s); // camelCase id
 
-  if (hideLabel) {
+  // A map entry's label is its key, which CoreWrapIfAdditionalTemplate already
+  // shows as an editable input beside the value.
+  if (hideLabel || (schema && ADDITIONAL_PROPERTY_FLAG in schema)) {
     return undefined;
   }
 

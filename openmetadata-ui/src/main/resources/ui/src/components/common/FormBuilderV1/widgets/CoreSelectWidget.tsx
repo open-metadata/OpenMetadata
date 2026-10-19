@@ -63,7 +63,7 @@ const CoreSelectWidget = ({
       isInvalid={!!rawErrors?.length}
       isRequired={required}
       items={items}
-      label={getWidgetLabel({ hideLabel, label })}
+      label={getWidgetLabel({ hideLabel, label, schema })}
       placeholder={placeholder}
       popoverClassName="core-select-widget-popover"
       selectedKey={value === undefined || value === null ? null : String(value)}

@@ -56,6 +56,8 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     expect(await screen.findByText('Catalog Mapping')).toBeInTheDocument();
     expect(screen.getByDisplayValue('bq_catalog')).toBeInTheDocument();
     expect(screen.getByDisplayValue('my-gcp-project')).toBeInTheDocument();
+    // the key is the editable input beside the value, not a label above it
+    expect(screen.queryByText('bq_catalog')).not.toBeInTheDocument();
   });
 
   it('adds a catalog entry to the workflow data', async () => {
@@ -74,6 +76,7 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
       expect.objectContaining({ bq_catalog: 'my-gcp-project' })
     );
     expect(Object.keys(catalogMapping)).toHaveLength(2);
+    expect(catalogMapping.newKey).toBe('');
   });
 });
 

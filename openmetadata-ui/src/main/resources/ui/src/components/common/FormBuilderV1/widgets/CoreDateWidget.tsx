@@ -45,7 +45,7 @@ const CoreDateWidget = ({
   options,
   onChange,
 }: WidgetProps) => {
-  const fieldLabel = getWidgetLabel({ hideLabel, label });
+  const fieldLabel = getWidgetLabel({ hideLabel, label, schema });
   const hint = getWidgetHint({ rawErrors, schema, options });
 
   return (

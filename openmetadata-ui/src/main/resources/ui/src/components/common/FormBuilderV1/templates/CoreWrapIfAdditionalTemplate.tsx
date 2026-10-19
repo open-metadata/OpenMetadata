@@ -46,7 +46,7 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
         <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
             id={`${id}-key`}
-            placeholder={t('label.option').toLowerCase()}
+            placeholder={t('label.key').toLowerCase()}
             value={keyValue}
             onBlur={() => onKeyChange(keyValue)}
             onChange={setKeyValue}

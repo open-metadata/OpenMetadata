@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ErrorTransformer } from '@rjsf/utils';
+import {
+  englishStringTranslator,
+  TranslatableString,
+  type ErrorTransformer,
+} from '@rjsf/utils';
 import { compact, startCase } from 'lodash';
 import { t } from './i18next/LocalUtil';
 
@@ -63,6 +67,15 @@ export const transformErrors: ErrorTransformer = (errors) => {
 
   return compact(errorRet);
 };
+
+// RJSF fills a new map entry with the text "New Value"; start it empty instead.
+export const translateFormString = (
+  stringToTranslate: TranslatableString,
+  params?: string[]
+) =>
+  stringToTranslate === TranslatableString.NewStringDefault
+    ? ''
+    : englishStringTranslator(stringToTranslate, params);
 
 export const getPopupContainer = (triggerNode: HTMLElement) =>
   triggerNode.parentElement || document.body;

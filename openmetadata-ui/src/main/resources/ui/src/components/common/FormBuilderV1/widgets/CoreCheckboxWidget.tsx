@@ -31,7 +31,7 @@ const CoreCheckboxWidget = ({
       hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}
       isSelected={Boolean(value)}
-      label={getWidgetLabel({ hideLabel, label })}
+      label={getWidgetLabel({ hideLabel, label, schema })}
       onChange={onChange}
     />
   );
