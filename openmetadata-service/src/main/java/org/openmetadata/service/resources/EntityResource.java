@@ -47,6 +47,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -58,19 +59,19 @@ import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
+import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission;
-import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -85,6 +86,7 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.jdbi3.AssetEditService;
 import org.openmetadata.service.jdbi3.ChildFieldPageReader;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -100,12 +102,14 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PagePermissionsResolver;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.BulkAssetsOperationResponse;
@@ -116,6 +120,7 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -180,6 +185,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected Response addFollowerInternal(
       SecurityContext securityContext, UUID entityId, UUID userId) {
     authorizeFollowerMutation(securityContext, userId);
+    authorizeView(securityContext, entityId);
     return repository
         .addFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
         .toResponse();
@@ -188,9 +194,27 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected Response deleteFollowerInternal(
       SecurityContext securityContext, UUID entityId, UUID userId) {
     authorizeFollowerMutation(securityContext, userId);
+    // The response carries the entity, so a follower who has since lost access must not read it.
+    authorizeView(securityContext, entityId);
     return repository
         .deleteFollower(securityContext.getUserPrincipal().getName(), entityId, userId)
         .toResponse();
+  }
+
+  /** The vote response carries the whole entity, so voting takes the same view as reading it. */
+  protected Response updateVoteInternal(
+      SecurityContext securityContext, UUID entityId, VoteRequest request) {
+    authorizeView(securityContext, entityId);
+    return repository
+        .updateVote(securityContext.getUserPrincipal().getName(), entityId, request)
+        .toResponse();
+  }
+
+  private void authorizeView(SecurityContext securityContext, UUID entityId) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, VIEW_BASIC),
+        getResourceContextById(entityId));
   }
 
   private void authorizeFollowerMutation(SecurityContext securityContext, UUID userId) {
@@ -646,6 +670,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeDomainChange(
+        securityContext,
+        resourceContext,
+        appliedPutDomains(securityContext, resourceContext, entity));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
@@ -677,10 +705,103 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    authorizeDomainChange(
+        securityContext,
+        resourceContext,
+        appliedPutDomains(securityContext, resourceContext, entity));
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  /**
+   * Authorizes the domains an update moves the asset <i>into</i>. A null {@code updatedDomains}
+   * means the request leaves the assignment alone.
+   *
+   * <p>An update is authorized against the stored entity, so a reassignment would otherwise be
+   * judged only against the domain the asset is leaving. A user whose grant is conditioned on {@code
+   * hasDomain()} could then move assets into domains they do not hold, and an asset carrying no
+   * domain at all — for which {@code hasDomain()} deliberately returns true — could be moved
+   * anywhere.
+   */
+  private void authorizeDomainChange(
+      SecurityContext securityContext,
+      ResourceContextInterface resourceContext,
+      List<EntityReference> updatedDomains) {
+    if (updatedDomains == null || !domainsChanged(resourceContext.getDomains(), updatedDomains)) {
+      return;
+    }
+    // Authorize against the domains resolved server-side by id, not the references the client sent.
+    // The repository persists a domain by its id (validateDomainsByRef), while hasDomain() compares
+    // only the FQN, so a client-supplied {id, fullyQualifiedName} pair whose FQN names a held
+    // domain
+    // but whose id points elsewhere would otherwise pass the check yet be stored under the other
+    // domain. Resolving by id makes the authorized FQN match what will be persisted.
+    List<EntityReference> resolvedDomains = resolveDomainsById(updatedDomains);
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS),
+          new UpdatedDomainsResourceContext(resourceContext, resolvedDomains));
+    } catch (AuthorizationException e) {
+      throw domainChangeDenied(securityContext, resolvedDomains, e);
+    }
+  }
+
+  /**
+   * Resolves each target domain from the store so the reference carries the real, persisted FQN.
+   * Keys on id when present (the field the repository persists), falling back to the FQN only for an
+   * id-less reference. An unresolvable reference throws, which denies the change rather than
+   * authorizing a domain that does not exist.
+   */
+  private List<EntityReference> resolveDomainsById(List<EntityReference> domains) {
+    List<EntityReference> resolved = new ArrayList<>(domains.size());
+    for (EntityReference domain : domains) {
+      resolved.add(
+          domain.getId() != null
+              ? Entity.getEntityReferenceById(Entity.DOMAIN, domain.getId(), Include.NON_DELETED)
+              : Entity.getEntityReferenceByName(
+                  Entity.DOMAIN, domain.getFullyQualifiedName(), Include.NON_DELETED));
+    }
+    return resolved;
+  }
+
+  /** Names the domains the caller was reaching for, which the generic denial does not. */
+  private static AuthorizationException domainChangeDenied(
+      SecurityContext securityContext,
+      List<EntityReference> targetDomains,
+      AuthorizationException cause) {
+    return new AuthorizationException(
+        CatalogExceptionMessage.domainPermissionNotAllowed(
+            securityContext.getUserPrincipal().getName(),
+            targetDomains,
+            List.of(MetadataOperation.EDIT_DOMAINS)),
+        cause);
+  }
+
+  /**
+   * Domains a PUT actually applies, or null when the stored assignment survives it. Mirrors {@code
+   * EntityRepository.EntityUpdater.updateDomains}: a PUT carrying no domains keeps the stored ones,
+   * and a bot's PUT never overwrites a non-empty assignment.
+   */
+  private List<EntityReference> appliedPutDomains(
+      SecurityContext securityContext, ResourceContextInterface resourceContext, T entity) {
+    if (nullOrEmpty(entity.getDomains())) {
+      return null;
+    }
+    boolean botCannotOverwrite =
+        getSubjectContext(securityContext).isBot() && !nullOrEmpty(resourceContext.getDomains());
+    return botCannotOverwrite ? null : entity.getDomains();
+  }
+
+  private static boolean domainsChanged(
+      List<EntityReference> stored, List<EntityReference> updated) {
+    return !domainIds(stored).equals(domainIds(updated));
+  }
+
+  private static Set<UUID> domainIds(List<EntityReference> domains) {
+    return listOrEmpty(domains).stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   /** Deprecated: use method with changeContext
@@ -715,10 +836,11 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    ResourceContextInterface resourceContext =
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeDomainChange(
+        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
@@ -747,6 +869,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    ResourceContextInterface resourceContext =
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
+    authorizeDomainChange(
+        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String ifMatchHeader =
         org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
@@ -788,10 +914,11 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    ResourceContextInterface resourceContext =
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeDomainChange(
+        securityContext, resourceContext, JsonPatchUtils.getPatchedDomains(resourceContext, patch));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
@@ -1081,131 +1208,105 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   }
 
   /**
-   * Authorizes a bulk asset tag/glossary operation: the caller must hold {@code operation} on every
-   * target asset's entity type, otherwise the whole request is rejected. Admins and bots are
-   * exempt. This is the shared permission gate for the bulk asset endpoints (classification tags on
-   * {@link org.openmetadata.service.resources.tags.TagResource}, glossary terms on
-   * GlossaryTermResource); it only validates permissions and performs no business logic.
+   * Adds this entity (a tag) to the assets in the request. Each asset is authorized and saved as its
+   * own PATCH; an asset the caller may not edit is reported as a failed row. See {@link
+   * #editAssetsAsync} for which assets are saved in the background.
    */
-  protected void authorizeBulkAssetsPermission(
-      SecurityContext securityContext, List<EntityReference> assets, MetadataOperation operation) {
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    String user = subjectContext.user().getName();
-
-    Set<String> editPermissibleResources =
-        authorizer.listPermissions(securityContext, user).stream()
-            .filter(
-                permission ->
-                    permission.getPermissions().stream()
-                        .anyMatch(
-                            perm ->
-                                operation.equals(perm.getOperation())
-                                    && Permission.Access.ALLOW.equals(perm.getAccess())))
-            .map(ResourcePermission::getResource)
-            .collect(Collectors.toSet());
-
-    // Validate if all entity types in the request are in the permissible resources
-    List<String> unauthorizedEntityTypes =
-        assets.stream()
-            .map(EntityReference::getType)
-            .filter(entityType -> !editPermissibleResources.contains(entityType))
-            .distinct()
-            .toList();
-
-    if (!unauthorizedEntityTypes.isEmpty()
-        && !subjectContext.isAdmin()
-        && !subjectContext.isBot()) {
-      throw new AuthorizationException(
-          CatalogExceptionMessage.resourcePermissionNotAllowed(
-              user, List.of(operation), unauthorizedEntityTypes));
-    }
-  }
-
   public Response bulkAddToAssetsAsync(
-      SecurityContext securityContext,
-      UUID entityId,
-      BulkAssetsRequestInterface request,
-      boolean dryRun,
-      ApprovalGate.AssetEdit edit) {
-    authorizeBulkAssetsPermission(
-        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
-    List<BulkResponse> held =
-        ApprovalGate.holdGatedAssets(
-            request.getAssets(),
-            Entity.FIELD_TAGS,
-            securityContext.getUserPrincipal().getName(),
-            dryRun,
-            edit);
-
-    String jobId = UUID.randomUUID().toString();
-    AsyncService.getInstance()
-        .executeDatabaseTask(
-            DatabaseOperation.BULK_ASSET_OPERATION,
-            jobId,
-            RequestLatencyContext.wrapWithContext(
-                () -> {
-                  try {
-                    BulkOperationResult result =
-                        ApprovalGate.withHeld(
-                            repository.bulkAddAndValidateTagsToAssets(entityId, request), held);
-                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                        jobId, securityContext, result);
-                  } catch (Exception e) {
-                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                        jobId,
-                        securityContext,
-                        e.getMessage() == null ? e.toString() : e.getMessage());
-                  }
-                }));
-    BulkAssetsOperationResponse response =
-        new BulkAssetsOperationResponse(
-            jobId, "Bulk Add tags to Asset operation initiated successfully.");
-    return jobStartedResponse(response, ApprovalGate.submittedCount(held, dryRun));
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    return editAssetsAsync(
+        securityContext,
+        request,
+        (assets, requester) ->
+            repository.bulkAddAndValidateTagsToAssets(entityId, assets, requester),
+        "Bulk Add tags to Asset operation initiated successfully.");
   }
 
+  /** Removes this entity (a tag) from the assets in the request, as {@link #bulkAddToAssetsAsync}. */
   public Response bulkRemoveFromAssetsAsync(
+      SecurityContext securityContext, UUID entityId, BulkAssetsRequestInterface request) {
+    return editAssetsAsync(
+        securityContext,
+        request,
+        (assets, requester) ->
+            repository.bulkRemoveAndValidateTagsToAssets(entityId, assets, requester),
+        "Bulk Remove tags to Asset operation initiated successfully.");
+  }
+
+  /** An Assets tab edit of the assets in a request, made as the requester. */
+  @FunctionalInterface
+  private interface AssetsEdit {
+    BulkOperationResult apply(BulkAssetsRequestInterface request, PatchRequester requester);
+  }
+
+  // The assets whose tags an approval workflow gates are edited before the response, so it can say
+  // how many change requests were submitted; the others are edited in the background. The job's
+  // outcome reports them all.
+  private Response editAssetsAsync(
       SecurityContext securityContext,
-      UUID entityId,
       BulkAssetsRequestInterface request,
-      boolean dryRun,
-      ApprovalGate.AssetEdit edit) {
-    authorizeBulkAssetsPermission(
-        securityContext, request.getAssets(), MetadataOperation.EDIT_TAGS);
-    List<BulkResponse> held =
-        ApprovalGate.holdGatedAssets(
-            request.getAssets(),
-            Entity.FIELD_TAGS,
-            securityContext.getUserPrincipal().getName(),
-            dryRun,
-            edit);
+      AssetsEdit edit,
+      String startedMessage) {
+    PatchRequester requester = PatchRequester.fromRequest(securityContext, authorizer);
+    Optional<BulkOperationResult> gated =
+        takeGatedAssets(request, requester).map(assets -> edit.apply(assets, requester));
     String jobId = UUID.randomUUID().toString();
     AsyncService.getInstance()
         .executeDatabaseTask(
             DatabaseOperation.BULK_ASSET_OPERATION,
             jobId,
             RequestLatencyContext.wrapWithContext(
-                () -> {
-                  try {
-                    BulkOperationResult result =
-                        ApprovalGate.withHeld(
-                            repository.bulkRemoveAndValidateTagsToAssets(entityId, request), held);
-                    WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
-                        jobId, securityContext, result);
-                  } catch (Exception e) {
-                    WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                        jobId,
-                        securityContext,
-                        e.getMessage() == null ? e.toString() : e.getMessage());
-                  }
-                }));
-    BulkAssetsOperationResponse response =
-        new BulkAssetsOperationResponse(
-            jobId, "Bulk Remove tags to Asset operation initiated successfully.");
-    return jobStartedResponse(response, ApprovalGate.submittedCount(held, dryRun));
+                asRequester(
+                    requester,
+                    () -> {
+                      try {
+                        BulkOperationResult result = edit.apply(request, requester);
+                        WebsocketNotificationHandler.bulkAssetsOperationCompleteNotification(
+                            jobId,
+                            securityContext,
+                            gated
+                                .map(held -> AssetEditService.combine(held, result))
+                                .orElse(result));
+                      } catch (Exception e) {
+                        WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
+                            jobId,
+                            securityContext,
+                            e.getMessage() == null ? e.toString() : e.getMessage());
+                      }
+                    })));
+    BulkAssetsOperationResponse response = new BulkAssetsOperationResponse(jobId, startedMessage);
+    return jobStartedResponse(response, gated.map(EntityResource::submittedCount).orElse(0));
   }
 
-  // The job applies the assets that were not held; the held ones already have change requests, so
-  // the response says how many.
+  // Moves the assets whose tags an approval workflow gates for the requester out of the request,
+  // into
+  // a request of their own.
+  private static Optional<BulkAssetsRequestInterface> takeGatedAssets(
+      BulkAssetsRequestInterface request, PatchRequester requester) {
+    List<EntityReference> assets = listOrEmpty(request.getAssets());
+    Set<UUID> gatedIds =
+        ApprovalGate.gatedAssets(assets, Entity.FIELD_TAGS, requester.actor().userName());
+    Optional<BulkAssetsRequestInterface> gated = Optional.empty();
+    if (!gatedIds.isEmpty()) {
+      Map<Boolean, List<EntityReference>> split =
+          assets.stream().collect(Collectors.partitioningBy(a -> gatedIds.contains(a.getId())));
+      BulkAssetsRequestInterface gatedRequest =
+          JsonUtils.readValue(JsonUtils.pojoToJson(request), request.getClass());
+      gatedRequest.setAssets(new ArrayList<>(split.get(true)));
+      request.setAssets(new ArrayList<>(split.get(false)));
+      gated = Optional.of(gatedRequest);
+    }
+    return gated;
+  }
+
+  // A dry run submits nothing.
+  private static int submittedCount(BulkOperationResult result) {
+    return Boolean.TRUE.equals(result.getDryRun())
+        ? 0
+        : Objects.requireNonNullElse(result.getNumberOfRowsPendingApproval(), 0);
+  }
+
+  // The held assets already have change requests, so the response says how many.
   private static Response jobStartedResponse(BulkAssetsOperationResponse response, int submitted) {
     Response.ResponseBuilder builder =
         Response.ok().entity(response).type(MediaType.APPLICATION_JSON);
@@ -1213,6 +1314,20 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       builder.header(RestUtil.PENDING_CHANGE_COUNT_HEADER, submitted);
     }
     return builder.build();
+  }
+
+  // The job runs on its own thread, and policy conditions such as isImpersonated() read the
+  // impersonation from the thread: the job takes the request's, so each asset is authorized as the
+  // request would be, and clears it when it ends.
+  private static Runnable asRequester(PatchRequester requester, Runnable job) {
+    return () -> {
+      ImpersonationContext.setImpersonatedBy(requester.actor().impersonatedBy());
+      try {
+        job.run();
+      } finally {
+        ImpersonationContext.clear();
+      }
+    };
   }
 
   public Response importCsvInternalAsync(

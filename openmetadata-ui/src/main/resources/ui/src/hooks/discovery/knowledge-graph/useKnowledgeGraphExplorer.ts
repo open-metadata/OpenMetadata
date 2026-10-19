@@ -12,8 +12,6 @@
  */
 
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { RelationCategory } from '../../../interface/discovery/knowledge-graph-relations.interface';
 import {
   GraphData,
   KnowledgeGraphFilters,
@@ -28,22 +26,18 @@ import {
   resolveFocusNodeId,
   transformToG6Format,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
-import { addDeclaredOntologyProperties } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
-  filterGraphPresentation,
   getGraphDistances,
   getMappingCoverage,
+  relabelGraphNodes,
   restrictToEntityLevel,
   sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { useKnowledgeGraphColumns } from './useKnowledgeGraphColumns';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
-import {
-  useKnowledgeGraphConceptDetails,
-  useKnowledgeGraphOntology,
-} from './useKnowledgeGraphOntology';
+import { useKnowledgeGraphOntology } from './useKnowledgeGraphOntology';
 interface ExplorerOptions {
   entityId: string;
   entityType: string;
@@ -51,8 +45,6 @@ interface ExplorerOptions {
   mode: KnowledgeGraphMode;
   filters: KnowledgeGraphFilters;
   refresh: number;
-  excludedFamilies: RelationCategory[];
-  coverageMode: string;
   presentation: KnowledgeGraphPresentation;
   expanded: string[];
   focusedNodeId?: string;
@@ -85,14 +77,10 @@ export const useKnowledgeGraphExplorer = ({
   mode,
   filters,
   refresh,
-  excludedFamilies,
-  coverageMode,
   presentation,
   expanded,
   focusedNodeId,
 }: ExplorerOptions) => {
-  const { t } = useTranslation();
-  const domainLabel = t('label.domain');
   const query = useMemo(
     () => ({
       entityId: entityId,
@@ -147,75 +135,31 @@ export const useKnowledgeGraphExplorer = ({
     entityType === 'table',
     refresh
   );
-  const concepts = useKnowledgeGraphConceptDetails(
-    rawData?.nodes ?? [],
-    mode === 'ontology',
-    refresh
-  );
-  const allData = useMemo(
-    () =>
-      addDeclaredOntologyProperties(
-        rawData,
-        rawData,
-        concepts.terms,
-        rootId,
-        result.appliedQuery?.depth ?? 0,
-        domainLabel
-      ),
-    [rawData, concepts.terms, rootId, result.appliedQuery?.depth, domainLabel]
-  );
-  const filteredData = useMemo(
-    () =>
-      addDeclaredOntologyProperties(
-        scopedData,
-        rawData,
-        concepts.terms,
-        rootId,
-        result.appliedQuery?.depth ?? 0,
-        domainLabel,
-        filters
-      ),
-    [
-      scopedData,
-      rawData,
-      concepts.terms,
-      rootId,
-      result.appliedQuery?.depth,
-      domainLabel,
-      filters,
-    ]
-  );
+
   const coverage = useMemo(() => {
-    if (!allData) {
+    if (!rawData) {
       return new Map<string, MappingCoverage>();
     }
-    const distances = getGraphDistances(allData, rootId);
+    const distances = getGraphDistances(rawData, rootId);
     const inspectedIds = new Set(
       [...distances]
         .filter(([, level]) => level <= (result.appliedQuery?.depth ?? 0))
         .map(([id]) => id)
     );
 
-    return getMappingCoverage(allData, inspectedIds);
-  }, [allData, rootId, result.appliedQuery?.depth]);
+    return getMappingCoverage(rawData, inspectedIds);
+  }, [rawData, rootId, result.appliedQuery?.depth]);
   const displayData = useMemo(
-    () =>
-      filterGraphPresentation(
-        filteredData,
-        rootId,
-        excludedFamilies,
-        coverage,
-        coverageMode
-      ),
-    [filteredData, rootId, excludedFamilies, coverage, coverageMode]
+    () => relabelGraphNodes(scopedData),
+    [scopedData]
   );
   const presented = useMemo(() => {
-    if (!displayData || !allData) {
+    if (!displayData || !rawData) {
       return null;
     }
     const graph = buildGraphPresentation(
       displayData,
-      allData,
+      rawData,
       rootId,
       presentation,
       expanded,
@@ -223,28 +167,17 @@ export const useKnowledgeGraphExplorer = ({
     );
 
     return {
-      data: annotateGraphCoverage(
-        graph.data,
-        coverage,
-        rootId,
-        coverageMode === 'highlight'
-      ),
-      unfiltered: annotateGraphCoverage(
-        graph.unfiltered,
-        coverage,
-        rootId,
-        coverageMode === 'highlight'
-      ),
+      data: annotateGraphCoverage(graph.data, coverage, rootId),
+      unfiltered: annotateGraphCoverage(graph.unfiltered, coverage, rootId),
     };
   }, [
     displayData,
-    allData,
+    rawData,
     rootId,
     presentation,
     expanded,
     focusedNodeId,
     coverage,
-    coverageMode,
   ]);
   const scene = useMemo(() => {
     const original = transformToG6Format(displayData);
@@ -268,26 +201,18 @@ export const useKnowledgeGraphExplorer = ({
     () => countRelationCategories(displayData),
     [displayData]
   );
-  const familyCounts = useMemo(
-    () => countRelationCategories(allData),
-    [allData]
-  );
   const detailCounts = useMemo(
     () => ({
       columns:
         mode === 'ontology'
-          ? concepts.terms.reduce(
-              (total, term) =>
-                total +
-                (term.effectiveAttributes ?? term.attributes ?? []).length,
-              0
-            )
+          ? displayData?.nodes.filter((node) => node.type === 'property')
+              .length ?? 0
           : columns.total,
       relationships: displayData?.edges.length ?? 0,
       coverage: [...coverage.values()].filter((value) => value === 'unmapped')
         .length,
     }),
-    [mode, concepts.terms, columns.total, displayData?.edges.length, coverage]
+    [mode, columns.total, displayData, coverage]
   );
 
   return {
@@ -295,15 +220,13 @@ export const useKnowledgeGraphExplorer = ({
     rootEntityId,
     rootEntityType,
     displayData,
-    allData,
+    allData: rawData,
     presented: presented ?? { data: null, unfiltered: null },
     columns,
-    concepts,
     ontology,
     coverage,
     scene,
     counts,
-    familyCounts,
     detailCounts,
   };
 };

@@ -38,6 +38,7 @@ import static org.openmetadata.service.util.UserUtil.getRolesFromAuthorizationTo
 import static org.openmetadata.service.util.UserUtil.getUser;
 import static org.openmetadata.service.util.UserUtil.reSyncUserRolesFromToken;
 import static org.openmetadata.service.util.UserUtil.validateAndGetRolesRef;
+import static org.openmetadata.service.util.UserUtil.validateEmailDomain;
 import static org.openmetadata.service.util.email.EmailUtil.getSmtpSettings;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -710,6 +711,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
       addAuthMechanismToBot(user, create, uriInfo);
       addRolesToBot(user, uriInfo);
     }
+    // Outside the try below, which would turn this 400 into a 409
+    validateEmailDomain(
+        user,
+        SecurityConfigurationManager.getCurrentAuthConfig(),
+        SecurityConfigurationManager.getCurrentAuthzConfig());
 
     try {
       validateEmailAlreadyExists(user.getEmail());
@@ -834,6 +840,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
     User existingUser = repository.findByNameOrNull(user.getFullyQualifiedName(), ALL);
     repository.prepareInternal(user, existingUser != null);
     if (existingUser == null) {
+      validateEmailDomain(
+          user,
+          SecurityConfigurationManager.getCurrentAuthConfig(),
+          SecurityConfigurationManager.getCurrentAuthzConfig());
       limits.enforceLimits(
           securityContext,
           getResourceContextByName(user.getFullyQualifiedName()),
@@ -1538,7 +1548,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getUserAssets(id, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1576,7 +1592,13 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
+    return Response.ok(
+            repository.getUserAssetsByName(name, limit, offset, getSubjectContext(securityContext)))
+        .build();
   }
 
   @POST

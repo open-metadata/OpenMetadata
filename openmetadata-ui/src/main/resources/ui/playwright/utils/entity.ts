@@ -1551,14 +1551,21 @@ const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
 const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
 const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
 const FOLLOWED_ASSET_LIST = 'followed-assets';
+const FOLLOWING_WIDGET_CARD = 'topic-card-yoursAndFollowed';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
+  // The grid cell is laid out (so "visible") even below the fold, but its
+  // DeferredWidget mounts the card only once scrolled into view. Gate on the
+  // card, or the skeleton check below passes vacuously on an unmounted widget.
+  const followingWidgetCard = followingWidgetPanel.getByTestId(
+    FOLLOWING_WIDGET_CARD
+  );
 
   await expect
     .poll(
       async () => {
-        if (await followingWidgetPanel.isVisible().catch(() => false)) {
+        if (await followingWidgetCard.isVisible().catch(() => false)) {
           return true;
         }
 
@@ -1575,7 +1582,7 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
           scroller?.scrollBy({ top: 700, behavior: 'instant' });
         }, LANDING_PAGE_SCROLL_CONTAINER);
 
-        return followingWidgetPanel.isVisible().catch(() => false);
+        return followingWidgetCard.isVisible().catch(() => false);
       },
       {
         timeout: 60_000,
@@ -2145,33 +2152,20 @@ export const checkForEditActions = async ({
 };
 
 export const checkLineageTabActions = async (page: Page, deleted?: boolean) => {
-  // Click the lineage tab
-  const lineageApi = page.waitForResponse('**/api/v1/lineage/scene?*');
+  const lineageApi = page.waitForResponse('/api/v1/lineage/getLineage?*');
   await page.click('[data-testid="lineage"]');
-
-  // Ensure the response has been received and check the status code
   await lineageApi;
 
   await waitForAllLoadersToDisappear(page);
 
-  const onboardingDialog = page.getByTestId('lineage-map-onboarding-dialog');
-  const hasSeenOnboarding = (await page.context().cookies()).some(
-    ({ name, value }) =>
-      name === 'lineageMapsOnboardingSeen' && value === 'true'
-  );
-  if (!hasSeenOnboarding) {
-    await expect(onboardingDialog).toBeVisible();
-    await onboardingDialog.getByRole('button').click();
-    await expect(onboardingDialog).not.toBeVisible();
-  }
-
-  // Check the presence or absence of the edit-lineage element based on the deleted flag
+  // Lineage is edited from each node's ⋮ menu, which a deleted entity hides.
+  const nodeMenus = page
+    .getByTestId('lineage-details')
+    .getByTestId('lineage-node-menu');
   if (deleted) {
-    await expect(
-      page.locator('[data-testid="edit-lineage"]')
-    ).not.toBeVisible();
+    await expect(nodeMenus).toHaveCount(0);
   } else {
-    await expect(page.locator('[data-testid="edit-lineage"]')).toBeVisible();
+    await expect(nodeMenus).not.toHaveCount(0);
   }
 };
 

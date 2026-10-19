@@ -214,6 +214,10 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY = "ontology";
+  public static final String ONTOLOGY_CONCEPT = "ontologyConcept";
+  public static final String ONTOLOGY_PROPERTY = "ontologyProperty";
+  public static final String ONTOLOGY_RELEASE = "ontologyRelease";
   public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
   public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";

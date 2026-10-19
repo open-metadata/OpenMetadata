@@ -23,6 +23,7 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { TeamType } from '../../generated/entity/teams/team';
+import { AlertType } from '../../generated/events/eventSubscription';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { isLoginConfigurationApplicable } from '../../utils/AuthProvider.util';
@@ -37,9 +38,9 @@ import { NOTIFICATION_ALERT_KIND } from '../observability/Alerts/alertKinds';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AddNotificationPage = withPageSuspenseFallback(
+const AddObservabilityPage = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/AddNotificationPage/AddNotificationPage')
+    () => import('../../pages/AddObservabilityPage/AddObservabilityPage')
   )
 );
 
@@ -598,7 +599,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.edit-entity', {
               entity: t('label.notification-alert'),
             })}
@@ -612,7 +614,8 @@ const SettingsRouter = () => {
       />
       <Route
         element={
-          <AddNotificationPage
+          <AddObservabilityPage
+            alertType={AlertType.Notification}
             pageTitle={t('label.add-entity', {
               entity: t('label.notification-alert'),
             })}
