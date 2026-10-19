@@ -110,9 +110,10 @@ public final class PipelineBotRedeployScheduler implements Managed {
     }
   }
 
+  // An interrupt means the server is stopping: the rest of the batch waits for the next start.
   private void redeployAll() {
     List<String> batch = extensionDAO.listExtensionIds(PENDING_REDEPLOY, "", BATCH_SIZE);
-    while (!batch.isEmpty()) {
+    while (!batch.isEmpty() && !Thread.currentThread().isInterrupted()) {
       batch.forEach(id -> redeploy(UUID.fromString(id)));
       batch = extensionDAO.listExtensionIds(PENDING_REDEPLOY, batch.getLast(), BATCH_SIZE);
     }
@@ -178,8 +179,17 @@ public final class PipelineBotRedeployScheduler implements Managed {
         && Boolean.TRUE.equals(config.getPipelineServiceClientConfiguration().getEnabled());
   }
 
+  // Without this warning an install whose pipeline service stays down, or on an older plugin the
+  // server rejects, would keep its agents on their old bot with nothing in the logs to say why.
   private static boolean isPipelineServiceReachable() {
     PipelineServiceClientInterface client = PipelineServiceClientFactory.getPipelineServiceClient();
-    return client != null && client.getServiceStatus().getCode() == 200;
+    PipelineServiceClientResponse status = client == null ? null : client.getServiceStatus();
+    boolean reachable = status != null && status.getCode() == 200;
+    if (!reachable) {
+      LOG.warn(
+          "Ingestion pipelines are waiting to be redeployed as their own bot, but the pipeline service is not available: {}; retrying later",
+          status == null ? "no pipeline service client" : status.getReason());
+    }
+    return reachable;
   }
 }

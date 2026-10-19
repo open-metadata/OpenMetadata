@@ -18,6 +18,7 @@ import static org.openmetadata.service.resources.services.ingestionpipelines.Pip
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -55,26 +56,33 @@ public final class PipelineBotRedeployMigration {
           PipelineType.PROFILER,
           PipelineType.AUTO_CLASSIFICATION);
 
-  /** The fields of a stored ingestion pipeline this step reads. */
+  /**
+   * The fields of a stored ingestion pipeline this step reads. Type and provider stay strings: a
+   * row stored under a value the enums no longer have (1.2's "Application" pipeline type) must be
+   * skipped, not fail the upgrade.
+   */
   record Agent(
       UUID id,
       String name,
       String displayName,
-      PipelineType pipelineType,
-      ProviderType provider,
+      String pipelineType,
+      String provider,
       Boolean deployed) {
 
     boolean ranAsIngestionBot() {
-      return Boolean.TRUE.equals(deployed)
-          && OWN_BOT_TYPES.contains(pipelineType)
-          && isCreatedByAutoPilot();
+      Optional<PipelineType> type = ownBotType();
+      return Boolean.TRUE.equals(deployed) && type.isPresent() && isCreatedByAutoPilot(type.get());
+    }
+
+    private Optional<PipelineType> ownBotType() {
+      return OWN_BOT_TYPES.stream().filter(type -> type.value().equals(pipelineType)).findFirst();
     }
 
     // AutoPilot has marked its agents with the AUTOMATION provider since 1.8. The ones 1.7 created
     // are recognised by the display name AutoPilot gives them, which is also how it finds them.
-    private boolean isCreatedByAutoPilot() {
-      return provider == ProviderType.AUTOMATION
-          || Objects.equals(AGENT_DISPLAY_NAMES.get(pipelineType), displayName);
+    private boolean isCreatedByAutoPilot(PipelineType type) {
+      return ProviderType.AUTOMATION.value().equals(provider)
+          || Objects.equals(AGENT_DISPLAY_NAMES.get(type), displayName);
     }
   }
 

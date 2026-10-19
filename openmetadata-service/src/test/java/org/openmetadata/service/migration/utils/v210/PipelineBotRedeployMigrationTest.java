@@ -84,6 +84,24 @@ class PipelineBotRedeployMigrationTest {
     assertEquals(Set.of(usage.getId(), noProvider.getId()), marked);
   }
 
+  // 1.2 stored the application pipeline type as "Application"; such a row must not fail the
+  // upgrade.
+  @Test
+  void skipsARowStoredUnderAPipelineTypeTheEnumNoLongerHas() {
+    IngestionPipeline usage =
+        stored(PipelineType.USAGE, ProviderType.AUTOMATION, true, "Usage Agent");
+    IngestionPipeline lineage =
+        stored(PipelineType.LINEAGE, ProviderType.AUTOMATION, true, "Lineage Agent");
+    String legacy =
+        "{\"id\":\"%s\",\"name\":\"legacy\",\"pipelineType\":\"Application\",\"deployed\":true}"
+            .formatted(UUID.randomUUID());
+
+    PipelineBotRedeployMigration.markAutoPilotAgentsForRedeploy(
+        collectionDAO(List.of(legacy, JsonUtils.pojoToJson(usage)), usage, List.of(lineage)));
+
+    assertEquals(Set.of(usage.getId(), lineage.getId()), marked);
+  }
+
   private static IngestionPipeline stored(
       PipelineType pipelineType, ProviderType provider, boolean deployed, String displayName) {
     UUID id = UUID.randomUUID();
@@ -97,12 +115,33 @@ class PipelineBotRedeployMigrationTest {
         .withSourceConfig(new SourceConfig().withConfig(Map.of("type", "Profiler")));
   }
 
-  /** Two pages of stored pipelines, then an empty one; the markers land in {@link #marked}. */
+  /**
+   * Two pages of stored pipelines, each served only for the cursor of the page before it, then an
+   * empty one; the markers land in {@link #marked}.
+   */
   private CollectionDAO collectionDAO(
       List<IngestionPipeline> firstPage, List<IngestionPipeline> secondPage) {
+    return collectionDAO(toJson(firstPage), firstPage.getLast(), secondPage);
+  }
+
+  private CollectionDAO collectionDAO(
+      List<String> firstPage, IngestionPipeline lastOfFirst, List<IngestionPipeline> secondPage) {
     CollectionDAO.IngestionPipelineDAO pipelineDAO = mock(CollectionDAO.IngestionPipelineDAO.class);
-    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1_000), anyString(), anyString()))
-        .thenReturn(toJson(firstPage), toJson(secondPage), List.of());
+    when(pipelineDAO.listAfter(any(ListFilter.class), eq(1_000), eq(""), eq("")))
+        .thenReturn(firstPage);
+    when(pipelineDAO.listAfter(
+            any(ListFilter.class),
+            eq(1_000),
+            eq(lastOfFirst.getName()),
+            eq(lastOfFirst.getId().toString())))
+        .thenReturn(toJson(secondPage));
+    IngestionPipeline lastOfSecond = secondPage.getLast();
+    when(pipelineDAO.listAfter(
+            any(ListFilter.class),
+            eq(1_000),
+            eq(lastOfSecond.getName()),
+            eq(lastOfSecond.getId().toString())))
+        .thenReturn(List.of());
 
     EntityExtensionDAO extensionDAO = mock(EntityExtensionDAO.class);
     doAnswer(

@@ -88,7 +88,10 @@ class PipelineBotRedeploySchedulerTest {
         .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
         .thenReturn(pipelineRepository);
     mockedEntity
-        .when(() -> Entity.getEntity(any(EntityReference.class), eq("ingestionRunner"), any()))
+        .when(
+            () ->
+                Entity.getEntity(
+                    any(EntityReference.class), eq("ingestionRunner"), eq(Include.ALL)))
         .thenReturn(service);
 
     SecretsManager secretsManager = mock(SecretsManager.class);
