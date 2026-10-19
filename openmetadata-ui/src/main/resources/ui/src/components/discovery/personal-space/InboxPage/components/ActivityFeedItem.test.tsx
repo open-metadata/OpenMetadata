@@ -120,19 +120,27 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 jest.mock('components/ActivityFeed/Reactions/Reactions', () => ({
   __esModule: true,
   default: ({
     reactions,
+    pickedReactions,
     onReactionSelect,
   }: {
     reactions: unknown[];
+    pickedReactions?: unknown[];
     onReactionSelect: (r: string, o: string) => void;
   }) => (
-    <div>
+    <div data-picked={pickedReactions?.length}>
+      {/* The tray's thumbs up, picked once the viewer liked the card. */}
+      <button
+        aria-label="remove thumbs up"
+        data-testid="react-thumbs-remove-btn"
+        onClick={() => onReactionSelect('thumbsUp', 'remove')}
+      />
       <button
         data-testid="react-btn"
         onClick={() => onReactionSelect('heart', 'add')}>
@@ -676,6 +684,34 @@ describe('ActivityFeedItem', () => {
     expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
   });
 
+  // Like is the tray's thumbs up: picked there, and taken back from there.
+  it('lets the tray take back a like', async () => {
+    mockSendReaction.mockResolvedValue({});
+    const liked = {
+      ...baseActivity,
+      reactions: [{ reactionType: 'thumbsUp', user: { id: 'u1' } }],
+    } as unknown as ActivityEvent;
+
+    render(<ActivityFeedItem activity={liked} />);
+
+    expect(screen.getByTestId('react-btn')).toHaveTextContent('r0');
+    expect(screen.getByTestId('react-btn').parentElement).toHaveAttribute(
+      'data-picked',
+      '1'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('react-thumbs-remove-btn'));
+    });
+
+    expect(mockSendReaction).toHaveBeenCalledWith(
+      { activityId: 'a1', conversationId: undefined },
+      'thumbsUp',
+      'remove'
+    );
+    expect(screen.getByTestId('activity-like')).toHaveTextContent('label.like');
+  });
+
   // The Button sizes and tints its icon by `data-icon`, so the filled thumb
   // must keep it, or a liked card's icon grows from 16px to 20px.
   it('fills the thumb once liked and keeps the icon the Button styles', () => {
@@ -726,12 +762,12 @@ describe('ActivityFeedItem', () => {
       );
     });
 
-    it('shows no replies toggle until there are replies', () => {
+    it('reads Reply until there are replies', () => {
       render(<ActivityFeedItem activity={baseActivity} />);
 
-      expect(
-        screen.queryByTestId('activity-replies-toggle')
-      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.reply'
+      );
     });
 
     // Scrolling the feed must not read every card's thread.
@@ -750,47 +786,50 @@ describe('ActivityFeedItem', () => {
       mockReplies = [reply('r1', 'bob')];
       render(<ActivityFeedItem activity={baseActivity} />);
 
-      expect(
-        screen.queryByTestId('activity-replies-toggle')
-      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.reply'
+      );
     });
 
     it('counts a closed conversation from its reply count, which opens and hides them', () => {
       mockReplies = [reply('r1', 'bob'), reply('r2', 'carol')];
       render(<ActivityFeedItem feed={baseFeed} />);
-      const toggle = screen.getByTestId('activity-replies-toggle');
+      const button = screen.getByTestId('activity-reply');
 
-      expect(toggle).toHaveTextContent('label.number-reply-plural');
+      expect(button).toHaveTextContent('label.number-reply-plural');
 
-      fireEvent.click(toggle);
+      fireEvent.click(button);
 
       expect(screen.getByTestId('activity-thread')).toHaveAttribute(
         'data-focus-composer',
         'false'
       );
-      expect(toggle).toHaveTextContent('label.hide-reply-plural');
-      expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      expect(button).toHaveTextContent('label.hide-reply-plural');
+      expect(button).toHaveAttribute('aria-expanded', 'true');
 
-      fireEvent.click(toggle);
+      fireEvent.click(button);
 
       expect(screen.queryByTestId('activity-thread')).not.toBeInTheDocument();
     });
 
-    // Opened with Reply, or emptied by a delete: the thread can still close.
-    it('keeps a way to close a thread that has no replies', () => {
+    // One button for the thread, whatever it reads: never Reply beside a count
+    // or beside "Hide replies".
+    it('keeps one thread button from Reply to Hide replies and back', () => {
       render(<ActivityFeedItem activity={baseActivity} />);
 
       fireEvent.click(screen.getByTestId('activity-reply'));
-      const toggle = screen.getByTestId('activity-replies-toggle');
 
-      expect(toggle).toHaveTextContent('label.hide-reply-plural');
+      expect(screen.getAllByTestId('activity-reply')).toHaveLength(1);
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.hide-reply-plural'
+      );
 
-      fireEvent.click(toggle);
+      fireEvent.click(screen.getByTestId('activity-reply'));
 
       expect(screen.queryByTestId('activity-thread')).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('activity-replies-toggle')
-      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
+        'label.reply'
+      );
     });
 
     it('reads one reply as one', () => {
@@ -800,18 +839,20 @@ describe('ActivityFeedItem', () => {
         />
       );
 
-      expect(screen.getByTestId('activity-replies-toggle')).toHaveTextContent(
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
         'label.one-reply'
       );
     });
 
-    // Once read, the list itself is the count, even with the thread closed.
+    // Once read, the list itself is the count, even with the thread closed,
+    // and it stands in for Reply rather than beside it.
     it('counts a closed card from its replies once they were read', () => {
       mockRepliesCached = true;
       mockReplies = [reply('r1', 'bob')];
       render(<ActivityFeedItem activity={baseActivity} />);
 
-      expect(screen.getByTestId('activity-replies-toggle')).toHaveTextContent(
+      expect(screen.getAllByTestId('activity-reply')).toHaveLength(1);
+      expect(screen.getByTestId('activity-reply')).toHaveTextContent(
         'label.one-reply'
       );
     });

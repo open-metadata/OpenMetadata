@@ -14,6 +14,7 @@
 import {
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
@@ -50,6 +51,16 @@ describe('getTaskTypeBadge', () => {
     expect(
       getTaskTypeBadge(buildTask({ type: TaskType.TestCaseResolution }), t)
     ).toEqual({ label: 'label.incident', color: 'error', icon: 'incident' });
+  });
+
+  it('gives a memory conflict review its own chip', () => {
+    expect(
+      getTaskTypeBadge(buildTask({ type: TaskType.MemoryConflictReview }), t)
+    ).toEqual({
+      label: 'label.memory-conflict',
+      color: 'orange',
+      icon: 'approval',
+    });
   });
 
   it('falls back to a neutral chip for an unmapped type', () => {
@@ -677,5 +688,80 @@ describe('getPlainDescription', () => {
   it('is empty for a missing or blank description', () => {
     expect(getPlainDescription({})).toBe('');
     expect(getPlainDescription({ description: '  ' })).toBe('');
+  });
+});
+
+describe('metadata completion tasks', () => {
+  const task = buildTask({
+    type: TaskType.MetadataCompletion,
+    payload: {
+      workflow: 'DomainLifecycle',
+      node: 'Collect0',
+      stage: 'Draft',
+      targetStage: 'In Review',
+      missingFields: ['experts', 'extension.costCenter'],
+    },
+  });
+
+  it('gives a metadata completion task its own chip', () => {
+    expect(getTaskTypeBadge(task, t)).toEqual({
+      label: 'label.missing-metadata',
+      color: 'warning',
+      icon: 'description',
+    });
+  });
+
+  it('lists the missing fields by name and says which stage they unlock', () => {
+    const descriptor = getTaskDetailDescriptor(task, t);
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')?.value
+    ).toEqual({
+      kind: 'list',
+      items: [{ label: 'label.expert-plural' }, { label: 'costCenter' }],
+      title: 'label.missing-field-plural',
+    });
+    expect(descriptor.callout?.text).toBe('message.metadata-completion-move');
+    expect(
+      descriptor.rows.find((row) => row.key === 'conditions')
+    ).toBeUndefined();
+  });
+
+  it('reports unmet lifecycle conditions with one generic row', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.MetadataCompletion,
+        payload: { stage: 'Draft', missingFields: [], conditionsMet: false },
+      }),
+      t
+    );
+
+    expect(
+      descriptor.rows.find((row) => row.key === 'missingFields')
+    ).toBeUndefined();
+    expect(
+      descriptor.rows.find((row) => row.key === 'conditions')?.value
+    ).toEqual({ kind: 'text', text: 'message.lifecycle-conditions-not-met' });
+  });
+
+  it('lists nothing outstanding once the task has closed', () => {
+    const descriptor = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.MetadataCompletion,
+        status: TaskStatus.Completed,
+        payload: {
+          stage: 'Draft',
+          missingFields: ['experts'],
+          conditionsMet: false,
+        },
+      }),
+      t
+    );
+
+    expect(
+      descriptor.rows.filter((row) =>
+        ['missingFields', 'conditions'].includes(row.key)
+      )
+    ).toEqual([]);
   });
 });

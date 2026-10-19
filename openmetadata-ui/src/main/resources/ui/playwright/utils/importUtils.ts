@@ -574,20 +574,30 @@ export const fillUserAndTeamOwnerDetails = async (
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const option = page.getByRole('option', { name: entityType, exact: true });
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, option, undefined);
 
-  await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await clickInlineSave(page);
+  // Picking an option commits it.
+  await option.click();
+  await expect(page.getByTestId('entity-type-select')).toHaveCount(0);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
+  const tagSelectorInput = page.getByTestId('tag-selector').locator('input');
+  await openActiveCellPopover(page, bulkPicker.or(tagSelectorInput), undefined);
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  if (await bulkPicker.isVisible()) {
+    await bulkPicker.getByRole('textbox').fill(tag);
+    await bulkPicker.getByTestId(`bulk-edit-picker-option-${tag}`).click();
+    await bulkPicker
+      .getByRole('button', { name: 'Update', exact: true })
+      .click();
+    await expect(bulkPicker).toHaveCount(0);
+
+    return;
+  }
 
   const waitForQueryResponse = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -678,7 +688,11 @@ export const fillCertificationDetails = async (
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  await openActiveCellPopover(
+    page,
+    page.getByTestId('code-mirror-container'),
+    undefined
+  );
 
   // Wait for the loader to disappear
   await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
@@ -1034,11 +1048,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;

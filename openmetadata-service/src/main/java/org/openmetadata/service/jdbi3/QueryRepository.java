@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.resources.query.QueryResource;
 import org.openmetadata.service.search.vector.QueryBodyTextContributor;
 import org.openmetadata.service.util.EntityUtil;
@@ -71,6 +72,15 @@ public class QueryRepository extends EntityRepository<Query> {
   public void setFullyQualifiedName(Query query) {
     query.setFullyQualifiedName(
         FullyQualifiedName.add(query.getService().getFullyQualifiedName(), query.getName()));
+  }
+
+  /**
+   * Runs before every delete, direct or cascaded from the service, while the relationship rows
+   * naming the memories this Query supports still exist: a Query has no soft delete.
+   */
+  @Override
+  protected void preDelete(Query query, String deletedBy) {
+    MemoryEvidenceHolds.inCatalog().holdMemoriesSupportedBy(query);
   }
 
   @Override

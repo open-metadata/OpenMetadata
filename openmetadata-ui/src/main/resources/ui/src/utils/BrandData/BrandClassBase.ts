@@ -10,11 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import WelcomeScreenSrc from '../../assets/img/welcome-screen.png';
+import UpgradeScreenDarkSrc from '../../assets/img/upgrade-screen-dark.svg';
+import UpgradeScreenLightSrc from '../../assets/img/upgrade-screen-light.svg';
+import WelcomeScreenDarkSrc from '../../assets/img/welcome-screen-dark.svg';
+import WelcomeScreenLightSrc from '../../assets/img/welcome-screen-light.svg';
 import MonogramSrc, {
   ReactComponent as Monogram,
 } from '../../assets/svg/logo-monogram.svg';
 import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
+import { Theme } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
+import { t } from '../i18next/LocalUtil';
 
 class BrandClassBase {
   public getMonogram() {
@@ -55,8 +60,17 @@ class BrandClassBase {
     return 'https://blog.open-metadata.org/announcing-openmetadata-1-13-123d66609468';
   }
 
-  public getWelcomeScreenImg() {
-    return WelcomeScreenSrc;
+  public getWelcomeScreenImg(theme: Theme) {
+    return theme === 'dark' ? WelcomeScreenDarkSrc : WelcomeScreenLightSrc;
+  }
+
+  public getUpgradeScreenImg(theme: Theme) {
+    return theme === 'dark' ? UpgradeScreenDarkSrc : UpgradeScreenLightSrc;
+  }
+
+  /** Product name in the welcome screen's "Your {{platform}} is ready". */
+  public getPlatformName() {
+    return t('label.context-platform');
   }
 }
 

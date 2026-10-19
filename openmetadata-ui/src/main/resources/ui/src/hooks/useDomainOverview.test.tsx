@@ -19,6 +19,8 @@ import { getAllDomainsWithAssetsCount } from '../rest/domainAPI';
 import { searchQuery } from '../rest/searchAPI';
 import {
   OverviewFilter,
+  OVERVIEW_PAGE_SIZE,
+  ROOT_DOMAIN_CLAUSE,
   UNOWNED_QUERY_FILTER,
   useDomainOverview,
 } from './useDomainOverview';
@@ -52,12 +54,18 @@ const domain = (name: string, owner?: string) => ({
 // The page in hand: two domains, one unowned and one empty. The estate behind
 // it is much larger — which is exactly what the chips used to miss.
 const PAGE = [domain('finance', 'dale'), domain('marketing')];
+// `finance.payroll` is a sub-domain: the Domains page lists it under Finance,
+// so the card neither counts it nor lists it beside its parent.
 const COUNTS = {
   finance: 12,
+  'finance.payroll': 0,
   marketing: 0,
   ops: 0,
   risk: 4,
   sales: 0,
+};
+const ROOT_UNOWNED_FILTER = {
+  query: { bool: { must: [ROOT_DOMAIN_CLAUSE, UNOWNED_QUERY_FILTER.query] } },
 };
 const UNOWNED_TOTAL = 7;
 
@@ -106,10 +114,47 @@ describe('useDomainOverview', () => {
     expect(mockSearchQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         pageSize: 0,
-        queryFilter: UNOWNED_QUERY_FILTER,
+        queryFilter: ROOT_UNOWNED_FILTER,
         searchIndex: SearchIndex.DOMAIN,
       })
     );
+  });
+
+  it('lists only top-level domains, as the Domains page does', async () => {
+    const { result } = renderHook(() => useDomainOverview(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockSearchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageSize: OVERVIEW_PAGE_SIZE,
+        queryFilter: { query: { bool: { must: [ROOT_DOMAIN_CLAUSE] } } },
+      })
+    );
+  });
+
+  it('keeps every owner of a domain', async () => {
+    respond([
+      {
+        _source: {
+          fullyQualifiedName: 'finance',
+          id: 'id-finance',
+          name: 'finance',
+          owners: [
+            { id: 'dale', name: 'dale', type: 'user' },
+            { id: 'ops', name: 'ops', type: 'team' },
+          ],
+        },
+      },
+    ]);
+    const { result } = renderHook(() => useDomainOverview(), { wrapper });
+
+    await waitFor(() => expect(result.current.domains).toHaveLength(1));
+
+    expect(result.current.domains[0].owners.map(({ id }) => id)).toEqual([
+      'dale',
+      'ops',
+    ]);
   });
 
   it('asks the server for the unowned bucket rather than filtering the page', async () => {
@@ -122,8 +167,9 @@ describe('useDomainOverview', () => {
 
     expect(mockSearchQuery).toHaveBeenCalledWith(
       expect.objectContaining({
-        pageSize: 10,
-        queryFilter: UNOWNED_QUERY_FILTER,
+        pageSize: OVERVIEW_PAGE_SIZE,
+        queryFilter: ROOT_UNOWNED_FILTER,
+        sortField: 'name.keyword',
       })
     );
   });

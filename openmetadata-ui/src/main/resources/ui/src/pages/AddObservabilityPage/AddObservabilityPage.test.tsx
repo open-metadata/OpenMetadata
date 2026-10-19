@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { AlertType } from '../../generated/events/eventSubscription';
 import AddObservabilityPage from './AddObservabilityPage';
 
 const MOCK_DATA = [
@@ -81,6 +82,13 @@ jest.mock('../../rest/observabilityAPI', () => ({
   ),
 }));
 
+jest.mock('../../rest/alertsAPI', () => ({
+  getAlertsFromName: jest.fn(),
+  getResourceFunctions: jest.fn(),
+  createNotificationAlert: jest.fn(),
+  updateNotificationAlert: jest.fn(),
+}));
+
 jest.mock('../../hoc/withPageLayout', () => ({
   withPageLayout: jest.fn().mockImplementation((Component) => Component),
 }));
@@ -110,7 +118,7 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/Alerts/DestinationFormItem/DestinationFormItemFormBridge',
+  '../../components/Alerts/DestinationFormItem/DestinationFormItem.component',
   () =>
     jest
       .fn()
@@ -305,5 +313,37 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     expect(await screen.findByTestId('extra-button')).toHaveTextContent(
       'typed-alert'
     );
+  });
+
+  describe('as the notification alert page', () => {
+    const notificationProps = {
+      ...mockProps,
+      alertType: AlertType.Notification,
+    };
+
+    it('should show the notification settings breadcrumb', async () => {
+      await act(async () => {
+        render(<AddObservabilityPage {...notificationProps} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+      const breadcrumbLinks = screen.getAllByTestId('breadcrumb-link');
+
+      expect(breadcrumbLinks[0]).toHaveTextContent('label.setting-plural');
+      expect(breadcrumbLinks[1]).toHaveTextContent('label.notification-plural');
+      expect(breadcrumbLinks[2]).toHaveTextContent('label.alert-plural');
+      expect(breadcrumbLinks[3]).toHaveTextContent('label.create-entity');
+    });
+
+    it('should not offer the trigger section', async () => {
+      await act(async () => {
+        render(<AddObservabilityPage {...notificationProps} />, {
+          wrapper: MemoryRouter,
+        });
+      });
+
+      expect(await screen.findByText('Filters')).toBeInTheDocument();
+      expect(screen.queryByText('Triggers')).not.toBeInTheDocument();
+    });
   });
 });

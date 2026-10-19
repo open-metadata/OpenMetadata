@@ -86,6 +86,12 @@
       "default": false,
       "title": "Use System Table Statistics"
     },
+    "enableAutoPartitionDetection": {
+      "description": "Use the partition metadata collected during metadata ingestion to only profile the most recent time or integer range partitions of tables without an explicit partition configuration. Tables with a partition configuration defined in their profiler settings are not affected.",
+      "type": "boolean",
+      "default": true,
+      "title": "Enable Auto Partition Detection"
+    },
     "profileSampleConfig": {
       "$ref": "../type/samplingConfig.json#/definitions/profileSampleConfig"
     },

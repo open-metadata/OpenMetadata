@@ -13,6 +13,7 @@
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 
+import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -147,7 +148,7 @@ const GlossaryDetails = ({
           />
         ),
         key: EntityTabs.TERMS,
-        children: <GenericTab type={PageType.Glossary} variant="flat" />,
+        children: <GenericTab type={PageType.Glossary} />,
       },
       ...(!isVersionView
         ? [
@@ -244,7 +245,7 @@ const GlossaryDetails = ({
       </div>
       <div className="glossary-page-tabs tw:min-h-0 tw:flex-auto">
         <Tabs
-          className="tw:gap-3"
+          className="tw:min-h-0 tw:flex-1 tw:gap-3"
           data-testid="tabs"
           selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
           onSelectionChange={(key) => handleTabChange(String(key))}>
@@ -271,7 +272,15 @@ const GlossaryDetails = ({
           </Tabs.List>
           {tabs.map(({ key, children }) => (
             <Tabs.Panel
-              className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:flex tw:flex-col tw:overflow-hidden"
+              className={classNames(
+                'tw:flex tw:flex-col tw:overflow-hidden',
+                // The graph pins its toolbar to its own bottom edge, so it must
+                // fill the space left under the header rather than a fixed
+                // viewport calc that ignores the header's actual height.
+                key === EntityTabs.RELATIONS_GRAPH
+                  ? 'tw:min-h-0 tw:flex-1'
+                  : 'tw:h-[calc(100vh-176px-var(--ant-navbar-height))]'
+              )}
               id={key}
               key={key}>
               {children}

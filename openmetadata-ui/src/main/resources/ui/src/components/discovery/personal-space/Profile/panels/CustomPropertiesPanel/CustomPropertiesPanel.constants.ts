@@ -65,3 +65,10 @@ export const GROUP_LABEL_KEYS: Record<string, string> = {
   [GROUP_API]: 'label.api-uppercase',
   [GROUP_GOVERNANCE]: 'label.governance',
 };
+
+/**
+ * Column name the earlier table-type custom property editor used as its
+ * internal row key and stripped on save. It stays reserved so a user column
+ * never takes that name and loses its data to an older client.
+ */
+export const RESERVED_TABLE_COLUMN_NAMES = ['__row_id__'];

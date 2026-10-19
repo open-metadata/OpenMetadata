@@ -1047,9 +1047,10 @@ export interface ConnectionClass {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?: string;
-    sslMode?:              SSLMode;
-    supportsDatabase?:     boolean;
+    queryStatementSource?:           string;
+    sslMode?:                        SSLMode;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
