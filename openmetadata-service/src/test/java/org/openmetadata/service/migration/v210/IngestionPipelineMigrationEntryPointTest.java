@@ -34,6 +34,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v206.ActivityFeedAlertMigration;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
@@ -86,7 +87,9 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<ConsumerIdMigration> consumerIdMigration =
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
-            mockStatic(DeltaLakeRetirementMigration.class)) {
+            mockStatic(DeltaLakeRetirementMigration.class);
+        MockedStatic<ActivityFeedAlertMigration> activityFeedAlertMigration =
+            mockStatic(ActivityFeedAlertMigration.class)) {
       migration.runDataMigration();
 
       deltaLakeRetirement.verify(
@@ -101,6 +104,8 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
+      activityFeedAlertMigration.verify(() -> ActivityFeedAlertMigration.migrate(handle));
     }
   }
 

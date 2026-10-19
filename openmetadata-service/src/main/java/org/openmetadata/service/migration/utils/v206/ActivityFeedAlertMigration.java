@@ -32,6 +32,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
  */
 @Slf4j
 public final class ActivityFeedAlertMigration {
+  public static final String STEP_NAME = "activityFeedAlertAdmitsContractsAndStatus";
   static final String ALERT_NAME = "ActivityFeedAlert";
 
   // Rule name → value its set condition must contain.

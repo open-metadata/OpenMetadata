@@ -35,6 +35,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v206.ActivityFeedAlertMigration;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
@@ -122,5 +123,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConsumerIdMigration.STEP_NAME,
         () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
+    // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
+    // harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ActivityFeedAlertMigration.STEP_NAME,
+        () -> ActivityFeedAlertMigration.migrate(handle));
   }
 }
