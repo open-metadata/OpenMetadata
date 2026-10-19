@@ -1624,4 +1624,55 @@ class EntityUtilTest {
         .thenReturn(ids);
     entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
   }
+
+  @Test
+  void testSortConstraintPairs_preservesFkColumnMapping() {
+    // FK: (country, alt_type) → (parent.country, parent.type)
+    // Independent sorting would produce columns=[alt_type,country] refs=[country,type] —
+    // pairing broken. sortConstraintPairs must keep alt_type→type and country→country.
+    List<String> cols = new ArrayList<>(List.of("country", "alt_type"));
+    List<String> refs = new ArrayList<>(List.of("schema.parent.country", "schema.parent.type"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    // After sorting by local column name: alt_type first, country second.
+    assertEquals(List.of("alt_type", "country"), fk.getColumns());
+    // referredColumns must track the same permutation: alt_type→parent.type, country→parent.country
+    assertEquals(List.of("schema.parent.type", "schema.parent.country"), fk.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_nonFkSortsColumnsOnly() {
+    List<String> cols = new ArrayList<>(List.of("z_col", "a_col", "m_col"));
+    TableConstraint unique =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+            .withColumns(cols);
+
+    EntityUtil.sortConstraintPairs(unique);
+
+    assertEquals(List.of("a_col", "m_col", "z_col"), unique.getColumns());
+    assertNull(unique.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_singleColumnIsNoOp() {
+    List<String> cols = new ArrayList<>(List.of("only_col"));
+    List<String> refs = new ArrayList<>(List.of("parent.pk"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    assertEquals(List.of("only_col"), fk.getColumns());
+    assertEquals(List.of("parent.pk"), fk.getReferredColumns());
+  }
 }
