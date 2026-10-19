@@ -520,3 +520,35 @@ describe('ProfilerSettingsModal include-column dropdowns', () => {
     expect(container).not.toContainElement(listbox);
   });
 });
+
+describe('ProfilerSettingsModal with an interval type the form does not offer', () => {
+  beforeEach(() => {
+    cleanup();
+    jest.clearAllMocks();
+  });
+
+  it.each([
+    PartitionIntervalTypes.Enum,
+    PartitionIntervalTypes.Injected,
+    PartitionIntervalTypes.Other,
+  ])(
+    'should render and save a stored %s partitioning untouched',
+    async (partitionIntervalType) => {
+      const partitioning = {
+        enablePartitioning: true,
+        partitionColumnName: 'column1',
+        partitionIntervalType,
+      };
+
+      const payload = await renderAndSave({
+        ...mockTableProfilerConfig,
+        partitioning,
+      } as TableProfilerConfig);
+
+      expect(screen.getByTestId('profiler-settings-modal')).toBeInTheDocument();
+      expect(payload.partitioning).toEqual(
+        expect.objectContaining(partitioning)
+      );
+    }
+  );
+});
