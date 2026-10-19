@@ -17,34 +17,14 @@ import {
   ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ArrowRight,
-  TextEditorBlockquote,
-  TextEditorBold,
-  TextEditorBulletedList,
-  TextEditorCode,
-  TextEditorEmoji,
-  TextEditorHashtag,
-  TextEditorItalic,
-  TextEditorLink,
-  TextEditorMention,
-  TextEditorNumberedList,
-  TextEditorStrikethrough,
-  Type01,
-} from '@openmetadata/ui-core-components/icons';
+import { ArrowRight, Type01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import React, {
-  FC,
-  RefObject,
-  SVGProps,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { FORMAT_BAR_ICONS } from '../../../constants/CommentComposer.constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useCommentFormatBar } from '../../../hooks/useCommentFormatBar';
 import {
   getBackendFormat,
   getFrontEndFormat,
@@ -53,211 +33,11 @@ import {
 import ActivityFeedEditorNew from '../../ActivityFeed/ActivityFeedEditor/ActivityFeedEditorNew';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { EditorContentRef } from '../RichTextEditor/RichTextEditor.interface';
-
-// The design's restyle of the OSS ActivityFeedEditorNew, scoped to this
-// editor: one input line with the formatting toggle and send button inside it,
-// under a format bar of the design's icons. Quill builds this markup itself, so
-// these reach it from the editor's root (Tailwind reads `_` in those selectors
-// as a space, so no class here has one). `!`: Quill's snow theme and the
-// FeedEditor's own styles are unlayered CSS, which beats Tailwind's utilities
-// whatever their selector.
-const ICON_CLASS = 'comment-composer-icon';
-
-// The design's gray-blue border; in dark that scale turns navy, so it stays
-// neutral. It also holds over FeedEditor's inline focus border, which all but
-// vanishes in dark — and an edit box opens focused.
-const EDITOR_BOX_CLASS = [
-  'tw:[&_.editor-container]:border! tw:[&_.editor-container]:border-solid!',
-  'tw:[&_.editor-container]:border-utility-gray-blue-100! tw:dark:[&_.editor-container]:border-primary!',
-  'tw:[&_.editor-container]:rounded-[10px]! tw:[&_.editor-container]:bg-primary!',
-  // Quill sets 13px Helvetica; comments read in the page's font at 14px.
-  'tw:[&_.ql-container.ql-snow]:border-none! tw:[&_.ql-container.ql-snow]:bg-transparent!',
-  'tw:[&_.ql-container.ql-snow]:font-[inherit]! tw:[&_.ql-container.ql-snow]:text-[14px]!',
-];
-
-// The format bar sits in the same box as the text, split by a hairline. It
-// anchors the emoji picker, which the composer places by its button. The
-// design's icons, drawn into Quill's buttons, replace Quill's and
-// quill-emoji's icons and the @ / # glyphs, at 16px in Quill's own button box.
-const FORMAT_BAR_CLASS = [
-  'tw:[&_.ql-toolbar.ql-snow]:relative! tw:[&_.ql-toolbar.ql-snow]:px-2! tw:[&_.ql-toolbar.ql-snow]:py-1!',
-  'tw:[&_.ql-toolbar.ql-snow]:border-0! tw:[&_.ql-toolbar.ql-snow]:border-b!',
-  'tw:[&_.ql-toolbar.ql-snow]:border-solid! tw:[&_.ql-toolbar.ql-snow]:border-b-secondary!',
-  'tw:[&_.ql-toolbar_.ql-formats_button]:text-quaternary!',
-  'tw:[&_.ql-toolbar_.ql-formats_button>svg:not(.comment-composer-icon)]:hidden!',
-  'tw:[&_.ql-toolbar_.ql-formats_button]:after:content-none!',
-  // The editor zeroes the @ / # buttons' padding for their glyphs.
-  'tw:[&_.ql-toolbar_button.ql-insertMention]:px-[5px]! tw:[&_.ql-toolbar_button.ql-insertMention]:py-[3px]!',
-  'tw:[&_.ql-toolbar_button.ql-insertRef]:px-[5px]! tw:[&_.ql-toolbar_button.ql-insertRef]:py-[3px]!',
-  'tw:[&_.ql-toolbar_.ql-formats_button:hover]:text-fg-brand-primary!',
-  'tw:[&_.ql-toolbar_.ql-formats_button:focus-visible]:text-fg-brand-primary!',
-  'tw:[&_.ql-toolbar_.ql-formats_button.ql-active]:text-fg-brand-primary!',
-  'tw:[&_.ql-toolbar_.comment-composer-icon]:block!',
-  'tw:[&_.ql-toolbar_.comment-composer-icon]:float-none!',
-  'tw:[&_.ql-toolbar_.comment-composer-icon]:size-4!',
-  'tw:[&_.ql-toolbar_.comment-composer-icon]:mx-auto!',
-  'tw:[&_.ql-toolbar_.comment-composer-icon]:my-px!',
-];
-
-// One line of text, clear of the toggle and send button on the right.
-// `.editor-container` outranks the FeedEditor's own 100px minimum.
-const TEXT_CLASS = [
-  'tw:[&_.ql-editor]:min-h-11! tw:[&_.ql-editor]:pt-3! tw:[&_.ql-editor]:pb-3!',
-  'tw:[&_.ql-editor]:pl-3.5! tw:[&_.ql-editor]:pr-25!',
-  'tw:[&_.ql-editor]:bg-transparent! tw:[&_.ql-editor]:rounded-[10px]!',
-  // A list starts at the text's edge: its items' padding holds the marker.
-  'tw:[&_.ql-editor_ol]:pl-0!',
-  // FeedEditor hard-codes the "Use @mention…" placeholder: the design's copy
-  // comes from the component as a CSS variable, so it stays translated.
-  // Quill's own placeholder color is invisible on a dark surface.
-  'tw:[&_.ql-editor.ql-blank]:before:content-(--comment-composer-placeholder)!',
-  'tw:[&_.ql-editor.ql-blank]:before:not-italic! tw:[&_.ql-editor.ql-blank]:before:left-3.5!',
-  'tw:dark:[&_.ql-editor.ql-blank]:before:text-placeholder!',
-];
-
-// The @ / # suggestion list, in the core Dropdown's style: a padded overlay
-// with inset rounded rows.
-const MENTION_LIST_CLASS = [
-  'tw:[&_.ql-mention-list-container]:w-62! tw:[&_.ql-mention-list-container]:py-1!',
-  'tw:[&_.ql-mention-list-container]:border-none!',
-  'tw:[&_.ql-mention-list-container]:rounded-lg! tw:[&_.ql-mention-list-container]:outline-1!',
-  'tw:[&_.ql-mention-list-container]:outline-solid!',
-  'tw:[&_.ql-mention-list-container]:-outline-offset-1!',
-  'tw:[&_.ql-mention-list-container]:outline-subtle!',
-  'tw:[&_.ql-mention-list-container]:bg-overlay-surface!',
-  // The theme's `shadow-lg` is empty here; the token carries the values.
-  'tw:[&_.ql-mention-list-container]:[box-shadow:var(--om-shadow-lg)]!',
-  'tw:[&_.ql-mention-list-item]:mx-1.5! tw:[&_.ql-mention-list-item]:my-px!',
-  'tw:[&_.ql-mention-list-item]:px-2.5! tw:[&_.ql-mention-list-item]:py-2!',
-  'tw:[&_.ql-mention-list-item]:rounded-md! tw:[&_.ql-mention-list-item]:text-[14px]!',
-  'tw:[&_.ql-mention-list-item]:text-secondary!',
-  'tw:[&_.ql-mention-list-item.selected]:bg-primary_hover!',
-  'tw:[&_.ql-mention-list-item.disabled]:cursor-default! tw:[&_.ql-mention-list-item.disabled]:text-tertiary!',
-];
-
-// The link bubble is a fixed 300px with nowrap content, so its chips overflow
-// here: a flex row bounded by the editor's width instead. `:not(.ql-hidden)`
-// keeps Quill's hide rule winning. Quill's editing mode zeroes the Save chip's
-// right padding, leaving its label flush with the chip's edge. Its ::before and
-// ::after are reached in the selector, not with `before:`/`after:`, which would
-// also reset their `content` ("Enter Url:", "Save").
-const LINK_TOOLTIP_CLASS = [
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)]:flex!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)]:items-center!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)]:gap-2!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)]:w-[min(420px,calc(100%-16px))]!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)::before]:shrink-0!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_input[type=text]]:flex-auto!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_input[type=text]]:min-w-0!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_input[type=text]]:w-auto!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_a.ql-preview]:flex-auto!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_a.ql-preview]:min-w-0!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_a.ql-preview]:w-auto!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_a.ql-action]:shrink-0!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden)_a.ql-remove]:shrink-0!',
-  'tw:[&_.ql-snow_.ql-tooltip:not(.ql-hidden).ql-editing_a.ql-action::after]:pr-2!',
-];
-
-const EDITOR_CLASS = classNames(
-  EDITOR_BOX_CLASS,
-  FORMAT_BAR_CLASS,
-  TEXT_CLASS,
-  MENTION_LIST_CLASS,
-  LINK_TOOLTIP_CLASS
-);
-
-// The format bar shows only while the formatting toggle beside send is on.
-const COLLAPSED_CLASS = 'tw:[&_.ql-toolbar.ql-snow]:hidden!';
-
-// quill-emoji opens its picker above the editor when the editor sits in the
-// lower half of the window, by this inline top.
-const EMOJI_PICKER_ABOVE_TOP = '-250px';
-
-/**
- * The format bar's buttons, by the class Quill or quill-emoji gives each, and
- * the design's icon for it. Quill draws its icons from one app-wide registry,
- * so the composer draws these into its own buttons instead and hides Quill's.
- */
-const FORMAT_BAR_ICONS: ReadonlyArray<
-  readonly [string, FC<SVGProps<SVGSVGElement>>]
-> = [
-  ['.ql-bold', TextEditorBold],
-  ['.ql-italic', TextEditorItalic],
-  ['.ql-strike', TextEditorStrikethrough],
-  ['.ql-blockquote', TextEditorBlockquote],
-  ['.ql-code-block', TextEditorCode],
-  ['.ql-list[value="ordered"]', TextEditorNumberedList],
-  ['.ql-list[value="bullet"]', TextEditorBulletedList],
-  ['.ql-link', TextEditorLink],
-  ['.ql-insertMention', TextEditorMention],
-  ['.ql-insertRef', TextEditorHashtag],
-  ['.textarea-emoji-control', TextEditorEmoji],
-];
-
-const isSameButtons = (a: Array<Element | null>, b: Array<Element | null>) =>
-  a.length === b.length && a.every((button, index) => button === b[index]);
-
-/**
- * Watches the editor's format bar, which loads lazily, is rebuilt when Quill
- * re-initialises and gains the emoji button after the rest. Returns its
- * buttons in {@link FORMAT_BAR_ICONS} order, and anchors the emoji picker:
- * quill-emoji drops it into the bar with no horizontal position, so it lands
- * at the composer's far edge. It is pinned to its button, above or below as
- * the module chose, and the button is marked open while it shows.
- */
-const useFormatBar = (hostRef: RefObject<HTMLElement>) => {
-  const [buttons, setButtons] = useState<Array<Element | null>>([]);
-
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) {
-      return;
-    }
-    // Read afresh each time: the editor loads lazily, and quill rebuilds its
-    // bar when it re-initialises.
-    const sync = () => {
-      const toolbar = host.querySelector<HTMLElement>('.ql-toolbar');
-      const next = FORMAT_BAR_ICONS.map(
-        ([selector]) => toolbar?.querySelector(selector) ?? null
-      );
-      setButtons((current) => (isSameButtons(current, next) ? current : next));
-      const button = toolbar?.querySelector<HTMLElement>(
-        '.textarea-emoji-control'
-      );
-      const picker = toolbar?.querySelector<HTMLElement>('#textarea-emoji');
-      button?.classList.toggle('ql-active', Boolean(picker));
-      button?.setAttribute('aria-expanded', String(Boolean(picker)));
-      if (toolbar && button && picker) {
-        // Read the module's choice once: the first pass clears that top, and
-        // any later node change (an icon drawn, a palette tab) passes again.
-        picker.dataset.above ??= String(
-          picker.style.top === EMOJI_PICKER_ABOVE_TOP
-        );
-        const isAbove = picker.dataset.above === 'true';
-        // Kept inside the bar where the button sits near its far edge.
-        const left = Math.min(
-          button.offsetLeft,
-          toolbar.clientWidth - picker.offsetWidth
-        );
-        // `''` drops the module's inline top; quill-emoji's CSS pins `right`.
-        Object.assign(picker.style, {
-          left: `${Math.max(left, 0)}px`,
-          right: 'auto',
-          top: isAbove ? '' : '100%',
-          bottom: isAbove ? '100%' : '',
-        });
-      }
-    };
-    // Node changes only: the styles set above never re-trigger it.
-    const observer = new MutationObserver(sync);
-    observer.observe(host, { childList: true, subtree: true });
-    sync();
-
-    return () => observer.disconnect();
-  }, [hostRef]);
-
-  return buttons;
-};
+import {
+  COLLAPSED_CLASS,
+  EDITOR_CLASS,
+  ICON_CLASS,
+} from './CommentComposer.constants';
 
 export interface CommentEditorProps {
   // A rejected promise puts the draft back in the editor.
@@ -289,7 +69,7 @@ export const CommentEditor: React.FC<CommentEditorProps> = ({
   const editorHostRef = useRef<HTMLDivElement>(null);
   const [hasText, setHasText] = useState(Boolean(defaultValue));
   const [isFormatting, setIsFormatting] = useState(false);
-  const formatBarButtons = useFormatBar(editorHostRef);
+  const formatBarButtons = useCommentFormatBar(editorHostRef);
 
   // The editor reports its markdown on every change; whitespace alone is not a
   // comment, so it keeps the send button disabled.
