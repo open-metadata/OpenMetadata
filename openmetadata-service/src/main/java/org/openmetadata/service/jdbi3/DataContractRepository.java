@@ -1635,16 +1635,16 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   public DataContract getEffectiveDataContract(EntityInterface entity) {
     DataContract entityContract = getEntityDataContractSafely(entity);
     DataContract parentContract = getInheritableContract(entity);
+    return parentContract == null
+        ? entityContract
+        : applyParentContract(entity, entityContract, parentContract);
+  }
 
-    if (parentContract == null) {
-      return entityContract;
-    }
-
-    if (entityContract == null) {
-      return inheritFromParentContract(entity, parentContract);
-    }
-
-    return mergeContracts(entityContract, parentContract);
+  private DataContract applyParentContract(
+      EntityInterface entity, DataContract entityContract, DataContract parentContract) {
+    return entityContract == null
+        ? inheritFromParentContract(entity, parentContract)
+        : mergeContracts(entityContract, parentContract);
   }
 
   /**
@@ -1653,44 +1653,40 @@ public class DataContractRepository extends EntityRepository<DataContract> {
    */
   private DataContract getInheritableContract(EntityInterface entity) {
     DataContract dataProductContract = getDataProductContract(entity);
-    if (dataProductContract == null && entity instanceof Table table) {
-      return loadApprovedContract(table.getDatabaseSchema());
-    }
-    return dataProductContract;
+    return dataProductContract == null && entity instanceof Table table
+        ? loadApprovedContract(table.getDatabaseSchema())
+        : dataProductContract;
   }
 
+  // An entity in several data products inherits from none of them: which one would be ambiguous.
   private DataContract getDataProductContract(EntityInterface entity) {
     List<EntityReference> dataProducts = entity.getDataProducts();
-    if (nullOrEmpty(dataProducts)) {
-      return null;
-    }
-
-    // If entity belongs to multiple data products, we cannot determine which contract to inherit
-    if (dataProducts.size() > 1) {
+    boolean inSingleDataProduct = dataProducts != null && dataProducts.size() == 1;
+    if (!nullOrEmpty(dataProducts) && !inSingleDataProduct) {
       LOG.debug(
           "Entity {} belongs to {} data products. Skipping contract inheritance to avoid ambiguity.",
           entity.getId(),
           dataProducts.size());
-      return null;
     }
-
-    return loadApprovedContract(dataProducts.getFirst());
+    return inSingleDataProduct ? loadApprovedContract(dataProducts.getFirst()) : null;
   }
 
   private DataContract loadApprovedContract(EntityReference parent) {
-    if (parent == null) {
-      return null;
-    }
+    DataContract contract = parent == null ? null : loadContractOf(parent);
+    return contract != null && contract.getEntityStatus() == EntityStatus.APPROVED
+        ? contract
+        : null;
+  }
+
+  private DataContract loadContractOf(EntityReference parent) {
+    DataContract contract = null;
     try {
-      DataContract contract = loadEntityDataContract(parent);
-      return contract != null && contract.getEntityStatus() == EntityStatus.APPROVED
-          ? contract
-          : null;
+      contract = loadEntityDataContract(parent);
     } catch (Exception e) {
       LOG.debug(
           "No contract found for {} {}: {}", parent.getType(), parent.getId(), e.getMessage());
-      return null;
     }
+    return contract;
   }
 
   private DataContract inheritFromParentContract(

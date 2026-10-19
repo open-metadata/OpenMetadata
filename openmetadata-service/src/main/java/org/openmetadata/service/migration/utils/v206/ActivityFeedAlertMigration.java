@@ -17,7 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
-import java.util.Optional;
+import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -32,6 +32,7 @@ import org.openmetadata.service.resources.databases.DatasourceConfig;
  */
 @Slf4j
 public final class ActivityFeedAlertMigration {
+  public static final String STEP_NAME = "activityFeedAlertAdmitsContractsAndStatus";
   static final String ALERT_NAME = "ActivityFeedAlert";
 
   // Rule name → value its set condition must contain.
@@ -51,13 +52,18 @@ public final class ActivityFeedAlertMigration {
   private ActivityFeedAlertMigration() {}
 
   public static void migrate(Handle handle) {
-    Optional<String> stored =
-        handle.createQuery(SELECT).bind("n", ALERT_NAME).mapTo(String.class).findFirst();
-    if (stored.isEmpty()) {
-      LOG.info("{} not stored yet; the seed creates it with the new rules", ALERT_NAME);
-      return;
-    }
-    ObjectNode alert = (ObjectNode) JsonUtils.readTree(stored.get());
+    handle
+        .createQuery(SELECT)
+        .bind("n", ALERT_NAME)
+        .mapTo(String.class)
+        .findFirst()
+        .ifPresentOrElse(
+            json -> updateIfChanged(handle, (ObjectNode) JsonUtils.readTree(json)),
+            () ->
+                LOG.info("{} not stored yet; the seed creates it with the new rules", ALERT_NAME));
+  }
+
+  private static void updateIfChanged(Handle handle, ObjectNode alert) {
     if (addMissingValues(alert)) {
       handle
           .createUpdate(isMySql() ? UPDATE_MYSQL : UPDATE_POSTGRES)
@@ -93,25 +99,26 @@ public final class ActivityFeedAlertMigration {
     String condition = rule.path("condition").asText();
     String quoted = "'" + value + "'";
     int setEnd = condition.lastIndexOf("})");
-    if (condition.contains(quoted) || setEnd < 0) {
-      return false;
+    boolean missing = setEnd >= 0 && !condition.contains(quoted);
+    if (missing) {
+      rule.put(
+          "condition",
+          condition.substring(0, setEnd) + ", " + quoted + condition.substring(setEnd));
     }
-    rule.put(
-        "condition", condition.substring(0, setEnd) + ", " + quoted + condition.substring(setEnd));
-    return true;
+    return missing;
   }
 
   private static boolean addToList(JsonNode list, String value) {
-    if (!(list instanceof ArrayNode array)) {
-      return false;
+    boolean missing = list instanceof ArrayNode && !containsText(list, value);
+    if (missing) {
+      ((ArrayNode) list).add(value);
     }
-    for (JsonNode item : array) {
-      if (value.equals(item.asText())) {
-        return false;
-      }
-    }
-    array.add(value);
-    return true;
+    return missing;
+  }
+
+  private static boolean containsText(JsonNode list, String value) {
+    return StreamSupport.stream(list.spliterator(), false)
+        .anyMatch(item -> value.equals(item.asText()));
   }
 
   private static boolean isMySql() {

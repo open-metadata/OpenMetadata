@@ -248,23 +248,29 @@ public class ActivityStreamRepository {
   public ResultList<ActivityEvent> getEntityActivity(
       String entityType, UUID entityId, List<UUID> domainIds, long afterTimestamp, int limit) {
     List<EntityReference> sources = activitySourcesOf(entityType, entityId);
-    if (limit == 0) {
-      int total =
-          sources.stream()
-              .mapToInt(ref -> countByEntity(ref.getType(), ref.getId(), domainIds, afterTimestamp))
-              .sum();
-      return new ResultList<>(List.of(), null, null, total);
-    }
     List<ActivityEvent> events =
-        sources.stream()
-            .flatMap(
-                ref ->
-                    listByEntity(ref.getType(), ref.getId(), domainIds, afterTimestamp, limit)
-                        .stream())
-            .sorted(Comparator.comparing(ActivityEvent::getTimestamp).reversed())
-            .limit(limit)
-            .toList();
-    return new ResultList<>(events, null, null, events.size());
+        limit == 0 ? List.of() : listAcross(sources, domainIds, afterTimestamp, limit);
+    int total = limit == 0 ? countAcross(sources, domainIds, afterTimestamp) : events.size();
+    return new ResultList<>(events, null, null, total);
+  }
+
+  private int countAcross(
+      List<EntityReference> sources, List<UUID> domainIds, long afterTimestamp) {
+    return sources.stream()
+        .mapToInt(ref -> countByEntity(ref.getType(), ref.getId(), domainIds, afterTimestamp))
+        .sum();
+  }
+
+  // Newest first across all sources, capped at limit: each source is already capped at limit.
+  private List<ActivityEvent> listAcross(
+      List<EntityReference> sources, List<UUID> domainIds, long afterTimestamp, int limit) {
+    return sources.stream()
+        .flatMap(
+            ref ->
+                listByEntity(ref.getType(), ref.getId(), domainIds, afterTimestamp, limit).stream())
+        .sorted(Comparator.comparing(ActivityEvent::getTimestamp).reversed())
+        .limit(limit)
+        .toList();
   }
 
   private static List<EntityReference> activitySourcesOf(String entityType, UUID entityId) {
@@ -567,16 +573,20 @@ public class ActivityStreamRepository {
   // A data contract has no domains of its own. Its activity takes its asset's, so a feed filtered
   // by domain (a selected domain, a domain-only role) keeps the contract's events with the asset's.
   private static List<EntityReference> domainsOf(EntityInterface entity) {
-    if (!(entity instanceof DataContract contract) || contract.getEntity() == null) {
-      return entity.getDomains();
-    }
+    return entity instanceof DataContract contract && contract.getEntity() != null
+        ? assetDomainsOf(contract)
+        : entity.getDomains();
+  }
+
+  private static List<EntityReference> assetDomainsOf(DataContract contract) {
+    List<EntityReference> domains = null;
     try {
       EntityInterface asset = Entity.getEntity(contract.getEntity(), FIELD_DOMAINS, Include.ALL);
-      return asset.getDomains();
+      domains = asset.getDomains();
     } catch (EntityNotFoundException e) {
       LOG.debug("Asset of data contract {} not found: {}", contract.getId(), e.getMessage());
-      return null;
     }
+    return domains;
   }
 
   private EntityReference buildActorReference(String userName) {

@@ -45,6 +45,7 @@ const renderPage = () =>
 describe('DataContractRedirectPage', () => {
   it("redirects to the contract's asset Contract tab", async () => {
     (getContract as jest.Mock).mockResolvedValue({
+      name: 'Schema Contract',
       entity: { type: 'databaseSchema', fullyQualifiedName: 'svc.db.schema' },
     });
 
@@ -54,6 +55,19 @@ describe('DataContractRedirectPage', () => {
       await screen.findByText('/databaseSchema/svc.db.schema/contract')
     ).toBeInTheDocument();
     expect(getContract).toHaveBeenCalledWith(CONTRACT_FQN);
+  });
+
+  it('finds the asset from the contract FQN when its reference has no FQN', async () => {
+    (getContract as jest.Mock).mockResolvedValue({
+      name: 'Schema Contract',
+      entity: { id: 'schema-id', type: 'databaseSchema' },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText('/databaseSchema/svc.db.schema/contract')
+    ).toBeInTheDocument();
   });
 
   it('redirects to the not-found page when the contract cannot be loaded', async () => {
