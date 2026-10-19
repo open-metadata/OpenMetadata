@@ -33,7 +33,8 @@ import org.openmetadata.service.util.RestUtil;
  * Applies a JSON Patch (RFC 6902) to an entity - the same document the REST PATCH API takes, passed
  * through as written.
  *
- * <p>Nothing here inspects or rewrites the operations. A patch touches exactly the paths it names,
+ * <p>Nothing here rewrites the operations, and only paths into a service's connection are
+ * refused ({@link #requireConnectionUntouched}). A patch touches exactly the paths it names,
  * which is the point of the format; this tool's job is to authorize it and hand it to the
  * repository. The parts that are easy to get wrong - {@code /owners} replaces the whole list where
  * {@code /owners/-} appends to it - are taught in the tool description, where the model reads them,
@@ -159,11 +160,13 @@ public class PatchEntityTool implements McpTool {
   }
 
   /**
-   * A service's connection holds its credentials, and MCP reads return it masked. Writing there
-   * could store the mask as the real password, since nothing on this path restores masked values
-   * the way the service's REST PUT does, and a {@code copy}, {@code move} or {@code test} reading
-   * from it would expose the stored config. The root pointer is refused too: replacing the whole
-   * document replaces the connection with it.
+   * A service's connection holds its credentials, and MCP reads return it masked. Stricter than
+   * REST PATCH on purpose: a {@code copy}, {@code move} or {@code test} reading from it exposes the
+   * stored config, and a write such as a new {@code hostPort} keeps the stored password, which the
+   * repository restores over the mask, and sends it to that host on the next connection test or
+   * ingestion run. The root pointer is refused too: replacing the whole document replaces the
+   * connection with it.
+   * ADR:2026-10-20-mcp-responses-carry-no-stored-credentials
    */
   private static void requireConnectionUntouched(String entityType, JsonPatch patch) {
     boolean touchesConnection =

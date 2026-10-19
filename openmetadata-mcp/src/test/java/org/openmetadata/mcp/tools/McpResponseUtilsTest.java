@@ -2,6 +2,8 @@ package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -16,9 +18,21 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.tests.TestSuite;
@@ -34,6 +48,10 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 class McpResponseUtilsTest {
+
+  private static final String STORED_SECRET = "fernet:stored-ciphertext";
+  private static final String MUST_NOT_MUTATE =
+      "masking must not mutate the entity the repository returned";
 
   private static Glossary buildGlossary() {
     Glossary glossary = new Glossary();
@@ -106,6 +124,75 @@ class McpResponseUtilsTest {
     assertTrue(
         JsonUtils.pojoToJson(service).contains(storedPassword),
         "masking must not mutate the entity the repository returned");
+  }
+
+  @Test
+  void readsMaskIngestionPipelineSourceConfigSecrets() {
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withName("dbtPipeline")
+            .withPipelineType(PipelineType.DBT)
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        new DbtPipeline()
+                            .withDbtConfigSource(
+                                new DbtGCSConfig()
+                                    .withDbtSecurityConfig(
+                                        new GCPCredentials()
+                                            .withGcpConfig(
+                                                new GCPValues().withPrivateKey(STORED_SECRET))))));
+    EntityMaskerFactory.createEntityMasker();
+
+    var masked = JsonUtils.valueToTree(McpResponseUtils.maskSecrets(pipeline));
+
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        masked
+            .at("/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/gcpConfig/privateKey")
+            .asText());
+    assertTrue(JsonUtils.pojoToJson(pipeline).contains(STORED_SECRET), MUST_NOT_MUTATE);
+  }
+
+  @Test
+  void readsDropUserAuthenticationMechanism() {
+    User bot =
+        new User()
+            .withName("ingestion-bot")
+            .withIsBot(true)
+            .withAuthenticationMechanism(
+                new AuthenticationMechanism()
+                    .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                    .withConfig(new JWTAuthMechanism().withJWTToken(STORED_SECRET)));
+
+    User masked = (User) McpResponseUtils.maskSecrets(bot);
+
+    assertNull(masked.getAuthenticationMechanism());
+    assertNotNull(bot.getAuthenticationMechanism(), MUST_NOT_MUTATE);
+  }
+
+  @Test
+  void readsMaskAutomationsWorkflowRequest() {
+    Workflow workflow =
+        new Workflow()
+            .withName("testConnection")
+            .withRequest(
+                new TestServiceConnectionRequest()
+                    .withConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new MysqlConnection()
+                                    .withAuthType(new basicAuth().withPassword(STORED_SECRET))))
+                    .withServiceType(ServiceType.DATABASE)
+                    .withConnectionType("Mysql"));
+    EntityMaskerFactory.createEntityMasker();
+
+    var masked = JsonUtils.valueToTree(McpResponseUtils.maskSecrets(workflow));
+
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        masked.at("/request/connection/config/authType/password").asText());
+    assertTrue(JsonUtils.pojoToJson(workflow).contains(STORED_SECRET), MUST_NOT_MUTATE);
   }
 
   @Test

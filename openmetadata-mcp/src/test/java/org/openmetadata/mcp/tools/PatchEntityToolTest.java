@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -354,6 +355,33 @@ class PatchEntityToolTest {
           .hasMessageContaining("Nothing was changed");
     }
     verifyNoInteractions(authorizer, serviceRepository);
+  }
+
+  @Test
+  void execute_servicePatchOutsideTheConnectionReachesTheRepository() {
+    DatabaseServiceRepository serviceRepository = mock(DatabaseServiceRepository.class);
+    doReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.OK, mock(EntityInterface.class), EventType.ENTITY_UPDATED))
+        .when(serviceRepository)
+        .patch(any(), any(String.class), any(), any(), any(), any(), any());
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.DATABASE_SERVICE);
+    params.put("fqn", "mysqlService");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.DATABASE_SERVICE))
+          .thenReturn(serviceRepository);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+
+      verify(serviceRepository).patch(any(), any(String.class), any(), any(), any(), any(), any());
+    }
   }
 
   @ParameterizedTest

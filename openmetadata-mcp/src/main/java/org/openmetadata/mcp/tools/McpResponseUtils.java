@@ -6,9 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
@@ -16,6 +20,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
+import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 
@@ -42,47 +47,60 @@ public final class McpResponseUtils {
 
   /**
    * Returns {@code entity} with the secrets the REST resource masks replaced by the mask, so an MCP
-   * response or change event never carries a credential the REST API would hide. Workflow
-   * definitions hold sink credentials in a free-form {@code sinkConfig} that the generic entity read
-   * returns in clear, and services their connection config as stored; every other entity type is
-   * returned as is.
+   * response or change event does not carry them: a workflow definition's sink credentials, a
+   * service's connection config, an ingestion pipeline's source config, an automations workflow's
+   * request, and a user's authentication mechanism. That last one is dropped rather than masked: a
+   * basic-auth user's config holds the password hash, which the masker does not type, and no agent
+   * task needs any user's credentials. Every other entity type is returned as is.
+   *
+   * <p>The mask applies to every caller, bots included: REST hands a bot the decrypted value, and no
+   * agent task needs it. REST decrypts before masking; masking the stored value gives the same
+   * result, since encryption and the masker walk the same {@code @PasswordField} getters. Each mask
+   * runs on a copy, so the entity the repository returned keeps its values.
+   * ADR:2026-10-20-mcp-responses-carry-no-stored-credentials
    */
   public static EntityInterface<?> maskSecrets(EntityInterface<?> entity) {
     // MCP tools read and write entities by a runtime entityType string, so the concrete type is
     // only known from the instance.
-    EntityInterface<?> masked = entity;
-    if (entity instanceof WorkflowDefinition definition) {
-      masked = WorkflowDefinitionMasker.mask(definition);
-    } else if (entity instanceof ServiceEntityInterface service
-        && service.getConnection() != null
-        // TestSuite implements ServiceEntityInterface with a placeholder connection and has no
-        // service repository; it holds nothing to mask.
+    EntityMasker masker = EntityMaskerFactory.getEntityMasker();
+    return switch (entity) {
+      case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
+      case IngestionPipeline pipeline -> maskedCopy(pipeline, masker::maskIngestionPipeline);
+      case User user -> maskedCopy(user, copy -> copy.setAuthenticationMechanism(null));
+      case Workflow workflow -> masker.maskWorkflow(JsonUtils.deepCopy(workflow, Workflow.class));
+      case ServiceEntityInterface service -> maskConnection(service, masker);
+      default -> entity;
+    };
+  }
+
+  private static EntityInterface<?> maskConnection(
+      ServiceEntityInterface service, EntityMasker masker) {
+    EntityInterface<?> masked = service;
+    // TestSuite implements ServiceEntityInterface with a placeholder connection and has no service
+    // repository; it holds nothing to mask.
+    if (service.getConnection() != null
         && Entity.getEntityRepository(Entity.getEntityTypeFromObject(service))
             instanceof ServiceEntityRepository<?, ?> repository) {
-      masked = maskConnection(service, repository.getServiceType());
+      ServiceType serviceType = repository.getServiceType();
+      masked =
+          maskedCopy(
+              service,
+              copy ->
+                  copy.getConnection()
+                      .setConfig(
+                          masker.maskServiceConnectionConfig(
+                              copy.getConnection().getConfig(),
+                              copy.getServiceType().value(),
+                              serviceType)));
     }
     return masked;
   }
 
-  /**
-   * The mask ServiceEntityResource applies for a non-bot caller, on a copy so the entity the
-   * repository returned keeps its config. MCP masks for bots too: REST hands a bot the decrypted
-   * config, and no agent task needs it. REST decrypts before masking; masking the stored config
-   * gives the same result, since encryption and the masker walk the same {@code @PasswordField}
-   * getters, without a secrets manager call per read.
-   */
-  private static ServiceEntityInterface maskConnection(
-      ServiceEntityInterface service, ServiceType serviceType) {
-    ServiceEntityInterface masked = JsonUtils.deepCopy(service, service.getClass());
-    masked
-        .getConnection()
-        .setConfig(
-            EntityMaskerFactory.getEntityMasker()
-                .maskServiceConnectionConfig(
-                    masked.getConnection().getConfig(),
-                    masked.getServiceType().value(),
-                    serviceType));
-    return masked;
+  @SuppressWarnings("unchecked")
+  private static <T extends EntityInterface<?>> T maskedCopy(T entity, Consumer<T> mask) {
+    T copy = (T) JsonUtils.deepCopy(entity, entity.getClass());
+    mask.accept(copy);
+    return copy;
   }
 
   public static Map<String, Object> compact(EntityInterface<?> entity, EventType changeType) {
