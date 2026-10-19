@@ -26,8 +26,8 @@ import { getEntityTypeFromServiceCategory } from '../../../utils/ServicePureUtil
 import Description from '../../common/EntityDescription/Description';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { CommonWidgets } from '../../DataAssets/CommonWidgets/CommonWidgets';
-import { RIGHT_PANEL_WIDGETS } from './DataAssetsTab.constants';
 import './data-assets-tab.less';
+import { RIGHT_PANEL_WIDGETS } from './DataAssetsTab.constants';
 
 interface DataAssetsTabProps {
   serviceCategory: ServiceCategory;
