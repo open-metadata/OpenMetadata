@@ -35,6 +35,7 @@ import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
@@ -251,7 +252,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             "Updated CORS origins from configuration reload: {}", mcpConfig.getAllowedOrigins());
       }
       if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
-        rebuildMetadata(mcpConfig.getBaseUrl());
+        rebuildMetadata(UriUtils.withoutTrailingSlash(mcpConfig.getBaseUrl()));
       }
     }
   }
