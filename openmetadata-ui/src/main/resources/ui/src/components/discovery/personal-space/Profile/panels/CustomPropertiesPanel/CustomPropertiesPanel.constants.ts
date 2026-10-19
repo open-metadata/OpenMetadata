@@ -40,6 +40,7 @@ export const ENTITY_GROUP_MAP: Record<string, string> = {
   glossaryTerm: GROUP_GOVERNANCE,
   metric: GROUP_GOVERNANCE,
   mlmodel: GROUP_PIPELINES_ML,
+  page: GROUP_GOVERNANCE,
   pipeline: GROUP_PIPELINES_ML,
   searchIndex: GROUP_PIPELINES_ML,
   spreadsheet: GROUP_DASHBOARDS_REPORTING,
