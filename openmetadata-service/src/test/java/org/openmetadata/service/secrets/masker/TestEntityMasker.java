@@ -85,8 +85,8 @@ abstract class TestEntityMasker {
 
   /**
    * A secret declared inside a JSON-schema array - {@code mcpConnection.servers[].apiKey} - used to
-   * be skipped entirely, because the masker only recursed into OpenMetadata objects and a
-   * {@code List} is neither one of those nor an annotated leaf.
+   * be skipped entirely, because the masker only recursed into OpenMetadata objects and a {@code
+   * List} is neither one of those nor an annotated leaf.
    */
   @Test
   void testArrayNestedSecretIsMaskedAndRoundTrips() {

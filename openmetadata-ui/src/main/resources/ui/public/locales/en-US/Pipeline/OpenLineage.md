@@ -110,10 +110,12 @@ $$
 These fields apply when the broker type is set to **Kinesis**. OpenMetadata reads OpenLineage events from an AWS Kinesis Data Stream.
 
 $$section
-### Kinesis Data Stream name $(id="streamName")
-The name of the AWS Kinesis Data Stream that OpenLineage events are published to.
+### Stream Name $(id="streamName")
+The stream that OpenLineage events are published to.
 
-This should be specified as a stream name string. E.g., `openlineage-events`.
+**Kinesis**: the name of the AWS Kinesis Data Stream, as a stream name string. E.g., `openlineage-events`.
+
+**NATS**: the JetStream stream that holds the events. The stream is created and configured by whoever runs the NATS server; this connector only reads from it. Its retention (`max-age`, `max-bytes`) decides how long unconsumed events are kept.
 $$
 
 $$section
@@ -173,11 +175,6 @@ $$
 $$section
 ### NATS Servers $(id="natsServers")
 NATS server URLs as comma-separated values, for example `nats://host1:4222,nats://host2:4222`.
-$$
-
-$$section
-### Stream Name $(id="streamName")
-JetStream stream that holds the OpenLineage events. The stream is created and configured by whoever runs the NATS server; this connector only reads from it. Its retention (`max-age`, `max-bytes`) decides how long unconsumed events are kept.
 $$
 
 $$section

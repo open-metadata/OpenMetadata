@@ -43,6 +43,8 @@ from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageS
 
 STREAM = f"OPENLINEAGE_{uuid.uuid4().hex[:8]}"
 SUBJECT = f"{STREAM.lower()}.events"
+REPLAY_STREAM = f"{STREAM}_REPLAY"
+REPLAY_SUBJECT = f"{REPLAY_STREAM.lower()}.events"
 EVENT_FILE = Path(__file__).parents[1].parent / "unit" / "resources" / "datasets" / "openlineage_event.json"
 
 
@@ -80,11 +82,11 @@ def _publish(url: str, events: list[dict], stream: str = STREAM, subject: str = 
     asyncio.run(publish())
 
 
-def _consume(url: str, durable: str) -> list:
+def _consume(url: str, durable: str, stream: str = STREAM, subject: str = SUBJECT) -> list:
     broker = NatsBrokerConfig(
         natsServers=url,
-        streamName=STREAM,
-        subject=SUBJECT,
+        streamName=stream,
+        subject=subject,
         durableConsumerName=durable,
         poolTimeout=1.0,
         sessionTimeout=2,
@@ -112,7 +114,11 @@ def test_events_published_to_jetstream_are_consumed_once(nats_url):
 
 @pytest.mark.integration
 def test_a_new_consumer_replays_the_stream_from_the_start(nats_url):
-    consumed = _consume(nats_url, durable="replay")
+    # Its own stream, so the test does not inherit the events another test published
+    event = json.loads(EVENT_FILE.read_text())
+    _publish(nats_url, [event, {**event, "eventType": "START"}], stream=REPLAY_STREAM, subject=REPLAY_SUBJECT)
+
+    consumed = _consume(nats_url, durable="replay", stream=REPLAY_STREAM, subject=REPLAY_SUBJECT)
 
     assert len(consumed) == 2
 

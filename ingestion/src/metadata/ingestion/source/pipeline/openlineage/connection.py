@@ -326,7 +326,7 @@ def _get_nats_connection(broker: NatsBrokerConfig) -> NatsJetStreamClient:
         # Every subject of the stream, unless the user narrowed it down
         filter_subject = broker.subject or ">"
 
-        async def _connect() -> tuple[Any, Any]:
+        async def _connect() -> tuple[Any, Any, float | None]:
             nc = await nats.connect(**options)
             try:
                 js = nc.jetstream()
