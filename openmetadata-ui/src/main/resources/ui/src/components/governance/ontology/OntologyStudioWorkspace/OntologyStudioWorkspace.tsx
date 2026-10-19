@@ -18,30 +18,43 @@ import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
-import OntologyStudioQueryConsole from '../../../OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
 import OntologyCreateForm from '../OntologyCreateForm/OntologyCreateForm';
-import OntologyGraphView from '../OntologyGraphView/OntologyGraphView';
-import OntologyPublicationWorkspace from '../OntologyPublicationWorkspace/OntologyPublicationWorkspace';
+import OntologyGraphView, {
+  OntologyModelStats,
+} from '../OntologyGraphView/OntologyGraphView';
 
 interface OntologyStudioWorkspaceProps {
   ontology?: Ontology;
   canCreate: boolean;
+  createConceptRequestKey?: number;
   initialDraftId?: string;
+  mode: 'view' | 'edit' | 'definitions' | 'review';
+  viewSurface: 'graph' | 'tree';
   onSaved: (ontology: Ontology) => void;
+  onRequestEdit?: () => void;
+  onStatsChange?: (stats: OntologyModelStats) => void;
 }
+
+const getWorkspaceClassName = (mode: OntologyStudioWorkspaceProps['mode']) =>
+  mode === 'view' || mode === 'edit'
+    ? 'tw:min-h-0 tw:flex-1 tw:overflow-hidden'
+    : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
 
 const OntologyStudioWorkspace = ({
   ontology,
   canCreate,
+  createConceptRequestKey,
   initialDraftId,
+  mode,
+  viewSurface,
   onSaved,
+  onRequestEdit,
+  onStatsChange,
 }: OntologyStudioWorkspaceProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const [surface, setSurface] = useState(initialDraftId ? 'review' : 'graph');
-  const [definition, setDefinition] = useState('concept');
   const [revision, setRevision] = useState(0);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
@@ -61,50 +74,49 @@ const OntologyStudioWorkspace = ({
     );
   }
 
-  const renderModel = () => (
-    <>
-      <Tabs
-        selectedKey={definition}
-        onSelectionChange={(key) => setDefinition(String(key))}>
-        <Tabs.List size="sm" type="button-border">
-          {['ontology', 'concept', 'property', 'axiom'].map((id) => (
-            <Tabs.Item data-testid={`ontology-model-${id}`} id={id} key={id}>
-              {t(`label.${id === 'axiom' ? 'constraint-plural' : id}`)}
-            </Tabs.Item>
-          ))}
-        </Tabs.List>
-      </Tabs>
-      {definition === 'ontology' && (
-        <OntologyCreateForm
-          canCreate={canEditAll}
-          key={ontology.version}
-          ontology={ontology}
-          onSaved={onSaved}
-        />
-      )}
-      {(definition === 'concept' || definition === 'property') && (
-        <OntologyAuthoringWorkspace
-          definitionType={definition}
-          key={definition}
-          ontology={ontology}
-        />
-      )}
-      {definition === 'axiom' && <OntologyAxiomWorkspace ontology={ontology} />}
-    </>
-  );
   const renderContent = () => {
-    switch (surface) {
-      case 'graph':
-        return <OntologyGraphView key={revision} ontology={ontology} />;
-      case 'releases':
-        return <OntologyPublicationWorkspace ontology={ontology} />;
-      case 'query':
+    switch (mode) {
+      case 'definitions':
         return (
-          <OntologyStudioQueryConsole
-            graphData={null}
-            relationTypes={[]}
-            selectedGlossaryIds={[]}
-            selectedOntologyId={ontology.id}
+          <Tabs defaultSelectedKey="concept">
+            <Tabs.List aria-label={t('label.definition')} type="underline">
+              <Tabs.Item id="concept">{t('label.concept-plural')}</Tabs.Item>
+              <Tabs.Item id="property">{t('label.property-plural')}</Tabs.Item>
+              <Tabs.Item id="axiom">{t('label.constraint-plural')}</Tabs.Item>
+              <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
+            </Tabs.List>
+            <Tabs.Panel id="concept">
+              <OntologyAuthoringWorkspace ontology={ontology} />
+            </Tabs.Panel>
+            <Tabs.Panel id="property">
+              <OntologyAuthoringWorkspace
+                definitionType="property"
+                ontology={ontology}
+              />
+            </Tabs.Panel>
+            <Tabs.Panel id="axiom">
+              <OntologyAxiomWorkspace ontology={ontology} />
+            </Tabs.Panel>
+            <Tabs.Panel id="settings">
+              <OntologyCreateForm
+                canCreate={canEditAll}
+                ontology={ontology}
+                onSaved={onSaved}
+              />
+            </Tabs.Panel>
+          </Tabs>
+        );
+      case 'view':
+      case 'edit':
+        return (
+          <OntologyGraphView
+            createConceptRequestKey={createConceptRequestKey}
+            isEditing={mode === 'edit'}
+            key={revision}
+            ontology={ontology}
+            surface={viewSurface}
+            onRequestEdit={onRequestEdit}
+            onStatsChange={onStatsChange}
           />
         );
       case 'review':
@@ -119,35 +131,13 @@ const OntologyStudioWorkspace = ({
           />
         );
       default:
-        return renderModel();
+        return null;
     }
   };
 
   return (
-    <Box className="tw:min-h-0 tw:flex-1" direction="col">
-      <Tabs
-        selectedKey={surface}
-        onSelectionChange={(key) => setSurface(String(key))}>
-        <Tabs.List size="sm" type="underline">
-          {Object.entries({
-            graph: 'graph',
-            model: 'model',
-            releases: 'ontology-release',
-            review: 'needs-review',
-            query: 'query',
-          }).map(([id, label]) => (
-            <Tabs.Item data-testid={`mode-tab-${id}`} id={id} key={id}>
-              {t(`label.${label}`)}
-            </Tabs.Item>
-          ))}
-        </Tabs.List>
-      </Tabs>
-      <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6"
-        direction="col"
-        gap={4}>
-        {renderContent()}
-      </Box>
+    <Box className={getWorkspaceClassName(mode)} direction="col" gap={4}>
+      {renderContent()}
     </Box>
   );
 };

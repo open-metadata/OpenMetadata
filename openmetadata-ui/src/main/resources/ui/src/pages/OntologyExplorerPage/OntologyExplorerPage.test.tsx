@@ -24,10 +24,13 @@ import { usePermissionProvider } from '../../context/PermissionProvider/Permissi
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../generated/entity/data/ontologyConcept';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getOntology,
   listOntologies,
+  listOntologyAxioms,
   listOntologyConcepts,
+  listOntologyProperties,
 } from '../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { showInfoToast } from '../../utils/ToastUtils';
@@ -47,8 +50,10 @@ jest.mock('react-router-dom', () => ({
 jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
   getOntology: jest.fn(),
+  listOntologyAxioms: jest.fn(),
   listOntologies: jest.fn(),
   listOntologyConcepts: jest.fn(),
+  listOntologyProperties: jest.fn(),
 }));
 
 jest.mock('../../rest/permissionAPI', () => ({
@@ -56,10 +61,14 @@ jest.mock('../../rest/permissionAPI', () => ({
   getEntityPermissionById: jest.fn().mockResolvedValue({ operations: [] }),
 }));
 
-jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => ({
-  __esModule: true,
-  default: () => <div data-testid="native-canvas" />,
-}));
+jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => {
+  const { forwardRef } = jest.requireActual<typeof import('react')>('react');
+
+  return {
+    __esModule: true,
+    default: forwardRef(() => <div data-testid="native-canvas" />),
+  };
+});
 
 interface ExplorerMockProps {
   conceptDraftId?: string;
@@ -91,6 +100,10 @@ interface LibraryMockProps {
   onOpenGlossary?: (glossaryName: string) => void;
 }
 
+interface PublicationModalMockProps {
+  onClose: () => void;
+}
+
 const mockOntologyExplorer = jest.fn<void, [ExplorerMockProps]>();
 const mockQueryConsole = jest.fn<void, [QueryConsoleMockProps]>();
 const mockUseOntologyAiCapability = jest.fn(() => ({
@@ -103,6 +116,13 @@ const mockUseOntologyEditLease = jest.fn((_options?: unknown) => ({
   lock: undefined,
   retry: jest.fn(),
   state: 'owned' as const,
+}));
+const mockUseOntologyStudioScopes = jest.fn(() => ({
+  glossaries: [] as Glossary[],
+  isError: false,
+  isLoading: false,
+  ontologies: [] as Ontology[],
+  refetch: jest.fn(),
 }));
 const mockUseAuth = jest.fn(() => ({
   isAdminUser: true,
@@ -125,6 +145,24 @@ jest.mock(
     useOntologyAiCapability: () => mockUseOntologyAiCapability(),
   })
 );
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: jest.fn(),
+}));
+
+jest.mock('../../hooks/governance/ontology/useOntologyStudioScopes', () => ({
+  useOntologyConceptCounts: () => ({}),
+  useOntologyStudioScopes: ({
+    knownGlossaries,
+  }: {
+    knownGlossaries: Glossary[];
+  }) => ({
+    ...mockUseOntologyStudioScopes(),
+    glossaries: knownGlossaries.length
+      ? knownGlossaries
+      : mockUseOntologyStudioScopes().glossaries,
+  }),
+}));
 
 jest.mock(
   '../../components/OntologyExplorer/hooks/useOntologyEditLease',
@@ -207,6 +245,28 @@ jest.mock('../../components/OntologyExplorer/OntologyImportExportMenu', () => ({
 }));
 
 jest.mock(
+  '../../components/governance/ontology/OntologyConceptEditor/OntologyConceptEditor',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="ontology-concept-editor" />,
+  })
+);
+
+jest.mock(
+  '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal',
+  () => ({
+    __esModule: true,
+    default: ({ onClose }: PublicationModalMockProps) => (
+      <div data-testid="ontology-publication-modal">
+        <button type="button" onClick={onClose}>
+          Close publication
+        </button>
+      </div>
+    ),
+  })
+);
+
+jest.mock(
   '../../components/OntologyExplorer/OntologyStudioQueryConsole',
   () => ({
     __esModule: true,
@@ -229,6 +289,7 @@ jest.mock(
 describe('OntologyExplorerPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: true });
     mockUseRealRouter = false;
     mockSearchParams = new URLSearchParams();
     mockUseAuth.mockReturnValue({
@@ -239,6 +300,13 @@ describe('OntologyExplorerPage', () => {
       isEnabled: false,
       isLoading: false,
       isRdfEnabled: true,
+    });
+    mockUseOntologyStudioScopes.mockReturnValue({
+      glossaries: [],
+      isError: false,
+      isLoading: false,
+      ontologies: [],
+      refetch: jest.fn(),
     });
   });
 
@@ -255,11 +323,25 @@ describe('OntologyExplorerPage', () => {
   );
 
   const renderNativeStudio = (search: string) => {
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      permissions: {
+        ontologyConcept: { Create: true },
+        ontologyProperty: { Create: true },
+        ontologyAxiom: { Create: true },
+      },
+    });
     mockUseRealRouter = true;
     (getOntology as jest.Mock).mockResolvedValue(nativeOntology);
     (listOntologies as jest.Mock).mockResolvedValue({
       data: [nativeOntology],
       paging: { total: 1 },
+    });
+    mockUseOntologyStudioScopes.mockReturnValue({
+      glossaries: [],
+      isError: false,
+      isLoading: false,
+      ontologies: [nativeOntology],
+      refetch: jest.fn(),
     });
     (listOntologyConcepts as jest.Mock).mockResolvedValue({
       data: ['Party', 'Customer'].map((name) => ({
@@ -272,6 +354,14 @@ describe('OntologyExplorerPage', () => {
         superClasses: name === 'Customer' ? ['urn:Party'] : [],
       })),
       paging: { total: 2 },
+    });
+    (listOntologyProperties as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    (listOntologyAxioms as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
     });
 
     return renderWithQueryClient(
@@ -294,7 +384,7 @@ describe('OntologyExplorerPage', () => {
         .at(-1)?.[0]
         .onGlossariesChange?.([glossary])
     );
-    fireEvent.click(screen.getByTestId('ontology-glossary-menu-trigger'));
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
     fireEvent.click(
       screen.getByRole('menuitemradio', { name: /Business glossary/ })
     );
@@ -304,16 +394,16 @@ describe('OntologyExplorerPage', () => {
       expect.objectContaining({ isActive: true })
     );
 
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.select-entity' })
-    );
-    fireEvent.click(await screen.findByText(nativeOntology.name));
-    await screen.findByTestId('mode-tab-model');
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-native-sales'));
 
-    expect(screen.getByTestId('mode-tab-graph')).toHaveAttribute(
+    expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
       'aria-selected',
       'true'
     );
+    expect(screen.queryByTestId('mode-tab-model')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-releases')).not.toBeInTheDocument();
+    expect(screen.getAllByTestId('ontology-studio-header')).toHaveLength(1);
     expect(screen.getByTestId('location')).toHaveTextContent(
       '?ontology=native-sales'
     );
@@ -333,20 +423,145 @@ describe('OntologyExplorerPage', () => {
   it('keeps a native draft deep link in its selected ontology review', async () => {
     renderNativeStudio('?ontology=native-sales&draft=native-draft');
 
-    await waitFor(() =>
-      expect(screen.getByTestId('mode-tab-review')).toHaveAttribute(
-        'aria-selected',
-        'true'
-      )
-    );
+    await screen.findByTestId('ontology-memory-review-panel');
 
     expect(screen.getByTestId('location')).toHaveTextContent(
       'draft=native-draft'
     );
     expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
+    expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
     expect(mockUseOntologyEditLease).toHaveBeenLastCalledWith(
       expect.objectContaining({ isActive: false })
     );
+  });
+
+  it('uses the shared Studio shell for a native ontology', async () => {
+    renderNativeStudio('?ontology=native-sales');
+
+    await screen.findByTestId('native-canvas');
+
+    expect(screen.getAllByTestId('ontology-studio-header')).toHaveLength(1);
+    expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveTextContent(
+      nativeOntology.name
+    );
+    expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('mode-tab-edit')).toBeVisible();
+    expect(screen.getByTestId('mode-tab-query')).toBeVisible();
+    expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.queryByTestId('mode-tab-graph')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-model')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mode-tab-releases')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-import-export')).toBeVisible();
+    expect(screen.getByTestId('ontology-explorer-stats')).toHaveTextContent(
+      '2 label.concept-plural · 0 label.relation-plural'
+    );
+    expect(screen.getByText('2 label.isolated')).toBeVisible();
+  });
+
+  it('keeps the native canvas in Edit and starts concept authoring from the shared header', async () => {
+    renderNativeStudio('?ontology=native-sales');
+
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('submode-tab-tree'));
+
+    expect(screen.getByTestId('ontology-tree-view')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(screen.getByTestId('native-canvas')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-model-concept')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-add-concept'));
+
+    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+  });
+
+  it('starts a new query in the selected native ontology', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('mode-tab-query'));
+    fireEvent.click(screen.getByTestId('ontology-new-query'));
+
+    expect(mockQueryConsole).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        createQueryOnMount: true,
+        selectedOntologyId: nativeOntology.id,
+      })
+    );
+  });
+
+  it('uses the native console after leaving the glossary visual query builder', async () => {
+    renderNativeStudio('');
+    fireEvent.click(screen.getByTestId('mode-tab-query'));
+    fireEvent.click(screen.getByTestId('submode-tab-builder'));
+
+    expect(screen.getByTestId('visual-query-builder')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-native-sales'));
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('mode-tab-query'));
+
+    expect(screen.getByTestId('sparql-query-console')).toBeVisible();
+    expect(
+      screen.queryByTestId('visual-query-builder')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('submode-tab-console')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  it('opens the graph editor for a concept owner after visiting Definitions', async () => {
+    (useEntityPermissions as jest.Mock).mockImplementation((resource) => ({
+      canEditAll: resource === 'ontologyConcept',
+    }));
+    mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
+    renderNativeStudio('?ontology=native-sales');
+    (usePermissionProvider as jest.Mock).mockReturnValue({ permissions: {} });
+    await screen.findByTestId('native-canvas');
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('submode-tab-definitions'));
+    fireEvent.click(screen.getByTestId('mode-tab-view'));
+    fireEvent.click(screen.getByTestId('submode-tab-tree'));
+    fireEvent.click(screen.getByTestId('ontology-tree-term-Customer'));
+    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+
+    expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+    expect(screen.getByTestId('native-canvas')).toBeVisible();
+    expect(screen.getByTestId('mode-tab-edit')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  it('opens native Changes and Releases from the shared Publish action', async () => {
+    renderNativeStudio('?ontology=native-sales');
+
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+
+    expect(screen.getByTestId('ontology-publication-modal')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close publication' }));
+
+    expect(
+      screen.queryByTestId('ontology-publication-modal')
+    ).not.toBeInTheDocument();
   });
 
   it('renders the dedicated Studio shell and graph by default', () => {
@@ -368,7 +583,7 @@ describe('OntologyExplorerPage', () => {
       'true'
     );
     expect(
-      screen.getByTestId('ontology-glossary-menu-trigger')
+      screen.getByTestId('ontology-scope-menu-trigger')
     ).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
     expect(
@@ -486,7 +701,7 @@ describe('OntologyExplorerPage', () => {
     };
 
     act(() => explorerProps?.onGlossariesChange?.([glossary]));
-    fireEvent.click(screen.getByTestId('ontology-glossary-menu-trigger'));
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
     const glossaryMenuItem = screen.getByRole('menuitemradio', {
       name: /CustomerLifecycle/,
     });
@@ -675,9 +890,9 @@ describe('OntologyExplorerPage', () => {
 
     act(() => explorerProps?.onGlossariesChange?.([installedGlossary]));
 
-    expect(
-      screen.getByTestId('ontology-glossary-menu-trigger')
-    ).toHaveTextContent(installedGlossary.name);
+    expect(screen.getByTestId('ontology-scope-menu-trigger')).toHaveTextContent(
+      installedGlossary.name
+    );
   });
 
   it('does not expose Edit mode to a read-only user', () => {

@@ -25,21 +25,23 @@ import OntologyReleaseDetails from './OntologyReleaseDetails';
 interface OntologyReleasePanelProps {
   ontology: Ontology;
   canEdit: boolean;
+  view: 'changes' | 'releases';
 }
 
 const OntologyReleasePanel = ({
   ontology,
   canEdit,
+  view,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
   const {
     working,
     selected,
+    selectedId,
     releaseId,
     release,
     setSelectedId,
     isBusy,
-    refresh,
     capture,
     requestApproval,
     activate,
@@ -71,20 +73,8 @@ const OntologyReleasePanel = ({
     );
   };
 
-  return (
+  const renderChanges = () => (
     <Box direction="col" gap={4}>
-      <Box align="center" gap={3}>
-        <Typography as="h2" size="text-lg" weight="semibold">
-          {t('label.ontology-release')}
-        </Typography>
-        <Button
-          color="secondary"
-          isDisabled={isBusy}
-          size="sm"
-          onPress={() => void refresh()}>
-          {t('label.refresh')}
-        </Button>
-      </Box>
       {working.isError && (
         <Alert variant="error">
           {t('message.ontology-review-unavailable')}
@@ -99,19 +89,43 @@ const OntologyReleasePanel = ({
           {working.data.state.workingRevision}
         </Typography>
       )}
-      <Box gap={3}>
-        <Button color="primary" isDisabled={!canPublish} onPress={capture}>
-          {t('label.capture-release')}
-        </Button>
-        <OntologyReleasePicker
-          key={working.data?.state.lastReleaseRevision}
-          label={t('label.ontology-release')}
-          ontologyId={ontology.id}
-          value={release}
-          onChange={(value) => setSelectedId(value?.id)}
-        />
-      </Box>
-      {renderRelease()}
+      <Button color="primary" isDisabled={!canPublish} onPress={capture}>
+        {t('label.capture-release')}
+      </Button>
+    </Box>
+  );
+
+  const renderReleases = () => (
+    <OntologyReleasePicker
+      key={working.data?.state.lastReleaseRevision}
+      label={t('label.ontology-release')}
+      ontologyId={ontology.id}
+      value={release}
+      onChange={(value) => setSelectedId(value?.id)}
+    />
+  );
+
+  const renderView = () => {
+    if (view === 'changes') {
+      return (
+        <>
+          {renderChanges()}
+          {selectedId ? renderRelease() : null}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {renderReleases()}
+        {renderRelease()}
+      </>
+    );
+  };
+
+  return (
+    <Box direction="col" gap={4}>
+      {renderView()}
     </Box>
   );
 };

@@ -28,35 +28,18 @@ export interface GraphTermRef {
 export const DANGLING_GRAPH_NODE_ID = '00000000-0000-0000-0000-000000000000';
 
 export async function applyGlossaryFilter(page: Page, glossaryId: string) {
-  const studioGlossaryMenu = page.getByTestId('ontology-glossary-menu-trigger');
-  if (await studioGlossaryMenu.isVisible()) {
-    if ((await studioGlossaryMenu.getAttribute('aria-expanded')) !== 'true') {
-      await studioGlossaryMenu.click();
-    }
-    const glossaryOption = page.getByTestId(glossaryId);
-    await glossaryOption.scrollIntoViewIfNeeded();
-    await glossaryOption.click();
-    await expect(studioGlossaryMenu).toHaveAttribute('aria-expanded', 'false');
-    await expect(studioGlossaryMenu).toHaveAttribute(
-      'data-selected-glossary-id',
-      glossaryId
-    );
-
-    return;
+  const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
+  if ((await scopeMenu.getAttribute('aria-expanded')) !== 'true') {
+    await scopeMenu.click();
   }
-
-  await page.getByTestId('search-dropdown-glossaryIds').click();
-  await page.getByTestId(glossaryId).click();
-  const termsResponse = waitForResponseWithStatus(
-    page,
-    (response) =>
-      response.request().method() === 'GET' &&
-      response.url().includes('/api/v1/glossaryTerms'),
-    200,
-    { timeout: ACTION_TIMEOUT }
+  const glossaryOption = page.getByTestId(glossaryId);
+  await glossaryOption.scrollIntoViewIfNeeded();
+  await glossaryOption.click();
+  await expect(scopeMenu).toHaveAttribute('aria-expanded', 'false');
+  await expect(scopeMenu).toHaveAttribute(
+    'data-scope-key',
+    `glossary:${glossaryId}`
   );
-  await page.getByTestId('update-btn').click();
-  await termsResponse;
 }
 
 export async function navigateToOntologyStudio(page: Page) {

@@ -47,6 +47,19 @@ jest.mock('../../hooks/useApplicationStore', () => ({
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: {} }),
 }));
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: () => ({ canEditAll: true }),
+}));
+jest.mock('../../hooks/governance/ontology/useOntologyStudioScopes', () => ({
+  useOntologyConceptCounts: () => ({}),
+  useOntologyStudioScopes: () => ({
+    glossaries: [],
+    isError: false,
+    isLoading: false,
+    ontologies: [],
+    refetch: jest.fn(),
+  }),
+}));
 jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => ({
   __esModule: true,
   default: () => null,

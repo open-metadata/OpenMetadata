@@ -287,7 +287,8 @@ export const getOntologyRelease = async (
 
 export const exportOntologyRelease = async (
   releaseId: string,
-  format: OntologyExportFormat
+  format: OntologyExportFormat,
+  signal?: AbortSignal
 ) => {
   const response = await APIClient.get<string>(
     `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
@@ -295,6 +296,7 @@ export const exportOntologyRelease = async (
       params: { format },
       headers: { Accept: EXPORT_FORMAT_TO_ACCEPT_HEADER[format] },
       responseType: 'text',
+      ...(signal ? { signal } : {}),
     }
   );
 

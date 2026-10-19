@@ -175,7 +175,7 @@ test.describe('Ontology Library', { tag: ['@ontology-rdf'] }, () => {
         'true'
       );
       await expect(
-        page.getByTestId('ontology-glossary-menu-trigger')
+        page.getByTestId('ontology-scope-menu-trigger')
       ).toContainText(TARGET_GLOSSARY);
       await expect(page.getByTestId('ontology-explorer')).toBeVisible();
     } finally {

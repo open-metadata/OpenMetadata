@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -81,11 +87,18 @@ let downloadedBlob: Blob | undefined;
 let downloadedFileName: string | undefined;
 let anchorClick: jest.SpyInstance;
 
-const renderPanel = async (canEdit = true) => {
+const renderPanel = async (
+  canEdit = true,
+  view: 'changes' | 'releases' = 'releases'
+) => {
   await act(async () => {
     renderWithQueryClient(
       <MemoryRouter>
-        <OntologyReleasePanel canEdit={canEdit} ontology={ontology} />
+        <OntologyReleasePanel
+          canEdit={canEdit}
+          ontology={ontology}
+          view={view}
+        />
       </MemoryRouter>
     );
   });
@@ -160,6 +173,27 @@ describe('OntologyReleasePanel', () => {
     anchorClick.mockRestore();
     URL.createObjectURL = originalCreateObjectURL;
     URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+
+  it('separates working changes from release history for the publication modal', async () => {
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByRole('button', { name: 'label.capture-release' })
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'label.ontology-release' })
+    ).not.toBeInTheDocument();
+
+    cleanup();
+    await renderPanel(true, 'releases');
+
+    expect(
+      await screen.findByRole('button', { name: 'label.ontology-release' })
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: 'label.capture-release' })
+    ).not.toBeInTheDocument();
   });
 
   it.each([
@@ -243,7 +277,7 @@ describe('OntologyReleasePanel', () => {
 
   it('captures the displayed working revision without approving or activating it', async () => {
     post.mockResolvedValue({ data: release });
-    await renderPanel();
+    await renderPanel(true, 'changes');
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'label.capture-release' })
@@ -430,8 +464,8 @@ describe('OntologyReleasePanel', () => {
     await screen.findByTestId('ontology-release-definition');
 
     expect(
-      screen.getByRole('button', { name: 'label.capture-release' })
-    ).toBeDisabled();
+      screen.queryByRole('button', { name: 'label.capture-release' })
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'label.request-approval' })
     ).toBeDisabled();

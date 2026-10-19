@@ -130,6 +130,7 @@ export const useOntologyPublication = (
   return {
     working,
     selected,
+    selectedId,
     releaseId,
     release,
     setSelectedId,
