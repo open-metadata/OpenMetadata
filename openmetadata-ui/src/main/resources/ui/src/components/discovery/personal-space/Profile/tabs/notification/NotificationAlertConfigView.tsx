@@ -294,10 +294,8 @@ function NotificationAlertConfigView({
   return (
     <Box className="tw:w-[60%]" direction="col" gap={4}>
       <NotificationSourceSelect
-        isViewMode
         filterResources={filterResources}
         value={alertResources}
-        onChange={() => {}}
       />
 
       {!isEmpty(alertFilters) && (

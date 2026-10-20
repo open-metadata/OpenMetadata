@@ -960,14 +960,12 @@ export const inputBasicAlertInformation = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_DESCRIPTION);
 
-  const sourceOption = page
-    .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`);
+  // The source picker is open to several sources from the start; this alert gets one.
   const sourceSelect = page.getByTestId('source-select');
-  const sourceTrigger = page.getByTestId('add-source-button');
-  await sourceTrigger.click();
-  await expect(sourceOption).toBeVisible();
-  await sourceOption.click();
+  await sourceSelect.getByRole('combobox').click();
+  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('listbox')).toBeHidden();
 
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };

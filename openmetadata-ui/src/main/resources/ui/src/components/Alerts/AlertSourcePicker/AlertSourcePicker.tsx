@@ -15,6 +15,7 @@ import {
   Autocomplete,
   SelectItemType,
 } from '@openmetadata/ui-core-components';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -56,6 +57,9 @@ function AlertSourcePicker({
   onChange,
   selection,
   isDisabled = false,
+  isRequired,
+  isInvalid,
+  hint,
 }: Readonly<AlertSourcePickerProps>) {
   const { t } = useTranslation();
 
@@ -133,18 +137,30 @@ function AlertSourcePicker({
     [sourceOptions]
   );
 
+  // Once a source is chosen the empty input invites another, so the picker reads as one that takes several.
+  const placeholder = useMemo(() => {
+    if (isEmpty(value)) {
+      return t('label.select-field', { field: t('label.source-plural') });
+    }
+
+    return isDisabled ? '' : t('label.add-another');
+  }, [isDisabled, t, value]);
+
   return (
     <div className="tw:flex tw:w-full tw:flex-col tw:gap-2">
       <Autocomplete
         multiple
+        aria-label={t('label.source-plural')}
         data-testid="source-select"
         filterOption={isShown}
+        hint={hint}
         isDisabled={isDisabled}
+        isInvalid={isInvalid}
+        isRequired={isRequired}
         items={items}
-        placeholder={t('label.select-field', {
-          field: t('label.data-asset-plural'),
-        })}
+        placeholder={placeholder}
         selectedItems={selectedItems}
+        validationBehavior="aria"
         onItemCleared={(key) =>
           onChange?.(
             value.filter((name) => name !== String(key)),

@@ -542,6 +542,14 @@ export const navigateToAlertsList = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('alerts-list-container')).toBeVisible();
 };
 
+export const closeSourcePicker = async (page: Page) => {
+  await page
+    .getByTestId('ai-profile-page')
+    .getByText('Stay current with timely alerts using webhooks.')
+    .click();
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
+
 export const inputAlertInformation = async ({
   page,
   name,
@@ -561,10 +569,13 @@ export const inputAlertInformation = async ({
   await expect(descriptionTextArea).toBeVisible();
   await descriptionTextArea.fill(ALERT_DESCRIPTION);
 
+  // The source picker takes several sources; this alert gets one. It is closed by clicking the
+  // header: Escape would also close the profile panel, and Tab would add the highlighted source.
   const sourceSelect = page.getByTestId('source-select');
   await expect(sourceSelect).toBeVisible();
-  await sourceSelect.click();
-  await page.getByRole('option', { name: new RegExp(sourceName, 'i') }).click();
+  await sourceSelect.getByRole('combobox').click();
+  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
+  await closeSourcePicker(page);
 };
 
 export const saveNewAlertAndVerify = async (

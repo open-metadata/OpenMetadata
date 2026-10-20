@@ -125,9 +125,9 @@ function AlertEditModal({
     alertType,
     fqn,
     onCancel: onClose,
-    // `input` is left out, as before: this drawer does not yet ask the server to warn about
-    // sources the chosen filters and triggers never match.
     sources: formData.resources,
+    // So the server can warn about a chosen source the filters and triggers never match.
+    input: formData.input,
   });
 
   useEffect(() => {
@@ -221,19 +221,16 @@ function AlertEditModal({
         ) : (
           <AlertAiForm
             alert={alert}
-            containerEntities={selection.support.containerEntities}
             filterResources={filterResources}
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={inlineAlertDetails}
             mode={mode}
-            recipientCategories={selection.support.recipientCategories}
+            selection={selection}
             shouldShowActionsSection={
               kind.hasTriggers && shouldShowActionsSection
             }
             shouldShowFiltersSection={shouldShowFiltersSection}
             showHint={showHint}
-            supportedFilters={selection.support.supportedFilters}
-            supportedTriggers={selection.support.supportedTriggers}
             templateResourcePermission={templateResourcePermission}
             templates={templates}
             templatesLoading={loadingState.templates}

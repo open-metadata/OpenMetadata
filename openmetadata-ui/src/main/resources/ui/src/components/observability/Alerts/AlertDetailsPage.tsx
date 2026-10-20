@@ -151,7 +151,7 @@ const AlertDetailsPage = ({
     fqn,
     sources,
   });
-  const { support } = alertFormState.selection;
+  const { selection } = alertFormState;
 
   const handleConfirmDelete = useCallback(async () => {
     if (!alertDetails?.id) {
@@ -215,10 +215,8 @@ const AlertDetailsPage = ({
           alert={alertConfigValue}
           filterResources={alertFormState.filterResources}
           mode="view"
-          recipientCategories={support.recipientCategories}
+          selection={selection}
           shouldShowActionsSection={kind.hasTriggers}
-          supportedFilters={support.supportedFilters}
-          supportedTriggers={support.supportedTriggers}
           templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
           templatesLoading={alertFormState.loadingState.templates}
@@ -237,7 +235,7 @@ const AlertDetailsPage = ({
     alertFormState.templateResourcePermission,
     alertFormState.templates,
     kind.hasTriggers,
-    support,
+    selection,
     tab,
   ]);
 

@@ -97,14 +97,39 @@ const sourceNameOf = (label: string) =>
     )
     .join('');
 
-// What the form offers follows the server's answer about the chosen source, so wait for it.
-export const selectAlertSource = async (page: Page, source: string) => {
-  const answered = waitForCapabilitiesOf(page, [sourceNameOf(source)]);
-  await selectOptionWithRetry(
-    page.getByTestId('source-select').getByRole('button'),
-    page.getByRole('option', { name: source, exact: true })
-  );
+// Adds a source to the ones already chosen. What the form offers follows the server's answer
+// about every chosen source, so wait for it. Escape would also close the drawer.
+export const selectAlertSource = async (
+  page: Page,
+  source: string,
+  chosenSources: string[] = []
+) => {
+  const name = sourceNameOf(source);
+  const answered = waitForCapabilitiesOf(page, [...chosenSources, name]);
+  await page.getByTestId('source-select').getByRole('combobox').click();
+  await page.getByRole('listbox').getByTestId(`${name}-option`).click();
   await answered;
+  await dismissPopover(
+    page.getByRole('dialog').filter({ has: page.getByTestId('source-select') })
+  );
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
+
+// Takes every chosen source away, so that a source of another kind can be chosen.
+export const clearAlertSources = async (page: Page) => {
+  const sourceSelect = page.getByTestId('source-select');
+  const input = sourceSelect.getByRole('combobox');
+  // The only buttons in the control are the chosen sources' remove buttons.
+  const chosen = sourceSelect.getByRole('button');
+
+  // Backspace in the empty input moves to the last chosen source; Backspace there removes it.
+  for (let left = await chosen.count(); left > 0; left--) {
+    await input.click();
+    await input.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await expect(chosen).toHaveCount(left - 1);
+  }
+  await dismissPopover(page.getByRole('dialog').filter({ has: sourceSelect }));
 };
 
 export const getDestinationCategoryOptions = async (

@@ -36,10 +36,8 @@ import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAlertForm';
 
-import {
-  applyAlertValueChanges,
-  getAlertSourceChanges,
-} from '../../../utils/Alerts/ClassicAlertForm.utils';
+import { getAlertSourceChanges } from '../../../utils/Alerts/AlertSelectionUtil';
+import { applyAlertValueChanges } from '../../../utils/Alerts/ClassicAlertForm.utils';
 
 function ObservabilityAlertFormFields({
   alert,

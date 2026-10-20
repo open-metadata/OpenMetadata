@@ -145,16 +145,17 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     [formData.input]
   );
   // The server says what the chosen sources support and who they can reach, as in every alert form.
-  const { support } = useAlertSelection({
+  const selection = useAlertSelection({
     alertType: CapabilitiesAlertType.Notification,
     sources,
     input: capabilitiesInput,
     catalog: filterResources as unknown as SourceOfTheCatalog[],
   });
 
+  const { supportedFilters } = selection.support;
   const shouldShowFiltersSection = useMemo(
-    () => (isEmpty(sources) ? true : !isEmpty(support.supportedFilters)),
-    [sources, support.supportedFilters]
+    () => (isEmpty(sources) ? true : !isEmpty(supportedFilters)),
+    [sources, supportedFilters]
   );
 
   const fetchData = useCallback(async () => {
@@ -283,7 +284,6 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Box className="tw:w-1/2" direction="col">
           <AlertAiForm
             alert={alert}
-            containerEntities={support.containerEntities}
             fieldDocDisplay="popover"
             filterResources={
               filterResources as Parameters<
@@ -302,11 +302,10 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
                 : undefined
             }
             mode={isEditMode ? 'edit' : 'add'}
-            recipientCategories={support.recipientCategories}
+            selection={selection}
             shouldShowActionsSection={false}
             shouldShowFiltersSection={shouldShowFiltersSection}
             showHint={showHint}
-            supportedFilters={support.supportedFilters}
             templateResourcePermission={templateResourcePermission}
             templates={templates}
             value={formData}

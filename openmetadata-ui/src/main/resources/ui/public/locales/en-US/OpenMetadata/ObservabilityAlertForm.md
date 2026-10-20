@@ -47,7 +47,9 @@ $$
 $$section
 ### Source $(id="source")
 
-The type of asset this alert watches. Choose from **Table**, **Topic**, **Container**, **Pipeline**, **Ingestion Pipeline**, **Test Case**, **Test Suite**, or **Data Contract**.
+What this alert watches. Choose one or more sources from **Table**, **Topic**, **Container**, **Pipeline**, **Ingestion Pipeline**, **Test Case**, **Test Suite**, or **Data Contract**.
+
+Choose several sources when the same filters and destinations should cover all of them, instead of keeping near-identical alerts in step. The filters on offer are the ones the chosen sources share. A source that cannot be combined with the ones already chosen is greyed out, with the reason beside it.
 
 The source is the first choice because it determines everything after it — each asset type emits its own events, so the available filters and triggers change with it. Adding or removing a source resets the filters and triggers; removing one also resets the destinations.
 
@@ -99,6 +101,8 @@ The available triggers depend on the source:
 - **Test Case Status** (Test Case) — fires when tests are `Failed`, `Aborted`, or `Queued`, with a variant scoped to a Test Suite
 
 Triggers carry the same **Include** toggle as filters, so a trigger can be inverted to fire on everything *except* the selected events.
+
+With several sources, each trigger names the sources it applies to, such as *Get Pipeline Status Updates (Pipeline)*. Add one trigger for each source you want to hear about. A source that no chosen trigger applies to gets a warning, because none of its events can match.
 
 **Example:**
 

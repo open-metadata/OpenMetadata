@@ -15,7 +15,6 @@ import { TFunction } from 'i18next';
 import { isEmpty, isUndefined } from 'lodash';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
-  AlertType,
   ArgumentsInput,
   Effect,
   EventFilterRule,
@@ -26,7 +25,6 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-  ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { getConfigFieldFromDestinationType } from '../../../utils/ObservabilityUtils';
 import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from './AlertAiFormFields.constants';
@@ -114,16 +112,16 @@ export const getAlertAiResources = (
 /** Resolves whether a rule section should display, accounting for view-mode descriptor availability. */
 const resolveSectionDisplay = (
   isViewOnly: boolean | undefined,
-  selectedSource: string | undefined,
-  selectedSupported: EventFilterRule[] | undefined,
+  hasSources: boolean,
+  supportedRules: EventFilterRule[] | undefined,
   shouldShowSection: boolean
 ): boolean => {
-  if (isViewOnly && isUndefined(selectedSupported)) {
+  if (isViewOnly && isUndefined(supportedRules)) {
     return shouldShowSection;
   }
 
-  if (selectedSource) {
-    return !isEmpty(selectedSupported);
+  if (hasSources) {
+    return !isEmpty(supportedRules);
   }
 
   return shouldShowSection;
@@ -133,8 +131,7 @@ const resolveSectionDisplay = (
 export const getAlertAiSectionInputs = ({
   value,
   isViewOnly,
-  selectedSource,
-  selectedFilterResource,
+  selectedSources,
   supportedFilters,
   supportedTriggers,
   shouldShowActionsSection,
@@ -142,35 +139,27 @@ export const getAlertAiSectionInputs = ({
 }: {
   value: AlertAiFormValue;
   isViewOnly?: boolean;
-  selectedSource?: string;
-  selectedFilterResource?: ObservabilityFilterResourceDescriptor;
+  selectedSources: string[];
   supportedFilters?: EventFilterRule[];
   supportedTriggers?: EventFilterRule[];
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
 }) => {
-  const selectedFilters = value.input?.filters ?? [];
-  const selectedTriggers = value.input?.actions ?? [];
-  const selectedSupportedFilters =
-    selectedFilterResource?.supportedFilters ?? supportedFilters;
-  const selectedSupportedTriggers =
-    selectedFilterResource?.supportedActions ?? supportedTriggers;
+  const hasSources = !isEmpty(selectedSources);
 
   return {
-    selectedFilters,
-    selectedTriggers,
-    selectedSupportedFilters,
-    selectedSupportedTriggers,
+    selectedFilters: value.input?.filters ?? [],
+    selectedTriggers: value.input?.actions ?? [],
     shouldDisplayFiltersSection: resolveSectionDisplay(
       isViewOnly,
-      selectedSource,
-      selectedSupportedFilters,
+      hasSources,
+      supportedFilters,
       shouldShowFiltersSection
     ),
     shouldDisplayActionsSection: resolveSectionDisplay(
       isViewOnly,
-      selectedSource,
-      selectedSupportedTriggers,
+      hasSources,
+      supportedTriggers,
       shouldShowActionsSection
     ),
   };
@@ -180,14 +169,14 @@ export const getAlertAiSectionInputs = ({
 export const getAlertAiSectionVisibility = ({
   isViewOnly,
   selectedFilters,
-  selectedSource,
+  selectedSources,
   selectedTriggers,
   shouldShowActionsSection,
   shouldShowFiltersSection,
 }: {
   isViewOnly?: boolean;
   selectedFilters: ArgumentsInput[];
-  selectedSource?: string;
+  selectedSources: string[];
   selectedTriggers: ArgumentsInput[];
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
@@ -196,7 +185,7 @@ export const getAlertAiSectionVisibility = ({
     shouldShowActionsSection && (!isViewOnly || !isEmpty(selectedTriggers)),
   shouldRenderFiltersSection:
     shouldShowFiltersSection && (!isViewOnly || !isEmpty(selectedFilters)),
-  shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSource),
+  shouldRenderSourceSection: !isViewOnly || !isEmpty(selectedSources),
 });
 
 /**
@@ -322,29 +311,23 @@ export const getTextArgumentCopy = (argument: string, t: TFunction) => {
 };
 
 /** Computes add-rule affordance flags for a filter or trigger rule section. */
+// Each rule on offer can be chosen once, as in the classic form. A trigger applies to the sources
+// it names, so an alert on several sources needs one trigger for each of them.
 export const getRuleSectionFlags = ({
-  field,
   isViewOnly,
   selectedRules,
-  selectedSource,
+  selectedSources,
   supportedRules,
 }: {
-  field: RuleSectionField;
   isViewOnly?: boolean;
   selectedRules: ArgumentsInput[];
-  selectedSource?: string;
+  selectedSources?: string[];
   supportedRules?: EventFilterRule[];
-}) => {
-  const maxRules = field === 'actions' ? 1 : supportedRules?.length ?? 0;
-
-  return {
-    canAddRule:
-      Boolean(supportedRules?.length) && selectedRules.length < maxRules,
-    isAddDisabled: isEmpty(selectedSource),
-    showAddButton:
-      !isViewOnly && (field === 'filters' || selectedRules.length === 0),
-  };
-};
+}) => ({
+  canAddRule: selectedRules.length < (supportedRules?.length ?? 0),
+  isAddDisabled: isEmpty(selectedSources),
+  showAddButton: !isViewOnly,
+});
 
 /** Builds rule dropdown items and disables rules that are already selected. */
 export const getRuleItems = (
@@ -498,16 +481,3 @@ export const getDestinationWithNotifyDownstream = (
     : undefined,
   notifyDownstream,
 });
-
-/**
- * Event types offered by the event-type filter. Only the Settings → Notifications
- * flow narrows them to the source's supported types; the Observability flow
- * always offered every type.
- */
-export const getRuleEventTypes = (
-  alertType: AlertType | undefined,
-  resource?: ObservabilityFilterResourceDescriptor
-) =>
-  alertType === AlertType.Notification
-    ? resource?.supportedEventTypes
-    : undefined;

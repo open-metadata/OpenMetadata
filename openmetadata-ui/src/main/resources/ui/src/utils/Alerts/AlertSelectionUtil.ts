@@ -20,6 +20,7 @@ import {
 import { AlertFilteringInput } from '../../generated/events/api/alertCapabilitiesRequest';
 import { EventFilterRule } from '../../generated/events/eventSubscription';
 import { EventType } from '../../generated/type/changeEvent';
+import type { ModifiedCreateEventSubscription } from '../AlertsClassBase.interface';
 import { getEntityNameLabel } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 
@@ -93,6 +94,22 @@ export const getSelectionSupport = (
     recipientCategories,
   };
 };
+
+/**
+ * What choosing other sources does to the rest of an alert, in every alert form. The filters and
+ * triggers chosen so far start over, since the new sources may not support them. The destinations
+ * start over only when a source is taken away; adding one keeps them.
+ */
+export const getAlertSourceChanges = (
+  next: string[],
+  previous: string[]
+): Partial<ModifiedCreateEventSubscription> => ({
+  resources: next,
+  input: {},
+  ...(previous.some((source) => !next.includes(source))
+    ? { destinations: [] }
+    : {}),
+});
 
 export interface SourceOption {
   name: string;

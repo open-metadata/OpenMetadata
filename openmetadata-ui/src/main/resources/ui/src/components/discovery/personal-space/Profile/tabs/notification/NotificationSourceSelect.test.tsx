@@ -21,64 +21,8 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ...jest.requireActual('@openmetadata/ui-core-components'),
-  Box: jest
-    .fn()
-    .mockImplementation(({ children, ...props }) => (
-      <div {...props}>{children}</div>
-    )),
-  Card: Object.assign(
-    jest
-      .fn()
-      .mockImplementation(({ children, ...props }) => (
-        <div {...props}>{children}</div>
-      )),
-    {
-      Content: jest
-        .fn()
-        .mockImplementation(({ children }) => <div>{children}</div>),
-    }
-  ),
-  Typography: jest
-    .fn()
-    .mockImplementation(({ children }) => <span>{children}</span>),
-  Select: Object.assign(
-    jest.fn().mockImplementation(({ children, isDisabled, ...props }) => (
-      <div
-        aria-disabled={isDisabled}
-        data-testid={props['data-testid'] ?? 'select'}
-        role="listbox">
-        {typeof children === 'function'
-          ? props.items?.map((item: { id: string; label: string }) =>
-              children(item)
-            )
-          : children}
-      </div>
-    )),
-    {
-      Item: jest
-        .fn()
-        .mockImplementation(({ children }) => <div>{children}</div>),
-    }
-  ),
-  Button: jest.fn().mockImplementation(({ children, onPress, ...props }) => (
-    <button {...props} onClick={onPress}>
-      {children}
-    </button>
-  )),
-  Dropdown: {
-    Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Popover: jest
-      .fn()
-      .mockImplementation(({ children }) => <div>{children}</div>),
-    Menu: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-    Item: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
-  },
-}));
-
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
-  getEntityNameLabel: (name: string) => name,
+  getEntityNameLabel: (name: string) => `Label of ${name}`,
 }));
 
 jest.mock('../../../../../../utils/SearchClassBase', () => ({
@@ -88,60 +32,36 @@ jest.mock('../../../../../../utils/SearchClassBase', () => ({
   },
 }));
 
-jest.mock('../../../../../../utils/EntityIconUtils', () => ({
-  EntityIconSize: { Size14: 14 },
-}));
-
-const mockFilterResources: FilterResourceDescriptor[] = [
+const FILTER_RESOURCES = [
   { name: 'table' },
+  { name: 'dashboard' },
   { name: 'topic' },
 ] as FilterResourceDescriptor[];
 
 describe('NotificationSourceSelect', () => {
-  const mockOnChange = jest.fn();
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('should render add source button when no value selected', () => {
+  it('shows every source the alert watches, not only the first', () => {
     render(
       <NotificationSourceSelect
-        filterResources={mockFilterResources}
-        value={[]}
-        onChange={mockOnChange}
+        filterResources={FILTER_RESOURCES}
+        value={['table', 'dashboard']}
       />
     );
 
-    expect(screen.getByTestId('add-source-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('source-select')).not.toBeInTheDocument();
+    const sources = screen.getByTestId('source-select');
+
+    expect(sources).toHaveTextContent('Label of table');
+    expect(sources).toHaveTextContent('Label of dashboard');
+    expect(sources).not.toHaveTextContent('Label of topic');
   });
 
-  it('should render select dropdown when value is selected', () => {
+  it('does not let the sources change', () => {
     render(
       <NotificationSourceSelect
-        filterResources={mockFilterResources}
+        filterResources={FILTER_RESOURCES}
         value={['table']}
-        onChange={mockOnChange}
       />
     );
 
-    expect(screen.getByTestId('source-select')).toBeInTheDocument();
-    expect(screen.queryByTestId('add-source-button')).not.toBeInTheDocument();
-  });
-
-  it('should disable select in view mode', () => {
-    render(
-      <NotificationSourceSelect
-        isViewMode
-        filterResources={mockFilterResources}
-        value={['table']}
-        onChange={mockOnChange}
-      />
-    );
-
-    const select = screen.getByTestId('source-select');
-
-    expect(select).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('combobox')).toBeDisabled();
   });
 });

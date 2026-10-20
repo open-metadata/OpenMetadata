@@ -155,6 +155,44 @@ describe('AlertSourcePicker', () => {
     expect(onChange).toHaveBeenCalledWith(['topic'], ['table', 'topic']);
   });
 
+  it('invites the first source, then another, so it reads as a picker of several', () => {
+    const { rerender } = render(
+      <AlertSourcePicker sources={NAMES} value={[]} />
+    );
+
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'placeholder',
+      'label.select-field'
+    );
+
+    rerender(<AlertSourcePicker sources={NAMES} value={['table']} />);
+
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'placeholder',
+      'label.add-another'
+    );
+  });
+
+  it('invites nothing in the view of a saved alert', () => {
+    render(<AlertSourcePicker isDisabled sources={NAMES} value={['table']} />);
+
+    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', '');
+  });
+
+  it('shows the form error under the picker', () => {
+    render(
+      <AlertSourcePicker
+        isInvalid
+        isRequired
+        hint="Source is required"
+        sources={NAMES}
+        value={[]}
+      />
+    );
+
+    expect(screen.getByText('Source is required')).toBeInTheDocument();
+  });
+
   it('groups the sources by kind, each under its header', async () => {
     render(
       <AlertSourcePicker

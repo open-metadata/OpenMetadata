@@ -15,6 +15,7 @@ import {
   SourceKind,
 } from '../../generated/events/api/alertCapabilities';
 import {
+  getAlertSourceChanges,
   getSelectionSupport,
   getSourceKindLabel,
   getSourceOptions,
@@ -192,5 +193,27 @@ describe('groupSourcesByKind', () => {
       'label.data-collaboration'
     );
     expect(getSourceKindLabel(SourceKind.All)).toBe('label.all-entity');
+  });
+});
+
+describe('getAlertSourceChanges', () => {
+  it('starts the filters over but keeps the destinations when a source is added', () => {
+    expect(getAlertSourceChanges(['table', 'topic'], ['table'])).toEqual({
+      resources: ['table', 'topic'],
+      input: {},
+    });
+  });
+
+  it('starts the destinations over when a source is removed or replaced', () => {
+    expect(getAlertSourceChanges(['topic'], ['table', 'topic'])).toEqual({
+      resources: ['topic'],
+      input: {},
+      destinations: [],
+    });
+    expect(getAlertSourceChanges(['dashboard'], ['table'])).toEqual({
+      resources: ['dashboard'],
+      input: {},
+      destinations: [],
+    });
   });
 });

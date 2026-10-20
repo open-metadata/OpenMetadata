@@ -134,7 +134,7 @@ describe('AlertEditModal', () => {
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
 
-  it('passes fqn, save callback, close callback and the chosen sources to the alert form hook', async () => {
+  it('passes fqn, save callback, close callback and the chosen sources and rules to the alert form hook', async () => {
     const onClose = jest.fn();
     const onSaved = jest.fn();
 
@@ -151,6 +151,7 @@ describe('AlertEditModal', () => {
       afterSaveAction: onSaved,
       alertType: AlertType.Observability,
       fqn: 'service.alert',
+      input: { actions: [], filters: [] },
       onCancel: onClose,
       sources: [],
     });
@@ -160,6 +161,7 @@ describe('AlertEditModal', () => {
         afterSaveAction: onSaved,
         alertType: AlertType.Observability,
         fqn: 'service.alert',
+        input: undefined,
         onCancel: onClose,
         sources: ['table'],
       })

@@ -22,4 +22,8 @@ export interface AlertSourcePickerProps {
   selection?: AlertCapabilities;
   /** Shows the sources without letting them change, as the alert's view does. */
   isDisabled?: boolean;
+  isRequired?: boolean;
+  isInvalid?: boolean;
+  /** Shown under the picker; the form's error for the sources. */
+  hint?: string;
 }

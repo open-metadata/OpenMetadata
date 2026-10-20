@@ -226,17 +226,17 @@ jest.mock('./AlertAiForm.component', () => ({
   __esModule: true,
   default: ({
     mode,
+    selection,
     shouldShowActionsSection,
-    supportedFilters,
-    supportedTriggers,
     templateResourcePermission,
     value,
   }: {
     mode: string;
+    selection: {
+      support: { supportedFilters?: unknown[]; supportedTriggers?: unknown[] };
+    };
     shouldShowActionsSection?: boolean;
     templateResourcePermission?: Record<string, boolean>;
-    supportedFilters?: unknown[];
-    supportedTriggers?: unknown[];
     value: ModifiedEventSubscription;
   }) => (
     <div data-testid="alert-ai-form">
@@ -248,8 +248,12 @@ jest.mock('./AlertAiForm.component', () => ({
         {JSON.stringify(templateResourcePermission ?? null)}
       </span>
       <span data-testid="form-name">{value.name}</span>
-      <span data-testid="filters-count">{supportedFilters?.length ?? 0}</span>
-      <span data-testid="triggers-count">{supportedTriggers?.length ?? 0}</span>
+      <span data-testid="filters-count">
+        {selection.support.supportedFilters?.length ?? 0}
+      </span>
+      <span data-testid="triggers-count">
+        {selection.support.supportedTriggers?.length ?? 0}
+      </span>
     </div>
   ),
 }));
