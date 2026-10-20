@@ -19,12 +19,14 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertCapabilities;
 import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
+import org.openmetadata.schema.api.events.AlertConditionCapability;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -48,6 +50,16 @@ class CapabilitiesIT {
     assertTrue(selected(capabilities, "table"));
     assertFalse(selected(capabilities, "topic"));
     assertFalse(capabilities.getTriggers().isEmpty());
+  }
+
+  // Pipelines and ingestion pipelines name this filter after their own assets.
+  @Test
+  void filterTheSourcesNameDifferentlyHasItsGeneralName() {
+    AlertCapabilities capabilities =
+        ask(AlertType.OBSERVABILITY, List.of("pipeline", "ingestionPipeline"));
+
+    assertEquals("Entity FQN", filter(capabilities, "filterByFqn").getDisplayName());
+    assertEquals("Update is Bot", filter(capabilities, "filterByUpdaterIsBot").getDisplayName());
   }
 
   // Offered in the form, never enforced on save.
@@ -119,6 +131,14 @@ class CapabilitiesIT {
         .filter(source -> name.equals(source.getName()))
         .findFirst()
         .map(AlertSourceCapability::getSelected)
+        .orElseThrow();
+  }
+
+  private static EventFilterRule filter(AlertCapabilities capabilities, String name) {
+    return capabilities.getFilters().stream()
+        .map(AlertConditionCapability::getCondition)
+        .filter(filter -> name.equals(filter.getName()))
+        .findFirst()
         .orElseThrow();
   }
 

@@ -23,7 +23,9 @@ import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /** What the form is told about a selection: the same rules the save applies, before the save. */
 class SourceCapabilitiesTest {
@@ -87,6 +89,59 @@ class SourceCapabilitiesTest {
     assertEquals(
         List.of("testCase"), trigger(capabilities, "GetTestCaseStatusUpdates").getSources());
     assertTrue(capabilities.getContainerEntities().contains("databaseService"));
+  }
+
+  // Each source names the name filter after its own assets; together they share no such name.
+  @Test
+  void filterTheSourcesNameDifferentlyTakesTheCatalogsOwnName() {
+    for (List<String> picked : bothOrders("pipeline", "ingestionPipeline")) {
+      EventFilterRule byName = filter(of(AlertType.OBSERVABILITY, picked, null), "filterByFqn");
+
+      assertEquals("Entity FQN", byName.getDisplayName(), picked.toString());
+      assertEquals("Event Filtering By Entity FQN", byName.getDescription(), picked.toString());
+    }
+  }
+
+  @Test
+  void filterEverySourceNamesAlikeKeepsThatName() {
+    EventFilterRule byBot =
+        filter(
+            of(AlertType.OBSERVABILITY, List.of("pipeline", "ingestionPipeline"), null),
+            "filterByUpdaterIsBot");
+
+    assertEquals("Update is Bot", byBot.getDisplayName());
+    assertEquals("Event Filtering By Updater is Bot", byBot.getDescription());
+  }
+
+  @Test
+  void oneSourceKeepsItsOwnNames() {
+    assertEquals(
+        "Pipeline Name",
+        filter(of(AlertType.OBSERVABILITY, List.of("pipeline"), null), "filterByFqn")
+            .getDisplayName());
+  }
+
+  // A source's filters keep the order it lists them in; several follow the first by name.
+  @Test
+  void filtersKeepTheOrderTheirSourceListsThem() {
+    assertEquals(
+        List.of("filterByFqn", "filterByOwner", "filterByDomain", "filterByUpdaterIsBot"),
+        names(of(AlertType.OBSERVABILITY, List.of("testSuite"), null).getFilters()));
+    assertEquals(
+        List.of("filterByFqn", "filterByDomain", "filterByOwner", "filterByUpdaterIsBot"),
+        names(of(AlertType.OBSERVABILITY, List.of("testSuite", "table"), null).getFilters()));
+  }
+
+  // Test suites list their filters in another order than tables; neither order leaks out.
+  @Test
+  void answerIsTheSameWhateverOrderTheSourcesWerePickedIn() {
+    List<List<String>> orders = bothOrders("testSuite", "table");
+    AlertCapabilities one = of(AlertType.OBSERVABILITY, orders.get(0), null);
+    AlertCapabilities other = of(AlertType.OBSERVABILITY, orders.get(1), null);
+
+    assertEquals(JsonUtils.pojoToJson(one.getFilters()), JsonUtils.pojoToJson(other.getFilters()));
+    assertEquals(
+        JsonUtils.pojoToJson(one.getTriggers()), JsonUtils.pojoToJson(other.getTriggers()));
   }
 
   // An alert saved with a source the catalog retired still opens and shows what it holds.
@@ -183,6 +238,18 @@ class SourceCapabilitiesTest {
             .withAlertType(alertType)
             .withSources(sources)
             .withInput(input));
+  }
+
+  private static List<List<String>> bothOrders(String first, String second) {
+    return List.of(List.of(first, second), List.of(second, first));
+  }
+
+  private static EventFilterRule filter(AlertCapabilities capabilities, String name) {
+    return capabilities.getFilters().stream()
+        .map(AlertConditionCapability::getCondition)
+        .filter(filter -> name.equals(filter.getName()))
+        .findFirst()
+        .orElseThrow();
   }
 
   private static AlertSourceCapability source(AlertCapabilities capabilities, String name) {

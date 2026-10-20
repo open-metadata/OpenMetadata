@@ -88,7 +88,7 @@ public final class SeveralSources {
               chosen.getName(), String.join(", ", without)));
     }
     EventFilterRule definition =
-        definitionOf(chosen, catalog.getFirst().getSupportedFilters()).orElseThrow();
+        SharedConditions.filterSharedBy(chosen.getName(), catalog).orElseThrow();
     return AlertConditions.ruleOf(definition, chosen);
   }
 

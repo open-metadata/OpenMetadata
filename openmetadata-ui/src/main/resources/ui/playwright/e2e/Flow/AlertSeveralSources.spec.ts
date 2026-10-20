@@ -171,11 +171,16 @@ test.describe('Alerts with several sources', () => {
       });
       await addAlertSource(page, 'dataContract', ['table']);
 
+      // Tables and data contracts name this filter after their own assets, so together it has
+      // its general name.
       await page.getByTestId('add-filters').click();
       await page.getByTestId('filter-select-0').click();
+      await expect(
+        page.getByRole('listbox').getByTestId('Table Name-filter-option')
+      ).toHaveCount(0);
       await page
         .getByRole('listbox')
-        .getByTestId('Table Name-filter-option')
+        .getByTestId('Entity FQN-filter-option')
         .click();
 
       const names = page.getByTestId('fqn-list-select').getByRole('combobox');

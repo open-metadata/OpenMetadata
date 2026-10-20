@@ -65,19 +65,21 @@ Filters scope the alert to the assets you care about. Without them, the alert ap
 
 Most sources support:
 
-- **Entity Specific Name** — match named assets by fully qualified name
+- **A name filter**, called after the source's own assets, such as **Table Name** or **Pipeline Name** — match named assets by fully qualified name
 - **Owner Name** — match by the asset's owner
 - **Domain** — match everything belonging to a domain
-- **Filter By Updater Is Bot** — match changes made by automated processes
+- **Update is Bot** — match changes made by automated processes
 
-Test Case alerts add **Table Name a Test Case Belongs To**, so you can watch every test on a given table without listing them individually.
+Test Case alerts add **Table Name A Test Case Belongs To**, so you can watch every test on a given table without listing them individually.
+
+With several sources, a filter they name differently shows its general name: the name filter of a Pipeline and Ingestion Pipeline alert is **Entity FQN**, and it matches the names of both.
 
 Each filter has an **Include** toggle. With Include **on**, an event meeting the filter condition sends the alert. With Include **off**, a matching event silences it instead.
 
 **Examples:**
 
 - Include *Domain = Finance* — only assets belonging to the Finance domain
-- Include off, *Filter By Updater Is Bot* — silence ingestion-bot churn and only hear about human changes
+- Include off, *Update is Bot* — silence ingestion-bot churn and only hear about human changes
 - Include *Table Name = `prod.sales.orders`* — every test on the orders table
 
 **Guidelines:**
