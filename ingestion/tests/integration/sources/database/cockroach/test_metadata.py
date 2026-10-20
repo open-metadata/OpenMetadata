@@ -28,6 +28,7 @@ modified by the bug fix.
 import pytest
 from sqlalchemy import create_engine, text
 from testcontainers.cockroachdb import CockroachDBContainer
+from testcontainers.core.waiting_utils import wait_for_logs
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_pg_mappings import RELKIND_MAP
@@ -39,6 +40,8 @@ SCHEMA = "matview_test"
 def crdb_engine():
     container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
     with container as container:
+        # Testcontainers returns after user creation, before database privileges are granted.
+        wait_for_logs(container, "end running init files from /docker-entrypoint-initdb.d")
         engine = create_engine(container.get_connection_url())
         with engine.begin() as conn:
             conn.execute(text(f"CREATE SCHEMA {SCHEMA}"))
