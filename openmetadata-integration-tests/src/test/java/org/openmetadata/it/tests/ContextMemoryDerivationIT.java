@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -30,9 +31,12 @@ import org.openmetadata.schema.entity.context.DerivationEvidence;
 import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -43,6 +47,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.context.center.AiProvider;
 import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor;
@@ -52,6 +57,8 @@ import org.openmetadata.service.context.center.MemoryGlossaryDeriver;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.NoopCompletionClient;
 import org.openmetadata.service.resources.context.ContextMemoryResource.MemoryDerivationList;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
 
@@ -63,6 +70,7 @@ import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
 @ExtendWith(TestNamespaceExtension.class)
 class ContextMemoryDerivationIT {
   private static final String FILES = "v1/contextCenter/drive/files";
+  private static final String PAGES = "v1/contextCenter/pages";
   private static final String DERIVATIONS = "/v1/contextCenter/memories/derivations";
   private static final String AGENT = "Scripted Glossary Agent";
 
@@ -78,6 +86,7 @@ class ContextMemoryDerivationIT {
     previousProvider = AiProviderHolder.get();
     glossary = glossary(ns);
     AiProviderHolder.setForTesting(provider(Optional.of(this::derive)));
+    LLMClientHolder.setForTesting(new NoopCompletionClient());
   }
 
   @AfterEach
@@ -86,31 +95,36 @@ class ContextMemoryDerivationIT {
       NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     } finally {
       AiProviderHolder.setForTesting(previousProvider);
+      LLMClientHolder.initialize(LlmConfigHolder.get());
       if (worker != null) worker.start();
     }
   }
 
   @Test
-  void aPublishedFileMemoryBecomesOneDraftTermThatKeepsItsEvidence(TestNamespace ns)
+  void fileAndArticleMemoriesBecomeDraftTermsThatKeepTheirEvidence(TestNamespace ns)
       throws Exception {
     ContextFile file = orgWideFile(ns);
+    Page article = article(ns);
     ContextMemory published = publish(ns, "published", file, file.getEntityReference());
     ContextMemory anchoredElsewhere =
         publish(ns, "anchoredElsewhere", file, glossary.getEntityReference());
+    ContextMemory fromArticle = publish(ns, "fromArticle", file, article.getEntityReference());
 
     BackgroundJob job = claimBatch(file);
     assertEquals(
-        List.of(published.getId(), anchoredElsewhere.getId()),
+        List.of(published.getId(), anchoredElsewhere.getId(), fromArticle.getId()),
         JsonUtils.convertValue(job.getJobArgs(), MemoryGlossaryDerivationJobHandler.Args.class)
             .memoryIds(),
-        "both memories of one file share a single delayed job");
+        "the memories of one file share a single delayed job");
     new MemoryGlossaryDerivationJobHandler().runJob(job);
 
     assertEquals(
-        List.of(List.of(published.getId())),
+        List.of(List.of(published.getId(), fromArticle.getId())),
         deriverCalls,
-        "only a memory every reader of the file may see reaches the deriver");
-    EntityReference term = completedTerm(job);
+        "a memory anchored to an asset reaches no deriver; an org-wide file or an article does");
+    List<EntityReference> terms = completedTerms(job);
+    assertEquals(2, terms.size());
+    EntityReference term = terms.getFirst();
     assertDraftAutomationTerm(term);
     assertEquals(
         List.of(term.getId()),
@@ -142,6 +156,18 @@ class ContextMemoryDerivationIT {
     assertEquals(0, jobs.countInFlightMemoryGlossaryJobs(published.getId().toString()));
     assertNull(jobs.lockOpenMemoryGlossaryBatch(batchKey(file), 100, 0));
     assertTrue(deriverCalls.isEmpty());
+  }
+
+  @Test
+  void nothingIsQueuedWhileMemoryExtractionIsOff(TestNamespace ns) throws Exception {
+    LLMClientHolder.setForTesting(null);
+    ContextFile file = orgWideFile(ns);
+
+    ContextMemory published = publish(ns, "extractionOff", file, file.getEntityReference());
+
+    JobDAO jobs = Entity.getJobDAO();
+    assertEquals(0, jobs.countInFlightMemoryGlossaryJobs(published.getId().toString()));
+    assertNull(jobs.lockOpenMemoryGlossaryBatch(batchKey(file), 100, 0));
   }
 
   private AiProvider provider(Optional<MemoryGlossaryDeriver> deriver) {
@@ -237,14 +263,25 @@ class ContextMemoryDerivationIT {
     return Entity.CONTEXT_FILE + ":" + file.getId();
   }
 
-  private EntityReference completedTerm(BackgroundJob job) {
+  private List<EntityReference> completedTerms(BackgroundJob job) {
     BackgroundJob finished = Entity.getJobDAO().fetchJobById(job.getId()).orElseThrow();
     assertEquals(BackgroundJob.Status.COMPLETED, finished.getStatus());
-    List<EntityReference> terms =
-        JsonUtils.readValue(finished.getResult(), MemoryGlossaryDerivationJobHandler.Result.class)
-            .terms();
-    assertEquals(1, terms.size());
-    return terms.getFirst();
+    return JsonUtils.readValue(
+            finished.getResult(), MemoryGlossaryDerivationJobHandler.Result.class)
+        .terms();
+  }
+
+  private Page article(TestNamespace ns) throws Exception {
+    return ns.trackRoot(
+        Entity.PAGE,
+        RestClient.admin()
+            .create(
+                PAGES,
+                new CreatePage()
+                    .withName(ns.prefix("article"))
+                    .withPageType(PageType.ARTICLE)
+                    .withPage(new Article()),
+                Page.class));
   }
 
   private void assertDraftAutomationTerm(EntityReference reference) {

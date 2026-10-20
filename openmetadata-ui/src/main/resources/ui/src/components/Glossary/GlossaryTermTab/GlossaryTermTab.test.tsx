@@ -67,12 +67,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 
 jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
   GLOSSARY_PROPOSALS_QUERY_KEY: ['governance', 'glossaryProposals'],
-  useGlossaryProposals: jest.fn(() => ({
-    counts: { all: 0, ai: 0, person: 0 },
-    decide: jest.fn(),
-    isLoading: false,
-    proposals: [],
-  })),
+  useTermDerivations: jest.fn(() => []),
 }));
 
 jest.mock('@tanstack/react-query', () => ({
@@ -543,6 +538,11 @@ describe('Test GlossaryTermTab component', () => {
           'proposal-status-badge'
         )
       ).toHaveTextContent('label.proposed-by-ai');
+      expect(
+        within(screen.getByTestId('glossary-row-0')).queryByTestId(
+          `${aiDraft.fullyQualifiedName}-status`
+        )
+      ).not.toBeInTheDocument();
     });
 
     it('should render status badges for each term', async () => {
@@ -556,13 +556,12 @@ describe('Test GlossaryTermTab component', () => {
         ).toBeInTheDocument();
       });
 
-      // Clothing is a person's draft: it keeps its status and reads as a proposal awaiting review.
       const proposedRow = screen.getByTestId('glossary-row-0');
 
       expect(proposedRow).toHaveClass('glossary-person-proposal-row');
       expect(
-        within(proposedRow).getByTestId('Business Glossary.Clothing-status')
-      ).toBeInTheDocument();
+        within(proposedRow).queryByTestId('Business Glossary.Clothing-status')
+      ).not.toBeInTheDocument();
       expect(
         within(proposedRow).getByTestId('proposal-status-badge')
       ).toHaveTextContent('label.proposed-by-name');
@@ -968,7 +967,7 @@ describe('Test GlossaryTermTab component', () => {
             type: 'RequestApproval',
             aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
             limit: PAGE_SIZE_LARGE,
-            fields: 'about,assignees',
+            fields: 'about,assignees,createdBy',
           })
         );
       });
@@ -987,7 +986,7 @@ describe('Test GlossaryTermTab component', () => {
             type: 'RequestApproval',
             aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
             limit: PAGE_SIZE_LARGE,
-            fields: 'about,assignees',
+            fields: 'about,assignees,createdBy',
           })
         );
       });

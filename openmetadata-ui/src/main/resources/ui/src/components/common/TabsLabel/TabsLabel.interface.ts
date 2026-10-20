@@ -29,6 +29,6 @@ export interface TabsLabelProps {
   description?: string;
   isBeta?: boolean;
   isLoading?: boolean;
-  /** Items under the tab that wait for review, shown as "Proposed" with a count like the tab's. */
+  /** Items under the tab that wait for review, shown as a purple count after the tab's own. */
   proposedCount?: number;
 }

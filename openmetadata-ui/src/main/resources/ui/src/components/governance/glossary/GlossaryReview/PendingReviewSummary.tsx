@@ -15,7 +15,7 @@ import { AskCollateSparkle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import {
   ProposalScope,
-  useGlossaryProposals,
+  useGlossaryProposalCounts,
 } from '../../../../hooks/governance/glossary/useGlossaryProposals';
 
 export interface PendingReviewSummaryProps {
@@ -25,7 +25,7 @@ export interface PendingReviewSummaryProps {
 /** How many proposals under a glossary or term wait for review, by who made them. */
 const PendingReviewSummary = ({ scope }: PendingReviewSummaryProps) => {
   const { t } = useTranslation();
-  const { counts } = useGlossaryProposals(scope);
+  const { counts } = useGlossaryProposalCounts(scope);
   if (counts.all === 0) {
     return null;
   }

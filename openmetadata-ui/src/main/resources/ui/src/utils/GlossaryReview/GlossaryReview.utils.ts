@@ -28,6 +28,7 @@ import {
   GlossaryProposal,
   ProposalCounts,
   ProposalFilter,
+  ProposalSlice,
   ProposalSource,
 } from './GlossaryReview.types';
 
@@ -59,14 +60,10 @@ const indexBy = <T>(items: T[], key: (item: T) => string | undefined) =>
     })
   );
 
-const SOURCE_ORDER: Record<ProposalSource, number> = { ai: 0, person: 1 };
-
-// AI proposals come first, as in the review design; within a source, the newest first.
-const byReviewOrder = (left: GlossaryProposal, right: GlossaryProposal) =>
-  SOURCE_ORDER[left.source] - SOURCE_ORDER[right.source] ||
-  (right.term.updatedAt ?? 0) - (left.term.updatedAt ?? 0);
-
-/** The terms still awaiting review, each with what explains it: evidence or an approval task. */
+/**
+ * The terms still awaiting review, each with what explains it: evidence or an approval task. They
+ * keep the server's order: AI agents' proposals first, then people's.
+ */
 export const toProposals = (
   terms: GlossaryTerm[],
   derivations: MemoryDerivation[],
@@ -78,31 +75,75 @@ export const toProposals = (
     (task) => task.about?.fullyQualifiedName
   );
 
-  return terms
-    .flatMap((term) => {
-      const source = getProposalSource(term);
+  return terms.flatMap((term) => {
+    const source = getProposalSource(term);
 
-      return source
-        ? [
-            {
-              term,
-              source,
-              derivation: derivationByTerm.get(term.id),
-              approvalTask: taskByTerm.get(term.fullyQualifiedName ?? ''),
-            },
-          ]
-        : [];
-    })
-    .sort(byReviewOrder);
+    return source
+      ? [
+          {
+            term,
+            source,
+            derivation: derivationByTerm.get(term.id),
+            approvalTask: taskByTerm.get(term.fullyQualifiedName ?? ''),
+          },
+        ]
+      : [];
+  });
 };
 
-export const countProposals = (
-  proposals: GlossaryProposal[]
-): ProposalCounts => {
-  const ai = proposals.filter((proposal) => proposal.source === 'ai').length;
+/**
+ * The slices of each source's pending terms that make one page of the queue. AI agents'
+ * proposals come before people's, so a page of all proposals can end one and start the other.
+ */
+export const getPageSlices = (
+  filter: ProposalFilter,
+  page: number,
+  counts: ProposalCounts,
+  size: number
+): ProposalSlice[] => {
+  const start = (page - 1) * size;
+  const end = start + size;
+  if (filter !== 'all') {
+    return start < counts[filter]
+      ? [{ source: filter, offset: start, limit: size }]
+      : [];
+  }
+  const slices: ProposalSlice[] = [];
+  if (start < counts.ai) {
+    slices.push({
+      source: 'ai',
+      offset: start,
+      limit: Math.min(end, counts.ai) - start,
+    });
+  }
+  if (end > counts.ai && start < counts.all) {
+    slices.push({
+      source: 'person',
+      offset: Math.max(0, start - counts.ai),
+      limit: end - Math.max(start, counts.ai),
+    });
+  }
 
-  return { all: proposals.length, ai, person: proposals.length - ai };
+  return slices;
 };
+
+export const getTotalPages = (
+  counts: ProposalCounts,
+  filter: ProposalFilter,
+  size: number
+) => Math.max(1, Math.ceil(counts[filter] / size));
+
+/** A loaded row of the terms table: a term, whose children are rows too. */
+type TermRow = Pick<GlossaryTerm, 'id' | 'entityStatus' | 'provider'> & {
+  children?: unknown[];
+};
+
+/** The ids of the AI drafts among the terms a table has loaded, nested ones included. */
+export const collectAiDraftIds = (rows: TermRow[]): string[] =>
+  rows.flatMap((row) => [
+    ...(getProposalSource(row) === 'ai' ? [row.id] : []),
+    ...collectAiDraftIds((row.children ?? []) as TermRow[]),
+  ]);
 
 /** Filtering by who proposed only helps when both AI agents and people have proposals. */
 export const hasProposalsFromBothSources = (counts: ProposalCounts) =>
@@ -114,14 +155,6 @@ export const getActiveFilter = (
   filter: ProposalFilter
 ): ProposalFilter => (hasProposalsFromBothSources(counts) ? filter : 'all');
 
-export const filterProposals = (
-  proposals: GlossaryProposal[],
-  filter: ProposalFilter
-) =>
-  filter === 'all'
-    ? proposals
-    : proposals.filter((proposal) => proposal.source === filter);
-
 /** The agent's confidence as a whole percentage, when it recorded one. */
 export const getConfidencePercent = (derivation?: MemoryDerivation) => {
   const confidence = derivation?.evidence?.confidence;
@@ -129,11 +162,14 @@ export const getConfidencePercent = (derivation?: MemoryDerivation) => {
   return confidence === undefined ? undefined : Math.round(confidence * 100);
 };
 
-/** Who wrote a person's proposal: the approval request's author, else the last editor. */
+/** Who wrote a person's proposal: its approval request's author, else the term's last editor. */
+export const getRequestAuthor = (approvalTask?: Task, updatedBy?: string) =>
+  approvalTask?.createdBy?.displayName ??
+  approvalTask?.createdBy?.name ??
+  updatedBy;
+
 export const getProposalAuthor = (proposal: GlossaryProposal) =>
-  proposal.approvalTask?.createdBy?.displayName ??
-  proposal.approvalTask?.createdBy?.name ??
-  proposal.term.updatedBy;
+  getRequestAuthor(proposal.approvalTask, proposal.term.updatedBy);
 
 /**
  * Whether the user decides this proposal. A term the approval workflow holds is decided through

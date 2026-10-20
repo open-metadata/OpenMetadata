@@ -1312,6 +1312,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // Reviewers are relationships too, so a listed glossary term would otherwise inherit none of
+    // its glossary's while a single read of the same term inherits them all.
+    fetchAndSetReviewers(entities, fields);
     // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
@@ -4646,6 +4649,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    invalidateListCountsOnStageChange(original, updated);
+  }
+
+  // Listing totals are cached per filter and dropped only on create or delete, but a stage change
+  // moves the entity between stage-filtered listings, such as a glossary's terms awaiting review.
+  private void invalidateListCountsOnStageChange(T original, T updated) {
+    if (supportsEntityStatus
+        && !Objects.equals(
+            entityLifecycle.adapter().read(original), entityLifecycle.adapter().read(updated))) {
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   @SuppressWarnings("unused")

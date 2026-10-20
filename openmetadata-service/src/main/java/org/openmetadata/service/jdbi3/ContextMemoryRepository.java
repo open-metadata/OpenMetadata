@@ -195,7 +195,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   protected void postUpdate(ContextMemory previous, ContextMemory updated) {
     super.postUpdate(previous, updated);
     if (MemoryGlossaryDerivationQueue.hasNewPublishedContent(previous, updated)
-        && MemoryGlossaryDerivationQueue.hasDeriver()
+        && MemoryGlossaryDerivationQueue.isAvailable()
         && !MemoryGlossaryDerivationQueue.hasDerivedGlossaryTerm(getDerivedEntities(updated))) {
       glossaryDerivationQueue().enqueue(updated, updated.getUpdatedBy());
     }
@@ -1122,6 +1122,23 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     EntityReference anchor = getPrimaryEntity(memory);
     return anchor == null
         || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  /**
+   * Whether a memory's anchor lets its content become glossary vocabulary everyone can read: no
+   * anchor, a Context Center article, which has no sharing of its own, or a file shared with the
+   * whole organization. An asset, or a file shared with only some people, limits who may read the
+   * memory, so what it defines stays out of the glossary.
+   */
+  public boolean isAnchoredForPublication(ContextMemory memory) {
+    EntityReference anchor = getPrimaryEntity(memory);
+    return anchor == null
+        || (Entity.PAGE.equals(anchor.getType()) && isLive(anchor))
+        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  private static boolean isLive(EntityReference anchor) {
+    return Entity.getEntityOrNull(anchor, "", Include.NON_DELETED) != null;
   }
 
   private static boolean isOrgWideFile(EntityReference file) {

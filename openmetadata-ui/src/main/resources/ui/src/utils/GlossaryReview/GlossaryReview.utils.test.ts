@@ -20,13 +20,14 @@ import { User } from '../../generated/entity/teams/user';
 import { Task } from '../../rest/tasksAPI';
 import {
   canDecideProposal,
-  countProposals,
-  filterProposals,
+  collectAiDraftIds,
   getActiveFilter,
   getConfidencePercent,
   getDeciders,
+  getPageSlices,
   getProposalAuthor,
   getProposalSource,
+  getTotalPages,
   hasProposalsFromBothSources,
   toProposals,
 } from './GlossaryReview.utils';
@@ -98,9 +99,6 @@ describe('GlossaryReview utils', () => {
     ]);
     expect(proposals[0].derivation).toBe(derivation);
     expect(proposals[1].approvalTask).toBe(approvalTask);
-    expect(countProposals(proposals)).toEqual({ all: 2, ai: 1, person: 1 });
-    expect(filterProposals(proposals, 'person')).toEqual([proposals[1]]);
-    expect(filterProposals(proposals, 'all')).toBe(proposals);
   });
 
   it('filters by source only while both AI agents and people have proposals', () => {
@@ -113,20 +111,49 @@ describe('GlossaryReview utils', () => {
     );
   });
 
-  it('puts AI proposals first, then the newest', () => {
-    const older = term({ id: 'older', updatedAt: 1 });
-    const newer = term({ id: 'newer', updatedAt: 2 });
-    const ai = term({
-      id: 'ai',
-      provider: ProviderType.Automation,
-      updatedAt: 0,
-    });
+  it('keeps the order the server pages proposals in', () => {
+    const ai = term({ id: 'ai', provider: ProviderType.Automation });
+    const first = term({ id: 'first', updatedAt: 1 });
+    const second = term({ id: 'second', updatedAt: 2 });
 
     expect(
-      toProposals([older, newer, ai], [], []).map(
+      toProposals([ai, first, second], [], []).map(
         (proposal) => proposal.term.id
       )
-    ).toEqual(['ai', 'newer', 'older']);
+    ).toEqual(['ai', 'first', 'second']);
+  });
+
+  it('pages AI proposals first, then people, across the boundary between them', () => {
+    const counts = { all: 20, ai: 7, person: 13 };
+
+    expect(getPageSlices('all', 1, counts, 5)).toEqual([
+      { source: 'ai', offset: 0, limit: 5 },
+    ]);
+    expect(getPageSlices('all', 2, counts, 5)).toEqual([
+      { source: 'ai', offset: 5, limit: 2 },
+      { source: 'person', offset: 0, limit: 3 },
+    ]);
+    expect(getPageSlices('all', 3, counts, 5)).toEqual([
+      { source: 'person', offset: 3, limit: 5 },
+    ]);
+    expect(getPageSlices('person', 2, counts, 5)).toEqual([
+      { source: 'person', offset: 5, limit: 5 },
+    ]);
+    expect(getPageSlices('ai', 3, counts, 5)).toEqual([]);
+    expect(getPageSlices('all', 5, counts, 5)).toEqual([]);
+    expect(getTotalPages(counts, 'all', 5)).toBe(4);
+    expect(getTotalPages({ all: 0, ai: 0, person: 0 }, 'ai', 5)).toBe(1);
+  });
+
+  it('collects the AI drafts among the loaded rows, nested ones included', () => {
+    const nested = { ...aiDraft, id: 'nested-ai' };
+
+    expect(
+      collectAiDraftIds([
+        { ...approved, children: [nested, personDraft] },
+        aiDraft,
+      ])
+    ).toEqual(['nested-ai', 'ai-id']);
   });
 
   it('reads the confidence as a whole percentage and the author from the request', () => {

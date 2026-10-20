@@ -112,7 +112,7 @@ public class MemoryDerivationIT {
         DenyPolicyPrincipals.clientDeniedWhen(
             ns.shortPrefix("memdeny"),
             Entity.CONTEXT_MEMORY,
-            MetadataOperation.VIEW_BASIC,
+            MetadataOperation.VIEW_ALL,
             "matchAnyTag('" + PII_SENSITIVE + "')");
 
     OpenMetadataException sourceDenied =

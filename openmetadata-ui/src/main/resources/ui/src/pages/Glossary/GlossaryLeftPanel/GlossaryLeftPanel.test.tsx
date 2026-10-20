@@ -21,12 +21,6 @@ let mockPendingCounts:
   | undefined;
 jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
   useGlossaryPendingCounts: jest.fn(() => mockPendingCounts),
-  useGlossaryProposals: jest.fn(() => ({
-    counts: { all: 0, ai: 0, person: 0 },
-    decide: jest.fn(),
-    isLoading: false,
-    proposals: [],
-  })),
 }));
 
 const mockOnAddGlossary = jest.fn();

@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,8 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 /**
@@ -163,6 +166,85 @@ public class GlossaryTermAutomationDraftIT {
     assertEquals(EntityStatus.DRAFT, reload(draft).getEntityStatus());
   }
 
+  @Test
+  void theReviewQueuePagesOnTheServerAndItsTotalsFollowDecisions(TestNamespace ns) {
+    EntityReference reviewer = SharedEntities.get().USER1.getEntityReference();
+    Glossary glossary = createGlossary(ns, "reviewQueue", List.of(reviewer));
+    GlossaryTerm decided = createTermAsBot(glossary, ns.prefix("aiFirst"), ProviderType.AUTOMATION);
+    GlossaryTerm parent = createTermAsBot(glossary, ns.prefix("aiSecond"), ProviderType.AUTOMATION);
+    createChildTermAsBot(glossary, parent, ns.prefix("aiNested"));
+    createTerm(SdkClients.adminClient(), glossary, ns.prefix("person"), null);
+    String glossaryId = glossary.getId().toString();
+    List<String> reviewers = List.of(reviewer.getId().toString());
+
+    JsonNode aiPage =
+        pendingTerms(Map.of("glossary", glossaryId, "provider", "automation", "limit", "1"));
+
+    assertEquals(3, total(aiPage));
+    assertEquals(1, aiPage.path("data").size());
+    // A listed term carries the reviewers it inherits, as a single read of it does, also through
+    // a parent term that has none of its own.
+    assertEquals(reviewers, firstReviewerIds(aiPage));
+    assertEquals(
+        reviewers, firstReviewerIds(pendingTerms(Map.of("parent", parent.getId().toString()))));
+    assertEquals(
+        1, total(pendingTerms(Map.of("glossary", glossaryId, "excludeProvider", "automation"))));
+    // A text search applies the same provider filters; every term of this test matches the text.
+    String everyTerm = ns.prefix("");
+    assertEquals(
+        3,
+        pendingTerms(Map.of("glossary", glossaryId, "q", everyTerm, "provider", "automation"))
+            .path("data")
+            .size());
+    assertEquals(
+        1,
+        pendingTerms(
+                Map.of("glossary", glossaryId, "q", everyTerm, "excludeProvider", "automation"))
+            .path("data")
+            .size());
+
+    setStatus(SdkClients.user1Client(), decided, EntityStatus.APPROVED);
+
+    assertEquals(
+        2,
+        total(
+            pendingTerms(Map.of("glossary", glossaryId, "provider", "automation", "limit", "1"))));
+  }
+
+  @Test
+  void anUnknownProviderIsABadRequest(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "badProvider", List.of());
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                pendingTerms(Map.of("glossary", glossary.getId().toString(), "provider", "robot")));
+
+    assertEquals(400, rejected.getStatusCode());
+  }
+
+  private static JsonNode pendingTerms(Map<String, String> filters) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityStatus", "Draft,In Review")
+            .queryParam("fields", "reviewers")
+            .queryParams(filters)
+            .build();
+    return JsonUtils.readTree(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/glossaryTerms/search", null, options));
+  }
+
+  private static int total(JsonNode page) {
+    return page.path("paging").path("total").asInt();
+  }
+
+  private static List<String> firstReviewerIds(JsonNode page) {
+    return page.path("data").get(0).path("reviewers").findValuesAsText("id");
+  }
+
   private static Glossary createGlossary(
       TestNamespace ns, String name, List<EntityReference> reviewers) {
     CreateGlossary create =
@@ -176,6 +258,18 @@ public class GlossaryTermAutomationDraftIT {
   private static GlossaryTerm createTermAsBot(
       Glossary glossary, String name, ProviderType provider) {
     return createTerm(SdkClients.botClient(), glossary, name, provider);
+  }
+
+  private static GlossaryTerm createChildTermAsBot(
+      Glossary glossary, GlossaryTerm parent, String name) {
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withDescription("A narrower business concept")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(parent.getFullyQualifiedName())
+            .withProvider(ProviderType.AUTOMATION);
+    return SdkClients.botClient().glossaryTerms().create(create);
   }
 
   private static GlossaryTerm createTerm(

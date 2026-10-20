@@ -12,7 +12,6 @@
  */
 
 import {
-  Box,
   Button,
   ButtonUtility,
   Checkbox,
@@ -87,7 +86,7 @@ import {
 import { User } from '../../../generated/entity/teams/user';
 import {
   GLOSSARY_PROPOSALS_QUERY_KEY,
-  useGlossaryProposals,
+  useTermDerivations,
 } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -115,14 +114,15 @@ import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
+  getGlossaryEntityLink,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
   updateGlossaryTermStatus,
 } from '../../../utils/GlossaryPureUtils';
-import { GlossaryProposal } from '../../../utils/GlossaryReview/GlossaryReview.types';
 import {
-  getProposalAuthor,
+  collectAiDraftIds,
   getProposalSource,
+  getRequestAuthor,
 } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -575,27 +575,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const selectedProposalId = useGlossaryStore(
     (state) => state.selectedProposalId
   );
-  const proposalScope = useMemo(
-    () =>
-      activeGlossary?.id
-        ? {
-            fullyQualifiedName: activeGlossary.fullyQualifiedName ?? '',
-            id: activeGlossary.id,
-            isGlossary,
-          }
-        : undefined,
-    [activeGlossary?.id, activeGlossary?.fullyQualifiedName, isGlossary]
-  );
-  const { proposals } = useGlossaryProposals(proposalScope);
   const queryClient = useQueryClient();
-  const proposalByTermId = useMemo(
-    () =>
-      new Map<string, GlossaryProposal>(
-        proposals.map((proposal) => [proposal.term.id, proposal])
-      ),
-    [proposals]
-  );
-
   // Consumer via useGenericContext(). No `deleted` argument: the old expression here
   // (bare permissions.EditAll, bulk-edit button gate) never referenced a deleted
   // concept, so getDerivedPermissionFlags defaults to its `deleted = false` — nothing
@@ -625,6 +605,20 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       'fullyQualifiedName'
     );
   }, [glossaryChildTerms]);
+
+  // The evidence behind the AI drafts among the loaded rows, for their status badges.
+  const aiDraftIds = useMemo(
+    () => collectAiDraftIds(glossaryTerms),
+    [glossaryTerms]
+  );
+  const derivations = useTermDerivations(aiDraftIds);
+  const derivationByTermId = useMemo(
+    () =>
+      new Map(
+        derivations.map((derivation) => [derivation.entity.id, derivation])
+      ),
+    [derivations]
+  );
 
   // Precompute each term's loaded-descendant count once per data change (the
   // API's childrenCount is the whole subtree size, so this must be recursive).
@@ -966,7 +960,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         type: TaskEntityType.RequestApproval,
         aboutEntity: fqn,
         limit: PAGE_SIZE_LARGE,
-        fields: 'about,assignees',
+        fields: 'about,assignees,createdBy',
       });
       lastFetchedTaskFqnRef.current = fqn;
 
@@ -1320,27 +1314,22 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               />
             );
           }
-          const statusCell = (
-            <GlossaryTermStatusCell record={record} status={status} />
-          );
           const proposalSource = getProposalSource(record);
           if (!proposalSource) {
-            return statusCell;
+            return <GlossaryTermStatusCell record={record} status={status} />;
           }
-          const proposal = proposalByTermId.get(record.id);
+          const approvalTask =
+            termTaskThreads[
+              getGlossaryEntityLink(record.fullyQualifiedName ?? '')
+            ]?.[0];
 
           return (
-            <Box align="start" direction="col" gap={1}>
-              {statusCell}
-              <ProposalStatusBadge
-                author={
-                  proposal ? getProposalAuthor(proposal) : record.updatedBy
-                }
-                derivation={proposal?.derivation}
-                source={proposalSource}
-                updatedAt={record.updatedAt}
-              />
-            </Box>
+            <ProposalStatusBadge
+              author={getRequestAuthor(approvalTask, record.updatedBy)}
+              derivation={derivationByTermId.get(record.id)}
+              source={proposalSource}
+              updatedAt={record.updatedAt}
+            />
           );
         },
         onFilter: (value, record) => record.entityStatus === value,
@@ -1463,7 +1452,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     loadingChildren,
     expandedRowKeys,
     loadedNestedCountByFqn,
-    proposalByTermId,
+    derivationByTermId,
   ]);
 
   const handleCheckboxChange = useCallback(

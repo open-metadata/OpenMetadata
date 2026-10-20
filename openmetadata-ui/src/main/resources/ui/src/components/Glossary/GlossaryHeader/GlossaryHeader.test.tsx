@@ -87,13 +87,11 @@ const mockDerivation = {
 };
 
 jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
-  useGlossaryProposals: jest.fn(() => ({
-    counts: mockProposalCounts,
-    decide: jest.fn(),
-    isLoading: false,
-    proposals: [],
-  })),
   refreshGlossaryProposals: jest.fn(),
+  useGlossaryProposalCounts: jest.fn(() => ({
+    counts: mockProposalCounts,
+    isLoading: false,
+  })),
   useTermDerivation: jest.fn(() => mockDerivation),
 }));
 

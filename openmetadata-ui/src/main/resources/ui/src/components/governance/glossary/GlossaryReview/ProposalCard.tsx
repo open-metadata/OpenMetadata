@@ -233,7 +233,7 @@ const ProposalActions = ({
   }
 
   return (
-    <Box gap={2}>
+    <Box gap={2} wrap="wrap">
       <Button
         className={isApproveWide ? 'tw:flex-1' : undefined}
         color="primary"

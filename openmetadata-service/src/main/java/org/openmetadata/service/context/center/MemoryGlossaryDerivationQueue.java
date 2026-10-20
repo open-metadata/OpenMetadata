@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import lombok.extern.slf4j.Slf4j;
@@ -28,10 +29,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMClientHolder;
 
 /**
- * Queues glossary-term derivation when a published memory is created or revised, provided the AI
- * provider has a {@link MemoryGlossaryDeriver}.
+ * Queues glossary-term derivation when a published memory is created or revised, provided memory
+ * extraction is switched on and the AI provider has a {@link MemoryGlossaryDeriver}.
  */
 @Slf4j
 public final class MemoryGlossaryDerivationQueue {
@@ -39,27 +41,37 @@ public final class MemoryGlossaryDerivationQueue {
   static final Duration BATCH_WINDOW = Duration.ofSeconds(30);
 
   private final JobDAO jobDao;
-  private final BooleanSupplier hasDeriver;
+  private final BooleanSupplier isAvailable;
   private final LongSupplier clock;
 
   public MemoryGlossaryDerivationQueue(final JobDAO jobDao) {
-    this(jobDao, MemoryGlossaryDerivationQueue::hasDeriver, System::currentTimeMillis);
+    this(jobDao, MemoryGlossaryDerivationQueue::isAvailable, System::currentTimeMillis);
   }
 
   MemoryGlossaryDerivationQueue(
-      final JobDAO jobDao, final BooleanSupplier hasDeriver, final LongSupplier clock) {
+      final JobDAO jobDao, final BooleanSupplier isAvailable, final LongSupplier clock) {
     this.jobDao = jobDao;
-    this.hasDeriver = hasDeriver;
+    this.isAvailable = isAvailable;
     this.clock = clock;
   }
 
-  /** Whether the configured AI provider derives glossary terms at all. */
-  public static boolean hasDeriver() {
-    return AiProviderHolder.get().memoryGlossaryDeriver().isPresent();
+  /**
+   * The deriver to run, while glossary terms are derived at all: the switches that turn memory
+   * extraction on (the LLM and memory extraction) govern derivation from memories too, and only an
+   * AI provider that ships a deriver has one.
+   */
+  public static Optional<MemoryGlossaryDeriver> availableDeriver() {
+    return LLMClientHolder.isMemoryExtractionEnabled()
+        ? AiProviderHolder.get().memoryGlossaryDeriver()
+        : Optional.empty();
+  }
+
+  public static boolean isAvailable() {
+    return availableDeriver().isPresent();
   }
 
   public void enqueue(final ContextMemory memory, final String createdBy) {
-    if (isPublished(memory) && hasDeriver.getAsBoolean()) {
+    if (isPublished(memory) && isAvailable.getAsBoolean()) {
       try {
         submit(memory, createdBy);
       } catch (RuntimeException exception) {

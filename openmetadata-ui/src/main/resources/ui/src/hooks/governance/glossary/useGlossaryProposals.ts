@@ -13,12 +13,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { chunk } from 'lodash';
 import { useCallback, useMemo } from 'react';
-import {
-  PAGE_SIZE_EXTRA_LARGE,
-  PAGE_SIZE_LARGE,
-} from '../../../constants/constants';
+import { PAGE_SIZE_BASE, PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { MemoryDerivation } from '../../../generated/entity/context/memoryDerivation';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -29,7 +27,11 @@ import {
   getMemoryDerivations,
   MAX_DERIVATION_ENTITIES,
 } from '../../../rest/contextMemoryAPI';
-import { getGlossaryTerms, patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import {
+  getGlossaryTermsById,
+  patchGlossaryTerm,
+  searchGlossaryTermsPaginated,
+} from '../../../rest/glossaryAPI';
 import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
   listTasks,
@@ -44,9 +46,12 @@ import {
   GlossaryProposal,
   ProposalCounts,
   ProposalDecision,
+  ProposalFilter,
+  ProposalSlice,
+  ProposalSource,
 } from '../../../utils/GlossaryReview/GlossaryReview.types';
 import {
-  countProposals,
+  getPageSlices,
   getProposalSource,
   PENDING_REVIEW_STATUSES,
   toProposals,
@@ -66,88 +71,125 @@ export interface ProposalScope {
   isGlossary: boolean;
 }
 
-export interface GlossaryProposals {
-  proposals: GlossaryProposal[];
-  counts: ProposalCounts;
-  isLoading: boolean;
-  /** Settles a proposal; false when the approval still waits for other reviewers. */
-  decide: (
-    proposal: GlossaryProposal,
-    decision: ProposalDecision,
-    comment?: string
-  ) => Promise<boolean>;
-}
+/** Settles a proposal; false when the approval still waits for other reviewers. */
+export type DecideProposal = (
+  proposal: GlossaryProposal,
+  decision: ProposalDecision,
+  comment?: string
+) => Promise<boolean>;
+
+/** How many proposals the review panel shows at a time. */
+export const PROPOSALS_PAGE_SIZE = PAGE_SIZE_BASE;
 
 const NO_PROPOSALS: GlossaryProposal[] = [];
+const NO_DERIVATIONS: MemoryDerivation[] = [];
+const NO_COUNTS: ProposalCounts = { all: 0, ai: 0, person: 0 };
+const PENDING_STATUSES = PENDING_REVIEW_STATUSES.join(',');
 
-const getApprovalTasks = async (
+const scopeParams = (scope: ProposalScope) =>
+  scope.isGlossary ? { glossary: scope.id } : { parent: scope.id };
+
+// An AI agent's proposal carries the automation provider; any other pending term is a person's.
+const sourceParams = (source: ProposalSource) =>
+  source === 'ai'
+    ? { provider: ProviderType.Automation }
+    : { excludeProvider: ProviderType.Automation };
+
+const countPendingTerms = async (
   scope: ProposalScope,
-  terms: GlossaryTerm[]
+  source?: ProposalSource
 ) => {
-  if (!terms.some((term) => term.entityStatus === EntityStatus.InReview)) {
+  const { paging } = await searchGlossaryTermsPaginated({
+    ...scopeParams(scope),
+    ...(source ? sourceParams(source) : {}),
+    entityStatus: PENDING_STATUSES,
+    limit: 1,
+  });
+
+  return paging?.total ?? 0;
+};
+
+const fetchProposalCounts = async (
+  scope: ProposalScope
+): Promise<ProposalCounts> => {
+  const [all, ai] = await Promise.all([
+    countPendingTerms(scope),
+    countPendingTerms(scope, 'ai'),
+  ]);
+
+  return { all, ai, person: all - ai };
+};
+
+// Only a person's proposal in review has an approval request, and one request reads them all.
+const getApprovalTasks = async (terms: GlossaryTerm[]) => {
+  const inReview = terms
+    .filter((term) => term.entityStatus === EntityStatus.InReview)
+    .map((term) => term.fullyQualifiedName ?? '');
+  if (inReview.length === 0) {
     return [];
   }
-  const tasks: Task[] = [];
-  let after: string | undefined;
+  const { data } = await listTasks({
+    status: TaskEntityStatus.Open,
+    category: TaskCategory.Approval,
+    type: TaskEntityType.RequestApproval,
+    aboutEntity: inReview.join(','),
+    limit: PAGE_SIZE_LARGE,
+    fields: 'about,assignees,createdBy',
+  });
 
-  do {
-    const response = await listTasks({
-      status: TaskEntityStatus.Open,
-      category: TaskCategory.Approval,
-      type: TaskEntityType.RequestApproval,
-      aboutEntity: scope.fullyQualifiedName,
-      limit: PAGE_SIZE_LARGE,
-      fields: 'about,assignees,createdBy',
-      after,
-    });
-    tasks.push(...response.data);
-    after = response.paging?.after;
-  } while (after);
-
-  return tasks;
+  return data;
 };
 
 // The evidence is an extra: a caller who may not read memories still reviews the terms.
-const getEvidence = (terms: GlossaryTerm[]) =>
+const getTermDerivations = (termIds: string[]) =>
   Promise.all(
-    chunk(
-      terms
-        .filter((term) => getProposalSource(term) === 'ai')
-        .map((term) => term.id),
-      MAX_DERIVATION_ENTITIES
-    ).map((ids) =>
+    chunk(termIds, MAX_DERIVATION_ENTITIES).map((ids) =>
       getMemoryDerivations(EntityType.GLOSSARY_TERM, ids).catch(() => [])
     )
   ).then((derivations) => derivations.flat());
 
-const getPendingTerms = async (scope: ProposalScope) => {
-  const terms: GlossaryTerm[] = [];
-  let after: string | undefined;
-
-  do {
-    const response = await getGlossaryTerms({
-      ...(scope.isGlossary ? { glossary: scope.id } : { parent: scope.id }),
-      entityStatus: PENDING_REVIEW_STATUSES.join(','),
-      fields: 'reviewers,parent',
-      limit: PAGE_SIZE_EXTRA_LARGE,
-      after,
-    });
-    terms.push(...response.data.filter((term) => getProposalSource(term)));
-    after = response.paging?.after;
-  } while (after);
-
-  return terms;
-};
-
-const fetchProposals = async (scope: ProposalScope) => {
-  const terms = await getPendingTerms(scope);
-  // Without its approval tasks a person's proposal shows who decides it, and the AI drafts stay.
+const toExplainedProposals = async (terms: GlossaryTerm[]) => {
+  // Without its approval request a person's proposal names who decides it, and AI drafts stay.
   const [derivations, approvalTasks] = await Promise.all([
-    getEvidence(terms),
-    getApprovalTasks(scope, terms).catch((): Task[] => []),
+    getTermDerivations(
+      terms
+        .filter((term) => getProposalSource(term) === 'ai')
+        .map((term) => term.id)
+    ),
+    getApprovalTasks(terms).catch((): Task[] => []),
   ]);
 
   return toProposals(terms, derivations, approvalTasks);
+};
+
+const fetchProposalPage = async (
+  scope: ProposalScope,
+  slices: ProposalSlice[]
+) => {
+  const pages = await Promise.all(
+    slices.map((slice) =>
+      searchGlossaryTermsPaginated({
+        ...scopeParams(scope),
+        ...sourceParams(slice.source),
+        entityStatus: PENDING_STATUSES,
+        fields: 'reviewers,parent',
+        limit: slice.limit,
+        offset: slice.offset,
+      })
+    )
+  );
+
+  return toExplainedProposals(pages.flatMap(({ data }) => data));
+};
+
+// A term read on its own carries the reviewers it inherits, as the listing does.
+const fetchProposal = async (termId: string) => {
+  const term = await getGlossaryTermsById(termId, {
+    fields: 'reviewers,parent',
+  });
+  const [proposal] = await toExplainedProposals([term]);
+
+  return proposal ?? null;
 };
 
 const settle = async (
@@ -174,42 +216,89 @@ const settle = async (
   return !isTaskPendingFurtherApproval(task);
 };
 
-export const useGlossaryProposals = (
-  scope?: ProposalScope
-): GlossaryProposals => {
-  const queryClient = useQueryClient();
+/** How many proposals a glossary or a term awaits, and how many of them AI agents made. */
+export const useGlossaryProposalCounts = (scope?: ProposalScope) => {
   const { data, isPending } = useQuery({
     enabled: Boolean(scope?.id),
-    queryFn: () => fetchProposals(scope as ProposalScope),
-    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, scope?.id],
+    queryFn: () => fetchProposalCounts(scope as ProposalScope),
+    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'counts', scope?.id],
   });
-  const proposals = data ?? NO_PROPOSALS;
 
-  const decide = useCallback(
-    async (
-      proposal: GlossaryProposal,
-      decision: ProposalDecision,
-      comment?: string
-    ) => {
+  return {
+    counts: data ?? NO_COUNTS,
+    isLoading: Boolean(scope?.id) && isPending,
+  };
+};
+
+const PAGE_QUERY_KEY = [...GLOSSARY_PROPOSALS_QUERY_KEY, 'page'];
+
+/** One page of the review queue, read from the server: AI agents' proposals, then people's. */
+export const useGlossaryProposalPage = (
+  scope: ProposalScope | undefined,
+  filter: ProposalFilter,
+  page: number,
+  counts: ProposalCounts
+) => {
+  const slices = useMemo(
+    () => getPageSlices(filter, page, counts, PROPOSALS_PAGE_SIZE),
+    [filter, page, counts]
+  );
+  const isEnabled = Boolean(scope?.id) && slices.length > 0;
+  const { data, isPending } = useQuery({
+    enabled: isEnabled,
+    queryFn: () => fetchProposalPage(scope as ProposalScope, slices),
+    queryKey: [...PAGE_QUERY_KEY, scope?.id, slices],
+    // The page on show stays until the next arrives, unless it is another glossary's or term's.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[PAGE_QUERY_KEY.length] === scope?.id
+        ? previous
+        : undefined,
+  });
+
+  return {
+    proposals: (isEnabled && data) || NO_PROPOSALS,
+    isLoading: isEnabled && isPending,
+  };
+};
+
+/** One proposal wherever its page is, such as the one selected in the terms table. */
+export const useGlossaryProposal = (termId?: string) => {
+  const { data } = useQuery({
+    enabled: Boolean(termId),
+    queryFn: () => fetchProposal(termId ?? ''),
+    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'proposal', termId],
+  });
+
+  return data ?? undefined;
+};
+
+/** Settles a proposal, then refreshes every view of the review queue. */
+export const useDecideProposal = (): DecideProposal => {
+  const client = useQueryClient();
+
+  return useCallback<DecideProposal>(
+    async (proposal, decision, comment) => {
       const isSettled = await settle(proposal, decision, comment);
-      await queryClient.invalidateQueries({
+      await client.invalidateQueries({
         queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
       });
 
       return isSettled;
     },
-    [queryClient]
+    [client]
   );
+};
 
-  return useMemo(
-    () => ({
-      counts: countProposals(proposals),
-      decide,
-      isLoading: Boolean(scope?.id) && isPending,
-      proposals,
-    }),
-    [decide, isPending, proposals, scope?.id]
-  );
+/** Why an AI agent proposed each of these terms, for the rows a table shows. */
+export const useTermDerivations = (termIds: string[]) => {
+  const ids = useMemo(() => [...termIds].sort(), [termIds]);
+  const { data } = useQuery({
+    enabled: ids.length > 0,
+    queryFn: () => getTermDerivations(ids),
+    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'derivations', ids],
+  });
+
+  return data ?? NO_DERIVATIONS;
 };
 
 /** Why an AI agent proposed one term, for that term's own page. */

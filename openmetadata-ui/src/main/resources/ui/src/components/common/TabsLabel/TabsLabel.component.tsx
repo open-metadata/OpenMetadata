@@ -13,6 +13,7 @@
 import {
   Badge,
   Skeleton,
+  Tooltip,
   useTabItemState,
 } from '@openmetadata/ui-core-components';
 
@@ -61,11 +62,20 @@ const TabsLabel = ({
           </Badge>
         )}
         {Boolean(proposedCount) && (
-          <span
-            className="tw:inline-flex tw:items-center"
-            data-testid="proposed-count">
-            {t('label.proposed')}
-            {getCountBadge(proposedCount, '', isCountActive)}
+          <span data-testid="proposed-count">
+            {/* Inside a tab: a focusable trigger would nest one control in another. */}
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={t('label.count-proposed', { count: proposedCount })}>
+              <span aria-hidden="true">
+                <Badge className="m-x-xss" color="purple" size="sm">
+                  {proposedCount}
+                </Badge>
+              </span>
+            </Tooltip>
+            <span className="tw:sr-only">
+              {t('label.count-proposed', { count: proposedCount })}
+            </span>
           </span>
         )}
       </div>

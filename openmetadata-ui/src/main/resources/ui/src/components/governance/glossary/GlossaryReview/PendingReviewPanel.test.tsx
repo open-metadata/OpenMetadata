@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
@@ -18,18 +27,43 @@ import {
   GlossaryTerm,
   ProviderType,
 } from '../../../../generated/entity/data/glossaryTerm';
-import { useGlossaryProposals } from '../../../../hooks/governance/glossary/useGlossaryProposals';
-import { GlossaryProposal } from '../../../../utils/GlossaryReview/GlossaryReview.types';
+import { Access } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { Operation } from '../../../../generated/entity/policies/policy';
+import { refreshGlossaryProposals } from '../../../../hooks/governance/glossary/useGlossaryProposals';
+import { searchTerms } from '../../../../hooks/governance/glossary/useGlossaryProposals.mock';
+import { queryClient } from '../../../../queryClient';
+import {
+  getGlossaryTermsById,
+  patchGlossaryTerm,
+  searchGlossaryTermsPaginated,
+} from '../../../../rest/glossaryAPI';
+import { getEntityPermissionByFqn } from '../../../../rest/permissionAPI';
+import { listTasks } from '../../../../rest/tasksAPI';
 import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../Glossary/useGlossary.store';
 import PendingReviewPanel from './PendingReviewPanel';
 
-const mockDecide = jest.fn();
+jest.mock('../../../../rest/glossaryAPI', () => ({
+  getGlossaryTermsById: jest.fn(),
+  patchGlossaryTerm: jest.fn(),
+  searchGlossaryTermsPaginated: jest.fn(),
+}));
 
-jest.mock('../../../../hooks/governance/glossary/useGlossaryProposals', () => ({
-  useGlossaryProposals: jest.fn(),
+jest.mock('../../../../rest/contextMemoryAPI', () => ({
+  ...jest.requireActual('../../../../rest/contextMemoryAPI'),
+  getMemoryDerivations: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock('../../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../../rest/tasksAPI'),
+  listTasks: jest.fn(),
+  resolveTask: jest.fn(),
+}));
+
+jest.mock('../../../../rest/permissionAPI', () => ({
+  getEntityPermissionByFqn: jest.fn(),
 }));
 
 const mockContext = {
@@ -53,155 +87,195 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-const pending = (id: string, provider?: ProviderType): GlossaryTerm =>
+const pending = (
+  name: string,
+  provider?: ProviderType,
+  entityStatus = EntityStatus.Draft
+): GlossaryTerm =>
   ({
-    id,
-    name: id,
-    displayName: id,
-    fullyQualifiedName: `Customers.${id}`,
-    description: `${id} definition`,
-    entityStatus: EntityStatus.Draft,
+    id: name,
+    name,
+    displayName: name,
+    fullyQualifiedName: `Customers.${name}`,
+    description: `${name} definition`,
+    entityStatus,
     provider,
     updatedAt: Date.now(),
     updatedBy: 'karthick',
   } as GlossaryTerm);
 
-const aiProposal: GlossaryProposal = {
-  term: pending('Churn Risk', ProviderType.Automation),
-  source: 'ai',
-};
-const personProposal: GlossaryProposal = {
-  term: pending('Escrow'),
-  source: 'person',
-};
+const aiDraft = pending('Churn Risk', ProviderType.Automation);
+const personDraft = pending('Escrow');
+const manyAiDrafts = Array.from({ length: 20 }, (_, index) =>
+  pending(`Term ${index}`, ProviderType.Automation)
+);
 
-const mockProposals = (proposals: GlossaryProposal[]) =>
-  (useGlossaryProposals as jest.Mock).mockReturnValue({
-    counts: {
-      all: proposals.length,
-      ai: proposals.filter((proposal) => proposal.source === 'ai').length,
-      person: proposals.filter((proposal) => proposal.source === 'person')
-        .length,
-    },
-    decide: mockDecide,
-    isLoading: false,
-    proposals,
-  });
+let terms: GlossaryTerm[];
 
-const renderPanel = () =>
-  render(<PendingReviewPanel />, {
-    wrapper: MemoryRouter,
-  });
+const Wrapper = ({ children }: { children: ReactNode }) => (
+  <QueryClientProvider client={queryClient}>
+    <MemoryRouter>{children}</MemoryRouter>
+  </QueryClientProvider>
+);
+
+const renderPanel = () => render(<PendingReviewPanel />, { wrapper: Wrapper });
 
 describe('PendingReviewPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    queryClient.clear();
     mockContext.permissions = { EditAll: true };
+    (getEntityPermissionByFqn as jest.Mock).mockResolvedValue({
+      permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
+    });
     useGlossaryStore.getState().setSelectedProposalId(undefined);
-    mockDecide.mockResolvedValue(true);
+    terms = [aiDraft, personDraft];
+    (searchGlossaryTermsPaginated as jest.Mock).mockImplementation(
+      searchTerms(() => terms)
+    );
+    (getGlossaryTermsById as jest.Mock).mockImplementation(async (id: string) =>
+      terms.find((term) => term.id === id)
+    );
+    (patchGlossaryTerm as jest.Mock).mockImplementation(
+      async (id: string, [{ value }]: { value: EntityStatus }[]) => {
+        terms = terms.map((term) =>
+          term.id === id ? { ...term, entityStatus: value } : term
+        );
+      }
+    );
+    (listTasks as jest.Mock).mockResolvedValue({ data: [] });
   });
 
-  it('lists every proposal and filters them by who made them', () => {
-    mockProposals([aiProposal, personProposal]);
+  it('lists every proposal and filters them by who made them', async () => {
     renderPanel();
 
+    expect(
+      await screen.findByTestId('proposal-card-expanded')
+    ).toHaveTextContent('Churn Risk');
     expect(screen.getByText('label.pending-review')).toBeInTheDocument();
-    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
-      'Churn Risk'
-    );
     expect(screen.getAllByTestId('proposal-card')).toHaveLength(1);
 
     fireEvent.click(screen.getByTestId('proposal-filter-person'));
 
+    await waitFor(() =>
+      expect(screen.queryByTestId('proposal-card')).not.toBeInTheDocument()
+    );
+
     expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
       'Escrow'
     );
-    expect(screen.queryByTestId('proposal-card')).not.toBeInTheDocument();
   });
 
-  it('offers no filter while every proposal comes from one source', () => {
-    mockProposals([aiProposal]);
+  it('offers no filter while every proposal comes from one source', async () => {
+    terms = [aiDraft];
     renderPanel();
 
-    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
-      'Churn Risk'
-    );
+    expect(
+      await screen.findByTestId('proposal-card-expanded')
+    ).toHaveTextContent('Churn Risk');
     expect(screen.queryByTestId('proposal-filter-ai')).not.toBeInTheDocument();
   });
 
-  it('lets an assigned approver who cannot edit the term decide it, but not edit it', () => {
+  it('lets an assigned approver who cannot edit the term decide it, but not edit it', async () => {
     mockContext.permissions = { EditAll: false };
-    mockProposals([
-      {
-        term: {
-          ...pending('Churn Risk', ProviderType.Automation),
-          entityStatus: EntityStatus.InReview,
-        },
-        source: 'ai',
-        approvalTask: {
+    (getEntityPermissionByFqn as jest.Mock).mockResolvedValue({
+      permissions: [{ operation: Operation.EditAll, access: Access.Deny }],
+    });
+    terms = [pending('Escrow', undefined, EntityStatus.InReview)];
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [
+        {
           id: 'task-id',
+          about: {
+            fullyQualifiedName: 'Customers.Escrow',
+            type: 'glossaryTerm',
+          },
           assignees: [{ id: 'user-id', type: 'user' }],
-        } as GlossaryProposal['approvalTask'],
-      },
-    ]);
+        },
+      ],
+    });
     renderPanel();
 
-    expect(screen.getByTestId('approve-proposal')).toBeInTheDocument();
+    expect(await screen.findByTestId('approve-proposal')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-proposal')).not.toBeInTheDocument();
+  });
+
+  it('lets a term owner review their AI draft without permission to edit its glossary', async () => {
+    mockContext.permissions = { EditAll: false };
+    terms = [aiDraft];
+    renderPanel();
+
+    expect(await screen.findByTestId('approve-proposal')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-proposal')).toBeInTheDocument();
+  });
+
+  it('does not offer decisions on a term the glossary editor cannot edit', async () => {
+    (getEntityPermissionByFqn as jest.Mock).mockResolvedValue({
+      permissions: [{ operation: Operation.EditAll, access: Access.Deny }],
+    });
+    terms = [aiDraft];
+    renderPanel();
+
+    await screen.findByTestId('proposal-card-expanded');
+    await waitFor(() => expect(getEntityPermissionByFqn).toHaveBeenCalled());
+
+    expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-proposal')).not.toBeInTheDocument();
   });
 
   it('lists a decided proposal as resolved and settles its table row', async () => {
-    mockProposals([aiProposal]);
+    terms = [aiDraft];
     useGlossaryStore
       .getState()
-      .setGlossaryChildTerms([aiProposal.term as unknown as ModifiedGlossary]);
+      .setGlossaryChildTerms([aiDraft as unknown as ModifiedGlossary]);
     renderPanel();
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('approve-proposal'));
-    });
+    fireEvent.click(await screen.findByTestId('approve-proposal'));
 
-    expect(mockDecide).toHaveBeenCalledWith(
-      aiProposal,
-      EntityStatus.Approved,
-      undefined
-    );
     expect(
-      within(screen.getByTestId('resolved-proposals')).getByText(
+      await within(await screen.findByTestId('resolved-proposals')).findByText(
         'Churn Risk · label.approved-by-you'
       )
     ).toBeInTheDocument();
+    expect(patchGlossaryTerm).toHaveBeenCalledWith('Churn Risk', [
+      { op: 'replace', path: '/entityStatus', value: EntityStatus.Approved },
+    ]);
     expect(useGlossaryStore.getState().glossaryChildTerms[0].entityStatus).toBe(
       EntityStatus.Approved
     );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('proposal-card-expanded')
+      ).not.toBeInTheDocument()
+    );
   });
 
-  it('stays out of the layout while nothing waits, and returns when a proposal arrives', () => {
-    mockProposals([]);
-    const { rerender } = renderPanel();
+  it('stays out of the layout while nothing waits, and returns when a proposal arrives', async () => {
+    terms = [];
+    renderPanel();
+
+    await waitFor(() => expect(queryClient.isFetching()).toBe(0));
 
     expect(
       screen.queryByTestId('pending-review-panel')
     ).not.toBeInTheDocument();
 
-    mockProposals([personProposal]);
-    rerender(<PendingReviewPanel />);
+    terms = [personDraft];
+    await act(() => refreshGlossaryProposals());
 
-    expect(screen.getByTestId('pending-review-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
-      'Escrow'
-    );
+    expect(
+      await screen.findByTestId('proposal-card-expanded')
+    ).toHaveTextContent('Escrow');
   });
 
-  it('pages a large review queue while keeping every proposal reachable', () => {
-    mockProposals(
-      Array.from({ length: 20 }, (_, index) => ({
-        term: pending(`Term ${index}`, ProviderType.Automation),
-        source: 'ai' as const,
-      }))
-    );
+  it('reads a large review queue a page at a time from the server', async () => {
+    terms = manyAiDrafts;
     renderPanel();
 
+    expect(
+      await screen.findByTestId('proposal-card-expanded')
+    ).toHaveTextContent('Term 0');
     expect(screen.getAllByTestId('proposal-card')).toHaveLength(14);
     expect(screen.queryByText('Term 15')).not.toBeInTheDocument();
 
@@ -209,26 +283,54 @@ describe('PendingReviewPanel', () => {
       within(screen.getByTestId('pending-review-panel')).getByTestId('next')
     );
 
-    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
-      'Term 15'
+    await waitFor(() =>
+      expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+        'Term 15'
+      )
     );
+
     expect(screen.queryByText('Term 0')).not.toBeInTheDocument();
+    expect(searchGlossaryTermsPaginated).toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 15, provider: ProviderType.Automation })
+    );
   });
 
-  it('opens the page containing the proposal selected from the terms table', () => {
-    mockProposals(
-      Array.from({ length: 20 }, (_, index) => ({
-        term: pending(`Term ${index}`, ProviderType.Automation),
-        source: 'ai' as const,
-      }))
-    );
+  it('shows the proposal selected in the terms table first, wherever its page is', async () => {
+    terms = manyAiDrafts;
     renderPanel();
+    await screen.findByTestId('proposal-card-expanded');
 
     act(() => useGlossaryStore.getState().setSelectedProposalId('Term 18'));
 
-    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
-      'Term 18'
+    await waitFor(() =>
+      expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+        'Term 18'
+      )
     );
-    expect(screen.queryByText('Term 0')).not.toBeInTheDocument();
+
+    expect(screen.getAllByTestId('proposal-card')).toHaveLength(15);
+    expect(screen.getByText('Term 0')).toBeInTheDocument();
+  });
+
+  it('clears the selected proposal when the reviewer filters the queue', async () => {
+    terms = [...manyAiDrafts, personDraft];
+    renderPanel();
+    await screen.findByTestId('proposal-card-expanded');
+    act(() => useGlossaryStore.getState().setSelectedProposalId('Term 18'));
+    await waitFor(() =>
+      expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+        'Term 18'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('proposal-filter-person'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+        'Escrow'
+      )
+    );
+
+    expect(screen.queryByText('Term 18')).not.toBeInTheDocument();
   });
 });

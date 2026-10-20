@@ -34,6 +34,13 @@ export interface GlossaryProposal {
 
 export type ProposalCounts = Record<ProposalFilter, number>;
 
+/** A run of one source's pending terms, as the server lists them. */
+export interface ProposalSlice {
+  source: ProposalSource;
+  offset: number;
+  limit: number;
+}
+
 export type ProposalDecision = EntityStatus.Approved | EntityStatus.Rejected;
 
 /** A decision taken during this visit, listed under "Resolved". */

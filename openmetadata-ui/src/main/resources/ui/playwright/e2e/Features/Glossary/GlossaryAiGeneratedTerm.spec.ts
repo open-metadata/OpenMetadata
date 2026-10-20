@@ -25,7 +25,11 @@ import { expect, test } from '../../fixtures/pages';
 
 // AI agents write the terms they derive as a bot, and bot writes never start the approval
 // workflow, so the term waits in Draft for a person.
-const createTermAsBot = async (page: Page, term: GlossaryTerm) => {
+const createTermAsBot = async (
+  page: Page,
+  term: GlossaryTerm,
+  owners?: { id: string; type: string }[]
+) => {
   const { apiContext, afterAction } = await getApiContext(page);
   const bot = await okJson<{ botUser: { id: string } }>(
     await apiContext.get('/api/v1/bots/name/ingestion-bot'),
@@ -45,6 +49,7 @@ const createTermAsBot = async (page: Page, term: GlossaryTerm) => {
         description: term.data.description,
         glossary: term.glossary.responseData.fullyQualifiedName,
         provider: 'automation',
+        owners,
       },
     }),
     'aiGeneratedTerm'
@@ -90,12 +95,10 @@ test.describe('AI-generated glossary terms', () => {
     await glossary.visitEntityPage(page);
     const row = getRowByName(page, reviewedInPanel.data.displayName);
     await expect(row.getByTestId('proposal-source-ai')).toBeVisible();
-    await expect(
-      row.getByTestId(
-        `${reviewedInPanel.responseData.fullyQualifiedName}-status`
-      )
-    ).toContainText('Draft');
-    await expect(row.getByTestId('proposal-status-badge')).toBeVisible();
+    await expect(row.getByTestId('proposal-status-badge')).toContainText(
+      'Proposed by AI'
+    );
+    await expect(row.getByText('Draft', { exact: true })).toHaveCount(0);
     await expect(page.getByTestId('pending-review-summary')).toBeVisible();
     await expect(
       page.getByTestId(`pending-terms-${glossary.responseData.name}`)
@@ -112,6 +115,9 @@ test.describe('AI-generated glossary terms', () => {
     }
     const card = panel.getByTestId('proposal-card-expanded');
     await expect(card).toContainText(reviewedInPanel.data.displayName);
+    await expect(card.getByTestId('reject-proposal')).toBeInViewport({
+      ratio: 1,
+    });
 
     const approve = waitForResponseWithStatus(
       page,
@@ -161,7 +167,7 @@ test.describe('AI-generated glossary terms', () => {
         const url = new URL(response.url());
 
         return (
-          url.pathname.endsWith('/api/v1/glossaryTerms') &&
+          url.pathname.endsWith('/api/v1/glossaryTerms/search') &&
           url.searchParams.get('entityStatus') === 'Draft,In Review'
         );
       },
@@ -221,6 +227,66 @@ test('pages a large queue of AI-generated glossary proposals', async ({
     await expect(panel.getByTestId('proposal-card')).toHaveCount(14);
   } finally {
     await glossary.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('a term owner can review an AI draft without editing its glossary', async ({
+  page,
+  ownerPage,
+}) => {
+  const glossary = new Glossary();
+  const term = new GlossaryTerm(glossary);
+  await redirectToHomePage(page);
+  await redirectToHomePage(ownerPage);
+  const { apiContext, afterAction } = await getApiContext(page);
+  const { apiContext: ownerApi, afterAction: afterOwnerAction } =
+    await getApiContext(ownerPage);
+
+  try {
+    await glossary.create(apiContext);
+    const owner = await okJson<{ id: string; name: string }>(
+      await ownerApi.get('/api/v1/users/loggedInUser'),
+      'termOwner'
+    );
+    await createTermAsBot(page, term, [{ id: owner.id, type: 'user' }]);
+    const parentPermission = await okJson<{
+      permissions: { operation: string; access: string }[];
+    }>(
+      await ownerApi.get(
+        `/api/v1/permissions/glossary/${glossary.responseData.id}`
+      ),
+      'glossaryPermission'
+    );
+    expect(parentPermission.permissions).not.toContainEqual(
+      expect.objectContaining({ operation: 'EditAll', access: 'allow' })
+    );
+
+    await glossary.visitEntityPage(ownerPage);
+    const card = ownerPage.getByTestId('proposal-card-expanded');
+    await expect(card).toContainText(term.data.displayName);
+    const approved = waitForResponseWithStatus(
+      ownerPage,
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response
+          .url()
+          .includes(`/api/v1/glossaryTerms/${term.responseData.id}`),
+      200
+    );
+    await card.getByTestId('approve-proposal').click();
+    await approved;
+    await expect(ownerPage.getByTestId('resolved-proposals')).toContainText(
+      term.data.displayName
+    );
+    const stored = await okJson<{ entityStatus: string }>(
+      await ownerApi.get(`/api/v1/glossaryTerms/${term.responseData.id}`),
+      'approvedOwnedTerm'
+    );
+    expect(stored.entityStatus).toBe('Approved');
+  } finally {
+    await glossary.delete(apiContext);
+    await afterOwnerAction();
     await afterAction();
   }
 });

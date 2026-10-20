@@ -30,7 +30,7 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../../generated/system/ui/page';
-import { useGlossaryProposals } from '../../../hooks/governance/glossary/useGlossaryProposals';
+import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -208,7 +208,7 @@ const GlossaryTermsV1 = ({
         : undefined,
     [glossaryTerm?.id, glossaryTerm?.fullyQualifiedName, isVersionView]
   );
-  const { counts: proposalCounts } = useGlossaryProposals(proposalScope);
+  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
 
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

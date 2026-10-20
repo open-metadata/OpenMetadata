@@ -39,7 +39,7 @@ import org.openmetadata.service.util.RequestEntityCache;
 public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
   public static final String HANDLER_NAME = "MemoryGlossaryDerivationJobHandler";
   public static final String UNAVAILABLE_MESSAGE =
-      "The configured AI provider does not derive glossary terms";
+      "Glossary terms are not derived: memory extraction is off or the AI provider has no deriver";
   private static final String MEMORY_FIELDS = "derivedEntities";
 
   /** {@code batchKey} groups lifecycle-queued memories from one source into a single job. */
@@ -49,25 +49,25 @@ public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
 
   private final Supplier<Optional<MemoryGlossaryDeriver>> deriverSupplier;
   private final Function<UUID, Optional<ContextMemory>> memoryLoader;
-  private final Predicate<ContextMemory> readableByEveryone;
+  private final Predicate<ContextMemory> publishable;
   private final JobDAO jobDao;
 
   public MemoryGlossaryDerivationJobHandler() {
     this(
-        () -> AiProviderHolder.get().memoryGlossaryDeriver(),
+        MemoryGlossaryDerivationQueue::availableDeriver,
         MemoryGlossaryDerivationJobHandler::loadMemory,
-        MemoryGlossaryDerivationJobHandler::isReadableByEveryone,
+        MemoryGlossaryDerivationJobHandler::isAnchoredForPublication,
         Entity.getJobDAO());
   }
 
   MemoryGlossaryDerivationJobHandler(
       final Supplier<Optional<MemoryGlossaryDeriver>> deriverSupplier,
       final Function<UUID, Optional<ContextMemory>> memoryLoader,
-      final Predicate<ContextMemory> readableByEveryone,
+      final Predicate<ContextMemory> publishable,
       final JobDAO jobDao) {
     this.deriverSupplier = deriverSupplier;
     this.memoryLoader = memoryLoader;
-    this.readableByEveryone = readableByEveryone;
+    this.publishable = publishable;
     this.jobDao = jobDao;
   }
 
@@ -104,14 +104,14 @@ public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
           .map(memoryLoader)
           .flatMap(Optional::stream)
           .filter(MemoryGlossaryDerivationJobHandler::isEligible)
-          .filter(readableByEveryone)
+          .filter(publishable)
           .toList();
     }
   }
 
-  private static boolean isReadableByEveryone(final ContextMemory memory) {
+  private static boolean isAnchoredForPublication(final ContextMemory memory) {
     return ((ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
-        .hasOrgWideAnchor(memory);
+        .isAnchoredForPublication(memory);
   }
 
   static boolean isEligible(final ContextMemory memory) {

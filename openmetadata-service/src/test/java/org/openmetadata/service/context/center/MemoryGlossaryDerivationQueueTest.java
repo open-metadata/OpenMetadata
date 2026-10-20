@@ -13,9 +13,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
@@ -24,6 +28,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.NoopCompletionClient;
 
 @ExtendWith(MockitoExtension.class)
 class MemoryGlossaryDerivationQueueTest {
@@ -32,6 +38,7 @@ class MemoryGlossaryDerivationQueueTest {
   @AfterEach
   void resetProvider() {
     AiProviderHolder.reset();
+    LLMClientHolder.initialize(null);
   }
 
   @Test
@@ -101,12 +108,38 @@ class MemoryGlossaryDerivationQueueTest {
 
   @Test
   void theBuiltInProviderHasNoDeriver() {
+    LLMClientHolder.setForTesting(new NoopCompletionClient());
     AiProviderHolder.setForTesting(new LlmAiProvider());
 
-    assertFalse(MemoryGlossaryDerivationQueue.hasDeriver());
+    assertFalse(MemoryGlossaryDerivationQueue.isAvailable());
 
     AiProviderHolder.setForTesting(providerWithDeriver());
-    assertTrue(MemoryGlossaryDerivationQueue.hasDeriver());
+    assertTrue(MemoryGlossaryDerivationQueue.isAvailable());
+  }
+
+  @Test
+  void derivationIsOffWhileMemoryExtractionIs() {
+    AiProviderHolder.setForTesting(providerWithDeriver());
+    LLMClientHolder.setForTesting(null);
+
+    assertFalse(MemoryGlossaryDerivationQueue.isAvailable());
+
+    LLMClientHolder.setForTesting(new NoopCompletionClient());
+    assertTrue(MemoryGlossaryDerivationQueue.isAvailable());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false, true, false", "true, false, false", "true, true, true"})
+  void bothLlmAndMemoryExtractionSwitchesGateDerivation(
+      boolean llmEnabled, boolean extractionEnabled, boolean expected) {
+    AiProviderHolder.setForTesting(providerWithDeriver());
+    LLMClientHolder.initialize(
+        new LLMConfiguration()
+            .withProvider(LLMProvider.NOOP)
+            .withEnabled(llmEnabled)
+            .withMemoryExtractionEnabled(extractionEnabled));
+
+    assertEquals(expected, MemoryGlossaryDerivationQueue.isAvailable());
   }
 
   @Test
