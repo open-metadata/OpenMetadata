@@ -12,8 +12,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
-pytestmark = [pytest.mark.metadata, pytest.mark.profiler]
-
 logger = getLogger(__name__)
 
 
@@ -69,6 +67,7 @@ def run_classifier(
     return ingestion_config
 
 
+@pytest.mark.profiler
 @pytest.mark.flaky(reruns=3, reruns_delay=30)
 @pytest.mark.parametrize(
     "table_name",
@@ -88,6 +87,7 @@ def test_auto_classification_workflow(
     assert metadata.get_sample_data(table) is not None
 
 
+@pytest.mark.profiler
 @pytest.mark.flaky(reruns=3, reruns_delay=30)
 def test_bytes_column_sample_data(
     run_classifier,

@@ -8,8 +8,6 @@ from sqlalchemy.exc import OperationalError
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.workflow.metadata import MetadataWorkflow
 
-pytestmark = pytest.mark.metadata
-
 
 @pytest.fixture(scope="module")
 def prepare_partitioned_schemas(cockroach_engine):
@@ -159,6 +157,7 @@ def prepare_partitioned_schemas(cockroach_engine):
                     raise
 
 
+@pytest.mark.metadata
 @pytest.mark.parametrize(
     "schema,table_name,expected_type,expected_partition_columns",
     [

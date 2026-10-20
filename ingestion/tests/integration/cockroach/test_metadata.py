@@ -4,8 +4,6 @@ from sqlalchemy import text
 from metadata.generated.schema.entity.data.table import Constraint, Table
 from metadata.workflow.metadata import MetadataWorkflow
 
-pytestmark = pytest.mark.metadata
-
 
 @pytest.fixture(scope="module")
 def prepare_cockroach(cockroach_engine, user_profiles):
@@ -30,6 +28,7 @@ def prepare_cockroach(cockroach_engine, user_profiles):
         conn.commit()
 
 
+@pytest.mark.metadata
 @pytest.mark.parametrize(
     "table_fqn,expected_columns",
     [

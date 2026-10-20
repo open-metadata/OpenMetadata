@@ -26,8 +26,6 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.runner import QueryRunner
 
-pytestmark = pytest.mark.profiler
-
 
 class Base(DeclarativeBase):
     pass
@@ -91,12 +89,14 @@ def _build_computer(session, model, table_type):
 
 
 class TestCockroachTableMetricComputer:
+    @pytest.mark.profiler
     def test_compute_returns_row_count(self, session):
         computer = _build_computer(session, MetricComputerTestTable, TableType.Regular)
         result = computer.compute()
         assert result is not None
         assert result.rowCount == 100
 
+    @pytest.mark.profiler
     def test_compute_returns_column_metadata(self, session):
         computer = _build_computer(session, MetricComputerTestTable, TableType.Regular)
         result = computer.compute()
