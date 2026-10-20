@@ -1,335 +1,287 @@
 package org.openmetadata.it.tests;
 
-import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.context.CreateContextMemory;
-import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
-import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateGlossary;
-import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.DerivationEvidence;
+import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
-import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Glossary;
-import org.openmetadata.schema.entity.data.OntologyChangeSet;
-import org.openmetadata.schema.entity.data.Page;
-import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.jobs.BackgroundJob;
-import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.type.OntologyChangeSetState;
-import org.openmetadata.schema.type.OntologyEditLeaseToken;
-import org.openmetadata.schema.type.OntologyEditLock;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
-import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.context.center.AiProvider;
+import org.openmetadata.service.context.center.AiProviderHolder;
+import org.openmetadata.service.context.center.DocumentMemoryExtractor;
+import org.openmetadata.service.context.center.MemoryDerivations;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
+import org.openmetadata.service.context.center.MemoryGlossaryDeriver;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
-import org.openmetadata.service.llm.CompletionOptions;
-import org.openmetadata.service.llm.CompletionResult;
-import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.llm.LLMCompletionClient;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
+import org.openmetadata.service.resources.context.ContextMemoryResource.MemoryDerivationList;
+import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
 
-/** Publication queues a real job; only model completion is scripted before Studio apply over REST. */
-@Isolated("Replaces the embedded server's completion provider")
+/**
+ * Publication queues a real job and the worker's handler runs it; only the AI provider's deriver is
+ * scripted, writing the Draft term and its evidence the way a provider must.
+ */
+@Isolated("Replaces the embedded server's AI provider and pauses its background worker")
 @ExtendWith(TestNamespaceExtension.class)
 class ContextMemoryDerivationIT {
+  private static final String FILES = "v1/contextCenter/drive/files";
+  private static final String DERIVATIONS = "/v1/contextCenter/memories/derivations";
+  private static final String AGENT = "Scripted Glossary Agent";
+
+  private final List<List<UUID>> deriverCalls = new ArrayList<>();
   private GenericBackgroundWorker worker;
-  private RdfConfiguration rdf;
-  private Boolean previousAiEnabled;
+  private AiProvider previousProvider;
+  private Glossary glossary;
 
   @BeforeEach
-  void pauseWorkerAndEnableDerivation() {
+  void pauseWorkerAndInstallDeriver(TestNamespace ns) {
     worker = TestSuiteBootstrap.findManagedObject(GenericBackgroundWorker.class).orElseThrow();
     worker.stop();
-    rdf = OpenMetadataApplicationConfigHolder.getInstance().getRdfConfiguration();
-    previousAiEnabled = rdf.getAiEnabled();
-    rdf.setAiEnabled(true);
+    previousProvider = AiProviderHolder.get();
+    glossary = glossary(ns);
+    AiProviderHolder.setForTesting(provider(Optional.of(this::derive)));
   }
 
   @AfterEach
-  void restoreProviders(TestNamespace ns) {
+  void restoreProvider(TestNamespace ns) {
     try {
       NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     } finally {
-      if (rdf != null) rdf.setAiEnabled(previousAiEnabled);
-      LLMClientHolder.initialize(LlmConfigHolder.get());
+      AiProviderHolder.setForTesting(previousProvider);
       if (worker != null) worker.start();
     }
   }
 
   @Test
-  void aPublishedMemoryProducesOneDurableProposalAndApplyingItKeepsItsEvidence(TestNamespace ns)
+  void aPublishedFileMemoryBecomesOneDraftTermThatKeepsItsEvidence(TestNamespace ns)
       throws Exception {
-    Fixture fixture = fixture(ns);
-    awaitGlossaryIndexed(fixture);
-    LLMClientHolder.setForTesting(completions(fixture));
-    ContextMemory memory = publish(ns, fixture);
-    fixture.memoryId().set(memory.getId());
-    BackgroundJob job = claimDerivation(memory, fixture.source());
-    OntologyChangeSet draft = derive(ns, job, memory);
-    assertRedeliveryReusesProposal(job, fixture.calls(), draft.getId());
-    OntologyChangeSet applied = apply(draft);
-    assertEvidenceSurvives(fixture, applied, memory);
-    assertCleanupRemovesRoots(ns, fixture, memory, applied);
+    ContextFile file = orgWideFile(ns);
+    ContextMemory published = publish(ns, "published", file, file.getEntityReference());
+    ContextMemory anchoredElsewhere =
+        publish(ns, "anchoredElsewhere", file, glossary.getEntityReference());
+
+    BackgroundJob job = claimBatch(file);
+    assertEquals(
+        List.of(published.getId(), anchoredElsewhere.getId()),
+        JsonUtils.convertValue(job.getJobArgs(), MemoryGlossaryDerivationJobHandler.Args.class)
+            .memoryIds(),
+        "both memories of one file share a single delayed job");
+    new MemoryGlossaryDerivationJobHandler().runJob(job);
+
+    assertEquals(
+        List.of(List.of(published.getId())),
+        deriverCalls,
+        "only a memory every reader of the file may see reaches the deriver");
+    EntityReference term = completedTerm(job);
+    assertDraftAutomationTerm(term);
+    assertEquals(
+        List.of(term.getId()),
+        memories()
+            .get(published.getId().toString(), "derivedEntities")
+            .getDerivedEntities()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+    assertEvidence(term, published);
+
+    ContextMemory edited =
+        editAnswer(published, "A qualified customer has completed eight paid orders.");
+    assertEquals(ContextMemoryStatus.APPROVED, edited.getEntityStatus());
+    assertEquals(
+        0,
+        Entity.getJobDAO().countInFlightMemoryGlossaryJobs(published.getId().toString()),
+        "a memory that already defines a term queues no second derivation");
   }
 
-  private Fixture fixture(TestNamespace ns) throws Exception {
-    String termName = "qualified_" + ns.shortPrefix();
-    seedOtherGlossaries(ns);
-    Page source =
-        ns.trackRoot(
-            Entity.PAGE,
-            RestClient.admin()
-                .create(
-                    "v1/contextCenter/pages",
-                    new CreatePage()
-                        .withName(ns.prefix("source"))
-                        .withPageType(PageType.ARTICLE)
-                        .withPage(new Article()),
-                    Page.class));
-    return new Fixture(
-        glossary(ns, termName), source, termName, new AtomicReference<>(), new AtomicInteger());
+  @Test
+  void aProviderWithoutADeriverQueuesNothing(TestNamespace ns) throws Exception {
+    AiProviderHolder.setForTesting(provider(Optional.empty()));
+    ContextFile file = orgWideFile(ns);
+
+    ContextMemory published = publish(ns, "undeferred", file, file.getEntityReference());
+
+    JobDAO jobs = Entity.getJobDAO();
+    assertEquals(0, jobs.countInFlightMemoryGlossaryJobs(published.getId().toString()));
+    assertNull(jobs.lockOpenMemoryGlossaryBatch(batchKey(file), 100, 0));
+    assertTrue(deriverCalls.isEmpty());
   }
 
-  private void seedOtherGlossaries(TestNamespace ns) {
-    for (int i = 0; i < 60; i++) {
-      GlossaryTestFactory.createWithName(ns, "a_prior_" + i);
-    }
+  private AiProvider provider(Optional<MemoryGlossaryDeriver> deriver) {
+    DocumentMemoryExtractor extractor = previousProvider.documentExtractor();
+    return new AiProvider() {
+      @Override
+      public DocumentMemoryExtractor documentExtractor() {
+        return extractor;
+      }
+
+      @Override
+      public Optional<MemoryGlossaryDeriver> memoryGlossaryDeriver() {
+        return deriver;
+      }
+    };
   }
 
-  private Glossary glossary(TestNamespace ns, String termName) {
-    // Keep this namespace-owned fixture in the selector's bounded fallback list.
+  // A provider writes its term as a bot with the automation provider and links it through
+  // MemoryDerivations, which is the whole contract OpenMetadata asks of it.
+  private List<EntityReference> derive(List<ContextMemory> memories) {
+    deriverCalls.add(memories.stream().map(ContextMemory::getId).toList());
+    return memories.stream().map(this::writeTerm).toList();
+  }
+
+  private EntityReference writeTerm(ContextMemory memory) {
+    GlossaryTermRepository terms =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    CreateGlossaryTerm create =
+        new CreateGlossaryTerm()
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withName("qualified_" + memory.getId())
+            .withDescription(memory.getAnswer())
+            .withProvider(ProviderType.AUTOMATION);
+    GlossaryTerm term =
+        terms.create(
+            null, new GlossaryTermMapper().createToEntity(create, Entity.INGESTION_BOT_NAME));
+    new MemoryDerivations()
+        .record(
+            memory.getId(),
+            term.getEntityReference(),
+            new DerivationEvidence()
+                .withAgent(AGENT)
+                .withConfidence(0.91)
+                .withReasons(List.of("Defines a durable customer segment"))
+                .withDerivedAt(System.currentTimeMillis()));
+    return term.getEntityReference();
+  }
+
+  private Glossary glossary(TestNamespace ns) {
     return ns.trackRoot(
         Entity.GLOSSARY,
         SdkClients.adminClient()
             .glossaries()
             .create(
                 new CreateGlossary()
-                    .withName("0_memory_" + ns.shortPrefix())
-                    .withDescription(
-                        termName + ": a qualified customer has completed seven paid orders.")));
+                    .withName(ns.prefix("derived"))
+                    .withDescription("Terms derived from published memories")));
   }
 
-  private void awaitGlossaryIndexed(Fixture fixture) {
-    var search = Entity.getSearchRepository();
-    var request =
-        new SearchRequest()
-            .withIndex(search.getIndexOrAliasName("glossary_search_index"))
-            .withQuery(fixture.termName())
-            .withSize(40);
-    await()
-        .atMost(Duration.ofSeconds(30))
-        .untilAsserted(
-            () -> {
-              var response = search.search(request, null);
-              var ids =
-                  JsonUtils.readTree((String) response.getEntity())
-                      .path("hits")
-                      .path("hits")
-                      .findValuesAsText("id");
-              assertTrue(ids.contains(fixture.glossary().getId().toString()));
-            });
+  private ContextFile orgWideFile(TestNamespace ns) throws Exception {
+    return ns.trackRoot(
+        Entity.CONTEXT_FILE,
+        RestClient.admin()
+            .create(
+                FILES, new CreateContextFile().withName(ns.prefix("source")), ContextFile.class));
   }
 
-  private ContextMemory publish(TestNamespace ns, Fixture fixture) {
+  private ContextMemory publish(
+      TestNamespace ns, String name, ContextFile source, EntityReference anchor) {
     CreateContextMemory request =
         new CreateContextMemory()
-            .withName(ns.prefix("published"))
-            .withQuestion("What is " + fixture.termName() + "?")
-            .withAnswer("A qualified customer has completed seven paid orders.")
+            .withName(ns.prefix(name))
+            .withTitle("Qualified customer in " + name)
+            .withQuestion("What is a qualified customer in " + name + "?")
+            .withAnswer("A qualified customer in " + name + " has completed seven paid orders.")
             .withEntityStatus(ContextMemoryStatus.APPROVED)
-            .withSourceType(ContextMemorySourceType.PAGE_EXTRACTION)
-            .withSourceEntity(fixture.source().getEntityReference())
-            .withPrimaryEntity(fixture.source().getEntityReference())
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withSourceEntity(source.getEntityReference())
+            .withPrimaryEntity(anchor)
             .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
     return ns.trackRoot(Entity.CONTEXT_MEMORY, memories().create(request));
   }
 
-  private BackgroundJob claimDerivation(ContextMemory memory, Page source) {
+  private BackgroundJob claimBatch(ContextFile file) {
     JobDAO jobs = Entity.getJobDAO();
-    Long queued = jobs.lockOpenOntologyMemoryBatch(Entity.PAGE + ":" + source.getId(), 100, 0);
+    Long queued = jobs.lockOpenMemoryGlossaryBatch(batchKey(file), 100, 0);
     assertNotNull(queued, "publication must enqueue derivation through the repository lifecycle");
     assertEquals(1, jobs.claimPendingJob(queued));
-    BackgroundJob job = jobs.fetchJobById(queued).orElseThrow();
-    var args =
-        JsonUtils.convertValue(job.getJobArgs(), OntologyMemoryDerivationJobHandler.Args.class);
-    assertEquals(List.of(memory.getId()), args.memoryIds());
-    return job;
+    return jobs.fetchJobById(queued).orElseThrow();
   }
 
-  private OntologyChangeSet derive(TestNamespace ns, BackgroundJob job, ContextMemory memory) {
-    OntologyMemoryDerivationJobHandler.createDefault().runJob(job);
+  private static String batchKey(ContextFile file) {
+    return Entity.CONTEXT_FILE + ":" + file.getId();
+  }
+
+  private EntityReference completedTerm(BackgroundJob job) {
     BackgroundJob finished = Entity.getJobDAO().fetchJobById(job.getId()).orElseThrow();
     assertEquals(BackgroundJob.Status.COMPLETED, finished.getStatus());
-    UUID id =
-        JsonUtils.readValue(finished.getResult(), OntologyMemoryDerivationJobHandler.Result.class)
-            .changeSetId();
-    assertNotNull(id);
-    OntologyChangeSet draft =
-        ns.trackRoot(
-            Entity.ONTOLOGY_CHANGE_SET,
-            SdkClients.adminClient().ontologyChangeSets().get(id.toString()));
-    assertEquals(OntologyChangeSetState.DRAFT, draft.getState());
-    assertEquals(Set.of(memory.getId()), draft.getOperations().getFirst().getSourceMemoryIds());
-    return draft;
+    List<EntityReference> terms =
+        JsonUtils.readValue(finished.getResult(), MemoryGlossaryDerivationJobHandler.Result.class)
+            .terms();
+    assertEquals(1, terms.size());
+    return terms.getFirst();
   }
 
-  private void assertRedeliveryReusesProposal(
-      BackgroundJob job, AtomicInteger calls, UUID proposalId) {
-    int callsAfterProposal = calls.get();
-    OntologyMemoryDerivationJobHandler.createDefault().runJob(job);
-    assertEquals(
-        callsAfterProposal, calls.get(), "redelivery reuses the persisted draft for the job");
-    BackgroundJob redelivered = Entity.getJobDAO().fetchJobById(job.getId()).orElseThrow();
-    assertEquals(BackgroundJob.Status.COMPLETED, redelivered.getStatus());
-    assertEquals(
-        proposalId,
+  private void assertDraftAutomationTerm(EntityReference reference) {
+    GlossaryTerm term = SdkClients.adminClient().glossaryTerms().get(reference.getId().toString());
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+    assertEquals(ProviderType.AUTOMATION, term.getProvider());
+    assertEquals(Entity.INGESTION_BOT_NAME, term.getUpdatedBy());
+  }
+
+  private void assertEvidence(EntityReference term, ContextMemory memory) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityType", Entity.GLOSSARY_TERM)
+            .queryParam("entityIds", term.getId().toString())
+            .build();
+    List<MemoryDerivation> derivations =
         JsonUtils.readValue(
-                redelivered.getResult(), OntologyMemoryDerivationJobHandler.Result.class)
-            .changeSetId());
-  }
-
-  private OntologyChangeSet apply(OntologyChangeSet draft) {
-    OntologyEditLock lock =
-        SdkClients.adminClient()
-            .ontologyEditLocks()
-            .acquire(
-                new AcquireOntologyEditLock()
-                    .withResourceType(Entity.ONTOLOGY_CHANGE_SET)
-                    .withResourceId(draft.getId())
-                    .withSessionId("memory-" + UUID.randomUUID())
-                    .withLeaseSeconds(60));
-    return SdkClients.adminClient()
-        .ontologyChangeSets()
-        .apply(
-            draft.getId(),
-            new ApplyOntologyChangeSet()
-                .withLease(
-                    new OntologyEditLeaseToken()
-                        .withSessionId(lock.getSessionId())
-                        .withVersion(lock.getVersion())));
-  }
-
-  private void assertEvidenceSurvives(
-      Fixture fixture, OntologyChangeSet applied, ContextMemory memory) {
-    var client = SdkClients.adminClient();
-    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
-    assertNotNull(
-        client
-            .glossaryTerms()
-            .getByName(fixture.glossary().getFullyQualifiedName() + "." + fixture.termName())
-            .getId());
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, DERIVATIONS, null, options),
+                MemoryDerivationList.class)
+            .getData();
+    assertEquals(1, derivations.size());
+    MemoryDerivation derivation = derivations.getFirst();
+    assertEquals(memory.getId(), derivation.getMemory().getId());
+    assertEquals(AGENT, derivation.getEvidence().getAgent());
+    assertEquals(0.91, derivation.getEvidence().getConfidence());
     assertEquals(
-        Set.of(memory.getId()),
-        client
-            .ontologyChangeSets()
-            .get(applied.getId().toString())
-            .getOperations()
-            .getFirst()
-            .getSourceMemoryIds());
-    ContextMemory linked = memories().get(memory.getId().toString(), "derivedEntities");
-    assertTrue(linked.getDerivedEntities() == null || linked.getDerivedEntities().isEmpty());
+        List.of("Defines a durable customer segment"), derivation.getEvidence().getReasons());
+  }
+
+  private ContextMemory editAnswer(ContextMemory memory, String answer) {
+    String patch = "[{\"op\":\"replace\",\"path\":\"/answer\",\"value\":\"" + answer + "\"}]";
+    return memories().patch(memory.getId(), JsonUtils.readTree(patch));
   }
 
   private ContextMemoryService memories() {
     return new ContextMemoryService(SdkClients.adminClient().getHttpClient());
   }
-
-  private void assertCleanupRemovesRoots(
-      TestNamespace ns, Fixture fixture, ContextMemory memory, OntologyChangeSet applied) {
-    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
-    assertGone("contextCenter/pages/" + fixture.source().getId());
-    assertGone("contextCenter/memories/" + memory.getId());
-    assertGone("ontologyChangeSets/" + applied.getId());
-  }
-
-  private void assertGone(String path) {
-    OpenMetadataException failure =
-        assertThrows(
-            OpenMetadataException.class,
-            () ->
-                SdkClients.adminClient()
-                    .getHttpClient()
-                    .execute(HttpMethod.GET, "/v1/" + path + "?include=all", null, Object.class));
-    assertEquals(404, failure.getStatusCode());
-  }
-
-  private LLMCompletionClient completions(Fixture fixture) {
-    return new LLMCompletionClient(1) {
-      @Override
-      protected CompletionResult doComplete(
-          String systemPrompt, String userPrompt, CompletionOptions options) {
-        fixture.calls().incrementAndGet();
-        String reply =
-            systemPrompt.contains("glossaryId")
-                ? glossaryChoice(fixture, userPrompt)
-                : termChoice(fixture);
-        return new CompletionResult(reply, 100, 30);
-      }
-
-      @Override
-      public String getModelId() {
-        return "scripted-memory-derivation";
-      }
-    };
-  }
-
-  private String glossaryChoice(Fixture fixture, String userPrompt) {
-    assertTrue(
-        userPrompt.contains(fixture.glossary().getId().toString()),
-        "The scripted selection must choose a glossary the model actually received");
-    return """
-        [{"glossaryId":"%s","newGlossaryName":"fallback","newGlossaryDisplayName":"Fallback",
-          "newGlossaryDescription":"Customer definitions","confidence":0.99,
-          "rationale":"The supplied glossary governs these concepts"}]
-        """
-        .formatted(fixture.glossary().getId());
-  }
-
-  private String termChoice(Fixture fixture) {
-    return """
-        [{"sourceMemoryId":"%s","name":"%s","displayName":"Qualified customer",
-          "description":"A customer with seven completed paid orders","confidence":0.99,
-          "rationale":"The supplied memory defines a distinct business concept"}]
-        """
-        .formatted(fixture.memoryId().get(), fixture.termName());
-  }
-
-  private record Fixture(
-      Glossary glossary,
-      Page source,
-      String termName,
-      AtomicReference<UUID> memoryId,
-      AtomicInteger calls) {}
 }
