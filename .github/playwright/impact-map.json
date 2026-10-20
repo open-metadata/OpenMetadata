@@ -973,7 +973,6 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.test.tsx",
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavVisibility.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/**",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/PermissionsTab.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx",

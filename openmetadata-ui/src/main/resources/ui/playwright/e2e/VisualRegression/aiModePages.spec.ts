@@ -55,17 +55,15 @@ const PAGES: {
     ],
   },
   {
-    // Classic settings URLs redirect to the settings modal in app mode
-    // (ADR:2026-10-20-app-mode-settings-urls-open-the-settings-modal).
     name: 'ai-roles',
-    route: '/my-data#access-control/roles',
+    route: '/settings/access/roles',
     readyTestId: 'roles-list-table',
     mask: [
       '[data-testid="roles-list-table"] tbody',
       '[data-testid="roles-list-container"] [data-testid="pagination"]',
     ],
   },
-  { name: 'ai-bots', route: '/my-data#bots', readyTestId: 'add-bot' },
+  { name: 'ai-bots', route: '/settings/bots', readyTestId: 'add-bot' },
 ];
 
 test.beforeEach(async ({ page }) => {

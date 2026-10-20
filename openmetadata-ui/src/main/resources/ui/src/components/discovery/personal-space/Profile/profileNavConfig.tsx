@@ -31,14 +31,13 @@ import type { Key } from 'react';
 import React, { FC } from 'react';
 import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
 import type { ProfileNavId } from '../../../../constants/Profile.constants';
+import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
+import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileDetailsPanel from './ProfileDetailsPanel';
-import {
-  ProfileNavVisibility,
-  PROFILE_NAV_VISIBILITY,
-} from './profileNavVisibility';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
@@ -139,7 +138,7 @@ export interface ProfileNavItem {
    * When present, the item is shown only when this returns true.
    * Receives the UIPermission map and the isAdmin flag of the current user.
    */
-  isVisible?: ProfileNavVisibility;
+  isVisible?: (permissions: UIPermission, isAdmin: boolean) => boolean;
 }
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
@@ -194,7 +193,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.access-control',
     description: 'message.access-control-description',
     icon: AccessControlIcon,
-    isVisible: PROFILE_NAV_VISIBILITY['access-control'],
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <AccessControlPanel onHeaderChange={onHeaderChange} />
@@ -206,7 +205,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.bot-plural',
     description: 'message.page-sub-header-for-bots',
     icon: BotIcon as FC<{ className?: string }>,
-    isVisible: PROFILE_NAV_VISIBILITY.bots,
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <BotsPanel onHeaderChange={onHeaderChange} />
@@ -218,7 +217,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.platform-setting-plural',
     description: 'message.customize-brand-description',
     icon: Sliders02,
-    isVisible: PROFILE_NAV_VISIBILITY['platform-settings'],
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
@@ -230,7 +229,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.single-sign-on',
     description: 'message.sso-configuration-directly-from-the-ui',
     icon: SingleSignOn,
-    isVisible: PROFILE_NAV_VISIBILITY.sso,
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <SsoPanel onHeaderChange={onHeaderChange} />
@@ -248,7 +247,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.persona-plural',
     description: 'message.page-sub-header-for-persona',
     icon: PersonaIcon as FC<{ className?: string }>,
-    isVisible: PROFILE_NAV_VISIBILITY.personas,
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <PersonasPanel onHeaderChange={onHeaderChange} />
@@ -260,7 +259,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.member-plural',
     description: 'message.team-member-management-description',
     icon: Users01,
-    isVisible: PROFILE_NAV_VISIBILITY.members,
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <MembersPanel onHeaderChange={onHeaderChange} />
@@ -272,7 +271,8 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
     icon: Settings02 as FC<{ className?: string }>,
-    isVisible: PROFILE_NAV_VISIBILITY['custom-properties'],
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <CustomPropertiesPanel onHeaderChange={onHeaderChange} />
@@ -287,7 +287,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.governance',
     description: 'message.governance-settings-description',
     icon: GovernanceTabIcon as FC<{ className?: string }>,
-    isVisible: PROFILE_NAV_VISIBILITY.governance,
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <GovernancePanel onHeaderChange={onHeaderChange} />
@@ -299,7 +299,11 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.application-plural',
     description: 'message.application-settings-description',
     icon: GridView,
-    isVisible: PROFILE_NAV_VISIBILITY.applications,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.APPLICATION,
+        permissions
+      ),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <ApplicationsPanel onHeaderChange={onHeaderChange} />
@@ -311,7 +315,11 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.notification',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
-    isVisible: PROFILE_NAV_VISIBILITY.notification,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(
+        ResourceEntity.EVENT_SUBSCRIPTION,
+        permissions
+      ),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <NotificationPanel onHeaderChange={onHeaderChange} />
