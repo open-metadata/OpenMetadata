@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect } from '@playwright/test';
+import { expect, mergeTests } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { test as isolatedUserTest } from '../../support/fixtures/isolatedUser';
 import {
   chooseSelectOption,
   createNewPage,
@@ -44,9 +45,13 @@ import { test as base } from '../fixtures/pages';
 const unescapeSearchQuery = (query: string | null) =>
   (query ?? '').replace(/\\(.)/g, '$1');
 
-const test = base;
+const test = mergeTests(base, isolatedUserTest);
 
-test.use({ storageState: 'playwright/.auth/admin.json' });
+// The shared admin has no distinct display name; the other seeded roles cannot create memories.
+test.use({
+  storageState: 'playwright/.auth/admin.json',
+  isolatedUserOptions: { isAdmin: true },
+});
 
 // ─── Shared test data ─────────────────────────────────────────────────────────
 
@@ -526,16 +531,17 @@ test.describe(
     test.describe('Memory Row Card Metadata', () => {
       test('row shows the creator display name', async ({
         page,
-        dataConsumerPage,
+        isolatedUserPage,
       }) => {
-        await redirectToHomePage(dataConsumerPage);
+        await redirectToHomePage(isolatedUserPage);
         const { apiContext, afterAction } = await getApiContext(
-          dataConsumerPage
+          isolatedUserPage
         );
         const title = `Creator Display Name ${uuid()}`;
 
         try {
-          expect(dataConsumerUser.displayName).not.toBe(dataConsumerUser.name);
+          const author = await getLoggedInUser(apiContext);
+          expect(author.displayName).not.toBe(author.name);
 
           const memory = await createMemoryViaApi(apiContext, {
             name: `cc_memory_display_name_${uuid()}`,
@@ -550,7 +556,7 @@ test.describe(
           const row = await searchAndGetMemoryRow(page, title, memory.id);
 
           await expect(
-            row.getByText(dataConsumerUser.displayName, { exact: true })
+            row.getByText(author.displayName, { exact: true })
           ).toBeVisible();
         } finally {
           await afterAction();
