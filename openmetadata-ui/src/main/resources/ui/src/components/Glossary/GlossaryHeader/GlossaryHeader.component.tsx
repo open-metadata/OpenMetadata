@@ -492,12 +492,12 @@ const GlossaryTermAiDraftNotice = ({
   return (
     <div className="tw:mb-3" data-testid="ai-generated-term-card">
       <ProposalCard
-        hideSummary
         isExpanded
         canDecide={
           !term.deleted &&
           canDecideAiGeneratedDraft(term, currentUser, canEditAll)
         }
+        layout="banner"
         proposal={{ derivation, source: 'ai', term }}
         onDecide={(entityStatus) => onUpdate({ ...term, entityStatus })}
       />

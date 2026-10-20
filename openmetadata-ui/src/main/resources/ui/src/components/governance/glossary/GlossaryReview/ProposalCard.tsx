@@ -51,8 +51,11 @@ export interface ProposalCardProps {
   onExpand?: () => void;
   onDecide: (decision: ProposalDecision, comment?: string) => Promise<void>;
   onEdit?: () => void;
-  /** Leaves out the term's name and definition where the page already shows them. */
-  hideSummary?: boolean;
+  /**
+   * `panel` is a card in the review queue. `banner` heads the proposed term's own page, which
+   * already shows its name and definition, so it leaves them out and keeps buttons compact.
+   */
+  layout?: 'panel' | 'banner';
 }
 
 const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
@@ -156,6 +159,8 @@ const AgentEvidence = ({ proposal }: { proposal: GlossaryProposal }) => {
 
 interface ProposalActionsProps {
   proposal: GlossaryProposal;
+  /** Approve takes the free width in the narrow queue, and its natural width elsewhere. */
+  isApproveWide: boolean;
   onDecide: (decision: ProposalDecision, comment?: string) => Promise<void>;
   onEdit?: () => void;
 }
@@ -163,6 +168,7 @@ interface ProposalActionsProps {
 /** Approve, edit or reject; rejecting a person's proposal first asks why, for its request. */
 const ProposalActions = ({
   proposal,
+  isApproveWide,
   onDecide,
   onEdit,
 }: ProposalActionsProps) => {
@@ -225,7 +231,7 @@ const ProposalActions = ({
   return (
     <Box gap={2}>
       <Button
-        className="tw:flex-1"
+        className={isApproveWide ? 'tw:flex-1' : undefined}
         color="primary"
         data-testid="approve-proposal"
         iconLeading={Check}
@@ -284,7 +290,7 @@ const ProposalCard = ({
   onExpand,
   onDecide,
   onEdit,
-  hideSummary = false,
+  layout = 'panel',
 }: ProposalCardProps) => {
   const { t } = useTranslation();
   const isAi = proposal.source === 'ai';
@@ -314,7 +320,7 @@ const ProposalCard = ({
       data-testid="proposal-card-expanded">
       <Box direction="col" gap={3}>
         <ProposedBy proposal={proposal} />
-        {!hideSummary && <ProposalSummary proposal={proposal} />}
+        {layout === 'panel' && <ProposalSummary proposal={proposal} />}
         {isAi && <AgentEvidence proposal={proposal} />}
         <span className="tw:text-xs tw:text-tertiary">
           {isAi
@@ -323,6 +329,7 @@ const ProposalCard = ({
         </span>
         {canDecide ? (
           <ProposalActions
+            isApproveWide={layout === 'panel'}
             proposal={proposal}
             onDecide={onDecide}
             onEdit={onEdit}
