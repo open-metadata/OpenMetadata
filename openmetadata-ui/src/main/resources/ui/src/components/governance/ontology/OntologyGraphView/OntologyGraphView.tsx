@@ -35,6 +35,7 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { OntologyProperty } from '../../../../generated/entity/data/ontologyProperty';
 import { PaletteKey } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -125,6 +126,10 @@ const OntologyGraphView = ({
 }: OntologyGraphViewProps) => {
   const { t } = useTranslation();
   const graphRef = useRef<OntologyGraphHandle>(null);
+  const pendingRelationProperty = useRef<{
+    key: string;
+    property: OntologyProperty;
+  }>();
   const handledCreateConceptRequest = useRef(createConceptRequestKey);
   const [search, setSearch] = useState('');
   const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
@@ -256,7 +261,21 @@ const OntologyGraphView = ({
 
         return false;
       }
-      const createNewRelationProperty = async () => {
+      const pendingKey = `${fromId}|${toId}|${relationType}`;
+      const getOrCreateRelationProperty = async () => {
+        if (!relationType.startsWith(NEW_RELATION_TYPE_PREFIX)) {
+          const property = model.properties.find(
+            (candidate) => candidate.iri === relationType
+          );
+          if (!property) {
+            throw new Error('Missing ontology relationship property');
+          }
+
+          return property;
+        }
+        if (pendingRelationProperty.current?.key === pendingKey) {
+          return pendingRelationProperty.current.property;
+        }
         const created = await createOntologyProperty(
           buildObjectPropertyRequest(
             model,
@@ -265,6 +284,10 @@ const OntologyGraphView = ({
             to
           )
         );
+        pendingRelationProperty.current = {
+          key: pendingKey,
+          property: created,
+        };
         onWorkingChange?.();
 
         return created;
@@ -281,15 +304,7 @@ const OntologyGraphView = ({
             })
           );
         } else {
-          const property = relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
-            ? await createNewRelationProperty()
-            : model.properties.find(
-                (candidate) => candidate.iri === relationType
-              );
-          if (!property) {
-            throw new Error('Missing ontology relationship property');
-          }
-          // A new restriction must use the property IRI minted by the preceding request.
+          const property = await getOrCreateRelationProperty();
           await createOntologyAxiom(
             buildRestrictionAxiomRequest({
               from,
@@ -301,6 +316,9 @@ const OntologyGraphView = ({
               to,
             })
           );
+        }
+        if (pendingRelationProperty.current?.key === pendingKey) {
+          pendingRelationProperty.current = undefined;
         }
         onWorkingChange?.();
         await refetch();

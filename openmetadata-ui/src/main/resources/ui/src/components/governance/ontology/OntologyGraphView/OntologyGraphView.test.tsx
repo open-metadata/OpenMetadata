@@ -446,15 +446,18 @@ describe('OntologyGraphView', () => {
   });
 
   it.each([false, true])(
-    'reuses the created relationship property after an axiom failure (model refreshed: %s)',
+    'reuses a pending relationship property and clears it after success (model refreshed: %s)',
     async (refreshModel) => {
       const createdProperty = {
         ...objectProperty,
         iri: 'urn:retail:server-minted-servedBy',
       };
-      jest.mocked(createOntologyProperty).mockResolvedValue(createdProperty);
-      jest
-        .mocked(createOntologyAxiom)
+      (
+        createOntologyProperty as jest.MockedFunction<
+          typeof createOntologyProperty
+        >
+      ).mockResolvedValue(createdProperty);
+      (createOntologyAxiom as jest.MockedFunction<typeof createOntologyAxiom>)
         .mockRejectedValueOnce(new Error('axiom write failed'))
         .mockResolvedValue(customerIsParty);
       const { rerender } = render(
@@ -485,11 +488,20 @@ describe('OntologyGraphView', () => {
       await act(() =>
         mockGraphProps.mock.calls
           .at(-1)?.[0]
+          .onCreateRelation(
+            party.id,
+            orphan.id,
+            refreshModel ? createdProperty.iri : 'isA'
+          )
+      );
+      await act(() =>
+        mockGraphProps.mock.calls
+          .at(-1)?.[0]
           .onCreateRelation(customer.id, orphan.id, 'new:served by')
       );
 
       expect(createOntologyProperty).toHaveBeenCalledTimes(1);
-      expect(createOntologyAxiom).toHaveBeenCalledTimes(2);
+      expect(createOntologyAxiom).toHaveBeenCalledTimes(3);
       expect(createOntologyAxiom).toHaveBeenLastCalledWith(
         expect.objectContaining({
           subjectIri: customer.iri,
@@ -498,6 +510,61 @@ describe('OntologyGraphView', () => {
               filler: expect.objectContaining({ classIri: orphan.iri }),
               propertyIri: createdProperty.iri,
             }),
+          ],
+        })
+      );
+
+      await act(() =>
+        mockGraphProps.mock.calls
+          .at(-1)?.[0]
+          .onCreateRelation(customer.id, orphan.id, 'new:served by')
+      );
+
+      expect(createOntologyProperty).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  it.each([
+    ['source', party.id, orphan.id, 'new:served by'],
+    ['target', customer.id, party.id, 'new:served by'],
+    ['label', customer.id, orphan.id, 'new:managed by'],
+  ])(
+    'creates a separate property when the pending relation %s changes',
+    async (_changedField, fromId, toId, relationType) => {
+      const nextProperty = {
+        ...objectProperty,
+        iri: 'urn:retail:next-property',
+      };
+      (
+        createOntologyProperty as jest.MockedFunction<
+          typeof createOntologyProperty
+        >
+      )
+        .mockResolvedValueOnce(objectProperty)
+        .mockResolvedValue(nextProperty);
+      (createOntologyAxiom as jest.MockedFunction<typeof createOntologyAxiom>)
+        .mockRejectedValueOnce(new Error('axiom write failed'))
+        .mockResolvedValue(customerIsParty);
+      render(
+        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      );
+      await screen.findByTestId('native-ontology-graph');
+      await act(() =>
+        mockGraphProps.mock.calls
+          .at(-1)?.[0]
+          .onCreateRelation(customer.id, orphan.id, 'new:served by')
+      );
+      await act(() =>
+        mockGraphProps.mock.calls
+          .at(-1)?.[0]
+          .onCreateRelation(fromId, toId, relationType)
+      );
+
+      expect(createOntologyProperty).toHaveBeenCalledTimes(2);
+      expect(createOntologyAxiom).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          expressions: [
+            expect.objectContaining({ propertyIri: nextProperty.iri }),
           ],
         })
       );
