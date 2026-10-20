@@ -99,8 +99,11 @@ public final class NativeOntologyRdfImporter {
                   .withVersion(0.1)
               : JsonUtils.deepCopy(current, OntologyConcept.class)
                   .withConceptType(parsedConcept.getConceptType())
-                  .withSynonyms(parsedConcept.getSynonyms())
-                  .withConceptMappings(parsedConcept.getConceptMappings());
+                  .withSynonyms(parsedConcept.getSynonyms());
+      if (current != null) {
+        proposed.withConceptMappings(
+            reconcileMappings(proposed.getConceptMappings(), parsedConcept.getConceptMappings()));
+      }
       overlayLabel(proposed, parsedConcept.getDisplayName(), parsedConcept.getDescription());
       if (current == null || !sameConcept(current, proposed)) {
         operations.add(
@@ -265,6 +268,24 @@ public final class NativeOntologyRdfImporter {
 
   private static String iriText(final URI iri) {
     return iri == null ? null : iri.toString();
+  }
+
+  private static List<ConceptMapping> reconcileMappings(
+      final List<ConceptMapping> saved, final List<ConceptMapping> parsed) {
+    final Set<String> savedKeys =
+        listOrEmpty(saved).stream()
+            .map(NativeOntologyRdfImporter::mappingKey)
+            .collect(Collectors.toSet());
+    final Set<String> parsedKeys =
+        parsed.stream().map(NativeOntologyRdfImporter::mappingKey).collect(Collectors.toSet());
+    final List<ConceptMapping> mappings =
+        listOrEmpty(saved).stream()
+            .filter(mapping -> parsedKeys.contains(mappingKey(mapping)))
+            .collect(Collectors.toCollection(ArrayList::new));
+    parsed.stream()
+        .filter(mapping -> !savedKeys.contains(mappingKey(mapping)))
+        .forEach(mappings::add);
+    return mappings;
   }
 
   private static String mappingKey(final ConceptMapping mapping) {
