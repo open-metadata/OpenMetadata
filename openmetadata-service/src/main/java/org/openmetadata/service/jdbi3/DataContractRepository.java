@@ -43,6 +43,7 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.LatestResult;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.TermsOfUse;
 import org.openmetadata.schema.entity.datacontract.ContractValidation;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
@@ -1660,51 +1662,68 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   public DataContract getEffectiveDataContract(EntityInterface<?> entity) {
     DataContract entityContract = getEntityDataContractSafely(entity);
+    DataContract parentContract = getInheritableContract(entity);
+    return parentContract == null
+        ? entityContract
+        : applyParentContract(entity, entityContract, parentContract);
+  }
 
+  private DataContract applyParentContract(
+      EntityInterface<?> entity, DataContract entityContract, DataContract parentContract) {
+    return entityContract == null
+        ? inheritFromParentContract(entity, parentContract)
+        : mergeContracts(entityContract, parentContract);
+  }
+
+  /**
+   * The approved contract an entity inherits from: its Data Product's, else (for a table) its
+   * schema's, so one contract set on a schema governs every table under it.
+   */
+  private DataContract getInheritableContract(EntityInterface<?> entity) {
+    DataContract dataProductContract = getDataProductContract(entity);
+    return dataProductContract == null && entity instanceof Table table
+        ? loadApprovedContract(table.getDatabaseSchema())
+        : dataProductContract;
+  }
+
+  // An entity in several data products inherits from none of them: which one would be ambiguous.
+  private DataContract getDataProductContract(EntityInterface<?> entity) {
     List<EntityReference> dataProducts = entity.getDataProducts();
-    if (nullOrEmpty(dataProducts)) {
-      return entityContract;
-    }
-
-    // If entity belongs to multiple data products, we cannot determine which contract to inherit
-    // Return only the entity's own contract
-    if (dataProducts.size() > 1) {
+    boolean inSingleDataProduct = dataProducts != null && dataProducts.size() == 1;
+    if (!nullOrEmpty(dataProducts) && !inSingleDataProduct) {
       LOG.debug(
           "Entity {} belongs to {} data products. Skipping contract inheritance to avoid ambiguity.",
           entity.getId(),
           dataProducts.size());
-      return entityContract;
     }
-
-    DataContract dataProductContract = null;
-    EntityReference dataProductRef = dataProducts.get(0);
-    try {
-      dataProductContract = loadEntityDataContract(dataProductRef);
-      if (dataProductContract != null
-          && dataProductContract.getEntityStatus() != EntityStatus.APPROVED) {
-        dataProductContract = null;
-      }
-    } catch (Exception e) {
-      LOG.debug(
-          "No contract found for data product {}: {}", dataProductRef.getId(), e.getMessage());
-    }
-
-    if (dataProductContract == null) {
-      return entityContract;
-    }
-
-    if (entityContract == null) {
-      return inheritFromDataProductContract(entity, dataProductContract);
-    }
-
-    return mergeContracts(entityContract, dataProductContract);
+    return inSingleDataProduct ? loadApprovedContract(dataProducts.getFirst()) : null;
   }
 
-  private DataContract inheritFromDataProductContract(
-      EntityInterface<?> entity, DataContract dataProductContract) {
-    DataContract inherited = JsonUtils.deepCopy(dataProductContract, DataContract.class);
+  private DataContract loadApprovedContract(EntityReference parent) {
+    DataContract contract = parent == null ? null : loadContractOf(parent);
+    return contract != null && contract.getEntityStatus() == EntityStatus.APPROVED
+        ? contract
+        : null;
+  }
 
-    // Update the entity reference to point to the actual entity, not the data product
+  // A missing contract reads as null; only an unreadable stored contract is skipped, so a parent
+  // with corrupt JSON does not take its children's contracts down with it.
+  private DataContract loadContractOf(EntityReference parent) {
+    DataContract contract = null;
+    try {
+      contract = loadEntityDataContract(parent);
+    } catch (JsonParsingException e) {
+      LOG.warn(
+          "Unreadable contract for {} {}: {}", parent.getType(), parent.getId(), e.getMessage());
+    }
+    return contract;
+  }
+
+  private DataContract inheritFromParentContract(
+      EntityInterface<?> entity, DataContract parentContract) {
+    DataContract inherited = JsonUtils.deepCopy(parentContract, DataContract.class);
+
+    // Update the entity reference to point to the actual entity, not the parent
     inherited.setEntity(entity.getEntityReference());
 
     // Clear entity-specific fields that should not be inherited
