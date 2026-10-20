@@ -378,7 +378,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
     }
   });
 
-  test('A failed scene request offers a retry that refetches', async ({
+  test('A failed scene request offers a reload that refetches', async ({
     page,
   }) => {
     await page.route('**/api/v1/lineage/scene?*', (route) =>
@@ -387,11 +387,10 @@ test.describe('Platform Lineage page (/lineage)', () => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.LINEAGE);
 
-    const retry = page.getByTestId('lineage-map-retry');
+    const placeholder = page.getByTestId('empty-placeholder');
+    await expect(placeholder).toContainText('Something went wrong');
+    const retry = placeholder.getByRole('button', { name: 'Reload' });
     await expect(retry).toBeVisible();
-    await expect(page.getByTestId('empty-placeholder')).toContainText(
-      'Something went wrong'
-    );
 
     const refetch = page.waitForRequest((request) =>
       new URL(request.url()).pathname.endsWith('/api/v1/lineage/scene')

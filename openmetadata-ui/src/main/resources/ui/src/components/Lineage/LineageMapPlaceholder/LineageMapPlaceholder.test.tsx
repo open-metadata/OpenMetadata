@@ -54,7 +54,7 @@ describe('LineageMapPlaceholder', () => {
     expect(
       screen.getByText('message.no-lineage-data-available')
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('lineage-map-retry')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   it('offers a retry when the scene request fails', () => {
@@ -72,7 +72,7 @@ describe('LineageMapPlaceholder', () => {
       screen.getByText('message.something-went-wrong')
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('lineage-map-retry'));
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(onRetry).toHaveBeenCalledTimes(1);
   });

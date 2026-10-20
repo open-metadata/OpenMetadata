@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import {
-  AlertCircle,
-  PlatformLineage,
-} from '@openmetadata/ui-core-components/icons';
+import { PlatformLineage } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useTranslation } from 'react-i18next';
 import { LineageScene } from '../../../generated/api/lineage/lineageScene';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import LineageSkeleton from '../LineageSkeleton.component';
 
 interface LineageMapPlaceholderProps {
@@ -43,25 +41,11 @@ const LineageMapPlaceholder = ({
   return (
     <div className="tw:relative tw:h-full tw:w-full">
       {error && !scene ? (
-        <EmptyPlaceholder
-          footer={
-            <Button
-              color="secondary"
-              data-testid="lineage-map-retry"
-              size="sm"
-              onClick={onRetry}>
-              {t('label.try-again')}
-            </Button>
-          }
-          icon={<AlertCircle className="tw:text-fg-quaternary" />}
-          title={t('message.something-went-wrong')}
-          variant="blank"
-        />
+        <SomethingWentWrongPlaceholder onReload={onRetry} />
       ) : (
-        <EmptyPlaceholder
-          icon={<PlatformLineage className="tw:text-fg-quaternary" />}
-          title={t('message.no-lineage-data-available')}
-          variant="blank"
+        <NoDataPlaceholder
+          description={t('message.no-lineage-data-available')}
+          icon={<PlatformLineage className="tw:text-secondary" />}
         />
       )}
     </div>
