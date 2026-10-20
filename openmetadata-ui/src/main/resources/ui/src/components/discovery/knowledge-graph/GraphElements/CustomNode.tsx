@@ -185,25 +185,29 @@ function CustomNode({
             </Typography>
           </Box>
           {members && (
-            <span
-              className="kg-node-count tw:rounded-full tw:border tw:px-1.5"
+            <Typography
+              className="tw:shrink-0 tw:rounded-full tw:border tw:px-1.5"
+              size="text-xs"
               style={{
                 color,
                 backgroundColor: data.colorLight as string | undefined,
                 borderColor: color,
-              }}>
+              }}
+              weight="semibold">
               {members.length}
-            </span>
+            </Typography>
           )}
         </Box>
       </Button>
       {mapped && (
         <Box
           align="center"
-          className="kg-node-note tw:px-3 tw:pb-2 tw:text-success-primary"
+          className="tw:px-3 tw:pb-2 tw:text-success-primary"
           gap={1}>
           <CheckCircle aria-hidden="true" size={12} />
-          <span>{t('label.kg-mapped-to-ontology')}</span>
+          <Typography color="success" size="text-xs" weight="semibold">
+            {t('label.kg-mapped-to-ontology')}
+          </Typography>
         </Box>
       )}
       {members && (
@@ -212,9 +216,12 @@ function CustomNode({
           direction="col"
           gap={0}>
           {members.slice(0, 3).map((member) => (
-            <span className="kg-node-member tw:truncate" key={member.id}>
+            <Typography
+              className="tw:block tw:truncate tw:text-secondary"
+              key={member.id}
+              size="text-xs">
               {getGraphNodeLabel(member)}
-            </span>
+            </Typography>
           ))}
           <Box align="center" className="tw:mt-1" justify="between">
             <Button
@@ -230,9 +237,12 @@ function CustomNode({
               )}
             </Button>
             {members.length > 3 && (
-              <span className="kg-node-more">
+              <Typography
+                className="tw:text-quaternary"
+                size="text-xs"
+                weight="medium">
                 {t('label.kg-more-count', { count: members.length - 3 })}
-              </span>
+              </Typography>
             )}
           </Box>
         </Box>

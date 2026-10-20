@@ -458,7 +458,10 @@ const InspectorHeader = ({
   const { t } = useTranslation();
 
   return (
-    <Box align="start" className="kg-inspector-header" gap={2}>
+    <Box
+      align="start"
+      className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:pt-3.5 tw:pb-3"
+      gap={2}>
       {onBack && (
         <Button
           aria-label={t('label.back')}
@@ -627,20 +630,23 @@ const KnowledgeGraphOverlays = ({
       {tooltip && (
         <div
           aria-hidden="true"
-          className="kg-edge-tooltip"
+          className="tw:pointer-events-none tw:z-1500 tw:max-w-72.5 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:px-2.5 tw:py-1.5 tw:text-xs tw:shadow-lg"
           data-testid="edge-tooltip"
           style={{
             position: 'fixed',
             left: Math.min(tooltip.x + 12, window.innerWidth - 300),
             top: Math.min(tooltip.y + 12, window.innerHeight - 100),
           }}>
-          <div className="kg-edge-tooltip__direction">
+          <div className="tw:mb-1 tw:truncate tw:text-tertiary">
             {tooltip.sourceLabel +
               (tooltip.derived ? ' — ' : ' → ') +
               tooltip.targetLabel}
           </div>
           {tooltip.labels.map((label) => (
-            <div className="kg-edge-tooltip__label" key={label}>
+            <div
+              className="tw:font-medium tw:wrap-anywhere tw:text-primary"
+              data-testid="edge-tooltip-label"
+              key={label}>
               {label}
             </div>
           ))}
@@ -650,7 +656,7 @@ const KnowledgeGraphOverlays = ({
         <Box
           aria-label={t('label.kg-inspector')}
           aria-modal={false}
-          className="kg-inspector"
+          className="kg-inspector tw:relative tw:z-10 tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-hidden tw:bg-surface"
           data-testid="graph-inspector"
           direction="col"
           role="dialog"

@@ -598,9 +598,10 @@ const KnowledgeGraphDetails = ({
           className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:py-2"
           gap={3}
           wrap="wrap">
-          <Box className="kg-details-tabs tw:shrink-0">
+          <Box className="tw:shrink-0">
             <Tabs.List
               aria-label={t('label.kg-details')}
+              className="tw:gap-0.5 tw:rounded-md tw:bg-secondary tw:p-0.5"
               size="sm"
               type="button-minimal">
               {(Object.keys(titles) as KnowledgeGraphDrawer[]).map((key) => (

@@ -17,24 +17,24 @@
   justify-content: center;
   position: relative;
   user-select: none;
-  box-shadow: var(--om-shadow-xs);
-  border-radius: var(--om-radius-10);
+  box-shadow: var(--tw-shadow-xs);
+  border-radius: var(--tw-radius-xl);
   background-color: var(--tw-background-color-surface);
-  border: var(--om-space-1) solid var(--tw-border-color-primary);
+  border: calc(var(--tw-spacing) / 4) solid var(--tw-border-color-primary);
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   cursor: pointer;
   touch-action: none;
-  transition: opacity var(--om-duration-150) ease,
-    box-shadow var(--om-duration-150) ease;
+  transition: opacity var(--tw-default-transition-duration) ease,
+    box-shadow var(--tw-default-transition-duration) ease;
 
   .kg-node-select {
     width: 100%;
-    min-height: var(--om-space-48);
+    min-height: calc(var(--tw-spacing) * 12);
     height: auto;
-    padding: var(--om-space-8) var(--om-space-12);
-    border-radius: var(--om-radius-10);
+    padding: calc(var(--tw-spacing) * 2) calc(var(--tw-spacing) * 3);
+    border-radius: var(--tw-radius-xl);
     box-shadow: none;
     white-space: normal;
     > [data-text] {
@@ -49,18 +49,19 @@
 
   &.kg-node-group {
     justify-content: flex-start;
-    box-shadow: var(--om-shadow-sm);
+    box-shadow: var(--tw-shadow-sm);
     &::before,
     &::after {
       content: '';
       position: absolute;
-      inset: calc(-1 * var(--om-space-4)) var(--om-space-4) 0;
-      border: var(--om-space-1) solid var(--tw-border-color-secondary);
-      border-radius: var(--om-radius-10);
+      inset: calc(-1 * var(--tw-spacing)) var(--tw-spacing) 0;
+      border: calc(var(--tw-spacing) / 4) solid var(--tw-border-color-secondary);
+      border-radius: var(--tw-radius-xl);
       z-index: -1;
     }
     &::after {
-      inset: calc(-1 * var(--om-space-8)) var(--om-space-8) 0;
+      inset: calc(-1 * calc(var(--tw-spacing) * 2)) calc(var(--tw-spacing) * 2)
+        0;
     }
   }
 
@@ -68,8 +69,8 @@
   // it reads as the centre of the graph at any zoom.
   &.kg-node-root {
     border-color: var(--tw-color-fg-brand-primary);
-    box-shadow: 0 0 0 var(--om-space-4) var(--tw-color-utility-brand-100),
-      var(--om-shadow-md);
+    box-shadow: 0 0 0 var(--tw-spacing) var(--tw-color-utility-brand-100),
+      var(--tw-shadow-md);
   }
   &.kg-node-gap {
     border-color: var(--tw-color-fg-warning-primary);
@@ -80,7 +81,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--om-space-8);
+    gap: calc(var(--tw-spacing) * 2);
     width: 100%;
     min-width: 0;
   }
@@ -88,52 +89,18 @@
   .node-icon {
     display: flex;
     flex-shrink: 0;
-    width: var(--om-space-28);
-    height: var(--om-space-28);
+    width: calc(var(--tw-spacing) * 7);
+    height: calc(var(--tw-spacing) * 7);
     color: var(--tw-text-color-tertiary);
   }
 
-  .kg-node-count {
-    flex-shrink: 0;
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-semibold);
-    line-height: var(--om-line-height-normal);
-  }
-
-  .kg-node-note {
-    font-size: var(--om-font-size-11_5);
-    font-weight: var(--om-font-weight-semibold);
-  }
-
-  .kg-node-member {
-    display: block;
-    font-size: var(--om-font-size-xs);
-    line-height: var(--om-line-height-relaxed);
-    color: var(--tw-text-color-secondary);
-  }
-
-  .kg-node-more {
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-medium);
-    color: var(--tw-text-color-quaternary);
-  }
-
   &.kg-node-root .node-icon {
-    width: var(--om-space-32);
-    height: var(--om-space-32);
-  }
-
-  .asset-type-tag {
-    padding: var(--om-space-2) var(--om-space-4);
-    border-radius: var(--om-radius-sm);
-    border-width: var(--om-space-1);
-    border-style: solid;
-    border-color: var(--tw-border-color-primary);
-    white-space: nowrap;
+    width: calc(var(--tw-spacing) * 8);
+    height: calc(var(--tw-spacing) * 8);
   }
 
   &.highlighted {
-    box-shadow: var(--om-shadow-md);
+    box-shadow: var(--tw-shadow-md);
     border-color: var(--tw-border-color-brand);
   }
 
@@ -144,8 +111,8 @@
   }
 
   &:focus-visible {
-    outline: var(--om-space-2) solid var(--tw-border-color-brand);
-    outline-offset: var(--om-space-2);
+    outline: calc(var(--tw-spacing) / 2) solid var(--tw-border-color-brand);
+    outline-offset: calc(var(--tw-spacing) / 2);
   }
 
   @media (prefers-reduced-motion: reduce) {
