@@ -733,6 +733,7 @@ public class AppsResourceIT {
       CreateApp createApp =
           new CreateApp()
               .withName(marketPlaceDef.getName())
+              .withDisplayName(marketPlaceDef.getDisplayName())
               .withAppConfiguration(marketPlaceDef.getAppConfiguration())
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
               .withAllowBotImpersonation(false);
@@ -811,6 +812,7 @@ public class AppsResourceIT {
       CreateApp createApp =
           new CreateApp()
               .withName(marketPlaceDef.getName())
+              .withDisplayName(marketPlaceDef.getDisplayName())
               .withAppConfiguration(marketPlaceDef.getAppConfiguration())
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
               .withAllowBotImpersonation(true);
