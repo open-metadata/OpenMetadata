@@ -77,6 +77,16 @@ public class RecipientResolver {
   }
 
   /**
+   * Whether delivery can find anyone of a category for an entity of this type: what a form may
+   * offer a source. ADR:2026-10-20-an-alert-source-offers-only-recipients-delivery-reaches
+   */
+  public static boolean reaches(
+      SubscriptionDestination.SubscriptionCategory category, String entityType) {
+    RecipientResolutionStrategy strategy = STRATEGIES.get(category);
+    return strategy != null && strategy.reaches(entityType);
+  }
+
+  /**
    * The recipients of one destination for one event, and the lookups that failed.
    *
    * @param directory where the destination's channel reaches a user or a team

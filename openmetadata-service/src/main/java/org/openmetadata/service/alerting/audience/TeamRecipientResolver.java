@@ -87,6 +87,12 @@ public class TeamRecipientResolver implements RecipientResolutionStrategy {
     return Recipients.from(Lookup.of(what, () -> directory.ofTeam(read.get())), Recipients::of);
   }
 
+  // Named by the destination itself, whatever the event is about.
+  @Override
+  public boolean reaches(String entityType) {
+    return true;
+  }
+
   @Override
   public SubscriptionDestination.SubscriptionCategory getCategory() {
     return SubscriptionDestination.SubscriptionCategory.TEAMS;

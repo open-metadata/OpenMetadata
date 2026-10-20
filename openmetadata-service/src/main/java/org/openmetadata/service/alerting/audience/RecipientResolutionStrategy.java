@@ -44,5 +44,12 @@ public interface RecipientResolutionStrategy {
       SubscriptionDestination destination,
       AddressDirectory directory);
 
+  /**
+   * Whether this category can hold anyone for an entity of this type. False means every resolve for
+   * the type finds no one, so a form must not offer the category for it.
+   * ADR:2026-10-20-an-alert-source-offers-only-recipients-delivery-reaches
+   */
+  boolean reaches(String entityType);
+
   SubscriptionDestination.SubscriptionCategory getCategory();
 }

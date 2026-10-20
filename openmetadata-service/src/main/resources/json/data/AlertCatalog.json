@@ -418,6 +418,12 @@
         "filterByDomain",
         "filterByGeneralMetadataEvents",
         "filterByUpdaterIsBot"
+      ],
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners"
       ]
     },
     {
@@ -434,6 +440,12 @@
         "filterByDomain",
         "filterByGeneralMetadataEvents",
         "filterByUpdaterIsBot"
+      ],
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners"
       ]
     },
     {
@@ -565,6 +577,12 @@
         "filterByDomain",
         "filterByGeneralMetadataEvents",
         "filterByUpdaterIsBot"
+      ],
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners"
       ]
     },
     {
@@ -634,8 +652,7 @@
         "Teams",
         "Admins",
         "Owners",
-        "Mentions",
-        "Followers"
+        "Mentions"
       ]
     },
     {
@@ -646,7 +663,6 @@
       ],
       "recipientCategories": [
         "Assignees",
-        "Owners",
         "Mentions"
       ]
     },
@@ -670,6 +686,11 @@
         "filterByUpdaterName",
         "filterByDomain",
         "filterByUpdaterIsBot"
+      ],
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins"
       ]
     },
     {
@@ -908,6 +929,12 @@
       "removedTriggers": [
         "GetTestSuiteSchemaChanges",
         "GetTestCaseStatusUpdatesUnderSuite"
+      ],
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners"
       ]
     },
     {
@@ -932,7 +959,13 @@
           "displayName": "Update is Bot",
           "description": "Event Filtering By Updater is Bot"
         }
-      }
+      },
+      "recipientCategories": [
+        "Users",
+        "Teams",
+        "Admins",
+        "Owners"
+      ]
     }
   ]
 }

@@ -46,6 +46,27 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination,
       AddressDirectory directory) {
+    return reaches(event.getEntityType()) ? ofEvent(event, directory) : Recipients.none();
+  }
+
+  @Override
+  public Recipients resolve(
+      UUID entityId,
+      String entityType,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      AddressDirectory directory) {
+    return reaches(entityType) ? ofStored(entityId, entityType, directory) : Recipients.none();
+  }
+
+  // A conversation reaches them through the entity it is about; anything else needs the field.
+  @Override
+  public boolean reaches(String entityType) {
+    return Entity.CONVERSATION.equalsIgnoreCase(entityType)
+        || EntityFields.mayHold(entityType, Entity.FIELD_OWNERS);
+  }
+
+  private Recipients ofEvent(ChangeEvent event, AddressDirectory directory) {
     return Entity.CONVERSATION.equalsIgnoreCase(event.getEntityType())
         ? Recipients.from(
             Lookup.of(
@@ -58,13 +79,7 @@ public class OwnerRecipientResolver implements RecipientResolutionStrategy {
             entity -> of(entity, directory));
   }
 
-  @Override
-  public Recipients resolve(
-      UUID entityId,
-      String entityType,
-      SubscriptionAction action,
-      SubscriptionDestination destination,
-      AddressDirectory directory) {
+  private Recipients ofStored(UUID entityId, String entityType, AddressDirectory directory) {
     return Entity.CONVERSATION.equalsIgnoreCase(entityType)
         ? Recipients.from(
             Lookup.of(
