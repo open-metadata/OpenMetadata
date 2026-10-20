@@ -628,13 +628,7 @@ const DataProductsDetailsPage = ({
     items.push({ label: getEntityName(dataProduct) });
 
     return items;
-  }, [
-    dataProduct,
-    isMarketplace,
-    fromMarketplace,
-    dataProductBasePath,
-    t,
-  ]);
+  }, [dataProduct, isMarketplace, fromMarketplace, dataProductBasePath, t]);
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
