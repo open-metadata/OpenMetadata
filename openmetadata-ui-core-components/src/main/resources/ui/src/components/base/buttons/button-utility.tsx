@@ -36,9 +36,10 @@ export const styles = {
 };
 
 // A toggle that is on (the panel it opens is showing) reads in brand, over
-// whichever colour it rests in.
+// whichever colour it rests in, hovered too: secondary's dark hover is its
+// own variant, so it is overridden by name.
 const selectedStyles =
-  'tw:bg-brand-primary tw:hover:bg-brand-primary tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-current';
+  'tw:bg-brand-primary tw:hover:bg-brand-primary tw:dark:hover:bg-brand-primary tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-current';
 
 // Icon-only sizes from the Figma "Icons in buttons" spec: box size, icon frame,
 // padding, radius. The svg padding keeps the glyph at frame − 4px (see the note

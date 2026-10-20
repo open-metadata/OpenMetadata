@@ -359,6 +359,18 @@ describe('ButtonUtility — toggle', () => {
     );
   });
 
+  // Secondary hovers to bg-raised in dark mode; on, it must stay brand.
+  it('keeps a secondary toggle that is on in brand when hovered in dark mode', () => {
+    render(
+      <ButtonUtility isSelected color="secondary" icon={Edit01} tooltip="Bar" />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveClass('tw:dark:hover:bg-brand-primary');
+    expect(button).not.toHaveClass('tw:dark:hover:bg-raised');
+  });
+
   it('shows a toggle that is off in its resting colour, as not pressed', () => {
     render(
       <ButtonUtility
