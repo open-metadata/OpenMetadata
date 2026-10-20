@@ -581,11 +581,11 @@ export const inputAlertInformation = async ({
 export const saveNewAlertAndVerify = async (
   page: Page
 ): Promise<AlertDetails> => {
+  // Only the create itself: the form also posts to /capabilities and /testDestination.
   const createResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
-      response.url().includes('/api/v1/events/subscriptions') &&
-      !response.url().includes('testDestination')
+      new URL(response.url()).pathname === '/api/v1/events/subscriptions'
   );
 
   await page.getByTestId('save-btn').click();

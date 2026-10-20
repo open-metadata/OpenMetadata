@@ -65,7 +65,6 @@ const AlertAiTemplateField = ({
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
   alert,
-  filterResources,
   isViewOnly,
   inlineAlert,
   onChange,
@@ -105,13 +104,6 @@ function AlertAiFormFields({
 
   const selectedSources = getAlertAiResources(value, alert);
   const { capabilities, search, support } = selection;
-  const sourceNames = useMemo(
-    () =>
-      filterResources
-        .map((resource) => resource.name)
-        .filter((name): name is string => Boolean(name)),
-    [filterResources]
-  );
   const {
     selectedFilters,
     selectedTriggers,
@@ -244,11 +236,10 @@ function AlertAiFormFields({
             title={t('label.source')}>
             <AlertSourcePicker
               isRequired
+              capabilities={capabilities}
               hint={validationErrors?.resources}
               isDisabled={isViewOnly}
               isInvalid={Boolean(validationErrors?.resources)}
-              selection={capabilities.selection}
-              sources={sourceNames}
               value={selectedSources}
               onChange={handleSourceChange}
             />

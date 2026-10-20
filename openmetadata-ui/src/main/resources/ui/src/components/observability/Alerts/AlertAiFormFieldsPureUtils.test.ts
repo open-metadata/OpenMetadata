@@ -159,11 +159,27 @@ describe('AlertAiFormFieldsPureUtils', () => {
       expect(inputs.shouldDisplayActionsSection).toBe(false);
     });
 
-    it('still applies the descriptor override in edit mode when lists are unavailable', () => {
+    // The server has not answered yet for the saved sources, or its answer failed.
+    it('keeps the saved rules in edit mode while what the sources support is unknown', () => {
       const inputs = getAlertAiSectionInputs({
         shouldShowActionsSection: true,
         shouldShowFiltersSection: true,
         value: viewValueWithRules,
+        isViewOnly: false,
+        selectedSources: ['table'],
+        supportedFilters: undefined,
+        supportedTriggers: undefined,
+      });
+
+      expect(inputs.shouldDisplayFiltersSection).toBe(true);
+      expect(inputs.shouldDisplayActionsSection).toBe(true);
+    });
+
+    it('shows no empty section in edit mode while what the sources support is unknown', () => {
+      const inputs = getAlertAiSectionInputs({
+        shouldShowActionsSection: true,
+        shouldShowFiltersSection: true,
+        value: { input: {} } as unknown as AlertAiFormValue,
         isViewOnly: false,
         selectedSources: ['table'],
         supportedFilters: undefined,
@@ -282,6 +298,17 @@ describe('AlertAiFormFieldsPureUtils', () => {
         isDisabled: false,
         label: 'Pipeline State',
       },
+    ]);
+  });
+
+  it('lists a saved rule nobody offers by its name, disabled, so it never shows blank', () => {
+    expect(
+      getRuleItems(undefined, [
+        { name: 'filterByOwner' },
+        { name: 'filterByOwner' },
+      ])
+    ).toEqual([
+      { id: 'filterByOwner', isDisabled: true, label: 'filterByOwner' },
     ]);
   });
 

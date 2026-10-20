@@ -11,67 +11,32 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useMemo } from 'react';
 import { AlertType as CapabilitiesAlertType } from '../../../generated/events/api/alertCapabilitiesRequest';
 import { AlertType } from '../../../generated/events/eventSubscription';
 import { useAlertSelection } from '../../../hooks/useAlertSelection';
-import { getResourceFunctions as getNotificationResourceFunctions } from '../../../rest/alertsAPI';
-import { getResourceFunctions as getObservabilityResourceFunctions } from '../../../rest/observabilityAPI';
-import { toCapabilitiesInput } from '../../../utils/Alerts/AlertSelectionUtil';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import {
-  ObservabilityFilterResourceDescriptor,
-  UseObservabilityAlertResourcesReturn,
-} from '../AddObservabilityPage.interface';
-import { toObservabilityFilterResourceDescriptor } from '../ObservabilityAlertForm.utils';
+  shouldShowRuleSection,
+  toCapabilitiesInput,
+} from '../../../utils/Alerts/AlertSelectionUtil';
+import { UseObservabilityAlertResourcesReturn } from '../AddObservabilityPage.interface';
 
 // One array for "nothing selected", so what depends on the sources does not change every render.
 const NO_SOURCES: string[] = [];
 
 /**
- * Loads the alert source catalogue and asks the server what the chosen sources support,
- * without a form. The caller passes the sources and the filters and triggers chosen so far.
+ * Asks the server what the chosen sources support, without a form. The caller passes the sources
+ * and the filters and triggers chosen so far.
  */
 export function useAlertResources(
   alertType: AlertType = AlertType.Observability,
   sources: string[] = NO_SOURCES,
   chosenSoFar?: Parameters<typeof toCapabilitiesInput>[0]
 ): UseObservabilityAlertResourcesReturn {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
   const capabilitiesInput = useMemo(
     () => toCapabilitiesInput(chosenSoFar),
     [chosenSoFar]
   );
-
-  const fetchFunctions = useCallback(async () => {
-    try {
-      setLoading(true);
-      const filterResources =
-        alertType === AlertType.Notification
-          ? await getNotificationResourceFunctions()
-          : await getObservabilityResourceFunctions();
-
-      setFilterResources(
-        filterResources.data.map(toObservabilityFilterResourceDescriptor)
-      );
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [alertType, t]);
-
-  useEffect(() => {
-    fetchFunctions();
-  }, [fetchFunctions]);
 
   const selection = useAlertSelection({
     alertType:
@@ -80,23 +45,23 @@ export function useAlertResources(
         : CapabilitiesAlertType.Observability,
     sources,
     input: capabilitiesInput,
-    catalog: filterResources,
   });
   const { supportedFilters, supportedTriggers } = selection.support;
 
   const shouldShowFiltersSection = useMemo(
-    () => (isEmpty(sources) ? true : !isEmpty(supportedFilters)),
-    [sources, supportedFilters]
+    () =>
+      shouldShowRuleSection(sources, supportedFilters, chosenSoFar?.filters),
+    [sources, supportedFilters, chosenSoFar?.filters]
   );
 
   const shouldShowActionsSection = useMemo(
-    () => (isEmpty(sources) ? true : !isEmpty(supportedTriggers)),
-    [sources, supportedTriggers]
+    () =>
+      shouldShowRuleSection(sources, supportedTriggers, chosenSoFar?.actions),
+    [sources, supportedTriggers, chosenSoFar?.actions]
   );
 
   return {
-    filterResources,
-    loading,
+    loading: !selection.ready,
     selection,
     shouldShowActionsSection,
     shouldShowFiltersSection,

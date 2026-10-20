@@ -35,7 +35,13 @@ jest.mock('../../rest/searchAPI', () => ({
 const selection: AlertSelection = {
   sources: ['table'],
   loading: false,
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
   support: {
     supportedFilters: [
       {

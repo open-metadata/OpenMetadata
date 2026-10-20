@@ -12,7 +12,6 @@
  */
 
 import { Box, HintText } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FormCardSection from '../../../components/common/FormCardSection/FormCardSection';
 import { useAlertSelectionContext } from '../../../hooks/useAlertSelection';
@@ -20,7 +19,6 @@ import AlertSourcePicker from '../AlertSourcePicker/AlertSourcePicker';
 import { AlertFormSourceItemProps } from './AlertFormSourceItem.interface';
 
 function AlertFormSourceItem({
-  filterResources,
   isViewMode = false,
   value = [],
   onChange,
@@ -28,11 +26,6 @@ function AlertFormSourceItem({
 }: Readonly<AlertFormSourceItemProps>) {
   const { t } = useTranslation();
   const { capabilities } = useAlertSelectionContext();
-
-  const sourceNames = useMemo(
-    () => (filterResources ?? []).map((resource) => resource.name ?? ''),
-    [filterResources]
-  );
 
   return (
     <FormCardSection
@@ -44,10 +37,9 @@ function AlertFormSourceItem({
         direction="col"
         gap={2}>
         <AlertSourcePicker
+          capabilities={capabilities}
           isDisabled={isViewMode}
           isInvalid={Boolean(error)}
-          selection={capabilities.selection}
-          sources={sourceNames}
           value={value}
           onChange={onChange}
         />

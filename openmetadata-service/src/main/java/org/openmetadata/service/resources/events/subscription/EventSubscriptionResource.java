@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -111,6 +112,11 @@ public class EventSubscriptionResource
   public static final String FIELDS = "owners,filteringRules";
   private static final Pattern URL_QUERY_PATTERN = Pattern.compile("(https?://[^\\s?]*)\\?\\S*");
   private static final String REDACTED_QUERY_REPLACEMENT = "$1?***";
+  // RFC 9745: the per-source list is deprecated since 2026-10-20, in favour of /capabilities.
+  // ADR:2026-10-20-alert-forms-read-only-the-capabilities-answer
+  private static final String RESOURCES_DEPRECATED_SINCE = "@1792454400";
+  private static final String RESOURCES_SUCCESSOR_LINK =
+      "</api/v1/events/subscriptions/capabilities>; rel=\"alternate\"";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
@@ -615,16 +621,20 @@ public class EventSubscriptionResource
       operationId = "listEventSubscriptionResources",
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
       description =
-          "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
+          "Deprecated: use POST /v1/events/subscriptions/capabilities, which answers for every chosen source together. Get list of EventSubscription functions used in filtering conditions in Event Subscription",
+      deprecated = true)
   public ResultList<FilterResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
           CreateEventSubscription.AlertType alertType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
+    response.setHeader("Deprecation", RESOURCES_DEPRECATED_SINCE);
+    response.setHeader("Link", RESOURCES_SUCCESSOR_LINK);
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
     } else {

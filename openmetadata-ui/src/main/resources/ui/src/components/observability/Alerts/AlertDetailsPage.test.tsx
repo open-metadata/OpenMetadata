@@ -405,17 +405,11 @@ const getDetailsState = (overrides = {}) => ({
   ...overrides,
 });
 
-const getFormState = () => ({
-  filterResources: [
-    {
-      name: 'table',
-      supportedActions: [{ name: 'action' }],
-      supportedFilters: [{ name: 'filter' }],
-    },
-  ],
-  loadingState: { alerts: false, functions: false, templates: false },
+const getFormState = (ready = true) => ({
+  loadingState: { alerts: false, templates: false },
   // What the server says the alert's sources support.
   selection: {
+    ready,
     support: {
       supportedFilters: [{ name: 'filter' }],
       supportedTriggers: [{ name: 'action' }],
@@ -494,6 +488,14 @@ describe('AlertDetailsPage', () => {
     expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
       expect.objectContaining({ sources: ['table'] })
     );
+  });
+
+  it('waits for the server before it shows the configuration', () => {
+    mockUseAlertFormData.mockReturnValue(getFormState(false));
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.queryByTestId('form-mode')).not.toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('renders the header meta row with owner and event stats', () => {

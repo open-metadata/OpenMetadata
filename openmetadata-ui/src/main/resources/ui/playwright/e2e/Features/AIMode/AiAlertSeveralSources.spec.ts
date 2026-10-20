@@ -19,6 +19,7 @@
 import { expect, Locator, Page, test } from '@playwright/test';
 import { AlertDetails } from '../../../constant/alert.interface';
 import { performAdminLogin } from '../../../utils/admin';
+import { watchPerSourceListRequests } from '../../../utils/alert';
 import { uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -56,6 +57,14 @@ test.afterAll(async ({ browser }) => {
 
   await afterAction();
 });
+
+let expectNoPerSourceList: () => void;
+
+test.beforeEach(({ page }) => {
+  expectNoPerSourceList = watchPerSourceListRequests(page);
+});
+
+test.afterEach(() => expectNoPerSourceList());
 
 const openAlertsPage = async (page: Page, path: string) => {
   await enableAiAppMode(page);

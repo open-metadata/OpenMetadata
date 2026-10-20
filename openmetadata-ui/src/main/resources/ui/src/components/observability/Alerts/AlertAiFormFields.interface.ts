@@ -26,7 +26,6 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
   ModifiedEventSubscription,
-  ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 
@@ -42,7 +41,6 @@ export type AlertAiFormValidationErrors = Record<string, string>;
 
 export interface AlertAiFormFieldsProps {
   alert?: ModifiedEventSubscription;
-  filterResources: ObservabilityFilterResourceDescriptor[];
   inlineAlert?: InlineAlertProps;
   isViewOnly?: boolean;
   // Accepts a value or a functional updater. Prefer the updater — it composes against the latest

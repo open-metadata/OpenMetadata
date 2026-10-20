@@ -42,7 +42,6 @@ import { applyAlertValueChanges } from '../../../utils/Alerts/ClassicAlertForm.u
 function ObservabilityAlertFormFields({
   alert,
   extraFormWidgets,
-  filterResources,
   form,
   isLoading,
   shouldShowActionsSection,
@@ -132,7 +131,6 @@ function ObservabilityAlertFormFields({
           <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
             <AlertFormSourceItem
               error={validationErrors.resources}
-              filterResources={filterResources}
               value={resources}
               onChange={(next, previous) => {
                 onValuesChange(getAlertSourceChanges(next, previous));

@@ -114,11 +114,10 @@ const alert: ModifiedEventSubscription = {
 const getHookState = (overrides = {}) => ({
   alert,
   extraFormButtons: {},
-  filterResources: [],
   handleSave: jest.fn(),
   inlineAlertDetails: undefined,
   isLoading: false,
-  loadingState: { alerts: false, functions: false, templates: false },
+  loadingState: { alerts: false, templates: false },
   saving: false,
   shouldShowActionsSection: true,
   selection: { support: { supportedFilters: [], supportedTriggers: [] } },
@@ -351,7 +350,7 @@ describe('AlertEditModal', () => {
   it('passes the template permission and loading state to the form', () => {
     mockUseAlertFormData.mockReturnValue(
       getHookState({
-        loadingState: { alerts: false, functions: false, templates: true },
+        loadingState: { alerts: false, templates: true },
         templateResourcePermission: { Create: true },
       })
     );

@@ -982,6 +982,23 @@ export const waitForCapabilitiesOf = (page: Page, sources: string[]) =>
     );
   });
 
+const PER_SOURCE_LIST =
+  /\/api\/v1\/events\/subscriptions\/(observability|notification)\/resources/;
+
+// Alert forms and views read only what the server says about the chosen sources together. The
+// returned check fails if any page asked for the deprecated list of every source's own rules.
+export const watchPerSourceListRequests = (page: Page) => {
+  const asked: string[] = [];
+  page.context().on('request', (request) => {
+    if (PER_SOURCE_LIST.test(request.url())) {
+      asked.push(request.url());
+    }
+  });
+
+  return () =>
+    expect(asked, 'No page asks for the per-source list').toEqual([]);
+};
+
 // Adds a source to the ones already chosen, and waits for what the server says about them all.
 export const addAlertSource = async (
   page: Page,

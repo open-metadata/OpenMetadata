@@ -12,13 +12,45 @@
  */
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
-import { MOCK_FILTER_RESOURCES } from '../../../test/unit/mocks/observability.mock';
+import { ReactNode, useState } from 'react';
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
+import {
+  AlertSelection,
+  AlertSelectionProvider,
+} from '../../../hooks/useAlertSelection';
 import AlertFormSourceItem from './AlertFormSourceItem';
+
+const LISTED = {
+  alertType: 'Notification',
+  filters: [],
+  triggers: [],
+  sources: [
+    { name: 'all', kind: 'all' },
+    { name: 'dashboard', kind: 'entity' },
+  ],
+} as unknown as AlertCapabilities;
+
+// The source list comes from what the server answered, through the page's selection.
+const WithSelection = ({ children }: { children: ReactNode }) => (
+  <AlertSelectionProvider
+    value={
+      {
+        capabilities: {
+          selection: LISTED,
+          knownSources: [],
+          loading: false,
+          settled: true,
+          retry: jest.fn(),
+        },
+      } as unknown as AlertSelection
+    }>
+    {children}
+  </AlertSelectionProvider>
+);
 
 describe('AlertFormSourceItem', () => {
   it('offers the source picker straight away, with nothing chosen', () => {
-    render(<AlertFormSourceItem filterResources={MOCK_FILTER_RESOURCES} />);
+    render(<AlertFormSourceItem />, { wrapper: WithSelection });
 
     expect(screen.getByText('label.source')).toBeInTheDocument();
     expect(
@@ -31,12 +63,9 @@ describe('AlertFormSourceItem', () => {
   });
 
   it('shows the error under the picker', () => {
-    render(
-      <AlertFormSourceItem
-        error="Source is required"
-        filterResources={MOCK_FILTER_RESOURCES}
-      />
-    );
+    render(<AlertFormSourceItem error="Source is required" />, {
+      wrapper: WithSelection,
+    });
 
     expect(screen.getByText('Source is required')).toBeInTheDocument();
   });
@@ -48,7 +77,6 @@ describe('AlertFormSourceItem', () => {
 
       return (
         <AlertFormSourceItem
-          filterResources={[{ name: 'all' }, { name: 'dashboard' }]}
           value={value}
           onChange={(next, previous) => {
             changed(next, previous);
@@ -58,7 +86,7 @@ describe('AlertFormSourceItem', () => {
       );
     };
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    render(<SourceForm />);
+    render(<SourceForm />, { wrapper: WithSelection });
     const [removeAll] = within(
       screen.getByTestId('source-select')
     ).getAllByRole('button');

@@ -23,6 +23,7 @@ import {
   generateAlertName,
   inputBasicAlertInformation,
   saveAlertAndVerifyResponse,
+  watchPerSourceListRequests,
 } from '../../utils/alert';
 import {
   addInternalDestination,
@@ -46,6 +47,14 @@ test.afterAll(async ({ browser }) => {
   await owner.delete(apiContext);
   await afterAction();
 });
+
+let expectNoPerSourceList: () => void;
+
+test.beforeEach(({ page }) => {
+  expectNoPerSourceList = watchPerSourceListRequests(page);
+});
+
+test.afterEach(() => expectNoPerSourceList());
 
 test.describe('Alerts with several sources', () => {
   test('Notification alert on table and dashboard with an owner filter', async ({

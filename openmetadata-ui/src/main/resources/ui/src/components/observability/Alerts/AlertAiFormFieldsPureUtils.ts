@@ -12,7 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
-import { isEmpty, isUndefined } from 'lodash';
+import { isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EXTERNAL_CATEGORY_OPTIONS } from '../../../constants/Alerts.constants';
 import {
   ArgumentsInput,
@@ -109,22 +109,26 @@ export const getAlertAiResources = (
   return 'filteringRules' in value ? value.filteringRules?.resources ?? [] : [];
 };
 
-/** Resolves whether a rule section should display, accounting for view-mode descriptor availability. */
+/**
+ * Whether a rule section displays. Once the server has said what the sources support, it displays
+ * when they support any rule of its kind. Until then, a view keeps the parent's flag, and a form
+ * displays it only for rules the alert already holds, so a saved alert never hides them.
+ */
 const resolveSectionDisplay = (
   isViewOnly: boolean | undefined,
   hasSources: boolean,
   supportedRules: EventFilterRule[] | undefined,
+  chosenRules: ArgumentsInput[],
   shouldShowSection: boolean
 ): boolean => {
-  if (isViewOnly && isUndefined(supportedRules)) {
+  if (!hasSources) {
     return shouldShowSection;
   }
-
-  if (hasSources) {
+  if (!isUndefined(supportedRules)) {
     return !isEmpty(supportedRules);
   }
 
-  return shouldShowSection;
+  return isViewOnly ? shouldShowSection : !isEmpty(chosenRules);
 };
 
 /** Derives the selected rules and section-visibility inputs for the AI alert form fields. */
@@ -146,20 +150,24 @@ export const getAlertAiSectionInputs = ({
   shouldShowFiltersSection: boolean;
 }) => {
   const hasSources = !isEmpty(selectedSources);
+  const selectedFilters = value.input?.filters ?? [];
+  const selectedTriggers = value.input?.actions ?? [];
 
   return {
-    selectedFilters: value.input?.filters ?? [],
-    selectedTriggers: value.input?.actions ?? [],
+    selectedFilters,
+    selectedTriggers,
     shouldDisplayFiltersSection: resolveSectionDisplay(
       isViewOnly,
       hasSources,
       supportedFilters,
+      selectedFilters,
       shouldShowFiltersSection
     ),
     shouldDisplayActionsSection: resolveSectionDisplay(
       isViewOnly,
       hasSources,
       supportedTriggers,
+      selectedTriggers,
       shouldShowActionsSection
     ),
   };
@@ -329,13 +337,17 @@ export const getRuleSectionFlags = ({
   showAddButton: !isViewOnly,
 });
 
-/** Builds rule dropdown items and disables rules that are already selected. */
+/**
+ * Builds rule dropdown items and disables rules that are already selected. A saved rule the sources
+ * no longer offer, or that the server has not described yet, is still listed by its name, disabled,
+ * so the dropdown never shows it blank.
+ */
 export const getRuleItems = (
   supportedRules: EventFilterRule[] | undefined,
   selectedRules: ArgumentsInput[]
-) =>
-  supportedRules
-    ?.filter((rule): rule is EventFilterRule & { name: string } =>
+) => {
+  const offered = (supportedRules ?? [])
+    .filter((rule): rule is EventFilterRule & { name: string } =>
       Boolean(rule.name)
     )
     .map((rule) => ({
@@ -344,7 +356,17 @@ export const getRuleItems = (
         (selectedRule) => selectedRule.name === rule.name
       ),
       label: rule.displayName ?? rule.name,
-    })) ?? [];
+    }));
+  const unknown = uniqBy(
+    selectedRules.filter(
+      (rule): rule is ArgumentsInput & { name: string } =>
+        Boolean(rule.name) && !offered.some((item) => item.id === rule.name)
+    ),
+    'name'
+  ).map((rule) => ({ id: rule.name, isDisabled: true, label: rule.name }));
+
+  return [...offered, ...unknown];
+};
 
 /** Returns translated copy used by filter and trigger rule sections. */
 export const getRuleCopy = (field: RuleSectionField, t: TFunction) => {

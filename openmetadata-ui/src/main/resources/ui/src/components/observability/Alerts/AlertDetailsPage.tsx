@@ -209,11 +209,15 @@ const AlertDetailsPage = ({
     }
 
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
+      // The configuration shows what the server says the sources support, so it waits for it.
+      if (!selection.ready) {
+        return <Loader />;
+      }
+
       return (
         <AlertAiForm
           shouldShowFiltersSection
           alert={alertConfigValue}
-          filterResources={alertFormState.filterResources}
           mode="view"
           selection={selection}
           shouldShowActionsSection={kind.hasTriggers}
@@ -230,7 +234,6 @@ const AlertDetailsPage = ({
     alertConfigValue,
     alertDetails,
     fqn,
-    alertFormState.filterResources,
     alertFormState.loadingState.templates,
     alertFormState.templateResourcePermission,
     alertFormState.templates,

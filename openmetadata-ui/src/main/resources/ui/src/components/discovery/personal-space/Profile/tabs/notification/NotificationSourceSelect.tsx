@@ -12,26 +12,21 @@
  */
 
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
+import type { UseAlertCapabilitiesReturn } from '../../../../../../hooks/useAlertCapabilities';
 import AlertSourcePicker from '../../../../../Alerts/AlertSourcePicker/AlertSourcePicker';
 
 interface NotificationSourceSelectProps {
-  filterResources: FilterResourceDescriptor[];
+  capabilities: UseAlertCapabilitiesReturn;
   value: string[];
 }
 
 /** Every source a saved alert watches, read-only, as the alert's configuration shows it. */
 function NotificationSourceSelect({
-  filterResources,
+  capabilities,
   value,
 }: Readonly<NotificationSourceSelectProps>) {
   const { t } = useTranslation();
-  const sources = useMemo(
-    () => filterResources.map((resource) => resource.name ?? ''),
-    [filterResources]
-  );
 
   return (
     <Card className="tw:w-full" size="md" variant="muted">
@@ -45,7 +40,11 @@ function NotificationSourceSelect({
               {t('message.alerts-source-description')}
             </Typography>
           </Box>
-          <AlertSourcePicker isDisabled sources={sources} value={value} />
+          <AlertSourcePicker
+            isDisabled
+            capabilities={capabilities}
+            value={value}
+          />
         </Box>
       </Card.Content>
     </Card>

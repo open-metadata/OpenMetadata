@@ -12,7 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
+import { SourceKind } from '../../../../../../generated/events/api/alertCapabilities';
+import type { UseAlertCapabilitiesReturn } from '../../../../../../hooks/useAlertCapabilities';
 import NotificationSourceSelect from './NotificationSourceSelect';
 
 jest.mock('react-i18next', () => ({
@@ -32,17 +33,21 @@ jest.mock('../../../../../../utils/SearchClassBase', () => ({
   },
 }));
 
-const FILTER_RESOURCES = [
-  { name: 'table' },
-  { name: 'dashboard' },
-  { name: 'topic' },
-] as FilterResourceDescriptor[];
+const CAPABILITIES: UseAlertCapabilitiesReturn = {
+  knownSources: ['table', 'dashboard', 'topic'].map((name) => ({
+    name,
+    kind: SourceKind.Entity,
+  })),
+  loading: false,
+  settled: true,
+  retry: jest.fn(),
+};
 
 describe('NotificationSourceSelect', () => {
   it('shows every source the alert watches, not only the first', () => {
     render(
       <NotificationSourceSelect
-        filterResources={FILTER_RESOURCES}
+        capabilities={CAPABILITIES}
         value={['table', 'dashboard']}
       />
     );
@@ -56,10 +61,7 @@ describe('NotificationSourceSelect', () => {
 
   it('does not let the sources change', () => {
     render(
-      <NotificationSourceSelect
-        filterResources={FILTER_RESOURCES}
-        value={['table']}
-      />
+      <NotificationSourceSelect capabilities={CAPABILITIES} value={['table']} />
     );
 
     expect(screen.getByRole('combobox')).toBeDisabled();

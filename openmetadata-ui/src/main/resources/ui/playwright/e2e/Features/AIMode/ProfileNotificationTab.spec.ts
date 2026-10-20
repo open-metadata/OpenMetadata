@@ -35,6 +35,7 @@ import {
   commonPrerequisites,
   generateAlertName,
   waitForRecentEventsToFinishExecution,
+  watchPerSourceListRequests,
 } from '../../../utils/alert';
 import { deleteFixtureEntity } from '../../../utils/apiResponse';
 import { getApiContext } from '../../../utils/common';
@@ -120,6 +121,14 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await dashboard.delete(apiContext);
   await afterAction();
 });
+
+let expectNoPerSourceList: () => void;
+
+test.beforeEach(({ page }) => {
+  expectNoPerSourceList = watchPerSourceListRequests(page);
+});
+
+test.afterEach(() => expectNoPerSourceList());
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 

@@ -109,7 +109,6 @@ function AlertEditModal({
   const {
     alert,
     extraFormButtons,
-    filterResources,
     handleSave,
     inlineAlertDetails,
     isLoading,
@@ -221,7 +220,6 @@ function AlertEditModal({
         ) : (
           <AlertAiForm
             alert={alert}
-            filterResources={filterResources}
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={inlineAlertDetails}
             mode={mode}
