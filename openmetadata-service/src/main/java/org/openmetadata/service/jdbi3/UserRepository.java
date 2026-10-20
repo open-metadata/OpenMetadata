@@ -1822,39 +1822,54 @@ public class UserRepository extends EntityRepository<User> {
     PostCommitActionQueue.runOrDefer(evict);
   }
 
+  /**
+   * A user is assigned the domains an update sends, deleted ones dropped; the domains its teams
+   * give it are inherited and never written. Only a bot's PUT keeps a non-empty assignment.
+   */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      User original, User updated, Operation operation, boolean byBot) {
+    boolean botKeepsStored = operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
+            .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+            .collect(Collectors.toList());
+  }
+
+  /**
+   * Filter domain references to remove deleted domains, then populate valid ones.
+   * This prevents EntityNotFoundException when domains are deleted between updates.
+   */
+  private static List<EntityReference> filterValidDomains(List<EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return domains;
+    }
+
+    // First filter out deleted domains, then populate valid references
+    List<EntityReference> validDomains =
+        domains.stream()
+            .filter(
+                domain -> {
+                  try {
+                    Entity.getEntityReference(domain, ALL);
+                    return true;
+                  } catch (EntityNotFoundException e) {
+                    LOG.warn(
+                        "Removing deleted domain {} from user update",
+                        domain.getFullyQualifiedName());
+                    return false;
+                  }
+                })
+            .collect(Collectors.toList());
+
+    return EntityUtil.populateEntityReferences(validDomains);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    /**
-     * Filter domain references to remove deleted domains, then populate valid ones.
-     * This prevents EntityNotFoundException when domains are deleted between updates.
-     */
-    private List<EntityReference> filterValidDomains(List<EntityReference> domains) {
-      if (domains == null || domains.isEmpty()) {
-        return domains;
-      }
-
-      // First filter out deleted domains, then populate valid references
-      List<EntityReference> validDomains =
-          domains.stream()
-              .filter(
-                  domain -> {
-                    try {
-                      Entity.getEntityReference(domain, ALL);
-                      return true;
-                    } catch (EntityNotFoundException e) {
-                      LOG.warn(
-                          "Removing deleted domain {} from user update",
-                          domain.getFullyQualifiedName());
-                      return false;
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return EntityUtil.populateEntityReferences(validDomains);
     }
 
     /**
@@ -1972,21 +1987,15 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           filterValidDomains(listOrEmptyMutable(original.getDomains()));
-      // Skip domains inherited from teams,they are handled in setInheritedFields().
-      List<EntityReference> updatedDomains =
-          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
-              .filter(domain -> domain.getInherited() == null || !domain.getInherited())
-              .collect(Collectors.toList());
       updated.setDomains(updatedDomains);
 
       // Remove Domains for the user

@@ -25,8 +25,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.BulkApi;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -55,9 +58,11 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
+import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -78,7 +83,7 @@ import org.openmetadata.service.Entity;
 public class DomainReassignmentAuthorizationIT {
 
   /** A user scoped to {@code heldDomain} by a hasDomain()-conditioned grant. */
-  private record DomainScopedUser(
+  record DomainScopedUser(
       User user,
       OpenMetadataClient client,
       Domain heldDomain,
@@ -277,7 +282,118 @@ public class DomainReassignmentAuthorizationIT {
         "An id-only move into an unheld domain must be denied cleanly, not 500");
   }
 
-  private DomainScopedUser domainScopedUser(TestNamespace ns) {
+  /** A patch that replaces the whole document names no domains path, yet stores the new domains. */
+  @Test
+  void test_wholeDocumentPatchCannotMoveAnAssetIntoAnUnheldDomain(TestNamespace ns)
+      throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> patchWholeDocument(scoped.client(), table, scoped.otherDomain()));
+    assertEquals(scoped.heldDomain().getId(), domainOf(table));
+  }
+
+  /** The UI diffs its copy of the entity, so a domain change patches the reference field by field. */
+  @Test
+  void test_uiDomainDiffMovesAnAssetWithinAHeldDomain(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    patchDomainFields(scoped.client(), table, scoped.heldSubDomain());
+
+    assertEquals(scoped.heldSubDomain().getId(), domainOf(table));
+  }
+
+  @Test
+  void test_uiDomainDiffCannotMoveAnAssetIntoAnUnheldDomain(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> patchDomainFields(scoped.client(), table, scoped.otherDomain()));
+    assertEquals(scoped.heldDomain().getId(), domainOf(table));
+  }
+
+  @Test
+  void test_bulkPutMovesOnlyTheAssetsTheCallerMayMove(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    DatabaseSchema schema = createSchema(ns);
+    Table movable = createTableIn(ns, schema, "movable", scoped.heldDomain());
+    Table unmovable = createTableIn(ns, schema, "unmovable", scoped.heldDomain());
+
+    BulkOperationResult result =
+        BulkApi.upsert(
+            Entity.TABLE + "s",
+            List.of(
+                tableIn(schema, movable, scoped.heldSubDomain()),
+                tableIn(schema, unmovable, scoped.otherDomain())),
+            false,
+            tokenFor(scoped.user()));
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
+    assertEquals(scoped.heldSubDomain().getId(), domainOf(movable));
+    assertEquals(scoped.heldDomain().getId(), domainOf(unmovable));
+  }
+
+  @Test
+  void test_csvImportMovesOnlyTheAssetsTheCallerMayMove(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    DatabaseSchema schema = createSchema(ns);
+    Table movable = createTableIn(ns, schema, "movable", scoped.heldDomain());
+    Table unmovable = createTableIn(ns, schema, "unmovable", scoped.heldDomain());
+    String exported =
+        SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String csv =
+        moveRow(
+            moveRow(exported, movable, scoped.heldDomain(), scoped.heldSubDomain()),
+            unmovable,
+            scoped.heldDomain(),
+            scoped.otherDomain());
+
+    CsvImportResult result =
+        JsonUtils.readValue(
+            scoped.client().databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false),
+            CsvImportResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus(), result.getImportResultsCsv());
+    assertEquals(scoped.heldSubDomain().getId(), domainOf(movable));
+    assertEquals(scoped.heldDomain().getId(), domainOf(unmovable));
+  }
+
+  /** The test case endpoint authorizes against the table and saves through the repository. */
+  @Test
+  void test_testCasePatchCannotMoveATestCaseIntoAnUnheldDomain(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    Table table = createTable(ns, scoped.heldDomain());
+    TestCase testCase =
+        TestCaseBuilder.create(SdkClients.adminClient())
+            .name(ns.shortPrefix("tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            patchDomainsAt(
+                scoped.client(),
+                "/v1/dataQuality/testCases/" + testCase.getId(),
+                scoped.otherDomain()));
+    List<EntityReference> domains =
+        SdkClients.adminClient()
+            .testCases()
+            .get(testCase.getId().toString(), "domains")
+            .getDomains();
+    assertTrue(
+        listOrEmpty(domains).stream()
+            .noneMatch(domain -> scoped.otherDomain().getId().equals(domain.getId())));
+  }
+
+  static DomainScopedUser domainScopedUser(TestNamespace ns) {
     Domain held = createDomain(ns, "held", null);
     Domain heldSub = createDomain(ns, "heldsub", held.getFullyQualifiedName());
     Domain other = createDomain(ns, "other", null);
@@ -294,7 +410,7 @@ public class DomainReassignmentAuthorizationIT {
    * reports used. Without the fix the target domain is never consulted, so a reassignment out of
    * this scope is allowed.
    */
-  private Policy createHasDomainPolicy(TestNamespace ns) {
+  private static Policy createHasDomainPolicy(TestNamespace ns) {
     Rule allow =
         new Rule()
             .withName("AllowWithinDomain")
@@ -309,7 +425,7 @@ public class DomainReassignmentAuthorizationIT {
             .create(new CreatePolicy().withName(ns.shortPrefix("pol")).withRules(List.of(allow))));
   }
 
-  private Domain createDomain(TestNamespace ns, String suffix, String parentFqn) {
+  private static Domain createDomain(TestNamespace ns, String suffix, String parentFqn) {
     CreateDomain create =
         new CreateDomain()
             .withName(ns.shortPrefix(suffix))
@@ -321,7 +437,7 @@ public class DomainReassignmentAuthorizationIT {
     return ns.trackRoot(Entity.DOMAIN, SdkClients.adminClient().domains().create(create));
   }
 
-  private Role createRole(TestNamespace ns, Policy policy) {
+  private static Role createRole(TestNamespace ns, Policy policy) {
     return ns.trackRoot(
         Entity.ROLE,
         SdkClients.adminClient()
@@ -332,7 +448,7 @@ public class DomainReassignmentAuthorizationIT {
                     .withPolicies(List.of(policy.getFullyQualifiedName()))));
   }
 
-  private Team createTeam(TestNamespace ns, Role role, Domain domain) {
+  private static Team createTeam(TestNamespace ns, Role role, Domain domain) {
     return ns.trackRoot(
         Entity.TEAM,
         SdkClients.adminClient()
@@ -345,7 +461,7 @@ public class DomainReassignmentAuthorizationIT {
                     .withDomains(List.of(domain.getFullyQualifiedName()))));
   }
 
-  private User createUser(TestNamespace ns, String suffix, Team team) {
+  private static User createUser(TestNamespace ns, String suffix, Team team) {
     CreateUser create =
         new CreateUser()
             .withName(ns.shortPrefix(suffix))
@@ -356,26 +472,61 @@ public class DomainReassignmentAuthorizationIT {
     return ns.trackRoot(Entity.USER, SdkClients.adminClient().users().create(create));
   }
 
-  private OpenMetadataClient clientFor(User user) {
+  private static OpenMetadataClient clientFor(User user) {
     return SdkClients.createClient(user.getEmail(), user.getEmail(), new String[] {});
   }
 
-  private Table createTable(TestNamespace ns, Domain domain) throws Exception {
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+  static Table createTable(TestNamespace ns, Domain domain) throws Exception {
+    return createTableIn(ns, createSchema(ns), "tbl", domain);
+  }
+
+  // Short names keep a test case's suite FQN, which nests the table's, within its column limit.
+  private static DatabaseSchema createSchema(TestNamespace ns) {
+    String id = ns.uniqueShortId();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgresWithName("svc_" + id, ns);
+    return DatabaseSchemaTestFactory.createSimpleWithName("s_" + id, ns, service);
+  }
+
+  private static Table createTableIn(
+      TestNamespace ns, DatabaseSchema schema, String suffix, Domain domain) {
+    CreateTable create = tableIn(schema, ns.shortPrefix(suffix), domain);
+    return SdkClients.adminClient().tables().create(create);
+  }
+
+  private static CreateTable tableIn(DatabaseSchema schema, Table table, Domain domain) {
+    return tableIn(schema, table.getName(), domain);
+  }
+
+  private static CreateTable tableIn(DatabaseSchema schema, String name, Domain domain) {
     CreateTable create =
         new CreateTable()
-            .withName(ns.shortPrefix("tbl"))
+            .withName(name)
             .withDatabaseSchema(schema.getFullyQualifiedName())
             .withColumns(List.of(new Column().withName("id").withDataType(ColumnDataType.INT)));
     if (domain != null) {
       create.withDomains(List.of(domain.getFullyQualifiedName()));
     }
-    return SdkClients.adminClient().tables().create(create);
+    return create;
+  }
+
+  /** The exported CSV with {@code table}'s row moved from domain {@code from} to {@code to}. */
+  private static String moveRow(String csv, Table table, Domain from, Domain to) {
+    List<String> lines = new ArrayList<>();
+    for (String line : csv.split("\n")) {
+      lines.add(
+          line.startsWith(table.getName() + ",")
+              ? line.replace(from.getFullyQualifiedName(), to.getFullyQualifiedName())
+              : line);
+    }
+    return String.join("\n", lines) + "\n";
+  }
+
+  private static String tokenFor(User user) {
+    return JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
   }
 
   /** A table with no domain of its own, under a schema placed in {@code schemaDomain} so it inherits it. */
-  private Table createTableInheritingDomain(TestNamespace ns, Domain schemaDomain)
+  private static Table createTableInheritingDomain(TestNamespace ns, Domain schemaDomain)
       throws Exception {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
@@ -396,11 +547,40 @@ public class DomainReassignmentAuthorizationIT {
     return SdkClients.adminClient().tables().create(create);
   }
 
-  private void patchDomains(OpenMetadataClient client, Table table, Domain target) {
+  static void patchDomains(OpenMetadataClient client, Table table, Domain target) {
+    patchDomainsAt(client, "/v1/tables/" + table.getId(), target);
+  }
+
+  private static void patchDomainsAt(OpenMetadataClient client, String path, Domain target) {
     String patch =
         String.format(
             "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\",\"fullyQualifiedName\":\"%s\"}]}]",
             target.getId(), target.getFullyQualifiedName());
+    client.getHttpClient().executeForString(HttpMethod.PATCH, path, patch, jsonPatchOptions());
+  }
+
+  /** Replaces the whole stored document with the table as read, carrying {@code target}. */
+  static void patchWholeDocument(OpenMetadataClient client, Table table, Domain target) {
+    Table replacement = client.tables().get(table.getId().toString(), "domains");
+    replacement.setDomains(List.of(target.getEntityReference()));
+    String patch =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"\",\"value\":%s}]", JsonUtils.pojoToJson(replacement));
+    client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH, "/v1/tables/" + table.getId(), patch, jsonPatchOptions());
+  }
+
+  /** The diff the UI sends: the stored reference's fields replaced one by one, href dropped. */
+  private static void patchDomainFields(OpenMetadataClient client, Table table, Domain target) {
+    String patch =
+        String.format(
+            "[{\"op\":\"remove\",\"path\":\"/domains/0/href\"},"
+                + "{\"op\":\"replace\",\"path\":\"/domains/0/fullyQualifiedName\",\"value\":\"%s\"},"
+                + "{\"op\":\"replace\",\"path\":\"/domains/0/name\",\"value\":\"%s\"},"
+                + "{\"op\":\"replace\",\"path\":\"/domains/0/id\",\"value\":\"%s\"}]",
+            target.getFullyQualifiedName(), target.getName(), target.getId());
     client
         .getHttpClient()
         .executeForString(
@@ -408,7 +588,7 @@ public class DomainReassignmentAuthorizationIT {
   }
 
   /** Patches a table's domain to {@code idDomain}'s id but {@code fqnDomain}'s FQN (a forgery). */
-  private void patchDomainsForged(
+  private static void patchDomainsForged(
       OpenMetadataClient client, Table table, Domain idDomain, Domain fqnDomain) {
     String patch =
         String.format(
@@ -421,7 +601,7 @@ public class DomainReassignmentAuthorizationIT {
   }
 
   /** Patches a table's domain with an id-only reference (no FQN), as many API clients send. */
-  private void patchDomainsIdOnly(OpenMetadataClient client, Table table, Domain target) {
+  private static void patchDomainsIdOnly(OpenMetadataClient client, Table table, Domain target) {
     String patch =
         String.format(
             "[{\"op\":\"add\",\"path\":\"/domains\",\"value\":[{\"id\":\"%s\",\"type\":\"domain\"}]}]",
@@ -432,13 +612,14 @@ public class DomainReassignmentAuthorizationIT {
             HttpMethod.PATCH, "/v1/tables/" + table.getId(), patch, jsonPatchOptions());
   }
 
-  private BulkOperationResult addAssetsToDomain(
+  private static BulkOperationResult addAssetsToDomain(
       OpenMetadataClient client, Domain domain, Table... tables) {
     return addAssets(
         client, "/v1/domains/" + domain.getFullyQualifiedName() + "/assets/add", tables);
   }
 
-  private BulkOperationResult addAssets(OpenMetadataClient client, String path, Table... tables) {
+  private static BulkOperationResult addAssets(
+      OpenMetadataClient client, String path, Table... tables) {
     List<EntityReference> assets = new ArrayList<>();
     for (Table table : tables) {
       assets.add(table.getEntityReference());
@@ -465,13 +646,13 @@ public class DomainReassignmentAuthorizationIT {
     return ids;
   }
 
-  private static UUID domainOf(Table table) {
+  static UUID domainOf(Table table) {
     Table reloaded = SdkClients.adminClient().tables().get(table.getId().toString(), "domains");
     return reloaded.getDomains().getFirst().getId();
   }
 
   /** Reassigns the domain through the PUT create-or-update path rather than a JSON patch. */
-  private void putTableDomains(OpenMetadataClient client, Table table, Domain target) {
+  private static void putTableDomains(OpenMetadataClient client, Table table, Domain target) {
     CreateTable update =
         new CreateTable()
             .withName(table.getName())
@@ -481,7 +662,7 @@ public class DomainReassignmentAuthorizationIT {
     client.getHttpClient().execute(HttpMethod.PUT, "/v1/tables", update, Table.class);
   }
 
-  private DataProduct createDataProduct(TestNamespace ns, Domain domain) {
+  private static DataProduct createDataProduct(TestNamespace ns, Domain domain) {
     return ns.trackRoot(
         Entity.DATA_PRODUCT,
         SdkClients.adminClient()
@@ -493,7 +674,7 @@ public class DomainReassignmentAuthorizationIT {
                     .withDomains(List.of(domain.getFullyQualifiedName()))));
   }
 
-  private BulkOperationResult addAssetsToDataProduct(
+  private static BulkOperationResult addAssetsToDataProduct(
       OpenMetadataClient client, DataProduct dataProduct, Table... tables) {
     return addAssets(
         client, "/v1/dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add", tables);

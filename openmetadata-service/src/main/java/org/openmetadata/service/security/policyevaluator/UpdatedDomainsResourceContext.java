@@ -66,6 +66,11 @@ public record UpdatedDomainsResourceContext(
   }
 
   @Override
+  public EntityReference getServiceReference() {
+    return storedResource.getServiceReference();
+  }
+
+  @Override
   public List<EntityReference> getDomains() {
     return updatedDomains;
   }

@@ -68,6 +68,9 @@ class UpdatedDomainsResourceContextTest {
     doReturn(entity).when(storedResource).getEntity();
     doReturn(entity).when(storedResource).getResolvedEntity();
     when(storedResource.getLoadedFields()).thenReturn(loadedFields);
+    // A service entity is its own service, which the interface default cannot know.
+    EntityReference service = new EntityReference().withId(UUID.randomUUID());
+    when(storedResource.getServiceReference()).thenReturn(service);
 
     ResourceContextInterface updated =
         new UpdatedDomainsResourceContext(storedResource, List.of(domainRef()));
@@ -78,6 +81,7 @@ class UpdatedDomainsResourceContextTest {
     assertSame(entity, updated.getEntity());
     assertSame(entity, updated.getResolvedEntity());
     assertSame(loadedFields, updated.getLoadedFields());
+    assertSame(service, updated.getServiceReference());
   }
 
   @Test

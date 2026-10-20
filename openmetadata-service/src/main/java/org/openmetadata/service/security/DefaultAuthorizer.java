@@ -25,6 +25,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -143,6 +144,24 @@ public class DefaultAuthorizer implements Authorizer {
       ResourceContextInterface resourceContext) {
     DIRECT_READ_AUTHORIZER.authorizeSubject(
         subjectContextForUserName(userName), operationContext, resourceContext);
+  }
+
+  @Override
+  public void authorizeActor(
+      ChangeActor actor,
+      OperationContext operationContext,
+      ResourceContextInterface resourceContext) {
+    authorizeSubject(actorSubjectContext(actor), operationContext, resourceContext);
+  }
+
+  // The impersonation was validated when the request came in; the write only records it. An author
+  // that no longer resolves to a user is refused, never let through.
+  private static SubjectContext actorSubjectContext(ChangeActor actor) {
+    try {
+      return SubjectContext.getSubjectContext(actor.userName(), actor.impersonatedBy());
+    } catch (EntityNotFoundException e) {
+      throw new AuthorizationException(notAdmin(actor.userName()));
+    }
   }
 
   private void authorizeSubject(

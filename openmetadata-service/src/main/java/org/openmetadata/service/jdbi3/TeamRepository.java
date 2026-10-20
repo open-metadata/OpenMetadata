@@ -1502,6 +1502,16 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
+  /** A team is given the domains an update sends; only a bot's PUT keeps a non-empty assignment. */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      Team original, Team updated, Operation operation, boolean byBot) {
+    boolean botKeepsStored = operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
     public TeamUpdater(Team original, Team updated, Operation operation) {
@@ -1646,18 +1656,15 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
-      List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
 
       // Remove Domains for the user
       deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);
