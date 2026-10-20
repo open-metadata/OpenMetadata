@@ -169,10 +169,22 @@ test.describe('AI-generated glossary terms', () => {
     );
     await glossary.visitEntityPage(page);
     await proposalsLoaded;
-    await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
+    // The other term's row proves the table has rendered its rows before checking an absence.
+    await expect(
+      getRowByName(page, reviewedInPanel.data.displayName)
+    ).toBeVisible();
     await expect(
       getRowByName(page, reviewedOnItsPage.data.displayName)
     ).toHaveCount(0);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const rejected = await okJson<{ entityStatus: string }>(
+      await apiContext.get(
+        `/api/v1/glossaryTerms/${reviewedOnItsPage.responseData.id}`
+      ),
+      'rejectedTerm'
+    );
+    await afterAction();
+    expect(rejected.entityStatus).toBe('Rejected');
     await expect(
       page
         .getByTestId('pending-review-panel')

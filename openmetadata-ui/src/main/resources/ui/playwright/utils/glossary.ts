@@ -208,10 +208,10 @@ export const selectActiveGlossary = async (
   const sidebar = page.getByTestId('glossary-left-panel');
   await sidebar.getByRole('link').first().waitFor();
 
-  const menuItem = sidebar.getByRole('link', {
-    name: glossaryLabel,
-    exact: true,
-  });
+  // A glossary with terms awaiting review shows their count inside its link, so match the label.
+  const menuItem = sidebar
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryLabel, { exact: true }) });
   await menuItem.waitFor({ state: 'visible' });
 
   const isSelected = (await menuItem.getAttribute('aria-current')) === 'page';
