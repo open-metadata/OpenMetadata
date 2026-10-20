@@ -278,7 +278,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
-      @Valid final PreviewNativeOntologyImport request) {
+      @NotNull @Valid final PreviewNativeOntologyImport request) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
     final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
     final var model =
