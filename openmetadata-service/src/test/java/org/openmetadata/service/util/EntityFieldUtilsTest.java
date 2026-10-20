@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -43,6 +45,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 class EntityFieldUtilsTest {
 
@@ -54,6 +57,17 @@ class EntityFieldUtilsTest {
     CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
 
     when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    ChangeDescription patchedChange =
+        new ChangeDescription()
+            .withPreviousVersion(1.0)
+            .withFieldsUpdated(
+                List.of(new FieldChange().withName("description").withNewValue("fresh")));
+    TestEntity patched = entity();
+    patched.setId(entity.getId());
+    patched.setChangeDescription(patchedChange);
+    Mockito.doReturn(new PatchResponse<>(Response.Status.OK, patched, EventType.ENTITY_UPDATED))
+        .when(repository)
+        .patch(any(), any(UUID.class), any(), any(JsonPatch.class), any(), any());
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository("table")).thenReturn(repository);
@@ -80,6 +94,8 @@ class EntityFieldUtilsTest {
       assertEquals("service.db.orders", changeEvent.getEntityFullyQualifiedName());
       assertEquals("alice", changeEvent.getUserName());
       assertEquals("workflow-bot", changeEvent.getImpersonatedBy());
+      // Alert and activity-feed filters match on changed fields; an event without them is dropped.
+      assertEquals(patchedChange, changeEvent.getChangeDescription());
       assertEquals("fresh description", entity.getDescription());
     }
   }
