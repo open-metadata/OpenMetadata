@@ -26,8 +26,7 @@ modified by the bug fix.
 """
 
 import pytest
-from sqlalchemy import create_engine, text
-from testcontainers.cockroachdb import CockroachDBContainer
+from sqlalchemy import text
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_pg_mappings import RELKIND_MAP
@@ -36,25 +35,22 @@ SCHEMA = "matview_test"
 
 
 @pytest.fixture(scope="module")
-def crdb_engine():
-    container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
-    with container as container:
-        engine = create_engine(container.get_connection_url())
-        with engine.begin() as conn:
-            conn.execute(text(f"CREATE SCHEMA {SCHEMA}"))
-            conn.execute(text(f"CREATE TABLE {SCHEMA}.base_table (id INT, amount DECIMAL)"))
-            conn.execute(text(f"INSERT INTO {SCHEMA}.base_table VALUES (1, 100), (2, 200)"))
-            conn.execute(text(f"CREATE VIEW {SCHEMA}.plain_view AS SELECT id FROM {SCHEMA}.base_table"))
-            conn.execute(
-                text(
-                    f"CREATE MATERIALIZED VIEW {SCHEMA}.mat_view AS "
-                    f"SELECT id, SUM(amount) AS total FROM {SCHEMA}.base_table GROUP BY id"
-                )
+def crdb_engine(cockroach_engine):
+    with cockroach_engine.begin() as conn:
+        conn.execute(text(f"CREATE SCHEMA {SCHEMA}"))
+        conn.execute(text(f"CREATE TABLE {SCHEMA}.base_table (id INT, amount DECIMAL)"))
+        conn.execute(text(f"INSERT INTO {SCHEMA}.base_table VALUES (1, 100), (2, 200)"))
+        conn.execute(text(f"CREATE VIEW {SCHEMA}.plain_view AS SELECT id FROM {SCHEMA}.base_table"))
+        conn.execute(
+            text(
+                f"CREATE MATERIALIZED VIEW {SCHEMA}.mat_view AS "
+                f"SELECT id, SUM(amount) AS total FROM {SCHEMA}.base_table GROUP BY id"
             )
-        yield engine
-        engine.dispose()
+        )
+    yield cockroach_engine
 
 
+@pytest.mark.metadata
 def test_cockroach_reports_matview_with_relkind_m(crdb_engine):
     """CockroachDB must report a materialized view with relkind 'm' in
     pg_class — the value the bug-excluded filter never matched."""
@@ -74,6 +70,7 @@ def test_cockroach_reports_matview_with_relkind_m(crdb_engine):
     assert kinds["mat_view"] == "m", f"expected 'm' for matview; got {kinds.get('mat_view')!r}"
 
 
+@pytest.mark.metadata
 def test_fixed_view_query_returns_matview(crdb_engine):
     """The fixed COCKROACH_GET_VIEW_NAMES must return both the plain view
     and the materialized view, and the relkind mapping must type the matview
@@ -99,6 +96,7 @@ def test_fixed_view_query_returns_matview(crdb_engine):
     assert "mat_view" not in table_names, "matview leaked into table query (would bypass includeViews gate)"
 
 
+@pytest.mark.metadata
 def test_matview_columns_are_populated(crdb_engine):
     """The matview's columns must be queryable so a downstream ingestion could
     populate them — i.e. the matview is a real, queryable CockroachDB object
