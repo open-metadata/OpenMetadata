@@ -17,7 +17,13 @@ counterpart. Off-scale aliases let component styles drift from the design system
 
 ## Decision
 
-- The colour rules of ADR:2026-10-16-less-colours-read-tailwind-bridge-vars stand unchanged.
+- Colour references in LESS/CSS and canvas token strings read the core Tailwind bridge families:
+  `--tw-background-color-*`, `--tw-text-color-*`, `--tw-border-color-*`, `--tw-color-fg-*` and
+  `--tw-color-utility-*`. Choose a semantic role that follows the theme. Never add `--om-color-*`
+  tokens or references. A missing colour role belongs in core `globals.css` with its light and dark
+  values; never reference the unprefixed semantic `--color-*`, `--background-color-*`,
+  `--text-color-*` or `--border-color-*` variables from component styles. These carry over
+  unchanged from ADR:2026-10-16-less-colours-read-tailwind-bridge-vars.
 - Prefer `tw:` utilities and core component props (`Typography` `size`/`weight`) at the call site.
   Keep a LESS rule only when it needs a selector, `:has()`, a media query, a pseudo-element, SVG
   paint or a third-party override that utilities cannot express.
@@ -34,7 +40,7 @@ counterpart. Off-scale aliases let component styles drift from the design system
 
 Component styles and utilities share one scale, and off-scale values stop accumulating. Migrating a
 file can shift a value by one ramp step; the PR doing it shows before/after captures. A value the
-theme does not model and that has no ramp (a 0.08em caps tracking, a negative stacking order) stays
-a literal. `token-audit:report` and `token-migrate` still suggest `--om-*` names; translate those
+theme does not model and that has no ramp stays a literal: a 0.08em caps tracking, or a `z-index`
+(the theme has no stacking scale; in TSX use `tw:z-<n>`). `token-audit:report` and `token-migrate` still suggest `--om-*` names; translate those
 suggestions to the theme variables. `tokens.css` keeps the `--om-*` definitions until no component
 reads them.

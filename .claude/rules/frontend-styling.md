@@ -6,9 +6,9 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx,less,css}"
 # Frontend styling & design tokens
 
 Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Token source of truth: core
-`globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the `--om-*` tokens.
+`globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the legacy `--om-*` tokens.
 
-## Tailwind & tokens (ADR:2026-10-16-less-colours-read-tailwind-bridge-vars, ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars)
+## Tailwind & tokens (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars)
 
 - **All Tailwind utility classes use the `tw:` prefix** (`tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to
   avoid collisions with existing Ant Design/Less styles.
