@@ -7697,6 +7697,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageMapPlaceholder/LineageMapPlaceholder.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageNodeDeleteModal/LineageNodeDeleteModal.tsx"
       ],
       "specs": [
