@@ -49,10 +49,12 @@ const EntityCardView = <T extends { id: string }>({
       data-testid="card-view-container">
       {entities.map((entity) => (
         <Card
+          // Same card as the Connections grid: one step below the surface in dark.
+          className="tw:dark:bg-secondary tw:dark:hover:bg-secondary_hover"
           data-testid="entity-card"
           isClickable={Boolean(onEntityClick)}
           key={entity.id}
-          variant="default"
+          variant="elevated"
           onClick={onEntityClick ? () => onEntityClick(entity) : undefined}>
           <Card.Content>{renderCard(entity)}</Card.Content>
         </Card>
