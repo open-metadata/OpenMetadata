@@ -32,6 +32,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jobs.BackgroundJobException;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandler;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.RequestEntityCache;
 
 /** Runs queued glossary-term derivation through the AI provider's {@link MemoryGlossaryDeriver}. */
@@ -94,15 +95,18 @@ public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
 
   // A memory can be deleted, retired, restricted or given a term between being queued and running.
   // Publishing org-wide memory content permits independent glossary vocabulary; an asset anchor
-  // or a restricted file still prevents publication outside that anchor's readers.
+  // or a restricted file still prevents publication outside that anchor's readers. Read them from
+  // the database: another server may have restricted one since this one cached it.
   private List<ContextMemory> eligibleMemories(final List<UUID> memoryIds) {
-    return listOrEmpty(memoryIds).stream()
-        .distinct()
-        .map(memoryLoader)
-        .flatMap(Optional::stream)
-        .filter(MemoryGlossaryDerivationJobHandler::isEligible)
-        .filter(readableByEveryone)
-        .toList();
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter()) {
+      return listOrEmpty(memoryIds).stream()
+          .distinct()
+          .map(memoryLoader)
+          .flatMap(Optional::stream)
+          .filter(MemoryGlossaryDerivationJobHandler::isEligible)
+          .filter(readableByEveryone)
+          .toList();
+    }
   }
 
   private static boolean isReadableByEveryone(final ContextMemory memory) {
