@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
@@ -78,6 +79,37 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReview;
 
 class OntologyEntityDAOTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void migrationPrunesRetiredMemoryJobsAndKeepsCurrentJobs(ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrateRepositoryTables(handle, dialect);
+          List<String> retained =
+              List.of(
+                  BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name(),
+                  BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name());
+          for (String jobType :
+              List.of("ONTOLOGY_MEMORY_DERIVATION", retained.getFirst(), retained.getLast())) {
+            handle.execute(
+                "INSERT INTO background_jobs (jobType, methodName, jobArgs, createdBy)"
+                    + " VALUES (?, 'test', '{}', 'admin')",
+                jobType);
+          }
+          migrate(handle, dialect);
+          migrate(handle, dialect);
+          assertEquals(
+              retained,
+              handle
+                  .createQuery("SELECT jobType FROM background_jobs ORDER BY jobType")
+                  .mapTo(String.class)
+                  .list());
+        });
+  }
+
   private static final URI NAMESPACE = URI.create("https://example.org/sales/");
 
   @ParameterizedTest
