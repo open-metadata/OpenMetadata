@@ -2,37 +2,15 @@ import textwrap
 import time
 
 import pytest
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
-from testcontainers.cockroachdb import CockroachDBContainer
-from testcontainers.core.waiting_utils import wait_for_logs
 
 from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.workflow.metadata import MetadataWorkflow
 
-# Partitioning requires an enterprise-enabled cluster. The shared conftest
-# fixture uses `cockroachdb/cockroach:v23.1.0`, where `PARTITION BY` needs a
-# license key. v24.3+ is released under the CockroachDB Software License and
-# allows single-node dev clusters to use partitioning without a license key.
-PARTITION_TEST_IMAGE = "cockroachdb/cockroach:v24.3.0"
-
 
 @pytest.fixture(scope="module")
-def cockroach_container():
-    """Override the shared conftest fixture with a v24.3 image that supports
-    partitioning on a license-free single-node dev cluster."""
-    container = CockroachDBContainer(image=PARTITION_TEST_IMAGE)
-    container.start()
-    try:
-        # Testcontainers returns after user creation, before database privileges are granted.
-        wait_for_logs(container, "end running init files from /docker-entrypoint-initdb.d")
-        yield container
-    finally:
-        container.stop()
-
-
-@pytest.fixture(scope="module")
-def prepare_partitioned_schemas(cockroach_container):
+def prepare_partitioned_schemas(cockroach_engine):
     """Create same-named `events` tables in two schemas with different partition
     strategies, plus a non-partitioned same-named table in a third schema, plus a
     multi-column partitioned table and a table with a partitioned secondary index.
@@ -58,7 +36,6 @@ def prepare_partitioned_schemas(cockroach_container):
     CockroachDB requires the partition column to be a prefix of the primary
     key, hence the PK column ordering in each table.
     """
-    engine = create_engine(cockroach_container.get_connection_url())
     sql = [
         "CREATE SCHEMA IF NOT EXISTS analytics;",
         "CREATE SCHEMA IF NOT EXISTS reporting;",
@@ -161,7 +138,7 @@ def prepare_partitioned_schemas(cockroach_container):
         );
         """,
     ]
-    with engine.connect() as conn:
+    with cockroach_engine.connect() as conn:
         for stmt in sql:
             # CockroachDB schema changes can transiently fail with a
             # SerializationFailure ("cannot publish new versions for

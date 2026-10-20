@@ -26,9 +26,7 @@ modified by the bug fix.
 """
 
 import pytest
-from sqlalchemy import create_engine, text
-from testcontainers.cockroachdb import CockroachDBContainer
-from testcontainers.core.waiting_utils import wait_for_logs
+from sqlalchemy import text
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_pg_mappings import RELKIND_MAP
@@ -37,25 +35,19 @@ SCHEMA = "matview_test"
 
 
 @pytest.fixture(scope="module")
-def crdb_engine():
-    container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
-    with container as container:
-        # Testcontainers returns after user creation, before database privileges are granted.
-        wait_for_logs(container, "end running init files from /docker-entrypoint-initdb.d")
-        engine = create_engine(container.get_connection_url())
-        with engine.begin() as conn:
-            conn.execute(text(f"CREATE SCHEMA {SCHEMA}"))
-            conn.execute(text(f"CREATE TABLE {SCHEMA}.base_table (id INT, amount DECIMAL)"))
-            conn.execute(text(f"INSERT INTO {SCHEMA}.base_table VALUES (1, 100), (2, 200)"))
-            conn.execute(text(f"CREATE VIEW {SCHEMA}.plain_view AS SELECT id FROM {SCHEMA}.base_table"))
-            conn.execute(
-                text(
-                    f"CREATE MATERIALIZED VIEW {SCHEMA}.mat_view AS "
-                    f"SELECT id, SUM(amount) AS total FROM {SCHEMA}.base_table GROUP BY id"
-                )
+def crdb_engine(cockroach_engine):
+    with cockroach_engine.begin() as conn:
+        conn.execute(text(f"CREATE SCHEMA {SCHEMA}"))
+        conn.execute(text(f"CREATE TABLE {SCHEMA}.base_table (id INT, amount DECIMAL)"))
+        conn.execute(text(f"INSERT INTO {SCHEMA}.base_table VALUES (1, 100), (2, 200)"))
+        conn.execute(text(f"CREATE VIEW {SCHEMA}.plain_view AS SELECT id FROM {SCHEMA}.base_table"))
+        conn.execute(
+            text(
+                f"CREATE MATERIALIZED VIEW {SCHEMA}.mat_view AS "
+                f"SELECT id, SUM(amount) AS total FROM {SCHEMA}.base_table GROUP BY id"
             )
-        yield engine
-        engine.dispose()
+        )
+    yield cockroach_engine
 
 
 def test_cockroach_reports_matview_with_relkind_m(crdb_engine):
