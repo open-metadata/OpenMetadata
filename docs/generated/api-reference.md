@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1974 endpoints** across 75 resource packages · 1964 carry a summary.
+**1975 endpoints** across 75 resource packages · 1965 carry a summary.
 
 ## (root)
 
@@ -375,6 +375,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/contextCenter/memories` | List context memories |
 | `POST` | `/v1/contextCenter/memories` | Create a memory |
 | `PUT` | `/v1/contextCenter/memories` | Create or update a memory |
+| `GET` | `/v1/contextCenter/memories/derivations` | List the memories entities were derived from |
 | `DELETE` | `/v1/contextCenter/memories/name/{fqn}` | Delete a memory by fully qualified name |
 | `GET` | `/v1/contextCenter/memories/name/{fqn}` | Get a memory by fully qualified name |
 | `PUT` | `/v1/contextCenter/memories/restore` | Restore a soft-deleted memory |
