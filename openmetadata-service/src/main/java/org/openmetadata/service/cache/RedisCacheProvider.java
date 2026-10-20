@@ -180,10 +180,13 @@ public class RedisCacheProvider implements CacheProvider {
     // One UNLINK per key, pipelined: a multi-key UNLINK fails with CROSSSLOT on a clustered
     // endpoint, the same reason mget issues per-key GETs.
     List<RedisFuture<?>> deletes = new ArrayList<>(batch.size());
-    batch.keySet().forEach(key -> deletes.add(asyncCommands.unlink(key)));
+    // Credential barriers must survive cleanup during mutations on other nodes.
+    batch.keySet().stream()
+        .filter(key -> !key.startsWith(keys.ns + ":credential:"))
+        .forEach(key -> deletes.add(asyncCommands.unlink(key)));
     awaitAll(deletes);
     unconfirmedWrites.forget(batch);
-    logDeletedUnconfirmedWrites(batch.size(), unconfirmedWrites.takeUntrackedCount());
+    logDeletedUnconfirmedWrites(deletes.size(), unconfirmedWrites.takeUntrackedCount());
   }
 
   private static void logDeletedUnconfirmedWrites(int deleted, long untracked) {

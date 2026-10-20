@@ -30,6 +30,7 @@ import java.lang.reflect.Field;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,6 +47,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -128,6 +131,55 @@ class RedisCacheProviderUnconfirmedWritesTest {
     provider.healthCheck();
 
     assertEquals(0L, redis.exists("om-test:e:table:2"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bot", "pat"})
+  void failedCredentialWriteDoesNotDeleteAnotherProvidersBarrier(String credentialType) {
+    CacheKeys keys = new CacheKeys(config().redis.keyspace);
+    String credentialKey = keys.credentialState(credentialType, "token-owner");
+    String entityKey = keys.entity("table", UUID.randomUUID());
+    String barrier = "mutating:" + UUID.randomUUID();
+    redis.set(credentialKey, "ready:old-token-hash");
+    redis.set(entityKey, "before-write");
+    assertFalse(provider.trySet(credentialKey, "ready:new-token-hash", Duration.ZERO));
+    assertFalse(provider.trySet(entityKey, "after-write", Duration.ZERO));
+    assertTrue(provider.available());
+
+    try (RedisCacheProvider peer = new RedisCacheProvider(config())) {
+      assertTrue(peer.trySet(credentialKey, barrier, TTL));
+      assertEquals(Optional.of(barrier), peer.get(credentialKey));
+
+      provider.healthCheck();
+
+      assertEquals(0L, redis.exists(entityKey));
+      assertEquals(Optional.of(barrier), peer.get(credentialKey));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"bot", "pat"})
+  void skippedCredentialDeleteDoesNotDeleteAnotherProvidersBarrier(String credentialType) {
+    CacheKeys keys = new CacheKeys(config().redis.keyspace);
+    String credentialKey = keys.credentialState(credentialType, "token-owner");
+    String entityKey = keys.entity("table", UUID.randomUUID());
+    String barrier = "mutating:" + UUID.randomUUID();
+    redis.set(credentialKey, "ready:old-token-hash");
+    redis.set(entityKey, "before-outage");
+    openBreaker();
+    provider.del(credentialKey, entityKey);
+    assertEquals("before-outage", redis.get(entityKey));
+
+    try (RedisCacheProvider peer = new RedisCacheProvider(config())) {
+      assertTrue(peer.trySet(credentialKey, barrier, TTL));
+      assertEquals(Optional.of(barrier), peer.get(credentialKey));
+
+      recover();
+
+      assertTrue(provider.available());
+      assertEquals(0L, redis.exists(entityKey));
+      assertEquals(Optional.of(barrier), peer.get(credentialKey));
+    }
   }
 
   @Test
