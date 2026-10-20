@@ -383,4 +383,26 @@ describe('AppDetails component', () => {
       screen.getByText('message.app-no-settings-to-manage')
     ).toBeInTheDocument();
   });
+
+  it('should report a schema load failure instead of the no-settings empty state', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'AIChatApplication',
+      scheduleType: 'NoSchedule',
+      allowConfiguration: false,
+    });
+    mockImportSchema.mockImplementationOnce(() => {
+      throw new Error('schema missing');
+    });
+
+    await renderAppDetails();
+
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText('server.no-application-schema-found').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText('message.app-no-settings-to-manage')
+    ).not.toBeInTheDocument();
+  });
 });

@@ -23,8 +23,10 @@ import { safeDecodeURIComponent as decode } from '../../../discovery/personal-sp
  * equivalent are redirected to it. Each mapper takes the path segments after
  * its key and returns the modal hash (without `#`), or `undefined` to leave the
  * page route alone (services, search, workflow definitions, edit forms… have no
- * modal tab). Path FQN segments arrive URL-encoded: tabs whose hash parser
- * decodes (applications, members teams) keep them encoded, the rest decode.
+ * modal tab; notifications/alerts have dedicated AI pages and persona details
+ * keep their page). Path FQN segments arrive URL-encoded: tabs whose hash
+ * parser decodes (applications, members teams) keep them encoded, the rest
+ * decode. See ADR:2026-10-20-app-mode-settings-urls-open-the-settings-modal.
  */
 type HashMapper = (rest: string[]) => string | undefined;
 
@@ -77,6 +79,16 @@ const mapMembers: HashMapper = ([option, fqn]) => {
   return MEMBER_LISTS.includes(option) ? `members/${option}` : undefined;
 };
 
+const mapAccessDetail = (detail: string, action?: string, rule?: string) => {
+  if (action === 'add-rule') {
+    return `${detail}/rules/add`;
+  }
+
+  return action === 'edit-rule' && rule
+    ? `${detail}/rules/${rule}/edit`
+    : detail;
+};
+
 const mapAccess: HashMapper = ([option, fqn, action, rule]) => {
   if (!option || ACCESS_PAGES.includes(option)) {
     return withSub('access-control', option);
@@ -87,33 +99,12 @@ const mapAccess: HashMapper = ([option, fqn, action, rule]) => {
   if (!fqn || ACCESS_ADD_FORMS.includes(fqn)) {
     return `access-control/${withSub(option, fqn && 'add')}`;
   }
-  const detail = `access-control/${option}/${decode(fqn)}`;
-  if (action === 'add-rule') {
-    return `${detail}/rules/add`;
-  }
 
-  return action === 'edit-rule' && rule
-    ? `${detail}/rules/${rule}/edit`
-    : detail;
-};
-
-const mapNotifications: HashMapper = ([option, fqn, ...rest]) => {
-  switch (option) {
-    case undefined:
-      return 'notification';
-    case GlobalSettingOptions.ALERTS:
-      return withSub('notification/alerts', fqn && decode(fqn));
-    case GlobalSettingOptions.ADD_NOTIFICATION:
-      return 'notification/alerts/add';
-    case GlobalSettingOptions.EDIT_NOTIFICATION:
-      return withSub('notification/alerts', fqn && `edit/${decode(fqn)}`);
-    default:
-      // Every other notifications option (announcements, Collate's weekly
-      // emails / templates) is a contributed section keyed by the same id.
-      return `notification/section/${[option, fqn, ...rest]
-        .filter(Boolean)
-        .join('/')}`;
-  }
+  return mapAccessDetail(
+    `access-control/${option}/${decode(fqn)}`,
+    action,
+    rule
+  );
 };
 
 const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
@@ -123,13 +114,13 @@ const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
     GlobalSettingsMenuCategory.APPLICATIONS,
     ([fqn]) => withSub('applications', fqn),
   ],
+  // Persona detail routes stay pages (app layout, customize landing page).
   [
     GlobalSettingsMenuCategory.PERSONA,
-    ([fqn]) => withSub('personas', fqn && decode(fqn)),
+    ([fqn]) => (fqn ? undefined : 'personas'),
   ],
   [GlobalSettingsMenuCategory.MEMBERS, mapMembers],
   [GlobalSettingsMenuCategory.ACCESS, mapAccess],
-  [GlobalSettingsMenuCategory.NOTIFICATIONS, mapNotifications],
   [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES, () => 'custom-properties'],
   [
     GlobalSettingsMenuCategory.GOVERNANCE,
@@ -150,8 +141,8 @@ const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
     },
   ],
   [GlobalSettingsMenuCategory.SSO, () => 'sso'],
-  // Collate's billing pages share their slugs with the modal's `#billing/<page>`;
-  // the plans page has no modal equivalent.
+  // Collate-only (it owns the billing pages and the `#billing` tab); their slugs
+  // match the modal's `#billing/<page>`, the plans page has no modal equivalent.
   [
     'billing',
     ([page]) => (page === 'plans' ? undefined : withSub('billing', page)),

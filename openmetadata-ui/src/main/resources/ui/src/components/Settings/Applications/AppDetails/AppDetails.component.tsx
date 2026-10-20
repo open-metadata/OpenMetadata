@@ -125,6 +125,7 @@ const AppDetails = () => {
   const [showActions, setShowActions] = useState(false);
   const [showDeleteModel, setShowDeleteModel] = useState(false);
   const [jsonSchema, setJsonSchema] = useState<RJSFSchema>();
+  const [isSchemaLoadFailed, setIsSchemaLoadFailed] = useState(false);
   const [action, setAction] = useState<AppAction | null>(null);
   const [loadingState, setLoadingState] = useState<Record<string, boolean>>({
     isFetchLoading: true,
@@ -163,8 +164,10 @@ const AppDetails = () => {
       try {
         const schema = await applicationsClassBase.importSchema(fqn);
         setJsonSchema(schema);
+        setIsSchemaLoadFailed(false);
       } catch {
         setJsonSchema(undefined);
+        setIsSchemaLoadFailed(true);
         showErrorToast(
           t('server.no-application-schema-found', { appName: fqn })
         );
@@ -648,14 +651,20 @@ const AppDetails = () => {
     }
 
     // An app with no schedule and no editable configuration (e.g. AIChatApplication) has
-    // no tabs; without this the empty tab-list card renders as a blank strip.
+    // no tabs; without this the empty tab-list card renders as a blank strip. A schema that
+    // failed to load also leaves no configuration tab, so say that rather than claim the app
+    // has nothing to manage.
     if (isEmpty(tabs)) {
       return (
         <ErrorPlaceHolder
           className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-8"
-          placeholderText={t('message.app-no-settings-to-manage', {
-            app: getEntityName(appData),
-          })}
+          placeholderText={
+            isSchemaLoadFailed
+              ? t('server.no-application-schema-found', { appName: fqn })
+              : t('message.app-no-settings-to-manage', {
+                  app: getEntityName(appData),
+                })
+          }
         />
       );
     }

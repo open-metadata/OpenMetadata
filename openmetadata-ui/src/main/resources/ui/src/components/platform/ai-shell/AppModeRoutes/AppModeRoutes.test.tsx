@@ -12,7 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -21,7 +21,7 @@ import leftSidebarClassBase from '../../../../utils/LeftSidebarClassBase';
 import { CONNECTIONS_ROUTES } from '../../../integration/connections.constants';
 import { connectionsModule } from '../../../integration/connections.module';
 import ApplicationsProvider from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
-import { AppModeRoutes } from './AppModeRoutes';
+import { AppModeRoutes, SettingsModalRedirect } from './AppModeRoutes';
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(),
@@ -198,5 +198,57 @@ describe('AppModeRoutes — contribution lifecycle', () => {
       mockKeepAliveRoutesRender.mock.calls[callsAfterRerender - 1][0];
 
     expect(routesAfterRerender).toBe(routesAfterSettling);
+  });
+});
+
+describe('SettingsModalRedirect', () => {
+  const ModalProbe = () => {
+    const { pathname, hash } = useLocation();
+
+    return <div data-testid="modal-location">{`${pathname}${hash}`}</div>;
+  };
+
+  const renderAt = (path: string, isAdmin: boolean) => {
+    mockUsePermissionProvider.mockReturnValue({ permissions: {} });
+    mockUseApplicationStore.mockReturnValue({ currentUser: { isAdmin } });
+
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route element={<ModalProbe />} path="/my-data" />
+          <Route
+            element={
+              <SettingsModalRedirect>
+                <div data-testid="classic-page" />
+              </SettingsModalRedirect>
+            }
+            path="/*"
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+  };
+
+  it('opens the modal tab for a user who can see it', () => {
+    renderAt('/settings/members/teams/Org', true);
+
+    expect(screen.getByTestId('modal-location')).toHaveTextContent(
+      '/my-data#members/teams/Org'
+    );
+    expect(screen.queryByTestId('classic-page')).not.toBeInTheDocument();
+  });
+
+  it('keeps the classic page when the user cannot see the modal tab', () => {
+    renderAt('/settings/members/teams/Org', false);
+
+    expect(screen.getByTestId('classic-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-location')).not.toBeInTheDocument();
+  });
+
+  it('keeps the classic page for a path with no modal equivalent', () => {
+    renderAt('/settings/services/databases', true);
+
+    expect(screen.getByTestId('classic-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('modal-location')).not.toBeInTheDocument();
   });
 });

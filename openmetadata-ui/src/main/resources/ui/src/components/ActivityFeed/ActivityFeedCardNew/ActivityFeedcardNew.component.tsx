@@ -149,15 +149,18 @@ const ActivityFeedCardNew = ({
   const isActivityEvent = !isUndefined(activity);
   const timeFormat = useActiveTimeFormat();
 
+  const entityRef = feed?.entityRef ?? activity?.entity;
+
   const { entityFQN, entityType } = useMemo(() => {
-    // An activity event names its entity as a reference; read that rather than
-    // parse `about`. The server appends any changed field to `about`
-    // (`<#E::topic::fqn::entityStatus>`), and a field the EntityLink grammar
-    // does not list makes ANTLR log a syntax error on every render.
-    if (activity?.entity) {
+    // Read the entity reference rather than parse `about`. For an activity
+    // event, and a Conversation the server created from one, `about` carries
+    // the changed field (`<#E::topic::fqn::entityStatus>`), and a field the
+    // EntityLink grammar does not list makes ANTLR log a syntax error on every
+    // render.
+    if (entityRef?.fullyQualifiedName) {
       return {
-        entityFQN: activity.entity.fullyQualifiedName ?? '',
-        entityType: activity.entity.type as EntityType,
+        entityFQN: entityRef.fullyQualifiedName,
+        entityType: entityRef.type as EntityType,
       };
     }
     const aboutValue = feed?.about ?? activity?.about ?? '';
@@ -166,7 +169,7 @@ const ActivityFeedCardNew = ({
       entityFQN: getEntityFQN(aboutValue),
       entityType: getEntityType(aboutValue) as EntityType,
     };
-  }, [feed?.about, activity?.about, activity?.entity]);
+  }, [feed?.about, activity?.about, entityRef]);
 
   const createdBy = useMemo(() => {
     const postAuthor = post?.author.name ?? post?.author.fullyQualifiedName;
@@ -231,7 +234,6 @@ const ActivityFeedCardNew = ({
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
     };
   }, [entityFQN, entityType]);
-  const entityRef = feed?.entityRef ?? activity?.entity;
 
   const renderEntityLink = useMemo(() => {
     if (isUserOrTeam) {
@@ -497,6 +499,7 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
+              isActive={isActive}
               isEditPost={isEditPost}
               isFeedWidget={isFeedWidget}
               isForFeedTab={isForFeedTab}
@@ -670,6 +673,7 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
+              isActive={isActive}
               isEditPost={isEditPost}
               isForFeedTab={isForFeedTab}
               isPost={isPost}

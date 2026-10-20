@@ -29,11 +29,9 @@ let letExpectedUserName = {
 
 const mockShowErrorToast = jest.fn();
 
-let mockNewUser: Record<string, string> | undefined = {
-  name: '',
-  email: '',
-  picture: '',
-};
+const DEFAULT_NEW_USER = { name: '', email: '', picture: '' };
+
+let mockNewUser: Record<string, string> | undefined = DEFAULT_NEW_USER;
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
@@ -75,6 +73,10 @@ jest.mock('react-router-dom', () => ({
 }));
 
 describe('SignUp page', () => {
+  afterEach(() => {
+    mockNewUser = DEFAULT_NEW_USER;
+  });
+
   it('Component should render properly', async () => {
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: {} })

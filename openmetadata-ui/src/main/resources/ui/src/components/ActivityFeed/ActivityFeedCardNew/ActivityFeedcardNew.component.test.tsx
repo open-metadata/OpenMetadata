@@ -291,6 +291,34 @@ describe('ActivityFeedCardNew', () => {
     splitSpy.mockRestore();
   });
 
+  it('reads an activity-sourced conversation entity from its reference, not its about link', () => {
+    // The server copies the activity's `about` (with the changed field) into
+    // the conversation it creates from it.
+    const splitSpy = jest.spyOn(EntityLink, 'split');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::entityStatus>',
+            source: ConversationSource.Activity,
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(splitSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    splitSpy.mockRestore();
+  });
+
   it('renders activity replies in the open side panel', () => {
     mockProviderValue.activityReplies = [activityReply];
 

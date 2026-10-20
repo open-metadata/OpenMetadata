@@ -14,9 +14,12 @@
 import { lazy, ReactNode, useMemo } from 'react';
 import { Navigate, Route, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import Loader from '../../../common/Loader/Loader';
+import { isProfileNavVisible } from '../../../discovery/personal-space/Profile/profileNavVisibility';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { useAppModeRoutesFallback } from '../appModeExtensions';
 import { AppShell } from '../AppShell';
@@ -36,13 +39,28 @@ const AINotFoundPage = withPageSuspenseFallback(
 /**
  * Settings are a modal in app mode: a classic settings page route that has a
  * modal equivalent (in-app links, bookmarks) reopens as the modal over My Data
- * instead of rendering the classic full page inside the shell.
+ * instead of rendering the classic full page inside the shell. Only when the
+ * user can see that modal tab: otherwise the classic page keeps its own
+ * permission handling (e.g. a non-admin with Team view permission).
  */
-const SettingsModalRedirect = ({ children }: { children: ReactNode }) => {
+export const SettingsModalRedirect = ({
+  children,
+}: {
+  children: ReactNode;
+}) => {
   const { pathname } = useLocation();
+  const { permissions } = usePermissionProvider();
+  const { currentUser } = useApplicationStore();
   const hash = settingsPathToHash(pathname);
+  const canOpenModal =
+    hash !== undefined &&
+    isProfileNavVisible(
+      hash.split('/')[0],
+      permissions,
+      Boolean(currentUser?.isAdmin)
+    );
 
-  return hash ? (
+  return canOpenModal ? (
     <Navigate replace to={{ pathname: ROUTES.MY_DATA, hash }} />
   ) : (
     <>{children}</>

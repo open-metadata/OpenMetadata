@@ -608,3 +608,14 @@ describe('SettingsRouter login configuration routes', () => {
     }
   );
 });
+
+describe('SettingsRouter unknown routes', () => {
+  // Bots live at /bots/<name>, so /settings/bots/<name> matches no settings
+  // route and used to render an empty page.
+  it('treats an unknown settings path as not found', async () => {
+    renderAt('/settings/bots/ingestion-bot');
+
+    expect(await screen.findByText('NotFound')).toBeInTheDocument();
+    expect(screen.queryByText('BotsPageV1')).not.toBeInTheDocument();
+  });
+});
