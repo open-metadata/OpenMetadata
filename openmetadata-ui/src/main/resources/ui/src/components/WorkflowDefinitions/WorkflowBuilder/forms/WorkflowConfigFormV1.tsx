@@ -15,6 +15,7 @@ import React from 'react';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
+import { ApprovalModeSection } from './ApprovalModeSection';
 import { DataAssetFiltersSection } from './DataAssetFiltersSection';
 import { DataAssetFormSection } from './DataAssetFormSection';
 import { EventTriggerFilterSection } from './EventTriggerFilterSection';
@@ -155,6 +156,16 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
           triggerFilter={config.triggerFilter}
           onTriggerFilterChange={(filter) =>
             updateConfig('triggerFilter', filter)
+          }
+        />
+      )}
+
+      {config.triggerType === WorkflowType.EVENT_BASED && (
+        <ApprovalModeSection
+          approvalMode={config.approvalMode}
+          lockFields={lockFilterSections}
+          onApprovalModeChange={(approvalMode) =>
+            updateConfig('approvalMode', approvalMode)
           }
         />
       )}

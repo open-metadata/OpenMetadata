@@ -13,6 +13,7 @@ import type {
   KeyboardEvent,
   PointerEventHandler,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
   createContext,
@@ -39,10 +40,11 @@ import {
 import type { ListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
-interface ComboBoxValueProps
-  extends AriaGroupProps,
-    RefAttributes<HTMLDivElement> {
+// The trigger ref is a named prop, not `ref`: React 18 does not pass `ref` to a
+// function component, so the popover would have no trigger to anchor to.
+interface ComboBoxValueProps extends AriaGroupProps {
   size: 'sm' | 'md';
+  triggerRef: RefObject<HTMLDivElement>;
   shortcut?: boolean;
   isDisabled?: boolean;
   placeholder?: string;
@@ -54,12 +56,14 @@ interface ComboBoxValueProps
 
 const ComboboxContext = createContext<{
   size: 'sm' | 'md';
+  showTagAvatars: boolean;
   selectedKeys: Key[];
   selectedItems: ListData<SelectItemType>;
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
 }>({
   size: 'sm',
+  showTagAvatars: true,
   selectedKeys: [],
   selectedItems: {} as ListData<SelectItemType>,
   onRemove: () => {},
@@ -80,6 +84,8 @@ interface MultiSelectProps
   shortcutClassName?: string;
   selectedItems: ListData<SelectItemType>;
   icon?: IconComponentType | null;
+  /** Chips show each item's avatar; off for items that are not people or teams. */
+  showTagAvatars?: boolean;
   children: AriaListBoxProps<SelectItemType>['children'];
   onItemCleared?: (key: Key) => void;
   onItemInserted?: (key: Key) => void;
@@ -175,7 +181,9 @@ const InnerMultiSelect = ({
           <span
             className="tw:flex tw:max-w-full tw:min-w-0 tw:items-center tw:rounded-md tw:bg-primary tw:py-0.5 tw:pr-1 tw:pl-1.25 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
             key={value.id}>
-            <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            {comboBoxContext.showTagAvatars && (
+              <Avatar alt={value?.label} size="xxs" src={value?.avatarUrl} />
+            )}
 
             <p className="tw:ml-1.25 tw:truncate tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-secondary tw:select-none">
               {value?.label}
@@ -234,6 +242,7 @@ export const MultiSelectTagsValue = ({
   icon: Icon = Search,
   // Omit this prop to avoid invalid HTML attribute warning
   isDisabled: _isDisabled,
+  triggerRef,
   ...otherProps
 }: ComboBoxValueProps) => {
   return (
@@ -249,7 +258,8 @@ export const MultiSelectTagsValue = ({
           isFocusWithin && 'tw:outline-2 tw:-outline-offset-2 tw:outline-brand',
           sizes[size].root
         )
-      }>
+      }
+      ref={triggerRef}>
       {({ isDisabled }) => (
         <>
           {Icon && (
@@ -279,6 +289,7 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  showTagAvatars = true,
   onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
@@ -390,8 +401,15 @@ export const MultiSelectBase = ({
   });
 
   const contextValues = useMemo(
-    () => ({ size, selectedKeys, selectedItems, onInputChange, onRemove }),
-    [size, selectedKeys, selectedItems, onInputChange, onRemove]
+    () => ({
+      size,
+      showTagAvatars,
+      selectedKeys,
+      selectedItems,
+      onInputChange,
+      onRemove,
+    }),
+    [size, showTagAvatars, selectedKeys, selectedItems, onInputChange, onRemove]
   );
 
   return (
@@ -419,9 +437,9 @@ export const MultiSelectBase = ({
 
             <MultiSelectTagsValue
               placeholder={placeholder}
-              ref={placeholderRef}
               shortcut={shortcut}
               size={size}
+              triggerRef={placeholderRef}
               // This is a workaround to correctly calculating the trigger width
               // while using ResizeObserver wasn't 100% reliable.
               onFocus={onResize}

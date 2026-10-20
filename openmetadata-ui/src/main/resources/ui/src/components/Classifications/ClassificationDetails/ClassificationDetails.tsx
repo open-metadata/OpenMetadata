@@ -164,7 +164,7 @@ function computeClassificationPermissionFlags(
     deletePermission:
       classificationPermissions.Delete && !isSystemClassification,
     editOwnerPermission: computeEditOwnerPermission(isEditable, flags),
-    editDomainPermission: isEditable && flags.canEditAll,
+    editDomainPermission: isEditable && flags.canEditDomains,
   };
 }
 

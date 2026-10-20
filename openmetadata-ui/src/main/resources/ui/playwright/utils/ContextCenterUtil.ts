@@ -889,8 +889,13 @@ export const scrollHierarchyToNode = async (
     const countBefore = await nodes.count();
 
     // Hoist listener before the scroll so no response is missed
+    // Root pages only: `domains/hierarchy` (every navigation) and child
+    // expands (`parent=`) carry their own paging.total.
     const responsePromise = page.waitForResponse(
-      (res) => res.url().includes('/hierarchy'),
+      (res) =>
+        res.url().includes('/contextCenter/pages/search/hierarchy') &&
+        !res.url().includes('parent=') &&
+        res.request().method() === 'GET',
       { timeout: 15000 }
     );
 
@@ -1244,6 +1249,23 @@ export const patchMemory = async (
   const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
     data: patch,
     headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+/**
+ * Sets a memory's outcome counters through the admin-only outcome write, the only write that
+ * changes them: a PATCH keeps the stored counts.
+ */
+export const recordMemoryOutcomes = async (
+  apiContext: APIRequestContext,
+  id: string,
+  outcomes: { appliedCount: number; lastAppliedAt?: number }
+) => {
+  const res = await apiContext.put(`${MEMORIES_API}/${id}/outcomes`, {
+    data: { ...outcomes, countedAt: Date.now() },
   });
   expect(res.ok()).toBeTruthy();
 

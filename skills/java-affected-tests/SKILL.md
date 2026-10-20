@@ -154,7 +154,8 @@ them.
 - PR checks: Java unit tests. `maven-collate-ci` builds Collate and runs its unit tests against
   your change.
 - Merge queue: the full IT suite on MySQL+ES and PostgreSQL+OS (both required), PostgreSQL+ES+Redis
-  (informational), and the Collate ITs.
+  (required once #35761 completes the rollout in
+  ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue, informational until then), and the Collate ITs.
 - Full IT suite on a branch before queueing, for a large refactor:
   `gh workflow run "Integration Tests - MySQL + Elasticsearch" --ref <branch>`.
 

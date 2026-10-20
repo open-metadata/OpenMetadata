@@ -76,6 +76,30 @@ else
   JAVA="$JAVA_HOME/bin/java"
 fi
 
+# The JVM echoes JAVA_TOOL_OPTIONS to stderr at startup ("Picked up JAVA_TOOL_OPTIONS: ..."), which
+# puts any secret set there, such as a truststore password, into the container log, and plain
+# arguments would show in ps instead. So pass the options in a -XX:VMOptionsFile: the JVM parses it
+# exactly like JAVA_TOOL_OPTIONS, quotes and '#' included, and does not echo it. The file is opened
+# on fd 3 and unlinked at once, tmpfs first, so ps only ever shows /dev/fd/3, even after musl's
+# launcher re-exec. It goes ahead of our options so ours still take precedence.
+JAVA_TOOL_ARGS=""
+if [ -n "$JAVA_TOOL_OPTIONS" ]; then
+  java_tool_options_file=""
+  for tmp_dir in /dev/shm "${TMPDIR:-/tmp}"; do
+    java_tool_options_file=$(mktemp "$tmp_dir/jvm-options.XXXXXX" 2>/dev/null) && break
+  done
+  if [ -n "$java_tool_options_file" ] &&
+    printf '%s\n' "$JAVA_TOOL_OPTIONS" > "$java_tool_options_file"; then
+    exec 3< "$java_tool_options_file"
+    JAVA_TOOL_ARGS="-XX:VMOptionsFile=/dev/fd/3"
+    unset JAVA_TOOL_OPTIONS
+  else
+    echo "Warning: could not write JAVA_TOOL_OPTIONS to /dev/shm or ${TMPDIR:-/tmp}," \
+      "so the JVM will print it at startup" >&2
+  fi
+  [ -z "$java_tool_options_file" ] || rm -f "$java_tool_options_file"
+fi
+
 # Set Debug options if enabled
 if [ "x$OPENMETADATA_DEBUG" != "x" ]; then
 
@@ -126,7 +150,7 @@ if [ "x$DAEMON_MODE" = "xtrue" ]; then
     # emits what logback already writes to the rotated logs/openmetadata.log. Silence the console
     # so this file only collects JVM and pre-logback output. CONSOLE_LOG_LEVEL=TRACE restores it.
     export CONSOLE_LOG_LEVEL="${CONSOLE_LOG_LEVEL:-OFF}"
-    nohup $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+    nohup $JAVA $JAVA_TOOL_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
-    exec $JAVA $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
+    exec $JAVA $JAVA_TOOL_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
 fi

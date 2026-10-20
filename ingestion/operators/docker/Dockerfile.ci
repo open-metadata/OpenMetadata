@@ -23,7 +23,6 @@ RUN apt-get -qq update \
     && apt-get -qq install -y \
     build-essential \
     default-libmysqlclient-dev \
-    freetds-bin \
     freetds-dev \
     gcc \
     gnupg \
@@ -50,8 +49,6 @@ RUN apt-get -qq update \
     # two in lockstep; trixie ships 2.3.12-2 for both, so the pins are dropped
     # rather than retargeted.
     odbcinst \
-    postgresql \
-    postgresql-contrib \
     tdsodbc \
     unixodbc \
     unixodbc-dev \
@@ -77,7 +74,7 @@ RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
       | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
 RUN echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt/ trixie-pgdg main" > /etc/apt/sources.list.d/pgdg.list; \
     apt-get -qq update; \
-    apt-get -qq install --no-install-recommends -y libpq-dev postgresql-client postgresql-common postgresql postgresql-contrib; \
+    apt-get -qq install --no-install-recommends -y libpq-dev; \
     apt-get -qq autoremove -yqq --purge; \
     apt-get -qq clean && rm -rf /var/lib/apt/lists/*
 
@@ -269,9 +266,9 @@ RUN set -eu; \
     apt-get -qq update; \
     cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
-    apt-get -qq purge -y libmariadb-dev libmariadb-dev-compat libunbound8; \
+    apt-mark manual libpq5 libmariadb3 mariadb-common libgomp1 xz-utils bzip2; \
+    apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libunbound8; \
     apt-get -qq purge -y build-essential gcc; \
-    apt-mark manual libmariadb3 mariadb-common libgomp1 xz-utils bzip2; \
     apt-get -qq autoremove -y --purge; \
     cc_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '($1=="gcc-defaults" || $1 ~ /^gcc-[0-9]+$/) && $2 !~ /^(gcc-[0-9]+-base|libgcc-s1|libstdc\+\+6|libgomp1)$/ {print $2}')"; \
     [ -z "$cc_left" ] || { echo "compiler packages survived the purge: $cc_left" >&2; exit 1; }; \

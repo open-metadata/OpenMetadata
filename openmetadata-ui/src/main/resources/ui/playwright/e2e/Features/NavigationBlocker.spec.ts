@@ -84,9 +84,8 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Try to navigate to another page by clicking a sidebar link
     await adminPage
-      .locator(
-        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
-      )
+      .getByTestId('left-sidebar')
+      .getByTestId('app-bar-item-settings')
       .click();
 
     // Navigation blocker modal should appear
@@ -122,9 +121,8 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Try to navigate away
     await adminPage
-      .locator(
-        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
-      )
+      .getByTestId('left-sidebar')
+      .getByTestId('app-bar-item-settings')
       .click();
 
     // Modal should appear
@@ -178,9 +176,8 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Try to navigate to settings page
     await adminPage
-      .locator(
-        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
-      )
+      .getByTestId('left-sidebar')
+      .getByTestId('app-bar-item-settings')
       .click();
 
     // Modal should appear
@@ -242,9 +239,8 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Try to navigate away after saving
     await adminPage
-      .locator(
-        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
-      )
+      .getByTestId('left-sidebar')
+      .getByTestId('app-bar-item-settings')
       .click();
 
     // Navigation should happen immediately without modal
@@ -274,9 +270,8 @@ test.describe('Navigation Blocker Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Try to navigate away
     await adminPage
-      .locator(
-        '[data-menu-id*="settings"] [data-testid="app-bar-item-settings"]'
-      )
+      .getByTestId('left-sidebar')
+      .getByTestId('app-bar-item-settings')
       .click();
 
     // Modal should appear

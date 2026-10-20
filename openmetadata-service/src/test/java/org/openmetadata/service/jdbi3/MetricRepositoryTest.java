@@ -160,6 +160,15 @@ class MetricRepositoryTest {
   }
 
   @Test
+  void metricWithoutReviewersStartsInDraftWhenALifecyclePlaybookOwnsItsStage() {
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      fixture.repository().stageOwnership = new PlaybookStageOwnership();
+
+      assertEquals(EntityStatus.DRAFT, fixture.repository().initialEntityStatus(new Metric()));
+    }
+  }
+
+  @Test
   void hierarchyItemCarriesExactlyOneTypedPayload() {
     UUID metricId = UUID.randomUUID();
     UUID groupId = UUID.randomUUID();

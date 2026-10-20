@@ -8,9 +8,11 @@ import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RU
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -23,6 +25,7 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -31,6 +34,8 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -38,6 +43,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -69,6 +75,10 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       String relationshipFields =
           getRelationshipFieldsForAssigneeResolution(
               entityLink.getEntityType(), entitySupportsReviewers);
+      if (Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))
+          && !Entity.DOMAIN.equals(entityLink.getEntityType())) {
+        relationshipFields += ",domains";
+      }
       EntityInterface<?> entity = Entity.getEntity(entityLink, relationshipFields, Include.ALL);
 
       Set<String> assignees = new LinkedHashSet<>();
@@ -88,6 +98,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       assignees.addAll(taskAssignees);
 
       if (!hasExplicitTaskAssignees) {
+        assignees.addAll(
+            getEntityLinkStringFromEntityReferenceWithTeamExpansion(
+                resolveCandidateIds(assigneesConfig.get("candidateIds"))));
         // Process addReviewers flag
         Boolean addReviewers = (Boolean) assigneesConfig.getOrDefault("addReviewers", true);
         if (addReviewers) {
@@ -120,6 +133,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           List<String> ownerAssignees =
               getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
           assignees.addAll(ownerAssignees);
+        }
+        if (Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))) {
+          assignees.addAll(
+              getEntityLinkStringFromEntityReferenceWithTeamExpansion(
+                  resolveDomainOwners(entityLink.getEntityType(), entity)));
         }
 
         // Process users array
@@ -162,21 +180,29 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // global `updatedBy`. Both are checked because each variable is authoritative for its own
       // workflow family — reading only one silently leaves the other's requester on the list. For
       // non-workflow-managed tasks only, keep the requester when no one else is available so the
-      // task stays actionable; workflow-managed tasks rely on the admin fallback below instead.
+      // task stays actionable; workflow-managed tasks rely on the empty-assignee strategy below
+      // instead. A change request is never given back to its requester.
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
       List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
       boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
-      if (removedRequester && assigneeList.isEmpty() && !workflowManagedTask) {
+      boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
+      if (removedRequester
+          && assigneeList.isEmpty()
+          && !workflowManagedTask
+          && !reviewsChangeRequest
+          && !"wait".equals(assigneesConfig.get("emptyAssigneeStrategy"))) {
         assigneeList.addAll(preRemovalAssignees);
       }
 
       // Empty-assignee strategy: when nothing resolved (no reviewers/owners, or the only
       // assignee was the requester and was stripped above), apply the node's configured
       // fallback. ASSIGN_ADMINS routes to all platform admins, excluding the requester so
-      // self-approval can never happen. NONE keeps the default behavior.
+      // self-approval can never happen. NONE leaves the list empty, so the approval node approves
+      // automatically.
       String emptyAssigneeStrategy =
           String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", "none"));
-      if (assigneeList.isEmpty() && "assignAdmins".equals(emptyAssigneeStrategy)) {
+      boolean assignAdmins = "assignAdmins".equals(emptyAssigneeStrategy);
+      if (assigneeList.isEmpty() && assignAdmins) {
         List<String> admins = resolveAdminAssignees();
         admins.removeAll(requesterEntityLinks);
         assigneeList.addAll(admins);
@@ -192,7 +218,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       execution.setVariable(
           assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(assigneeList));
 
-      boolean hasAssignees = workflowManagedTask || !assigneeList.isEmpty();
+      // An explicit admin fallback must never turn into implicit approval when no eligible
+      // admin remains (for example, the requester is the sole admin). Keep an open task.
+      boolean hasAssignees =
+          workflowManagedTask
+              || "assignAdmins".equals(emptyAssigneeStrategy)
+              || "wait".equals(emptyAssigneeStrategy)
+              || !assigneeList.isEmpty();
       execution.setVariable("hasAssignees", hasAssignees);
 
       LOG.debug(
@@ -208,6 +240,40 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           "[{}] Failure: ", getProcessDefinitionKeyFromId(execution.getProcessDefinitionId()), exc);
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
+    }
+  }
+
+  private List<EntityReference> resolveDomainOwners(
+      final String entityType, final EntityInterface<?> entity) {
+    if (Entity.DOMAIN.equals(entityType)) {
+      return entity.getOwners() == null ? List.of() : entity.getOwners();
+    }
+    return entity.getDomains() == null
+        ? List.of()
+        : entity.getDomains().stream()
+            .map(
+                reference ->
+                    Entity.<Domain>getEntity(
+                        Entity.DOMAIN, reference.getId(), "owners", Include.NON_DELETED))
+            .filter(domain -> domain.getOwners() != null)
+            .flatMap(domain -> domain.getOwners().stream())
+            .toList();
+  }
+
+  private List<EntityReference> resolveCandidateIds(final Object value) {
+    if (value == null) {
+      return List.of();
+    }
+    final EntityReference[] references = JsonUtils.convertValue(value, EntityReference[].class);
+    return Arrays.stream(references).map(this::resolveCandidate).flatMap(Optional::stream).toList();
+  }
+
+  private Optional<EntityReference> resolveCandidate(final EntityReference candidate) {
+    try {
+      return Optional.of(Entity.getEntityReference(candidate, Include.NON_DELETED));
+    } catch (EntityNotFoundException missing) {
+      LOG.debug("Approval candidate {} no longer exists", candidate.getId());
+      return Optional.empty();
     }
   }
 
@@ -394,7 +460,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               null,
               java.util.UUID.fromString(taskEntityId.toString()),
               taskRepository.getFields(TaskRepository.FIELD_ASSIGNEES));
-      if (task.getAssignees() == null || task.getAssignees().isEmpty()) {
+      if (TaskWorkflowLifecycleResolver.isEntityEventWorkflow(task.getWorkflowDefinitionId())
+          || task.getAssignees() == null
+          || task.getAssignees().isEmpty()) {
         return List.of();
       }
       return getEntityLinkStringFromEntityReferenceWithTeamExpansion(task.getAssignees());

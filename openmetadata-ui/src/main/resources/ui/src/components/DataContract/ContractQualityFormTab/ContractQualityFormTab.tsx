@@ -69,13 +69,34 @@ export const ContractQualityFormTab: React.FC<{
     prevLabel?: string;
     isNextVisible?: boolean;
   };
-}> = ({ selectedQuality, onChange, onNext, onPrev, buttonProps }) => {
+}> = ({
+  selectedQuality,
+  onChange,
+  onNext,
+  onPrev,
+  initialValues,
+  buttonProps,
+}) => {
   const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(
     selectedQuality ?? []
+  );
+
+  // Stored quality-expectation references keyed by id, seeded from the saved
+  // contract. The test-case list is server-paged and filterable, so a seeded
+  // expectation whose test case lives on a later page (or is excluded by the
+  // testType filter, or was deleted) is never in `allTestCases`. Without this
+  // fallback, rebuilding `qualityExpectations` from `allTestCases` alone would
+  // silently drop those off-page selections whenever the user toggles any row.
+  const storedRefsById = useMemo(
+    () =>
+      new Map(
+        (initialValues?.qualityExpectations ?? []).map((q) => [q.id ?? '', q])
+      ),
+    [initialValues?.qualityExpectations]
   );
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] =
     useState<boolean>(false);
@@ -192,13 +213,22 @@ export const ContractQualityFormTab: React.FC<{
     const qualityExpectations = selectedRowKeys.map((id) => {
       const testCase = allTestCases.find((test) => test.id === id);
 
-      return {
-        description: testCase?.description,
-        name: testCase?.name,
-        id: testCase?.id,
-        type: EntityType.TEST_CASE,
-      } as EntityReference;
-    });
+      // When the test case is in the currently fetched (paged/filtered) list,
+      // resolve the full reference from it. Otherwise fall back to the stored
+      // reference seeded from the saved contract so off-page, filtered-out, or
+      // deleted test cases are preserved rather than silently dropped.
+      return testCase
+        ? {
+            description: testCase.description,
+            name: testCase.name,
+            id: testCase.id,
+            type: EntityType.TEST_CASE,
+          }
+        : storedRefsById.get(id) ?? {
+            id,
+            type: EntityType.TEST_CASE,
+          };
+    }) as EntityReference[];
 
     onChange({
       qualityExpectations,
@@ -234,10 +264,7 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <Button
-                color="secondary"
-                iconTrailing={<ChevronDown size={14} />}
-                size="sm">
+              <Button color="secondary" iconTrailing={ChevronDown} size="sm">
                 {t('label.filter-plural')}
               </Button>
               <Dropdown.Popover className="tw:w-auto">
@@ -263,6 +290,7 @@ export const ContractQualityFormTab: React.FC<{
               setSelectedKeys(selectedRowKeys as string[]);
               handleSelection(selectedRowKeys as string[]);
             },
+            preserveSelectedRowKeys: true, // Preserve selections across page changes
           }}
           searchProps={{
             placeholder: t('label.search-by-type', {

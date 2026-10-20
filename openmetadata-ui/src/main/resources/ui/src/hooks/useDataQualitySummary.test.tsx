@@ -16,17 +16,18 @@ import { renderHook, waitFor } from '@testing-library/react';
 import React from 'react';
 import { TestCaseStatus } from '../generated/tests/testCase';
 import { queryClient } from '../queryClient';
-import { getListTestCaseBySearch } from '../rest/testAPI';
+import { getDataQualityReport, getListTestCaseBySearch } from '../rest/testAPI';
 import {
   DataQualityRange,
   DEFAULT_DATA_QUALITY_FILTERS,
 } from '../utils/dataQualityFilters';
 import {
-  DATA_QUALITY_FAILED_ROWS,
+  DATA_QUALITY_ROWS,
   useDataQualitySummary,
 } from './useDataQualitySummary';
 
 jest.mock('../rest/testAPI', () => ({
+  getDataQualityReport: jest.fn(),
   getListTestCaseBySearch: jest.fn(),
 }));
 
@@ -101,10 +102,10 @@ describe('useDataQualitySummary', () => {
 
     // The bar must show the real bucket size, not the page that was rendered.
     expect(result.current.failed).toBe(42);
-    expect(result.current.failedTests).toHaveLength(3);
+    expect(result.current.tests).toHaveLength(3);
   });
 
-  it('asks only the failing bucket for rows', async () => {
+  it('lists the latest results of any status, and only counts the buckets', async () => {
     respondByStatus({
       [TestCaseStatus.Aborted]: 0,
       [TestCaseStatus.Failed]: 1,
@@ -125,13 +126,99 @@ describe('useDataQualitySummary', () => {
       params?.limit,
     ]);
 
-    // Exactly the rows the card lists, so "N more" is the bucket minus them.
-    expect(limits).toContainEqual([
-      TestCaseStatus.Failed,
-      DATA_QUALITY_FAILED_ROWS,
-    ]);
+    // One unfiltered page of rows; the status queries only count.
+    expect(limits).toContainEqual(['undefined', DATA_QUALITY_ROWS]);
+    expect(limits).toContainEqual([TestCaseStatus.Failed, 1]);
     expect(limits).toContainEqual([TestCaseStatus.Success, 1]);
     expect(limits).toContainEqual([TestCaseStatus.Aborted, 1]);
+  });
+
+  it('puts failures first, then aborted, then passing', async () => {
+    const result_ = (id: string, status: TestCaseStatus) => ({
+      id,
+      name: id,
+      testCaseResult: { testCaseStatus: status },
+    });
+    mockSearch.mockImplementation((params) =>
+      Promise.resolve({
+        data:
+          params?.testCaseStatus === undefined
+            ? [
+                result_('pass', TestCaseStatus.Success),
+                result_('abort', TestCaseStatus.Aborted),
+                result_('fail', TestCaseStatus.Failed),
+              ]
+            : [],
+        paging: { total: 1 },
+      } as never)
+    );
+
+    const { result } = renderHook(
+      () => useDataQualitySummary(DEFAULT_DATA_QUALITY_FILTERS),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.tests).toHaveLength(3));
+
+    expect(result.current.tests.map(({ id }) => id)).toEqual([
+      'fail',
+      'abort',
+      'pass',
+    ]);
+  });
+
+  it('counts every result on the tables the rows show, and asks for the incident', async () => {
+    mockSearch.mockImplementation((params) =>
+      Promise.resolve({
+        data:
+          params?.testCaseStatus === undefined
+            ? [
+                {
+                  id: 't',
+                  name: 't',
+                  entityLink: '<#E::table::svc.db.s.orders::columns::id>',
+                },
+              ]
+            : [],
+        paging: { total: 1 },
+      } as never)
+    );
+    (getDataQualityReport as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          originEntityFQN: 'svc.db.s.orders',
+          'testCaseResult.testCaseStatus': 'failed',
+          document_count: '3',
+        },
+      ],
+    });
+
+    const { result } = renderHook(
+      () => useDataQualitySummary(DEFAULT_DATA_QUALITY_FILTERS),
+      { wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.tableCounts['svc.db.s.orders']).toEqual({
+        passed: 0,
+        failed: 3,
+        aborted: 0,
+      })
+    );
+
+    const query = JSON.parse(
+      (getDataQualityReport as jest.Mock).mock.calls[0][0].q
+    );
+
+    // Column tests count toward their table, so the rows' tables are asked for.
+    expect(query.query.bool.must).toContainEqual({
+      terms: { originEntityFQN: ['svc.db.s.orders'] },
+    });
+    expect(
+      mockSearch.mock.calls.find(
+        ([params]) => params?.limit === DATA_QUALITY_ROWS
+      )?.[0]?.fields
+    ).toBe('testCaseResult,incidentStatus');
   });
 
   it('surfaces a failed lookup instead of reporting a clean estate', async () => {
@@ -147,7 +234,7 @@ describe('useDataQualitySummary', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.total).toBe(0);
-    expect(result.current.failedTests).toEqual([]);
+    expect(result.current.tests).toEqual([]);
   });
 
   // A filter change is a new key; without placeholder data the card dropped
@@ -170,7 +257,7 @@ describe('useDataQualitySummary', () => {
     rerender({
       filters: {
         ...DEFAULT_DATA_QUALITY_FILTERS,
-        range: DataQualityRange.LAST_30_DAYS,
+        range: DataQualityRange.LAST_90_DAYS,
       },
     });
 

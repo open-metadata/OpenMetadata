@@ -152,6 +152,10 @@ export const getPluralizeEntityName = (entityType?: string) => {
 };
 
 export const EntityTypeName: Record<EntityType, string> = {
+  [EntityType.ONTOLOGY]: t('label.ontology'),
+  [EntityType.ONTOLOGY_CONCEPT]: t('label.concept'),
+  [EntityType.ONTOLOGY_PROPERTY]: t('label.property'),
+  [EntityType.ONTOLOGY_AXIOM]: t('label.constraint'),
   [EntityType.API_SERVICE]: t('label.api-service'),
   [EntityType.DATABASE_SERVICE]: t('label.database-service'),
   [EntityType.MESSAGING_SERVICE]: t('label.messaging-service'),

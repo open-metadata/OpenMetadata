@@ -11,8 +11,15 @@
  *  limitations under the License.
  */
 
-import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { Collapse } from 'antd';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Badge,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -21,8 +28,6 @@ import './message-card.less';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
 );
-
-const { Panel } = Collapse;
 
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
@@ -39,7 +44,7 @@ const MessageCard = ({ message }: { message: string }) => {
     if (isExpanded) {
       setHeader(
         <Badge
-          className="tw:mr-2 tw:inline-flex tw:px-3 tw:py-1"
+          className="tw:mr-2 tw:inline-flex"
           color="gray"
           data-testid="expanded-header"
           id="sampleData-value"
@@ -61,19 +66,27 @@ const MessageCard = ({ message }: { message: string }) => {
   }, [isExpanded]);
 
   return (
-    <Collapse className="message-card-collapse" onChange={toggleExpanded}>
-      <Panel data-testid="message-card" header={header} key="1">
-        <SchemaEditor
-          className="m-t-xs"
-          copyButtonClassName="tw:![top:-4px] tw:!right-1"
-          editorClass="topic-sample-data"
-          options={{
-            styleActiveLine: false,
-          }}
-          value={message.replace(/'/g, '"')}
-        />
-      </Panel>
-    </Collapse>
+    <Accordion
+      allowsMultipleExpanded
+      className="message-card-collapse"
+      onExpandedChange={toggleExpanded}>
+      <AccordionItem data-testid="message-card" id="1" key="1">
+        <AccordionHeader className="tw:flex-row-reverse">
+          {header}
+        </AccordionHeader>
+        <AccordionPanel unmountOnCollapse>
+          <SchemaEditor
+            className="m-t-xs"
+            copyButtonClassName="tw:![top:-4px] tw:!right-1"
+            editorClass="topic-sample-data"
+            options={{
+              styleActiveLine: false,
+            }}
+            value={message.replace(/'/g, '"')}
+          />
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
   );
 };
 

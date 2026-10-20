@@ -17,7 +17,6 @@ import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
   PLACEHOLDER_ACTION,
-  PLACEHOLDER_DASHBOARD_TYPE,
   PLACEHOLDER_ROUTE_DIMENSION_KEY,
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   PLACEHOLDER_ROUTE_FQN,
@@ -43,7 +42,6 @@ import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceAgentSubTabs } from '../enums/service.enum';
-import { ProfilerDashboardType } from '../enums/table.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
@@ -369,19 +367,6 @@ export const getTagPath = (fqn?: string) => {
     path = ROUTES.TAG_DETAILS;
     path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
   }
-
-  return path;
-};
-
-export const getAddCustomMetricPath = (
-  dashboardType: ProfilerDashboardType,
-  fqn: string
-) => {
-  let path = ROUTES.ADD_CUSTOM_METRIC;
-
-  path = path
-    .replace(PLACEHOLDER_DASHBOARD_TYPE, dashboardType)
-    .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };

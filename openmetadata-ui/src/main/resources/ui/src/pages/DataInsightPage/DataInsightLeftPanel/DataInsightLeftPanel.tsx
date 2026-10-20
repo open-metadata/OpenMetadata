@@ -11,47 +11,42 @@
  *  limitations under the License.
  */
 
-import { Menu, MenuProps } from 'antd';
+import { NavItemBase } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import LeftPanelCard from '../../../components/common/LeftPanelCard/LeftPanelCard';
 import { DataInsightTabs } from '../../../interface/data-insight.interface';
 import { getDataInsightPathWithFqn } from '../../../utils/DataInsightPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import DataInsightClassBase from '../DataInsightClassBase';
+
 const DataInsightLeftPanel = () => {
+  const { t } = useTranslation();
   const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
-
-  const navigate = useNavigate();
-
-  const menuItems: MenuProps['items'] = useMemo(() => {
-    const data = DataInsightClassBase.getLeftSideBar();
-
-    return data.map((value) => {
-      const SvgIcon = value.icon;
-
-      return {
-        key: value.key,
-        label: value.label,
-        icon: <SvgIcon {...value.iconProps} />,
-      };
-    });
-  }, []);
-
-  const handleMenuClick: MenuProps['onClick'] = (e) => {
-    navigate(getDataInsightPathWithFqn(e.key as DataInsightTabs));
-  };
+  const menuItems = useMemo(() => DataInsightClassBase.getLeftSideBar(), []);
 
   return (
     <LeftPanelCard id="data-insight">
-      <Menu
+      <nav
+        aria-label={t('label.data-insight')}
         className="data-insight-left-panel"
-        data-testid="data-insight-left-panel"
-        items={menuItems}
-        mode="inline"
-        selectedKeys={[tab ?? DataInsightTabs.DATA_ASSETS]}
-        onClick={handleMenuClick}
-      />
+        data-testid="data-insight-left-panel">
+        <ul className="tw:m-0 tw:list-none tw:p-0">
+          {menuItems.map((item) => (
+            <li key={item.key}>
+              <NavItemBase
+                current={item.key === (tab ?? DataInsightTabs.DATA_ASSETS)}
+                dataTestId={`data-insight-tab-${item.key}`}
+                href={getDataInsightPathWithFqn(item.key)}
+                icon={item.icon}
+                size="sm"
+                type="link">
+                {item.label}
+              </NavItemBase>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </LeftPanelCard>
   );
 };

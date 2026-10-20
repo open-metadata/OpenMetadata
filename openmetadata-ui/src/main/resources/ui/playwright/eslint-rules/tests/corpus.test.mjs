@@ -63,7 +63,14 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // migration's core-component selectors in the Data Quality, Profiler and
     // Profiler Configuration specs remove five more. The antd Form / Select /
     // Input migration (standalone controls, settings forms) removes five more.
-    'om-playwright/no-positional-locator': 568,
+    // Targeting the core TreeSelect popovers and team picker by test id in the
+    // UserDetails and team-editor specs removes more, pinning
+    // customize-navigation switches to their tree rows removes four more, the
+    // Data Marketplace announcements carousel spec dropped its `.first()` item
+    // lookup, picking the bulk-import entity type by its option role removes
+    // one more, and editor-scoped bulk tag selection removes another
+    // positional fallback.
+    'om-playwright/no-positional-locator': 542,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
