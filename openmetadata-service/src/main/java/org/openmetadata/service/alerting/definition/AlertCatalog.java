@@ -136,19 +136,9 @@ public final class AlertCatalog {
   }
 
   public List<EventFilterRule> definitions() {
-    List<EventFilterRule> all = new ArrayList<>(filterDefinitions());
-    all.addAll(triggerDefinitions());
+    List<EventFilterRule> all = new ArrayList<>(filters.values());
+    all.addAll(triggers.values());
     return all;
-  }
-
-  /** Every filter as the catalog defines it, before a source names it its own way. */
-  public List<EventFilterRule> filterDefinitions() {
-    return List.copyOf(filters.values());
-  }
-
-  /** Every trigger as the catalog defines it, removed ones included. */
-  public List<EventFilterRule> triggerDefinitions() {
-    return List.copyOf(triggers.values());
   }
 
   private FilterResourceDescriptor descriptor(

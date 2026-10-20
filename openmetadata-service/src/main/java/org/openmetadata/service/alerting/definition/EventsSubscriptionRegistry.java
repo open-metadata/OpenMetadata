@@ -13,6 +13,7 @@ import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class EventsSubscriptionRegistry {
@@ -27,8 +28,7 @@ public class EventsSubscriptionRegistry {
   private static final Map<String, AlertSourceKind> KINDS = new HashMap<>();
   private static final Map<String, List<SubscriptionCategory>> RECIPIENTS = new HashMap<>();
   private static final List<SubscriptionCategory> DEFAULT_RECIPIENTS = new ArrayList<>();
-  private static final List<EventFilterRule> FILTER_DEFINITIONS = new ArrayList<>();
-  private static final List<EventFilterRule> TRIGGER_DEFINITIONS = new ArrayList<>();
+  private static final Map<String, EventFilterRule> DEFINITIONS = new HashMap<>();
 
   private EventsSubscriptionRegistry() {}
 
@@ -37,10 +37,8 @@ public class EventsSubscriptionRegistry {
     replace(OBSERVABILITY_DESCRIPTORS, catalog.served(AlertType.OBSERVABILITY));
     replace(BUILDABLE_NOTIFICATION, catalog.buildable(AlertType.NOTIFICATION));
     replace(BUILDABLE_OBSERVABILITY, catalog.buildable(AlertType.OBSERVABILITY));
-    FILTER_DEFINITIONS.clear();
-    FILTER_DEFINITIONS.addAll(catalog.filterDefinitions());
-    TRIGGER_DEFINITIONS.clear();
-    TRIGGER_DEFINITIONS.addAll(catalog.triggerDefinitions());
+    DEFINITIONS.clear();
+    catalog.definitions().forEach(definition -> DEFINITIONS.put(definition.getName(), definition));
     KINDS.clear();
     RECIPIENTS.clear();
     for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
@@ -67,14 +65,9 @@ public class EventsSubscriptionRegistry {
     return Collections.unmodifiableList(DEFAULT_RECIPIENTS);
   }
 
-  /** Every filter as the catalog defines it, in the catalog's order, before any source labels it. */
-  public static List<EventFilterRule> filterDefinitions() {
-    return Collections.unmodifiableList(FILTER_DEFINITIONS);
-  }
-
-  /** Every trigger as the catalog defines it, in the catalog's order, removed ones included. */
-  public static List<EventFilterRule> triggerDefinitions() {
-    return Collections.unmodifiableList(TRIGGER_DEFINITIONS);
+  /** A filter or trigger with the name the catalog gives it, before any source renames it. */
+  public static EventFilterRule definition(String name) {
+    return JsonUtils.deepCopy(DEFINITIONS.get(name), EventFilterRule.class);
   }
 
   /** Source names look alike and mean different things; null for a name the catalog lacks. */

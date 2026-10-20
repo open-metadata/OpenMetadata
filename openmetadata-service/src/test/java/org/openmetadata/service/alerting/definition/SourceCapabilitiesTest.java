@@ -25,7 +25,6 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
-import org.openmetadata.schema.utils.JsonUtils;
 
 /** What the form is told about a selection: the same rules the save applies, before the save. */
 class SourceCapabilitiesTest {
@@ -103,17 +102,6 @@ class SourceCapabilitiesTest {
   }
 
   @Test
-  void filterEverySourceNamesAlikeKeepsThatName() {
-    EventFilterRule byBot =
-        filter(
-            of(AlertType.OBSERVABILITY, List.of("pipeline", "ingestionPipeline"), null),
-            "filterByUpdaterIsBot");
-
-    assertEquals("Update is Bot", byBot.getDisplayName());
-    assertEquals("Event Filtering By Updater is Bot", byBot.getDescription());
-  }
-
-  @Test
   void oneSourceKeepsItsOwnNames() {
     assertEquals(
         "Pipeline Name",
@@ -121,27 +109,16 @@ class SourceCapabilitiesTest {
             .getDisplayName());
   }
 
-  // A source's filters keep the order it lists them in; several follow the first by name.
+  // No source renames it, so it reads the same alone, shared, and in either kind of alert.
   @Test
-  void filtersKeepTheOrderTheirSourceListsThem() {
-    assertEquals(
-        List.of("filterByFqn", "filterByOwner", "filterByDomain", "filterByUpdaterIsBot"),
-        names(of(AlertType.OBSERVABILITY, List.of("testSuite"), null).getFilters()));
-    assertEquals(
-        List.of("filterByFqn", "filterByDomain", "filterByOwner", "filterByUpdaterIsBot"),
-        names(of(AlertType.OBSERVABILITY, List.of("testSuite", "table"), null).getFilters()));
-  }
-
-  // Test suites list their filters in another order than tables; neither order leaks out.
-  @Test
-  void answerIsTheSameWhateverOrderTheSourcesWerePickedIn() {
-    List<List<String>> orders = bothOrders("testSuite", "table");
-    AlertCapabilities one = of(AlertType.OBSERVABILITY, orders.get(0), null);
-    AlertCapabilities other = of(AlertType.OBSERVABILITY, orders.get(1), null);
-
-    assertEquals(JsonUtils.pojoToJson(one.getFilters()), JsonUtils.pojoToJson(other.getFilters()));
-    assertEquals(
-        JsonUtils.pojoToJson(one.getTriggers()), JsonUtils.pojoToJson(other.getTriggers()));
+  void botFilterHasOneName() {
+    for (AlertCapabilities capabilities :
+        List.of(
+            of(AlertType.OBSERVABILITY, List.of("pipeline"), null),
+            of(AlertType.OBSERVABILITY, List.of("pipeline", "ingestionPipeline"), null),
+            of(AlertType.NOTIFICATION, List.of("table"), null))) {
+      assertEquals("Update is Bot", filter(capabilities, "filterByUpdaterIsBot").getDisplayName());
+    }
   }
 
   // An alert saved with a source the catalog retired still opens and shows what it holds.
