@@ -60,7 +60,6 @@ import {
   NODE_WIDTH,
 } from '../../../constants/Lineage.constants';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityLineageNodeType, EntityType } from '../../../enums/entity.enum';
 import {
   LineageBand,
@@ -94,7 +93,6 @@ import { onEdgeClick } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -104,7 +102,7 @@ import { LineageEditRequest } from '../AddLineagePopover/AddLineagePopover.inter
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
-import LineageSkeleton from '../LineageSkeleton.component';
+import LineageMapPlaceholder from '../LineageMapPlaceholder/LineageMapPlaceholder';
 import {
   buildLineagePathHighlightIndex,
   getBreadcrumbSceneRequest,
@@ -160,8 +158,6 @@ const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 // in every band; assets keep the wider default for their column lists.
 const CONTAINER_NODE_WIDTH = 340;
 const SCENE_LAYER_NODE_HEIGHT = 66;
-const LINEAGE_MAP_EMPTY_CLASSES =
-  'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
   'lineage-map-rail tw:group tw:absolute tw:right-6 tw:z-10 tw:flex tw:-translate-y-1/2',
   'tw:items-stretch tw:gap-2',
@@ -932,51 +928,6 @@ const LineageMapStatusPanel = ({
         <Alert title={t('message.something-went-wrong')} variant="error" />
       )}
     </Panel>
-  );
-};
-
-const LineageMapPlaceholder = ({
-  scene,
-  loading,
-  error,
-  onRetry,
-}: {
-  scene?: LineageScene;
-  loading: boolean;
-  error?: AxiosError;
-  onRetry: () => void;
-}) => {
-  const { t } = useTranslation();
-  if (loading && !scene) {
-    return <LineageSkeleton />;
-  }
-  if (error && !scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <span>{t('message.something-went-wrong')}</span>
-          <Button data-testid="lineage-map-retry" onClick={onRetry}>
-            {t('label.try-again')}
-          </Button>
-        </ErrorPlaceHolder>
-      </div>
-    );
-  }
-  if (!scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <span>{t('message.no-lineage-data-available')}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-      <ErrorPlaceHolder
-        placeholderText={t('message.no-lineage-data-available')}
-        type={ERROR_PLACEHOLDER_TYPE.FILTER}
-      />
-    </div>
   );
 };
 

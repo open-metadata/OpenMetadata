@@ -170,6 +170,11 @@ components/governance/glossary/GlossaryList/
 
 - **Keep business logic out of the component.** Data shaping, filtering, and derivation go in
   `*.utils.ts` as pure functions — no React, no JSX. They are then unit-testable without rendering.
+- **One component per file.** A sub-component (an empty state, a panel, a toolbar) gets its own
+  folder and file beside its parent — `components/Lineage/LineageMapPlaceholder/LineageMapPlaceholder.tsx`,
+  not a second `const` inside `LineageMap.component.tsx`. Each one can then be read, reused and
+  unit-tested on its own, and the parent file stays about one thing. Existing multi-component files
+  are legacy: split a sub-component out when you change it rather than adding another beside it.
 - **A component file exports only the component.** Module-level constants (option lists, keys,
   lookup tables) go in `[ComponentName].constants.ts` and helpers in `[ComponentName].utils.ts`
   beside it; when another feature needs them too, move them to root `constants/[domain]/` or
