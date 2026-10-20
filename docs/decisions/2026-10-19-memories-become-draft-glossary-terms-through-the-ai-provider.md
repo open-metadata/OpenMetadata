@@ -1,7 +1,7 @@
 # Memories become Draft glossary terms through the AI provider
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (only memories every reader may see; only bots mark automation terms and never decide them)
+- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `MemoryDerivationsTest`, `GlossaryTermAutomationDraftIT`, `MemoryDerivationIT`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension
@@ -21,10 +21,16 @@ OpenMetadata derives nothing itself. `AiProvider.memoryGlossaryDeriver()` return
 one does not), and that is the whole gate: there is no configuration flag. When a memory becomes
 published (Approved and shared with an entity or the public) and has no derived glossary term,
 OpenMetadata queues a `MEMORY_GLOSSARY_DERIVATION` job, batching memories of one source for 30
-seconds, and the job hands the deriver the still-eligible memories that every glossary reader may
-see: unanchored, or anchored to a file shared with the whole organization. Every reader sees a
-derived term and the agent's reasons quote the memory, so a memory anchored to an asset or to a
-file shared with only some people defines no term.
+seconds, and the job hands the deriver memories whose sharing still permits organization-wide
+publication: unanchored, or anchored to a file shared with the whole organization. A memory
+anchored to an asset or to a file shared with only some people defines no term.
+
+Publishing an approved, organization-wide memory also publishes its business vocabulary. A
+derived glossary definition has its own glossary permissions from Draft onward; it does not
+inherit policies that restrict the source memory. This is an intentional publication boundary,
+not an extension of access to the memory itself. The original memory and the agent's evidence
+continue to require the caller's memory permissions, including policy checks. A change to the
+memory's content, status or sharing while the agent is working invalidates that proposed result.
 
 A derived term has the `automation` provider and a `glossaryTerm -DERIVED_FROM-> contextMemory`
 relationship, which the memory reads back as `derivedEntities` and Context Center shows as its

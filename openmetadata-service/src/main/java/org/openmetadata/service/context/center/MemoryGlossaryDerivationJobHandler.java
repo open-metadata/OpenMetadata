@@ -93,8 +93,8 @@ public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
   }
 
   // A memory can be deleted, retired, restricted or given a term between being queued and running.
-  // Every glossary reader sees a derived term, so only a memory every reader may see can define
-  // one: an anchored memory is restricted to its anchor's readers, unless that is an org-wide file.
+  // Publishing org-wide memory content permits independent glossary vocabulary; an asset anchor
+  // or a restricted file still prevents publication outside that anchor's readers.
   private List<ContextMemory> eligibleMemories(final List<UUID> memoryIds) {
     return listOrEmpty(memoryIds).stream()
         .distinct()

@@ -97,7 +97,7 @@ public class MemoryDerivationIT {
   }
 
   @Test
-  void evidenceFollowsThePoliciesOnEachMemory(TestNamespace ns) {
+  void publishedVocabularyHasItsOwnAccessWhileEvidenceFollowsMemoryPolicies(TestNamespace ns) {
     ContextMemory open = createMemory(ns, "openMemory", MemoryVisibility.PUBLIC, List.of());
     ContextMemory sensitive =
         createMemory(ns, "sensitiveMemory", MemoryVisibility.PUBLIC, List.of(piiSensitive()));
@@ -115,6 +115,14 @@ public class MemoryDerivationIT {
             MetadataOperation.VIEW_BASIC,
             "matchAnyTag('" + PII_SENSITIVE + "')");
 
+    OpenMetadataException sourceDenied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> new ContextMemoryService(denied.getHttpClient()).get(sensitive.getId()));
+    assertEquals(403, sourceDenied.getStatusCode());
+    assertEquals(
+        fromSensitive.getDescription(),
+        denied.glossaryTerms().get(fromSensitive.getId()).getDescription());
     assertEquals(
         Set.of(fromOpen.getId()), derivedIds(list(denied, List.of(fromOpen, fromSensitive))));
   }
