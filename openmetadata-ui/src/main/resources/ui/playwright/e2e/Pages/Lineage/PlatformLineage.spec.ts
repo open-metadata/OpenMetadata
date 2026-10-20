@@ -340,4 +340,63 @@ test.describe('Platform Lineage page (/lineage)', () => {
     await page.getByRole('dialog').waitFor({ state: 'hidden' });
     expect((await refetch).ok()).toBeTruthy();
   });
+
+  test('An empty scene shows the placeholder inside the canvas, below the toolbar', async ({
+    page,
+  }) => {
+    // #35783: the empty state escaped the canvas and drew a narrow column
+    // over the toolbar.
+    await page.route('**/api/v1/lineage/scene?*', async (route) => {
+      const response = await route.fetch();
+      const scene = await response.json();
+      await route.fulfill({
+        response,
+        json: { ...scene, nodes: [], edges: [] },
+      });
+    });
+    await redirectToHomePage(page);
+    const sceneRes = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene')
+    );
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await sceneRes;
+
+    const placeholder = page.getByTestId('empty-placeholder');
+    await expect(placeholder).toBeVisible();
+    await expect(placeholder).toContainText('No lineage data available');
+
+    const canvas = await page.getByTestId('lineage-container').boundingBox();
+    const box = await placeholder.boundingBox();
+    expect(canvas).not.toBeNull();
+    expect(box).not.toBeNull();
+    if (canvas && box) {
+      expect(box.y).toBeGreaterThanOrEqual(canvas.y - 1);
+      expect(box.y + box.height).toBeLessThanOrEqual(
+        canvas.y + canvas.height + 1
+      );
+      expect(box.width).toBeGreaterThan(canvas.width * 0.9);
+    }
+  });
+
+  test('A failed scene request offers a retry that refetches', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/lineage/scene?*', (route) =>
+      route.fulfill({ status: 500, json: { message: 'Scene unavailable' } })
+    );
+    await redirectToHomePage(page);
+    await sidebarClick(page, SidebarItem.LINEAGE);
+
+    const retry = page.getByTestId('lineage-map-retry');
+    await expect(retry).toBeVisible();
+    await expect(page.getByTestId('empty-placeholder')).toContainText(
+      'Something went wrong'
+    );
+
+    const refetch = page.waitForRequest((request) =>
+      new URL(request.url()).pathname.endsWith('/api/v1/lineage/scene')
+    );
+    await retry.click();
+    await refetch;
+  });
 });
