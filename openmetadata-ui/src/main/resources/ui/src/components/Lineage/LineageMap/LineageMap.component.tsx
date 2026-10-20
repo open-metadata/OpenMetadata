@@ -27,13 +27,21 @@ import {
   Home02,
   InfoCircle,
   LayersThree01,
+  PlatformLineage,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import type { LayoutOptions } from 'elkjs/lib/elk.bundled.js';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
@@ -93,6 +101,8 @@ import { onEdgeClick } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -102,7 +112,7 @@ import { LineageEditRequest } from '../AddLineagePopover/AddLineagePopover.inter
 import { CanvasLayerWrapper } from '../Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from '../Lineage.interface';
 import { useLineageHandlers } from '../Lineage/LineageHandlersContext';
-import LineageMapPlaceholder from '../LineageMapPlaceholder/LineageMapPlaceholder';
+import LineageSkeleton from '../LineageSkeleton.component';
 import {
   buildLineagePathHighlightIndex,
   getBreadcrumbSceneRequest,
@@ -110,6 +120,7 @@ import {
   getConnectedLineagePathHighlight,
   getDrillBand,
   getLensRootLabelKey,
+  getLineageMapEmptyState,
   getParentSceneRequest,
   getRailDrillFallbackNode,
   getRailStop,
@@ -125,6 +136,7 @@ import {
   getSemanticZoomDirection,
   isContainerSceneNode,
   isSceneNodeDrillable,
+  LineageMapEmptyState,
   LINEAGE_MAP_RAIL_STOPS,
   type LineageSceneRequest,
 } from './LineageMap.utils';
@@ -1903,13 +1915,35 @@ const LineageMapCanvas = ({
   );
 
   if (!scene || scene.nodes.length === 0) {
+    const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
+      loading: <LineageSkeleton />,
+      error: (
+        <SomethingWentWrongPlaceholder
+          onReload={() => fetchScene(request, { bypassCache: true })}
+        />
+      ),
+      empty: (
+        <NoDataPlaceholder
+          description={t('message.no-lineage-data-available')}
+          icon={<PlatformLineage className="tw:text-secondary" />}
+        />
+      ),
+    };
+
+    // The placeholders fill their nearest positioned ancestor; this wrapper
+    // keeps them to the canvas rather than the card that also holds the toolbar.
     return (
-      <LineageMapPlaceholder
-        error={sceneError}
-        loading={loading}
-        scene={scene}
-        onRetry={() => fetchScene(request, { bypassCache: true })}
-      />
+      <div className="tw:relative tw:h-full tw:w-full">
+        {
+          emptyStates[
+            getLineageMapEmptyState({
+              scene,
+              loading,
+              hasError: Boolean(sceneError),
+            })
+          ]
+        }
+      </div>
     );
   }
 
