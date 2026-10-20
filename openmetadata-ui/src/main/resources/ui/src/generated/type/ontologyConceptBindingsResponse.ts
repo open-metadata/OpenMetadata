@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Current bindings filtered by canonical catalog visibility. Hidden and deleted assets
  * contribute no associations, paths, or counts.

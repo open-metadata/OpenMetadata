@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Operational catalog associations for a native concept, stored separately from semantic
  * definitions and releases.

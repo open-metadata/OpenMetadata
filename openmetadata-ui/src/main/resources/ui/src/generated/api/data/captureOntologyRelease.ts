@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Capture one committed working revision as an immutable ontology release candidate.
  */
