@@ -62,14 +62,13 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
-  // Settings moved to the profile menu in the new shell; the legacy sidebar
-  // remains on routes that have not migrated yet.
+  // In the AI shell the profile menu's Settings opens the settings modal, not
+  // the legacy settings page these specs drive, so go to that route directly.
   if (
     id === SidebarItem.SETTINGS &&
     (await page.getByTestId('ask-sidebar').count()) > 0
   ) {
-    await page.getByTestId('ask-ai-user-menu-trigger').click();
-    await page.getByTestId('ask-user-menu-settings').click();
+    await page.goto('/settings');
     await page.waitForURL('**/settings');
 
     return;

@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -78,6 +79,15 @@ public final class ApprovalGate {
   private static final String EXTENSION_PREFIX = EXTENSION + Entity.SEPARATOR;
   private static final Set<String> REPLACED_BY_IMPORT_UPDATE =
       Set.of(Entity.FIELD_TAGS, Entity.FIELD_OWNERS, Entity.FIELD_DOMAINS);
+
+  // Native definitions are working state; their immutable release is the approval unit.
+  private static final Set<String> RELEASE_GOVERNED_TYPES =
+      Set.of(
+          Entity.ONTOLOGY,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_AXIOM,
+          Entity.ONTOLOGY_RELEASE);
 
   private ApprovalGate() {}
 
@@ -134,7 +144,8 @@ public final class ApprovalGate {
 
   /** Whether an edit of {@code entityType} by {@code user} can be held at all. */
   public static boolean mayHold(String entityType, String user) {
-    return !GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()
+    return !RELEASE_GOVERNED_TYPES.contains(entityType)
+        && !GovernanceApprovalRegistry.gatingRules(entityType).isEmpty()
         && !isBotChange(user, null);
   }
 
@@ -152,7 +163,7 @@ public final class ApprovalGate {
       Edit edit,
       boolean record) {
     Optional<StagedChange> staged = Optional.empty();
-    if (original != null && original.getId() != null) {
+    if (original != null && original.getId() != null && !(original instanceof OntologyDefinition)) {
       staged = stageIfGated(original, updated, user, impersonatedBy, edit, record);
     }
     return staged;

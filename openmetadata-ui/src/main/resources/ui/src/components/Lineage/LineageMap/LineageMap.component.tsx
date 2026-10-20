@@ -113,6 +113,7 @@ import {
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
+  getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
   getSceneFocus,
@@ -125,6 +126,7 @@ import {
   getSceneSearch,
   getSemanticZoomDirection,
   isContainerSceneNode,
+  isSceneNodeDrillable,
   LINEAGE_MAP_RAIL_STOPS,
   type LineageSceneRequest,
 } from './LineageMap.utils';
@@ -396,13 +398,6 @@ const getPreviousZoomBand = (band: LineageBand) => {
 
 const isDeeperBand = (currentBand: LineageBand, nextBand: LineageBand) =>
   BAND_DEPTH[nextBand] > BAND_DEPTH[currentBand];
-
-const isSceneNodeDrillable = (
-  node?: LineageSceneNode
-): node is LineageSceneNode & {
-  fullyQualifiedName: string;
-  entityType: string;
-} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
 
 export const getSceneCacheKey = (
   request: SceneRequest,
@@ -1047,6 +1042,7 @@ const LineageMapCanvas = ({
   const {
     activeLayer,
     lineageMutationTick,
+    renderAllNodes,
     selectedColumn,
     selectedQuickFilters,
     setActiveLayer,
@@ -1677,10 +1673,10 @@ const LineageMapCanvas = ({
         return;
       }
       // Going deeper drills one level into a node, like zooming in: the one
-      // the zoom would pick (selected / nearest the centre), else the first.
+      // the zoom would pick (selected / nearest the centre), else a fallback.
       if (isDeeperBand(getRailStop(scene), stop)) {
         const target =
-          pickZoomTargetNode().target ?? scene.nodes.find(isSceneNodeDrillable);
+          pickZoomTargetNode().target ?? getRailDrillFallbackNode(scene.nodes);
         if (target) {
           handleDrill(target);
         }
@@ -1971,7 +1967,6 @@ const LineageMapCanvas = ({
   return (
     <ReactFlow
       fitView
-      onlyRenderVisibleElements
       className="custom-react-flow lineage-map-react-flow tw:h-full tw:w-full tw:overflow-clip! tw:bg-primary"
       deleteKeyCode={null}
       edgeTypes={{}}
@@ -1984,6 +1979,7 @@ const LineageMapCanvas = ({
       nodeTypes={nodeTypes}
       nodes={renderedNodes}
       nodesConnectable={false}
+      onlyRenderVisibleElements={!renderAllNodes}
       ref={wrapperRef}
       selectNodesOnDrag={false}
       onFocus={handleCanvasFocus}

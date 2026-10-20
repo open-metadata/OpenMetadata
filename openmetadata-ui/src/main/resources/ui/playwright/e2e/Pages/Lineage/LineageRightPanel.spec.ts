@@ -26,6 +26,7 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { pickEntityMatrix } from '../../../utils/entityMatrix';
 import {
   clickLineageNode,
   dismissLineageMapOnboarding,
@@ -39,7 +40,7 @@ test.describe(
   () => {
     test.describe.configure({ mode: 'default' });
 
-    const supportedEntities = [
+    const allSupportedEntities = [
       { entity: new TableClass(), type: 'table' },
       { entity: new TopicClass(), type: 'topic' },
       { entity: new DashboardClass(), type: 'dashboard' },
@@ -51,6 +52,11 @@ test.describe(
       { entity: new MetricClass(), type: 'metric' },
       { entity: new ChartClass(), type: 'chart' },
     ];
+    const supportedEntities = pickEntityMatrix(
+      __filename,
+      allSupportedEntities,
+      allSupportedEntities.filter(({ type }) => type === 'table')
+    );
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(

@@ -126,7 +126,6 @@ interface OntologyLibraryDetailProps {
   activeAction?: OntologyLibraryAction;
   canInstall: boolean;
   installedResult?: OntologyPackInstallResult;
-  installedVersion?: string;
   pack: OntologyPackManifest;
   previewResult?: OntologyPackInstallResult;
   selectedModuleIds: string[];
@@ -268,7 +267,6 @@ const OntologyLibraryDetail = ({
   activeAction,
   canInstall,
   installedResult,
-  installedVersion,
   pack,
   previewResult,
   selectedModuleIds,
@@ -301,10 +299,9 @@ const OntologyLibraryDetail = ({
           onPress={onBack}>
           {t('label.back-to-library')}
         </Button>
-        {installedResult || installedVersion ? (
+        {installedResult ? (
           <Badge color="success" size="sm" type="pill-color">
-            {t('label.installed')} ·{' '}
-            {installedResult?.version ?? installedVersion}
+            {t('label.installed')} · {installedResult.version}
           </Badge>
         ) : null}
       </Box>

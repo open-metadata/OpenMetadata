@@ -42,14 +42,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.ConceptBinding;
 import org.openmetadata.schema.type.aicontext.ConceptContext;
+import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.service.Entity;
 
@@ -228,27 +227,18 @@ class ConceptContextBuilderTest {
   }
 
   @Test
-  void preservesOntologyAttributesAndVisibleTypedRelations() {
+  void preservesGlossaryDefinitionsAndVisibleTypedRelations() {
     Catalog catalog = new Catalog();
     catalog.hidden = Set.of("Business.Secret");
     GlossaryTerm term =
         term()
             .withSynonyms(List.of("Revenue"))
-            .withAttributes(
-                List.of(
-                    new OntologyAttribute()
-                        .withName("status")
-                        .withDataType(OntologyAttributeDataType.ENUM)
-                        .withUnit("cents")
-                        .withEnumValues(Set.of("Legal", "Banned"))))
             .withRelatedTerms(List.of(relation("Business.Visible"), relation("Business.Secret")));
 
     ConceptContext context = build(catalog, term);
 
     assertEquals("Amount in cents", context.getDefinition());
     assertEquals(List.of("Revenue"), context.getSynonyms());
-    assertEquals("cents", context.getAttributes().getFirst().getUnit());
-    assertEquals(Set.of("Legal", "Banned"), context.getAttributes().getFirst().getEnumValues());
     assertEquals(1, context.getRelatedTerms().size());
   }
 
@@ -521,14 +511,31 @@ class ConceptContextBuilderTest {
             .withQuery("SELECT amount FROM orders")
             .withQueryDate(123L));
 
-    ConceptContext context = build(catalog, term().withSourceMemoryIds(Set.of(memoryId)));
+    ConceptContext context =
+        new ConceptContextBuilder(catalog)
+            .build(
+                term(),
+                List.of(),
+                List.of(
+                    new KnowledgeItem()
+                        .withId(memoryId)
+                        .withType(KnowledgeItem.Type.CONTEXT_MEMORY)));
 
     assertEquals(queryId, context.getEvidence().getFirst().getId());
     assertEquals(123L, context.getEvidence().getFirst().getLastRunAt());
     assertNull(context.getEvidence().getFirst().getLastRunStatus());
     catalog.hidden = Set.of("saved.query");
     assertTrue(
-        build(catalog, term().withSourceMemoryIds(Set.of(memoryId))).getEvidence().isEmpty());
+        new ConceptContextBuilder(catalog)
+            .build(
+                term(),
+                List.of(),
+                List.of(
+                    new KnowledgeItem()
+                        .withId(memoryId)
+                        .withType(KnowledgeItem.Type.CONTEXT_MEMORY)))
+            .getEvidence()
+            .isEmpty());
   }
 
   private static ConceptContext build(Catalog catalog, EntityInterface entity) {

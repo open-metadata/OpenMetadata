@@ -42,7 +42,6 @@ export const DI_STRUCTURE = {
   rowContainerGutter: 32,
   leftContainerSpan: 16,
   rightContainerSpan: 8,
-  rightRowGutter: [8, 0] satisfies [number, number],
 };
 
 export const GRAPH_HEIGHT = 500;
@@ -121,8 +120,6 @@ export const ENTITIES_SUMMARY_LIST: Array<entitySummeryList> = [
     id: SystemChartType.TotalDataAssetsByTier,
   },
 ];
-
-export const KPI_DATE_PICKER_FORMAT = 'yyyy-MM-dd';
 
 export const BASE_COLORS = [
   '#E57373',

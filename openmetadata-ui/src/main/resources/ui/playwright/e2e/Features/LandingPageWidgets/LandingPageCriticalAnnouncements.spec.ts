@@ -65,11 +65,18 @@ const seed = async (
 const banner = (page: Page) => page.getByTestId('critical-announcements');
 const bannerTitle = (page: Page) =>
   page.getByTestId('critical-announcement-title');
+// Every live critical is in the rail; only the one scrolled into view is seen.
+const titleOf = (page: Page, title: string) =>
+  bannerTitle(page).filter({ hasText: title });
+const bannerOf = (page: Page, title: string) =>
+  page.getByTestId('critical-announcement-banner').filter({ hasText: title });
 
 const openHome = async (page: Page) => {
   await redirectToHomePage(page);
   await expect(page.getByTestId(LANDING_PAGE_ROOT)).toBeVisible();
   await expect(banner(page)).toBeVisible();
+  // A live critical takes the greeting's slot rather than stacking under it.
+  await expect(page.getByTestId('home-landing-page-header')).toHaveCount(0);
 };
 
 test.describe('Landing page critical announcements', () => {
@@ -108,17 +115,18 @@ test.describe('Landing page critical announcements', () => {
     try {
       await openHome(page);
 
-      await expect(bannerTitle(page)).toHaveText(NEWEST);
-      await expect(
-        page.getByTestId('critical-announcement-position')
-      ).toHaveText(/^1 of \d+$/);
+      // Newest first: it is the one in view, the older one waits off-screen.
+      await expect(titleOf(page, NEWEST)).toBeInViewport();
+      await expect(titleOf(page, OLDER)).not.toBeInViewport();
+
       await page.getByTestId('critical-announcement-next').click();
 
-      await expect(bannerTitle(page)).toHaveText(OLDER);
+      await expect(titleOf(page, OLDER)).toBeInViewport();
+      await expect(titleOf(page, NEWEST)).not.toBeInViewport();
 
       await page.getByTestId('critical-announcement-previous').click();
 
-      await expect(bannerTitle(page)).toHaveText(NEWEST);
+      await expect(titleOf(page, NEWEST)).toBeInViewport();
 
       // Only critical system announcements reach users, and only here: the
       // notice is nowhere on Home, and the rail never repeats a critical one.
@@ -140,16 +148,18 @@ test.describe('Landing page critical announcements', () => {
     try {
       await openHome(page);
 
-      await expect(bannerTitle(page)).toHaveText(NEWEST);
+      await expect(titleOf(page, NEWEST)).toBeInViewport();
 
-      await page.getByTestId('critical-announcement-dismiss').click();
+      await bannerOf(page, NEWEST)
+        .getByTestId('critical-announcement-dismiss')
+        .click();
 
-      await expect(bannerTitle(page)).toHaveText(OLDER);
+      await expect(titleOf(page, OLDER)).toBeInViewport();
 
       await page.reload();
       await expect(banner(page)).toBeVisible();
 
-      await expect(bannerTitle(page)).toHaveText(OLDER);
+      await expect(titleOf(page, OLDER)).toBeInViewport();
       await expect(page.getByText(NEWEST)).toHaveCount(0);
     } finally {
       await page.close();
@@ -157,6 +167,6 @@ test.describe('Landing page critical announcements', () => {
 
     await openHome(adminPage);
 
-    await expect(bannerTitle(adminPage)).toHaveText(NEWEST);
+    await expect(titleOf(adminPage, NEWEST)).toBeInViewport();
   });
 });

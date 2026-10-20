@@ -107,9 +107,12 @@ jest.mock('../ContractDetailFormTab/ContractDetailFormTab', () => ({
 jest.mock('../ContractQualityFormTab/ContractQualityFormTab', () => ({
   ContractQualityFormTab: jest
     .fn()
-    .mockImplementation(({ onChange, onNext }) => (
+    .mockImplementation(({ onChange, onNext, initialValues }) => (
       <div>
         <h2>Contract Quality</h2>
+        <div data-testid="quality-initial-values">
+          {JSON.stringify(initialValues?.qualityExpectations ?? [])}
+        </div>
         <button onClick={() => onChange({ qualityExpectations: [] })}>
           Change
         </button>
@@ -778,6 +781,52 @@ describe('AddDataContract', () => {
 
       expect(saveButton).toBeInTheDocument();
       expect(cancelButton).toBeInTheDocument();
+    });
+  });
+
+  describe('Quality Tab initialValues Propagation', () => {
+    it('should pass initialValues with qualityExpectations to ContractQualityFormTab', async () => {
+      const contractWithQuality: DataContract = {
+        ...mockContract,
+        qualityExpectations: [
+          {
+            id: 'on-page-test',
+            name: 'On Page Test',
+            type: EntityType.TEST_CASE,
+          } as EntityReference,
+          {
+            id: 'off-page-test',
+            name: 'Off Page Test',
+            type: EntityType.TEST_CASE,
+          } as EntityReference,
+        ],
+      };
+
+      render(
+        <AddDataContract
+          contract={contractWithQuality}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      // Navigate to the Quality tab so its content mounts
+      const qualityTab = screen.getByRole('tab', { name: 'label.quality' });
+
+      await act(async () => {
+        fireEvent.click(qualityTab);
+      });
+
+      const initialValuesEl = screen.getByTestId('quality-initial-values');
+      const parsed = JSON.parse(initialValuesEl.textContent ?? '[]') as {
+        id: string;
+        name: string;
+      }[];
+
+      const ids = parsed.map((q) => q.id);
+
+      expect(ids).toContain('on-page-test');
+      expect(ids).toContain('off-page-test');
     });
   });
 });

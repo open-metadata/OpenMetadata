@@ -110,13 +110,18 @@
               "default": []
             },
             "emptyAssigneeStrategy": {
-              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen.",
+              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen. 'wait' creates an unassigned task when no eligible assignee is available, without auto-approval or an admin fallback.",
               "type": "string",
               "enum": [
                 "none",
-                "assignAdmins"
+                "assignAdmins",
+                "wait"
               ],
               "default": "none"
+            },
+            "addDomainOwners": {
+              "description": "Resolve owners from the asset’s domains at execution time. For a domain, use its own owners.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
@@ -150,6 +155,38 @@
           "title": "Stage Display Name",
           "description": "Human-readable stage label shown to task assignees.",
           "type": "string"
+        },
+        "lifecycleMove": {
+          "title": "Lifecycle Move",
+          "description": "Set when the approval gates a lifecycle stage move: the task then asks to approve moving the asset from one stage to the next instead of listing the changes that led to it.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove",
+          "properties": {
+            "stage": {
+              "description": "Stage the asset is in while the approval is pending.",
+              "title": "EntityStatus",
+              "type": "string",
+              "javaType": "org.openmetadata.schema.type.EntityStatus",
+              "enum": [
+                "Draft",
+                "In Review",
+                "Approved",
+                "Archived",
+                "Deprecated",
+                "Rejected",
+                "Unprocessed"
+              ]
+            },
+            "targetStage": {
+              "description": "Stage the asset moves to once approved.",
+              "$ref": "#/properties/config/properties/lifecycleMove/properties/stage"
+            }
+          },
+          "required": [
+            "stage",
+            "targetStage"
+          ],
+          "additionalProperties": false
         },
         "taskStatus": {
           "title": "Task Status",
