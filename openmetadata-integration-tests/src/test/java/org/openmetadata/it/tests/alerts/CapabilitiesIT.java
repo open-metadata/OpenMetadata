@@ -2,7 +2,6 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -11,7 +10,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,7 +22,6 @@ import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
-import org.openmetadata.schema.entity.events.AlertCatalogSource;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
@@ -33,9 +30,6 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.alerting.audience.RecipientResolver;
-import org.openmetadata.service.alerting.definition.AlertCatalog;
 
 /** What the form asks before a save, over the wire. */
 @ExtendWith(TestNamespaceExtension.class)
@@ -66,23 +60,32 @@ class CapabilitiesIT {
         capabilities.getRecipientCategories());
   }
 
-  // Runs in the server's JVM, where every entity type is registered with the fields it holds.
-  // ADR:2026-10-20-an-alert-source-offers-only-recipients-delivery-reaches
+  // Owners and followers are fields of the entity, so a type without the field offers no one.
   @Test
-  void everyRecipientASourceOffersIsOneDeliveryReaches() {
-    AlertCatalog catalog = AlertCatalog.load();
-    assertNotNull(Entity.getEntityClassFromType(Entity.TABLE), "entity types are registered");
-    List<String> unreached = new ArrayList<>();
-    for (AlertType alertType : List.of(AlertType.NOTIFICATION, AlertType.OBSERVABILITY)) {
-      for (AlertCatalogSource source : catalog.sourcesOf(alertType)) {
-        catalog.recipientCategoriesOf(source).stream()
-            .filter(category -> !RecipientResolver.reaches(category, source.getName()))
-            .forEach(
-                category -> unreached.add(alertType + " " + source.getName() + " " + category));
-      }
-    }
-
-    assertEquals(List.of(), unreached);
+  void entitySourceOffersTheOwnersAndFollowersItsTypeHolds() {
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.FOLLOWERS),
+        ask(AlertType.NOTIFICATION, List.of("table")).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.OWNERS),
+        ask(AlertType.NOTIFICATION, List.of("glossaryTerm")).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS, SubscriptionCategory.TEAMS, SubscriptionCategory.ADMINS),
+        ask(AlertType.NOTIFICATION, List.of("user")).getRecipientCategories());
+    assertFalse(
+        ask(AlertType.OBSERVABILITY, List.of("testSuite"))
+            .getRecipientCategories()
+            .contains(SubscriptionCategory.FOLLOWERS));
   }
 
   @Test

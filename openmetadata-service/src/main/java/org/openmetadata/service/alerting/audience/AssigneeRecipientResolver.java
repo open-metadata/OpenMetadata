@@ -41,7 +41,7 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination,
       AddressDirectory directory) {
-    return reachedOrWarn(event.getEntityType())
+    return isTask(event.getEntityType())
         ? assigneesOf(
             Lookup.of(
                 "the task of event " + event.getId(), () -> AlertsRuleEvaluator.getTask(event)),
@@ -56,7 +56,7 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
       SubscriptionAction action,
       SubscriptionDestination destination,
       AddressDirectory directory) {
-    return reachedOrWarn(entityType)
+    return isTask(entityType)
         ? assigneesOf(
             Lookup.of(
                 "task " + entityId,
@@ -72,18 +72,12 @@ public class AssigneeRecipientResolver implements RecipientResolutionStrategy {
         task, found -> Principals.of(found.getAssignees(), users, teams, directory));
   }
 
-  // Only a task has assignees.
-  @Override
-  public boolean reaches(String entityType) {
-    return Entity.TASK.equalsIgnoreCase(entityType);
-  }
-
-  private boolean reachedOrWarn(String entityType) {
-    boolean reached = reaches(entityType);
-    if (!reached) {
+  private static boolean isTask(String entityType) {
+    boolean task = Entity.TASK.equalsIgnoreCase(entityType);
+    if (!task) {
       LOG.warn("Assignees asked for an entity that has none: {}", entityType);
     }
-    return reached;
+    return task;
   }
 
   @Override

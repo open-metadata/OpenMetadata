@@ -76,12 +76,6 @@ public class AdminRecipientResolver implements RecipientResolutionStrategy {
     return found;
   }
 
-  // Named by the destination itself, whatever the event is about.
-  @Override
-  public boolean reaches(String entityType) {
-    return true;
-  }
-
   @Override
   public SubscriptionDestination.SubscriptionCategory getCategory() {
     return SubscriptionDestination.SubscriptionCategory.ADMINS;

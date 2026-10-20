@@ -17,7 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
@@ -41,8 +40,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 @Slf4j
 public class MentionRecipientResolver implements RecipientResolutionStrategy {
   private static final String PRINCIPAL_FIELDS = "id,profile,email";
-  private static final Set<String> MENTIONING =
-      Set.of(Entity.CONVERSATION, Entity.ANNOUNCEMENT, Entity.TASK);
 
   @Override
   public Recipients resolve(
@@ -135,12 +132,6 @@ public class MentionRecipientResolver implements RecipientResolutionStrategy {
           default -> new Lookup.Absent<>();
         };
     return Recipients.from(mentioned, Recipients::of);
-  }
-
-  // Only these hold text that can mention someone.
-  @Override
-  public boolean reaches(String entityType) {
-    return MENTIONING.contains(typeOf(entityType));
   }
 
   private static String typeOf(String entityType) {

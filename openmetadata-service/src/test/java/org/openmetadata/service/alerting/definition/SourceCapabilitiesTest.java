@@ -5,11 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.events.AlertCapabilities;
 import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertConditionCapability;
@@ -20,6 +23,7 @@ import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
+import org.openmetadata.service.Entity;
 
 /** What the form is told about a selection: the same rules the save applies, before the save. */
 class SourceCapabilitiesTest {
@@ -117,7 +121,34 @@ class SourceCapabilitiesTest {
         source(capabilities, "table").getWarning());
   }
 
-  // A task has no owners, so the form does not offer them; CapabilitiesIT checks every source.
+  // An activity source lists its own: a conversation reaches the owners of what it is about.
+  @Test
+  void entitySourceOffersOnlyTheOwnersAndFollowersItsTypeHolds() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      for (String type : List.of(Entity.GLOSSARY_TERM, Entity.CONVERSATION)) {
+        entity.when(() -> Entity.hasEntityRepository(type)).thenReturn(true);
+        entity.when(() -> Entity.entityHasField(type, Entity.FIELD_FOLLOWERS)).thenReturn(false);
+      }
+      entity
+          .when(() -> Entity.entityHasField(Entity.GLOSSARY_TERM, Entity.FIELD_OWNERS))
+          .thenReturn(true);
+      entity
+          .when(() -> Entity.entityHasField(Entity.CONVERSATION, Entity.FIELD_OWNERS))
+          .thenReturn(false);
+
+      assertEquals(
+          List.of(
+              SubscriptionCategory.USERS,
+              SubscriptionCategory.TEAMS,
+              SubscriptionCategory.ADMINS,
+              SubscriptionCategory.OWNERS),
+          of(AlertType.NOTIFICATION, List.of(Entity.GLOSSARY_TERM), null).getRecipientCategories());
+      assertEquals(
+          List.of(SubscriptionCategory.OWNERS, SubscriptionCategory.MENTIONS),
+          of(AlertType.NOTIFICATION, List.of(Entity.CONVERSATION), null).getRecipientCategories());
+    }
+  }
+
   @Test
   void recipientsAreWhatTheSourcesOffer() {
     assertEquals(

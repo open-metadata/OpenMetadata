@@ -12,6 +12,7 @@ import org.openmetadata.schema.entity.events.AlertCatalogSource;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class EventsSubscriptionRegistry {
@@ -26,6 +27,10 @@ public class EventsSubscriptionRegistry {
   private static final Map<String, AlertSourceKind> KINDS = new HashMap<>();
   private static final Map<String, List<SubscriptionCategory>> RECIPIENTS = new HashMap<>();
   private static final List<SubscriptionCategory> DEFAULT_RECIPIENTS = new ArrayList<>();
+  private static final Map<SubscriptionCategory, String> ENTITY_FIELDS =
+      Map.of(
+          SubscriptionCategory.OWNERS, Entity.FIELD_OWNERS,
+          SubscriptionCategory.FOLLOWERS, Entity.FIELD_FOLLOWERS);
 
   private EventsSubscriptionRegistry() {}
 
@@ -49,11 +54,23 @@ public class EventsSubscriptionRegistry {
   /**
    * Who alerts on the source can be sent to inside the platform, removed sources included, so an
    * alert saved with one still shows its recipients. Offered in the form, never enforced on save.
+   * An entity source offers owners and followers only when its entity type holds them.
    */
   public static List<SubscriptionCategory> recipientCategoriesOf(
       AlertType alertType, String source) {
-    return Collections.unmodifiableList(
-        RECIPIENTS.getOrDefault(kindKey(alertType, source), DEFAULT_RECIPIENTS));
+    List<SubscriptionCategory> listed =
+        RECIPIENTS.getOrDefault(kindKey(alertType, source), DEFAULT_RECIPIENTS);
+    return kindOf(alertType, source) == AlertSourceKind.ENTITY
+        ? listed.stream().filter(category -> entityHolds(source, category)).toList()
+        : Collections.unmodifiableList(listed);
+  }
+
+  // Asked per request: the catalog loads before every entity type has registered its repository.
+  private static boolean entityHolds(String entityType, SubscriptionCategory category) {
+    String field = ENTITY_FIELDS.get(category);
+    return field == null
+        || !Entity.hasEntityRepository(entityType)
+        || Entity.entityHasField(entityType, field);
   }
 
   public static List<SubscriptionCategory> defaultRecipientCategories() {
