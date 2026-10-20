@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Sealed ontology content, stored as immutable SQL members and reviewed through the
  * existing approval workflow.
