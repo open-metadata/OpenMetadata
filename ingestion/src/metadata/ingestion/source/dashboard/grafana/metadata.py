@@ -147,6 +147,13 @@ class GrafanaSource(DashboardServiceSource):
             # Build folder hierarchy display name
             display_name = dashboard_details.dashboard.title
 
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=GRAFANA_TAG_CATEGORY,
+                get_tags=lambda: dashboard_details.dashboard.tags,
+                get_entity_fqn=lambda: fqn._build(
+                    vars(self.context.get())["dashboard_service"], dashboard_details.dashboard.uid
+                ),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.dashboard.uid),
                 displayName=display_name,
@@ -168,13 +175,7 @@ class GrafanaSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_url),
-                tags=self.get_tag_labels(
-                    entity_fqn=fqn._build(
-                        vars(self.context.get())["dashboard_service"], dashboard_details.dashboard.uid
-                    ),
-                    tags=dashboard_details.dashboard.tags,
-                    classification_name=GRAFANA_TAG_CATEGORY,
-                ),
+                tags=tag_labels,
                 owners=self.get_owner_ref(dashboard_details),
             )
 

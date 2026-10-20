@@ -19,7 +19,7 @@ from uuid import UUID
 import pytest
 from requests import Response
 
-from metadata.domain.tags import TagDefinition
+from metadata.domain.tags import TagAssignment, TagDefinition
 from metadata.generated.schema.api.data.createDatabaseSchema import CreateDatabaseSchemaRequest
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import TableType
@@ -164,13 +164,17 @@ class TaggedDatabaseSource(MysqlSource):
         if schema_name == "schema_b":
             assert self.queue.publication_paused.wait(timeout=10)
         names = ["Shared"] if self.shared_tag else (["A", "B"] if schema_name == "schema_a" else ["B"])
-        definitions = [
-            self.define_tag(
-                classification_name="Class", tag_name=name, classification_description="", tag_description=""
+        definitions = [TagDefinition("Class", name, "", "") for name in names]
+        for definition in definitions:
+            assert self.tags_registry.register(definition) is None
+        assert (
+            self.tags_registry.attach(
+                TagAssignment(
+                    definitions[0].classification_name, definitions[0].tag_name, f"svc.db.{schema_name}.my_table"
+                )
             )
-            for name in names
-        ]
-        self.attach_tag(entity_fqn=f"svc.db.{schema_name}.my_table", tag=definitions[0])
+            is None
+        )
         if schema_name == "schema_b":
             self.second_discovered.set()
         return []
@@ -291,7 +295,7 @@ def test_assets_survive_definition_failures_with_only_existing_labels(monkeypatc
             source.context.get().upsert(key, value)
         for record in source.yield_database_schema_tag_details("schema_a"):
             sink.run(record.right)
-        source.attach_tag(entity_fqn="svc.db.schema_a.other_table", tag=TagDefinition("Class", "Shared", "", ""))
+        assert source.tags_registry.attach(TagAssignment("Class", "Shared", "svc.db.schema_a.other_table")) is None
         for name in ("my_table", "other_table"):
             for record in source.yield_table((name, TableType.Regular)):
                 sink.run(record.right)

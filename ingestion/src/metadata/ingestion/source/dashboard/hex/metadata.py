@@ -191,23 +191,14 @@ class HexSource(DashboardServiceSource):
 
         return list(set(tags_list)) if tags_list else []  # Remove duplicates
 
-    def _get_dashboard_tags(self, dashboard_details):
-        """Get tag labels for dashboard"""
-        if self.source_config.includeTags:
-            tags = self._extract_tags_from_project(dashboard_details)
-
-            if tags:
-                return self.get_tag_labels(
-                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
-                    tags=tags,
-                    classification_name=HEX_TAG_CATEGORY,
-                )
-
-        return None
-
     def yield_dashboard(self, dashboard_details: Project) -> Iterable[Either[CreateDashboardRequest]]:
         """Method to Get Dashboard Entity"""
         try:
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=HEX_TAG_CATEGORY,
+                get_tags=lambda: self._extract_tags_from_project(dashboard_details),
+                get_entity_fqn=lambda: fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.id),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.title,
@@ -225,7 +216,7 @@ class HexSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(self.client.get_project_url(dashboard_details)),
-                tags=self._get_dashboard_tags(dashboard_details),
+                tags=tag_labels,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)

@@ -59,7 +59,7 @@ class TaggedDriveSource(InMemoryDriveSource):
 
     def tags(self, kind):
         for entity_fqn, definition in self.native_tags.get(kind, []):
-            yield from self.register_tag(entity_fqn=entity_fqn, definition=definition)
+            yield from self.register_tag(definition=definition, entity_fqn=entity_fqn)
 
     def yield_directory_tags(self, directory_details):
         yield from self.tags("directory")

@@ -366,6 +366,11 @@ class OmniSource(DashboardServiceSource):
             return
         document = dashboard_details.document
         try:
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=OMNI_TAG_CATEGORY,
+                get_tags=lambda: document.label_names,
+                get_entity_fqn=lambda: fqn._build(vars(self.context.get())["dashboard_service"], document.identifier),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(document.identifier),
                 displayName=document.name,
@@ -384,11 +389,7 @@ class OmniSource(DashboardServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(document.url) if document.url else None,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
-                tags=self.get_tag_labels(
-                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], document.identifier),
-                    tags=document.label_names,
-                    classification_name=OMNI_TAG_CATEGORY,
-                ),
+                tags=tag_labels,
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)

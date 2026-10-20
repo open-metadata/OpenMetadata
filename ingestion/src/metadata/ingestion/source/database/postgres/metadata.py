@@ -20,6 +20,7 @@ from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import Inspector
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createStoredProcedure import (
     CreateStoredProcedureRequest,
 )
@@ -247,15 +248,15 @@ class PostgresSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
                     *fqn_elements,
                 )
                 try:
-                    tag = self.define_tag(
-                        classification_name=self.service_connection.classificationName,
-                        tag_name=row[1],
-                        tag_description="Postgres Tag Value",
-                        classification_description="Postgres Tag Name",
+                    yield from self.register_tag(
+                        definition=TagDefinition(
+                            classification_name=self.service_connection.classificationName,
+                            tag_name=row[1],
+                            tag_description="Postgres Tag Value",
+                            classification_description="Postgres Tag Name",
+                        ),
                         entity_fqn=entity_fqn,
                     )
-                    if tag:
-                        self.attach_tag(entity_fqn=entity_fqn, tag=tag)
                 except Exception as exc:
                     yield Either(
                         left=StackTraceError(

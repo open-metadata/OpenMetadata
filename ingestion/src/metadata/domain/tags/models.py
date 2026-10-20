@@ -12,6 +12,8 @@
 
 from dataclasses import dataclass
 
+from metadata.generated.schema.type.tagLabel import LabelType, State
+
 
 @dataclass(frozen=True)
 class TagDefinition:
@@ -21,3 +23,14 @@ class TagDefinition:
     tag_name: str
     classification_description: str
     tag_description: str
+
+
+@dataclass(frozen=True)
+class TagAssignment:
+    """Classification tag reference and its entity attachment options."""
+
+    classification_name: str
+    tag_name: str
+    entity_fqn: str
+    label_type: LabelType = LabelType.Automated
+    state: State = State.Suggested

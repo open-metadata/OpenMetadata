@@ -775,7 +775,8 @@ def test_documents_response_accepts_object_shaped_labels():
     assert response.records[1].label_names == ["Company North Star", "Executive"]
 
 
-def test_yield_tags_emits_document_labels(omni_source):
+def test_yield_tags_emits_document_labels(omni_source, tag_metadata):
+    omni_source.metadata = tag_metadata
     labelled = MOCK_DOCUMENT.model_copy(
         update={"labels": [OmniLabel(name="Company North Star", verified=True), OmniLabel(name="Executive")]}
     )

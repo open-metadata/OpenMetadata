@@ -145,6 +145,13 @@ class RedashSource(DashboardServiceSource):
             for widgets in dashboard_details.get("widgets") or []:
                 dashboard_description = widgets.get("text")
 
+            tag_labels = yield from self.prepare_tag_labels(
+                classification_name=REDASH_TAG_CATEGORY,
+                get_tags=lambda: dashboard_details.get("tags"),
+                get_entity_fqn=lambda: fqn._build(
+                    vars(self.context.get())["dashboard_service"], str(dashboard_details["id"])
+                ),
+            )
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(str(dashboard_details["id"])),
                 displayName=dashboard_details.get("name"),
@@ -162,11 +169,7 @@ class RedashSource(DashboardServiceSource):
                 ],
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(self.get_dashboard_url(dashboard_details)),
-                tags=self.get_tag_labels(
-                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], str(dashboard_details["id"])),
-                    tags=dashboard_details.get("tags"),
-                    classification_name=REDASH_TAG_CATEGORY,
-                ),
+                tags=tag_labels,
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)

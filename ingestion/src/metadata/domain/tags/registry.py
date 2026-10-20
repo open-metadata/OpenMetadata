@@ -8,32 +8,29 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""TagRegistry — per-Source bookkeeping for Tag and Classification ingestion.
+"""Per-source tag processing and scoped attachment bookkeeping.
 
-Holds two concerns:
-
-* a queue of classification/tag create-payloads bound for the sink
-  (deduped by FQN, drained per scope), and
-* a per-entity-FQN lookup of ``TagLabel`` instances for inheritance
-  reads, dropped at scope boundaries.
-
-Dedup is case-sensitive, matching OpenMetadata's tag-identity rule.
-Safe for concurrent use across the topology's parallel schema workers.
+Canonicalizes system names, queues deduplicated create payloads, and retains
+entity labels until scope cleanup. Custom tag identity remains case-sensitive.
+Safe for concurrent use across topology workers.
 """
 
 import threading
+import traceback
 from collections.abc import Generator
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, NamedTuple, cast
 
 from cachetools import LRUCache
 
-from metadata.domain.tags.models import TagDefinition
+from metadata.domain.tags.canonicalizer import TagCanonicalizer
+from metadata.domain.tags.models import TagAssignment, TagDefinition
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
 )
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
@@ -72,12 +69,24 @@ class _TagLabelKey(NamedTuple):
 
 
 class TagRegistry:
-    """Registry for Tag and Classification ingestion bookkeeping."""
+    """Per-source tag processing with an injectable resolution policy.
 
-    def __init__(self, cache_size: int = 1000, *, metadata: "OpenMetadata") -> None:
+    Injected canonicalizers supply shared classification() and tag() policies.
+    """
+
+    def __init__(
+        self,
+        cache_size: int = 1000,
+        *,
+        metadata: "OpenMetadata",
+        canonicalizer: TagCanonicalizer | None = None,
+    ) -> None:
         if cache_size < 1:
             raise ValueError("cache_size must be positive")
         self._metadata = metadata
+        self._canonicalizer = (
+            canonicalizer if canonicalizer is not None else TagCanonicalizer(metadata=metadata, cache_size=cache_size)
+        )
         self._known_tag_fqns: LRUCache[str, _TagState] = LRUCache(maxsize=cache_size)
         self._tag_label_cache: LRUCache[_TagLabelKey, TagLabel] = LRUCache(maxsize=cache_size)
         self._pending: dict[str, OMetaTagAndClassification] = {}
@@ -86,62 +95,120 @@ class TagRegistry:
         self._lock = threading.Lock()
         self._drain_lock = threading.Lock()
 
-    def _intern_tag_label_locked(
-        self, *, classification_name: str, tag_name: str, label_type: LabelType, state: State
-    ) -> TagLabel:
+    def _intern_tag_label_locked(self, assignment: TagAssignment, label: TagLabel) -> TagLabel:
         """Return the shared ``TagLabel`` for the given key. Caller must hold ``self._lock``."""
-        key = _TagLabelKey(classification_name, tag_name, label_type, state)
+        key = _TagLabelKey(assignment.classification_name, assignment.tag_name, assignment.label_type, assignment.state)
         cached = self._tag_label_cache.get(key)
         if cached is not None:
             return cached
-        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name))
-        cached = TagLabel(  # pyright: ignore[reportCallIssue]
-            tagFQN=TagFQN(tag_fqn),
-            labelType=label_type,
-            state=state,
-            source=TagSource.Classification,
-        )
-        self._tag_label_cache[key] = cached
-        return cached
+        self._tag_label_cache[key] = label
+        return label
 
-    def define(self, tag: TagDefinition) -> None:
-        """Queue a definition without attaching it to an entity."""
-        if not tag.tag_name or not tag.tag_name.strip():
-            return
-        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=tag.classification_name, tag_name=tag.tag_name))
-        with self._lock:
-            known = self._known_tag_fqns.get(tag_fqn)
-            if known is not None and known.emitted:
-                return
-            if tag_fqn not in self._pending:
-                self._pending[tag_fqn] = self._build_pending_record(
-                    classification_name=tag.classification_name,
-                    classification_description=tag.classification_description,
-                    tag_name=tag.tag_name,
-                    tag_description=tag.tag_description,
-                )
-
-    def attach(
+    def register(
         self,
+        definition: TagDefinition | None,
         *,
-        entity_fqn: str,
-        tag: TagDefinition,
+        entity_fqn: str | None = None,
         label_type: LabelType = LabelType.Automated,
         state: State = State.Suggested,
-    ) -> None:
-        """Register a tag <-> entity association."""
-        if not tag.tag_name or not tag.tag_name.strip():
-            logger.debug("TagRegistry: skipping empty tag for classification %s", tag.classification_name)
-            return
-
-        with self._lock:
-            tag_label = self._intern_tag_label_locked(
-                classification_name=tag.classification_name,
-                tag_name=tag.tag_name,
-                label_type=label_type,
-                state=state,
+    ) -> StackTraceError | None:
+        """Eagerly queue a canonical definition and optionally attach it to an entity."""
+        if definition is None:
+            return None
+        try:
+            if not self._valid_names(definition.classification_name, definition.tag_name, entity_fqn):
+                return None
+            resolved, tag_fqn = self._resolve_tag(definition)
+            record = self._build_pending_record(
+                classification_name=resolved.classification_name,
+                classification_description=resolved.classification_description,
+                tag_name=resolved.tag_name,
+                tag_description=resolved.tag_description,
             )
-            self._labels_by_entity.setdefault(entity_fqn, []).append(tag_label)
+            assignment = (
+                TagAssignment(resolved.classification_name, resolved.tag_name, entity_fqn, label_type, state)
+                if entity_fqn is not None
+                else None
+            )
+            label = self._build_label(assignment, tag_fqn) if assignment is not None else None
+            with self._lock:
+                known = self._known_tag_fqns.get(tag_fqn)
+                if not (known is not None and known.emitted) and tag_fqn not in self._pending:
+                    self._pending[tag_fqn] = record
+                if assignment is not None and label is not None:
+                    self._store_assignment_locked(assignment, label)
+        except Exception as exc:
+            return self._processing_error("register", definition, entity_fqn, exc)
+        return None
+
+    def attach(self, assignment: TagAssignment | None) -> StackTraceError | None:
+        """Eagerly attach a canonical reference without queuing a definition."""
+        if assignment is None:
+            return None
+        try:
+            if not self._valid_names(assignment.classification_name, assignment.tag_name, assignment.entity_fqn):
+                return None
+            resolved, tag_fqn = self._resolve_tag(
+                TagDefinition(assignment.classification_name, assignment.tag_name, "", "")
+            )
+            canonical = replace(
+                assignment, classification_name=resolved.classification_name, tag_name=resolved.tag_name
+            )
+            label = self._build_label(canonical, tag_fqn)
+            with self._lock:
+                self._store_assignment_locked(canonical, label)
+        except Exception as exc:
+            return self._processing_error("attach", assignment, assignment.entity_fqn, exc)
+        return None
+
+    def _resolve_tag(self, definition: TagDefinition) -> tuple[TagDefinition, str]:
+        classification = self._canonicalizer.classification(
+            definition.classification_name, definition.classification_description
+        )
+        tag = self._canonicalizer.tag(classification.name, definition.tag_name, definition.tag_description)
+        resolved = TagDefinition(classification.name, tag.name, classification.description, tag.description)
+        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification.name, tag_name=tag.name))
+        return resolved, tag_fqn
+
+    def _store_assignment_locked(self, assignment: TagAssignment, label: TagLabel) -> None:
+        """Store an attachment. Caller must hold the state lock."""
+        interned = self._intern_tag_label_locked(assignment, label)
+        self._labels_by_entity.setdefault(assignment.entity_fqn, []).append(interned)
+
+    @staticmethod
+    def _build_label(assignment: TagAssignment, tag_fqn: str) -> TagLabel:
+        return TagLabel(  # pyright: ignore[reportCallIssue]
+            tagFQN=TagFQN(tag_fqn),
+            labelType=assignment.label_type,
+            state=assignment.state,
+            source=TagSource.Classification,
+        )
+
+    @staticmethod
+    def _valid_names(classification_name: str, tag_name: str, entity_fqn: str | None) -> bool:
+        if not tag_name or not tag_name.strip():
+            return False
+        if fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag_name):
+            return True
+        logger.warning(
+            "%sSkipped tag %r in classification %r: classification and tag names must be 1 to %d characters"
+            " long and cannot contain '\"', '>', '::' or control characters",
+            entity_fqn + ": " if entity_fqn else "",
+            tag_name,
+            classification_name,
+            fqn.ENTITY_NAME_MAX_LENGTH,
+        )
+        return False
+
+    @staticmethod
+    def _processing_error(
+        operation: str, tag: TagDefinition | TagAssignment, entity_fqn: str | None, exc: Exception
+    ) -> StackTraceError:
+        return StackTraceError(
+            name=entity_fqn or "Tags and Classifications",
+            error=f"Failed to {operation} tag [{tag.classification_name}.{tag.tag_name}]: {exc}",
+            stackTrace=traceback.format_exc(),
+        )
 
     def labels_for(self, entity_fqn: str) -> list[TagLabel]:
         """Return existing tag labels attached to ``entity_fqn`` as a copy."""

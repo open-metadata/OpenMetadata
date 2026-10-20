@@ -297,13 +297,13 @@ class Data360PipelineSource(PipelineServiceSource):
         try:
             for tag_name in pipeline_details.get_tags():
                 yield from self.register_tag(
-                    entity_fqn=self.get_pipeline_fqn(pipeline_details),
                     definition=TagDefinition(
                         classification_name=Data360Constant.TAG_CLASSIFICATION_NAME,
                         tag_name=tag_name,
                         tag_description="Data360 Tags",
                         classification_description="Tags associated with Salesforce Data 360",
                     ),
+                    entity_fqn=self.get_pipeline_fqn(pipeline_details),
                 )
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]

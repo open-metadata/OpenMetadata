@@ -10,11 +10,14 @@
 #  limitations under the License.
 """Native dashboard definition publication and per-asset labels."""
 
+from contextlib import closing
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from tenacity import wait_none
 
+from metadata.domain.tags import TagAssignment, TagCanonicalizer
 from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
     DashboardServiceMetadataPipeline,
 )
@@ -131,4 +134,147 @@ def test_grafana_only_attaches_existing_native_tags(catalog_source):
     assert record.left is None
     assert labels(record.right) == ["GrafanaTags.Existing"]
     assert catalog == {"GrafanaTags.Existing"}
+    assert source.tags_registry.stats()["pending"] == 0
+
+
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_failed_assignment_reports_error_and_cleans_up_without_discarding_other_labels(
+    catalog_source, monkeypatch, interrupt
+):
+    from contextlib import closing
+
+    from tenacity import wait_none
+
+    from metadata.domain.tags import TagCanonicalizer
+
+    monkeypatch.setattr(TagCanonicalizer._es_search.retry, "wait", wait_none())
+    redash, catalog = catalog_source
+    source = object.__new__(GrafanaSource)
+    vars(source).update(vars(redash))
+    catalog.update({"GrafanaTags.Present", "GrafanaTags.Unavailable"})
+
+    def search(**kwargs):
+        if kwargs["fqn_search_string"] == "GrafanaTags.Unavailable":
+            raise ConnectionError("Search unavailable")
+        return []
+
+    source.metadata.es_search_from_fqn.side_effect = search
+    details = SimpleNamespace(
+        dashboard=SimpleNamespace(
+            uid="my_dashboard", title="My dashboard", description=None, tags=["Present", "Unavailable"]
+        ),
+        meta=SimpleNamespace(url="/d/my_dashboard", createdBy=None),
+    )
+    with closing(source.yield_dashboard(details)) as records:
+        error = next(records)
+        assert error.right is None
+        assert "GrafanaTags.Unavailable" in error.left.error
+        assert "Search unavailable" in error.left.error
+        if not interrupt:
+            [record] = list(records)
+            assert record.left is None
+            assert labels(record.right) == ["GrafanaTags.Present"]
+    assert source.tags_registry.stats()["live_entities"] == 0
+    assert source.tags_registry.stats()["pending"] == 0
+
+
+@pytest.mark.parametrize("enabled,tags", [(False, ["Shared"]), (True, None), (True, []), (True, iter(()))])
+@pytest.mark.parametrize("existing_assignments", [False, True])
+def test_empty_or_disabled_preparation_preserves_existing_scopes_and_skips_identity(
+    catalog_source, enabled, tags, existing_assignments
+):
+    source, catalog = catalog_source
+    if existing_assignments:
+        catalog.add("RedashTags.Shared")
+        for target in ("my_service.my_dashboard", "my_service.other_dashboard"):
+            assert source.tags_registry.attach(TagAssignment("RedashTags", "Shared", target)) is None
+    source.metadata.es_search_from_fqn.reset_mock()
+    source.source_config.includeTags = enabled
+
+    def native_tags():
+        assert enabled
+        return tags
+
+    def forbidden_identity():
+        raise AssertionError("Empty or disabled tags must not evaluate entity identity")
+
+    stream = source.prepare_tag_labels(
+        classification_name="RedashTags", get_tags=native_tags, get_entity_fqn=forbidden_identity
+    )
+    with pytest.raises(StopIteration) as result:
+        next(stream)
+    assert result.value.value is None
+    source.metadata.es_search_from_fqn.assert_not_called()
+    source.metadata.get_by_name.assert_not_called()
+    if existing_assignments:
+        for target in ("my_service.my_dashboard", "my_service.other_dashboard"):
+            assert [tag.tagFQN.root for tag in source.tags_registry.labels_for(target)] == ["RedashTags.Shared"]
+    else:
+        assert "tags_registry" not in vars(source)
+
+
+@pytest.mark.parametrize("mode", ["finish", "close", "throw"])
+def test_preparation_preserves_error_yield_order_and_releases_scope(catalog_source, monkeypatch, mode):
+    source, catalog = catalog_source
+    monkeypatch.setattr(TagCanonicalizer._es_search.retry, "wait", wait_none())
+    catalog.update({"RedashTags.First", "RedashTags.Last"})
+    assert source.tags_registry.attach(TagAssignment("RedashTags", "First", "my_service.other_dashboard")) is None
+
+    def search(**kwargs):
+        if kwargs["fqn_search_string"] == "RedashTags.Unavailable":
+            raise ConnectionError("Search unavailable")
+        return []
+
+    source.metadata.es_search_from_fqn.side_effect = search
+    visited = []
+
+    def native_tags():
+        for name in ("First", "Unavailable", "Last"):
+            visited.append(name)
+            yield name
+
+    with closing(
+        source.prepare_tag_labels(
+            classification_name="RedashTags",
+            get_tags=native_tags,
+            get_entity_fqn=lambda: "my_service.my_dashboard",
+        )
+    ) as stream:
+        error = next(stream)
+        assert error.right is None
+        assert "RedashTags.Unavailable" in error.left.error
+        assert visited == ["First", "Unavailable"]
+        assert source.tags_registry.stats()["live_entities"] == 2
+        source.metadata.get_by_name.assert_not_called()
+        if mode == "finish":
+            with pytest.raises(StopIteration) as result:
+                next(stream)
+            assert [tag.tagFQN.root for tag in result.value.value] == ["RedashTags.First", "RedashTags.Last"]
+        elif mode == "throw":
+            with pytest.raises(RuntimeError, match="Source interrupted"):
+                stream.throw(RuntimeError("Source interrupted"))
+    assert source.tags_registry.labels_for("my_service.my_dashboard") == []
+    assert [tag.tagFQN.root for tag in source.tags_registry.labels_for("my_service.other_dashboard")] == [
+        "RedashTags.First"
+    ]
+    assert source.tags_registry.stats()["pending"] == 0
+    assert visited == (["First", "Unavailable", "Last"] if mode == "finish" else ["First", "Unavailable"])
+
+
+@pytest.mark.parametrize("names,expected", [(["Shared"], ["RedashTags.Shared"]), (["", "bad>name", "Missing"], [])])
+@pytest.mark.parametrize("lookup_unavailable", [False, True])
+def test_preparation_returns_labels_without_errors_and_always_clears_scope(
+    catalog_source, names, expected, lookup_unavailable
+):
+    source, catalog = catalog_source
+    catalog.add("RedashTags.Shared")
+    if lookup_unavailable:
+        source.metadata.get_by_name.side_effect = ConnectionError("Catalog unavailable")
+    stream = source.prepare_tag_labels(
+        classification_name="RedashTags", get_tags=lambda: iter(names), get_entity_fqn=lambda: "my_service.my_dashboard"
+    )
+    with pytest.raises(StopIteration) as result:
+        next(stream)
+    assert [tag.tagFQN.root for tag in result.value.value or []] == ([] if lookup_unavailable else expected)
+    assert source.tags_registry.stats()["live_entities"] == 0
     assert source.tags_registry.stats()["pending"] == 0

@@ -39,5 +39,6 @@ def existing_tag_lookup():
 @fixture
 def tag_metadata(existing_tag_lookup):
     client = MagicMock(spec=OpenMetadata)
+    client.es_search_from_fqn.return_value = []
     client.get_by_name.side_effect = existing_tag_lookup
     return client

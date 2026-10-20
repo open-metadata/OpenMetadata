@@ -14,13 +14,14 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Callable, Generator, Iterable
 from contextlib import closing
+from itertools import chain
 from typing import Annotated, Any
 
 from pydantic import BaseModel, Field
 
-from metadata.domain.tags import TagDefinition, TagRegistry
+from metadata.domain.tags import TagAssignment, TagDefinition, TagRegistry
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -241,6 +242,49 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return cached
         return instance_dict.setdefault("tags_registry", TagRegistry(metadata=self.metadata))
 
+    def register_tag(
+        self,
+        *,
+        definition: TagDefinition | None,
+        entity_fqn: str | None = None,
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
+        """Queue a definition and optional assignment, yielding preparation errors."""
+        if definition is None:
+            return
+        error = self.tags_registry.register(definition, entity_fqn=entity_fqn)
+        if error is not None:
+            yield Either(left=error, right=None)
+
+    def prepare_tag_labels(
+        self,
+        *,
+        classification_name: str,
+        get_tags: Callable[[], Iterable[str] | None],
+        get_entity_fqn: Callable[[], str],
+    ) -> Generator[Either, None, list[TagLabel] | None]:
+        """Yield assignment errors, return verified labels, and release the entity scope."""
+        if not self.source_config.includeTags:
+            return None
+        tags = get_tags()
+        if tags is None:
+            return None
+        names = iter(tags)
+        try:
+            first = next(names)
+        except StopIteration:
+            return None
+        entity_fqn = get_entity_fqn()
+        registry = self.tags_registry
+        try:
+            for name in chain((first,), names):
+                assignment = TagAssignment(classification_name, name, entity_fqn)
+                error = registry.attach(assignment)
+                if error is not None:
+                    yield Either(left=error, right=None)
+            return registry.labels_for(entity_fqn) or None
+        finally:
+            registry.clear_scope(entity_fqn)
+
     def yield_tag_definitions(
         self,
         *,
@@ -252,55 +296,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """Publish native tag definitions, yielding individual registration failures."""
         if not self.source_config.includeTags:
             return
-        for tag in tags:
-            if not tag or not tag.strip():
-                continue
-            try:
-                if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
-                    logger.warning("Skipping invalid tag %r in classification %r", tag, classification_name)
-                    continue
-                self.tags_registry.define(
-                    TagDefinition(classification_name, tag, classification_description, tag_description)
-                )
-            except Exception as exc:
-                yield Either(
-                    right=None,
-                    left=StackTraceError(
-                        name=tag,
-                        error=f"Error registering tag [{tag}]: [{exc}]",
-                        stackTrace=traceback.format_exc(),
-                    ),
-                )
+        for tag_name in tags:
+            definition = TagDefinition(classification_name, tag_name, classification_description, tag_description)
+            yield from self.register_tag(definition=definition)
         if registry := vars(self).get("tags_registry"):
             with closing(registry.drain()) as definitions:
                 for definition in definitions:
                     yield Either(right=definition, left=None)
-
-    def get_tag_labels(
-        self, *, entity_fqn: str, tags: Iterable[str] | None, classification_name: str
-    ) -> list[TagLabel] | None:
-        """Copy existing native labels and release the asset's attachments."""
-        if not self.source_config.includeTags or not tags:
-            return None
-        try:
-            for tag in tags:
-                if not tag or not tag.strip():
-                    continue
-                try:
-                    if not (fqn.is_valid_entity_name(classification_name) and fqn.is_valid_entity_name(tag)):
-                        continue
-                    self.tags_registry.attach(
-                        entity_fqn=entity_fqn,
-                        tag=TagDefinition(classification_name, tag, "", ""),
-                    )
-                except Exception as exc:
-                    logger.warning("Unable to attach tag %r to %s: %s", tag, entity_fqn, exc)
-            if registry := vars(self).get("tags_registry"):
-                return registry.labels_for(entity_fqn) or None
-            return None
-        finally:
-            if registry := vars(self).get("tags_registry"):
-                registry.clear_scope(entity_fqn)
 
     def _declare_progress_groups(self, label: str, total: int | None) -> None:
         """Declare the grouping axis (e.g. workspaces) as a global counter.
