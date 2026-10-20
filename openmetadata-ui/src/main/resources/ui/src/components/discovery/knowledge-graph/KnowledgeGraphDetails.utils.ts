@@ -13,21 +13,12 @@
 
 import { uniqBy } from 'lodash';
 import type { TagLabel } from '../../../generated/type/tagLabel';
-import type { KnowledgeGraphChip } from './KnowledgeGraphChipList';
 
 /**
- * One chip per distinct tag. Distinct by FQN, not display name: two glossaries
- * can each hold a "Customer" term, and both belong on the column.
+ * The searchable text of a tag cell: each distinct tag (by FQN, so two
+ * glossaries' "Customer" terms both count) by its display name.
  */
-export const toChips = (
-  tags: TagLabel[],
-  kind: KnowledgeGraphChip['kind']
-): KnowledgeGraphChip[] =>
-  uniqBy(tags, 'tagFQN').map((tag) => ({
-    id: tag.tagFQN,
-    label: tag.displayName || tag.name || tag.tagFQN,
-    kind,
-  }));
-
-export const chipText = (chips: KnowledgeGraphChip[]) =>
-  chips.map((chip) => chip.label).join(', ');
+export const getTagsText = (tags: TagLabel[]) =>
+  uniqBy(tags, 'tagFQN')
+    .map((tag) => tag.displayName || tag.name || tag.tagFQN)
+    .join(', ');

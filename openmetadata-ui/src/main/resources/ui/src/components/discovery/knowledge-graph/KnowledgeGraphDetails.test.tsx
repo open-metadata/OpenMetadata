@@ -200,7 +200,7 @@ it('navigates to the property returned by the graph', async () => {
   expect(onSelect).toHaveBeenCalledWith('node', 'kg:property:person:birthDate');
 });
 
-it('shows tags and glossary terms as chips, capped at five until expanded, without selecting the row', async () => {
+it('shows tags and glossary terms as chips, five inline and the rest in a popover, without selecting the row', async () => {
   const onSelect = jest.fn();
   const terms = ['Account', 'Branch', 'Customer', 'Employee', 'Testing', 'CLV'];
   openDetails({
@@ -248,11 +248,9 @@ it('shows tags and glossary terms as chips, capped at five until expanded, witho
   expect(within(grid).getByText('Testing')).toBeVisible();
   expect(within(grid).queryByText('CLV')).not.toBeInTheDocument();
 
-  await userEvent.click(
-    within(grid).getByRole('button', { name: 'label.kg-more-count' })
-  );
+  await userEvent.click(within(grid).getByTestId('plus-more-count'));
 
-  expect(within(grid).getByText('CLV')).toBeVisible();
+  expect(await screen.findByText('CLV')).toBeVisible();
   expect(onSelect).not.toHaveBeenCalled();
 });
 

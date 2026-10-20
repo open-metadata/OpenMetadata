@@ -24,6 +24,7 @@ import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Column } from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import { isCoverageNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -31,6 +32,7 @@ import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import DataTypeBadge from '../database/DataTypeBadge/DataTypeBadge';
 import {
   GraphData,
@@ -44,15 +46,13 @@ import {
   RelationCategory,
   RELATION_CATEGORIES,
 } from './KnowledgeGraph.relations';
-import KnowledgeGraphChipList, {
-  KnowledgeGraphChip,
-} from './KnowledgeGraphChipList';
 import {
   CellTone,
   CELL_TONE_PROPS,
+  CHIP_LIMIT,
   FAMILY_BADGE_COLORS,
 } from './KnowledgeGraphDetails.constants';
-import { chipText, toChips } from './KnowledgeGraphDetails.utils';
+import { getTagsText } from './KnowledgeGraphDetails.utils';
 import KnowledgeGraphDetailsFooter from './KnowledgeGraphDetailsFooter';
 
 interface DetailsProps {
@@ -84,8 +84,8 @@ interface DetailCell {
   badge?: BadgeColors;
   /** Renders a column data-type badge; `text` is the display form. */
   dataType?: string;
-  /** Renders tag / glossary-term chips instead of the text. */
-  chips?: KnowledgeGraphChip[];
+  /** Renders tag / glossary-term chips (TagsViewer) instead of the text. */
+  tags?: TagLabel[];
 }
 
 interface DetailRow {
@@ -440,10 +440,8 @@ const KnowledgeGraphDetails = ({
           column.tags?.filter((tag) => tag.source === 'Glossary') ?? [];
         const node = graphColumns.get(column.fullyQualifiedName ?? column.name);
         const mapping = getColumnCoverage(terms.length, node, coverage);
-        const termChips = toChips(terms, 'glossary');
-        const tagChips = toChips(
-          (column.tags ?? []).filter((tag) => tag.source !== 'Glossary'),
-          'tag'
+        const classificationTags = (column.tags ?? []).filter(
+          (tag) => tag.source !== 'Glossary'
         );
         const dataType = column.dataTypeDisplay ?? column.dataType;
 
@@ -455,11 +453,14 @@ const KnowledgeGraphDetails = ({
           cells: [
             { text: column.name, tone: 'primary' },
             { text: dataType, dataType: column.dataType },
-            termChips.length > 0
-              ? { text: chipText(termChips), chips: termChips }
+            terms.length > 0
+              ? { text: getTagsText(terms), tags: terms }
               : { text: t('label.kg-' + mapping), tone: 'muted' },
-            tagChips.length > 0
-              ? { text: chipText(tagChips), chips: tagChips }
+            classificationTags.length > 0
+              ? {
+                  text: getTagsText(classificationTags),
+                  tags: classificationTags,
+                }
               : { text: '—', tone: 'muted' },
           ],
         };
@@ -505,8 +506,14 @@ const KnowledgeGraphDetails = ({
           if (!cell) {
             return null;
           }
-          if (cell.chips) {
-            return <KnowledgeGraphChipList chips={cell.chips} />;
+          if (cell.tags) {
+            return (
+              <TagsViewer
+                showNoDataPlaceholder={false}
+                sizeCap={CHIP_LIMIT}
+                tags={cell.tags}
+              />
+            );
           }
           if (cell.dataType) {
             return (
