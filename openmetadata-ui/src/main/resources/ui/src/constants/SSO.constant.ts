@@ -131,14 +131,14 @@ export const COMMON_UI_FIELDS = {
   oidcClientAuthenticationMethod: {
     'ui:title': 'OIDC Client Authentication Method',
   },
-  oidcTokenValidity: { 'ui:title': 'OpenMetadata Access Token Validity' },
+  // The browser holds the identity provider's own ID token, so its lifetime is the provider's
+  // and sessions always follow the provider: both settings are ignored for OIDC.
+  oidcTokenValidity: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcCustomParameters: { 'ui:title': 'OIDC Custom Parameters' },
   oidcMaxAge: { 'ui:title': 'OIDC Max Age' },
   oidcPrompt: { 'ui:title': 'OIDC Prompt' },
   oidcSessionExpiry: { 'ui:title': 'OIDC Session Expiry' },
-  oidcEndSessionWithProvider: {
-    'ui:title': 'End Session With Identity Provider',
-  },
+  oidcEndSessionWithProvider: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Common non-OIDC fields
   authority: {
     'ui:title': 'Authority',
@@ -550,10 +550,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
     disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
     maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
     clientAuthenticationMethod: { 'ui:widget': 'hidden', 'ui:hideError': true },
-    tokenValidity: {
-      'ui:title': 'OpenMetadata Access Token Validity',
-      'ui:placeholder': `Default: ${OIDC_SSO_DEFAULTS.tokenValidity}`,
-    },
+    tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
     customParams: COMMON_UI_FIELDS.oidcCustomParameters,
     tenant: { 'ui:widget': 'hidden', 'ui:hideError': true },
     serverUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -744,51 +741,21 @@ export const ALLOWED_EMAIL_REGISTRATION_DOMAINS_VISIBILITY: Record<
   'aws-cognito': { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Provider-specific field removal mapping for cleanup
+// Provider-specific field removal mapping for cleanup. Fields every provider shares, such as
+// enableSelfSignup, stay out of these lists: removing one here drops the admin's value on save.
 export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
-  ldap: ['samlConfiguration', 'oidcConfiguration', 'enableSelfSignup'],
-  saml: [
-    'ldapConfiguration',
-    'oidcConfiguration',
-    'tokenValidationAlgorithm',
-    'enableSelfSignup',
-  ],
-  customoidc: ['ldapConfiguration', 'samlConfiguration', 'enableSelfSignup'],
-  google: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  auth0: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  azure: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  okta: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
-  basic: [
-    'ldapConfiguration',
-    'samlConfiguration',
-    'oidcConfiguration',
-    'enableSelfSignup',
-  ],
+  ldap: ['samlConfiguration', 'oidcConfiguration'],
+  saml: ['ldapConfiguration', 'oidcConfiguration', 'tokenValidationAlgorithm'],
+  customoidc: ['ldapConfiguration', 'samlConfiguration'],
+  google: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  auth0: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  azure: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  okta: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
+  basic: ['ldapConfiguration', 'samlConfiguration', 'oidcConfiguration'],
   'aws-cognito': [
     'ldapConfiguration',
     'samlConfiguration',
     'oidcConfiguration',
-    'enableSelfSignup',
   ],
 };
 

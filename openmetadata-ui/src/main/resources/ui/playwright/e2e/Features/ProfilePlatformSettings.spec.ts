@@ -31,9 +31,12 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const SETTINGS_PUT = '**/api/v1/system/settings';
 
+type PatchOp = { op: string; path: string; value: unknown };
+
 type SettingState = {
   value?: Record<string, unknown>;
   puts: Record<string, unknown>[];
+  patches: PatchOp[][];
 };
 
 /**
@@ -56,10 +59,29 @@ const stubSettingRoundTrip = async (
     initial?: Record<string, unknown>;
   } = {}
 ): Promise<SettingState> => {
-  const state: SettingState = { value: initial, puts: [] };
+  const state: SettingState = { value: initial, puts: [], patches: [] };
 
   await page.route(getUrl, async (route) => {
-    if (route.request().method() !== 'GET' || state.value === undefined) {
+    const method = route.request().method();
+    // `appConfiguration` is saved with an RFC 6902 PATCH on this same typed
+    // endpoint, so capture it here and apply it to the value the GET serves.
+    if (method === 'PATCH') {
+      const ops = route.request().postDataJSON() as PatchOp[];
+      state.patches.push(ops);
+      state.value = ops.reduce(
+        (value, { path, value: opValue }) => ({
+          ...value,
+          [path.replace(/^\//, '')]: opValue,
+        }),
+        state.value ?? {}
+      );
+      await route.fulfill({
+        json: { config_type: configType, config_value: state.value },
+      });
+
+      return;
+    }
+    if (method !== 'GET' || state.value === undefined) {
       await route.fallback();
 
       return;
@@ -122,6 +144,20 @@ const fillField = async (page: Page, testId: string, value: string) => {
 
 const saveSettings = (page: Page) =>
   clickAndWaitFor(page, page.getByTestId('save-button'), SETTINGS_PUT);
+
+// The app-mode and table & schema cards write one key of `appConfiguration`
+// with a JSON Patch on the typed endpoint, not the generic settings PUT.
+const saveAppConfiguration = async (page: Page) => {
+  const saved = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().endsWith('/api/v1/system/settings/appConfiguration') &&
+      response.request().method() === 'PATCH',
+    200
+  );
+  await page.getByTestId('save-button').click();
+  await saved;
+};
 
 test.describe(
   'Profile Platform Settings',
@@ -192,6 +228,7 @@ test.describe(
         ['search', 'search-settings'],
         ['app-mode', 'default-app-mode-page'],
         ['table-schema', 'table-schema-settings'],
+        ['time-format', 'time-format-settings'],
         ['glossary', 'glossary-settings'],
       ];
 
@@ -452,14 +489,39 @@ test.describe(
       await expect(save).toBeDisabled();
 
       await page.getByTestId('app-mode-option-classic').click();
-      await saveSettings(page);
+      await saveAppConfiguration(page);
 
-      expect(settings.puts[0]).toMatchObject({
-        config_type: 'appConfiguration',
-        config_value: { defaultAppMode: 'classic' },
-      });
+      expect(settings.patches[0]).toEqual([
+        { op: 'add', path: '/defaultAppMode', value: 'classic' },
+      ]);
       await expect(page.getByTestId('default-app-mode-value')).toHaveText(
         'Classic'
+      );
+    });
+
+    test('default time format: saves the selected format', async ({ page }) => {
+      const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
+        initial: { defaultTimeFormat: '12h' },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'time-format');
+
+      await expect(page.getByTestId('default-time-format-value')).toHaveText(
+        '12-hour format'
+      );
+      await header(page).getByTestId('edit-button').click();
+
+      const save = page.getByTestId('save-button');
+      await expect(save).toBeDisabled();
+
+      await page.getByTestId('time-format-option-24h').click();
+      await saveAppConfiguration(page);
+
+      expect(settings.patches[0]).toEqual([
+        { op: 'add', path: '/defaultTimeFormat', value: '24h' },
+      ]);
+      await expect(page.getByTestId('default-time-format-value')).toHaveText(
+        '24-hour format'
       );
     });
     test('theme: saves colours and logo, and Reset clears them', async ({
@@ -945,9 +1007,13 @@ test.describe(
         await header(page).getByTestId('edit-button').click();
         await expect(page.getByTestId('save-button')).toBeDisabled();
         await page.getByTestId('column-order-option-sourceOrder').click();
-        await saveSettings(page);
+        await saveAppConfiguration(page);
 
-        expect(settings.puts[0].config_value).toEqual({
+        expect(settings.patches[0]).toEqual([
+          { op: 'add', path: '/defaultColumnOrder', value: 'sourceOrder' },
+        ]);
+        // The patch carries only its own key, so the stored app mode survives.
+        expect(settings.value).toEqual({
           defaultAppMode: 'ai',
           defaultColumnOrder: 'sourceOrder',
         });

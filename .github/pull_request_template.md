@@ -75,9 +75,10 @@ search-it nightly. Before requesting review, run the Java tests this PR impacts 
 `.github/java-tests/impact-map.json`):
 
   make java_affected                            # list the impacted unit tests + ITs and the commands
-  make java_affected_run ARGS="--update-pr"     # run them and fill the block below
+  make java_affected_run ARGS="--update-pr"     # run them, fill the block below, post the details as a comment
 
-Without `gh`, drop `--update-pr` and paste `target/java-tests/local-pr-results.md` between the markers.
+Without `gh`, drop `--update-pr`, paste `target/java-tests/local-pr-results.md` between the markers,
+and post `target/java-tests/local-pr-results-details.md` as a PR comment.
 -->
 <!-- local-java-test-results:start -->
 <!-- local-java-test-results:end -->
@@ -142,6 +143,7 @@ Standalone fixes, refactors, styling, localization, docs, tests and backend-only
 - [ ] For JSON Schema changes: I updated the migration scripts or explained why it is not needed.
 - [ ] For a UI feature or feature task: as part of PR creation, I ran the PR build in Docker with sample data and embedded a verified GitHub-hosted recording plus build/health evidence above (or explained why this requirement is not applicable).
 - [ ] I have added tests (unit / integration / Playwright as applicable) and listed them above.
+- [ ] Self-review: I reviewed the final diff against `REVIEW.md` (the `pr-checklist` skill runs it) and fixed every 🔴 finding, or answered it on the line below.
 - [ ] Decision check: if this PR decides something the next contributor could undo — a schema field, REST path or format another component or repo must agree with, a new default or limit, an ordering that must hold, or a rule stated only in this description — it adds a record under `docs/decisions/` (see its `README.md`). This description is gone from `git log` after the squash-merge.
 
 <!-- Based on the type(s) of your change, uncomment the required checklist 👇 -->

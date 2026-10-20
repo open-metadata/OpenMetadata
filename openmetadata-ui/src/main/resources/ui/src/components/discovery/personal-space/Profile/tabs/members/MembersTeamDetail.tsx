@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Box, SelectItemType, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  SelectItemType,
+  TableCard,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { Reorder } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
 import {
@@ -30,7 +36,11 @@ import type { Key } from 'react-aria-components';
 import { useDragAndDrop } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../../../../constants/constants';
+import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
+import {
+  INITIAL_PAGING_VALUE,
+  ROUTES,
+} from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -58,6 +68,7 @@ import {
   exportUserOfTeam,
   getTeamByName,
   getTeams,
+  getTeamsAssetCounts,
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
@@ -87,6 +98,7 @@ import type { ExpandableConfig } from '../../../../../common/Table/Table.interfa
 import { useEntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import type { EntityDetailsObjectInterface } from '../../../../../Explore/ExplorePage.interface';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { TABLE_TABS } from './Members.constants';
 import type { MembersTeamDetailProps } from './Members.types';
 import MembersAssetsTab from './MembersAssetsTab';
 import MembersInlineEntityTab from './MembersInlineEntityTab';
@@ -140,6 +152,7 @@ const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
 
 // The inline role/policy add flow is identical bar the team field it writes to.
 type InlineAddField = 'defaultRoles' | 'policies';
+
 type AddOption = {
   id: string;
   name: string;
@@ -168,6 +181,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
+  const [teamAssetCounts, setTeamAssetCounts] = useState<
+    Record<string, number>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isChildTeamsLoading, setIsChildTeamsLoading] = useState(false);
   const [showDeletedTeam, setShowDeletedTeam] = useState(false);
@@ -188,6 +204,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // or after unmount) must not report its name up via onRename and clobber the
   // now-current team's header. Bumped on each fetch start and on unmount.
   const fetchIdRef = useRef(0);
+  // Bumped on each user search so a slow, stale search response can't overwrite
+  // the rows for a newer search (or the cleared-search page fetch) that followed.
+  const latestUserSearchIdRef = useRef(0);
 
   // Inline add role/policy — only one tab is ever adding at a time, so a single
   // field-keyed add session serves both (defaultRoles | policies).
@@ -312,11 +331,20 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     }
   }, [fqn, onRename]);
 
+  const fetchTeamAssetCounts = useCallback(async () => {
+    try {
+      setTeamAssetCounts(await getTeamsAssetCounts());
+    } catch {
+      // Same as the Teams settings page: without the aggregation, counts show 0.
+    }
+  }, []);
+
   const fetchChildTeams = useCallback(async () => {
     if (!team?.fullyQualifiedName) {
       return;
     }
     setIsChildTeamsLoading(true);
+    void fetchTeamAssetCounts();
     try {
       const { data } = await getTeams({
         parentTeam: team.fullyQualifiedName,
@@ -324,7 +352,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         fields: [
           TabSpecificField.USER_COUNT,
           TabSpecificField.CHILDREN_COUNT,
-          TabSpecificField.OWNS,
           TabSpecificField.PARENTS,
         ],
       });
@@ -335,7 +362,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     } finally {
       setIsChildTeamsLoading(false);
     }
-  }, [team?.fullyQualifiedName, showDeletedTeam]);
+  }, [team?.fullyQualifiedName, showDeletedTeam, fetchTeamAssetCounts]);
 
   // Lazy-load a row's sub-teams on first expand and graft them into the tree,
   // so the hierarchy is revealed without fetching every level upfront.
@@ -351,7 +378,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           fields: [
             TabSpecificField.USER_COUNT,
             TabSpecificField.CHILDREN_COUNT,
-            TabSpecificField.OWNS,
             TabSpecificField.PARENTS,
           ],
         });
@@ -398,8 +424,95 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team?.name, usersPageSize, handleUsersPagingChange]
   );
 
+  // Whole-team user search via the backend search API, mirroring the sibling
+  // MembersUsersPanel and the legacy UserTab. getUsers has no name/query field,
+  // so a client-side filter over one cursor page would miss off-page members on
+  // multi-page teams. Scopes the query to this team and its descendant teams
+  // (descendantTeams is resolved on the team request above) so members inherited
+  // from sub-groups are found too, matches the Users tab list. isBot:false keeps
+  // search results consistent with the non-search getUsers list (which excludes
+  // bots). Number-based paging — pageNumber drives the result page directly.
+  const searchTeamUsers = useCallback(
+    async (query: string, page: number = INITIAL_PAGING_VALUE) => {
+      if (!team?.id) {
+        return;
+      }
+      const searchId = ++latestUserSearchIdRef.current;
+      setIsTeamUsersLoading(true);
+      try {
+        const response = await searchQuery({
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
+          pageNumber: page,
+          pageSize: usersPageSize,
+          searchIndex: SearchIndex.USER,
+          queryFilter: {
+            query: {
+              bool: {
+                must: [
+                  {
+                    terms: {
+                      'teams.id': [
+                        team.id,
+                        ...(team.descendantTeams?.map((t) => t.id) ?? []),
+                      ],
+                    },
+                  },
+                  {
+                    term: { isBot: 'false' },
+                  },
+                ],
+              },
+            },
+          },
+        });
+        if (searchId !== latestUserSearchIdRef.current) {
+          return;
+        }
+        const data = response.hits.hits.map((hit) => hit._source as User);
+        setTeamUsers(data);
+        handleUsersPagingChange({ total: response.hits.total.value });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setTeamUsers([]);
+        handleUsersPagingChange({ total: 0 });
+      } finally {
+        if (searchId === latestUserSearchIdRef.current) {
+          setIsTeamUsersLoading(false);
+        }
+      }
+    },
+    [team?.id, team?.descendantTeams, usersPageSize, handleUsersPagingChange]
+  );
+
+  // Drives the users search input: sets the term and dispatches either a backend
+  // search (non-empty) or the cursor-paginated getUsers fetch (cleared). Mirrors
+  // MembersUsersPanel.handleSearch. The term is deliberately NOT an effect dep —
+  // search/clear is driven here, not by the refetch effect, to avoid a double
+  // fetch on every keystroke (the search input debounces via typingInterval).
+  const handleUsersSearch = useCallback(
+    (term: string) => {
+      setUsersSearchTerm(term);
+      handleUsersPageChange(INITIAL_PAGING_VALUE);
+      if (term) {
+        void searchTeamUsers(term);
+      } else {
+        void fetchTeamUsers();
+      }
+    },
+    [handleUsersPageChange, searchTeamUsers, fetchTeamUsers]
+  );
+
   const handleTeamUsersPageNavigation = (newPage: number) => {
     if (newPage === usersPage) {
+      return;
+    }
+
+    // Search uses number-based paging — pageNumber drives the result page, so
+    // any page jump is allowed (no ±1 cursor restriction).
+    if (usersSearchTerm) {
+      handleUsersPageChange(newPage);
+      void searchTeamUsers(usersSearchTerm, newPage);
+
       return;
     }
 
@@ -442,7 +555,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const refetchTeamUsers = useRef<() => void>(() => undefined);
   refetchTeamUsers.current = () => {
     if (team && activeTab === 'users') {
-      void fetchTeamUsers();
+      if (usersSearchTerm) {
+        void searchTeamUsers(usersSearchTerm);
+      } else {
+        void fetchTeamUsers();
+      }
     }
   };
 
@@ -617,12 +734,15 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           t('server.update-entity-success', { entity: t('label.team') })
         );
         void fetchTeam();
-        void fetchTeamUsers();
+        // Re-run the active view (search or paginated list) so removing a user
+        // during a search doesn't drop the search term: the refetch runs the
+        // backend search when a term is active, the page fetch otherwise.
+        refetchTeamUsers.current();
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
     },
-    [team, t, fetchTeam, fetchTeamUsers]
+    [team, t, fetchTeam]
   );
 
   const handleAddUsers = useCallback(
@@ -633,9 +753,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         return;
       }
       await handlePatchTeam({ ...team, users });
-      void fetchTeamUsers();
+      // Re-run the active view — preserve an in-flight search rather than
+      // swapping in the unfiltered first page (see handleRemoveUser).
+      refetchTeamUsers.current();
     },
-    [team, handlePatchTeam, fetchTeamUsers]
+    [team, handlePatchTeam]
   );
 
   const handleStartAdd = useCallback(
@@ -792,8 +914,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   // Child team columns
   const childTeamColumns = useMemo(
-    () => getChildTeamColumns(t, onNavigate),
-    [t, onNavigate]
+    () => getChildTeamColumns(t, onNavigate, teamAssetCounts),
+    [t, onNavigate, teamAssetCounts]
   );
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
@@ -940,18 +1062,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     );
   }, [childTeams, searchTerm]);
 
-  const filteredTeamUsers = useMemo(() => {
-    if (!usersSearchTerm) {
-      return teamUsers;
-    }
-    const lower = usersSearchTerm.toLowerCase();
-
-    return teamUsers.filter(
-      (u) =>
-        (u.name ?? '').toLowerCase().includes(lower) ||
-        getEntityName(u).toLowerCase().includes(lower)
-    );
-  }, [teamUsers, usersSearchTerm]);
+  // The users rows are now sourced entirely from the backend: getUsers for the
+  // paginated list and searchQuery (whole-team) when a search term is active,
+  // so no client-side filter is applied here — both paths write `teamUsers`.
 
   const addItems = useMemo<SelectItemType[]>(
     () =>
@@ -1122,7 +1235,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
         return (
           <MembersUsersTab
             canEditAll={canEditAll}
-            filteredTeamUsers={filteredTeamUsers}
+            filteredTeamUsers={teamUsers}
             isGroupType={isGroupType}
             isTeamUsersLoading={isTeamUsersLoading}
             showUsersPagination={showUsersPagination}
@@ -1137,7 +1250,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             onTeamUsersPageNavigation={handleTeamUsersPageNavigation}
             onUsersExport={handleUsersExport}
             onUsersPageSizeChange={handleUsersPageSizeChange}
-            onUsersSearchTermChange={setUsersSearchTerm}
+            onUsersSearchTermChange={handleUsersSearch}
           />
         );
       case 'assets':
@@ -1162,6 +1275,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={roleColumns}
             dataSource={team.defaultRoles ?? []}
+            entityDescription={t('message.page-sub-header-for-roles')}
             entityLabel={t('label.role')}
             entityPluralLabel={t('label.role-plural')}
             filterOption={inlineFilterOption}
@@ -1186,6 +1300,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             canEditAll={canEditAll}
             columns={policyColumns}
             dataSource={team.policies ?? []}
+            entityDescription={t('message.page-sub-header-for-policies')}
             entityLabel={t('label.policy')}
             entityPluralLabel={t('label.policy-plural')}
             filterOption={inlineFilterOption}
@@ -1210,10 +1325,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       data-testid="team-detail"
       direction="col">
       {/* Pinned header: info widgets + description. Capped at half the height and
-          scrollable so a long description or the open inline editor (incl. its
-          Save/Cancel) can't push the tab table to zero height or get clipped. */}
+          scrollable so a long description can't push the tab table to zero
+          height; its cards never shrink (they would clip instead of scroll), and
+          the cap lifts while the editor is open so Save/Cancel stay in view. */}
       <Box
-        className="tw:shrink-0 tw:max-h-[50%] tw:overflow-y-auto"
+        className={classNames(
+          'tw:shrink-0 tw:overflow-y-auto tw:[&>*]:shrink-0',
+          !isDescEditing && 'tw:max-h-[50%]'
+        )}
         direction="col">
         {/* Info widget section */}
         <MembersTeamInfoWidgets
@@ -1237,30 +1356,6 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
       {/* Tabs */}
       <Box className="tw:px-8 tw:flex-1 tw:min-h-0" direction="col">
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key: Key) => setActiveTab(String(key))}>
-          <Tabs.List size="sm" type="underline">
-            {allTabKeys.map((tab) => {
-              const plugin = pluginTabs.find((item) => item.key === tab);
-
-              return (
-                <Tabs.Item id={tab} key={tab}>
-                  {plugin
-                    ? plugin.label
-                    : getTabLabel(
-                        tab as TeamTab,
-                        t,
-                        team,
-                        childTeams.length,
-                        assetCount
-                      )}
-                </Tabs.Item>
-              );
-            })}
-          </Tabs.List>
-        </Tabs>
-
         {/* A plain block, NOT a `Box`: `Box` is display:flex, and inside a flex
             container the tab content becomes a flex item that shrinks to the
             container's height instead of overflowing it, so `overflow-auto`
@@ -1268,7 +1363,52 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             clientHeight). A block container lets the content keep its natural
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
-          {renderActiveTab()}
+          <TableCard.Root
+            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+            size="compact">
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key: Key) => setActiveTab(String(key))}>
+              {/* -mb-px lays the tab underline over the row border so the divider
+                  also runs under the actions. */}
+              <Box
+                align="center"
+                className="tw:border-b tw:border-secondary tw:pr-4"
+                direction="row"
+                gap={4}
+                justify="between">
+                <Tabs.List
+                  className="tw:-mb-px tw:px-4 tw:pt-3"
+                  size="sm"
+                  type="underline">
+                  {allTabKeys.map((tab) => {
+                    const plugin = pluginTabs.find((item) => item.key === tab);
+
+                    return (
+                      <Tabs.Item id={tab} key={tab}>
+                        {plugin
+                          ? plugin.label
+                          : getTabLabel(
+                              tab as TeamTab,
+                              t,
+                              team,
+                              childTeams.length,
+                              assetCount
+                            )}
+                      </Tabs.Item>
+                    );
+                  })}
+                </Tabs.List>
+              </Box>
+            </Tabs>
+            {TABLE_TABS.has(activeTab) ? (
+              renderActiveTab()
+            ) : (
+              <Box className="tw:p-4" direction="col">
+                {renderActiveTab()}
+              </Box>
+            )}
+          </TableCard.Root>
         </div>
       </Box>
 

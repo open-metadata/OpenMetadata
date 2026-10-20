@@ -14,6 +14,8 @@
 import {
   Box,
   Button,
+  Card,
+  SlideoutMenu,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -21,18 +23,23 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  ConstraintKey,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { Card, Drawer } from 'antd';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
-import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
-import { DE_ACTIVE_COLOR, ENTITY_PATH } from '../../../constants/constants';
+import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column, TableConstraint } from '../../../generated/entity/data/table';
@@ -127,6 +134,8 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
   tableConstraints = [],
   entityType,
 }: ColumnDetailPanelProps<T>) => {
+  const drawerTitleId = useId();
+
   const { t } = useTranslation();
   const { permissions, changeSummary } = useGenericContext();
 
@@ -624,7 +633,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       previousFqnRef.current = undefined;
       fetchedColumnFqnRef.current = undefined;
     }
-  }, [isOpen, activeColumn?.fullyQualifiedName]);
+  }, [isOpen, activeColumn]);
 
   const handleTabChange = (tab: EntityRightPanelTab) => {
     setActiveTab(tab);
@@ -743,7 +752,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     if (!lineageData) {
       return (
-        <div className="tw:text-center tw:text-gray-400 tw:p-6">
+        <div className="tw:text-center tw:text-utility-gray-400 tw:p-6">
           {t('label.no-data-found')}
         </div>
       );
@@ -802,7 +811,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
-                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-utility-gray-400 hover:tw:underline':
                   !isLastItem,
               })}
               title={getEntityName(breadcrumb)}
@@ -813,7 +822,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
-                className="tw:text-gray-400 tw:shrink-0"
+                className="tw:text-utility-gray-400 tw:shrink-0"
                 height={16}
                 width={16}
               />
@@ -841,7 +850,6 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         className="tw:ml-2"
         data-testid="edit-displayName-button"
         disabled={false}
-        icon={<IconEdit color={DE_ACTIVE_COLOR} height={18} width={18} />}
         size="small"
         title={t('label.edit-entity', {
           entity: t('label.display-name'),
@@ -864,7 +872,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <Typography
-        className="tw:text-gray-400 tw:text-xs"
+        className="tw:text-utility-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
         {renderHighlightedText(activeColumn.name || '')}
@@ -901,7 +909,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
-        <KeyIcon height={12} width={12} />
+        <ConstraintKey size={12} />
         {t('label.primary-key')}
       </div>
     );
@@ -954,6 +962,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
             <div className="tw:shrink-0">
               <Button
+                aria-label={t('label.close')}
                 color="secondary"
                 data-testid="close-button"
                 iconLeading={XClose}
@@ -1043,6 +1052,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
       <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
         <Button
+          aria-label={t('label.previous')}
           color="secondary"
           iconLeading={ChevronUp}
           isDisabled={isPreviousDisabled}
@@ -1050,6 +1060,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
           onClick={handlePreviousColumn}
         />
         <Button
+          aria-label={t('label.next')}
           color="secondary"
           iconLeading={ChevronDown}
           isDisabled={isNextDisabled}
@@ -1061,37 +1072,51 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
     </div>
   );
 
+  // Popup portals belong to the drawer even though they render outside its DOM tree.
   return (
-    <Drawer
-      className="column-detail-panel"
-      closable={false}
-      footer={navFooter}
-      open={isOpen}
-      placement="right"
-      title={columnTitle}
+    <SlideoutMenu
+      isDismissable
+      aria-labelledby={drawerTitleId}
+      dialogClassName="column-detail-panel"
+      isOpen={isOpen}
+      shouldCloseOnInteractOutside={(element) =>
+        !element.closest('[data-react-aria-top-layer]')
+      }
       width="40%"
-      onClose={onClose}>
-      <div className="column-detail-panel-container">
-        <div className="tw:flex tw:gap-2 tw:h-full">
-          <Card bordered={false} className="summary-panel-container">
-            <Card
-              className="tw:h-full tw:overflow-y-auto tw:max-h-full"
-              style={{ width: '100%' }}>
-              {renderTabContent()}
-            </Card>
-          </Card>
-          <div className="tw:mr-2">
-            <EntityRightPanelVerticalNav
-              isColumnDetailPanel
-              activeTab={activeTab}
-              entityType={entityType}
-              verticalNavConatinerclassName="tw:w-[70px]"
-              onTabChange={handleTabChange}
-            />
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          onClose();
+        }
+      }}>
+      <SlideoutMenu.Header id={drawerTitleId} showCloseButton={false}>
+        {columnTitle}
+      </SlideoutMenu.Header>
+      <SlideoutMenu.Content role="region">
+        <>
+          <div className="column-detail-panel-container">
+            <div className="tw:flex tw:gap-2 tw:h-full">
+              <Card className="summary-panel-container" variant="ghost">
+                <Card
+                  className="tw:h-full tw:overflow-y-auto tw:max-h-full"
+                  style={{ width: '100%' }}>
+                  {renderTabContent()}
+                </Card>
+              </Card>
+              <div className="tw:mr-2">
+                <EntityRightPanelVerticalNav
+                  isColumnDetailPanel
+                  activeTab={activeTab}
+                  entityType={entityType}
+                  verticalNavConatinerclassName="tw:w-[70px]"
+                  onTabChange={handleTabChange}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      {renderDisplayNameModal()}
-    </Drawer>
+          {renderDisplayNameModal()}
+        </>
+      </SlideoutMenu.Content>
+      <SlideoutMenu.Footer>{navFooter}</SlideoutMenu.Footer>
+    </SlideoutMenu>
   );
 };

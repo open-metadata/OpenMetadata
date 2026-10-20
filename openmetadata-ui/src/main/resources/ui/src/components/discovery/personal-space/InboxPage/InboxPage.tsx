@@ -61,7 +61,9 @@ const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
         variant={isAiMode ? 'gradient' : 'flat'}
       />
 
-      <PageLayout.Content className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden! tw:px-2! tw:pt-0! tw:pb-0!">
+      {/* The content is a card of its own (see InboxContent): full width, so its
+          edges line up with the header card's, and a gap below the header. */}
+      <PageLayout.Content className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden! tw:px-0! tw:pt-2! tw:pb-0!">
         {content ?? (
           <EmptyPlaceholder
             data-testid="inbox-empty"

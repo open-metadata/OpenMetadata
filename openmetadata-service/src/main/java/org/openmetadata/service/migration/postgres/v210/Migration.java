@@ -15,10 +15,14 @@ package org.openmetadata.service.migration.postgres.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
+import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
 import static org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration.rebuildDataContractEntityReferences;
 import static org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration.backfillTestCaseDimensions;
+import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
@@ -34,9 +38,12 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
+import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
+import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
+import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -47,6 +54,9 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // First, so no later step loads an entity still typed DeltaLake:
+    // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
+    retireDeltaLakeServices(handle, POSTGRES, getPipelineServiceClient());
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);
     refreshConversationNotificationTemplates();
@@ -77,10 +87,20 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // entityReference / entityReferenceList values move to custom_property_reference, their only
+    // home from 2.1 on, so a hard delete can remove references to the deleted entity. Restartable.
+    CustomPropertyReferenceMigration.migrate(handle, collectionDAO, POSTGRES);
     // MlModelRepository now indexes feature tags into tag_usage like every other type with inline
     // children. That fires only on write, so features tagged before this upgrade would read back
     // as untagged from any FQN-prefix query. Idempotent. DB-agnostic, so it runs on both engines.
     backfillMlFeatureTags(collectionDAO);
+    // Authentication secrets were stored in clear text; new writes encrypt them, this encrypts what
+    // is already stored. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        AuthenticationSecretsEncryptionMigration.STEP_NAME,
+        () -> encryptAuthenticationSecrets(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -98,5 +118,19 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AlertBacklogMigration.STEP_NAME,
         () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    // Alerts name their consumer by its registered id, no longer by its Java class.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ConsumerIdMigration.STEP_NAME,
+        () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
+    // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
+    // harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ACTIVITY_FEED_ALERT_STEP,
+        () -> addContractAndStatusToActivityFeedAlert(handle));
   }
 }

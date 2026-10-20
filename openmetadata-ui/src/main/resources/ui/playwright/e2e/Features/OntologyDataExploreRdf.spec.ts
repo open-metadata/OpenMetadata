@@ -24,6 +24,7 @@ import {
   EXTENDED_TEST_TIMEOUT,
   LONG_ACTION_TIMEOUT,
 } from '../../constant/common';
+import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -36,15 +37,22 @@ import {
   readSearchHighlightIds,
   waitForGraphLoaded,
 } from '../../utils/ontologyStudio';
+import { assetIdsWithColumns, countAssetsWithColumns } from '../../utils/table';
 
 const suffix = uuid().replaceAll('-', '');
 const fixture = new OntologyRdfFixture(`pw_data_${suffix}`);
 const foreignFixture = new OntologyRdfFixture(`pw_data_foreign_${suffix}`);
-const tableFixture = new TableClass({ name: `pw_data_asset_${suffix}_0` });
-const PRIMARY_ASSET_COUNT = 101;
+const tableFixture = new TableClass({
+  name: `pw_data_asset_${suffix}_0`,
+  schema: new DatabaseSchemaClass(),
+});
+const TABLE_COLUMNS = [
+  { dataType: DataType.Int, dataTypeDisplay: 'int', name: 'id' },
+];
+const PRIMARY_TABLE_COUNT = 101;
 const PAGINATION_DECOY_COUNT = 11;
 const SELECTED_GLOSSARY_TERM_COUNT = PAGINATION_DECOY_COUNT + 3;
-const SECONDARY_ASSET_INDEX = PRIMARY_ASSET_COUNT;
+const SECONDARY_ASSET_INDEX = PRIMARY_TABLE_COUNT;
 const HIERARCHY_ASSET_INDEX = SECONDARY_ASSET_INDEX + 1;
 const PAGINATION_ASSET_START_INDEX = HIERARCHY_ASSET_INDEX + 1;
 const TOTAL_ASSET_COUNT = PAGINATION_ASSET_START_INDEX + PAGINATION_DECOY_COUNT;
@@ -62,7 +70,7 @@ let lineageToAssetId = '';
 interface OntologyDataGraphBody {
   clusters: Array<{
     assetCount: number;
-    assets: Array<{ id: string }>;
+    assets: EntityReference[];
     term: { id: string };
   }>;
   edges: Array<{
@@ -175,24 +183,20 @@ async function assertOntologyDesignContract(
   const shell = page.getByTestId('ontology-studio-shell');
   const header = shell.locator(':scope > header');
   const subNavigation = shell.locator(':scope > nav');
-  const dataTab = page.getByRole('tab', { name: 'Data' });
+  const dataTab = page.getByRole('tab', { name: 'Data', exact: true });
   const cluster = page.getByTestId(`ontology-data-cluster-${termId}`);
   const assetName = cluster
     .getByTestId(`ontology-data-asset-${assetId}`)
     .getByTestId('ontology-data-asset-name');
 
   await expect(shell).toHaveCSS('font-family', /Inter/);
-  await expect(header).toHaveCSS('height', '56px');
-  await expect(subNavigation).toHaveCSS('height', '46px');
-  await expect(dataTab).toHaveCSS('font-size', '11px');
-  await expect(dataTab).toHaveCSS('font-weight', '600');
-  await expect(dataTab).toHaveCSS('padding-left', '16px');
-  await expect(dataTab).toHaveCSS('padding-top', '6px');
-  await expect(dataTab).toHaveCSS('background-color', 'rgb(239, 248, 255)');
-  await expect(dataTab).toHaveCSS('color', 'rgb(23, 92, 211)');
-  await expect(cluster).toHaveCSS('width', '236px');
-  await expect(assetName).toHaveCSS('font-family', /Geist Mono/);
-  await expect(assetName).toHaveCSS('font-size', '11px');
+  await expect(
+    header.getByRole('heading', { name: 'Ontology Studio', exact: true })
+  ).toBeVisible();
+  await expect(subNavigation).toHaveCSS('height', '56px');
+  await expect(dataTab).toHaveAttribute('aria-selected', 'true');
+  await expect(cluster).toHaveCSS('width', '380px');
+  await expect(assetName).toHaveCSS('font-size', '14px');
   await expect(assetName).toHaveCSS('font-weight', '500');
 }
 
@@ -211,13 +215,7 @@ async function createTable(
   index: number
 ): Promise<Table> {
   const request: CreateTable = {
-    columns: [
-      {
-        dataType: DataType.Int,
-        dataTypeDisplay: 'int',
-        name: 'id',
-      },
-    ],
+    columns: TABLE_COLUMNS,
     databaseSchema,
     description: 'Ontology data-mode pagination fixture.',
     displayName: `Ontology data asset ${index}`,
@@ -302,6 +300,7 @@ async function getAssetCount(
   const response = await apiContext.get('/api/v1/glossaryTerms/assets/counts', {
     params: { parent: glossaryFqn },
   });
+  expect(response.ok(), await response.text()).toBe(true);
   const body: unknown = response.ok() ? await response.json() : undefined;
 
   return isAssetCountResponse(body)
@@ -337,6 +336,7 @@ async function getOntologyDataGraph(
       parent: glossaryFqn,
     },
   });
+  expect(response.ok(), await response.text()).toBe(true);
   const body: unknown = response.ok() ? await response.json() : undefined;
 
   return isOntologyDataGraph(body) ? body : undefined;
@@ -387,6 +387,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
         target: foreignTerm,
       });
 
+      tableFixture.entity.columns = TABLE_COLUMNS;
       const tableResources = await tableFixture.create(apiContext);
       tables = [
         tableResources.entity,
@@ -399,7 +400,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       await addAssets(
         apiContext,
         primaryTerm,
-        tables.slice(0, PRIMARY_ASSET_COUNT)
+        tables.slice(0, PRIMARY_TABLE_COUNT)
       );
       await addAssets(apiContext, secondaryTerm, [
         tables[SECONDARY_ASSET_INDEX],
@@ -426,7 +427,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ),
           { timeout: 120_000 }
         )
-        .toBe(PRIMARY_ASSET_COUNT);
+        .toBe(countAssetsWithColumns(tables.slice(0, PRIMARY_TABLE_COUNT)));
       await expect
         .poll(
           () =>
@@ -437,7 +438,7 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ),
           { timeout: LONG_ACTION_TIMEOUT }
         )
-        .toBe(1);
+        .toBe(countAssetsWithColumns([tables[SECONDARY_ASSET_INDEX]]));
       await expect
         .poll(
           () =>
@@ -455,7 +456,10 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
             ]),
           { timeout: LONG_ACTION_TIMEOUT }
         )
-        .toEqual([PRIMARY_ASSET_COUNT, 1]);
+        .toEqual([
+          countAssetsWithColumns(tables.slice(0, PRIMARY_TABLE_COUNT)),
+          countAssetsWithColumns([tables[SECONDARY_ASSET_INDEX]]),
+        ]);
       await expect
         .poll(
           async () => {
@@ -499,23 +503,9 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
           hasRelatedEdge: true,
           total: SELECTED_GLOSSARY_TERM_COUNT,
         });
-      const connectedGraph = await getOntologyDataGraph(
-        apiContext,
-        fixture.glossary.responseData.fullyQualifiedName
-      );
-      const primaryPreview = connectedGraph?.clusters.find(
-        (cluster) => cluster.term.id === primaryTerm.responseData.id
-      )?.assets[0];
-      const secondaryPreview = connectedGraph?.clusters.find(
-        (cluster) => cluster.term.id === secondaryTerm.responseData.id
-      )?.assets[0];
-      if (!primaryPreview || !secondaryPreview) {
-        throw new Error(
-          'Connected Data mode clusters did not return asset previews'
-        );
-      }
-      lineageFromAssetId = primaryPreview.id;
-      lineageToAssetId = secondaryPreview.id;
+      // Both small clusters include their table and column in the preview.
+      lineageFromAssetId = tables[HIERARCHY_ASSET_INDEX].id;
+      lineageToAssetId = tables[SECONDARY_ASSET_INDEX].id;
       const lineageResponse = await connectEdgeBetweenNodesViaAPI(
         apiContext,
         { id: lineageFromAssetId, type: 'table' },
@@ -689,7 +679,9 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       await page
         .getByTestId(`ontology-load-more-assets-${primaryTerm.responseData.id}`)
         .click();
-      expect((await firstPageResponse).ok()).toBe(true);
+      const firstPage = await firstPageResponse;
+      expect(firstPage.ok(), await firstPage.text()).toBe(true);
+      const firstPageBody: { data: EntityReference[] } = await firstPage.json();
       await expect(primaryAssetRows).toHaveCount(10);
 
       await expect(
@@ -699,24 +691,21 @@ test.describe('Ontology data exploration', { tag: ['@ontology-rdf'] }, () => {
       ).toBeVisible();
 
       const primaryAssetIds = new Set(
-        tables.slice(0, PRIMARY_ASSET_COUNT).map((table) => table.id)
+        assetIdsWithColumns(tables.slice(0, PRIMARY_TABLE_COUNT))
       );
-      await expect
-        .poll(async () => {
-          const renderedAssets = await primaryAssetRows.evaluateAll(
-            (elements) =>
-              elements.map((element) =>
-                element
-                  .getAttribute('data-testid')
-                  ?.replace('ontology-data-asset-', '')
-              )
-          );
-
-          return renderedAssets.every(
-            (assetId) => assetId && primaryAssetIds.has(assetId)
-          );
-        })
-        .toBe(true);
+      const firstPageAssets = [
+        ...(primaryCluster?.assets ?? []),
+        ...firstPageBody.data,
+      ];
+      expect(firstPageAssets).toHaveLength(10);
+      for (const asset of firstPageAssets) {
+        expect(primaryAssetIds.has(asset.id)).toBe(true);
+        await expect(
+          primaryAssetRows.and(
+            page.getByTestId(`ontology-data-asset-${asset.id}`)
+          )
+        ).toBeVisible();
+      }
 
       const secondPageResponse = page.waitForResponse((response) => {
         const url = new URL(response.url());

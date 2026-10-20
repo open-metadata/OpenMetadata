@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { DefaultAppMode } from '../../../../../../generated/api/configuration/appConfiguration';
+import { SettingType } from '../../../../../../generated/settings/settings';
 import { getAppConfiguration } from '../../../../../../rest/settingConfigAPI';
+import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
+import { APP_MODE_FIELDS } from './PlatformSettings.constants';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
+import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useEditHeaderAction } from './useEditHeaderAction';
 import { useSettingsFetch } from './useSettingsFetch';
 
@@ -32,8 +37,24 @@ export const APP_MODE_OPTIONS = [
 
 const AppModeSettings = (props: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
-  const { data: config, isLoading } = useSettingsFetch(getAppConfiguration);
-  useEditHeaderAction('app-mode', isLoading, props);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(getAppConfiguration);
+  const {
+    sources,
+    isLoading: isSourceLoading,
+    refetch: refetchSources,
+    isFullyManaged,
+  } = useDeploymentManagedFields(SettingType.AppConfiguration, APP_MODE_FIELDS);
+  useEditHeaderAction(
+    'app-mode',
+    isLoading || isSourceLoading,
+    props,
+    undefined,
+    !isFullyManaged
+  );
 
   if (isLoading) {
     return <SettingsSkeleton rows={1} />;
@@ -43,18 +64,26 @@ const AppModeSettings = (props: PlatformSettingsPageProps) => {
   const option = APP_MODE_OPTIONS.find((item) => item.value === current);
 
   return (
-    <SettingsSection
-      testId="default-app-mode-page"
-      title={t('label.default-app-mode')}>
-      <ReadOnlyRow
-        description={t('message.default-app-mode-description')}
+    <Box direction="col" gap={4}>
+      <SettingsSourceBanner
+        sources={sources}
+        onAdopted={reload}
+        onRefetch={refetchSources}
+      />
+      <SettingsSection
+        testId="default-app-mode-page"
         title={t('label.default-app-mode')}>
-        <SettingValue
-          testId="default-app-mode-value"
-          value={option && t(option.labelKey)}
-        />
-      </ReadOnlyRow>
-    </SettingsSection>
+        <ReadOnlyRow
+          isValueCompact
+          description={t('message.default-app-mode-description')}
+          title={t('label.default-app-mode')}>
+          <SettingValue
+            testId="default-app-mode-value"
+            value={option && t(option.labelKey)}
+          />
+        </ReadOnlyRow>
+      </SettingsSection>
+    </Box>
   );
 };
 

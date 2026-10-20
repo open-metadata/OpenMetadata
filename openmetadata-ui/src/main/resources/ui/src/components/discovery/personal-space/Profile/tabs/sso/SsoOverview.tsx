@@ -11,43 +11,47 @@
  *  limitations under the License.
  */
 
-import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 
 interface SsoOverviewProps {
   isSelfSignupEnabled: boolean;
+  isSelfSignupManaged?: boolean;
   onSelfSignupChange: (enabled: boolean) => void;
 }
 
 const SsoOverview = ({
   isSelfSignupEnabled,
+  isSelfSignupManaged = false,
   onSelfSignupChange,
 }: SsoOverviewProps) => {
   const { t } = useTranslation();
 
   return (
-    <Box
-      align="center"
-      className="tw:w-full tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary tw:p-5"
-      data-testid="sso-overview"
-      direction="row"
-      gap={4}
-      justify="between">
-      <Box direction="col" gap={1}>
-        <Typography size="text-md" weight="semibold">
-          {t('label.enable-sso')}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {t('message.allow-user-to-login-via-sso')}
-        </Typography>
-      </Box>
-      <Toggle
-        aria-label={t('label.enable-sso')}
-        data-testid="sso-self-signup-toggle"
-        isSelected={isSelfSignupEnabled}
-        onChange={onSelfSignupChange}
-      />
-    </Box>
+    <Card className="tw:w-full" data-testid="sso-overview" variant="muted">
+      <Card.Content className="tw:flex tw:flex-row tw:items-center tw:justify-between tw:gap-4">
+        <Box direction="col" gap={1}>
+          <Typography size="text-md" weight="semibold">
+            {t('label.enable-sso')}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.allow-user-to-login-via-sso')}
+          </Typography>
+        </Box>
+        <Toggle
+          aria-label={t('label.enable-sso')}
+          data-testid="sso-self-signup-toggle"
+          isDisabled={isSelfSignupManaged}
+          isSelected={isSelfSignupEnabled}
+          onChange={onSelfSignupChange}
+        />
+      </Card.Content>
+    </Card>
   );
 };
 

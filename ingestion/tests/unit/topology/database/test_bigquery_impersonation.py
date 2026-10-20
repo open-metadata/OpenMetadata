@@ -185,6 +185,7 @@ def test_engine_connect_args_inject_impersonated_client(mock_common, mock_get_cl
         project_id=expected_project,
         impersonate_service_account=TARGET_SA,
         lifetime=1800,
+        location="us",
     )
 
 
@@ -209,6 +210,7 @@ def test_billing_project_id_scopes_impersonated_client(mock_common, mock_get_cli
         project_id="billing-proj",
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
+        location="us",
     )
 
 
@@ -241,6 +243,7 @@ def test_credentials_path_scopes_impersonated_client(mock_common, mock_get_clien
         project_id="proj-path",
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
+        location="us",
     )
 
 
@@ -272,6 +275,7 @@ def test_unresolved_project_id_logs_warning(mock_common, mock_get_client, mock_l
         project_id=None,
         impersonate_service_account=TARGET_SA,
         lifetime=3600,
+        location="us",
     )
 
 
@@ -356,7 +360,7 @@ def test_policy_tag_client_uses_impersonated_credentials(mock_impersonate, mock_
         impersonate_service_account=TARGET_SA,
         lifetime=1800,
     )
-    mock_client.assert_called_once_with(credentials=impersonated_creds)
+    mock_client.assert_called_once_with(credentials=impersonated_creds, client_options=None)
     assert client is mock_client.return_value
 
 
@@ -368,7 +372,40 @@ def test_policy_tag_client_unchanged_without_impersonation(mock_impersonate, moc
     get_policy_tag_client(BigQueryConnection.model_validate(base_config))
 
     mock_impersonate.assert_not_called()
-    mock_client.assert_called_once_with()
+    mock_client.assert_called_once_with(client_options=None)
+
+
+@patch(f"{_HELPER_MODULE}.PolicyTagManagerClient")
+def test_policy_tag_client_targets_custom_universe_domain(mock_client):
+    """
+    Regression test: on a sovereign/partner cloud (e.g. S3NS PREMI3NS), the
+    Data Catalog client must target the matching universe, or
+    ``PolicyTagManagerClient`` defaults to `datacatalog.googleapis.com` /
+    the `googleapis.com` universe while the credentials carry a mismatched
+    `universe_domain` - which recent `google-api-core` clients reject, and
+    which otherwise silently calls the wrong endpoint.
+    """
+    config = deepcopy(JSON_KEY_CONFIG)
+    config["credentials"]["gcpConfig"]["universeDomain"] = "s3nsapis.fr"
+
+    get_policy_tag_client(BigQueryConnection.model_validate(config))
+
+    mock_client.assert_called_once_with(
+        client_options={
+            "api_endpoint": "datacatalog.s3nsapis.fr",
+            "universe_domain": "s3nsapis.fr",
+        }
+    )
+
+
+@patch(f"{_HELPER_MODULE}.PolicyTagManagerClient")
+def test_policy_tag_client_default_universe_domain_has_no_client_options(mock_client):
+    config = deepcopy(JSON_KEY_CONFIG)
+    config["credentials"]["gcpConfig"]["universeDomain"] = "googleapis.com"
+
+    get_policy_tag_client(BigQueryConnection.model_validate(config))
+
+    mock_client.assert_called_once_with(client_options=None)
 
 
 def _policy_tag_checks(taxonomy_project_ids=None) -> BigQueryChecks:

@@ -18,6 +18,12 @@ import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { ThemeProvider } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import AIUserMenu from './AIUserMenu';
 
+// Dark mode applies only in AI mode; classic is light-only.
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: () => true,
+}));
+
 // ─── Module mocks ────────────────────────────────────────────────────────────
 
 jest.mock('react-i18next', () => ({
@@ -328,12 +334,13 @@ describe('AIUserMenu', () => {
     );
   });
 
-  it('navigates to /settings when the settings item is clicked', () => {
+  it('opens Preferences in the settings modal, not the legacy settings page', () => {
     renderMenu();
 
     fireEvent.click(screen.getByTestId('ask-user-menu-settings'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/settings');
+    expect(mockSetHash).toHaveBeenCalledWith('preferences');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/settings');
   });
 
   it('calls onLogoutHandler when the logout item is clicked', () => {

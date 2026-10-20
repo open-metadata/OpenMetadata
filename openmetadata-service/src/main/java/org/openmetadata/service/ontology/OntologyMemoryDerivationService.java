@@ -184,12 +184,7 @@ public final class OntologyMemoryDerivationService {
       throw new BadRequestException("glossary is required");
     }
     final Glossary glossary =
-        glossaryRepository.getByName(
-            null, glossaryFqn, glossaryRepository.getFields("ontologyConfiguration"));
-    if (glossary.getOntologyConfiguration() != null
-        && Boolean.TRUE.equals(glossary.getOntologyConfiguration().getReadOnly())) {
-      throw new BadRequestException("Glossary is read-only: " + glossaryFqn);
-    }
+        glossaryRepository.getByName(null, glossaryFqn, glossaryRepository.getFields(""));
     return glossary;
   }
 

@@ -27,6 +27,7 @@ import {
   ModifiedEventSubscription,
   ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 
 export type AlertAiFormMode = 'add' | 'edit' | 'view';
 
@@ -131,6 +132,8 @@ export interface RuleSectionProps {
 }
 
 export interface RuleArgumentFieldProps {
+  testId?: string;
+  sourceSearch?: AlertSourceSearch;
   argument: string;
   containerEntities?: string[];
   supportedEventTypes?: EventType[];
@@ -138,6 +141,8 @@ export interface RuleArgumentFieldProps {
   index: number;
   name: number;
   isViewOnly?: boolean;
+  /** Names the control with `aria-label` instead of a visible label. */
+  isLabelHidden?: boolean;
   onChange?: AlertAiFormFieldsProps['onChange'];
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
@@ -174,6 +179,6 @@ export interface AlertAiDestinationItemProps
   name: number;
   remove?: (index: number) => void;
   destination: ModifiedDestination;
-  destinationsWithStatus?: Destination[];
+  destinationsWithStatus?: Array<Destination | undefined>;
   isDestinationStatusLoading?: boolean;
 }

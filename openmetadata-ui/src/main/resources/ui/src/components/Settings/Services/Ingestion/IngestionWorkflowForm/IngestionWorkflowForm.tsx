@@ -10,11 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, UiSchema } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { Button } from 'antd';
 import classNames from 'classnames';
 import { capitalize, isUndefined, omit, omitBy } from 'lodash';
 import {
@@ -30,6 +29,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA,
   EXCLUDE_INCREMENTAL_EXTRACTION_SUPPORT_UI_SCHEMA,
   INGESTION_ELASTIC_SEARCH_WORKFLOW_UI_SCHEMA,
   INGESTION_WORKFLOW_UI_SCHEMA,
@@ -210,6 +210,9 @@ const IngestionWorkflowForm = forwardRef<
   const isIncrementalExtractionSupported =
     serviceData?.connection?.config?.supportsIncrementalMetadataExtraction;
 
+  const isAutoPartitionDetectionSupported =
+    serviceData?.connection?.config?.supportsAutoPartitionDetection;
+
   const uiSchema = useMemo(() => {
     let commonSchema: UiSchema = { ...INGESTION_WORKFLOW_UI_SCHEMA };
     if (isElasticSearchPipeline) {
@@ -232,6 +235,8 @@ const IngestionWorkflowForm = forwardRef<
         profileSampleConfig: {
           'ui:field': 'ProfileSampleConfigField',
         },
+        ...(!isAutoPartitionDetectionSupported &&
+          EXCLUDE_AUTO_PARTITION_DETECTION_SUPPORT_UI_SCHEMA),
       };
     }
 
@@ -257,6 +262,7 @@ const IngestionWorkflowForm = forwardRef<
     return commonSchema;
   }, [
     hideFooter,
+    isAutoPartitionDetectionSupported,
     isElasticSearchPipeline,
     isIncrementalExtractionSupported,
     pipeLineType,
@@ -431,11 +437,11 @@ const IngestionWorkflowForm = forwardRef<
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Button type="link" onClick={onCancel}>
+              <Button color="link-color" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 
-              <Button data-testid="submit-btn" htmlType="submit" type="primary">
+              <Button color="primary" data-testid="submit-btn" type="submit">
                 {okText ?? t('label.save')}
               </Button>
             </Box>

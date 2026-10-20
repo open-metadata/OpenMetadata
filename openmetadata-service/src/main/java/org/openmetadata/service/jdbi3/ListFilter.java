@@ -7,8 +7,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -32,6 +34,8 @@ public class ListFilter extends Filter<ListFilter> {
   /** The severity filter value for incidents with no severity. */
   public static final String NO_INCIDENT_SEVERITY = "none";
 
+  private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
+
   public static final String NULL_PARAM = "null";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
@@ -45,6 +49,9 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  private static final String ONTOLOGY_CONCEPT_TABLE = "ontology_concept_entity";
+  private static final String ONTOLOGY_PROPERTY_TABLE = "ontology_property_entity";
+  private static final String ONTOLOGY_RELEASE_TABLE = "ontology_release_entity";
   // An fqnHash joins one MD5 hex digest per FQN segment.
   private static final int FQN_HASH_SEGMENT_LENGTH = 32;
   private static final String FQN_HASH_COLUMN = "fqnHash";
@@ -165,21 +172,24 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     conditions.add(getAssetCondition());
-    conditions.add(getGlossaryIdCondition(tableName));
+    conditions.add(getOntologyIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
-  private String getGlossaryIdCondition(String tableName) {
-    String glossaryId = queryParams.get("glossaryId");
-    String condition = "";
-    if (!nullOrEmpty(glossaryId) && tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)) {
-      queryParams.put("glossaryIdParam", glossaryId);
-      condition = qualifyColumn(tableName, "glossaryId") + " = :glossaryIdParam";
+  private String getOntologyIdCondition(final String tableName) {
+    final String ontologyId = queryParams.get("ontologyId");
+    if (!nullOrEmpty(ontologyId)
+        && (tableMatches(tableName, ONTOLOGY_CONCEPT_TABLE)
+            || tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)
+            || tableMatches(tableName, ONTOLOGY_PROPERTY_TABLE)
+            || tableMatches(tableName, ONTOLOGY_RELEASE_TABLE))) {
+      queryParams.put("ontologyIdParam", ontologyId);
+      return qualifyColumn(tableName, "ontologyId") + " = :ontologyIdParam";
     }
-    return condition;
+    return "";
   }
 
   /** Matches any of the comma-separated states, each bound as its own parameter. */
@@ -1077,19 +1087,68 @@ public class ListFilter extends Filter<ListFilter> {
           entityIdColumn, entityTypeCondition);
     }
 
-    String domainInClause = buildIndexedBindParams("domainId", domainId.replace("'", ""));
+    String domainInClause = domainIdList(domainId.replace("'", ""));
 
     if (Boolean.TRUE.toString().equals(domainAccessControl)) {
-      return String.format(
-          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
-              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
-          entityIdColumn, entityIdColumn, domainInClause);
+      return domainAccessCondition(entityIdColumn, domainInClause);
     }
 
     return String.format(
-        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain'%s AND entity_relationship.fromId IN (%s) AND "
             + "relation=10))",
-        entityIdColumn, domainInClause);
+        entityIdColumn, domainEntityTypeCondition("entity_relationship"), domainInClause);
+  }
+
+  // Keeps entities with no domain or with a listed one. Postgres hashes every domain link in the
+  // database for the OR form before returning a row, so it gets one anti-join; MySQL checks the
+  // OR per row and is faster with it (e.g. one index lookup less per table that has a domain).
+  private String domainAccessCondition(String entityIdColumn, String domainIds) {
+    String hasDomain =
+        "SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain'"
+            + domainEntityTypeCondition("er")
+            + " AND er.toId = "
+            + entityIdColumn;
+    String listedDomain =
+        "SELECT er2.toId FROM entity_relationship er2 WHERE er2.relation=10 AND er2.fromEntity='domain'"
+            + domainEntityTypeCondition("er2")
+            + " AND er2.fromId IN ("
+            + domainIds
+            + ")";
+    return Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+        ? String.format("(NOT EXISTS (%s) OR %s IN (%s))", hasDomain, entityIdColumn, listedDomain)
+        : String.format(
+            "(NOT EXISTS (%s AND NOT EXISTS (%s AND er2.toId = er.toId)))",
+            hasDomain, listedDomain);
+  }
+
+  // Domain ids are inlined as canonical UUIDs rather than bound, so Postgres plans each statement
+  // with the selected domains' real asset counts; a generic plan guesses an average domain (e.g. it
+  // scans a whole schema for an empty domain, or probes every asset of a large one).
+  private String domainIdList(String domainIds) {
+    List<String> ids =
+        Arrays.stream(domainIds.split(",")).map(String::trim).filter(id -> !id.isEmpty()).toList();
+    List<String> uuids = ids.stream().map(ListFilter::canonicalUuid).toList();
+    return ids.isEmpty() || uuids.contains(null)
+        ? buildIndexedBindParams("domainId", domainIds)
+        : uuids.stream().map(id -> "'" + id + "'").collect(Collectors.joining(","));
+  }
+
+  private static String canonicalUuid(String value) {
+    try {
+      return UUID.fromString(value).toString();
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  // Keeps a domain's membership rows to the listed type, so a table list doesn't collect the
+  // domain's other assets (e.g. its dashboards) before matching ids. Inlined for the same planning
+  // reason as the ids; it is an entity type name (e.g. "table"), never user input.
+  private String domainEntityTypeCondition(String alias) {
+    String entityType = getQueryParam("domainEntityType");
+    return entityType == null || !ENTITY_TYPE_NAME.matcher(entityType).matches()
+        ? ""
+        : String.format(" AND %s.toEntity = '%s'", alias, entityType);
   }
 
   private String getDomainSelfCondition(String tableName) {
@@ -1829,8 +1888,8 @@ public class ListFilter extends Filter<ListFilter> {
 
   /**
    * Free-text search across task fields. Used by the {@code q} query param on the task list
-   * endpoints ({@code /v1/tasks/dataAccessRequests} and the user-scoped {@code /assigned},
-   * {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
+   * endpoints ({@code /v1/tasks}, {@code /v1/tasks/dataAccessRequests} and the user-scoped
+   * {@code /assigned}, {@code /visible}, {@code /owned}, {@code /created} lists). Database-only — tasks are not
    * indexed into Elasticsearch. Matches against task name, displayName, the request reason in the
    * payload, and the about-entity FQN / displayName.
    */

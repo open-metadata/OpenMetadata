@@ -263,20 +263,20 @@ class TestLanguageModelMapping:
     """Test language to spaCy model mapping with defaultdict."""
 
     def test_supported_language_returns_specific_model(self):
-        from metadata.pii.algorithms.presidio_utils import get_model_for_language
+        from metadata.pii.model_registry import get_model_for_language
 
         model = get_model_for_language(ClassificationLanguage.es)
         assert model == "es_core_news_md"
 
     def test_unsupported_language_returns_multilang_model(self):
-        from metadata.pii.algorithms.presidio_utils import get_model_for_language
         from metadata.pii.constants import SPACY_MULTILANG_MODEL
+        from metadata.pii.model_registry import get_model_for_language
 
         model = get_model_for_language(ClassificationLanguage.ar)
         assert model == SPACY_MULTILANG_MODEL, f"Unsupported language should default to multilang model, got {model}"
 
     def test_english_returns_english_model(self):
-        from metadata.pii.algorithms.presidio_utils import get_model_for_language
+        from metadata.pii.model_registry import get_model_for_language
 
         model = get_model_for_language(ClassificationLanguage.en)
         assert model == "en_core_web_md"

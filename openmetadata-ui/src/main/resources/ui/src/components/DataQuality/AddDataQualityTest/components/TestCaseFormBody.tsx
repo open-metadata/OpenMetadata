@@ -13,6 +13,7 @@
 import {
   Alert,
   Button,
+  Card,
   FieldProp,
   FieldTypes,
   FormField,
@@ -96,6 +97,10 @@ import ThresholdPreview from '../../../observability/data-quality/ThresholdPrevi
 import TagSelector from '../../../Tag/TagSelector/TagSelector';
 import ParameterFields from './ParameterFields';
 import {
+  ROOT_SELECTED_ENTITY_PATH,
+  ROOT_TABLE_PATH,
+} from './TestCaseFormBody.constants';
+import {
   FormValues,
   TablesCache,
   TestCaseFormBodyProps,
@@ -107,7 +112,6 @@ import { toDataQualityDimensionItem } from './transformTestCaseFormData';
 
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const TABLES_CACHE_MAX_SIZE = 100;
-const ROOT_TABLE_PATH = 'root/table';
 const ROOT_TEST_TYPE_PATH = 'root/testType';
 
 const fqnFromSelectItem = (
@@ -255,39 +259,42 @@ const TestLevelAndTableCard: FC<{
     (isEditMode && selectedTestLevel === TestLevel.COLUMN);
 
   return (
-    <div className="form-card-section" data-testid="select-table-card">
-      {!isEditMode && (
-        <div {...testLevelDoc}>
-          <FormField control={form.control} name="testLevel">
-            {({ field }) => (
-              <>
-                <FormItemLabel
-                  required
-                  label={t('message.select-test-level')}
-                />
-                <SelectionCardGroup
-                  layout="vertical"
-                  options={testLevelOptions}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    handleActiveField('root/testLevel');
-                  }}
-                />
-              </>
-            )}
-          </FormField>
-        </div>
-      )}
+    <Card className="form-card-section" data-testid="select-table-card">
+      <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+        {!isEditMode && (
+          <div id="root/testLevel" {...testLevelDoc}>
+            <FormField control={form.control} name="testLevel">
+              {({ field }) => (
+                <>
+                  <FormItemLabel
+                    required
+                    label={t('message.select-test-level')}
+                  />
+                  <SelectionCardGroup
+                    layout="vertical"
+                    options={testLevelOptions}
+                    value={field.value}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      handleActiveField('root/testLevel');
+                    }}
+                  />
+                </>
+              )}
+            </FormField>
+          </div>
+        )}
 
-      {getField(selectedTableField)}
+        {getField(selectedTableField)}
 
-      {selectedTestLevel === TestLevel.COLUMN && getField(selectedColumnField)}
+        {selectedTestLevel === TestLevel.COLUMN &&
+          getField(selectedColumnField)}
 
-      {showDimensionFields && getField(dimensionColumnsField)}
+        {showDimensionFields && getField(dimensionColumnsField)}
 
-      {showDimensionFields && getField(topDimensionsField)}
-    </div>
+        {showDimensionFields && getField(topDimensionsField)}
+      </Card.Content>
+    </Card>
   );
 };
 
@@ -356,59 +363,63 @@ const TestTypeCard: FC<{
   isDimensionalTest,
   showDimensionPolicyOnly,
 }) => (
-  <div
+  <Card
     className="form-card-section test-type-card test-type-section"
     data-testid="test-type-card">
-    {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
-      <CustomQueryToggle
-        handleCustomQueryToggle={handleCustomQueryToggle}
-        isCustomQuery={isCustomQuery}
-        t={t}
-      />
-    )}
-
-    {!isCustomQuery && getField(testTypeField)}
-
-    {additionalFields.map((field) => (
-      <div key={field.name}>{getField(field)}</div>
-    ))}
-
-    {showParameterFields && selectedTestDefinition && (
-      <div
-        className="parameter-fields-wrapper"
-        onFocusCapture={() =>
-          handleActiveField(
-            selectedTestType ? `root/${selectedTestType}` : ROOT_TEST_TYPE_PATH
-          )
-        }>
-        <ParameterFields
-          definition={selectedTestDefinition}
-          form={form}
-          isDimensionalTest={isDimensionalTest}
-          table={selectedTableData}
-          testDefinitionDoc={getFieldDoc(
-            fieldDocs[selectedTestDefinition.name ?? ''],
-            selectedTestDefinition.description
-          )}
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+      {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
+        <CustomQueryToggle
+          handleCustomQueryToggle={handleCustomQueryToggle}
+          isCustomQuery={isCustomQuery}
+          t={t}
         />
-        {thresholdPreview}
-      </div>
-    )}
+      )}
 
-    <DimensionPolicyOnlyField
-      definition={selectedTestDefinition}
-      fieldDocs={fieldDocs}
-      form={form}
-      show={showDimensionPolicyOnly}
-      table={selectedTableData}
-    />
+      {!isCustomQuery && getField(testTypeField)}
 
-    {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+      {additionalFields.map((field) => (
+        <div key={field.name}>{getField(field)}</div>
+      ))}
 
-    {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
+      {showParameterFields && selectedTestDefinition && (
+        <div
+          className="parameter-fields-wrapper"
+          onFocusCapture={() =>
+            handleActiveField(
+              selectedTestType
+                ? `root/${selectedTestType}`
+                : ROOT_TEST_TYPE_PATH
+            )
+          }>
+          <ParameterFields
+            definition={selectedTestDefinition}
+            form={form}
+            isDimensionalTest={isDimensionalTest}
+            table={selectedTableData}
+            testDefinitionDoc={getFieldDoc(
+              fieldDocs[selectedTestDefinition.name ?? ''],
+              selectedTestDefinition.description
+            )}
+          />
+          {thresholdPreview}
+        </div>
+      )}
+
+      <DimensionPolicyOnlyField
+        definition={selectedTestDefinition}
+        fieldDocs={fieldDocs}
+        form={form}
+        show={showDimensionPolicyOnly}
+        table={selectedTableData}
+      />
+
+      {isComputeRowCountFieldVisible && getField(computeRowCountField)}
+
+      {/* Shown in the parameter-only drawer too: the dimension is edited from the parameter box on
         the test case result page. */}
-    {getField(dataQualityDimensionField)}
-  </div>
+      {getField(dataQualityDimensionField)}
+    </Card.Content>
+  </Card>
 );
 
 const TestDetailsCard: FC<{
@@ -432,66 +443,68 @@ const TestDetailsCard: FC<{
   tagsDoc,
   glossaryTermsDoc,
 }) => (
-  <div
+  <Card
     className="form-card-section test-details-section"
     data-testid="test-details-card">
-    {getField(testNameField)}
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+      {getField(testNameField)}
 
-    {isEditMode && getField(displayNameField)}
+      {isEditMode && getField(displayNameField)}
 
-    <FormField control={form.control} name="description">
-      {({ field }) => (
-        <div
-          className="tw:flex tw:flex-col tw:gap-1"
-          data-testid="description"
-          id="root/description"
-          {...descriptionDoc}>
-          <FormItemLabel label={t('label.description')} />
-          <RichTextEditor
-            initialValue={field.value ?? ''}
-            onFocus={() => handleActiveField('root/description')}
-            onTextChange={field.onChange}
-          />
-        </div>
-      )}
-    </FormField>
+      <FormField control={form.control} name="description">
+        {({ field }) => (
+          <div
+            className="tw:flex tw:flex-col tw:gap-1"
+            data-testid="description"
+            id="root/description"
+            {...descriptionDoc}>
+            <FormItemLabel label={t('label.description')} />
+            <RichTextEditor
+              initialValue={field.value ?? ''}
+              onFocus={() => handleActiveField('root/description')}
+              onTextChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
 
-    <FormField control={form.control} name="tags">
-      {({ field }) => (
-        <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-          <TagSelector
-            className="tw:w-full"
-            data-testid="tags-input"
-            label={t('label.tag-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.tag-plural'),
-            })}
-            value={field.value ?? []}
-            onChange={field.onChange}
-          />
-        </div>
-      )}
-    </FormField>
+      <FormField control={form.control} name="tags">
+        {({ field }) => (
+          <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
+            <TagSelector
+              className="tw:w-full"
+              data-testid="tags-input"
+              label={t('label.tag-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.tag-plural'),
+              })}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
 
-    <FormField control={form.control} name="glossaryTerms">
-      {({ field }) => (
-        <div
-          data-testid="glossary-terms-selector"
-          id="root/glossaryTerms"
-          {...glossaryTermsDoc}>
-          <TagSuggestion
-            label={t('label.glossary-term-plural')}
-            placeholder={t('label.select-field', {
-              field: t('label.glossary-term-plural'),
-            })}
-            tagType={TagSource.Glossary}
-            value={field.value ?? []}
-            onChange={field.onChange}
-          />
-        </div>
-      )}
-    </FormField>
-  </div>
+      <FormField control={form.control} name="glossaryTerms">
+        {({ field }) => (
+          <div
+            data-testid="glossary-terms-selector"
+            id="root/glossaryTerms"
+            {...glossaryTermsDoc}>
+            <TagSuggestion
+              label={t('label.glossary-term-plural')}
+              placeholder={t('label.select-field', {
+                field: t('label.glossary-term-plural'),
+              })}
+              tagType={TagSource.Glossary}
+              value={field.value ?? []}
+              onChange={field.onChange}
+            />
+          </div>
+        )}
+      </FormField>
+    </Card.Content>
+  </Card>
 );
 
 const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
@@ -642,13 +655,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     [testCase?.Create, getEntityPermissionByFqn, t]
   );
 
-  // Report the focused field to the doc panel. Rendered controls carry
-  // `root/<fieldName>` ids, so one capture handler covers every field the
-  // same way the legacy antd form's form-level onFocus did.
-  const handleFormFocusCapture = useCallback(
-    (event: React.FocusEvent<HTMLDivElement>) => {
-      const fieldId = (event.target as HTMLElement).closest?.(
-        '[id^="root/"]'
+  // Report the focused or clicked field (`root/<fieldName>` ids). A select
+  // holding a value hides its input, so fall back to the id in its wrapper.
+  const handleFieldActivation = useCallback(
+    (event: React.SyntheticEvent<HTMLDivElement>) => {
+      const target = event.target as HTMLElement;
+      const fieldId = (
+        target.closest?.('[id^="root/"]') ??
+        target.closest?.('[data-field-doc]')?.querySelector('[id^="root/"]')
       )?.id;
       if (fieldId) {
         handleActiveField(fieldId);
@@ -1206,7 +1220,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   const selectedTableField = {
     name: 'selectedTable',
-    label: t('label.select-entity', { entity: t('label.table') }),
+    label: t(
+      selectedTableFqn ? 'label.selected-entity' : 'label.select-entity',
+      {
+        entity: t('label.table'),
+      }
+    ),
     type: FieldTypes.ASYNC_SELECT,
     required: true,
     rules: {
@@ -1244,7 +1263,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // legacy option onclick did.
       onItemInserted: () => {
         form.trigger('selectedTable');
-        handleActiveField('root/selected-entity');
+        handleActiveField(ROOT_SELECTED_ENTITY_PATH);
       },
       // Clearing an unauthorized table must clear the stale permission error
       // and switch the doc panel back to the generic table section.
@@ -1514,7 +1533,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       className="test-case-form-v1 drawer-mode test-case-form-body"
       data-testid="test-case-form-v1"
       ref={formBodyRef}
-      onFocusCapture={handleFormFocusCapture}>
+      onFocusCapture={handleFieldActivation}
+      onPointerDownCapture={handleFieldActivation}>
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert

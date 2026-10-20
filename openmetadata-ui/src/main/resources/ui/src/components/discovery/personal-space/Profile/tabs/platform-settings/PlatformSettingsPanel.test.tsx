@@ -36,6 +36,17 @@ jest.mock('../../../../../../hooks/useApplicationStore', () => ({
     selector({ authConfig: { provider: mockProvider } }),
 }));
 
+let mockContributions: unknown[] = [];
+
+jest.mock(
+  '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
+  () => ({
+    useApplicationsProvider: () => ({
+      getContributions: () => mockContributions,
+    }),
+  })
+);
+
 // The pages own their data fetching; the panel test only checks which one is
 // routed to and what the header shows, so each page is a stand-in.
 jest.mock('./EmailSettings', () => () => <div data-testid="email-view" />);
@@ -67,9 +78,39 @@ jest.mock('./ProfilerSettingsForm', () => () => (
 jest.mock('./DataAssetRulesSettings', () => () => (
   <div data-testid="data-asset-rules-view" />
 ));
-jest.mock('./LearningResourcesSettings', () => () => (
-  <div data-testid="learning-resources-view" />
-));
+// Saves its state on click and shows what the panel handed back, so the test
+// can check the panel keeps it while a preview replaces the list.
+jest.mock(
+  './LearningResourcesSettings',
+  () =>
+    ({
+      savedState,
+      onSaveState,
+    }: {
+      savedState?: unknown;
+      onSaveState?: (state: unknown) => void;
+    }) =>
+      (
+        <div
+          data-saved={JSON.stringify(savedState ?? null)}
+          data-testid="learning-resources-view">
+          <button type="button" onClick={() => onSaveState?.({ page: 2 })}>
+            save-list-state
+          </button>
+        </div>
+      )
+);
+jest.mock(
+  '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component',
+  () => ({
+    ResourcePlayer: ({ resourceId }: { resourceId: string }) => (
+      <div
+        data-resource-id={resourceId}
+        data-testid="learning-resource-player"
+      />
+    ),
+  })
+);
 const mockFormMounts = jest.fn();
 
 jest.mock('./LearningResourceSettingsForm', () => {
@@ -128,6 +169,7 @@ describe('PlatformSettingsPanel', () => {
     jest.clearAllMocks();
     mockSubPath = '';
     mockProvider = AuthProvider.Basic;
+    mockContributions = [];
   });
 
   it('lists every legacy preferences page on the landing', () => {
@@ -236,6 +278,52 @@ describe('PlatformSettingsPanel', () => {
     expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'search');
   });
 
+  it('keeps the learning list state while a resource preview replaces the list', () => {
+    mockSubPath = 'learning-resources';
+    const { rerender } = renderPanel();
+    fireEvent.click(screen.getByText('save-list-state'));
+
+    mockSubPath = 'learning-resources/res-1';
+    rerender(
+      <MemoryRouter>
+        <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('learning-resources-view')).toBeNull();
+
+    mockSubPath = 'learning-resources';
+    rerender(
+      <MemoryRouter>
+        <PlatformSettingsPanel onHeaderChange={onHeaderChange} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('learning-resources-view')).toHaveAttribute(
+      'data-saved',
+      JSON.stringify({ page: 2 })
+    );
+  });
+
+  it('opens a learning resource as a sub-page instead of a modal', () => {
+    mockSubPath = 'learning-resources/res-1';
+    renderPanel();
+
+    expect(screen.getByTestId('learning-resource-player')).toHaveAttribute(
+      'data-resource-id',
+      'res-1'
+    );
+    expect(screen.queryByTestId('learning-resources-view')).toBeNull();
+    expect(lastHeader().title).toBe('label.preview');
+
+    lastHeader().onBreadcrumbAction('learning-resources');
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'platform-settings',
+      'learning-resources'
+    );
+  });
+
   it('renders the edit form with the show-hint toggle in the header', () => {
     mockSubPath = 'email/edit';
     renderPanel();
@@ -331,5 +419,58 @@ describe('PlatformSettingsPanel', () => {
       'platform-settings',
       undefined
     );
+  });
+
+  describe('contributed pages', () => {
+    const ContributedIcon = () => <svg />;
+
+    beforeEach(() => {
+      mockContributions = [
+        {
+          id: 'ingestion-runner',
+          icon: ContributedIcon,
+          titleKey: 'label.contributed',
+          descriptionKey: 'message.contributed',
+          component: ({ itemId }: { itemId?: string }) => (
+            <div data-testid="contributed-view">{itemId}</div>
+          ),
+        },
+      ];
+    });
+
+    it('adds a card after the built-in pages', () => {
+      renderPanel();
+
+      const cards = screen.getAllByTestId(/^platform-settings-card-/);
+
+      expect(cards[cards.length - 1]).toHaveAttribute(
+        'data-testid',
+        'platform-settings-card-ingestion-runner'
+      );
+    });
+
+    it('hides a contribution whose isVisible rejects the auth provider', () => {
+      mockContributions = [
+        {
+          ...(mockContributions[0] as object),
+          isVisible: () => false,
+        },
+      ];
+      renderPanel();
+
+      expect(
+        screen.queryByTestId('platform-settings-card-ingestion-runner')
+      ).not.toBeInTheDocument();
+    });
+
+    it('renders the contributed component with its own header', () => {
+      mockSubPath = 'ingestion-runner';
+      renderPanel();
+
+      expect(screen.getByTestId('contributed-view')).toBeInTheDocument();
+      expect(lastHeader().title).toBe('label.contributed');
+      expect(lastHeader().description).toBe('message.contributed');
+      expect(lastHeader().icon).toBe(ContributedIcon);
+    });
   });
 });

@@ -19,7 +19,7 @@ import {
   Select,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { X } from '@openmetadata/ui-core-components/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual, isUndefined, startCase } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
@@ -89,20 +89,24 @@ function DestinationSelectItem({
   );
 
   const destinationStatusDetails = useMemo(() => {
-    const { type, category, config } = destinationItem;
-    const current = destinationsWithStatus?.find((d) =>
-      isEqual(
-        { type, category, config: normalizeDestinationConfig(config) },
-        {
-          type: d.type,
-          category: d.category,
-          config: normalizeDestinationConfig(d.config),
-        }
-      )
-    );
+    const statusDestination = destinationsWithStatus?.[id];
 
-    return current?.statusDetails;
-  }, [destinationItem, destinationsWithStatus]);
+    if (!statusDestination) {
+      return undefined;
+    }
+    const { type, category, config } = destinationItem;
+
+    return isEqual(
+      { type, category, config: normalizeDestinationConfig(config) },
+      {
+        type: statusDestination.type,
+        category: statusDestination.category,
+        config: normalizeDestinationConfig(statusDestination.config),
+      }
+    )
+      ? statusDestination.statusDetails
+      : undefined;
+  }, [destinationItem, destinationsWithStatus, id]);
 
   const { statusLabel } = useMemo(
     () => getDestinationStatusAlertData(destinationStatusDetails?.status),
@@ -441,7 +445,7 @@ function DestinationSelectItem({
           color="tertiary"
           data-testid={`remove-destination-${id}`}
           onPress={() => remove(id)}>
-          <X />
+          <XClose className="tw:shrink-0" size={14} />
         </Button>
       )}
     </div>

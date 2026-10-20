@@ -18,7 +18,10 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
+import { ResourcePlayer } from '../../../../../Learning/ResourcePlayer/ResourcePlayerModal.component';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import AppModeSettings from './AppModeSettings';
 import AppModeSettingsForm from './AppModeSettingsForm';
@@ -39,6 +42,8 @@ import LoginSettingsForm from './LoginSettingsForm';
 import { PLATFORM_SETTINGS_HASH_TAB } from './PlatformSettings.constants';
 import type {
   PlatformSettingsFormProps,
+  PlatformSettingsPage,
+  PlatformSettingsPageContribution,
   PlatformSettingsPageId,
   PlatformSettingsPageProps,
   PlatformSettingsView,
@@ -58,6 +63,8 @@ import TableSchemaSettings from './TableSchemaSettings';
 import TableSchemaSettingsForm from './TableSchemaSettingsForm';
 import ThemeSettings from './ThemeSettings';
 import ThemeSettingsForm from './ThemeSettingsForm';
+import TimeFormatSettings from './TimeFormatSettings';
+import TimeFormatSettingsForm from './TimeFormatSettingsForm';
 
 interface PlatformSettingsPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -78,10 +85,19 @@ const VIEW_PAGES: Partial<
   'brand-url': (props) => <BrandUrlSettings {...props} />,
   lineage: (props) => <LineageSettings {...props} />,
   'data-asset-rules': () => <DataAssetRulesSettings />,
-  'learning-resources': (props) => <LearningResourcesSettings {...props} />,
+  'learning-resources': (props) =>
+    props.itemId ? (
+      <ResourcePlayer
+        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
+        resourceId={props.itemId}
+      />
+    ) : (
+      <LearningResourcesSettings {...props} />
+    ),
   'app-mode': (props) => <AppModeSettings {...props} />,
   'table-schema': (props) => <TableSchemaSettings {...props} />,
-  glossary: () => <GlossarySettings />,
+  'time-format': (props) => <TimeFormatSettings {...props} />,
+  glossary: () => <GlossarySettings embedded />,
   search: (props) =>
     props.itemId ? (
       <EntitySearchSettings {...props} />
@@ -107,6 +123,7 @@ const FORM_PAGES: Partial<
   'learning-resources': (props) => <LearningResourceSettingsForm {...props} />,
   'app-mode': (props) => <AppModeSettingsForm {...props} />,
   'table-schema': (props) => <TableSchemaSettingsForm {...props} />,
+  'time-format': (props) => <TimeFormatSettingsForm {...props} />,
 };
 
 const isFormView = (view: PlatformSettingsView) =>
@@ -120,12 +137,25 @@ const PlatformSettingsPanel = ({
   const authProvider = useApplicationStore(
     (state) => state.authConfig?.provider
   );
-  const pages = useMemo(
-    () => getVisiblePlatformSettingsPages(authProvider),
-    [authProvider]
+  const { getContributions } = useApplicationsProvider();
+  // Downstream builds (e.g. Collate) contribute extra pages; each gets a card
+  // after the built-in ones and renders its own `component`.
+  const pages = useMemo<PlatformSettingsPage[]>(
+    () => [
+      ...getVisiblePlatformSettingsPages(authProvider),
+      ...getContributions<PlatformSettingsPageContribution>(
+        EXTENSION_POINTS.PLATFORM_SETTINGS_PAGES
+      ).filter((page) => !page.isVisible || page.isVisible(authProvider)),
+    ],
+    [authProvider, getContributions]
   );
   const [showHint, setShowHint] = useState(false);
   const [pageActions, setPageActions] = useState<ReactNode>();
+  // Per-page state that survives the page unmounting while one of its items or
+  // forms is open, so returning restores it; cleared when the panel closes.
+  const [savedPageStates, setSavedPageStates] = useState<
+    Partial<Record<string, unknown>>
+  >({});
 
   const view = useMemo(
     () =>
@@ -140,6 +170,16 @@ const PlatformSettingsPanel = ({
       ? pages.find((page) => page.id === view.page)
       : undefined;
   const showsForm = isFormView(view);
+
+  const activePageId = view.type === 'page' ? view.page : undefined;
+  const savePageState = useCallback(
+    (state: unknown) => {
+      if (activePageId) {
+        setSavedPageStates((prev) => ({ ...prev, [activePageId]: state }));
+      }
+    },
+    [activePageId]
+  );
 
   const onNavigate = useCallback(
     (next: PlatformSettingsView) =>
@@ -216,18 +256,27 @@ const PlatformSettingsPanel = ({
     }
 
     if (showsForm) {
-      return FORM_PAGES[view.page]?.({
+      return FORM_PAGES[view.page as PlatformSettingsPageId]?.({
         showHint,
         onNavigate,
         itemId: view.itemId,
       });
     }
 
-    return VIEW_PAGES[view.page]?.({
+    const pageProps: PlatformSettingsPageProps = {
       itemId: view.itemId,
       onNavigate,
       onSetHeaderActions: setPageActions,
-    });
+      savedState: savedPageStates[view.page],
+      onSaveState: savePageState,
+    };
+    const ContributedPage = activePage?.component;
+
+    return ContributedPage ? (
+      <ContributedPage {...pageProps} />
+    ) : (
+      VIEW_PAGES[view.page as PlatformSettingsPageId]?.(pageProps)
+    );
   })();
 
   return (

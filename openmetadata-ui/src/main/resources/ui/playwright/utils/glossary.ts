@@ -41,6 +41,7 @@ import {
   getApiContext,
   INVALID_NAMES,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from './common';
@@ -730,10 +731,12 @@ export const addAssetToGlossaryTerm = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -759,7 +762,7 @@ export const addAssetToGlossaryTerm = async (
     await page
       .locator(`[data-testid="table-data-card_${entityFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
@@ -768,7 +771,15 @@ export const addAssetToGlossaryTerm = async (
     ).toContainText(visibleName);
   }
 
+  // Wait for the add so callers' teardown cannot delete the term mid-request.
+  const addAssetsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/assets/add') &&
+      response.request().method() === 'PUT'
+  );
   await page.click('[data-testid="save-btn"]');
+
+  expect((await addAssetsResponse).status()).toBe(200);
 };
 
 const testFilterWithSpecificOption = async (
@@ -868,10 +879,12 @@ export const verifyAssetModalFilters = async (
   await expect(assetSelectionModal).toBeVisible();
   await expect(assetSelectionModal).toContainText('Add Assets');
 
-  await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
+  await expect(page.getByTestId('asset-filters')).toBeVisible();
 
   await expect(
-    page.locator('.asset-filters-wrapper .explore-quick-filters-container')
+    page
+      .getByTestId('asset-filters')
+      .locator('.explore-quick-filters-container')
   ).toBeVisible();
 
   const filterButton = page.locator(
@@ -886,7 +899,7 @@ export const verifyAssetModalFilters = async (
     ).toBeVisible();
   }
 
-  const filterWrapper = page.locator('.asset-filters-wrapper');
+  const filterWrapper = page.getByTestId('asset-filters');
   await waitForAllLoadersToDisappear(page);
 
   await testFilterWithSpecificOption(
@@ -1183,6 +1196,52 @@ export const addRelatedTerms = async (
   }
 };
 
+export const getRelationRows = (page: Page) =>
+  page.locator('[data-testid^="relation-row-"]');
+
+export const getOnlyRelationRow = async (page: Page) => {
+  const rows = getRelationRows(page);
+  await expect(rows).toHaveCount(1);
+
+  return rows;
+};
+
+// Row ids are Date.now() values, so the added row is the one with a new id.
+export const addRelationRow = async (page: Page) => {
+  const rows = getRelationRows(page);
+  const readIds = () =>
+    rows.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-testid') ?? '')
+    );
+  const before = await readIds();
+
+  await page.getByTestId('add-row-button').click();
+  await expect(rows).toHaveCount(before.length + 1);
+
+  const added = (await readIds()).find((id) => !before.includes(id)) ?? '';
+
+  return page.getByTestId(added);
+};
+
+// Re-pick until the trigger shows the label: the non-modal popover closes on scroll or misclicks a neighbour.
+export const selectRelationType = async (
+  page: Page,
+  row: Locator,
+  relationTypeLabel: string
+) => {
+  const relationTypeTrigger = row.locator('button[aria-haspopup="listbox"]');
+
+  await expect(async () => {
+    await selectOptionWithRetry(
+      relationTypeTrigger,
+      page.getByRole('option', { exact: true, name: relationTypeLabel })
+    );
+    await expect(relationTypeTrigger).toHaveText(relationTypeLabel, {
+      timeout: 2000,
+    });
+  }).toPass({ timeout: 30000 });
+};
+
 export const addRelatedTermsByRelationType = async (
   page: Page,
   rows: Array<{ relationTypeLabel: string; terms: GlossaryTerm[] }>
@@ -1191,25 +1250,10 @@ export const addRelatedTermsByRelationType = async (
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-
-    if (i > 0) {
-      await page.getByTestId('add-row-button').click();
-    }
-
-    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
-    // so identify rows by position — first when i=0, otherwise last.
     const rowLocator =
-      i === 0
-        ? page.locator('[data-testid^="relation-row-"]').first()
-        : page.locator('[data-testid^="relation-row-"]').last();
+      i === 0 ? await getOnlyRelationRow(page) : await addRelationRow(page);
 
-    await rowLocator.getByRole('button').first().click();
-    const option = page.getByRole('option', {
-      exact: true,
-      name: row.relationTypeLabel,
-    });
-    await expect(option).toBeVisible();
-    await option.click();
+    await selectRelationType(page, rowLocator, row.relationTypeLabel);
 
     const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
 
@@ -1851,7 +1895,17 @@ export const setupGlossaryDenyPermissionTest = async (
 };
 
 export const performExpandAll = async (page: Page) => {
-  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  // Match only the expand-tree fetch (?glossary= / ?parent=). A bare
+  // glossaryTerms glob also matches the tab's first-level ?directChildrenOf=
+  // fetch, so the wait could resolve before the tree request was even sent.
+  const termRes = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms') &&
+      (url.searchParams.has('glossary') || url.searchParams.has('parent'))
+    );
+  });
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
 

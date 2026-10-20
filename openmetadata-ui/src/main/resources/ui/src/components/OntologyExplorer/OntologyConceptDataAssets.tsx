@@ -10,25 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Badge,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { useControlledState } from '@react-stately/utils';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AssetsOfEntity } from '../../enums/Assets.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
 import {
   getGlossaryTermAssets,
   removeAssetsFromGlossaryTerm,
 } from '../../rest/glossaryAPI';
-import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryPureUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import Fqn from '../../utils/Fqn';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
-import { AssetSelectionModal } from '../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import OntologyDataAssetPicker from './OntologyDataAssetPicker';
 import {
-  InspectorAddButton,
+  InspectorList,
+  InspectorRemoveButton,
+  InspectorRow,
+  InspectorSection,
   InspectorSectionHeading,
 } from './OntologyInspectorSection';
 import { isValidUUID } from './utils/graphBuilders';
@@ -40,24 +47,54 @@ export interface OntologyConceptDataAssetsProps {
   readonly isEditMode: boolean;
   readonly term?: GlossaryTerm | null;
   readonly termId: string;
+  /** Lets the parent drawer open the asset picker, e.g. from its "Add more details" chips. */
+  readonly isPickerOpen?: boolean;
   readonly onAssetsChange?: () => void;
+  readonly onPickerOpenChange?: (isOpen: boolean) => void;
+  readonly onTotalChange?: (total: number) => void;
 }
 
 const getAssetName = (asset: EntityReference): string =>
   asset.displayName ?? asset.name ?? asset.fullyQualifiedName ?? asset.id;
+
+// The containers above the asset, e.g. "service › database › schema".
+const getAssetPath = (asset: EntityReference): string | undefined => {
+  const parents = asset.fullyQualifiedName
+    ? Fqn.split(asset.fullyQualifiedName).slice(0, -1)
+    : [];
+
+  return parents.length > 0 ? parents.join(' › ') : undefined;
+};
+
+const ASSET_BADGE_COLORS: Record<string, 'indigo' | 'blue-light'> = {
+  table: 'indigo',
+  tableColumn: 'blue-light',
+};
+
+// An empty section is offered from the drawer's "Add more details" instead,
+// unless its picker is open.
+const isEmptySection = (total: number, loaded: number, hasPicker: boolean) =>
+  total === 0 && loaded === 0 && !hasPicker;
 
 export const OntologyConceptDataAssets = ({
   initialCount = 0,
   isEditMode,
   term,
   termId,
+  isPickerOpen: controlledIsPickerOpen,
   onAssetsChange,
+  onPickerOpenChange,
+  onTotalChange,
 }: OntologyConceptDataAssetsProps) => {
   const { t } = useTranslation();
   const [assets, setAssets] = useState<EntityReference[]>([]);
   const [total, setTotal] = useState(initialCount);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [isPickerOpen, setIsPickerOpen] = useControlledState(
+    controlledIsPickerOpen,
+    false,
+    onPickerOpenChange
+  );
   const [removingAssetId, setRemovingAssetId] = useState<string>();
   // A reload after an edit supersedes any page request still in flight.
   const latestRequestRef = useRef(0);
@@ -82,6 +119,10 @@ export const OntologyConceptDataAssets = ({
     },
     [termId]
   );
+
+  useEffect(() => {
+    onTotalChange?.(total);
+  }, [onTotalChange, total]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -141,98 +182,103 @@ export const OntologyConceptDataAssets = ({
   const handleAssetsAdded = useCallback(async () => {
     setIsPickerOpen(false);
     await reloadAfterEdit();
-  }, [reloadAfterEdit]);
+  }, [reloadAfterEdit, setIsPickerOpen]);
 
   const termFqn = term?.fullyQualifiedName;
   const remainingCount = total - assets.length;
 
+  const picker =
+    isPickerOpen && term ? (
+      <OntologyDataAssetPicker
+        term={term}
+        onCancel={() => setIsPickerOpen(false)}
+        onPartialSave={() => void reloadAfterEdit()}
+        onSave={handleAssetsAdded}
+      />
+    ) : null;
+
+  if (isEmptySection(total, assets.length, Boolean(picker))) {
+    return null;
+  }
+
+  const renderAssetRow = (asset: EntityReference) => {
+    const assetName = getAssetName(asset);
+    const assetPath = getAssetPath(asset);
+
+    return (
+      <InspectorRow key={asset.id} testId={`authoring-asset-${asset.id}`}>
+        <Box
+          align="center"
+          className="tw:size-8 tw:shrink-0 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary"
+          justify="center">
+          <img
+            alt=""
+            className="tw:size-4 tw:object-contain"
+            height={16}
+            src={serviceUtilClassBase.getServiceTypeLogo({
+              entityType: asset.type,
+            })}
+            width={16}
+          />
+        </Box>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Typography
+            ellipsis
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {assetName}
+          </Typography>
+          {assetPath ? (
+            <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+              {assetPath}
+            </Typography>
+          ) : null}
+        </Box>
+        <Badge
+          className="tw:shrink-0"
+          color={ASSET_BADGE_COLORS[asset.type] ?? 'gray'}
+          size="sm"
+          type="pill-color">
+          {entityUtilClassBase.getFormattedEntityType(asset.type)}
+        </Badge>
+        {isEditMode ? (
+          <InspectorRemoveButton
+            isDisabled={removingAssetId !== undefined}
+            label={t('label.remove-entity', { entity: assetName })}
+            testId={`authoring-remove-asset-${asset.id}`}
+            onRemove={() => handleRemove(asset)}
+          />
+        ) : null}
+      </InspectorRow>
+    );
+  };
+
   return (
-    <section data-testid="authoring-data-assets">
+    <InspectorSection testId="authoring-data-assets">
       <InspectorSectionHeading
+        addTestId="authoring-add-data-assets"
         count={total}
         label={t('label.data-asset-plural')}
+        onAdd={isEditMode && termFqn ? () => setIsPickerOpen(true) : undefined}
       />
-      <div className="tw:flex tw:flex-col tw:gap-[7px]">
-        {assets.map((asset) => {
-          const assetName = getAssetName(asset);
-
-          return (
-            <div
-              className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-2.5 tw:py-2"
-              data-testid={`authoring-asset-${asset.id}`}
-              key={asset.id}>
-              <img
-                alt={asset.type}
-                className="tw:size-3.5 tw:shrink-0 tw:object-contain"
-                height={14}
-                src={serviceUtilClassBase.getServiceTypeLogo({
-                  entityType: asset.type,
-                })}
-                width={14}
-              />
-              <div className="tw:min-w-0 tw:flex-1">
-                <div className="tw:truncate tw:font-mono tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
-                  {assetName}
-                </div>
-                <div className="tw:truncate tw:font-body tw:text-[10px] tw:leading-normal tw:font-normal tw:text-quaternary">
-                  {asset.type}
-                </div>
-              </div>
-              {isEditMode ? (
-                <ButtonUtility
-                  data-testid={`authoring-remove-asset-${asset.id}`}
-                  icon={XClose}
-                  isDisabled={removingAssetId !== undefined}
-                  size="xs"
-                  tooltip={t('label.remove-entity', { entity: assetName })}
-                  onClick={() => handleRemove(asset)}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+      {assets.length > 0 ? (
+        <InspectorList>{assets.map(renderAssetRow)}</InspectorList>
+      ) : null}
       {remainingCount > 0 ? (
         <Button
-          noTextPadding
-          className={classNames(
-            'tw:mt-2 tw:w-full tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-2.5 tw:py-2',
-            'tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold tw:text-brand-tertiary'
-          )}
-          color="tertiary"
+          className="tw:self-start"
+          color="link-color"
           data-testid="authoring-more-assets"
           isDisabled={isLoadingMore}
+          size="sm"
           onClick={handleLoadMore}>
-          {isLoadingMore ? (
-            t('label.loading')
-          ) : (
-            <>
-              +{remainingCount} {t('label.more-lowercase')}{' '}
-              {t('label.data-asset-lowercase-plural')}
-            </>
-          )}
+          {isLoadingMore
+            ? t('label.loading')
+            : t('label.show-count-more', { count: remainingCount })}
         </Button>
       ) : null}
-      {isEditMode ? (
-        <InspectorAddButton
-          isDisabled={!termFqn}
-          label={t('label.add-entity', {
-            entity: t('label.data-asset-plural'),
-          })}
-          testId="authoring-add-data-assets"
-          onClick={() => setIsPickerOpen(true)}
-        />
-      ) : null}
-      {isPickerOpen && termFqn ? (
-        <AssetSelectionModal
-          open
-          entityFqn={termFqn}
-          queryFilter={getQueryFilterToExcludeTerm(termFqn)}
-          type={AssetsOfEntity.GLOSSARY}
-          onCancel={() => setIsPickerOpen(false)}
-          onSave={handleAssetsAdded}
-        />
-      ) : null}
-    </section>
+      {picker}
+    </InspectorSection>
   );
 };

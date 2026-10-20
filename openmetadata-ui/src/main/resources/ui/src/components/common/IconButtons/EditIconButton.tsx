@@ -15,7 +15,12 @@ import {
   ButtonUtility,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  MessageChatSquare,
+  MessagePlusSquare,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   ButtonHTMLAttributes,
@@ -24,12 +29,9 @@ import {
   MouseEventHandler,
   ReactNode,
 } from 'react';
-import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as CardExpandCollapseIcon } from '../../../assets/svg/ic-card-expand-collapse.svg';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
-import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
 export type IconButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -81,7 +83,7 @@ const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
         iconLeading={icon ?? DefaultIcon}
         isDisabled={disabled}
         ref={ref}
-        size="xxs"
+        size="xs"
         {...props}
       />
     </Tooltip>
@@ -90,30 +92,15 @@ const BaseIconButton = forwardRef<HTMLButtonElement, BaseIconButtonProps>(
 
 // Forwards its ref so react-aria's Pressable can make it a PopoverTrigger child.
 export const EditIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
-  (props, ref) => (
-    <BaseIconButton
-      bordered={props.newLook}
-      defaultIcon={EditIcon}
-      ref={ref}
-      {...props}
-    />
-  )
+  (props, ref) => <BaseIconButton defaultIcon={Edit01} ref={ref} {...props} />
 );
 
 export const RequestIconButton = (props: IconButtonProps) => (
-  <BaseIconButton
-    bordered={props.newLook}
-    defaultIcon={RequestIcon}
-    {...props}
-  />
+  <BaseIconButton defaultIcon={MessagePlusSquare} {...props} />
 );
 
 export const CommentIconButton = (props: IconButtonProps) => (
-  <BaseIconButton
-    bordered={props.newLook}
-    defaultIcon={CommentIcon}
-    {...props}
-  />
+  <BaseIconButton defaultIcon={MessageChatSquare} {...props} />
 );
 
 interface AlignRightIconButtonProps {

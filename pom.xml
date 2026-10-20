@@ -95,14 +95,16 @@
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
     <jacoco-plugin.version>0.8.10</jacoco-plugin.version>
-    <!-- Upgrading to jdbi version causes test failures-->
-    <jdbi3.version>3.37.1</jdbi3.version>
+    <!-- Matches the Jdbi that dropwizard-jdbi3 is built against; its jdbi3-guava arrives at this
+         version. Jdbi before 3.45.4 pins virtual threads while opening a handle, and Collate must
+         run the same version (ADR:2026-10-13-jdbi-never-pins-virtual-threads-and-collate-runs-the-same-version). -->
+    <jdbi3.version>3.49.5</jdbi3.version>
     <commons-cli.version>1.9.0</commons-cli.version>
     <commons-io.version>2.17.0</commons-io.version>
     <redshift-jdbc.version>2.2.2</redshift-jdbc.version>
     <gson.version>2.13.1</gson.version>
     <mysql.connector.version>9.3.0</mysql.connector.version>
-    <postgres.connector.version>42.7.12</postgres.connector.version>
+    <postgres.connector.version>42.7.14</postgres.connector.version>
     <jsonschema2pojo.version>1.3.1</jsonschema2pojo.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.11</tomcat-jdbc.version>
@@ -145,6 +147,10 @@
          own schedule; it is not a reason to leave a server on 5.6, which is
          still exposed to the CVE above. -->
     <jena.version>6.2.0</jena.version>
+    <!-- CVE-2026-102554 (unbounded allocation), fixed in 33.7.2-jre. Managed here, not only in
+         openmetadata-service, because common/spec/sdk/java-client otherwise resolve 33.4.8-jre
+         via dropwizard-jersey and 33.3.1-android via google-auth-library. -->
+    <guava.version>33.7.2-jre</guava.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -159,7 +165,7 @@
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
     <micrometer.version>1.16.7</micrometer.version>
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
-    <java-jwt.version>4.4.0</java-jwt.version>
+    <java-jwt.version>4.6.2</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
     <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
@@ -189,7 +195,6 @@
     <logback-classic.version>1.5.38</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
-    <json-patch.version>1.13</json-patch.version>
     <!-- 12.1.12 clears CVE-2026-19203 (jetty-http) and CVE-2026-19204 (jetty-websocket-core-common). -->
     <jetty.version>12.1.12</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
@@ -217,6 +222,11 @@
            jetty-security, CVE-2026-10050 digest authentication bypass). Imported before
            anything that pulls dropwizard so the patched line wins. -->
       <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
+      <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-bom</artifactId>
         <version>${jetty.version}</version>
@@ -236,21 +246,18 @@
         <artifactId>commons-lang3</artifactId>
         <version>3.18.0</version>
       </dependency>
+      <!-- okhttp 5 ships its classes in okhttp-jvm; the plain okhttp artifact is an empty jar in
+           Maven. Depend on okhttp-jvm, and let this BOM hold every okhttp3 artifact (including the
+           ones slack, feign, fabric8 and client-java pull in) on one version, so okhttp 4 and 5
+           never share the classpath. okio is not pinned: it resolves to the okio okhttp-jvm declares
+           (3.18.1 for 5.5.0). Keep it at or above that; older okio lacks classes okhttp 5 calls.
+           https://github.com/lysine-dev/okhttp#maven-and-jvm-projects -->
       <dependency>
         <groupId>com.squareup.okhttp3</groupId>
-        <artifactId>okhttp</artifactId>
-        <version>4.12.0</version>
-      </dependency>
-      <!-- Held alongside okhttp above. client-java 25.x declares logging-interceptor 5.1.0,
-           which drags in okhttp-jvm 5.1.0 — okhttp 5 moved the okhttp3.* classes into that
-           artifact, so it would sit on the classpath duplicating the pinned okhttp 4.12.0 jar
-           (split package, resolved by classpath order). client-java 25.0.1 references the exact
-           same 118 okhttp/okio members as 24.0.0, so 4.12.0 satisfies it. Drop this pin only as
-           part of a real okhttp 5 migration. -->
-      <dependency>
-        <groupId>com.squareup.okhttp3</groupId>
-        <artifactId>logging-interceptor</artifactId>
+        <artifactId>okhttp-bom</artifactId>
         <version>5.5.0</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <!-- CVE-2026-47857: reactor-core < 3.8.7 (reached transitively via reactor-netty and the
            azure/spring stacks). Pin the whole Reactor 2026.0 train together: reactor-core 3.8.7
@@ -764,11 +771,6 @@
         </exclusions>
       </dependency>
     <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
-      <version>${json-patch.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.github.jknack</groupId>
       <artifactId>handlebars</artifactId>
       <version>${handlebars.version}</version>
@@ -901,17 +903,17 @@
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcpkix-jdk18on</artifactId>
-        <version>1.85</version>
+        <version>1.86</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcprov-jdk18on</artifactId>
-        <version>1.85</version>
+        <version>1.86</version>
       </dependency>
       <dependency>
         <groupId>org.bouncycastle</groupId>
         <artifactId>bcutil-jdk18on</artifactId>
-        <version>1.85</version>
+        <version>1.86</version>
       </dependency>
       <!-- Force patched tools.jackson 3.x (jsonschema2pojo-core pulls 3.0.2 transitively).
            3.1.7 clears CVE-2026-89425 and CVE-2026-91777.
@@ -1228,11 +1230,10 @@
               <include>org.openmetadata.service.apps.*.java</include>
               <include>org.openmetadata.service.cache.*.java</include>
               <include>org.openmetadata.service.events.*.java</include>
-              <include>org.openmetadata.service.formatter.**.*.java</include>
               <include>org.openmetadata.service.governance.*.java</include>
               <include>org.openmetadata.service.jdbi3.*.java</include>
               <include>org.openmetadata.service.monitoring.*.java</include>
-              <include>org.openmetadata.service.notifications.**.*.java</include>
+              <include>org.openmetadata.service.alerting.**.*.java</include>
               <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
               <include>org.openmetadata.service.rules.*.java</include>
@@ -1277,6 +1278,13 @@
                 <requireMavenVersion>
                   <version>3.6.0</version>
                 </requireMavenVersion>
+                <bannedDependencies>
+                  <message>java-json-tools is abandoned and jackson-coreutils 2.0 has unfixed CVEs. Diff with org.openmetadata.schema.utils.JsonDiff and apply with JsonUtils.applyPatch (ADR:2026-10-15-json-patches-are-computed-in-house-and-applied-with-parsson).</message>
+                  <excludes>
+                    <exclude>com.github.java-json-tools</exclude>
+                    <exclude>com.github.fge</exclude>
+                  </excludes>
+                </bannedDependencies>
               </rules>
             </configuration>
           </execution>

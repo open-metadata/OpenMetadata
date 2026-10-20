@@ -21,7 +21,10 @@ import {
   DEFAULT_APP_MODE,
 } from '../../../constants/appMode.constants';
 import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
-import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
+import {
+  AuthProvider as AuthProviderProps,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { Document } from '../../../generated/entity/docStore/document';
 import { useAppModeStore } from '../../../hooks/useAppMode';
 import axiosClient from '../../../rest/axiosClient';
@@ -42,6 +45,7 @@ import { RefreshFailedError } from '../../../utils/Auth/AuthCoordinator/RefreshQ
 import type { RefreshFailedPayload } from '../../../utils/Auth/AuthCoordinator/types';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
+import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -221,6 +225,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
   const setIsAuthenticating = jest.fn();
   const setApplicationLoading = jest.fn();
   const setAppPreferences = jest.fn();
+  const setTimeFormat = jest.fn();
   const useApplicationStoreMock = Object.assign(
     jest.fn().mockImplementation(() => ({
       setCurrentUser: jest.fn(),
@@ -256,9 +261,11 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     // (outside the hook call) — provide it so any code path that exercises
     // that branch doesn't blow up with "getState is not a function".
     {
-      getState: jest
-        .fn()
-        .mockReturnValue({ currentUser: { name: 'test' }, setAppPreferences }),
+      getState: jest.fn().mockReturnValue({
+        currentUser: { name: 'test' },
+        setAppPreferences,
+        setTimeFormat,
+      }),
     }
   );
 
@@ -268,6 +275,7 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     __mockSetIsAuthenticating: setIsAuthenticating,
     __mockSetApplicationLoading: setApplicationLoading,
     __mockSetAppPreferences: setAppPreferences,
+    __mockSetTimeFormat: setTimeFormat,
   };
 });
 
@@ -313,6 +321,7 @@ const {
   __mockSetIsAuthenticating: mockSetIsAuthenticating,
   __mockSetApplicationLoading: mockSetApplicationLoading,
   __mockSetAppPreferences: mockSetAppPreferences,
+  __mockSetTimeFormat: mockSetTimeFormat,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } = jest.requireMock('../../../hooks/useApplicationStore') as any;
 
@@ -950,6 +959,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     afterEach(() => {
       applicationStore.getState.mockReturnValue({
         setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
         currentUser: { name: 'test' },
       });
     });
@@ -970,6 +980,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     it('signs this tab out locally when another tab signs out', async () => {
       applicationStore.getState.mockReturnValue({
         setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
         currentUser: { name: 'test' },
         isAuthenticated: true,
       });
@@ -992,6 +1003,7 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
     it('ignores another tab signing out when this tab is not signed in', async () => {
       applicationStore.getState.mockReturnValue({
         setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
         currentUser: {},
         isAuthenticated: false,
       });
@@ -1468,6 +1480,49 @@ describe('Sign-in routing', () => {
       expect(mockSetAppPreferences).toHaveBeenCalledWith({
         defaultColumnOrder: 'sourceOrder',
       })
+    );
+  });
+
+  it('leaves the profile to the server after a confidential-client login', async () => {
+    const defaults = defaultStoreImplementation();
+    const confidentialStore = {
+      ...defaults,
+      jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
+      authConfig: {
+        ...defaults.authConfig,
+        provider: AuthProviderProps.Google,
+        clientType: ClientType.Confidential,
+      },
+    };
+    useApplicationStoreMock.mockImplementation(() => confidentialStore);
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(confidentialStore.setCurrentUser).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1', name: 'aaron' })
+      )
+    );
+
+    expect(checkIfUpdateRequired).not.toHaveBeenCalled();
+  });
+
+  it('reconciles the profile in the browser after a public-client login', async () => {
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(checkIfUpdateRequired).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        expect.anything()
+      )
     );
   });
 });

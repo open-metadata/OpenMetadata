@@ -34,6 +34,8 @@ export interface OntologyExplorerProps {
   isEditMode?: boolean;
   surface?: OntologyStudioSurface;
   showHealth?: boolean;
+  /** Sub-bar element the concept search renders into; it floats on the canvas without one. */
+  searchSlot?: HTMLElement | null;
   globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
@@ -46,6 +48,18 @@ export interface OntologyExplorerProps {
   onConceptCreated?: (concept: GlossaryTerm) => void;
   onConceptDraftClose?: () => void;
   onRequestEdit?: () => void;
+  proposalPermissions?: OntologyProposalPermissions;
+}
+
+export interface OntologyProposalPermissions {
+  canApprove: boolean;
+  canReject: boolean;
+}
+
+/** Points a canvas node or edge at the AI draft operation that proposes it. */
+export interface OntologyProposalRef {
+  changeSetId: string;
+  operationId: string;
 }
 
 export interface OntologyNode {
@@ -72,6 +86,7 @@ export interface OntologyNode {
   isDraft?: boolean;
   isOptimistic?: boolean;
   isDataModeSeed?: boolean;
+  proposal?: OntologyProposalRef;
 }
 
 export interface OntologyEdge {
@@ -87,6 +102,7 @@ export interface OntologyEdge {
   createdBy?: string;
   createdAt?: number;
   relationshipType?: EntityReference;
+  proposal?: OntologyProposalRef;
 }
 
 export type OntologyEdgeKind =
@@ -128,6 +144,8 @@ export interface OntologyGraphHandle {
   getNodePositions: () => Record<string, { x: number; y: number }>;
   exportAsPng: () => Promise<void>;
   exportAsSvg: () => Promise<void>;
+  /** Forget the clicked edge, so the next click on it is reported again. */
+  clearEdgeSelection: () => void;
 }
 
 export interface HierarchyComboInfo {
@@ -217,6 +235,7 @@ export interface MergedEdge {
   createdBy?: string;
   createdAt?: number;
   relationshipType?: EntityReference;
+  proposal?: OntologyProposalRef;
 }
 
 export interface LayoutConfig {
