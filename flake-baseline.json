@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-19T03:21:08Z",
+  "generatedAt": "2026-10-20T03:24:20Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "37876815560",
-      "sourceSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
-      "recordedAt": "2026-10-09T03:28:35Z"
-    },
     {
       "runId": "38018608325",
       "sourceSha": "39e7b3e330a5738cba17ee544660efc8730c6627",
@@ -53,6 +48,11 @@
       "runId": "39191651889",
       "sourceSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
       "recordedAt": "2026-10-19T03:21:08Z"
+    },
+    {
+      "runId": "39360663107",
+      "sourceSha": "33485c661e853f0354e429555c58438782d42609",
+      "recordedAt": "2026-10-20T03:24:20Z"
     }
   ],
   "entries": {
@@ -135,16 +135,6 @@
       "file": "Features/AIMode/PersonaSettings.spec.ts",
       "title": "Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved",
       "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
-      "hardFailure": false
-    },
-    "chromium :: Features/ActivityFeed.spec.ts :: ActivityFeed: activity + conversation merge (regression #25894) \u203a All badge, header and rendered list agree on the count": {
-      "observations": [
-        "37876815560"
-      ],
-      "project": "chromium",
-      "file": "Features/ActivityFeed.spec.ts",
-      "title": "ActivityFeed: activity + conversation merge (regression #25894) \u203a All badge, header and rendered list agree on the count",
-      "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
       "hardFailure": false
     },
     "chromium :: Features/CuratedAssets.spec.ts :: Curated Assets Widget \u203a Test Stored Procedures with display name filter": {
@@ -438,6 +428,16 @@
       "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
       "hardFailure": false
     },
+    "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboard -> dashboard": {
+      "observations": [
+        "39360663107"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/DataAssetLineage.spec.ts",
+      "title": "Column Level Lineage \u203a Column lineage for dashboard -> dashboard",
+      "lastSeenSha": "33485c661e853f0354e429555c58438782d42609",
+      "hardFailure": false
+    },
     "chromium :: Pages/Lineage/DataAssetLineage.spec.ts :: Column Level Lineage \u203a Column lineage for dashboardDataModel -> dashboard": {
       "observations": [
         "38018608325"
@@ -567,16 +567,6 @@
       "title": "Storage Service \u203a Inactive Announcement create & delete",
       "lastSeenSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
       "hardFailure": true
-    },
-    "chromium :: Pages/Tags.spec.ts :: Verify Owner Add Delete": {
-      "observations": [
-        "37876815560"
-      ],
-      "project": "chromium",
-      "file": "Pages/Tags.spec.ts",
-      "title": "Verify Owner Add Delete",
-      "lastSeenSha": "fc6a14d76d6ea58c4a13d49991e44e9423dc805a",
-      "hardFailure": false
     },
     "chromium :: Pages/TasksUIFlow.spec.ts :: Task Activity Feed Integration \u203a Verify task shows correct metadata": {
       "observations": [
