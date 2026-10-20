@@ -445,7 +445,7 @@ const TableRow = <T extends object>({
           // an anonymous table cell — a phantom column that Chrome 151's
           // fixed-layout algorithm counts when splitting leftover width, so
           // every table came up one column-share short of its own right edge.
-          'tw:relative tw:outline-focus-ring tw:transition-colors tw:hover:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+          'tw:relative tw:outline-focus-ring tw:transition-colors tw:[&:hover]:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
           TABLE_SIZES[size].rowHeight,
           highlightSelectedRow &&
             'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',
