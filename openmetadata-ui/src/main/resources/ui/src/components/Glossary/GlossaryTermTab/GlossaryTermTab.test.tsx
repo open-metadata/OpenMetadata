@@ -556,16 +556,16 @@ describe('Test GlossaryTermTab component', () => {
         ).toBeInTheDocument();
       });
 
-      // Clothing is a person's draft: it reads as a proposal awaiting review.
+      // Clothing is a person's draft: it keeps its status and reads as a proposal awaiting review.
       const proposedRow = screen.getByTestId('glossary-row-0');
 
       expect(proposedRow).toHaveClass('glossary-person-proposal-row');
       expect(
+        within(proposedRow).getByTestId('Business Glossary.Clothing-status')
+      ).toBeInTheDocument();
+      expect(
         within(proposedRow).getByTestId('proposal-status-badge')
       ).toHaveTextContent('label.proposed-by-name');
-      expect(
-        screen.queryByTestId('Business Glossary.Clothing-status')
-      ).not.toBeInTheDocument();
     });
 
     it('should render owner labels', async () => {

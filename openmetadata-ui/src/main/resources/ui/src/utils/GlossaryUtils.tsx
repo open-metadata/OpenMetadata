@@ -46,7 +46,7 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
     return <GlossaryTermTab isGlossary />;
   }
   if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW)) {
-    return <PendingReviewPanel widgetKey={widget.i} />;
+    return <PendingReviewPanel />;
   }
 
   return (

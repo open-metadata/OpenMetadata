@@ -26,7 +26,6 @@ import {
 } from '../../../Glossary/useGlossary.store';
 import PendingReviewPanel from './PendingReviewPanel';
 
-const mockFilterWidgets = jest.fn();
 const mockDecide = jest.fn();
 
 jest.mock('../../../../hooks/governance/glossary/useGlossaryProposals', () => ({
@@ -38,7 +37,6 @@ jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
     data: { id: 'glossary-id', fullyQualifiedName: 'Customers' },
     type: EntityType.GLOSSARY,
     permissions: { EditAll: true },
-    filterWidgets: mockFilterWidgets,
   })),
 }));
 
@@ -89,7 +87,7 @@ const mockProposals = (proposals: GlossaryProposal[]) =>
   });
 
 const renderPanel = () =>
-  render(<PendingReviewPanel widgetKey="KnowledgePanel.PendingReview" />, {
+  render(<PendingReviewPanel />, {
     wrapper: MemoryRouter,
   });
 
@@ -143,15 +141,20 @@ describe('PendingReviewPanel', () => {
     );
   });
 
-  it('hides itself while nothing waits for review', () => {
+  it('stays out of the layout while nothing waits, and returns when a proposal arrives', () => {
     mockProposals([]);
-    renderPanel();
+    const { rerender } = renderPanel();
 
     expect(
       screen.queryByTestId('pending-review-panel')
     ).not.toBeInTheDocument();
-    expect(mockFilterWidgets).toHaveBeenCalledWith([
-      'KnowledgePanel.PendingReview',
-    ]);
+
+    mockProposals([personProposal]);
+    rerender(<PendingReviewPanel />);
+
+    expect(screen.getByTestId('pending-review-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+      'Escrow'
+    );
   });
 });

@@ -17,7 +17,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
@@ -43,11 +43,6 @@ import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { useGlossaryStore } from '../../../Glossary/useGlossary.store';
 import ProposalCard from './ProposalCard';
-
-export interface PendingReviewPanelProps {
-  /** The layout key this panel renders under, hidden while nothing waits for review. */
-  widgetKey: string;
-}
 
 const FILTERS: ProposalFilter[] = ['all', 'ai', 'person'];
 
@@ -96,10 +91,9 @@ const ResolvedList = ({ resolved }: { resolved: ResolvedProposal[] }) => {
 };
 
 /** The proposals awaiting review under a glossary or a term: AI agents' and people's. */
-const PendingReviewPanel = ({ widgetKey }: PendingReviewPanelProps) => {
+const PendingReviewPanel = () => {
   const { t } = useTranslation();
-  const { data, type, permissions, filterWidgets } =
-    useGenericContext<GlossaryTerm>();
+  const { data, type, permissions } = useGenericContext<GlossaryTerm>();
   const { currentUser } = useApplicationStore();
   const {
     glossaryChildTerms,
@@ -127,12 +121,6 @@ const PendingReviewPanel = ({ widgetKey }: PendingReviewPanelProps) => {
   const expandedId =
     visible.find((proposal) => proposal.term.id === selectedProposalId)?.term
       .id ?? visible[0]?.term.id;
-
-  useEffect(() => {
-    if (!isLoading && proposals.length === 0 && resolved.length === 0) {
-      filterWidgets?.([widgetKey]);
-    }
-  }, [isLoading, proposals.length, resolved.length, widgetKey]);
 
   const decideProposal = async (
     proposal: GlossaryProposal,

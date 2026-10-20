@@ -90,8 +90,16 @@ test.describe('AI-generated glossary terms', () => {
     await glossary.visitEntityPage(page);
     const row = getRowByName(page, reviewedInPanel.data.displayName);
     await expect(row.getByTestId('proposal-source-ai')).toBeVisible();
+    await expect(
+      row.getByTestId(
+        `${reviewedInPanel.responseData.fullyQualifiedName}-status`
+      )
+    ).toContainText('Draft');
     await expect(row.getByTestId('proposal-status-badge')).toBeVisible();
     await expect(page.getByTestId('pending-review-summary')).toBeVisible();
+    await expect(
+      page.getByTestId(`pending-terms-${glossary.responseData.name}`)
+    ).toBeVisible();
 
     const panel = page.getByTestId('pending-review-panel');
     await expect(panel).toBeVisible();
@@ -147,7 +155,24 @@ test.describe('AI-generated glossary terms', () => {
     await expect(page.getByTestId('glossary-header')).toContainText('Rejected');
 
     // A rejected draft leaves the review queue.
+    const proposalsLoaded = waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith('/api/v1/glossaryTerms') &&
+          url.searchParams.get('entityStatus') === 'Draft,In Review'
+        );
+      },
+      200
+    );
     await glossary.visitEntityPage(page);
+    await proposalsLoaded;
+    await expect(page.getByTestId('glossary-terms-table')).toBeVisible();
+    await expect(
+      getRowByName(page, reviewedOnItsPage.data.displayName)
+    ).toHaveCount(0);
     await expect(
       page
         .getByTestId('pending-review-panel')

@@ -191,7 +191,7 @@ export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW)
   ) {
-    return <PendingReviewPanel widgetKey={widgetConfig.i} />;
+    return <PendingReviewPanel />;
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.RELATED_TERMS)
   ) {

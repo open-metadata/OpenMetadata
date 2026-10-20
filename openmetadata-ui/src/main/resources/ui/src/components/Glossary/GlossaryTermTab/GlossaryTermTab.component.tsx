@@ -12,6 +12,7 @@
  */
 
 import {
+  Box,
   Button,
   ButtonUtility,
   Checkbox,
@@ -1319,11 +1320,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               />
             );
           }
+          const statusCell = (
+            <GlossaryTermStatusCell record={record} status={status} />
+          );
           const proposalSource = getProposalSource(record);
-          if (proposalSource) {
-            const proposal = proposalByTermId.get(record.id);
+          if (!proposalSource) {
+            return statusCell;
+          }
+          const proposal = proposalByTermId.get(record.id);
 
-            return (
+          return (
+            <Box align="start" direction="col" gap={1}>
+              {statusCell}
               <ProposalStatusBadge
                 author={
                   proposal ? getProposalAuthor(proposal) : record.updatedBy
@@ -1332,10 +1340,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 source={proposalSource}
                 updatedAt={record.updatedAt}
               />
-            );
-          }
-
-          return <GlossaryTermStatusCell record={record} status={status} />;
+            </Box>
+          );
         },
         onFilter: (value, record) => record.entityStatus === value,
       },
