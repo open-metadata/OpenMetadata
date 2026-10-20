@@ -32,6 +32,7 @@ import {
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
+import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
 import { AlertType } from '../../../generated/events/api/createEventSubscription';
 import {
   AlertType as EventSubscriptionAlertType,
@@ -46,7 +47,6 @@ import {
   Type,
   type Destination,
 } from '../../../generated/events/eventSubscription';
-import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
 import type { AlertSelection } from '../../../hooks/useAlertSelection';
 import {
   ModifiedCreateEventSubscription,
