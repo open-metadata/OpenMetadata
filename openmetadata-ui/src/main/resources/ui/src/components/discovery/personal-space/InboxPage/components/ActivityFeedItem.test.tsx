@@ -288,6 +288,7 @@ jest.mock('react-i18next', () => ({
 
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../../generated/entity/feed/conversation';
+import EntityLink from '../../../../../utils/EntityLink';
 import ActivityFeedItem from './ActivityFeedItem';
 
 const baseActivity = {
@@ -423,6 +424,31 @@ describe('ActivityFeedItem', () => {
       'href',
       '/table/svc.db.sch.dim.email'
     );
+  });
+
+  it('links a non-column field change to the entity without parsing its link', () => {
+    // `entityStatus` is not in the EntityLink grammar: parsing it made ANTLR
+    // log a syntax error on every render.
+    const splitSpy = jest.spyOn(EntityLink, 'split');
+
+    render(
+      <ActivityFeedItem
+        activity={
+          {
+            ...baseActivity,
+            about: '<#E::table::svc.db.sch.dim::entityStatus>',
+          } as ActivityEvent
+        }
+      />
+    );
+
+    expect(splitSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+
+    splitSpy.mockRestore();
   });
 
   it('flags a card that mentions the viewer, and only then', () => {

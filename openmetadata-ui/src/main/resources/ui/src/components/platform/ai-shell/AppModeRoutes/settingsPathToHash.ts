@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ENTITY_PATH } from '../../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
@@ -24,9 +25,11 @@ import { safeDecodeURIComponent as decode } from '../../../discovery/personal-sp
  * its key and returns the modal hash (without `#`), or `undefined` to leave the
  * page route alone (services, search, workflow definitions, edit forms… have no
  * modal tab; notifications/alerts have dedicated AI pages and persona details
- * keep their page). Path FQN segments arrive URL-encoded: tabs whose hash
- * parser decodes (applications, members teams) keep them encoded, the rest
- * decode. See ADR:2026-10-20-app-mode-settings-urls-open-the-settings-modal.
+ * keep their page). The bare `/settings` landing and `/create-user` are generic
+ * entry points that AI-mode flows still drive as classic pages, so they stay.
+ * Path FQN segments arrive URL-encoded: tabs whose hash parser decodes
+ * (applications, members teams) keep them encoded, the rest decode.
+ * See ADR:2026-10-20-app-mode-settings-urls-open-the-settings-modal.
  */
 type HashMapper = (rest: string[]) => string | undefined;
 
@@ -108,7 +111,6 @@ const mapAccess: HashMapper = ([option, fqn, action, rule]) => {
 };
 
 const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
-  ['', () => 'profile'],
   [GlobalSettingsMenuCategory.BOTS, () => 'bots'],
   [
     GlobalSettingsMenuCategory.APPLICATIONS,
@@ -121,7 +123,15 @@ const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
   ],
   [GlobalSettingsMenuCategory.MEMBERS, mapMembers],
   [GlobalSettingsMenuCategory.ACCESS, mapAccess],
-  [GlobalSettingsMenuCategory.CUSTOM_PROPERTIES, () => 'custom-properties'],
+  // Classic `<entityPath>` segment (`tables`) → Type FQN (`table`) the panel opens.
+  [
+    GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+    ([entityPath]) =>
+      withSub(
+        'custom-properties',
+        entityPath ? lookup(ENTITY_PATH, entityPath) : undefined
+      ),
+  ],
   [
     GlobalSettingsMenuCategory.GOVERNANCE,
     ([option]) => {
@@ -155,10 +165,7 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
     ([category = '', ...rest]) => SETTINGS_HASH_MAPPERS.get(category)?.(rest),
   ],
   ['bots', ([name]) => (name ? `bots/${decode(name)}` : undefined)],
-  [
-    'create-user',
-    ([kind]) => (kind === 'bot' ? 'bots/add' : 'members/users/create'),
-  ],
+  ['create-user', ([kind]) => (kind === 'bot' ? 'bots/add' : undefined)],
   [
     'marketplace',
     ([, fqn, action]) =>

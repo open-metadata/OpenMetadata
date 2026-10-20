@@ -24,9 +24,17 @@ a non-admin with Team view permission to their own Profile.
   (`PROFILE_NAV_VISIBILITY`). Otherwise the classic page renders with its own permission handling.
 - Collate's billing page slugs equal their modal slugs: `/settings/billing/<page>` maps to
   `#billing/<page>`.
+- `/settings/customProperties/<entityPath>` maps to `#custom-properties/<typeFqn>`, resolving the
+  classic segment through `ENTITY_PATH` (`tables` → `table`); an unknown segment opens the bare
+  `#custom-properties` landing.
 - These stay page routes: notifications and alerts (dedicated AI pages in `SettingsRouter`),
   persona detail routes `/settings/persona/<name>/...`, services, workflow definitions, billing
   plans, and any path the mapper does not know.
+- The bare `/settings` landing and `/create-user` also stay pages. They are generic entry points,
+  not a specific settings tab: AI-mode flows (Collate's Ask Collate helpers open `/settings` and
+  click its category tiles; its onboarding "Invite team" step lands on `/create-user`) drive them
+  as classic pages, and redirecting them to `#profile` or `#members/users/create` would break those
+  flows. `/create-user/bot` does map to `#bots/add`; nothing drives it as a page in AI mode.
 
 ## Consequences
 A new modal tab or sub-page that replaces a classic page adds a mapper entry and a test case. A tab

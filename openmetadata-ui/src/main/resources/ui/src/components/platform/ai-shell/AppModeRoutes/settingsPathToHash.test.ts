@@ -15,11 +15,9 @@ import { settingsPathToHash } from './settingsPathToHash';
 
 describe('settingsPathToHash', () => {
   it.each([
-    ['/settings', 'profile'],
     ['/settings/bots', 'bots'],
     ['/bots/ingestion-bot', 'bots/ingestion-bot'],
     ['/create-user/bot', 'bots/add'],
-    ['/create-user', 'members/users/create'],
     ['/settings/apps', 'applications'],
     ['/settings/apps/Data%20Insights', 'applications/Data%20Insights'],
     ['/marketplace', 'applications/marketplace'],
@@ -52,7 +50,13 @@ describe('settingsPathToHash', () => {
       'access-control/policies/OrgPolicy/rules/my%20rule/edit',
     ],
     ['/settings/access/audit-logs', 'access-control/audit-logs'],
-    ['/settings/customProperties/tables', 'custom-properties'],
+    ['/settings/customProperties', 'custom-properties'],
+    ['/settings/customProperties/tables', 'custom-properties/table'],
+    [
+      '/settings/customProperties/storedProcedures',
+      'custom-properties/storedProcedure',
+    ],
+    ['/settings/customProperties/unknown', 'custom-properties'],
     ['/settings/governance/intake-forms', 'governance/intake-forms'],
     ['/settings/preferences', 'platform-settings'],
     ['/settings/preferences/appearance', 'platform-settings/theme'],
@@ -66,6 +70,8 @@ describe('settingsPathToHash', () => {
   });
 
   it.each([
+    '/settings',
+    '/create-user',
     '/settings/services/databases',
     '/settings/governance/workflow-definitions',
     '/settings/preferences/unknown',
