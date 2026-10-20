@@ -187,7 +187,38 @@ describe('useGlossaryProposals', () => {
       'ai-id',
     ]);
     expect(listTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutEntity: 'Customers.Escrow' })
+      expect.objectContaining({ aboutEntityIds: 'person-id' })
+    );
+  });
+
+  it('finds the approval request for a term whose name contains a comma', async () => {
+    const term = {
+      ...personDraft,
+      fullyQualifiedName: 'Customers.Revenue, net',
+    };
+    terms = [term];
+    const task = {
+      ...approvalTask,
+      about: {
+        ...approvalTask.about,
+        fullyQualifiedName: term.fullyQualifiedName,
+      },
+    };
+    (listTasks as jest.Mock).mockImplementation(async ({ aboutEntityIds }) => ({
+      data: aboutEntityIds === term.id ? [task] : [],
+    }));
+    const { result } = renderHook(
+      () =>
+        useGlossaryProposalPage(scope, 'person', 1, {
+          all: 1,
+          ai: 0,
+          person: 1,
+        }),
+      { wrapper }
+    );
+
+    await waitFor(() =>
+      expect(result.current.proposals[0]?.approvalTask).toEqual(task)
     );
   });
 

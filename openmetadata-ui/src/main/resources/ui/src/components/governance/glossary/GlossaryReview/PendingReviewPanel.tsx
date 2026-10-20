@@ -174,8 +174,14 @@ const useReviewQueue = (
     isSelectedOnPage ? undefined : selectedProposalId
   );
   const visible = useMemo(
-    () => (selected ? [selected, ...proposals] : proposals),
-    [selected, proposals]
+    () =>
+      scope?.fullyQualifiedName &&
+      selected?.term.fullyQualifiedName?.startsWith(
+        `${scope.fullyQualifiedName}.`
+      )
+        ? [selected, ...proposals]
+        : proposals,
+    [scope?.fullyQualifiedName, selected, proposals]
   );
 
   useEffect(() => setPage(1), [activeFilter, scope?.id]);

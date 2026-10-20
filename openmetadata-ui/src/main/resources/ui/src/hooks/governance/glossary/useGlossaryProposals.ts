@@ -124,7 +124,7 @@ const fetchProposalCounts = async (
 const getApprovalTasks = async (terms: GlossaryTerm[]) => {
   const inReview = terms
     .filter((term) => term.entityStatus === EntityStatus.InReview)
-    .map((term) => term.fullyQualifiedName ?? '');
+    .map((term) => term.id);
   if (inReview.length === 0) {
     return [];
   }
@@ -132,7 +132,7 @@ const getApprovalTasks = async (terms: GlossaryTerm[]) => {
     status: TaskEntityStatus.Open,
     category: TaskCategory.Approval,
     type: TaskEntityType.RequestApproval,
-    aboutEntity: inReview.join(','),
+    aboutEntityIds: inReview.join(','),
     limit: PAGE_SIZE_LARGE,
     fields: 'about,assignees,createdBy',
   });

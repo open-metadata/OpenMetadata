@@ -21,6 +21,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -224,6 +227,53 @@ public class GlossaryTermAutomationDraftIT {
     assertEquals(400, rejected.getStatusCode());
   }
 
+  @Test
+  void approvalRequestsMatchExactEntityIdsIncludingCommaNames(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "exactTasks", List.of(SharedEntities.get().USER1_REF));
+    GlossaryTerm parent =
+        createTerm(SdkClients.adminClient(), glossary, ns.prefix("Revenue, net"), null);
+    Task parentTask = awaitOpenApprovalTask(parent);
+    GlossaryTerm child =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("Child"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withParent(parent.getFullyQualifiedName())
+                    .withDescription("A narrower definition"));
+    awaitOpenApprovalTask(child);
+
+    JsonNode page = approvalTasks(parent.getId().toString(), 1);
+    assertEquals(1, total(page));
+    assertEquals(parentTask.getId().toString(), page.path("data").get(0).path("id").asText());
+    assertEquals(
+        parent.getId().toString(), page.path("data").get(0).path("about").path("id").asText());
+
+    JsonNode batch = approvalTasks(parent.getId() + "," + child.getId(), 100);
+    assertEquals(2, total(batch));
+    assertEquals(
+        Set.of(parent.getId().toString(), child.getId().toString()),
+        StreamSupport.stream(batch.path("data").spliterator(), false)
+            .map(task -> task.path("about").path("id").asText())
+            .collect(Collectors.toSet()));
+  }
+
+  private static JsonNode approvalTasks(String entityIds, int limit) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("aboutEntityIds", entityIds)
+            .queryParam("type", "RequestApproval")
+            .queryParam("status", "Open")
+            .queryParam("fields", "about")
+            .queryParam("limit", Integer.toString(limit))
+            .build();
+    return JsonUtils.readTree(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/tasks", null, options));
+  }
+
   private static JsonNode pendingTerms(Map<String, String> filters) {
     RequestOptions options =
         RequestOptions.builder()
@@ -297,8 +347,8 @@ public class GlossaryTermAutomationDraftIT {
             "100",
             "status",
             TaskEntityStatus.Open.value(),
-            "aboutEntity",
-            term.getFullyQualifiedName(),
+            "aboutEntityIds",
+            term.getId().toString(),
             "fields",
             "assignees");
     return Awaitility.await("open approval task for " + term.getFullyQualifiedName())

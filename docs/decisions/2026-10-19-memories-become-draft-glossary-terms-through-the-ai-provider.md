@@ -59,6 +59,9 @@ The panel reads its queue a page at a time rather than loading every pending ter
 bad request) and returns exact totals, so a page holds AI proposals first, then people's. A listed
 term carries the reviewers it inherits, as a single read of it does, so the panel knows who decides
 it, and a change of stage drops the cached listing totals, so the counts follow each decision.
+The page's approval requests use `GET /v1/tasks?aboutEntityIds=...`, which matches entity UUIDs
+exactly. FQN prefix filters would also read descendants' requests and confuse names containing
+commas with a list of names.
 
 ## Consequences
 

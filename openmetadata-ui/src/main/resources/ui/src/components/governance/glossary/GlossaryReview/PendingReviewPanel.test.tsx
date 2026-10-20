@@ -124,6 +124,7 @@ describe('PendingReviewPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient.clear();
+    mockContext.data = { id: 'glossary-id', fullyQualifiedName: 'Customers' };
     mockContext.permissions = { EditAll: true };
     (getEntityPermissionByFqn as jest.Mock).mockResolvedValue({
       permissions: [{ operation: Operation.EditAll, access: Access.Allow }],
@@ -328,6 +329,32 @@ describe('PendingReviewPanel', () => {
     await waitFor(() =>
       expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
         'Escrow'
+      )
+    );
+
+    expect(screen.queryByText('Term 18')).not.toBeInTheDocument();
+  });
+
+  it('keeps a selected proposal in its own glossary when navigating to another', async () => {
+    terms = manyAiDrafts;
+    const { rerender } = renderPanel();
+    await screen.findByTestId('proposal-card-expanded');
+    act(() => useGlossaryStore.getState().setSelectedProposalId('Term 18'));
+    await waitFor(() =>
+      expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+        'Term 18'
+      )
+    );
+
+    terms = [
+      { ...pending('Supplier'), fullyQualifiedName: 'Suppliers.Supplier' },
+    ];
+    mockContext.data = { id: 'suppliers-id', fullyQualifiedName: 'Suppliers' };
+    rerender(<PendingReviewPanel />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+        'Supplier'
       )
     );
 
