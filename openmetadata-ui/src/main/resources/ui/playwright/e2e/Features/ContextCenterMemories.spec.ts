@@ -524,6 +524,39 @@ test.describe(
     // ─── 4. Memory Row Card — Visible Metadata ──────────────────────────────
 
     test.describe('Memory Row Card Metadata', () => {
+      test('row shows the creator display name', async ({
+        page,
+        dataConsumerPage,
+      }) => {
+        await redirectToHomePage(dataConsumerPage);
+        const { apiContext, afterAction } = await getApiContext(
+          dataConsumerPage
+        );
+        const title = `Creator Display Name ${uuid()}`;
+
+        try {
+          expect(dataConsumerUser.displayName).not.toBe(dataConsumerUser.name);
+
+          const memory = await createMemoryViaApi(apiContext, {
+            name: `cc_memory_display_name_${uuid()}`,
+            title,
+            question: 'Who created this memory?',
+            answer: 'The creator should be identified by their display name.',
+            shareConfig: { visibility: 'Shared' },
+          });
+          globalMemoryIds.push(memory.id);
+
+          await navigateToMemories(page);
+          const row = await searchAndGetMemoryRow(page, title, memory.id);
+
+          await expect(
+            row.getByText(dataConsumerUser.displayName, { exact: true })
+          ).toBeVisible();
+        } finally {
+          await afterAction();
+        }
+      });
+
       test('row shows owner name and memory title', async ({ page }) => {
         test.slow();
 
