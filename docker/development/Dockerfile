@@ -52,6 +52,8 @@ COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /
 
+RUN ln -sf /busybox/env /usr/bin/env
+
 USER 65532:65532
 
 WORKDIR /opt/openmetadata
