@@ -21,11 +21,13 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -72,13 +74,13 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
  */
 class CreateIngestionPipelineImplTest {
 
+  private static final String USAGE_BOT = "usage-bot";
+  private static final String LINEAGE_BOT = "lineage-bot";
+  private static final String PROFILER_BOT = "profiler-bot";
+  private static final String AUTO_CLASSIFICATION_BOT = "autoClassification-bot";
   private static final List<String> BOTS =
       List.of(
-          Entity.INGESTION_BOT_NAME,
-          "usage-bot",
-          "lineage-bot",
-          "profiler-bot",
-          "autoClassification-bot");
+          Entity.INGESTION_BOT_NAME, USAGE_BOT, LINEAGE_BOT, PROFILER_BOT, AUTO_CLASSIFICATION_BOT);
 
   private final IngestionPipelineRepository pipelineRepository =
       mock(IngestionPipelineRepository.class);
@@ -91,38 +93,15 @@ class CreateIngestionPipelineImplTest {
 
   @BeforeEach
   void setUp() {
-    BotRepository botRepository = mock(BotRepository.class);
-    UserRepository userRepository = mock(UserRepository.class);
-    for (String bot : BOTS) {
-      when(botRepository.getByName(isNull(), eq(bot), any())).thenReturn(botWithUser(bot));
-      when(userRepository.getByName(isNull(), eq(bot), any())).thenReturn(jwtBotUser(bot));
-    }
-
-    SecretsManager secretsManager = mock(SecretsManager.class);
-    when(secretsManager.getSecretsManagerProvider()).thenReturn(SecretsManagerProvider.IN_MEMORY);
-    when(secretsManager.encryptOpenMetadataConnection(any(), eq(false)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
-
     mockedEntity = mockStatic(Entity.class);
-    mockedEntity.when(() -> Entity.getEntityRepository(Entity.BOT)).thenReturn(botRepository);
-    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
-    mockedEntity
-        .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
-        .thenReturn(pipelineRepository);
-    mockedEntity
-        .when(() -> Entity.getEntityTypeFromObject(service))
-        .thenReturn(Entity.DATABASE_SERVICE);
+    stubBotLookups();
+    stubServiceType(service, Entity.DATABASE_SERVICE);
+    final SecretsManager secretsManager = passThroughSecretsManager();
     mockedSecretsManagerFactory = mockStatic(SecretsManagerFactory.class);
     mockedSecretsManagerFactory
         .when(SecretsManagerFactory::getSecretsManager)
         .thenReturn(secretsManager);
-
-    when(pipelineRepository.getOpenMetadataApplicationConfig()).thenReturn(appConfig);
-    when(pipelineRepository.create(isNull(), any(IngestionPipeline.class)))
-        .thenAnswer(invocation -> invocation.getArgument(1));
-    when(pipelineRepository.deployIngestionPipeline(any(), any()))
-        .thenReturn(new PipelineServiceClientResponse().withCode(200));
-
+    stubPipelineRepository();
     createIngestionPipeline =
         new CreateIngestionPipelineImpl(new IngestionPipelineMapper(appConfig));
   }
@@ -133,15 +112,19 @@ class CreateIngestionPipelineImplTest {
     mockedEntity.close();
   }
 
+  static Stream<Arguments> agentTypesAndTheirBots() {
+    return Stream.of(
+        Arguments.of(PipelineType.USAGE, USAGE_BOT),
+        Arguments.of(PipelineType.LINEAGE, LINEAGE_BOT),
+        Arguments.of(PipelineType.PROFILER, PROFILER_BOT),
+        Arguments.of(PipelineType.AUTO_CLASSIFICATION, AUTO_CLASSIFICATION_BOT),
+        Arguments.of(PipelineType.METADATA, Entity.INGESTION_BOT_NAME));
+  }
+
   @ParameterizedTest
-  @CsvSource({
-    "USAGE, usage-bot",
-    "LINEAGE, lineage-bot",
-    "PROFILER, profiler-bot",
-    "AUTO_CLASSIFICATION, autoClassification-bot",
-    "METADATA, ingestion-bot"
-  })
-  void newAgentIsDeployedAsTheBotOfItsType(PipelineType pipelineType, String expectedBot) {
+  @MethodSource("agentTypesAndTheirBots")
+  void newAgentIsDeployedAsTheBotOfItsType(
+      final PipelineType pipelineType, final String expectedBot) {
     when(pipelineRepository.listAllByParentFqn(anyString())).thenReturn(List.of());
 
     assertTrue(createIngestionPipeline.execute(service, pipelineType, true).isSuccessful());
@@ -151,7 +134,7 @@ class CreateIngestionPipelineImplTest {
 
   @Test
   void rerunningAutoPilotRedeploysAnExistingAgentAsItsOwnBot() {
-    IngestionPipeline existing =
+    final IngestionPipeline existing =
         new IngestionPipeline()
             .withId(UUID.randomUUID())
             .withName("existing-agent")
@@ -167,20 +150,20 @@ class CreateIngestionPipelineImplTest {
             .execute(service, PipelineType.AUTO_CLASSIFICATION, true)
             .isSuccessful());
 
-    assertEquals(tokenOf("autoClassification-bot"), deployedToken());
+    assertEquals(tokenOf(AUTO_CLASSIFICATION_BOT), deployedToken());
   }
 
   @Test
   void typeTheServiceDoesNotSupportGetsNoAgent() {
-    DatabaseService metadataOnly =
+    final DatabaseService metadataOnly =
         new DatabaseService()
             .withId(UUID.randomUUID())
             .withName("metadata_only")
             .withConnection(
                 new DatabaseConnection().withConfig(Map.of("supportsMetadataExtraction", true)));
-    stubEntityType(metadataOnly, Entity.DATABASE_SERVICE);
+    stubServiceType(metadataOnly, Entity.DATABASE_SERVICE);
 
-    CreateIngestionPipelineResult result =
+    final CreateIngestionPipelineResult result =
         createIngestionPipeline.execute(metadataOnly, PipelineType.USAGE, true);
 
     assertTrue(result.isSuccessful());
@@ -202,7 +185,7 @@ class CreateIngestionPipelineImplTest {
 
   @Test
   void messagingServiceGetsAnAutoClassificationAgentButNoProfilerAgent() {
-    MessagingService messaging =
+    final MessagingService messaging =
         new MessagingService()
             .withId(UUID.randomUUID())
             .withName("kafka")
@@ -214,7 +197,7 @@ class CreateIngestionPipelineImplTest {
                             true,
                             "topicFilterPattern",
                             Map.of("includes", List.of("orders.*")))));
-    stubEntityType(messaging, Entity.MESSAGING_SERVICE);
+    stubServiceType(messaging, Entity.MESSAGING_SERVICE);
     when(pipelineRepository.listAllByParentFqn(anyString())).thenReturn(List.of());
 
     assertNull(
@@ -223,9 +206,9 @@ class CreateIngestionPipelineImplTest {
             .getIngestionPipelineId());
     createIngestionPipeline.execute(messaging, PipelineType.AUTO_CLASSIFICATION, true);
 
-    IngestionPipeline agent = deployedPipeline(messaging);
-    assertEquals(tokenOf("autoClassification-bot"), connectionToken(agent));
-    MessagingServiceAutoClassificationPipeline sourceConfig =
+    final IngestionPipeline agent = deployedPipeline(messaging);
+    assertEquals(tokenOf(AUTO_CLASSIFICATION_BOT), connectionToken(agent));
+    final MessagingServiceAutoClassificationPipeline sourceConfig =
         assertInstanceOf(
             MessagingServiceAutoClassificationPipeline.class, agent.getSourceConfig().getConfig());
     assertEquals(List.of("orders.*"), sourceConfig.getTopicFilterPattern().getIncludes());
@@ -233,7 +216,7 @@ class CreateIngestionPipelineImplTest {
 
   @Test
   void storageServiceGetsAnAutoClassificationAgentAndRejectsOtherTypes() {
-    StorageService storage =
+    final StorageService storage =
         new StorageService()
             .withId(UUID.randomUUID())
             .withName("s3")
@@ -241,7 +224,7 @@ class CreateIngestionPipelineImplTest {
                 new StorageConnection()
                     .withConfig(
                         Map.of("supportsProfiler", true, "supportsLineageExtraction", true)));
-    stubEntityType(storage, Entity.STORAGE_SERVICE);
+    stubServiceType(storage, Entity.STORAGE_SERVICE);
     when(pipelineRepository.listAllByParentFqn(anyString())).thenReturn(List.of());
 
     createIngestionPipeline.execute(storage, PipelineType.AUTO_CLASSIFICATION, true);
@@ -256,7 +239,7 @@ class CreateIngestionPipelineImplTest {
 
   @Test
   void otherServicesGetOnlyAMetadataAgent() {
-    DashboardService dashboard =
+    final DashboardService dashboard =
         new DashboardService()
             .withId(UUID.randomUUID())
             .withName("looker")
@@ -265,11 +248,11 @@ class CreateIngestionPipelineImplTest {
                     .withConfig(
                         Map.of(
                             "supportsMetadataExtraction", true, "supportsUsageExtraction", true)));
-    stubEntityType(dashboard, Entity.DASHBOARD_SERVICE);
+    stubServiceType(dashboard, Entity.DASHBOARD_SERVICE);
     when(pipelineRepository.listAllByParentFqn(anyString())).thenReturn(List.of());
 
     createIngestionPipeline.execute(dashboard, PipelineType.METADATA, true);
-    IngestionPipeline usage =
+    final IngestionPipeline usage =
         pipelineCreatedFor(
             () -> createIngestionPipeline.execute(dashboard, PipelineType.USAGE, false));
 
@@ -279,24 +262,59 @@ class CreateIngestionPipelineImplTest {
     assertNull(usage.getSourceConfig().getConfig());
   }
 
-  private IngestionPipeline pipelineCreatedFor(Runnable execute) {
-    ArgumentCaptor<IngestionPipeline> created = ArgumentCaptor.forClass(IngestionPipeline.class);
+  // OpenMetadataConnectionBuilder resolves each bot and its user through Entity; every bot gets a
+  // token of its own, so a silent fallback to ingestion-bot fails the assertion.
+  private void stubBotLookups() {
+    final BotRepository botRepository = mock(BotRepository.class);
+    final UserRepository userRepository = mock(UserRepository.class);
+    for (final String bot : BOTS) {
+      when(botRepository.getByName(isNull(), eq(bot), any())).thenReturn(botWithUser(bot));
+      when(userRepository.getByName(isNull(), eq(bot), any())).thenReturn(jwtBotUser(bot));
+    }
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.BOT)).thenReturn(botRepository);
+    mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+  }
+
+  private void stubPipelineRepository() {
+    mockedEntity
+        .when(() -> Entity.getEntityRepository(Entity.INGESTION_PIPELINE))
+        .thenReturn(pipelineRepository);
+    when(pipelineRepository.getOpenMetadataApplicationConfig()).thenReturn(appConfig);
+    when(pipelineRepository.create(isNull(), any(IngestionPipeline.class)))
+        .thenAnswer(invocation -> invocation.getArgument(1));
+    when(pipelineRepository.deployIngestionPipeline(any(), any()))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+  }
+
+  private static SecretsManager passThroughSecretsManager() {
+    final SecretsManager secretsManager = mock(SecretsManager.class);
+    when(secretsManager.getSecretsManagerProvider()).thenReturn(SecretsManagerProvider.IN_MEMORY);
+    when(secretsManager.encryptOpenMetadataConnection(any(), eq(false)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    return secretsManager;
+  }
+
+  private IngestionPipeline pipelineCreatedFor(final Runnable execute) {
+    final ArgumentCaptor<IngestionPipeline> created =
+        ArgumentCaptor.forClass(IngestionPipeline.class);
     execute.run();
     verify(pipelineRepository, atLeastOnce()).create(isNull(), created.capture());
     return created.getValue();
   }
 
-  private void stubEntityType(ServiceEntityInterface otherService, String entityType) {
-    mockedEntity.when(() -> Entity.getEntityTypeFromObject(otherService)).thenReturn(entityType);
+  private void stubServiceType(
+      final ServiceEntityInterface serviceEntity, final String entityType) {
+    mockedEntity.when(() -> Entity.getEntityTypeFromObject(serviceEntity)).thenReturn(entityType);
   }
 
-  private IngestionPipeline deployedPipeline(ServiceEntityInterface deployedService) {
-    ArgumentCaptor<IngestionPipeline> deployed = ArgumentCaptor.forClass(IngestionPipeline.class);
+  private IngestionPipeline deployedPipeline(final ServiceEntityInterface deployedService) {
+    final ArgumentCaptor<IngestionPipeline> deployed =
+        ArgumentCaptor.forClass(IngestionPipeline.class);
     verify(pipelineRepository).deployIngestionPipeline(deployed.capture(), eq(deployedService));
     return deployed.getValue();
   }
 
-  private static String connectionToken(IngestionPipeline pipeline) {
+  private static String connectionToken(final IngestionPipeline pipeline) {
     return pipeline.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken();
   }
 
@@ -304,20 +322,20 @@ class CreateIngestionPipelineImplTest {
     return connectionToken(deployedPipeline(service));
   }
 
-  private static String tokenOf(String bot) {
+  private static String tokenOf(final String bot) {
     return "%s-token".formatted(bot);
   }
 
-  private static OpenMetadataConnection connectionFor(String bot) {
+  private static OpenMetadataConnection connectionFor(final String bot) {
     return new OpenMetadataConnection()
         .withSecurityConfig(new OpenMetadataJWTClientConfig().withJwtToken(tokenOf(bot)));
   }
 
-  private static Bot botWithUser(String bot) {
+  private static Bot botWithUser(final String bot) {
     return new Bot().withName(bot).withBotUser(new EntityReference().withFullyQualifiedName(bot));
   }
 
-  private static User jwtBotUser(String bot) {
+  private static User jwtBotUser(final String bot) {
     return new User()
         .withName(bot)
         .withFullyQualifiedName(bot)
@@ -343,12 +361,12 @@ class CreateIngestionPipelineImplTest {
   }
 
   private static OpenMetadataApplicationConfig createApplicationConfig() {
-    PipelineServiceClientConfiguration pipelineConfig = new PipelineServiceClientConfiguration();
+    final PipelineServiceClientConfiguration pipelineConfig =
+        new PipelineServiceClientConfiguration();
     pipelineConfig.setMetadataApiEndpoint("http://localhost:8585/api");
     pipelineConfig.setVerifySSL(VerifySSL.NO_SSL);
-
-    OpenMetadataApplicationConfig appConfig = new OpenMetadataApplicationConfig();
-    appConfig.setPipelineServiceClientConfiguration(pipelineConfig);
-    return appConfig;
+    final OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setPipelineServiceClientConfiguration(pipelineConfig);
+    return config;
   }
 }
