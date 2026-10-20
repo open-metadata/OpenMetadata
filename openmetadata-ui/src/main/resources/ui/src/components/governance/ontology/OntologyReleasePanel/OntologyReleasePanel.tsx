@@ -52,6 +52,8 @@ const OntologyReleasePanel = ({
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [cursorRevision, setCursorRevision] = useState<string>();
   const {
+    state,
+    activeReleaseId,
     working,
     selected,
     selectedId,
@@ -98,21 +100,27 @@ const OntologyReleasePanel = ({
   const canPublish = [
     canEdit,
     !isBusy,
-    working.isSuccess,
-    !working.isFetching,
+    state.isSuccess,
+    !state.isFetching,
   ].every(Boolean);
   const baseVersion = latestVersioned.data?.semanticVersion;
   const bump =
     versionBump ?? (baseVersion ? VersionBump.Minor : VersionBump.Major);
   const canCapture = [
-    canPublish,
+    canEdit,
+    !isBusy,
     hasCoherentPreview,
     latestVersioned.isSuccess,
     !latestVersioned.isFetching,
     !pendingReview,
   ].every(Boolean);
   const metadata = { versionBump: bump, releaseNotes };
-  const canRetryReview = canPublish && Boolean(pendingReview);
+  const canRetryReview = [
+    canEdit,
+    !isBusy,
+    hasCoherentPreview,
+    Boolean(pendingReview),
+  ].every(Boolean);
   const previewBaseVersion = pendingReview ? reviewBaseVersion : baseVersion;
   const editorIsDisabled = [!canEdit, isBusy, Boolean(pendingReview)].some(
     Boolean
@@ -158,7 +166,7 @@ const OntologyReleasePanel = ({
       release && (
         <OntologyReleaseDetails
           canPublish={canPublish}
-          isActive={release.id === working.data?.state.activeReleaseId}
+          isActive={release.id === activeReleaseId}
           release={release}
           showExport={view !== 'releases'}
           onActivate={activate}
@@ -312,7 +320,7 @@ const OntologyReleasePanel = ({
 
   const renderReleases = () => (
     <OntologyReleaseHistory
-      activeReleaseId={working.data?.state.activeReleaseId}
+      activeReleaseId={activeReleaseId}
       history={history}
       selectedReleaseId={selectedId}
       onSelect={setSelectedId}
@@ -321,6 +329,17 @@ const OntologyReleasePanel = ({
 
   return (
     <Box direction="col" gap={4}>
+      {state.isError && (
+        <Alert variant="error">
+          {t('message.ontology-review-unavailable')}
+          <Button
+            color="secondary"
+            size="sm"
+            onPress={() => void state.refetch()}>
+            {t('label.retry')}
+          </Button>
+        </Alert>
+      )}
       {view === 'changes' ? renderChanges() : renderReleases()}
       {renderRelease()}
     </Box>

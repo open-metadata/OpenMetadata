@@ -744,7 +744,8 @@ const OntologyExplorerPage: React.FC = () => {
     nextMode: StudioMode = 'view'
   ) => {
     setIsPublicationOpen(false);
-    setLoadedOntology(ontology);
+    setLoadedOntology(undefined);
+    setOntologyLoadAttempt((attempt) => attempt + 1);
     setIsCreatingOntology(false);
     requestedNativeMode.current = nextMode;
     setMode(nextMode);
@@ -952,13 +953,23 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   useEffect(() => {
+    if (ontologyId && !selectedOntology) {
+      return;
+    }
     const isUnavailableEditMode = mode === 'edit' && !canEditCurrentScope;
     const isUnavailableAiMode =
       mode === 'ai' && (isNativeOntology || !isOntologyAiEnabled);
     if (isUnavailableEditMode || isUnavailableAiMode) {
       setMode('view');
     }
-  }, [canEditCurrentScope, isNativeOntology, isOntologyAiEnabled, mode]);
+  }, [
+    canEditCurrentScope,
+    isNativeOntology,
+    isOntologyAiEnabled,
+    mode,
+    ontologyId,
+    selectedOntology,
+  ]);
 
   const subModeConfiguration = getSubModeConfiguration(
     mode,

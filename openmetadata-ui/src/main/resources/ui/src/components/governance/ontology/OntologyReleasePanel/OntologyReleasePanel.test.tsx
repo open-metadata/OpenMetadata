@@ -1049,6 +1049,73 @@ describe('OntologyReleasePanel', () => {
     expect(post).not.toHaveBeenCalled();
   });
 
+  it('keeps history readable but blocks activation while state refreshes or fails', async () => {
+    currentState.activeReleaseId = 'new-release-id';
+    currentRelease.entityStatus = EntityStatus.Approved;
+    const { queryClient } = await renderPanel();
+    await selectRelease();
+    await screen.findByTestId('ontology-release-definition');
+
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeEnabled();
+
+    const requests = get.getMockImplementation();
+    if (!requests) {
+      throw new Error('Missing API fixture');
+    }
+    let rejectState: ((error: AxiosError) => void) | undefined;
+    get.mockImplementation((url, config) =>
+      url.endsWith('/state')
+        ? new Promise((_resolve, reject) => {
+            rejectState = reject;
+          })
+        : requests(url, config)
+    );
+    await act(async () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['ontology-state', ontology.id],
+      });
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeDisabled();
+
+    await act(async () => {
+      rejectState?.(new AxiosError('State unavailable', '403'));
+    });
+
+    expect(
+      screen.getByText('message.ontology-review-unavailable')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-release-select-release-id')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-release-definition')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeDisabled();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    );
+
+    expect(put).not.toHaveBeenCalled();
+
+    get.mockImplementation(requests);
+    await act(async () =>
+      fireEvent.click(screen.getByRole('button', { name: 'label.retry' }))
+    );
+
+    expect(
+      screen.queryByText('message.ontology-review-unavailable')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeEnabled();
+  });
+
   it('keeps the active pointer unchanged when the server rejects a stale activation', async () => {
     currentState.activeReleaseId = 'new-release-id';
     currentRelease.entityStatus = EntityStatus.Approved;

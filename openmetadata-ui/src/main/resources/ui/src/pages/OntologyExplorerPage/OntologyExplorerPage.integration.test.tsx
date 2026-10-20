@@ -47,6 +47,7 @@ import {
   listOntologyConcepts,
   listOntologyProperties,
   listRelationshipTypes,
+  patchOntology,
   patchOntologyProperty,
 } from '../../rest/ontologyAPI';
 import {
@@ -243,6 +244,7 @@ describe('Ontology Studio mode-switch integration', () => {
       iri: 'urn:retail',
       namespace: 'urn:retail:',
     };
+    mockGetOntology.mockResolvedValue(ontology);
     mockListOntologies.mockResolvedValue({
       data: [ontology],
       paging: { total: 1 },
@@ -295,10 +297,14 @@ describe('Ontology Studio mode-switch integration', () => {
     expect(screen.getByTestId('location')).toHaveTextContent(
       'concept=customer'
     );
-    expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
-      'urn:retail:Customer'
+    expect(
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toHaveTextContent('urn:retail:Customer');
+    expect(mockGetOntology).toHaveBeenCalledWith(
+      ontology.id,
+      'owners,reviewers',
+      expect.any(AbortSignal)
     );
-    expect(mockGetOntology).not.toHaveBeenCalled();
     expect(mockListOntologyConcepts).toHaveBeenCalledTimes(2);
 
     fireEvent.click(screen.getByTestId('mode-tab-query'));
@@ -382,7 +388,7 @@ describe('Ontology Studio mode-switch integration', () => {
         screen.getByTestId('ontology-concept-properties')
       ).toHaveTextContent('Customer number')
     );
-    fireEvent.click(screen.getByTestId('submode-tab-definitions'));
+    fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
     fireEvent.click(screen.getByRole('tab', { name: 'label.property-plural' }));
     fireEvent.click(
       await screen.findByRole('button', { name: 'Customer number' })
@@ -507,9 +513,12 @@ describe('Ontology Studio mode-switch integration', () => {
       await screen.findByTestId('all-ontologies-graph');
       fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
       fireEvent.click(await screen.findByTestId('ontology-scope-retail'));
-      fireEvent.click(screen.getByTestId('mode-tab-edit'));
 
       if (status === 'pending') {
+        const edit = screen.queryByTestId('mode-tab-edit');
+        if (edit) {
+          fireEvent.click(edit);
+        }
         const definitions = screen.queryByTestId('submode-tab-definitions');
         if (definitions) {
           fireEvent.click(definitions);
@@ -532,6 +541,7 @@ describe('Ontology Studio mode-switch integration', () => {
           reviewers: [{ id: 'reviewer', type: 'user', name: 'Saved reviewer' }],
         });
       });
+      fireEvent.click(await screen.findByTestId('mode-tab-edit'));
       fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
       fireEvent.click(
         await screen.findByRole('tab', { name: 'label.setting-plural' })
@@ -543,6 +553,70 @@ describe('Ontology Studio mode-switch integration', () => {
       expect(form.getByText('Saved reviewer')).toBeVisible();
     }
   );
+
+  it('reloads complete Settings detail after saving the same ontology ID', async () => {
+    const header: Ontology = {
+      id: 'retail',
+      name: 'Retail',
+      fullyQualifiedName: 'Retail',
+      iri: 'urn:retail',
+      namespace: 'urn:retail:',
+      version: 0.3,
+    };
+    const detail: Ontology = {
+      ...header,
+      owners: [{ id: 'owner', type: 'user', name: 'Saved owner' }],
+      reviewers: [{ id: 'reviewer', type: 'user', name: 'Saved reviewer' }],
+    };
+    mockListOntologies.mockResolvedValue({
+      data: [header],
+      paging: { total: 1 },
+    });
+    mockGetOntology
+      .mockResolvedValueOnce(detail)
+      .mockResolvedValue({ ...detail, displayName: 'Retail model' });
+    (
+      patchOntology as jest.MockedFunction<typeof patchOntology>
+    ).mockResolvedValue({ ...header, displayName: 'Retail model' });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    await screen.findByTestId('all-ontologies-graph');
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-retail'));
+    fireEvent.click(await screen.findByTestId('mode-tab-edit'));
+    fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
+    fireEvent.click(
+      await screen.findByRole('tab', { name: 'label.setting-plural' })
+    );
+    const form = within(await screen.findByTestId('ontology-create-form'));
+
+    expect(form.getByText('Saved owner')).toBeVisible();
+
+    fireEvent.change(
+      form.getByRole('textbox', { name: 'label.display-name' }),
+      { target: { value: 'Retail model' } }
+    );
+    fireEvent.click(form.getByRole('button', { name: 'label.save' }));
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-scope-menu-trigger')
+      ).toHaveTextContent('Retail model')
+    );
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+    fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
+    fireEvent.click(
+      await screen.findByRole('tab', { name: 'label.setting-plural' })
+    );
+
+    expect(await screen.findByText('Saved owner')).toBeVisible();
+    expect(screen.getByText('Saved reviewer')).toBeVisible();
+    expect(mockGetOntology).toHaveBeenCalledTimes(2);
+  });
 
   it.each([403, 404])(
     'preserves failed native deep links and exposes recovery for %s',

@@ -33,6 +33,7 @@ import {
   activateOntologyRelease,
   captureOntologyRelease,
   getOntologyRelease,
+  getOntologyState,
   getOntologyWorkingDiff,
   listOntologyReleaseHistory,
 } from '../../../rest/ontologyAPI';
@@ -61,6 +62,12 @@ export const useOntologyPublication = (
   const [pendingReview, setPendingReview] = useState<OntologyRelease>();
   const [isBusy, setIsBusy] = useState(false);
   const busy = useRef(false);
+  const state = useQuery({
+    queryKey: ['ontology-state', ontologyId],
+    retry: false,
+    gcTime: 0,
+    queryFn: ({ signal }) => getOntologyState(ontologyId, signal),
+  });
   const working = useQuery({
     queryKey: ['ontology-working-diff', ontologyId, undefined],
     retry: false,
@@ -81,8 +88,12 @@ export const useOntologyPublication = (
     queryFn: ({ signal }) => latestVersionedOntologyRelease(ontologyId, signal),
   });
   const history = useInfiniteQuery({
-    queryKey: ['ontology-release-history', ontologyId, lastReleaseRevision],
-    enabled: showHistory && working.isSuccess,
+    queryKey: [
+      'ontology-release-history',
+      ontologyId,
+      state.data?.lastReleaseRevision,
+    ],
+    enabled: showHistory,
     initialPageParam: undefined as string | undefined,
     queryFn: async ({ pageParam, signal }) => {
       const response = await listOntologyReleaseHistory(
@@ -103,7 +114,10 @@ export const useOntologyPublication = (
     retry: false,
     gcTime: 0,
   });
-  const releaseId = selectedId ?? working.data?.state.activeReleaseId;
+  const activeReleaseId = state.isSuccess
+    ? state.data.activeReleaseId
+    : undefined;
+  const releaseId = selectedId ?? activeReleaseId;
   const selected = useQuery({
     queryKey: [RELEASE_QUERY, ontologyId, releaseId],
     retry: false,
@@ -126,6 +140,7 @@ export const useOntologyPublication = (
   const release = selected.data;
   const refresh = async () => {
     await Promise.all([
+      state.refetch(),
       working.refetch(),
       queryClient.invalidateQueries({
         queryKey: ['ontology-release-history', ontologyId],
@@ -243,18 +258,21 @@ export const useOntologyPublication = (
     run(async () => {
       if (
         !release ||
-        !working.data ||
+        !state.isSuccess ||
+        state.isFetching ||
         release.entityStatus !== EntityStatus.Approved
       ) {
         return;
       }
       await activateOntologyRelease(ontologyId, {
         releaseId: release.id,
-        expectedActivationRevision: working.data.state.activationRevision,
+        expectedActivationRevision: state.data.activationRevision,
       });
     });
 
   return {
+    state,
+    activeReleaseId,
     working,
     selected,
     selectedId,
