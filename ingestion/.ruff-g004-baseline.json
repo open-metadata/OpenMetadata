@@ -2688,9 +2688,6 @@
     "ingestion/src/metadata/profiler/metrics/static/regexp_match_count.py": {
       "b8c909a5514af189747276ab1b171a29ca9bf0f3bfd288e0f777c7897ed12144": 1
     },
-    "ingestion/src/metadata/profiler/metrics/static/row_count.py": {
-      "12f73ce99f611d31217ce22900e33427c48470d2cfbe29714059206e4d7129be": 1
-    },
     "ingestion/src/metadata/profiler/metrics/static/stddev.py": {
       "5efd5c31379b3eb87110baeaea7eeec76938c9cc283a241accf13858d59eeb69": 1,
       "7ed5a053643914c15dd31e5f4de4d8f12505c0bb724546572e24722346c76d6a": 1,
