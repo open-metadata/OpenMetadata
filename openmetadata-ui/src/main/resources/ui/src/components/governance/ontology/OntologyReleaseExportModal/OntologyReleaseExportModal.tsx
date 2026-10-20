@@ -52,6 +52,7 @@ const OntologyReleaseExportModal = ({
   onApplied,
 }: OntologyReleaseExportModalProps) => {
   const { t } = useTranslation();
+  const [isImportBusy, setIsImportBusy] = useState(false);
   const [format, setFormat] = useState<OntologyExportFormat>('rdfxml');
   const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
   const {
@@ -77,8 +78,14 @@ const OntologyReleaseExportModal = ({
     };
   }
 
+  const handleClose = () => {
+    if (!isImportBusy) {
+      onClose();
+    }
+  };
+
   const handleExport = () => {
-    if (!release || !content) {
+    if (isImportBusy || !release || !content) {
       return;
     }
     const safeName = ontology.name.replaceAll(/[^a-zA-Z0-9-_]/g, '_');
@@ -87,24 +94,25 @@ const OntologyReleaseExportModal = ({
       `${safeName}-release-${release.releaseRevision}.${EXPORT_FORMAT_TO_FILE_EXTENSION[format]}`,
       EXPORT_FORMAT_TO_ACCEPT_HEADER[format]
     );
-    onClose();
+    handleClose();
   };
 
   return (
     <ModalOverlay
-      isDismissable
       isOpen
+      isDismissable={!isImportBusy}
+      isKeyboardDismissDisabled={isImportBusy}
       onOpenChange={(isOpen) => {
         if (!isOpen) {
-          onClose();
+          handleClose();
         }
       }}>
       <Modal>
-        <Dialog dividers="scroll" width={820} onClose={onClose}>
+        <Dialog dividers="scroll" width={820} onClose={handleClose}>
           <Tabs
             selectedKey={activeTab}
             onSelectionChange={(key) => {
-              if (key === 'export' || key === 'import') {
+              if (!isImportBusy && (key === 'export' || key === 'import')) {
                 setActiveTab(key);
               }
             }}>
@@ -131,18 +139,21 @@ const OntologyReleaseExportModal = ({
                 <Tabs.Item
                   data-testid="ontology-native-export-tab"
                   id="export"
+                  isDisabled={isImportBusy}
                   label={t('label.export')}
                 />
                 <Tabs.Item
                   data-testid="ontology-native-import-tab"
                   id="import"
+                  isDisabled={isImportBusy}
                   label={t('label.import')}
                 />
               </Tabs.List>
               <CloseButton
                 className="tw:ml-auto tw:shrink-0"
+                isDisabled={isImportBusy}
                 label={t('label.close')}
-                onPress={onClose}
+                onPress={handleClose}
               />
             </Dialog.Header>
             <Dialog.Content>
@@ -161,6 +172,7 @@ const OntologyReleaseExportModal = ({
                     onApplied?.();
                     onClose();
                   }}
+                  onBusyChange={setIsImportBusy}
                 />
               </Tabs.Panel>
             </Dialog.Content>
@@ -171,7 +183,7 @@ const OntologyReleaseExportModal = ({
                   color="primary"
                   data-testid="ontology-run-release-export"
                   iconLeading={Download01}
-                  isDisabled={!content || isError}
+                  isDisabled={isImportBusy || !content || isError}
                   isLoading={isPreviewLoading}
                   onPress={handleExport}>
                   {t('label.export')}

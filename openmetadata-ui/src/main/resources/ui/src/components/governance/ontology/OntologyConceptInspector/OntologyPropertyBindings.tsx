@@ -24,6 +24,7 @@ interface OntologyPropertyBindingsProps {
   conceptId: string;
   propertyId: string;
   canEdit: boolean;
+  canAdd?: boolean;
   bindings: ReturnType<typeof useOntologyConceptBindings>;
 }
 
@@ -31,6 +32,7 @@ const OntologyPropertyBindings = ({
   conceptId,
   propertyId,
   canEdit,
+  canAdd = true,
   bindings,
 }: OntologyPropertyBindingsProps) => {
   const { t } = useTranslation();
@@ -43,7 +45,7 @@ const OntologyPropertyBindings = ({
     ) ?? [];
 
   const renderEditor = () => {
-    if (!canEdit || !bindings.isSuccess) {
+    if (!canAdd || !canEdit || !bindings.isSuccess) {
       return null;
     }
 

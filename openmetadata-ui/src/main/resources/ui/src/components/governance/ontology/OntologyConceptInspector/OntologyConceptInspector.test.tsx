@@ -38,12 +38,14 @@ jest.mock('../../../../rest/permissionAPI');
 const ontology = {
   id: 'ontology',
   name: 'Sales',
+  fullyQualifiedName: 'Sales',
   iri: 'urn:sales',
   namespace: 'urn:sales:',
 };
 const concept = {
   id: 'customer',
   name: 'Customer',
+  fullyQualifiedName: 'Sales.Customer',
   iri: 'urn:sales:Customer',
   ontology: { id: ontology.id, type: 'ontology' },
   conceptType: OntologyConceptType.OwlClass,
@@ -51,6 +53,7 @@ const concept = {
 const property: OntologyProperty = {
   id: 'customer-name',
   name: 'CustomerName',
+  fullyQualifiedName: 'Sales.CustomerName',
   iri: 'urn:sales:name',
   ontology: { id: ontology.id, type: 'ontology' },
   kind: Kind.Data,
@@ -97,6 +100,16 @@ const response: OntologyConceptBindingsResponse = {
   ],
 };
 
+const mockGetBindings = getOntologyConceptBindings as jest.MockedFunction<
+  typeof getOntologyConceptBindings
+>;
+const mockPutBinding = putOntologyConceptBinding as jest.MockedFunction<
+  typeof putOntologyConceptBinding
+>;
+const mockGetPermission = getEntityPermissionById as jest.MockedFunction<
+  typeof getEntityPermissionById
+>;
+
 const renderInspector = (
   properties: readonly OntologyProperty[],
   canEditBindings = true
@@ -117,11 +130,9 @@ const renderInspector = (
 describe('OntologyConceptInspector column assignment cleanup', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(getOntologyConceptBindings).mockResolvedValue(response);
-    jest
-      .mocked(getEntityPermissionById)
-      .mockResolvedValue({ resource: 'table', operations: [] });
-    jest.mocked(putOntologyConceptBinding).mockResolvedValue({
+    mockGetBindings.mockResolvedValue(response);
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+    mockPutBinding.mockResolvedValue({
       revision: 5,
       assets: [
         { ...response.assets[0], columns: [response.assets[0].columns[1]] },
@@ -203,7 +214,7 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
   });
 
   it('renders an applicable property with a missing column once and still permits binding a replacement', async () => {
-    jest.mocked(getOntologyConceptBindings).mockResolvedValue({
+    mockGetBindings.mockResolvedValue({
       ...response,
       assets: [
         {

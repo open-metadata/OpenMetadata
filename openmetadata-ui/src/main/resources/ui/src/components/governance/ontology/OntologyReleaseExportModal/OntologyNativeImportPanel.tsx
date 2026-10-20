@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CreateOntologyChangeSet } from '../../../../generated/api/data/createOntologyChangeSet';
 import { Format } from '../../../../generated/api/data/previewNativeOntologyImport';
@@ -33,6 +33,7 @@ interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;
   readonly ontology: Ontology;
   readonly onApplied: () => void;
+  readonly onBusyChange?: (isBusy: boolean) => void;
 }
 
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
@@ -54,6 +55,7 @@ const OntologyNativeImportPanel = ({
   canImport,
   ontology,
   onApplied,
+  onBusyChange,
 }: OntologyNativeImportPanelProps) => {
   const { t } = useTranslation();
   const [fileName, setFileName] = useState('');
@@ -68,6 +70,11 @@ const OntologyNativeImportPanel = ({
       onApplied();
     },
   });
+
+  const isImportBusy = isBusy || apply.status.kind === 'busy';
+  useEffect(() => {
+    onBusyChange?.(isImportBusy);
+  }, [isImportBusy, onBusyChange]);
 
   const handleFile = async (files: FileList | null) => {
     const file = files?.[0];
@@ -182,8 +189,7 @@ const OntologyNativeImportPanel = ({
     );
   };
 
-  const isApplying =
-    apply.status.kind === 'busy' || apply.status.kind === 'applied';
+  const isApplying = isImportBusy || apply.status.kind === 'applied';
 
   return (
     <Box direction="col" gap={4}>
@@ -200,10 +206,8 @@ const OntologyNativeImportPanel = ({
       <Button
         color="primary"
         data-testid="ontology-native-import-apply"
-        isDisabled={
-          !canImport || !preview?.operations?.length || isBusy || isApplying
-        }
-        isLoading={isBusy || apply.status.kind === 'busy'}
+        isDisabled={!canImport || !preview?.operations?.length || isApplying}
+        isLoading={isImportBusy}
         onPress={() => {
           if (preview) {
             void (apply.configurationLocked

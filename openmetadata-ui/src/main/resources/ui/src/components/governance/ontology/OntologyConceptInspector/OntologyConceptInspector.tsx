@@ -30,6 +30,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   DataPropertyInput,
   getConceptAncestors,
@@ -366,6 +367,19 @@ const OntologyConceptInspector = ({
     () => getConceptPropertyRows(model, relations, concept),
     [concept, model, relations]
   );
+  const unavailableProperties = useMemo(() => {
+    const propertyIds = new Set(properties.map(({ property }) => property.id));
+    const unavailable = new Map<string, string>();
+    bindings.data?.assets.forEach(({ columns }) => {
+      columns.forEach(({ propertyId, property }) => {
+        if (!propertyIds.has(propertyId)) {
+          unavailable.set(propertyId, getEntityName(property) || propertyId);
+        }
+      });
+    });
+
+    return [...unavailable];
+  }, [bindings.data, properties]);
   const conceptRelations = useMemo(
     () => getConceptRelationRows(relations, concept.id),
     [concept.id, relations]
@@ -588,6 +602,33 @@ const OntologyConceptInspector = ({
         </Box>
 
         {renderProperties()}
+
+        {unavailableProperties.length > 0 && (
+          <InspectorSection>
+            <InspectorSectionHeading
+              count={unavailableProperties.length}
+              label={t('label.unavailable')}
+            />
+            <InspectorList>
+              {unavailableProperties.map(([propertyId, label]) => (
+                <InspectorRow key={propertyId}>
+                  <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                    <Typography size="text-sm" weight="medium">
+                      {label}
+                    </Typography>
+                    <OntologyPropertyBindings
+                      bindings={bindings}
+                      canAdd={false}
+                      canEdit={canEditBindings}
+                      conceptId={concept.id}
+                      propertyId={propertyId}
+                    />
+                  </Box>
+                </InspectorRow>
+              ))}
+            </InspectorList>
+          </InspectorSection>
+        )}
 
         {renderRelationships()}
 
