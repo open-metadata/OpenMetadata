@@ -30,7 +30,10 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageNodeUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
@@ -158,7 +161,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           </span>
         )}
         <Typography className="item-entity-type-text">
-          {capitalize(entityType)}
+          {getEntityNameLabel(entityType)}
         </Typography>
       </>
     );

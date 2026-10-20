@@ -30,6 +30,7 @@ import {
   ConversationSource,
 } from '../../../generated/entity/feed/conversation';
 import { ReactionType } from '../../../generated/type/reaction';
+import EntityLink from '../../../utils/EntityLink';
 import ActivityFeedCardNew from './ActivityFeedcardNew.component';
 
 const mockProviderValue = {
@@ -260,6 +261,34 @@ describe('ActivityFeedCardNew', () => {
       'href',
       '/table/service.table'
     );
+  });
+
+  it('reads an activity event entity from its reference, not its about link', () => {
+    // The server appends whatever field changed to `about`; `entityStatus` is
+    // not in the EntityLink grammar, so parsing it logged an ANTLR error
+    // ("no viable alternative at input '::entityStatus'") on every render.
+    const splitSpy = jest.spyOn(EntityLink, 'split');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::entityStatus>',
+            fieldName: 'entityStatus',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(splitSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    splitSpy.mockRestore();
   });
 
   it('renders activity replies in the open side panel', () => {

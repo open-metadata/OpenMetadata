@@ -87,6 +87,10 @@ jest.mock('../../../utils/EntityBreadcrumbPureUtils', () => ({
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.name || entity?.displayName || ''),
+  getEntityNameLabel: jest.fn(
+    (type: string) =>
+      ({ table: 'Table', apiEndpoint: 'API Endpoint' }[type] ?? type)
+  ),
 }));
 
 const mockToggleColumnsList = jest.fn();
@@ -332,6 +336,18 @@ describe('LineageNodeLabelV1', () => {
 
       expect(screen.getByText('Table')).toBeInTheDocument();
       expect(screen.getByText('EntityIcon')).toBeInTheDocument();
+    });
+
+    it('should label the entity type chip with its display name', () => {
+      render(
+        <LineageNodeLabelV1
+          isChildrenListExpanded={false}
+          node={{ ...mockBasicNode, entityType: EntityType.API_ENDPOINT }}
+        />
+      );
+
+      expect(screen.getByText('API Endpoint')).toBeInTheDocument();
+      expect(screen.queryByText('Apiendpoint')).not.toBeInTheDocument();
     });
 
     it('should toggle columns list when dropdown button is clicked', () => {

@@ -173,7 +173,7 @@ const FeedCardBodyNew = ({
   return (
     <Card
       className={classNames(
-        'tw:overflow-y-auto',
+        'feed-card-body-new tw:overflow-y-auto',
         showThread
           ? [
               'tw:max-h-100',

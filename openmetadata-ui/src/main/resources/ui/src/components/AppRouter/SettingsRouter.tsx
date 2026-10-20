@@ -1152,6 +1152,9 @@ const SettingsRouter = () => {
           GlobalSettingOptions.TASK_FORMS
         )}
       />
+      {/* Without this an unknown settings URL (e.g. /settings/bots/<name>; bots live at
+          /bots/<name>) matches nothing and renders an empty page. */}
+      <Route element={<Navigate replace to={ROUTES.NOT_FOUND} />} path="*" />
     </Routes>
   );
 };

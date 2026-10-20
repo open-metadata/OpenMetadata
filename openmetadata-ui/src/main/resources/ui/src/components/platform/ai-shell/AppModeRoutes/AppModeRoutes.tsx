@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { lazy, useMemo } from 'react';
-import { Route } from 'react-router-dom';
+import { lazy, ReactNode, useMemo } from 'react';
+import { Navigate, Route, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
@@ -24,6 +24,7 @@ import KeepAliveRoutes from '../KeepAliveRoutes/KeepAliveRoutes';
 import { useAllAppModules } from '../sharedAppModules';
 import { useSyncActiveModule } from '../state/useActiveModule';
 import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
+import { settingsPathToHash } from './settingsPathToHash';
 
 // The app-mode shell owns its own /404 so an unknown URL lands on the branded
 // AI not-found page (testid `ai-not-found-page`) instead of the fallback
@@ -31,6 +32,22 @@ import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
 const AINotFoundPage = withPageSuspenseFallback(
   lazy(() => import('../AINotFoundPage/AINotFoundPage'))
 );
+
+/**
+ * Settings are a modal in app mode: a classic settings page route that has a
+ * modal equivalent (in-app links, bookmarks) reopens as the modal over My Data
+ * instead of rendering the classic full page inside the shell.
+ */
+const SettingsModalRedirect = ({ children }: { children: ReactNode }) => {
+  const { pathname } = useLocation();
+  const hash = settingsPathToHash(pathname);
+
+  return hash ? (
+    <Navigate replace to={{ pathname: ROUTES.MY_DATA, hash }} />
+  ) : (
+    <>{children}</>
+  );
+};
 
 /**
  * Top-level routes component for app mode.
@@ -106,11 +123,14 @@ export const AppModeRoutes = () => {
       ) : (
         <KeepAliveRoutes routes={routes}>
           <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
-          {fallback ? (
-            <Route element={fallback.element} path="/*" />
-          ) : (
-            <Route element={<RouteElements />} path="/*" />
-          )}
+          <Route
+            element={
+              <SettingsModalRedirect>
+                {fallback ? fallback.element : <RouteElements />}
+              </SettingsModalRedirect>
+            }
+            path="/*"
+          />
         </KeepAliveRoutes>
       )}
     </AppShell>

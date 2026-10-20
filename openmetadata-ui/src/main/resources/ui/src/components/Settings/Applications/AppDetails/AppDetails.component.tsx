@@ -68,6 +68,7 @@ import {
   ManageMenu,
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -644,6 +645,19 @@ const AppDetails = () => {
     if (pluginAppDetailsComponent) {
       // Render plugin's custom app details component
       return React.createElement(pluginAppDetailsComponent);
+    }
+
+    // An app with no schedule and no editable configuration (e.g. AIChatApplication) has
+    // no tabs; without this the empty tab-list card renders as a blank strip.
+    if (isEmpty(tabs)) {
+      return (
+        <ErrorPlaceHolder
+          className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-8"
+          placeholderText={t('message.app-no-settings-to-manage', {
+            app: getEntityName(appData),
+          })}
+        />
+      );
     }
 
     // Render default tabs interface

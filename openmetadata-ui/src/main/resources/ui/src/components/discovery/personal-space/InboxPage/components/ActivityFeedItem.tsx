@@ -186,7 +186,10 @@ const getEntityTarget = (
   entityName: string | undefined,
   about: string | undefined
 ) => {
-  const isColumn = about ? EntityLink.split(about)[2] === 'columns' : false;
+  // Only a column link is parsed. `about` names whatever field changed, and a
+  // field the EntityLink grammar does not list (e.g. `entityStatus`) makes
+  // ANTLR log a syntax error on every render.
+  const isColumn = about?.includes('::columns::') ?? false;
   const fqn =
     isColumn && about
       ? EntityLink.getEntityColumnFqn(about)

@@ -150,17 +150,22 @@ const ActivityFeedCardNew = ({
   const timeFormat = useActiveTimeFormat();
 
   const { entityFQN, entityType } = useMemo(() => {
+    // An activity event names its entity as a reference; read that rather than
+    // parse `about`. The server appends any changed field to `about`
+    // (`<#E::topic::fqn::entityStatus>`), and a field the EntityLink grammar
+    // does not list makes ANTLR log a syntax error on every render.
+    if (activity?.entity) {
+      return {
+        entityFQN: activity.entity.fullyQualifiedName ?? '',
+        entityType: activity.entity.type as EntityType,
+      };
+    }
     const aboutValue = feed?.about ?? activity?.about ?? '';
-    // `||`, not `??`: the EntityLink accessors return '' for a missing or
-    // unparseable link, and an activity event's `about` is optional. `??` would
-    // keep that '' and skip the entity reference the event does carry, leaving
-    // the card with no entity link, icon or popover.
-    const entityFQN =
-      getEntityFQN(aboutValue) || activity?.entity?.fullyQualifiedName || '';
-    const entityType =
-      getEntityType(aboutValue) || (activity?.entity?.type as EntityType) || '';
 
-    return { entityFQN, entityType };
+    return {
+      entityFQN: getEntityFQN(aboutValue),
+      entityType: getEntityType(aboutValue) as EntityType,
+    };
   }, [feed?.about, activity?.about, activity?.entity]);
 
   const createdBy = useMemo(() => {
