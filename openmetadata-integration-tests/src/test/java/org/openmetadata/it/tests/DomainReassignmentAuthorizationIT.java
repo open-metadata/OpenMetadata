@@ -244,6 +244,31 @@ public class DomainReassignmentAuthorizationIT {
     assertEquals(domain.getId(), reloaded.getDomains().get(0).getId());
   }
 
+  /** An owner of the schema owns its tables, and a PUT must see that owner as a PATCH does. */
+  @Test
+  void test_inheritedOwnerCanStillPutADomain(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Domain domain = createDomain(ns, "plain", null);
+    User owner = createUser(ns, "owner", null);
+    DatabaseSchema schema = createSchema(ns);
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/databaseSchemas/" + schema.getId(),
+            String.format(
+                "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":[{\"id\":\"%s\",\"type\":\"user\"}]}]",
+                owner.getId()),
+            jsonPatchOptions());
+    Table table = createTableIn(ns, schema, "owned", null);
+
+    clientFor(owner)
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/tables", tableIn(schema, table, domain), Table.class);
+
+    assertEquals(domain.getId(), domainOf(table));
+  }
+
   /**
    * The target domain is authorized by the id that will be persisted, not the FQN the client sends.
    * A forged reference — an unheld domain's id wearing a held domain's FQN — would otherwise pass

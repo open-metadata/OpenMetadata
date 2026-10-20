@@ -9603,9 +9603,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           "No authorizer is registered to check the domain change by " + actor.userName());
     }
     OperationContext editDomains = new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS);
+    // Loaded by id as a request is authorized: a PUT or bulk original carries no inherited owners,
+    // so an owner through the parent would not be seen.
     ResourceContextInterface moved =
         new UpdatedDomainsResourceContext(
-            new ResourceContext<>(entityType, original, this), written);
+            new ResourceContext<>(entityType, original.getId(), null, ALL), written);
     try {
       authorizer.authorizeActor(actor, editDomains, moved);
     } catch (AuthorizationException e) {
