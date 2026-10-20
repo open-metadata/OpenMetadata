@@ -40,6 +40,11 @@
     > [data-text] {
       width: 100%;
     }
+    // The card itself is the surface; the tertiary button's hover fill would
+    // paint a grey block inside it.
+    &:hover {
+      background-color: transparent;
+    }
   }
 
   &.kg-node-group {
@@ -88,24 +93,6 @@
     color: var(--tw-text-color-tertiary);
   }
 
-  // Design typography: 13.5/11 on cards, 15.5 on the subject; the closest
-  // tokens are used so the cards stop reading a step heavier than the design.
-  .kg-node-name {
-    display: block;
-    font-size: var(--om-font-size-13);
-    font-weight: var(--om-font-weight-semibold);
-    line-height: var(--om-line-height-tight);
-    color: var(--tw-text-color-primary);
-  }
-
-  .kg-node-type {
-    display: block;
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-medium);
-    line-height: var(--om-line-height-snug);
-    color: var(--tw-text-color-tertiary);
-  }
-
   .kg-node-count {
     flex-shrink: 0;
     font-size: var(--om-font-size-11);
@@ -129,10 +116,6 @@
     font-size: var(--om-font-size-11);
     font-weight: var(--om-font-weight-medium);
     color: var(--tw-text-color-quaternary);
-  }
-
-  &.kg-node-root .kg-node-name {
-    font-size: var(--om-font-size-15);
   }
 
   &.kg-node-root .node-icon {

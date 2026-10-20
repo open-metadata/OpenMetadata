@@ -12,7 +12,7 @@
  */
 
 import { Box, Card, Divider } from '@openmetadata/ui-core-components';
-import React, { useRef } from 'react';
+import React from 'react';
 import AppModeSwitcher from '../../../AppModeSwitcher/AppModeSwitcher';
 import AIUserMenu from '../../../discovery/personal-space/AIUserMenu/AIUserMenu';
 import InboxIconButton from '../../../discovery/personal-space/InboxIconButton/InboxIconButton';
@@ -23,17 +23,13 @@ export interface UserProfileCardProps {
 }
 
 /**
- * User chrome for the AI sidebar footer — the profile card (AI user menu with
- * avatar, name, domain scope and profile dropdown, plus the inbox launcher)
- * and, in its own card below, the Classic/AI `AppModeSwitcher`. The switcher
- * gets its card as `cardRef`, so its popover treats clicks inside that card as
- * "inside" and does not self-close.
+ * User chrome for the AI sidebar footer — one card holding the AI user menu
+ * (avatar, name, domain scope, profile dropdown) beside the inbox launcher,
+ * and below a divider the Classic/AI `AppModeSwitcher`.
  */
 const UserProfileCard: React.FC<UserProfileCardProps> = ({
   compact = false,
 }) => {
-  const switcherCardRef = useRef<HTMLDivElement>(null);
-
   if (compact) {
     // The compact switcher is wider than the rail card, so it sits below it.
     return (
@@ -54,29 +50,22 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
     );
   }
 
-  // Own wrapper so the two cards sit 6px apart instead of the footer's 12px gap.
   return (
-    <Box className="tw:w-full tw:gap-1.5" direction="col">
-      <Card
-        className="tw:w-full tw:bg-primary tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:shadow-xs"
-        data-testid="ask-user-card">
-        <Box align="center" gap={2}>
-          <AIUserMenu />
-          <Box
-            align="center"
-            className="tw:size-10 tw:shrink-0 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
-            justify="center">
-            <InboxIconButton />
-          </Box>
+    <Card
+      className="tw:w-full tw:bg-primary tw:py-2.5 tw:pr-2.5 tw:pl-3 tw:shadow-xs"
+      data-testid="ask-user-card">
+      <Box align="center" gap={2}>
+        <AIUserMenu />
+        <Box
+          align="center"
+          className="tw:size-10 tw:shrink-0 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
+          justify="center">
+          <InboxIconButton />
         </Box>
-      </Card>
-      <Card
-        className="tw:w-full tw:bg-primary tw:px-3 tw:py-2 tw:shadow-xs"
-        data-testid="ask-app-mode-card"
-        ref={switcherCardRef}>
-        <AppModeSwitcher cardRef={switcherCardRef} />
-      </Card>
-    </Box>
+      </Box>
+      <Divider className="tw:my-2.5" />
+      <AppModeSwitcher />
+    </Card>
   );
 };
 

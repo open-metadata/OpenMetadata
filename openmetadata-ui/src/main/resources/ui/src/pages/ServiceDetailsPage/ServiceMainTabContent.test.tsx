@@ -347,4 +347,24 @@ describe('ServiceMainTabContent permission wiring', () => {
       );
     });
   });
+
+  describe('right panel', () => {
+    const lastProps = () => (ResizablePanels as jest.Mock).mock.calls.at(-1)[0];
+
+    it('shows the right panel by default, as on the classic page', () => {
+      renderComponent({ servicePermission: FULL_PERMISSION });
+
+      expect(lastProps().hideSecondPanel).toBe(false);
+    });
+
+    // A host with its own right panel would otherwise mount a hidden second one, with its fetches.
+    it('lets a host that renders its own right panel drop this one', () => {
+      renderComponent({
+        servicePermission: FULL_PERMISSION,
+        hideRightPanel: true,
+      });
+
+      expect(lastProps().hideSecondPanel).toBe(true);
+    });
+  });
 });

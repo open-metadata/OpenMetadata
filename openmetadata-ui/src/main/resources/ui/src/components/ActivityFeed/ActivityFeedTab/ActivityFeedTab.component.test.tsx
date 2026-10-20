@@ -299,6 +299,16 @@ describe('ActivityFeedTab', () => {
         expect(counts).toContain('5');
       });
     });
+
+    it('counts the conversations on the entity fields too', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      await waitFor(() =>
+        expect(mockListConversations).toHaveBeenCalledWith(
+          expect.objectContaining({ includeFields: true, limit: 1 })
+        )
+      );
+    });
   });
 
   describe('User entity feed counts tolerate an empty conversation response', () => {

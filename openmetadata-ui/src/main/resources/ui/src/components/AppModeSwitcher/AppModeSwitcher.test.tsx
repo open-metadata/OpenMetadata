@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import AppModeSwitcher from './AppModeSwitcher';
 
@@ -151,6 +151,22 @@ describe('AppModeSwitcher', () => {
 
     expect(screen.getByTestId('app-mode-option-classic')).not.toBeDisabled();
     expect(screen.getByTestId('app-mode-option-ai')).not.toBeDisabled();
+  });
+
+  it('marks only the current option, with a check icon and no "Current" text', () => {
+    currentMode = 'ai';
+    render(<AppModeSwitcher />);
+    fireEvent.click(getTrigger());
+
+    expect(
+      within(screen.getByTestId('app-mode-option-ai')).getByRole('img', {
+        name: 'label.current',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('classic-current-badge')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('label.current')).not.toBeInTheDocument();
   });
 
   it('clicking Classic writes DEFAULT_APP_MODE and navigates to /', () => {

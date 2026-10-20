@@ -18,12 +18,11 @@ import type {
 import {
   Box,
   Button,
-  ButtonGroup,
-  ButtonGroupItem,
   Checkbox,
   Popover,
   PopoverTrigger,
   Select,
+  Tabs,
   TreeSelect,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -319,25 +318,28 @@ const KnowledgeGraphToolbar = ({
         <Box
           className="tw:max-w-full tw:min-w-0"
           data-testid="graph-mode-chooser">
-          <ButtonGroup
-            disallowEmptySelection
-            aria-label={t('label.mode')}
-            className="tw:max-w-full tw:flex-wrap"
-            selectedKeys={new Set([mode])}
-            size="sm"
-            onSelectionChange={(keys) => {
-              const next = [...keys][0];
-              if (next === 'ontology' || next === 'knowledge-graph') {
-                onModeChange(next);
+          <Tabs
+            selectedKey={mode}
+            onSelectionChange={(key) => {
+              if (key === 'ontology' || key === 'knowledge-graph') {
+                onModeChange(key);
               }
             }}>
-            <ButtonGroupItem iconLeading={Dataflow02} id="knowledge-graph">
-              {t('label.knowledge-graph')}
-            </ButtonGroupItem>
-            <ButtonGroupItem iconLeading={BookClosed} id="ontology">
-              {t('label.ontology')}
-            </ButtonGroupItem>
-          </ButtonGroup>
+            <Tabs.List
+              aria-label={t('label.mode')}
+              className="tw:max-w-full tw:flex-wrap"
+              size="sm"
+              type="button-border">
+              <Tabs.Item id="knowledge-graph">
+                <Dataflow02 aria-hidden="true" size={16} />
+                {t('label.knowledge-graph')}
+              </Tabs.Item>
+              <Tabs.Item id="ontology">
+                <BookClosed aria-hidden="true" size={16} />
+                {t('label.ontology')}
+              </Tabs.Item>
+            </Tabs.List>
+          </Tabs>
         </Box>
         <Box align="center" className="tw:min-w-0 tw:max-w-full" gap={2}>
           <Select
@@ -388,6 +390,7 @@ const KnowledgeGraphToolbar = ({
           </Select>
         )}
         <Select.ComboBox
+          allowClear
           aria-label={t('label.kg-find-in-graph')}
           className="kg-find"
           emptyState={t('label.kg-no-results')}

@@ -318,6 +318,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -703,6 +704,21 @@
       ]
     },
     {
+      "_comment": "What reaches an entity's activity feed is decided server-side: the ActivityFeedAlert seed filter and the repository that builds and lists activity events (an asset's feed includes its data contract's).",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ActivityStreamRepository.java",
+        "openmetadata-service/src/main/resources/json/data/eventsubscription/ActivityFeedEvents.json"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/ActivityAPI.spec.ts",
+        "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts"
+      ]
+    },
+    {
       "_comment": "The customize-landing-page and widget-filter playwright helpers are shared by every landing-page/customization spec. Without this entry a helper-only change (e.g. a wait fix in customizeLandingPage.ts or widgetFilters.ts) counted as an unmapped file, so CustomizeWidgets/CustomizeLandingPage and the other specs that execute the changed helpers never ran on the PR. Specs listed are the exact importers of these modules; DataInsight.spec.ts runs in the Data Insight project.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
@@ -1051,11 +1067,15 @@
       "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
-        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DataContractRedirectPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contractAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContractRepository.java"
       ],
       "projects": ["chromium", "ImportExport"],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
