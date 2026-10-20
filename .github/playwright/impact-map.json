@@ -601,14 +601,6 @@
       "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"]
     },
     {
-      "_comment": "Knowledge graph tab on entity pages. Its spec is delegated to the knowledge-graph workflow, so the merge-queue plan drops it; the mapping keeps these paths targeted instead of escalating to a full run.",
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/knowledge-graph/**"
-      ],
-      "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/KnowledgeGraph.spec.ts"]
-    },
-    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
