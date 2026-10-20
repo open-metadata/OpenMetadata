@@ -6346,7 +6346,10 @@ public class WorkflowDefinitionResourceIT {
         client
             .glossaries()
             .create(
-                new CreateGlossary().withName(ns.prefix("upsertGate")).withDescription("glossary"));
+                new CreateGlossary()
+                    .withName(ns.prefix("upsertGate"))
+                    .withDescription("glossary")
+                    .withReviewers(List.of(SharedEntities.get().USER1_REF)));
     GlossaryTerm term =
         client
             .glossaryTerms()
@@ -6371,6 +6374,8 @@ public class WorkflowDefinitionResourceIT {
                 .withDescription("proposed via upsert"),
             RequestOptions.builder().build());
 
+    awaitOpenApprovalTaskAssignedTo(
+        client, term.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
     assertEquals(
         published, client.glossaryTerms().get(term.getId().toString(), "").getDescription());
     JsonNode request = onlyChangeRequest(client, term.getId());
@@ -6415,7 +6420,11 @@ public class WorkflowDefinitionResourceIT {
     Glossary glossary =
         client
             .glossaries()
-            .create(new CreateGlossary().withName(ns.prefix("cpGate")).withDescription("glossary"));
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("cpGate"))
+                    .withDescription("glossary")
+                    .withReviewers(List.of(SharedEntities.get().USER1_REF)));
     deployHookWorkflow(
         client, "glossary", glossary.getFullyQualifiedName(), List.of("extension." + property));
 
@@ -6427,6 +6436,8 @@ public class WorkflowDefinitionResourceIT {
                 "[{\"op\":\"add\",\"path\":\"/extension\",\"value\":{\"%s\":\"proposed\"}}]"
                     .formatted(property)));
 
+    awaitOpenApprovalTaskAssignedTo(
+        client, glossary.getFullyQualifiedName(), SharedEntities.get().USER1.getId());
     assertNull(
         client.glossaries().get(glossary.getId().toString(), "extension").getExtension(),
         "The custom property change must be held, not published");

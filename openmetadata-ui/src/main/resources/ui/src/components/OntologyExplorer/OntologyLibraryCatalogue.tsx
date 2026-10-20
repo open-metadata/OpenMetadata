@@ -22,18 +22,15 @@ import {
 import {
   ArrowRight,
   ArrowUpRight,
-  Check,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { KeyboardEvent, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { ToggleButton, ToggleButtonGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
-import { OntologyPackInstallation } from '../../generated/type/ontologyPackInstallation';
 import { selectedModuleTotals } from './OntologyLibrary.utils';
 
 interface OntologyLibraryCatalogueProps {
-  installations: OntologyPackInstallation[];
   packs: OntologyPackManifest[];
   onSelect: (pack: OntologyPackManifest) => void;
 }
@@ -70,47 +67,18 @@ export const OntologyPackIcon = ({ pack }: { pack: OntologyPackManifest }) => (
 
 interface OntologyPackCardProps {
   pack: OntologyPackManifest;
-  installation?: OntologyPackInstallation;
   onSelect: (pack: OntologyPackManifest) => void;
 }
 
-const OntologyPackCard = ({
-  pack,
-  installation,
-  onSelect,
-}: OntologyPackCardProps) => {
+const OntologyPackCard = ({ pack, onSelect }: OntologyPackCardProps) => {
   const { t } = useTranslation();
-  const isInstalledBundledPack = Boolean(installation && pack.bundled);
   const totals = selectedModuleTotals(
     pack,
     pack.modules.map((module) => module.id)
   );
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSelect(pack);
-    }
-  };
-
-  const clickableCardProps = isInstalledBundledPack
-    ? {
-        role: 'button' as const,
-        tabIndex: 0,
-        onClick: () => onSelect(pack),
-        onKeyDown: handleKeyDown,
-      }
-    : {};
-
   let action: ReactNode = null;
-  if (installation) {
-    action = (
-      <Badge color="success" size="sm" type="pill-color">
-        <Check aria-hidden="true" className="tw:size-3" />
-        {t('label.installed')}
-      </Badge>
-    );
-  } else if (pack.bundled) {
+  if (pack.bundled) {
     action = (
       <Button
         color="link-color"
@@ -139,9 +107,7 @@ const OntologyPackCard = ({
   return (
     <Card
       className="tw:flex tw:h-full tw:flex-col tw:gap-3 tw:p-4"
-      data-testid={`ontology-pack-${pack.id}`}
-      isClickable={isInstalledBundledPack}
-      {...clickableCardProps}>
+      data-testid={`ontology-pack-${pack.id}`}>
       <Box align="center" gap={3}>
         <OntologyPackIcon pack={pack} />
         <Box className="tw:min-w-0" direction="col">
@@ -180,7 +146,6 @@ const OntologyPackCard = ({
 };
 
 const OntologyLibraryCatalogue = ({
-  installations,
   packs,
   onSelect,
 }: OntologyLibraryCatalogueProps) => {
@@ -226,13 +191,7 @@ const OntologyLibraryCatalogue = ({
       <Grid gap="4">
         {visiblePacks.map((pack) => (
           <Grid.Item key={pack.id} span={PACK_CARD_SPAN}>
-            <OntologyPackCard
-              installation={installations.find(
-                (candidate) => candidate.packId === pack.id
-              )}
-              pack={pack}
-              onSelect={onSelect}
-            />
+            <OntologyPackCard pack={pack} onSelect={onSelect} />
           </Grid.Item>
         ))}
       </Grid>

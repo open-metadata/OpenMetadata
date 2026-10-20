@@ -237,12 +237,8 @@ test.describe('Ontology Studio', () => {
         page.getByTestId('ontology-authoring-inspector')
       ).not.toBeVisible();
 
-      await page.getByTestId('submode-tab-model').click();
-      await expect(
-        page.getByTestId('ontology-modeling-workbench')
-      ).toBeVisible();
-
-      await page.getByTestId('submode-tab-graph').click();
+      await expect(page.getByTestId('ontology-explorer')).toBeVisible();
+      await expect(page.getByTestId('submode-tab-model')).toHaveCount(0);
       await waitForGraphLoaded(page);
       await clickGraphNode(page, PageData.term1.responseData.id);
       await expect(
