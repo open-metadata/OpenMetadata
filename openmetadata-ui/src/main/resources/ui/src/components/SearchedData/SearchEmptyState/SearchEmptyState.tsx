@@ -94,7 +94,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
   const noRecordForES = useMemo(() => {
     if (isQuery) {
       return (
-        <div className="text-center" data-testid="no-search-results">
+        <div className="text-center tw:w-full" data-testid="no-search-results">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
           </div>
@@ -104,7 +104,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
 
     if (['glossaries', 'tags'].includes(tab)) {
       return (
-        <div className="text-center" data-testid="no-search-results">
+        <div className="text-center tw:w-full" data-testid="no-search-results">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <CreatePlaceholder
               permission
@@ -125,7 +125,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
     }
 
     return (
-      <div className="text-center" data-testid="no-search-results">
+      <div className="text-center tw:w-full" data-testid="no-search-results">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"

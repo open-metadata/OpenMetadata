@@ -219,7 +219,7 @@ const PortsLineageView = ({
   if (!hasAnyPorts) {
     return (
       <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-secondary tw:rounded-lg tw:border tw:border-subtle">
-        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <div className="tw:relative tw:h-full tw:w-full tw:rounded-xl tw:bg-surface">
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={
