@@ -250,7 +250,7 @@ const CommentComposer: React.FC<CommentComposerProps> = (props) => {
         className="tw:mb-2.5"
         displayName={currentUser?.displayName ?? currentUser?.name}
         name={currentUser?.name ?? ''}
-        width="24"
+        size="xs"
       />
       <CommentEditor {...props} />
     </Box>
