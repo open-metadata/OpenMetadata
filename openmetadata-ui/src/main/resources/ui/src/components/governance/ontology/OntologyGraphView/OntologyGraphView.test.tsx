@@ -445,6 +445,65 @@ describe('OntologyGraphView', () => {
     expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
   });
 
+  it.each([false, true])(
+    'reuses the created relationship property after an axiom failure (model refreshed: %s)',
+    async (refreshModel) => {
+      const createdProperty = {
+        ...objectProperty,
+        iri: 'urn:retail:server-minted-servedBy',
+      };
+      jest.mocked(createOntologyProperty).mockResolvedValue(createdProperty);
+      jest
+        .mocked(createOntologyAxiom)
+        .mockRejectedValueOnce(new Error('axiom write failed'))
+        .mockResolvedValue(customerIsParty);
+      const { rerender } = render(
+        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      );
+      await screen.findByTestId('native-ontology-graph');
+      await act(() =>
+        mockGraphProps.mock.calls
+          .at(-1)?.[0]
+          .onCreateRelation(customer.id, orphan.id, 'new:served by')
+      );
+
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
+
+      if (refreshModel) {
+        mockUseOntologyStudioModel.mockReturnValue({
+          ...modelResult,
+          model: {
+            ...model,
+            properties: [...model.properties, createdProperty],
+          },
+        });
+        rerender(
+          <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+        );
+      }
+
+      await act(() =>
+        mockGraphProps.mock.calls
+          .at(-1)?.[0]
+          .onCreateRelation(customer.id, orphan.id, 'new:served by')
+      );
+
+      expect(createOntologyProperty).toHaveBeenCalledTimes(1);
+      expect(createOntologyAxiom).toHaveBeenCalledTimes(2);
+      expect(createOntologyAxiom).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          subjectIri: customer.iri,
+          expressions: [
+            expect.objectContaining({
+              filler: expect.objectContaining({ classIri: orphan.iri }),
+              propertyIri: createdProperty.iri,
+            }),
+          ],
+        })
+      );
+    }
+  );
+
   it('starts a blank concept after editing an existing concept and hides the editor in View', async () => {
     const { rerender } = render(
       <OntologyGraphView isEditing ontology={ontology} surface="graph" />
