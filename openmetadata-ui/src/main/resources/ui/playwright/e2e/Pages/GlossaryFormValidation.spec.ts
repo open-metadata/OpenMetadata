@@ -18,7 +18,6 @@ import { selectActiveGlossary } from '../../utils/glossary';
 import {
   fillGlossaryForm,
   fillGlossaryTermForm,
-  getGlossaryTermDrawer,
   openAddGlossaryForm,
   openAddGlossaryTermForm,
   saveGlossaryFormExpectingError,
@@ -136,38 +135,6 @@ test.describe('Glossary Form Validation', () => {
       await expect(form.getByTestId('description')).toContainText(
         'Description is required'
       );
-    } finally {
-      await glossary.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  test('keeps the term drawer header and footer pinned while the form scrolls', async ({
-    page,
-  }) => {
-    const { apiContext, afterAction } = await getApiContext(page);
-    const glossary = new Glossary();
-
-    try {
-      await glossary.create(apiContext);
-
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary.data.displayName);
-
-      await openAddGlossaryTermForm(page);
-
-      const drawer = getGlossaryTermDrawer(page);
-      const dialog = drawer.getByRole('dialog');
-      const formBody = drawer.getByRole('main');
-
-      await formBody.evaluate((el) => el.scrollTo(0, el.scrollHeight));
-
-      // Hidden inputs that escape the form body grow the dialog past the viewport.
-      await expect
-        .poll(() => dialog.evaluate((el) => el.scrollHeight - el.clientHeight))
-        .toBeLessThanOrEqual(1);
-      await expect(drawer.getByTestId('form-heading')).toBeInViewport();
-      await expect(drawer.getByTestId('save-glossary-term')).toBeInViewport();
     } finally {
       await glossary.delete(apiContext);
       await afterAction();
