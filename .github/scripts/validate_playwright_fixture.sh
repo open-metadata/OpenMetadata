@@ -84,13 +84,29 @@ if [[ "$current_compatibility_hash" != "$expected_compatibility_hash" ||
   exit 1
 fi
 
+# `migrate` only moves forward: a fixture from a newer commit (restore-keys
+# returns the newest match, not an ancestor) would leave older server code on a
+# newer database. Checkouts are shallow, so deepen before asking; anything
+# undecidable is "no", which rebuilds instead of failing the shards.
+built_from_an_ancestor() {
+  local fixture_sha=$1
+  local head_sha
+  head_sha=$(git -C "$workspace_root" rev-parse HEAD) || return 1
+  if ! git -C "$workspace_root" cat-file -e "${fixture_sha}^{commit}" 2>/dev/null; then
+    git -C "$workspace_root" fetch --quiet --no-tags --deepen=300 origin "$head_sha" 2>/dev/null ||
+      return 1
+  fi
+  git -C "$workspace_root" merge-base --is-ancestor "$fixture_sha" "$head_sha" 2>/dev/null
+}
+
 # exact: built from these sources. upgrade: built before schema/migration
 # changes only; the shard launcher runs `openmetadata-ops.sh migrate` on it.
 if [[ "$(jq -r .compatibilityHash "$manifest")" == "$expected_compatibility_hash" &&
       "$(jq -r .schemaHash "$manifest")" == "$current_schema_hash" ]]; then
   fixture_mode=exact
 elif [[ "${PW_FIXTURE_ALLOW_UPGRADE:-false}" == "true" &&
-        "$(jq -r .baseHash "$manifest")" == "$current_base_hash" ]]; then
+        "$(jq -r .baseHash "$manifest")" == "$current_base_hash" ]] &&
+     built_from_an_ancestor "$(jq -r .sourceSha "$manifest")"; then
   fixture_mode=upgrade
 else
   jq . "$manifest" >&2

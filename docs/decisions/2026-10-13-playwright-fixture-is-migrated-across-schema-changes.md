@@ -1,7 +1,7 @@
 # Merge groups migrate the last main Playwright fixture across schema and migration changes instead of rebuilding it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-20 (ancestor-only reuse; trial migration falls back to a rebuild)
 - **Deciders:** Chirag Madlani
 - **Guard:** `test_fixture_validator_reuses_a_fixture_across_schema_and_migration_changes`,
   `test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha`,
@@ -34,3 +34,14 @@ misses (21% of commits) also forced the re-seed.
 - A merge group that restores across schema changes tests the upgrade path a production
   database takes, not a fresh install; a fresh install is still exercised by every `main` rebuild.
 - The shard environment timeout is 7 min (was 5) to fit `migrate`.
+
+## Amendment
+Reuse is an optimisation, so it must never be why a run fails:
+
+- A fixture is upgraded only when its `sourceSha` is an ancestor of the commit under test
+  (`restore-keys` returns the newest match, and `migrate` cannot move a database backwards).
+  The restore job deepens its shallow checkout up to 300 commits to decide; anything it cannot
+  prove is treated as a miss.
+- Before shards start, the prepare job brings the upgraded fixture up exactly as a shard does
+  (`migrate`, then server health). If that fails it posts a warning and rebuilds the fixture from
+  scratch, which replaces the restored artifact for every shard.

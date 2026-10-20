@@ -535,9 +535,15 @@ def test_fixture_validator_reuses_a_fixture_across_schema_and_migration_changes(
     assert exact.returncode == 0, exact.stderr
     assert "fixture-mode=exact" in exact.stdout
 
+    head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+    ).strip()
     # Built before a schema/migration change: same base, older exact hashes.
     older = build_fixture(
-        tmp_path / "older", compatibilityHash="0" * 64, schemaHash="0" * 64
+        tmp_path / "older",
+        sourceSha=head,
+        compatibilityHash="0" * 64,
+        schemaHash="0" * 64,
     )
     upgraded = validate_fixture(older, allow_upgrade=True)
     assert upgraded.returncode == 0, upgraded.stderr
@@ -546,9 +552,30 @@ def test_fixture_validator_reuses_a_fixture_across_schema_and_migration_changes(
     assert validate_fixture(older, allow_upgrade=False).returncode != 0
 
     reseeded = build_fixture(
-        tmp_path / "reseeded", compatibilityHash="0" * 64, baseHash="0" * 64
+        tmp_path / "reseeded",
+        sourceSha=head,
+        compatibilityHash="0" * 64,
+        baseHash="0" * 64,
     )
     assert validate_fixture(reseeded, allow_upgrade=True).returncode != 0
+
+    # restore-keys can return a fixture from a commit this checkout does not
+    # contain (a newer main); migrate cannot move a database backwards, so it
+    # must be rebuilt rather than upgraded. An unreferenced commit stands in.
+    unrelated = subprocess.check_output(
+        ["git", "commit-tree", "HEAD^{tree}", "-m", "fixture from an unrelated commit"],
+        cwd=ROOT,
+        text=True,
+    ).strip()
+    newer = build_fixture(
+        tmp_path / "newer",
+        sourceSha=unrelated,
+        compatibilityHash="0" * 64,
+        schemaHash="0" * 64,
+    )
+    rejected = validate_fixture(newer, allow_upgrade=True)
+    assert rejected.returncode != 0
+    assert "fixture-mode=" not in rejected.stdout
 
 
 def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
@@ -642,8 +669,8 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
     assert (
-        "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}"
-        in prepare_job
+        "if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true'"
+        " || steps.upgrade-trial.outcome == 'failure') }}" in prepare_job
     )
     # The ingestion image is built off the critical path; a missing image must
     # not force the ~17 min fixture re-seed.
@@ -653,6 +680,22 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
         in ingestion_job
     )
     assert "pack_playwright_ingestion_image.sh" in ingestion_job
+    # A restored fixture that cannot be migrated falls back to the full rebuild
+    # instead of failing every shard.
+    trial = prepare_job.split("      - name: Try migrating the restored fixture\n", 1)[
+        1
+    ].split("\n      - name:", 1)[0]
+    assert "id: upgrade-trial" in trial
+    assert "continue-on-error: true" in trial
+    assert 'fast-mode: "true"' in trial
+    seed = prepare_job.split("      - name: Prepare seeded environment\n", 1)[1].split(
+        "\n", 1
+    )[0]
+    assert "steps.upgrade-trial.outcome == 'failure'" in seed
+    upload = prepare_job.split("      - name: Upload seeded fixture\n", 1)[1].split(
+        "\n      - name:", 1
+    )[0]
+    assert "overwrite: true" in upload
     assert (
         "plan-playwright:\n" in workflow
         and "    needs: [detect-changes]\n"
