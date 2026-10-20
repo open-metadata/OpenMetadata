@@ -32,7 +32,7 @@ const PendingReviewSummary = ({ scope }: PendingReviewSummaryProps) => {
 
   return (
     <div
-      className="tw:inline-flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-1.5 tw:text-sm"
+      className="tw:inline-flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:text-sm"
       data-testid="pending-review-summary">
       {counts.ai > 0 && (
         <span className="tw:inline-flex tw:items-center tw:gap-1 tw:font-medium tw:text-utility-purple-700">

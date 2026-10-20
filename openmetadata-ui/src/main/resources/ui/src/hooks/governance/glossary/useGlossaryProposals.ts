@@ -24,7 +24,11 @@ import {
   GlossaryTerm,
   ProviderType,
 } from '../../../generated/entity/data/glossaryTerm';
-import { getMemoryDerivations } from '../../../rest/contextMemoryAPI';
+import { queryClient } from '../../../queryClient';
+import {
+  getMemoryDerivations,
+  MAX_DERIVATION_ENTITIES,
+} from '../../../rest/contextMemoryAPI';
 import { getGlossaryTerms, patchGlossaryTerm } from '../../../rest/glossaryAPI';
 import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
@@ -50,6 +54,10 @@ import {
 import { isTaskPendingFurtherApproval } from '../../../utils/TaskNavigationUtils';
 
 export const GLOSSARY_PROPOSALS_QUERY_KEY = ['governance', 'glossaryProposals'];
+
+/** Refreshes every review view after a term is created, edited or decided outside the panel. */
+export const refreshGlossaryProposals = () =>
+  queryClient.invalidateQueries({ queryKey: GLOSSARY_PROPOSALS_QUERY_KEY });
 
 /** A glossary's proposals are all its pending terms; a term's, its pending children. */
 export interface ProposalScope {
@@ -106,7 +114,7 @@ const getEvidence = (terms: GlossaryTerm[]) =>
       terms
         .filter((term) => getProposalSource(term) === 'ai')
         .map((term) => term.id),
-      PAGE_SIZE_EXTRA_LARGE
+      MAX_DERIVATION_ENTITIES
     ).map((ids) =>
       getMemoryDerivations(EntityType.GLOSSARY_TERM, ids).catch(() => [])
     )
@@ -133,9 +141,10 @@ const getPendingTerms = async (scope: ProposalScope) => {
 
 const fetchProposals = async (scope: ProposalScope) => {
   const terms = await getPendingTerms(scope);
+  // Without its approval tasks a person's proposal shows who decides it, and the AI drafts stay.
   const [derivations, approvalTasks] = await Promise.all([
     getEvidence(terms),
-    getApprovalTasks(scope, terms),
+    getApprovalTasks(scope, terms).catch((): Task[] => []),
   ]);
 
   return toProposals(terms, derivations, approvalTasks);
@@ -217,7 +226,7 @@ export const useTermDerivation = (termId?: string) => {
   return data?.[0];
 };
 
-const GLOSSARY_NAME_FIELD = 'glossary.name.keyword';
+const GLOSSARY_ID_FIELD = 'glossary.id';
 const MAX_GLOSSARY_BUCKETS = 1000;
 const PENDING_COUNTS_STALE_TIME = 60 * 1000;
 const PENDING_TERMS_FILTER = {
@@ -229,7 +238,10 @@ const AI_TERMS_FILTER = {
   term: { 'provider.keyword': ProviderType.Automation },
 };
 
-/** Pending terms per glossary, keyed by the glossary's lowercased name. */
+/**
+ * Pending terms per glossary, keyed by the glossary's id: its name keyword folds case and accents,
+ * so a name would not find its own bucket.
+ */
 export interface GlossaryPendingCounts {
   all: Record<string, number>;
   ai: Record<string, number>;
@@ -242,7 +254,7 @@ const countPendingTermsByGlossary = (
   postExactAggregateFieldOptions(
     {
       deleted: false,
-      fieldName: GLOSSARY_NAME_FIELD,
+      fieldName: GLOSSARY_ID_FIELD,
       // The include pattern is required: without one the server returns no buckets.
       fieldValue: '.*',
       index: SearchIndex.GLOSSARY_TERM,
@@ -252,8 +264,8 @@ const countPendingTermsByGlossary = (
     signal
   ).then(({ data }) =>
     Object.fromEntries(
-      (data.aggregations?.[`sterms#${GLOSSARY_NAME_FIELD}`]?.buckets ?? []).map(
-        ({ key, doc_count }) => [key.toLowerCase(), doc_count]
+      (data.aggregations?.[`sterms#${GLOSSARY_ID_FIELD}`]?.buckets ?? []).map(
+        ({ key, doc_count }) => [key, doc_count]
       )
     )
   );

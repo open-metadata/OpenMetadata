@@ -66,9 +66,8 @@ const GlossaryLeftPanel = ({
   const navItems = useMemo(
     () =>
       glossaries.map((glossary) => {
-        const key = glossary.name.toLowerCase();
-        const pending = pendingCounts?.all[key] ?? 0;
-        const fromAi = pendingCounts?.ai[key] ?? 0;
+        const pending = pendingCounts?.all[glossary.id] ?? 0;
+        const fromAi = pendingCounts?.ai[glossary.id] ?? 0;
 
         return {
           label: getEntityName(glossary),

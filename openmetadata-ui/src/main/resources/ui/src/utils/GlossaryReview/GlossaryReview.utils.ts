@@ -104,6 +104,16 @@ export const countProposals = (
   return { all: proposals.length, ai, person: proposals.length - ai };
 };
 
+/** Filtering by who proposed only helps when both AI agents and people have proposals. */
+export const hasProposalsFromBothSources = (counts: ProposalCounts) =>
+  counts.ai > 0 && counts.person > 0;
+
+/** The filter that applies: every proposal, once only one source has any left. */
+export const getActiveFilter = (
+  counts: ProposalCounts,
+  filter: ProposalFilter
+): ProposalFilter => (hasProposalsFromBothSources(counts) ? filter : 'all');
+
 export const filterProposals = (
   proposals: GlossaryProposal[],
   filter: ProposalFilter

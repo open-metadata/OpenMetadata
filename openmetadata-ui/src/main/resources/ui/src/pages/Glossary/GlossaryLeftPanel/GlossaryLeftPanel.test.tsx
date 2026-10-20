@@ -194,8 +194,8 @@ describe('Test GlossaryLeftPanel component', () => {
 
   it('marks the glossaries with terms awaiting review and explains the marks', () => {
     mockPendingCounts = {
-      all: { firstglossary: 3, secondglossary: 1 },
-      ai: { firstglossary: 2 },
+      all: { 'first-glossary-id': 3, 'second-glossary-id': 1 },
+      ai: { 'first-glossary-id': 2 },
     };
 
     render(

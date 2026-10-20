@@ -32,12 +32,14 @@ jest.mock('../../../../hooks/governance/glossary/useGlossaryProposals', () => ({
   useGlossaryProposals: jest.fn(),
 }));
 
+const mockContext = {
+  data: { id: 'glossary-id', fullyQualifiedName: 'Customers' },
+  type: EntityType.GLOSSARY,
+  permissions: { EditAll: true },
+};
+
 jest.mock('../../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn(() => ({
-    data: { id: 'glossary-id', fullyQualifiedName: 'Customers' },
-    type: EntityType.GLOSSARY,
-    permissions: { EditAll: true },
-  })),
+  useGenericContext: jest.fn(() => mockContext),
 }));
 
 jest.mock('../../../../hooks/useApplicationStore', () => ({
@@ -94,6 +96,7 @@ const renderPanel = () =>
 describe('PendingReviewPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockContext.permissions = { EditAll: true };
     useGlossaryStore.getState().setSelectedProposalId(undefined);
     mockDecide.mockResolvedValue(true);
   });
@@ -114,6 +117,37 @@ describe('PendingReviewPanel', () => {
       'Escrow'
     );
     expect(screen.queryByTestId('proposal-card')).not.toBeInTheDocument();
+  });
+
+  it('offers no filter while every proposal comes from one source', () => {
+    mockProposals([aiProposal]);
+    renderPanel();
+
+    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+      'Churn Risk'
+    );
+    expect(screen.queryByTestId('proposal-filter-ai')).not.toBeInTheDocument();
+  });
+
+  it('lets an assigned approver who cannot edit the term decide it, but not edit it', () => {
+    mockContext.permissions = { EditAll: false };
+    mockProposals([
+      {
+        term: {
+          ...pending('Churn Risk', ProviderType.Automation),
+          entityStatus: EntityStatus.InReview,
+        },
+        source: 'ai',
+        approvalTask: {
+          id: 'task-id',
+          assignees: [{ id: 'user-id', type: 'user' }],
+        } as GlossaryProposal['approvalTask'],
+      },
+    ]);
+    renderPanel();
+
+    expect(screen.getByTestId('approve-proposal')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-proposal')).not.toBeInTheDocument();
   });
 
   it('lists a decided proposal as resolved and settles its table row', async () => {

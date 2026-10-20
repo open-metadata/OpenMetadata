@@ -61,13 +61,12 @@ const TabsLabel = ({
           </Badge>
         )}
         {Boolean(proposedCount) && (
-          <Badge
-            color="purple"
-            data-testid="proposed-count"
-            size="sm"
-            type="pill-color">
-            {t('label.count-proposed', { count: proposedCount })}
-          </Badge>
+          <span
+            className="tw:inline-flex tw:items-center"
+            data-testid="proposed-count">
+            {t('label.proposed')}
+            {getCountBadge(proposedCount, '', isCountActive)}
+          </span>
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}

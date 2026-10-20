@@ -22,10 +22,12 @@ import {
   canDecideProposal,
   countProposals,
   filterProposals,
+  getActiveFilter,
   getConfidencePercent,
   getDeciders,
   getProposalAuthor,
   getProposalSource,
+  hasProposalsFromBothSources,
   toProposals,
 } from './GlossaryReview.utils';
 
@@ -99,6 +101,16 @@ describe('GlossaryReview utils', () => {
     expect(countProposals(proposals)).toEqual({ all: 2, ai: 1, person: 1 });
     expect(filterProposals(proposals, 'person')).toEqual([proposals[1]]);
     expect(filterProposals(proposals, 'all')).toBe(proposals);
+  });
+
+  it('filters by source only while both AI agents and people have proposals', () => {
+    expect(getActiveFilter({ all: 3, ai: 2, person: 1 }, 'person')).toBe(
+      'person'
+    );
+    expect(getActiveFilter({ all: 2, ai: 2, person: 0 }, 'person')).toBe('all');
+    expect(hasProposalsFromBothSources({ all: 1, ai: 0, person: 1 })).toBe(
+      false
+    );
   });
 
   it('puts AI proposals first, then the newest', () => {

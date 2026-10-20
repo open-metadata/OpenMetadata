@@ -63,7 +63,7 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
   const author = getProposalAuthor(proposal) ?? '';
 
   return (
-    <Box align="center" gap={2}>
+    <Box align="center" gap={2} wrap="wrap">
       {proposal.source === 'ai' ? (
         <span className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-utility-purple-700">
           <AskCollateSparkle aria-hidden className="tw:size-3" />
@@ -120,12 +120,16 @@ const AgentEvidence = ({ proposal }: { proposal: GlossaryProposal }) => {
       data-testid="proposal-evidence">
       <Box direction="col" gap={2}>
         {confidence !== undefined && (
-          <Box align="center" gap={2}>
-            <Typography color="secondary" size="text-xs">
+          <Box align="center" gap={2} wrap="wrap">
+            <Typography
+              className="tw:shrink-0"
+              color="secondary"
+              size="text-xs">
               {t('label.confidence')}
             </Typography>
             <ProgressBarBase
               aria-label={t('label.confidence')}
+              className="tw:min-w-8 tw:flex-1"
               color="var(--tw-color-utility-purple-500)"
               value={confidence}
             />
@@ -137,7 +141,7 @@ const AgentEvidence = ({ proposal }: { proposal: GlossaryProposal }) => {
         <Typography color="secondary" size="text-xs" weight="semibold">
           {t('message.why-the-agent-suggested-this')}
         </Typography>
-        <ul className="tw:m-0 tw:list-disc tw:pl-4 tw:text-xs tw:text-secondary tw:marker:text-utility-purple-500">
+        <ul className="tw:m-0 tw:list-disc tw:pl-4 tw:text-xs tw:break-words tw:text-secondary tw:marker:text-utility-purple-500">
           {(derivation.evidence?.reasons ?? []).map((reason) => (
             <li key={reason}>{reason}</li>
           ))}
@@ -314,7 +318,7 @@ const ProposalCard = ({
     <section
       aria-label={getEntityName(proposal.term)}
       className={classNames(
-        'tw:rounded-xl tw:border tw:bg-primary tw:p-3.5 tw:shadow-md',
+        'tw:rounded-xl tw:border tw:bg-surface tw:p-3.5 tw:shadow-md',
         isAi ? 'tw:border-utility-purple-400' : 'tw:border-utility-warning-400'
       )}
       data-testid="proposal-card-expanded">

@@ -32,6 +32,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { updateGlossaryTermStatus } from '../../../../utils/GlossaryPureUtils';
 import {
   GlossaryProposal,
+  ProposalCounts,
   ProposalDecision,
   ProposalFilter,
   ResolvedProposal,
@@ -39,6 +40,8 @@ import {
 import {
   canDecideProposal,
   filterProposals,
+  getActiveFilter,
+  hasProposalsFromBothSources,
 } from '../../../../utils/GlossaryReview/GlossaryReview.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
@@ -92,13 +95,61 @@ const ResolvedList = ({ resolved }: { resolved: ResolvedProposal[] }) => {
   );
 };
 
+interface PanelHeaderProps {
+  counts: ProposalCounts;
+  filter: ProposalFilter;
+  onFilterChange: (filter: ProposalFilter) => void;
+}
+
+const PanelHeader = ({ counts, filter, onFilterChange }: PanelHeaderProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      className="tw:border-b tw:border-secondary tw:px-4 tw:pt-4 tw:pb-3"
+      direction="col"
+      gap={3}>
+      <Box align="center" gap={1} justify="between" wrap="wrap">
+        <Typography size="text-md" weight="semibold">
+          {t('label.pending-review')}
+        </Typography>
+        <span className="tw:text-sm tw:whitespace-nowrap tw:text-tertiary">
+          {t('label.pending-review-count', { count: counts.all })}
+        </span>
+      </Box>
+      {hasProposalsFromBothSources(counts) && (
+        <div className="tw:overflow-x-auto">
+          <ButtonGroup
+            disallowEmptySelection
+            className="tw:w-full tw:min-w-max"
+            selectedKeys={[filter]}
+            selectionMode="single"
+            size="sm"
+            onSelectionChange={(keys) =>
+              onFilterChange(FILTERS.find((key) => keys.has(key)) ?? 'all')
+            }>
+            {FILTERS.map((key) => (
+              <ButtonGroupItem
+                className="tw:flex-1 tw:justify-center"
+                data-testid={`proposal-filter-${key}`}
+                id={key}
+                key={key}>
+                {t(FILTER_LABELS[key], { count: counts[key] })}
+              </ButtonGroupItem>
+            ))}
+          </ButtonGroup>
+        </div>
+      )}
+    </Box>
+  );
+};
+
 /** The proposals awaiting review under a glossary or a term: AI agents' and people's. */
 const PendingReviewPanel = () => {
   const { t } = useTranslation();
   const { data, type, permissions } = useGenericContext<GlossaryTerm>();
   const { currentUser } = useApplicationStore();
   const {
-    glossaryChildTerms,
     onEditGlossaryTerm,
     selectedProposalId,
     setGlossaryChildTerms,
@@ -120,9 +171,10 @@ const PendingReviewPanel = () => {
   );
   const { proposals, counts, isLoading, decide } = useGlossaryProposals(scope);
   const { canEditAll } = getDerivedPermissionFlags(permissions, data?.deleted);
+  const activeFilter = getActiveFilter(counts, filter);
   const visible = useMemo(
-    () => filterProposals(proposals, filter),
-    [proposals, filter]
+    () => filterProposals(proposals, activeFilter),
+    [proposals, activeFilter]
   );
   const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE_BASE));
   const currentPage = Math.min(page, totalPages);
@@ -134,7 +186,7 @@ const PendingReviewPanel = () => {
     ({ term }) => term.id === selectedProposalId
   );
 
-  useEffect(() => setPage(1), [filter, scope?.id]);
+  useEffect(() => setPage(1), [activeFilter, scope?.id]);
   useEffect(() => {
     if (selectedIndex >= 0) {
       setPage(Math.floor(selectedIndex / PAGE_SIZE_BASE) + 1);
@@ -152,9 +204,10 @@ const PendingReviewPanel = () => {
   ) => {
     const isSettled = await decide(proposal, decision, comment);
     if (isSettled) {
+      // Read the table's terms now: another decision or a load may have changed them meanwhile.
       setGlossaryChildTerms(
         updateGlossaryTermStatus(
-          glossaryChildTerms,
+          useGlossaryStore.getState().glossaryChildTerms,
           proposal.term.fullyQualifiedName ?? '',
           decision
         )
@@ -174,40 +227,13 @@ const PendingReviewPanel = () => {
 
   return (
     <div
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary"
+      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
       data-testid="pending-review-panel">
-      <Box
-        className="tw:border-b tw:border-secondary tw:px-4 tw:pt-4 tw:pb-3"
-        direction="col"
-        gap={3}>
-        <Box align="center" justify="between">
-          <Typography size="text-md" weight="semibold">
-            {t('label.pending-review')}
-          </Typography>
-          <span className="tw:text-sm tw:text-tertiary">
-            {t('label.pending-review-count', { count: counts.all })}
-          </span>
-        </Box>
-        <ButtonGroup
-          disallowEmptySelection
-          className="tw:w-full"
-          selectedKeys={[filter]}
-          selectionMode="single"
-          size="sm"
-          onSelectionChange={(keys) =>
-            setFilter(FILTERS.find((key) => keys.has(key)) ?? 'all')
-          }>
-          {FILTERS.map((key) => (
-            <ButtonGroupItem
-              className="tw:flex-1 tw:justify-center"
-              data-testid={`proposal-filter-${key}`}
-              id={key}
-              key={key}>
-              {t(FILTER_LABELS[key], { count: counts[key] })}
-            </ButtonGroupItem>
-          ))}
-        </ButtonGroup>
-      </Box>
+      <PanelHeader
+        counts={counts}
+        filter={activeFilter}
+        onFilterChange={setFilter}
+      />
       <Box className="tw:p-3" direction="col" gap={3}>
         {visible.length === 0 ? (
           <span className="tw:py-6 tw:text-center tw:text-sm tw:text-tertiary">
@@ -226,7 +252,9 @@ const PendingReviewPanel = () => {
               onDecide={(decision, comment) =>
                 decideProposal(proposal, decision, comment)
               }
-              onEdit={() => onEditGlossaryTerm(proposal.term)}
+              onEdit={
+                canEditAll ? () => onEditGlossaryTerm(proposal.term) : undefined
+              }
               onExpand={() => setSelectedProposalId(proposal.term.id)}
             />
           ))

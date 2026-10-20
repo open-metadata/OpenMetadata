@@ -37,6 +37,7 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 }));
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
+  ...jest.requireActual('../../../rest/contextMemoryAPI'),
   getMemoryDerivations: jest.fn(),
 }));
 
@@ -131,6 +132,18 @@ describe('useGlossaryProposals', () => {
     await waitFor(() => expect(result.current.counts.ai).toBe(1));
 
     expect(result.current.proposals[0].derivation).toBeUndefined();
+  });
+
+  it('keeps every proposal when the approval requests cannot be loaded', async () => {
+    (listTasks as jest.Mock).mockRejectedValue(new Error('500'));
+    const { result } = renderHook(() => useGlossaryProposals(scope), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.counts.all).toBe(2));
+
+    expect(result.current.counts).toEqual({ all: 2, ai: 1, person: 1 });
+    expect(result.current.proposals[1].approvalTask).toBeUndefined();
   });
 
   it('includes pending terms and their evidence beyond the first page', async () => {
@@ -262,7 +275,7 @@ describe('useGlossaryProposals', () => {
     const buckets = (counts: Record<string, number>) => ({
       data: {
         aggregations: {
-          'sterms#glossary.name.keyword': {
+          'sterms#glossary.id': {
             buckets: Object.entries(counts).map(([key, doc_count]) => ({
               key,
               doc_count,
@@ -272,10 +285,8 @@ describe('useGlossaryProposals', () => {
       },
     });
     (postExactAggregateFieldOptions as jest.Mock)
-      .mockResolvedValueOnce(
-        buckets({ businessmetrics: 2, customersuccess: 1 })
-      )
-      .mockResolvedValueOnce(buckets({ businessmetrics: 1 }));
+      .mockResolvedValueOnce(buckets({ 'metrics-id': 2, 'success-id': 1 }))
+      .mockResolvedValueOnce(buckets({ 'metrics-id': 1 }));
 
     const { result } = renderHook(() => useGlossaryPendingCounts(), {
       wrapper,
@@ -284,8 +295,8 @@ describe('useGlossaryProposals', () => {
     await waitFor(() => expect(result.current).toBeDefined());
 
     expect(result.current).toEqual({
-      all: { businessmetrics: 2, customersuccess: 1 },
-      ai: { businessmetrics: 1 },
+      all: { 'metrics-id': 2, 'success-id': 1 },
+      ai: { 'metrics-id': 1 },
     });
 
     const [[allRequest], [aiRequest]] = (
@@ -294,7 +305,7 @@ describe('useGlossaryProposals', () => {
 
     expect(allRequest).toEqual(
       expect.objectContaining({
-        fieldName: 'glossary.name.keyword',
+        fieldName: 'glossary.id',
         fieldValue: '.*',
       })
     );

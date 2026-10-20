@@ -48,7 +48,10 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
-import { useTermDerivation } from '../../../hooks/governance/glossary/useGlossaryProposals';
+import {
+  refreshGlossaryProposals,
+  useTermDerivation,
+} from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
@@ -482,7 +485,12 @@ const GlossaryTermAiDraftNotice = ({
   onUpdate,
 }: GlossaryTermAiDraftNoticeProps) => {
   const { currentUser } = useApplicationStore();
-  const isAiDraft = !isGlossary && !isVersionView && isAiGeneratedDraft(term);
+  // An AI term sent to review by someone's edit is decided through its approval request instead.
+  const isAiDraft =
+    !isGlossary &&
+    !isVersionView &&
+    term.entityStatus === EntityStatus.Draft &&
+    isAiGeneratedDraft(term);
   const derivation = useTermDerivation(isAiDraft ? term.id : undefined);
 
   if (!isAiDraft) {
@@ -499,7 +507,10 @@ const GlossaryTermAiDraftNotice = ({
         }
         layout="banner"
         proposal={{ derivation, source: 'ai', term }}
-        onDecide={(entityStatus) => onUpdate({ ...term, entityStatus })}
+        onDecide={async (entityStatus) => {
+          await onUpdate({ ...term, entityStatus });
+          await refreshGlossaryProposals();
+        }}
       />
     </div>
   );

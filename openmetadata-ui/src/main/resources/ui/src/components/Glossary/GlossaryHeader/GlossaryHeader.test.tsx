@@ -20,6 +20,7 @@ import {
   ProviderType,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { refreshGlossaryProposals } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   mockedGlossaryTerms,
@@ -92,6 +93,7 @@ jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
     isLoading: false,
     proposals: [],
   })),
+  refreshGlossaryProposals: jest.fn(),
   useTermDerivation: jest.fn(() => mockDerivation),
 }));
 
@@ -631,11 +633,25 @@ describe('GlossaryHeader component', () => {
         ...aiDraft,
         entityStatus: EntityStatus.Approved,
       });
+      expect(refreshGlossaryProposals).toHaveBeenCalled();
     });
 
-    it('shows no card once the term is approved or for a person-made draft', () => {
+    it('shows no card once the term is approved, in review or a person-made draft', () => {
       mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
       const { rerender } = render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
+
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.InReview };
+      rerender(
         <GlossaryHeader
           updateVote={mockOnUpdateVote}
           onAddGlossaryTerm={mockOnDelete}

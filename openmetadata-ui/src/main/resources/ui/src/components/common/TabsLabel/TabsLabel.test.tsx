@@ -101,6 +101,33 @@ describe('TabsLabel component', () => {
     expect(badge('first')).toHaveClass('tw:bg-utility-gray-50');
   });
 
+  it('Proposed items read like the tab count: a label, then a count badge in the same state', () => {
+    render(
+      <Tabs defaultSelectedKey="terms">
+        <Tabs.List aria-label="tabs" type="underline" variant="card">
+          <Tabs.Item id="terms">
+            <TabsLabel count={8} id="terms" name="Terms" proposedCount={7} />
+          </Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    );
+
+    const proposed = screen.getByTestId('proposed-count');
+    const proposedBadge = proposed.querySelector(
+      '[data-testid="filter-count"]'
+    );
+
+    expect(proposed).toHaveTextContent(/^label\.proposed7$/);
+    expect(proposedBadge).toHaveTextContent('7');
+    expect(proposedBadge).toHaveClass('tw:bg-utility-brand-50');
+  });
+
+  it('Nothing waiting for review shows no proposed count', () => {
+    render(<TabsLabel {...mockProps} count={3} proposedCount={0} />);
+
+    expect(screen.queryByTestId('proposed-count')).not.toBeInTheDocument();
+  });
+
   it('Count badge stays neutral inside a non-card tab list', () => {
     render(
       <Tabs defaultSelectedKey="first">
