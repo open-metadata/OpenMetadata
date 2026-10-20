@@ -160,6 +160,24 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void missingRequestDoesNotMutateTheWorkingOntology(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.ontologies().previewImport(ontology.getId(), null))
+            .getStatusCode());
+
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(
+        1, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
+  }
+
+  @Test
   void unsupportedOrMalformedRdfDoesNotMutateTheWorkingOntology(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
