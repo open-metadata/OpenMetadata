@@ -625,9 +625,11 @@ const DataProductsDetailsPage = ({
       });
     }
 
+    items.push({ label: getEntityName(dataProduct) });
+
     return items;
   }, [
-    dataProduct.domains,
+    dataProduct,
     isMarketplace,
     fromMarketplace,
     dataProductBasePath,

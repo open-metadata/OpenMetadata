@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -212,6 +212,16 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
     setMockPermissions(ENTITY_PERMISSIONS);
     getDataProductClassBase().getRequestDataAccessButton.mockReturnValue(null);
     getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(null);
+  });
+
+  it('ends the breadcrumb with the data product itself', () => {
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    const breadcrumb = screen.getAllByTestId('breadcrumb')[0];
+
+    expect(
+      within(breadcrumb).getByText('Test Data Product')
+    ).toBeInTheDocument();
   });
 
   it('delegates the DAR button to dataProductClassBase', () => {
