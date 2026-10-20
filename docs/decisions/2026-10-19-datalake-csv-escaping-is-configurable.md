@@ -24,6 +24,7 @@ The connection form preserves an empty string when the field is cleared.
 ## Consequences
 
 Existing configurations need no migration. Users can select the file's dialect
-without rewriting its contents. Deploy the updated server before sending the
-new field from a client; older servers reject unknown connection fields.
+without rewriting its contents. Deploy matching server and ingestion versions:
+older servers reject `csvEscapeChar`, and older ingestion clients reject
+Datalake connections that include it. Updating the server alone is not sufficient.
 This does not change quoting rules or add per-file dialect detection.
