@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
 import org.openmetadata.mcp.server.auth.jobs.OAuthTokenCleanupScheduler;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
@@ -99,8 +100,10 @@ public class McpServer implements McpServerProvider {
       McpSchema.ServerCapabilities serverCapabilities = buildServerCapabilities();
       // Create unified OAuth provider for MCP authentication (supports both SSO and Basic Auth)
       // Get base URL from MCP configuration or system settings
-      String baseUrl = getBaseUrlFromConfig();
+      String baseUrl = UriUtils.withoutTrailingSlash(getBaseUrlFromConfig());
       LOG.info("MCP OAuth initialized with base URL: {}", baseUrl);
+      OAuthHttpStatelessServerTransportProvider.warnIfBaseUrlMissesContextPath(
+          baseUrl, contextHandler.getContextPath());
 
       org.openmetadata.service.security.jwt.JWTTokenGenerator jwtGenerator =
           org.openmetadata.service.security.jwt.JWTTokenGenerator.getInstance();
@@ -154,6 +157,7 @@ public class McpServer implements McpServerProvider {
               new AuthEnrichedMcpContextExtractor(),
               authProvider,
               allowedOrigins);
+      statelessOauthTransport.setContextPath(contextHandler.getContextPath());
       McpStatelessSyncServer server =
           io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
               .serverInfo("openmetadata-mcp-stateless", "1.1.0")
