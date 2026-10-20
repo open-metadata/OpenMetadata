@@ -22,14 +22,13 @@ import org.openmetadata.sdk.exception.WebServiceException;
  */
 public final class AppAlreadyRunningException extends WebServiceException {
   private static final String ERROR_TYPE = "APP_ALREADY_RUNNING";
-  private static final String MESSAGE =
-      "Job is already running for application %s, please wait for it to complete.";
+  private static final String MESSAGE = "Job is already running, please wait for it to complete.";
 
-  public AppAlreadyRunningException(String appName) {
-    super(Response.Status.CONFLICT, ERROR_TYPE, String.format(MESSAGE, appName));
+  public AppAlreadyRunningException() {
+    super(Response.Status.CONFLICT, ERROR_TYPE, MESSAGE);
   }
 
-  public AppAlreadyRunningException(String appName, Throwable cause) {
-    super(Response.Status.CONFLICT, ERROR_TYPE, String.format(MESSAGE, appName), cause);
+  public AppAlreadyRunningException(Throwable cause) {
+    super(Response.Status.CONFLICT, ERROR_TYPE, MESSAGE, cause);
   }
 }

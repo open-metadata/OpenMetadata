@@ -9,7 +9,6 @@ import com.cronutils.mapper.CronMapper;
 import com.cronutils.model.Cron;
 import com.cronutils.model.definition.CronDefinitionBuilder;
 import com.cronutils.parser.CronParser;
-import com.google.common.base.Suppliers;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,8 +18,6 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -108,7 +105,6 @@ public class AppScheduler {
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
-  private final FinishingRunWaiter finishingRunWaiter;
   private final ScheduledExecutorService errorTriggerResetScheduler;
   private static final @Getter CronMapper cronMapper = CronMapper.fromUnixToQuartz();
   private static final @Getter CronParser cronParser =
@@ -134,8 +130,6 @@ public class AppScheduler {
                     .buildSubsystemPool(
                         POOL_NAME, POOL_MAX_SIZE, null, PoolWorkload.SHORT_STATEMENTS)));
     this.scheduler = factory.getScheduler();
-    this.finishingRunWaiter =
-        new FinishingRunWaiter(this.scheduler, FinishingRunWaiter::timedBudget);
 
     this.scheduler.setJobFactory(new CustomJobFactory(dao, searchClient));
 
@@ -352,10 +346,23 @@ public class AppScheduler {
       } else {
         // For apps that don't allow concurrent execution, use standard identity and apply blocking
         // logic
-        jobIdentity = onDemandIdentity(application);
-        triggerIdentity = jobIdentity;
-        if (!finishingRunWaiter.awaitLocalRelease(application.getName(), runKeysOf(application))) {
-          throw new AppAlreadyRunningException(application.getName());
+        jobIdentity = String.format("%s-%s", application.getName(), ON_DEMAND_JOB);
+        triggerIdentity = String.format("%s-%s", application.getName(), ON_DEMAND_JOB);
+
+        JobDetail jobDetailScheduled =
+            scheduler.getJobDetail(new JobKey(application.getName(), APPS_JOB_GROUP));
+        JobDetail jobDetailOnDemand =
+            scheduler.getJobDetail(new JobKey(jobIdentity, APPS_JOB_GROUP));
+
+        // Check if the job is already running
+        List<JobExecutionContext> currentJobs = scheduler.getCurrentlyExecutingJobs();
+        for (JobExecutionContext context : currentJobs) {
+          if ((jobDetailScheduled != null
+                  && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
+              || (jobDetailOnDemand != null
+                  && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
+            throw new AppAlreadyRunningException();
+          }
         }
       }
 
@@ -381,7 +388,7 @@ public class AppScheduler {
               .build();
       scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
-      throw new AppAlreadyRunningException(application.getName(), ex);
+      throw new AppAlreadyRunningException(ex);
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
       throw new UnhandledServerException(
@@ -397,11 +404,8 @@ public class AppScheduler {
    * behind. Because the store is clustered, a retrigger from <em>any</em> pod then hits
    * {@link ObjectAlreadyExistsException} and is rejected with "Job is already running" even though
    * nothing is actually running. We distinguish the two cases using the DB-backed {@link
-   * AppRunRecord} (cross-pod truth): if the latest run is genuinely active we rethrow; otherwise we
-   * first wait for Quartz to delete the entry, because a run whose record has just turned terminal
-   * keeps its rows until Quartz finishes completing it. Only an entry that outlives that wait is
-   * stale, so we clear it and reschedule once. The run record is re-read on every poll, so a run
-   * that starts during the wait is still reported as running.
+   * AppRunRecord} (cross-pod truth): if the latest run is genuinely active we rethrow; otherwise the
+   * entry is stale, so we clear it and reschedule once.
    *
    * <p>Recovery is applied only to non-concurrent jobs. Concurrent jobs use a unique identity per
    * run, so a collision there is not a stale entry and the app-wide latest run record is not a
@@ -428,60 +432,31 @@ public class AppScheduler {
     try {
       scheduler.scheduleJob(jobDetail, trigger);
     } catch (ObjectAlreadyExistsException ex) {
-      if (concurrent) {
+      if (concurrent || hasActiveAppRun(application)) {
         throw ex;
       }
-      switch (finishingRunWaiter.awaitStoredRelease(
-          jobDetail.getKey(),
-          new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP),
-          activeRunProbe(application))) {
-        case STILL_ACTIVE -> throw ex;
-        case OUTLIVED_BUDGET -> clearStaleEntry(application, jobDetail.getKey(), triggerIdentity);
-        case RELEASED -> LOG.debug("Previous run of {} released its job", application.getName());
-      }
+      LOG.warn(
+          "Stale Quartz job/trigger for app {} with no active run record; clearing and rescheduling",
+          application.getName());
+      scheduler.deleteJob(jobDetail.getKey());
+      scheduler.unscheduleJob(new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP));
       scheduler.scheduleJob(jobDetail, trigger);
     }
   }
 
-  private void clearStaleEntry(App application, JobKey jobKey, String triggerIdentity)
-      throws SchedulerException {
-    LOG.warn(
-        "Stale Quartz job/trigger for app {} with no active run record; clearing and rescheduling",
-        application.getName());
-    scheduler.deleteJob(jobKey);
-    scheduler.unscheduleJob(new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP));
-  }
-
-  private static String onDemandIdentity(App application) {
-    return String.format("%s-%s", application.getName(), ON_DEMAND_JOB);
-  }
-
-  private static Set<JobKey> runKeysOf(App application) {
-    return Set.of(
-        new JobKey(application.getName(), APPS_JOB_GROUP),
-        new JobKey(onDemandIdentity(application), APPS_JOB_GROUP));
-  }
-
   /** Statuses that mean a run has finished; anything else (incl. ACTIVE_ERROR) is in-flight. */
-  static final Set<AppRunRecord.Status> TERMINAL_RUN_STATUSES =
+  private static final Set<AppRunRecord.Status> TERMINAL_RUN_STATUSES =
       Set.of(
           AppRunRecord.Status.SUCCESS,
           AppRunRecord.Status.FAILED,
           AppRunRecord.Status.STOPPED,
           AppRunRecord.Status.COMPLETED);
 
-  /** Reads the latest run on every call, building its repository once. */
-  private BooleanSupplier activeRunProbe(App application) {
-    Supplier<AppRepository> repository = Suppliers.memoize(AppRepository::new);
-    return () -> hasActiveAppRun(repository, application);
-  }
-
-  private boolean hasActiveAppRun(Supplier<AppRepository> repository, App application) {
+  private boolean hasActiveAppRun(App application) {
     boolean active;
     try {
       active =
-          repository
-              .get()
+          new AppRepository()
               .getLatestAppRunsOptional(application)
               .map(
                   run ->

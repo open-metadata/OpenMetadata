@@ -177,7 +177,7 @@ public final class ReindexHelpers {
    * Fires the plain trigger, retrying until the server accepts it. OM's app-execution lock can
    * linger briefly after the previous run flips to terminal (notably the {@code beforeEach}
    * recreate at class transitions in the serial search-it suite), so a one-shot trigger races
-   * the release and gets a 500 "Job is already running". The first accepting call starts exactly
+   * the release and gets a 409 "Job is already running". The first accepting call starts exactly
    * one run, so the retry never double-triggers.
    */
   private static void triggerWhenAccepted(

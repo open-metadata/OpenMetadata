@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +33,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.quartz.Job;
@@ -98,11 +95,6 @@ class AppSchedulerTest {
    * bypassing the private constructor that requires database connectivity.
    */
   private AppScheduler createSchedulerWithMock() throws Exception {
-    return createSchedulerWithMock(0);
-  }
-
-  /** Each wait for a finishing run may poll {@code polls} times, without sleeping. */
-  private AppScheduler createSchedulerWithMock(int polls) throws Exception {
     Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
     unsafeField.setAccessible(true);
     Unsafe unsafe = (Unsafe) unsafeField.get(null);
@@ -113,17 +105,6 @@ class AppSchedulerTest {
     schedulerField.setAccessible(true);
     schedulerField.set(appScheduler, mockScheduler);
 
-    Field waiterField = AppScheduler.class.getDeclaredField("finishingRunWaiter");
-    waiterField.setAccessible(true);
-    waiterField.set(
-        appScheduler,
-        new FinishingRunWaiter(
-            mockScheduler,
-            () -> {
-              AtomicInteger remaining = new AtomicInteger(polls);
-              return () -> remaining.getAndDecrement() > 0;
-            }));
-
     return appScheduler;
   }
 
@@ -131,7 +112,7 @@ class AppSchedulerTest {
   void testOnDemandDispatchFailureIsReturnedToTheCaller() throws Exception {
     AppScheduler appScheduler = createSchedulerWithMock();
     SchedulerException unavailable = new SchedulerException("job store unavailable");
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenThrow(unavailable);
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenThrow(unavailable);
 
     UnhandledServerException failure =
         assertThrows(
@@ -284,6 +265,10 @@ class AppSchedulerTest {
     config.put("query", "SELECT 1");
 
     String standardJobIdentity = String.format("QueryRunner-%s", AppScheduler.ON_DEMAND_JOB);
+    when(mockScheduler.getJobDetail(new JobKey("QueryRunner", AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(new JobKey(standardJobIdentity, AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class))).thenReturn(null);
 
@@ -310,10 +295,22 @@ class AppSchedulerTest {
             .withRuntime(new ScheduledExecutionContext().withEnabled(true));
 
     String jobIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
-    JobExecutionContext running = executingRun(jobIdentity, AppRunRecord.Status.RUNNING);
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(running));
+    JobDetail mockJobDetail =
+        JobBuilder.newJob(Job.class).withIdentity(jobIdentity, AppScheduler.APPS_JOB_GROUP).build();
 
-    assertRejectedAsRunning(appScheduler, nonConcurrentApp, new HashMap<>());
+    when(mockScheduler.getJobDetail(new JobKey("SearchIndexApp", AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(mockJobDetail);
+
+    // Simulate a running job
+    JobExecutionContext mockExecContext = mock(JobExecutionContext.class);
+    when(mockExecContext.getJobDetail()).thenReturn(mockJobDetail);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(mockExecContext));
+
+    assertThrows(
+        AppAlreadyRunningException.class,
+        () -> appScheduler.triggerOnDemandApplication(nonConcurrentApp, new HashMap<>()));
 
     verify(mockScheduler, never()).scheduleJob(any(JobDetail.class), any(Trigger.class));
   }
@@ -362,13 +359,12 @@ class AppSchedulerTest {
     AppScheduler appScheduler = createSchedulerWithMock();
     App app = nonConcurrentApp("SearchIndexApp");
     String jobIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
-    JobKey onDemandKey = new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP);
 
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
         .thenThrow(new ObjectAlreadyExistsException("stale"))
         .thenReturn(null);
-    when(mockScheduler.checkExists(onDemandKey)).thenReturn(true);
 
     AppRunRecord staleRun = new AppRunRecord().withStatus(AppRunRecord.Status.FAILED);
     try (MockedConstruction<AppRepository> ignored =
@@ -380,7 +376,7 @@ class AppSchedulerTest {
       appScheduler.triggerOnDemandApplication(app, new HashMap<>());
     }
 
-    verify(mockScheduler).deleteJob(onDemandKey);
+    verify(mockScheduler).deleteJob(new JobKey(jobIdentity, AppScheduler.APPS_JOB_GROUP));
     verify(mockScheduler, times(2)).scheduleJob(any(JobDetail.class), any(Trigger.class));
   }
 
@@ -389,10 +385,10 @@ class AppSchedulerTest {
     AppScheduler appScheduler = createSchedulerWithMock();
     App app = nonConcurrentApp("SearchIndexApp");
 
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
         .thenThrow(new ObjectAlreadyExistsException("running"));
-    when(mockScheduler.checkExists(any(JobKey.class))).thenReturn(true);
 
     AppRunRecord activeRun = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
     try (MockedConstruction<AppRepository> ignored =
@@ -401,7 +397,9 @@ class AppSchedulerTest {
             (repo, context) ->
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(activeRun)))) {
-      assertRejectedAsRunning(appScheduler, app, new HashMap<>());
+      assertThrows(
+          AppAlreadyRunningException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
     verify(mockScheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
@@ -413,10 +411,10 @@ class AppSchedulerTest {
     AppScheduler appScheduler = createSchedulerWithMock();
     App app = nonConcurrentApp("SearchIndexApp");
 
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenReturn(null);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
         .thenThrow(new ObjectAlreadyExistsException("running"));
-    when(mockScheduler.checkExists(any(JobKey.class))).thenReturn(true);
 
     AppRunRecord erroredRun = new AppRunRecord().withStatus(AppRunRecord.Status.ACTIVE_ERROR);
     try (MockedConstruction<AppRepository> ignored =
@@ -425,7 +423,9 @@ class AppSchedulerTest {
             (repo, context) ->
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(erroredRun)))) {
-      assertRejectedAsRunning(appScheduler, app, new HashMap<>());
+      assertThrows(
+          AppAlreadyRunningException.class,
+          () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
@@ -450,11 +450,9 @@ class AppSchedulerTest {
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
         .thenThrow(new ObjectAlreadyExistsException("running"));
 
-    AppAlreadyRunningException conflict =
-        assertThrows(
-            AppAlreadyRunningException.class,
-            () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
-    assertEquals(409, conflict.getResponse().getStatus());
+    assertThrows(
+        AppAlreadyRunningException.class,
+        () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
 
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
   }
@@ -529,15 +527,22 @@ class AppSchedulerTest {
     JobKey onDemandKey = new JobKey(onDemandIdentity, AppScheduler.APPS_JOB_GROUP);
 
     // A leftover on-demand job persisted by a previous run that died (not currently running).
-    when(mockScheduler.checkExists(onDemandKey)).thenReturn(true);
+    JobDetail stale =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(onDemandIdentity, AppScheduler.APPS_JOB_GROUP)
+            .build();
+    when(mockScheduler.getJobDetail(
+            new JobKey("SearchIndexingApplication", AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(onDemandKey)).thenReturn(stale);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     // Quartz rejects scheduling a duplicate key while the stale job is still persisted.
     when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
         .thenThrow(new ObjectAlreadyExistsException("duplicate job key"));
 
-    // No repository is available here, so the run cannot be read and counts as active.
-    assertRejectedAsRunning(appScheduler, app, new HashMap<>());
-    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+    assertThrows(
+        AppAlreadyRunningException.class,
+        () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
   }
 
   @Test
@@ -550,6 +555,15 @@ class AppSchedulerTest {
 
     // Stale leftover present until deleteOnDemandJob removes it, mirroring the JDBC job store.
     AtomicBoolean stalePresent = new AtomicBoolean(true);
+    JobDetail stale =
+        JobBuilder.newJob(Job.class)
+            .withIdentity(onDemandIdentity, AppScheduler.APPS_JOB_GROUP)
+            .build();
+    when(mockScheduler.getJobDetail(
+            new JobKey("SearchIndexingApplication", AppScheduler.APPS_JOB_GROUP)))
+        .thenReturn(null);
+    when(mockScheduler.getJobDetail(onDemandKey))
+        .thenAnswer(inv -> stalePresent.get() ? stale : null);
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
     when(mockScheduler.deleteJob(onDemandKey))
         .thenAnswer(
@@ -574,175 +588,5 @@ class AppSchedulerTest {
     ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
     verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
     assertEquals(onDemandIdentity, jobCaptor.getValue().getKey().getName());
-  }
-
-  // --- A run that reports a terminal status before Quartz releases it ---
-
-  @Test
-  void aFinishingRunIsAwaitedAndThenScheduled() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(3);
-    App app = nonConcurrentApp("SearchIndexApp");
-    String onDemandIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
-    JobExecutionContext finishing = executingRun(onDemandIdentity, AppRunRecord.Status.SUCCESS);
-    storeHolds(finishing);
-    when(mockScheduler.getCurrentlyExecutingJobs())
-        .thenReturn(List.of(finishing), List.of(finishing), Collections.emptyList());
-
-    appScheduler.triggerOnDemandApplication(app, new HashMap<>());
-
-    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
-    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
-    assertEquals(onDemandIdentity, jobCaptor.getValue().getKey().getName());
-  }
-
-  @Test
-  void aFinishingScheduledRunIsAwaitedToo() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(3);
-    App app = nonConcurrentApp("SearchIndexApp");
-    JobExecutionContext finishing = executingRun("SearchIndexApp", AppRunRecord.Status.COMPLETED);
-    storeHolds(finishing);
-    when(mockScheduler.getCurrentlyExecutingJobs())
-        .thenReturn(List.of(finishing), Collections.emptyList());
-
-    appScheduler.triggerOnDemandApplication(app, new HashMap<>());
-
-    verify(mockScheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
-  }
-
-  @Test
-  void aFinishingRunThatOutlivesTheBudgetIsAConflict() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(2);
-    App app = nonConcurrentApp("SearchIndexApp");
-    String onDemandIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
-    JobExecutionContext finishing = executingRun(onDemandIdentity, AppRunRecord.Status.SUCCESS);
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(finishing));
-
-    assertRejectedAsRunning(appScheduler, app, new HashMap<>());
-
-    verify(mockScheduler, times(3)).getCurrentlyExecutingJobs();
-    verify(mockScheduler, never()).scheduleJob(any(JobDetail.class), any(Trigger.class));
-  }
-
-  @Test
-  void aRunWithoutARunRecordIsTreatedAsRunning() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(3);
-    App app = nonConcurrentApp("SearchIndexApp");
-    String onDemandIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
-    JobExecutionContext unrecorded = executingRun(onDemandIdentity, null);
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(unrecorded));
-
-    assertRejectedAsRunning(appScheduler, app, new HashMap<>());
-
-    verify(mockScheduler, times(1)).getCurrentlyExecutingJobs();
-  }
-
-  @Test
-  void aStoredJobReleasedDuringTheWaitIsScheduledWithoutClearing() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(3);
-    App app = nonConcurrentApp("SearchIndexApp");
-    JobKey onDemandKey =
-        new JobKey(
-            String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB),
-            AppScheduler.APPS_JOB_GROUP);
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
-    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
-        .thenThrow(new ObjectAlreadyExistsException("finishing"))
-        .thenReturn(null);
-    when(mockScheduler.checkExists(onDemandKey)).thenReturn(true, false);
-
-    AppRunRecord finished = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    try (MockedConstruction<AppRepository> ignored =
-        mockConstruction(
-            AppRepository.class,
-            (repo, context) ->
-                when(repo.getLatestAppRunsOptional(any(App.class)))
-                    .thenReturn(Optional.of(finished)))) {
-      appScheduler.triggerOnDemandApplication(app, new HashMap<>());
-    }
-
-    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
-    verify(mockScheduler, never()).unscheduleJob(any(TriggerKey.class));
-    verify(mockScheduler, times(2)).scheduleJob(any(JobDetail.class), any(Trigger.class));
-  }
-
-  @Test
-  void aRunThatStartsDuringTheWaitIsAConflict() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(3);
-    App app = nonConcurrentApp("SearchIndexApp");
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
-    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
-        .thenThrow(new ObjectAlreadyExistsException("just triggered"));
-    when(mockScheduler.checkExists(any(JobKey.class))).thenReturn(true);
-
-    AppRunRecord finished = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    AppRunRecord started = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
-    try (MockedConstruction<AppRepository> repositories =
-        mockConstruction(
-            AppRepository.class,
-            (repo, context) ->
-                when(repo.getLatestAppRunsOptional(any(App.class)))
-                    .thenReturn(Optional.of(finished), Optional.of(started)))) {
-      assertRejectedAsRunning(appScheduler, app, new HashMap<>());
-      assertEquals(1, repositories.constructed().size());
-    }
-
-    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
-    verify(mockScheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
-  }
-
-  @Test
-  void aTriggerStillQueuedIsNotClearedAsStale() throws Exception {
-    AppScheduler appScheduler = createSchedulerWithMock(3);
-    App app = nonConcurrentApp("SearchIndexApp");
-    String onDemandIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
-    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
-    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
-        .thenThrow(new ObjectAlreadyExistsException("queued"));
-    when(mockScheduler.checkExists(any(JobKey.class))).thenReturn(true);
-    when(mockScheduler.getTriggerState(
-            new TriggerKey(onDemandIdentity, AppScheduler.APPS_TRIGGER_GROUP)))
-        .thenReturn(Trigger.TriggerState.NORMAL);
-
-    AppRunRecord previousRun = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    try (MockedConstruction<AppRepository> ignored =
-        mockConstruction(
-            AppRepository.class,
-            (repo, context) ->
-                when(repo.getLatestAppRunsOptional(any(App.class)))
-                    .thenReturn(Optional.of(previousRun)))) {
-      assertRejectedAsRunning(appScheduler, app, new HashMap<>());
-    }
-
-    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
-  }
-
-  private static JobExecutionContext executingRun(String identity, AppRunRecord.Status status) {
-    JobBuilder job =
-        JobBuilder.newJob(Job.class).withIdentity(identity, AppScheduler.APPS_JOB_GROUP);
-    if (status != null) {
-      job.usingJobData(
-          OmAppJobListener.SCHEDULED_APP_RUN_EXTENSION,
-          JsonUtils.pojoToJson(new AppRunRecord().withStatus(status)));
-    }
-    JobDetail detail = job.build();
-    JobExecutionContext context = mock(JobExecutionContext.class);
-    when(context.getJobDetail()).thenReturn(detail);
-    return context;
-  }
-
-  /** The job store still holds the run's job, which is what made main reject the trigger. */
-  private void storeHolds(JobExecutionContext run) throws SchedulerException {
-    JobDetail detail = run.getJobDetail();
-    lenient().when(mockScheduler.getJobDetail(detail.getKey())).thenReturn(detail);
-  }
-
-  private static void assertRejectedAsRunning(
-      AppScheduler appScheduler, App app, Map<String, Object> config) {
-    AppAlreadyRunningException conflict =
-        assertThrows(
-            AppAlreadyRunningException.class,
-            () -> appScheduler.triggerOnDemandApplication(app, config));
-    assertEquals(409, conflict.getResponse().getStatus());
-    assertEquals(new AppAlreadyRunningException(app.getName()).getMessage(), conflict.getMessage());
   }
 }

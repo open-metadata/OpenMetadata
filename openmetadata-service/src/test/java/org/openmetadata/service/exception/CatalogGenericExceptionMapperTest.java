@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.OntologyProfileViolationCode;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyReleaseStructureIssue;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.apps.scheduler.AppAlreadyRunningException;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.ImpersonationDeniedException;
 
@@ -114,11 +113,6 @@ class CatalogGenericExceptionMapperTest {
         400,
         IngestionPipelineDeploymentException.byMessage(
             "orders_metadata", DEPLOYMENT_ERROR, "Connection refused"));
-  }
-
-  @Test
-  void aTriggerForARunningAppIsAConflict() {
-    assertSentAs(409, new AppAlreadyRunningException("SearchIndexingApplication"));
   }
 
   private static IngestionPipelineDeploymentException triggerFailed(Response.Status status) {
