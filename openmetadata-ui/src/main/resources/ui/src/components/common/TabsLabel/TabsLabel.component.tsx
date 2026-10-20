@@ -30,6 +30,7 @@ const TabsLabel = ({
   description,
   isBeta,
   isLoading,
+  proposedCount,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
   const tabState = useTabItemState();
@@ -57,6 +58,15 @@ const TabsLabel = ({
         {isBeta && (
           <Badge className="service-beta-tag" color="brand" size="sm">
             {t('label.beta')}
+          </Badge>
+        )}
+        {Boolean(proposedCount) && (
+          <Badge
+            color="purple"
+            data-testid="proposed-count"
+            size="sm"
+            type="pill-color">
+            {t('label.count-proposed', { count: proposedCount })}
           </Badge>
         )}
       </div>

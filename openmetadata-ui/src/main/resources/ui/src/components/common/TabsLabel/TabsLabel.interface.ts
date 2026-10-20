@@ -29,4 +29,6 @@ export interface TabsLabelProps {
   description?: string;
   isBeta?: boolean;
   isLoading?: boolean;
+  /** Items under the tab that wait for review, shown as "N proposed". */
+  proposedCount?: number;
 }

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-19 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `GlossaryTermAutomationDraftIT`, `GlossaryAiGeneratedTerm.spec.ts`
+- **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `MemoryDerivationsTest`, `GlossaryTermAutomationDraftIT`, `MemoryDerivationIT`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension
 
 ## Context
@@ -25,19 +25,33 @@ seconds, and the job hands the still-eligible memories to the deriver.
 
 A derived term has the `automation` provider and a `glossaryTerm -DERIVED_FROM-> contextMemory`
 relationship, which the memory reads back as `derivedEntities` and Context Center shows as its
-Derived Term. The term gains no field. An automation-provided term starts in Draft, and because a
-bot's write never starts the approval workflow, people decide it directly: its reviewers when it
-has any, otherwise anyone who can edit it. Until it is approved the glossary UI marks it as AI
-generated.
+Derived Term. The term gains no field: the deriver writes the link through
+`MemoryDerivations.record`, which keeps the agent's evidence (its name, confidence, up to three
+reasons and when it derived the term) as the relationship's JSON, the `derivationEvidence` of
+`entity/context/memoryDerivation.json`. `GET /v1/contextCenter/memories/derivations` reads it
+back for at most 100 entities at a time, and only through memories the caller may see, because the
+reasons quote the memory.
+
+An automation-provided term starts in Draft, and because a bot's write never starts the approval
+workflow, people decide it directly: its reviewers when it has any, otherwise anyone who can edit
+it. The glossary pages review it like any proposal: the terms table marks AI and people proposals
+(Draft or In Review terms) apart, a Pending review panel heads the right column of the Terms and
+Overview tabs with the agent's evidence and Approve, Edit and Reject, and the left list counts the
+proposals of each glossary. A person's proposal is decided through its approval request, as
+before.
 
 ## Consequences
 
+The Pending review panel is a page widget (`KnowledgePanel.PendingReview`) in the default glossary
+and term layouts, so a persona that saved its own layout before this change does not show it until
+the layout adds it. Editing an AI draft runs the glossary workflow like any edit of a Draft term:
+it approves the term when the editor is a reviewer or the glossary has no reviewers, so the panel's
+Edit acts as edit-and-approve for whoever may decide.
+
 The Ontology AI memory endpoints, the proposal-status schema and the derivation flag are gone, and
 leftover `ONTOLOGY_MEMORY_DERIVATION` jobs are deleted by the 2.1.0 migration. Collate must keep
-its copy of the job type enum in step with this one. A person editing an AI draft without
-approving it still triggers the glossary workflow, which approves it when the glossary has no
-reviewers, as for any other Draft term. Bringing derivation back to OpenMetadata means giving the
-built-in provider a deriver, not a new switch.
+its copy of the job type enum in step with this one. Bringing derivation back to OpenMetadata
+means giving the built-in provider a deriver, not a new switch.
 
 Context Center no longer links memory-sourced Studio drafts (`?draft=`); native memory drafts are
 reviewed from Ontology Studio's memory review panel. This revises that part of

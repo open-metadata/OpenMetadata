@@ -58,6 +58,7 @@ import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDerivation;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
@@ -66,6 +67,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryDerivations;
 import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -76,6 +78,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -98,6 +101,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
+  private final MemoryDerivations derivations = new MemoryDerivations();
 
   public ContextMemoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTEXT_MEMORY, authorizer, limits);
@@ -105,6 +109,15 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {
     /* Required for serde */
+  }
+
+  public static class MemoryDerivationList extends ResultList<MemoryDerivation> {
+    /* Required for serde */
+    public MemoryDerivationList() {}
+
+    public MemoryDerivationList(List<MemoryDerivation> data) {
+      super(data);
+    }
   }
 
   @Override
@@ -472,6 +485,66 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     return List.of(new AuthRequest(operationContext, getResourceContext()));
+  }
+
+  @GET
+  @Path("/derivations")
+  @Operation(
+      operationId = "listMemoryDerivations",
+      summary = "List the memories entities were derived from",
+      description =
+          "For each given entity an AI agent derived from a memory the caller may see, returns that"
+              + " memory and the agent's evidence: its confidence and reasons.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The derivations of the entities",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MemoryDerivationList.class))),
+        @ApiResponse(responseCode = "400", description = "Missing entity type or invalid ids")
+      })
+  public MemoryDerivationList listDerivations(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of the derived entities",
+              schema = @Schema(type = "string", example = Entity.GLOSSARY_TERM))
+          @QueryParam("entityType")
+          String derivedType,
+      @Parameter(
+              description =
+                  "Comma-separated ids of the derived entities, at most "
+                      + MemoryDerivations.MAX_ENTITIES)
+          @QueryParam("entityIds")
+          String entityIds) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
+    if (CommonUtil.nullOrEmpty(derivedType)) {
+      throw new BadRequestException("entityType is required");
+    }
+    return new MemoryDerivationList(
+        derivations.find(
+            derivedType,
+            parseDerivedIds(entityIds),
+            memories -> ContextMemoryVisibility.filterByVisibility(memories, securityContext)));
+  }
+
+  static List<UUID> parseDerivedIds(String entityIds) {
+    List<UUID> ids = new ArrayList<>();
+    for (String value : CommonUtil.nullOrEmpty(entityIds) ? new String[0] : entityIds.split(",")) {
+      try {
+        ids.add(UUID.fromString(value.trim()));
+      } catch (IllegalArgumentException ex) {
+        throw new BadRequestException(
+            String.format("Invalid entityIds value '%s'. Expected comma-separated UUIDs.", value));
+      }
+    }
+    if (ids.isEmpty() || ids.size() > MemoryDerivations.MAX_ENTITIES) {
+      throw new BadRequestException(
+          "entityIds must name between 1 and " + MemoryDerivations.MAX_ENTITIES + " entities");
+    }
+    return List.copyOf(ids);
   }
 
   @GET

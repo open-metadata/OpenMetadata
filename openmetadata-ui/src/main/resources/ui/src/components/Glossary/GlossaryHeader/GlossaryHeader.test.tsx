@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
@@ -53,6 +54,45 @@ jest.mock('react-router-dom', () => ({
     action: 'action',
   }),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  Link: ({
+    children,
+    to,
+    ...rest
+  }: {
+    children: ReactNode;
+    to: string;
+    'data-testid'?: string;
+  }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+const mockProposalCounts = { all: 0, ai: 0, person: 0 };
+const mockDerivation = {
+  entity: { id: 'term-id', type: 'glossaryTerm' },
+  memory: {
+    id: 'memory-id',
+    type: 'contextMemory',
+    name: 'churn',
+    displayName: 'Churn memory',
+  },
+  evidence: {
+    agent: 'Glossary Agent',
+    confidence: 0.92,
+    reasons: ['Defines a recurring customer metric'],
+  },
+};
+
+jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
+  useGlossaryProposals: jest.fn(() => ({
+    counts: mockProposalCounts,
+    decide: jest.fn(),
+    isLoading: false,
+    proposals: [],
+  })),
+  useTermDerivation: jest.fn(() => mockDerivation),
 }));
 
 jest.mock(
@@ -556,6 +596,7 @@ describe('GlossaryHeader component', () => {
     } as GlossaryTerm;
 
     beforeEach(() => {
+      Object.assign(mockProposalCounts, { all: 0, ai: 0, person: 0 });
       mockContext.type = EntityType.GLOSSARY_TERM;
       mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
       mockContext.onUpdate = jest.fn().mockResolvedValue(undefined);
@@ -573,9 +614,17 @@ describe('GlossaryHeader component', () => {
       );
 
       expect(screen.getByTestId('ai-generated-term-card')).toBeInTheDocument();
+      expect(screen.getByText('92%')).toBeInTheDocument();
+      expect(
+        screen.getByText('Defines a recurring customer metric')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('proposal-source-memory')).toHaveAttribute(
+        'href',
+        expect.stringContaining('memory=churn')
+      );
 
       await act(async () => {
-        fireEvent.click(screen.getByTestId('approve-ai-generated-term'));
+        fireEvent.click(screen.getByTestId('approve-proposal'));
       });
 
       expect(mockContext.onUpdate).toHaveBeenCalledWith({
@@ -610,6 +659,27 @@ describe('GlossaryHeader component', () => {
       expect(
         screen.queryByTestId('ai-generated-term-card')
       ).not.toBeInTheDocument();
+    });
+
+    it('counts the proposals under the page that await review', () => {
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
+      mockProposalCounts.all = 3;
+      mockProposalCounts.ai = 2;
+      mockProposalCounts.person = 1;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      const summary = screen.getByTestId('pending-review-summary');
+
+      expect(summary).toHaveTextContent('label.count-from-ai');
+      expect(summary).toHaveTextContent('label.count-from-people');
+      expect(summary).toHaveTextContent('message.awaiting-review');
     });
   });
 });

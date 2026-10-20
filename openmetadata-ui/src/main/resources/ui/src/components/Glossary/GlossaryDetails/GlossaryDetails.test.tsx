@@ -20,6 +20,17 @@ import {
 } from '../../../mocks/Glossary.mock';
 import GlossaryDetails from './GlossaryDetails.component';
 
+let mockPendingCounts: unknown;
+jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
+  useGlossaryPendingCounts: jest.fn(() => mockPendingCounts),
+  useGlossaryProposals: jest.fn(() => ({
+    counts: { all: 0, ai: 0, person: 0 },
+    decide: jest.fn(),
+    isLoading: false,
+    proposals: [],
+  })),
+}));
+
 jest.mock('../GlossaryTermTab/GlossaryTermTab.component', () => {
   return jest.fn().mockReturnValue(<p>GlossaryTermTab.component</p>);
 });

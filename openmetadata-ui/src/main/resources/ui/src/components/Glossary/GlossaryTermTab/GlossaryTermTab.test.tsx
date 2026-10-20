@@ -65,6 +65,21 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     .mockImplementation((...args) => mockSearchGlossaryTermsPaginated(...args)),
 }));
 
+jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
+  GLOSSARY_PROPOSALS_QUERY_KEY: ['governance', 'glossaryProposals'],
+  useGlossaryProposals: jest.fn(() => ({
+    counts: { all: 0, ai: 0, person: 0 },
+    decide: jest.fn(),
+    isLoading: false,
+    proposals: [],
+  })),
+}));
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: jest.fn(() => ({ invalidateQueries: jest.fn() })),
+}));
+
 jest.mock('../../../rest/tasksAPI', () => ({
   listTasks: jest.fn().mockImplementation((...args) => mockListTasks(...args)),
   resolveTask: jest
@@ -514,15 +529,20 @@ describe('Test GlossaryTermTab component', () => {
         wrapper: MemoryRouter,
       });
 
-      const badges = await screen.findAllByTestId('ai-generated-term-badge');
+      const marks = await screen.findAllByTestId('proposal-source-ai');
 
-      expect(badges).toHaveLength(1);
+      expect(marks).toHaveLength(1);
       expect(screen.getByTestId('glossary-row-0')).toHaveClass(
         'glossary-ai-draft-row'
       );
       expect(screen.getByTestId('glossary-row-1')).not.toHaveClass(
         'glossary-ai-draft-row'
       );
+      expect(
+        within(screen.getByTestId('glossary-row-0')).getByTestId(
+          'proposal-status-badge'
+        )
+      ).toHaveTextContent('label.proposed-by-ai');
     });
 
     it('should render status badges for each term', async () => {
@@ -532,12 +552,20 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('Business Glossary.Clothing-status')
-        ).toBeInTheDocument();
-        expect(
           screen.getByTestId('Business Glossary.Sales-status')
         ).toBeInTheDocument();
       });
+
+      // Clothing is a person's draft: it reads as a proposal awaiting review.
+      const proposedRow = screen.getByTestId('glossary-row-0');
+
+      expect(proposedRow).toHaveClass('glossary-person-proposal-row');
+      expect(
+        within(proposedRow).getByTestId('proposal-status-badge')
+      ).toHaveTextContent('label.proposed-by-name');
+      expect(
+        screen.queryByTestId('Business Glossary.Clothing-status')
+      ).not.toBeInTheDocument();
     });
 
     it('should render owner labels', async () => {

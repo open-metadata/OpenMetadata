@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/context/memoryDerivation.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MemoryDerivation",
+  "description": "An entity an AI agent derived from a context memory, with the evidence a reviewer reads before approving it.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.context.MemoryDerivation",
+  "definitions": {
+    "derivationEvidence": {
+      "description": "Why an agent derived an entity from a memory. Stored on the entity's DERIVED_FROM edge to the memory.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.context.DerivationEvidence",
+      "properties": {
+        "agent": {
+          "description": "Display name of the agent that proposed the entity.",
+          "type": "string"
+        },
+        "confidence": {
+          "description": "The agent's confidence in the proposal, from 0 to 1.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "reasons": {
+          "description": "Short statements of why the agent proposed the entity.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "derivedAt": {
+          "description": "When the agent derived the entity.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "entity": {
+      "description": "The derived entity.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "memory": {
+      "description": "The memory the entity was derived from.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "evidence": {
+      "description": "Why the agent derived the entity. Absent when the deriver recorded none.",
+      "$ref": "#/definitions/derivationEvidence"
+    }
+  },
+  "required": ["entity", "memory"],
+  "additionalProperties": false
+}

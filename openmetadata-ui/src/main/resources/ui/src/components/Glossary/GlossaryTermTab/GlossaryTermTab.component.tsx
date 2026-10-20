@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -83,6 +84,10 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { User } from '../../../generated/entity/teams/user';
+import {
+  GLOSSARY_PROPOSALS_QUERY_KEY,
+  useGlossaryProposals,
+} from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -110,9 +115,14 @@ import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
   glossaryTermTableColumnsWidth,
-  isAiGeneratedDraft,
   permissionForApproveOrReject,
+  updateGlossaryTermStatus,
 } from '../../../utils/GlossaryPureUtils';
+import { GlossaryProposal } from '../../../utils/GlossaryReview/GlossaryReview.types';
+import {
+  getProposalAuthor,
+  getProposalSource,
+} from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -133,7 +143,8 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
-import AiGeneratedTermBadge from '../../governance/glossary/AiGeneratedTermBadge/AiGeneratedTermBadge';
+import ProposalSourceMark from '../../governance/glossary/GlossaryReview/ProposalSourceMark';
+import ProposalStatusBadge from '../../governance/glossary/GlossaryReview/ProposalStatusBadge';
 import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
@@ -421,6 +432,7 @@ const GlossaryTermNameCell = ({
   );
   const termCountKey =
     totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
+  const proposalSource = getProposalSource(record);
 
   return (
     <div className="tw:flex tw:min-w-0 tw:items-center">
@@ -431,6 +443,11 @@ const GlossaryTermNameCell = ({
         imageClassName="tw:block"
         size={18}
       />
+      {proposalSource && (
+        <span className="tw:mr-1.5 tw:inline-flex">
+          <ProposalSourceMark source={proposalSource} />
+        </span>
+      )}
       <Link
         className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
         data-testid={name}
@@ -439,11 +456,6 @@ const GlossaryTermNameCell = ({
         to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
         {name}
       </Link>
-      {isAiGeneratedDraft(record) && (
-        <span className="tw:ml-2">
-          <AiGeneratedTermBadge />
-        </span>
-      )}
       {totalNested > 0 && (
         <span
           className="tw:ml-2 tw:shrink-0 tw:whitespace-nowrap tw:text-xs tw:text-tertiary"
@@ -559,6 +571,29 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
+  const selectedProposalId = useGlossaryStore(
+    (state) => state.selectedProposalId
+  );
+  const proposalScope = useMemo(
+    () =>
+      activeGlossary?.id
+        ? {
+            fullyQualifiedName: activeGlossary.fullyQualifiedName ?? '',
+            id: activeGlossary.id,
+            isGlossary,
+          }
+        : undefined,
+    [activeGlossary?.id, activeGlossary?.fullyQualifiedName, isGlossary]
+  );
+  const { proposals } = useGlossaryProposals(proposalScope);
+  const queryClient = useQueryClient();
+  const proposalByTermId = useMemo(
+    () =>
+      new Map<string, GlossaryProposal>(
+        proposals.map((proposal) => [proposal.term.id, proposal])
+      ),
+    [proposals]
+  );
 
   // Consumer via useGenericContext(). No `deleted` argument: the old expression here
   // (bare permissions.EditAll, bulk-edit button gate) never referenced a deleted
@@ -1010,34 +1045,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   const tableColumnsWidth = useMemo(() => glossaryTermTableColumnsWidth(), []);
 
-  const updateGlossaryTermStatus = (
-    terms: ModifiedGlossary[],
-    targetFqn: string,
-    newStatus: EntityStatus
-  ): ModifiedGlossary[] => {
-    return terms.map((term) => {
-      if (term.fullyQualifiedName === targetFqn) {
-        return {
-          ...term,
-          entityStatus: newStatus,
-        };
-      }
-
-      if (term.children && term.children.length > 0) {
-        return {
-          ...term,
-          children: updateGlossaryTermStatus(
-            term.children as ModifiedGlossary[],
-            targetFqn,
-            newStatus
-          ),
-        };
-      }
-
-      return term;
-    }) as ModifiedGlossary[];
-  };
-
   const updateGlossaryTermTask = (
     tasks: Record<string, Task[]>,
     entityLink: string,
@@ -1127,6 +1134,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
         const isPendingFurtherApproval =
           isTaskPendingFurtherApproval(updatedTask);
+        queryClient.invalidateQueries({
+          queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
+        });
 
         showSuccessToast(
           isPendingFurtherApproval
@@ -1309,6 +1319,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               />
             );
           }
+          const proposalSource = getProposalSource(record);
+          if (proposalSource) {
+            const proposal = proposalByTermId.get(record.id);
+
+            return (
+              <ProposalStatusBadge
+                author={
+                  proposal ? getProposalAuthor(proposal) : record.updatedBy
+                }
+                derivation={proposal?.derivation}
+                source={proposalSource}
+                updatedAt={record.updatedAt}
+              />
+            );
+          }
 
           return <GlossaryTermStatusCell record={record} status={status} />;
         },
@@ -1432,6 +1457,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     loadingChildren,
     expandedRowKeys,
     loadedNestedCountByFqn,
+    proposalByTermId,
   ]);
 
   const handleCheckboxChange = useCallback(
@@ -1644,13 +1670,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       if (isNested || isExpanded) {
         rowClasses.push('glossary-nested-row');
       }
-      if (isAiGeneratedDraft(record)) {
-        rowClasses.push('glossary-ai-draft-row');
+      const proposalSource = getProposalSource(record);
+      if (proposalSource) {
+        rowClasses.push(
+          proposalSource === 'ai'
+            ? 'glossary-ai-draft-row'
+            : 'glossary-person-proposal-row'
+        );
+      }
+      if (proposalSource && record.id === selectedProposalId) {
+        rowClasses.push('glossary-proposal-row-selected');
       }
 
       return rowClasses.join(' ');
     },
-    [expandedRowKeys]
+    [expandedRowKeys, selectedProposalId]
   );
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(

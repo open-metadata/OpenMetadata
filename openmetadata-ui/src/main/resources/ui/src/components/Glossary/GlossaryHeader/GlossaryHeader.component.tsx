@@ -48,6 +48,7 @@ import {
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
+import { useTermDerivation } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
@@ -88,7 +89,8 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
-import AiGeneratedTermCard from '../../governance/glossary/AiGeneratedTermCard/AiGeneratedTermCard';
+import PendingReviewSummary from '../../governance/glossary/GlossaryReview/PendingReviewSummary';
+import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -480,19 +482,23 @@ const GlossaryTermAiDraftNotice = ({
   onUpdate,
 }: GlossaryTermAiDraftNoticeProps) => {
   const { currentUser } = useApplicationStore();
+  const isAiDraft = !isGlossary && !isVersionView && isAiGeneratedDraft(term);
+  const derivation = useTermDerivation(isAiDraft ? term.id : undefined);
 
-  if (isGlossary || isVersionView || !isAiGeneratedDraft(term)) {
+  if (!isAiDraft) {
     return null;
   }
 
   return (
-    <div className="tw:mb-3">
-      <AiGeneratedTermCard
+    <div className="tw:mb-3" data-testid="ai-generated-term-card">
+      <ProposalCard
+        hideSummary
+        isExpanded
         canDecide={
           !term.deleted &&
           canDecideAiGeneratedDraft(term, currentUser, canEditAll)
         }
-        term={term}
+        proposal={{ derivation, source: 'ai', term }}
         onDecide={(entityStatus) => onUpdate({ ...term, entityStatus })}
       />
     </div>
@@ -537,6 +543,17 @@ const GlossaryHeader = ({
     useState(false);
   const [isOntologyImportOpen, setIsOntologyImportOpen] = useState(false);
   const isGlossary = entityType === EntityType.GLOSSARY;
+  const proposalScope = useMemo(
+    () =>
+      selectedData?.id
+        ? {
+            fullyQualifiedName: selectedData.fullyQualifiedName ?? '',
+            id: selectedData.id,
+            isGlossary,
+          }
+        : undefined,
+    [selectedData?.id, selectedData?.fullyQualifiedName, isGlossary]
+  );
   const { permissions: globalPermissions } = usePermissionProvider();
   const { refreshGlossaryTerms } = useGlossaryStore();
 
@@ -871,12 +888,17 @@ const GlossaryHeader = ({
             isVersionView={isVersionView}
             manageButtonContent={manageButtonContent}
             pendingChangeRequests={
-              <ChangeRequestsIndicator
-                entityId={selectedData?.id ?? ''}
-                entityType={
-                  isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
-                }
-              />
+              <>
+                {!isVersionView && (
+                  <PendingReviewSummary scope={proposalScope} />
+                )}
+                <ChangeRequestsIndicator
+                  entityId={selectedData?.id ?? ''}
+                  entityType={
+                    isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+                  }
+                />
+              </>
             }
             setShowActions={setShowActions}
             showActions={showActions}

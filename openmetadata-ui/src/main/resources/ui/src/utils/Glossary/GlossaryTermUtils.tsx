@@ -111,6 +111,7 @@ export const getGlossaryTermDetailPageTabs = (
     refreshActiveGlossaryTerm,
     setAssetModalVisible,
     setPreviewAsset,
+    proposedCount,
   } = props;
 
   // Pending terms can still reach Approved, while terminal states cannot. The disabled copy must
@@ -151,6 +152,7 @@ export const getGlossaryTermDetailPageTabs = (
           tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
           i18n.t('label.glossary-term-plural')
         }
+        proposedCount={proposedCount}
       />
     ),
     key: EntityTabs.GLOSSARY_TERMS,

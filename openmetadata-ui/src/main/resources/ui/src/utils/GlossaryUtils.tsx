@@ -25,6 +25,15 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
+const PendingReviewPanel = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/governance/glossary/GlossaryReview/PendingReviewPanel'
+      )
+  )
+);
+
 const GlossaryTermTab = withSuspenseFallback(
   lazy(
     () =>
@@ -35,6 +44,9 @@ const GlossaryTermTab = withSuspenseFallback(
 export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
   if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)) {
     return <GlossaryTermTab isGlossary />;
+  }
+  if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW)) {
+    return <PendingReviewPanel widgetKey={widget.i} />;
   }
 
   return (

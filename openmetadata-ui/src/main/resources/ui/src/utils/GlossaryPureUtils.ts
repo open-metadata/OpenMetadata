@@ -288,6 +288,36 @@ export const glossaryTermTableColumnsWidth = () => {
   };
 };
 
+interface TermStatusNode {
+  fullyQualifiedName?: string;
+  entityStatus?: EntityStatus;
+  children?: unknown[];
+}
+
+/** The term tree with one term's status replaced, wherever it sits. */
+export const updateGlossaryTermStatus = <T extends TermStatusNode>(
+  terms: T[],
+  targetFqn: string,
+  newStatus: EntityStatus
+): T[] =>
+  terms.map((term) => {
+    if (term.fullyQualifiedName === targetFqn) {
+      return { ...term, entityStatus: newStatus };
+    }
+    if (term.children?.length) {
+      return {
+        ...term,
+        children: updateGlossaryTermStatus(
+          term.children as T[],
+          targetFqn,
+          newStatus
+        ),
+      };
+    }
+
+    return term;
+  });
+
 export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
   `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
 

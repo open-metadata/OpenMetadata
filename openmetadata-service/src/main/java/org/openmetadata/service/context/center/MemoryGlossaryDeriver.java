@@ -23,7 +23,8 @@ import org.openmetadata.schema.type.EntityReference;
  *
  * <p>A term it creates has the {@code automation} provider, so it starts in Draft until a person
  * approves it, and a {@code DERIVED_FROM} relationship to its memory, which the memory reads back
- * as {@code derivedEntities}.
+ * as {@code derivedEntities}. Write that relationship with {@link MemoryDerivations#record}, so it
+ * carries the confidence and reasons a reviewer reads in the glossary.
  */
 public interface MemoryGlossaryDeriver {
   /** Derives terms for the memories that define a business concept; returns the terms created. */

@@ -16,6 +16,19 @@ import { mockedGlossaries } from '../../../mocks/Glossary.mock';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import GlossaryLeftPanel from './GlossaryLeftPanel.component';
 
+let mockPendingCounts:
+  | { all: Record<string, number>; ai: Record<string, number> }
+  | undefined;
+jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
+  useGlossaryPendingCounts: jest.fn(() => mockPendingCounts),
+  useGlossaryProposals: jest.fn(() => ({
+    counts: { all: 0, ai: 0, person: 0 },
+    decide: jest.fn(),
+    isLoading: false,
+    proposals: [],
+  })),
+}));
+
 const mockOnAddGlossary = jest.fn();
 let mockFqn = '';
 
@@ -177,5 +190,31 @@ describe('Test GlossaryLeftPanel component', () => {
     ).not.toHaveAttribute('aria-current');
 
     mockFqn = '';
+  });
+
+  it('marks the glossaries with terms awaiting review and explains the marks', () => {
+    mockPendingCounts = {
+      all: { firstglossary: 3, secondglossary: 1 },
+      ai: { firstglossary: 2 },
+    };
+
+    render(
+      <GlossaryLeftPanel
+        glossaries={glossaries}
+        onAddGlossary={mockOnAddGlossary}
+      />
+    );
+
+    expect(screen.getByTestId('pending-terms-FirstGlossary')).toHaveTextContent(
+      '3'
+    );
+    expect(
+      screen.getByTestId('pending-terms-SecondGlossary')
+    ).toHaveTextContent('1');
+    expect(screen.getByTestId('proposal-legend')).toHaveTextContent(
+      'label.proposed-by-ai-agent'
+    );
+
+    mockPendingCounts = undefined;
   });
 });

@@ -238,6 +238,34 @@
     }
   }
 
+  // A person's proposal awaiting review, tinted the same way in its own colour.
+  tbody > tr.glossary-person-proposal-row {
+    --markdown-clamp-fade-color: var(--tw-color-utility-warning-50);
+
+    > td {
+      background-color: var(--tw-color-utility-warning-50);
+    }
+
+    &:hover {
+      --markdown-clamp-fade-color: var(--tw-color-utility-warning-100);
+
+      > td {
+        background-color: var(--tw-color-utility-warning-100);
+      }
+    }
+  }
+
+  // The proposal open in the review panel.
+  tbody > tr.glossary-proposal-row-selected > td:first-child {
+    box-shadow: inset 3px 0 0 var(--tw-color-utility-purple-500);
+  }
+
+  tbody
+    > tr.glossary-person-proposal-row.glossary-proposal-row-selected
+    > td:first-child {
+    box-shadow: inset 3px 0 0 var(--tw-color-utility-warning-500);
+  }
+
   table {
     overflow-x: visible;
   }
