@@ -441,6 +441,28 @@ class OmAppJobListenerTest {
     assertNull(cachedApp(), "whatever this job cached must not leak into the next one");
   }
 
+  @Test
+  void aJobWithoutARunRecordHasNone() {
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
+
+    assertNull(OmAppJobListener.runRecordOf(jobExecutionContext));
+  }
+
+  @Test
+  void aJobCarriesTheRunRecordItLastPublished() {
+    JobDataMap dataMap = new JobDataMap();
+    dataMap.put(
+        OmAppJobListener.SCHEDULED_APP_RUN_EXTENSION,
+        JsonUtils.pojoToJson(new AppRunRecord().withStatus(AppRunRecord.Status.COMPLETED)));
+    when(jobExecutionContext.getJobDetail()).thenReturn(jobDetail);
+    when(jobDetail.getJobDataMap()).thenReturn(dataMap);
+
+    assertEquals(
+        AppRunRecord.Status.COMPLETED,
+        OmAppJobListener.runRecordOf(jobExecutionContext).getStatus());
+  }
+
   private static void cacheApp(App app) {
     RequestEntityCache.putByName(
         Entity.APPLICATION, app.getName(), EMPTY_FIELDS, RELATIONS, true, app, App.class);

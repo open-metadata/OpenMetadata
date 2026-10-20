@@ -35,7 +35,7 @@ import org.slf4j.MDC;
 public class OmAppJobListener implements JobListener {
   public static final String APP_CONFIG = "appConfig";
   private final AppRepository repository;
-  private static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
+  static final String SCHEDULED_APP_RUN_EXTENSION = "AppScheduleRun";
   public static final String WEBSOCKET_STATUS_CHANNEL = "WebsocketStatusUpdateExtension";
 
   public static final String APP_RUN_STATS = "AppRunStats";
@@ -266,6 +266,11 @@ public class OmAppJobListener implements JobListener {
   }
 
   public AppRunRecord getAppRunRecordForJob(JobExecutionContext context) {
+    return runRecordOf(context);
+  }
+
+  /** The run record held on an executing job, or {@code null} if none was created for it. */
+  static AppRunRecord runRecordOf(JobExecutionContext context) {
     JobDataMap dataMap = context.getJobDetail().getJobDataMap();
     return JsonUtils.readOrConvertValue(
         dataMap.get(SCHEDULED_APP_RUN_EXTENSION), AppRunRecord.class);

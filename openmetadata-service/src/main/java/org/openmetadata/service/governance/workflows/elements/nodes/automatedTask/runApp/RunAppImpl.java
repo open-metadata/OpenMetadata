@@ -6,7 +6,7 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.SneakyThrows;
+import java.util.function.LongConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
@@ -23,7 +23,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -31,8 +30,8 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppAlreadyRunningException;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
@@ -43,6 +42,9 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Slf4j
 public class RunAppImpl {
   private static final String DATA_INSIGHTS_APPLICATION = "DataInsightsApplication";
+  private static final int MAX_TRIGGER_ATTEMPTS = 5;
+  private static final long INITIAL_BACKOFF_MILLIS = 10_000;
+  private static final long MAX_BACKOFF_MILLIS = 60_000;
 
   public boolean execute(
       PipelineServiceClientInterface pipelineServiceClient,
@@ -131,7 +133,6 @@ public class RunAppImpl {
   }
 
   // Internal App Logic
-  @SneakyThrows
   private boolean runApp(
       AppRepository repository,
       App app,
@@ -139,53 +140,62 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    int maxRetries = 5;
-    int attempt = 0;
-    long initialBackoffMillis = 10000; // 10 second
-    long maxBackoffMillis = 60000; // 60 seconds
+    boolean triggered =
+        triggerWithRetry(
+            app.getName(),
+            () ->
+                ApplicationHandler.getInstance()
+                    .triggerApplicationOnDemand(
+                        app,
+                        Entity.getCollectionDAO(),
+                        Entity.getSearchRepository(),
+                        config,
+                        WorkflowEventConsumer.GOVERNANCE_BOT),
+            RunAppImpl::pauseBeforeRetry);
+    return triggered
+        && (!waitForCompletion || waitForCompletion(repository, app, startTime, timeoutMillis));
+  }
 
-    while (attempt < maxRetries) {
-      try {
-        ApplicationHandler.getInstance()
-            .triggerApplicationOnDemand(
-                app,
-                Entity.getCollectionDAO(),
-                Entity.getSearchRepository(),
-                config,
-                WorkflowEventConsumer.GOVERNANCE_BOT);
-        break;
-      } catch (JsonParsingException | UnhandledServerException e) {
-        if (e.getMessage().contains("Job is already running")) {
-          attempt++;
-          if (attempt >= maxRetries) {
-            LOG.error("Failed to run app after {} retries: {}", maxRetries, e.getMessage());
-            return false;
-          }
-
-          long backoffMillis =
-              Math.min(initialBackoffMillis * (long) Math.pow(2, attempt - 1), maxBackoffMillis);
-          LOG.warn(
-              "App is already running. Retrying in {} ms (attempt {}/{})",
-              backoffMillis,
-              attempt,
-              maxRetries);
-
-          try {
-            Thread.sleep(backoffMillis);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Retry interrupted", ie);
-          }
-        } else {
-          throw e;
-        }
-      }
+  /**
+   * Triggers the app, retrying with exponential backoff while a run of it is still in progress.
+   * Returns false if it is still running after the last attempt.
+   */
+  static boolean triggerWithRetry(String appName, Runnable trigger, LongConsumer pause) {
+    boolean triggered = tryTrigger(trigger);
+    int attempt = 1;
+    while (!triggered && attempt < MAX_TRIGGER_ATTEMPTS) {
+      long backoffMillis =
+          Math.min(INITIAL_BACKOFF_MILLIS * (1L << (attempt - 1)), MAX_BACKOFF_MILLIS);
+      LOG.warn(
+          "App is already running. Retrying in {} ms (attempt {}/{})",
+          backoffMillis,
+          attempt,
+          MAX_TRIGGER_ATTEMPTS);
+      pause.accept(backoffMillis);
+      triggered = tryTrigger(trigger);
+      attempt++;
     }
+    if (!triggered) {
+      LOG.error("Failed to run app {} after {} attempts: still running", appName, attempt);
+    }
+    return triggered;
+  }
 
-    if (waitForCompletion) {
-      return waitForCompletion(repository, app, startTime, timeoutMillis);
-    } else {
+  private static boolean tryTrigger(Runnable trigger) {
+    try {
+      trigger.run();
       return true;
+    } catch (AppAlreadyRunningException e) {
+      return false;
+    }
+  }
+
+  private static void pauseBeforeRetry(long millis) {
+    try {
+      Thread.sleep(millis);
+    } catch (InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException("Retry interrupted", ie);
     }
   }
 
