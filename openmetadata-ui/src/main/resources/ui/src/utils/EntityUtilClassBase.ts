@@ -135,6 +135,7 @@ const ENTITY_DETAILS_PATH_TYPE_MAP: Record<string, EntityType> = {
   [EntityType.FILE]: EntityType.FILE,
   [EntityType.SPREADSHEET]: EntityType.SPREADSHEET,
   [EntityType.WORKSHEET]: EntityType.WORKSHEET,
+  [EntityType.DATA_CONTRACT]: EntityType.DATA_CONTRACT,
 };
 
 interface EntityLinkParams {

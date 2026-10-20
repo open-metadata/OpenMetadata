@@ -15,6 +15,8 @@ package org.openmetadata.service.migration.mysql.v210;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
+import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
@@ -126,6 +128,14 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ConsumerIdMigration.STEP_NAME,
         () -> ConsumerIdMigration.storeConsumerIds(collectionDAO));
+    // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
+    // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
+    // harmless.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ACTIVITY_FEED_ALERT_STEP,
+        () -> addContractAndStatusToActivityFeedAlert(handle));
     // AutoPilot deployed its agents as ingestion-bot; mark them for a redeploy as their own bot,
     // which the server runs once the pipeline service is reachable.
     runOnce(

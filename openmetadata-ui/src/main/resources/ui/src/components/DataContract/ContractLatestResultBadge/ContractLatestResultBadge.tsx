@@ -10,20 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import { toLower } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { CONTRACT_RESULT_BADGE_COLOR } from '../../../constants/DataContract.constants';
+import { CONTRACT_RESULT_BUTTON_CLASS } from '../../../constants/DataContract.constants';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 
 interface ContractLatestResultBadgeProps {
   status: ContractExecutionStatus;
-  /** Contract tab of the asset; the pill is a link so it navigates like one. */
+  /** Contract tab of the asset; the button is a link so it navigates like one. */
   href: string;
 }
 
-/** Header pill for a failed, aborted or running contract, linking to its Contract tab. */
+/** Header button for a failed, aborted or running contract, linking to its Contract tab. */
 const ContractLatestResultBadge = ({
   status,
   href,
@@ -32,15 +32,15 @@ const ContractLatestResultBadge = ({
   const StatusIcon = getDataContractStatusIcon(status);
 
   return (
-    <Badge
-      className="tw:gap-1.5"
-      color={CONTRACT_RESULT_BADGE_COLOR[status] ?? 'gray'}
+    <Button
+      className={CONTRACT_RESULT_BUTTON_CLASS[status]}
+      color="secondary"
       data-testid="data-contract-latest-result-btn"
       href={href}
-      size="lg">
-      {StatusIcon && <StatusIcon aria-hidden className="tw:size-4" />}
+      iconLeading={StatusIcon}
+      size="sm">
       {t(`label.entity-${toLower(status)}`, { entity: t('label.contract') })}
-    </Badge>
+    </Button>
   );
 };
 
