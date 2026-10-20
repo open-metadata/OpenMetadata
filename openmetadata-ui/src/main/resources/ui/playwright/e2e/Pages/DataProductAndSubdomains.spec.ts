@@ -611,6 +611,51 @@ test.describe('Multiple Subdomains Tests', () => {
     }
   });
 
+  // The name sits inside an ellipsis-tooltip trigger that swallows the row's react-aria press,
+  // so only the name cell's own click handler can navigate from there.
+  test('Clicking a subdomain name in list view opens the subdomain', async ({
+    page,
+  }) => {
+    const { afterAction, apiContext } = await getApiContext(page);
+    const domain = new Domain();
+
+    try {
+      await domain.create(apiContext);
+
+      const subDomain = new SubDomain(domain);
+      await subDomain.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        subDomain.responseData.fullyQualifiedName,
+        'domain_search_index'
+      );
+
+      await page.goto(
+        `/domain/${encodeURIComponent(
+          domain.responseData.fullyQualifiedName!
+        )}`,
+        { waitUntil: 'domcontentloaded' }
+      );
+      await page.getByTestId('subdomains').click();
+      await page.getByTestId('table-view-toggle').click();
+
+      await page
+        .getByTestId('table-view-container')
+        .getByTestId(subDomain.data.name)
+        .getByText(subDomain.data.displayName)
+        .click();
+
+      await expect(
+        page.getByTestId('entity-header-display-name')
+      ).toContainText(subDomain.data.displayName);
+
+      await subDomain.delete(apiContext);
+    } finally {
+      await domain.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test('Assign assets to different subdomains', async ({ page }) => {
     const { afterAction, apiContext } = await getApiContext(page);
     const domain = new Domain();
