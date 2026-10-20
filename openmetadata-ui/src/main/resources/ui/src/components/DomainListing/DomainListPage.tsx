@@ -52,6 +52,7 @@ import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/Ma
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
+import { getDomainListCardStyle } from './DomainListPage.utils';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
@@ -156,6 +157,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
   const isTreeView = view === PageViewMode.Tree;
+  const listCardStyle = getDomainListCardStyle(isAiMode, isTreeView);
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
@@ -340,12 +342,16 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         : pageHeader}
 
       <Card
-        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
-          'tw:mb-5': !isAiMode,
-          // Compact layout pads 8px; AI content sits on the 16px gutter.
-          'tw:mx-2': isAiMode,
-        })}
-        variant={isAiMode ? 'default' : 'elevated'}>
+        className={classNames(
+          'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+          listCardStyle.className,
+          {
+            'tw:mb-5': !isAiMode,
+            // Compact layout pads 8px; AI content sits on the 16px gutter.
+            'tw:mx-2': isAiMode,
+          }
+        )}
+        variant={listCardStyle.variant}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"
