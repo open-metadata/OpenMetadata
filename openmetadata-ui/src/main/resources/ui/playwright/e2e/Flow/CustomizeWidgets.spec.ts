@@ -34,6 +34,7 @@ import {
   addKpi,
   deleteKpiRequest,
   deleteSeededKpisOnChart,
+  openDataInsightTab,
 } from '../../utils/dataInsight';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
@@ -233,9 +234,9 @@ test.beforeEach(async ({ page }) => {
 
 // The landing page's widgets are topic cards now. Five of the nine suites that
 // used to live here -- My Data, Data Assets, Total Data Assets, Following
-// Assets and My Tasks -- covered widgets `getExcludedWidgetFqns` keeps out of
-// both the grid and the Add Widgets picker, so there is nothing left for them
-// to drive. What a card still offers is a title, a footer link out, and
+// Assets and My Tasks -- covered widgets `getExcludedWidgetFqns` kept out of
+// both the grid and the Add Widgets picker. Total Data Assets and My Tasks are
+// back as topic cards and have suites below again. What a card still offers is a title, a footer link out, and
 // removal/re-adding from the persona editor; that is what the four below check.
 test('Activity Feed Widget', async ({ browser, page, persona, testUser }) => {
   test.slow(true);
@@ -313,7 +314,7 @@ test('KPI Widget', async ({ page, persona, kpiIds }) => {
     await waitForAllLoadersToDisappear(page);
 
     await sidebarClick(page, SidebarItem.DATA_INSIGHT);
-    await page.getByRole('link', { name: 'KPIs', exact: true }).click();
+    await openDataInsightTab(page, 'kpi');
 
     await page.getByTestId('add-kpi-btn').click();
     const createdKpi = await addKpi(page, {
@@ -525,6 +526,69 @@ test('Context Center Widget', async ({ page, persona }) => {
   });
 });
 
+// Total Data Assets, My Tasks and Pipeline Status are topic cards on keys the
+// retired widgets left behind (`TotalAssets`, `MyTask`) or a new one
+// (`PipelineStatus`). All three sit in the default layout, so what has to
+// work is taking each out of the persona layout and putting it back.
+test('Total Data Assets Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.TotalAssets';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  // Every lane seeds data assets, and without Data Insights the card falls
+  // back to a live count, so it is never empty here and its footer shows.
+  await test.step('Test widget title and navigation', async () => {
+    await verifyWidgetTitleAndNavigation(
+      page,
+      widgetKey,
+      'Total Data Assets',
+      '/explore'
+    );
+  });
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+test('My Tasks Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.MyTask';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
+test('Pipeline Status Widget', async ({ page, persona }) => {
+  test.slow(true);
+
+  const widgetKey = 'KnowledgePanel.PipelineStatus';
+
+  await waitForAllLoadersToDisappear(page);
+  await waitForLandingPageWidget(page, widgetKey);
+
+  await test.step('Test widget customization', async () => {
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+    await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
+    await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
+  });
+});
+
 test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
   test.slow(true);
 
@@ -616,13 +680,13 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
       'My Data'
     );
     await expect(widget.getByTestId('data-quality-rows')).toBeVisible();
-    await expect(
-      widget.getByTestId(`failed-test-${testCase.id}`)
-    ).toContainText(testCase.name);
+    await expect(widget.getByTestId(`dq-test-${testCase.id}`)).toContainText(
+      testCase.name
+    );
   });
 
-  await test.step('Widening the range refetches the 30-day window', async () => {
-    const thirtyDayResponse = waitForResponseWithStatus(
+  await test.step('Widening the range refetches the 90-day window', async () => {
+    const ninetyDayResponse = waitForResponseWithStatus(
       page,
       (response) => {
         const url = new URL(response.url());
@@ -631,14 +695,14 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
           isFailedTestsResponse(response) &&
           Number(url.searchParams.get('endTimestamp')) -
             Number(url.searchParams.get('startTimestamp')) ===
-            30 * 24 * 60 * 60 * 1000
+            90 * 24 * 60 * 60 * 1000
         );
       },
       200
     );
 
-    await selectTopicCardFilterOption(page, widget, 'dq-range-filter', '30');
-    const response = await thirtyDayResponse;
+    await selectTopicCardFilterOption(page, widget, 'dq-range-filter', '90');
+    const response = await ninetyDayResponse;
     const url = new URL(response.url());
 
     // Scope survives the range change, and the window ends now.
@@ -648,11 +712,9 @@ test('Data Quality Widget', async ({ browser, page, persona, testUser }) => {
     ).toBeLessThan(5 * 60 * 1000);
 
     await expect(widget.getByTestId('dq-range-filter')).toContainText(
-      'Last 30 days'
+      'Last 90 days'
     );
-    await expect(
-      widget.getByTestId(`failed-test-${testCase.id}`)
-    ).toBeVisible();
+    await expect(widget.getByTestId(`dq-test-${testCase.id}`)).toBeVisible();
   });
 
   await test.step('View test opens the test case page', async () => {

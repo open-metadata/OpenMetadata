@@ -51,7 +51,7 @@ const getRequiredFieldMessage = (fieldText: string, t: TFunction) =>
 
 const NAME_MAX_LENGTH = 128;
 
-// Mirrors the classic alert forms' NAME_FIELD_RULES (constants/Form.constants.ts)
+// Mirrors NAME_FIELD_REGISTER_RULES (constants/Form.constants.ts)
 // so the AI form accepts and rejects exactly the same names.
 const setNameRuleError = (
   errors: AlertAiFormValidationErrors,

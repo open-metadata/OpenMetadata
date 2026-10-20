@@ -108,10 +108,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Tooltip: ({ children }: React.PropsWithChildren) => children,
 }));
 
-jest.mock('@ant-design/icons', () => ({
-  CloseOutlined: () => <div data-testid="close-icon">CloseIcon</div>,
-}));
-
 jest.mock('../../../assets/svg/down-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-down-icon">ArrowDown</div>,
 }));
@@ -122,10 +118,6 @@ jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
 
 jest.mock('../../../assets/svg/entity/column.svg', () => ({
   ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
-}));
-
-jest.mock('../../../assets/svg/icon-key.svg', () => ({
-  ReactComponent: () => <div data-testid="key-icon">KeyIcon</div>,
 }));
 
 jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({

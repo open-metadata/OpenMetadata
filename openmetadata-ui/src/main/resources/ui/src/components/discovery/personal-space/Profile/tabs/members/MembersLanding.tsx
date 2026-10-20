@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import { LANDING_CARDS } from './Members.constants';
 import type { MembersLandingCard, MembersSubPanelProps } from './Members.types';
 
@@ -46,7 +47,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="members-landing">
-      {cards.map((card) => {
+      {cards.map((card, index) => {
         const Icon = card.icon;
 
         return (
@@ -64,9 +65,11 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-tertiary tw:h-10 tw:w-10"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
-                  <Icon className="tw:size-6 tw:text-secondary" />
+                  <Icon className="tw:size-6" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
                   <Typography

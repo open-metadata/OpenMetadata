@@ -105,4 +105,6 @@ export interface UseAlertFormDataReturn {
 
 export interface AddObservabilityPageProps {
   pageTitle: string;
+  /** Notification alerts reuse this page; they have no trigger section. */
+  alertType?: AlertType;
 }

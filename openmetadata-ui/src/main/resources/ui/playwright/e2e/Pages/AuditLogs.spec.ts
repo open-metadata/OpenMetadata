@@ -16,11 +16,11 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { expect, test } from '../../support/fixtures/base';
 import {
   navigateToAuditLogsPage,
+  selectTodayExportRange,
   verifyAuditEntryHasValidUUIDs,
   waitForAuditLogEntry,
 } from '../../utils/auditLogs';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
-import { customFormatDateTime } from '../../utils/dateTime';
 import { settingClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -718,25 +718,7 @@ test.describe(
       });
 
       await test.step('Select date range', async () => {
-        const dateRangePicker = page.getByTestId('export-date-range-picker');
-        await dateRangePicker.click();
-
-        await page.locator('.ant-picker-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // RangePicker draws two month panels and each grid also renders the
-        // neighbouring month's days, all carrying a title. Near month end the
-        // next-month panel repeats today, so match only the cell that is
-        // in view for its own panel.
-        const todayCell = page.locator(
-          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
-            Date.now(),
-            'yyyy-MM-dd'
-          )}"]`
-        );
-        await todayCell.click();
-        await todayCell.click();
+        await selectTodayExportRange(page);
       });
 
       await test.step('Verify Export button is enabled after date selection', async () => {
@@ -818,25 +800,7 @@ test.describe(
       });
 
       await test.step('Select date range and verify export includes search term', async () => {
-        const dateRangePicker = page.getByTestId('export-date-range-picker');
-        await dateRangePicker.click();
-
-        await page.locator('.ant-picker-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // RangePicker draws two month panels and each grid also renders the
-        // neighbouring month's days, all carrying a title. Near month end the
-        // next-month panel repeats today, so match only the cell that is
-        // in view for its own panel.
-        const todayCell = page.locator(
-          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
-            Date.now(),
-            'yyyy-MM-dd'
-          )}"]`
-        );
-        await todayCell.click();
-        await todayCell.click();
+        await selectTodayExportRange(page);
 
         const exportApiCall = page.waitForRequest(
           (request) =>
@@ -869,25 +833,7 @@ test.describe(
           state: 'visible',
         });
 
-        const dateRangePicker = page.getByTestId('export-date-range-picker');
-        await dateRangePicker.click();
-
-        await page.locator('.ant-picker-dropdown').waitFor({
-          state: 'visible',
-        });
-
-        // RangePicker draws two month panels and each grid also renders the
-        // neighbouring month's days, all carrying a title. Near month end the
-        // next-month panel repeats today, so match only the cell that is
-        // in view for its own panel.
-        const todayCell = page.locator(
-          `.ant-picker-dropdown:visible .ant-picker-cell-in-view[title="${customFormatDateTime(
-            Date.now(),
-            'yyyy-MM-dd'
-          )}"]`
-        );
-        await todayCell.click();
-        await todayCell.click();
+        await selectTodayExportRange(page);
       });
 
       await test.step('Trigger export and validate response', async () => {

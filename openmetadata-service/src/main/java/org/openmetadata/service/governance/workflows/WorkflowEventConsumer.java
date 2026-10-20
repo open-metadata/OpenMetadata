@@ -8,19 +8,16 @@ import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
-import io.github.resilience4j.retry.Retry;
-import io.github.resilience4j.retry.RetryConfig;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -41,14 +38,6 @@ import org.openmetadata.service.util.Registry;
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   public static final String GOVERNANCE_BOT = "governance-bot";
 
-  private static final RetryConfig RETRY_CONFIG =
-      RetryConfig.custom()
-          .maxAttempts(3)
-          .waitDuration(Duration.ofMillis(100))
-          .retryOnException(WorkflowEventConsumer::isTransientDatabaseError)
-          .build();
-
-  private final Retry retry = Retry.of("workflow-event-consumer", RETRY_CONFIG);
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
 
@@ -131,19 +120,6 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     this.subscriptionDestination = subscriptionDestination;
   }
 
-  private static boolean isTransientDatabaseError(Throwable e) {
-    String rootCauseMessage = ExceptionUtils.getRootCauseMessage(e);
-    if (rootCauseMessage == null) {
-      return false;
-    }
-    String lowerMessage = rootCauseMessage.toLowerCase();
-    return lowerMessage.contains("deadlock")
-        || lowerMessage.contains("lock wait timeout")
-        || lowerMessage.contains("try restarting transaction")
-        || lowerMessage.contains("updated by another transaction concurrently")
-        || lowerMessage.contains("optimisticlockingfailureexception");
-  }
-
   public void sendMessage(ChangeEvent event, Set<Recipient> recipients)
       throws EventPublisherException {
     EventType eventType = event.getEventType();
@@ -161,13 +137,10 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       return;
     }
 
-    // Skip events from governance-bot to prevent infinite loops
-    // These are system-initiated workflow changes that shouldn't trigger new workflows
-    if (GOVERNANCE_BOT.equals(event.getUserName())
-        || (event.getImpersonatedBy() != null
-            && GOVERNANCE_BOT.equals(event.getImpersonatedBy()))) {
+    if (isBotChange(event.getUserName(), event.getImpersonatedBy())) {
       LOG.debug(
-          "Skipping workflow-initiated event from governance-bot for entity {} of type: {}",
+          "Skipping bot change by {} for entity {} of type: {}",
+          event.getUserName(),
           event.getEntityFullyQualifiedName(),
           event.getEntityType());
       return;
@@ -188,9 +161,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
       if (variables != null && !variables.isEmpty()) {
         LOG.info("WorkflowEventConsumer - Triggering with signal: {}", signal);
-        Retry.decorateRunnable(
-                retry, () -> WorkflowHandler.getInstance().triggerWithSignal(signal, variables))
-            .run();
+        WorkflowHandler.getInstance().triggerWithSignal(signal, variables);
       }
     } catch (EntityNotFoundException e) {
       LOG.debug(
@@ -209,6 +180,20 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
               subscriptionDestination.getType(), exc.getMessage()),
           Pair.of(subscriptionDestination.getId(), event));
     }
+  }
+
+  /**
+   * Bot changes are excluded from governance workflows: any change whose updatedBy user is a bot,
+   * and workflow automation, which writes as the acting user with governance-bot as impersonator. A
+   * bot impersonating a user records that user as updatedBy, so the change is the user's.
+   */
+  public static boolean isBotChange(String userName, String impersonatedBy) {
+    boolean botChange = GOVERNANCE_BOT.equals(userName) || GOVERNANCE_BOT.equals(impersonatedBy);
+    if (!botChange && userName != null) {
+      User actor = Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
+      botChange = actor != null && Boolean.TRUE.equals(actor.getIsBot());
+    }
+    return botChange;
   }
 
   public static Map<String, Object> defaultHandler(ChangeEvent event) {

@@ -84,3 +84,18 @@ FROM information_schema.ROUTINES
 WHERE ROUTINE_TYPE IN ('PROCEDURE', 'FUNCTION')
 AND ROUTINE_SCHEMA = :schema_name
 """  # noqa: W291
+
+# SQLAlchemy reads these rows by position as DESCRIBE output: (Field, Type, Null, Key, Default, Extra).
+MYSQL_GET_VIEW_COLUMNS = """
+SELECT
+    COLUMN_NAME,
+    COLUMN_TYPE,
+    IS_NULLABLE,
+    COLUMN_KEY,
+    COLUMN_DEFAULT,
+    EXTRA
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = COALESCE(:schema_name, DATABASE())
+AND TABLE_NAME = :view_name
+ORDER BY ORDINAL_POSITION
+"""

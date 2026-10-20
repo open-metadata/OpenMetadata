@@ -124,6 +124,8 @@ import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.governance.approval.ChangeRequestRecoveryScheduler;
+import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -473,6 +475,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     JobHandlerRegistry registry = getJobHandlerRegistry();
     environment
         .lifecycle()
+        .manage(new OntologyReviewReconciler(jdbi.onDemand(CollectionDAO.class)));
+    environment
+        .lifecycle()
         .manage(new GenericBackgroundWorker(jdbi.onDemand(JobDAO.class), registry));
 
     environment
@@ -486,6 +491,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .manage(
             new SearchIndexRetryWorker(
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
+
+    environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);

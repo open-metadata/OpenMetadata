@@ -33,6 +33,7 @@ import ConnectorBreakdown from '../Common/TopicWidget/ConnectorBreakdown';
 import CoverageStat from '../Common/TopicWidget/CoverageStat';
 import FilterButton from '../Common/TopicWidget/FilterButton';
 import TopicCard from '../Common/TopicWidget/TopicCard';
+import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -40,7 +41,7 @@ import {
 
 const TONE = {
   icon: Assets,
-  tile: 'tw:bg-utility-blue-50 tw:text-utility-blue-600',
+  tile: TOPIC_BLUE_TILE_CLASSES,
 };
 
 export type DataEstateWidgetProps = WidgetCommonProps;
@@ -174,13 +175,13 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
               {/* `!` on the colours: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
             otherwise silently win. */}
-              <Typography className="tw:text-text-tertiary!" size="text-sm">
+              <Typography className="tw:text-text-tertiary!" size="text-xs">
                 {t('label.total-assets')}
               </Typography>
               <Typography
                 className="tw:text-text-primary!"
                 data-testid="data-estate-total"
-                size="text-xl"
+                size="text-sm"
                 weight="semibold">
                 {numberFormat.format(totalAssets)}
               </Typography>

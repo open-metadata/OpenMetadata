@@ -716,25 +716,28 @@ om:mappedTo a owl:ObjectProperty ;
     rdfs:range om:DataAsset .
 
 om:hasPrimaryStore a owl:ObjectProperty, owl:FunctionalProperty ;
-    om:projectionStatus om:Stored ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has primary store" ;
-    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one. Projected for each realization with the PRIMARY_STORE role, alongside om:mappedTo." ;
+    rdfs:comment "Data asset holding the instances of record for this concept. A concept has at most one." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
 
 om:hasDerivedAsset a owl:ObjectProperty ;
-    om:projectionStatus om:Stored ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has derived asset" ;
-    rdfs:comment "Data asset deriving this concept's instances from another asset. Projected for each realization with the DERIVED role, alongside om:mappedTo." ;
+    rdfs:comment "Data asset deriving this concept's instances from another asset." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
 
 om:hasReplica a owl:ObjectProperty ;
-    om:projectionStatus om:Stored ;
+    om:projectionStatus om:InferenceOnly ;
+    rdfs:comment "Not emitted by the metadata projection. Vocabulary alias of om:mappedTo. Custom rules or externally supplied triples are required; the subPropertyOf axiom does not materialize this alias." ;
     rdfs:label "has replica" ;
-    rdfs:comment "Data asset replicating this concept's instances from another asset. Projected for each realization with the REPLICA role, alongside om:mappedTo." ;
+    rdfs:comment "Data asset replicating this concept's instances from another asset." ;
     rdfs:subPropertyOf om:mappedTo ;
     rdfs:domain om:GlossaryTerm ;
     rdfs:range om:DataAsset .
@@ -2252,10 +2255,6 @@ om:attachments a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "attachments" .
 
-om:attributes a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "attributes" .
-
 om:authenticationMechanism a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "authenticationMechanism" .
@@ -2614,10 +2613,6 @@ om:editors a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "editors" .
 
-om:effectiveAttributes a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "effectiveAttributes" .
-
 om:effectiveDate a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "effectiveDate" .
@@ -2770,10 +2765,6 @@ om:fullPath a rdf:Property ;
 om:glossaries a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "glossaries" .
-
-om:glossary a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "glossary" .
 
 om:governanceMetadata a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3205,6 +3196,10 @@ om:joins a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "joins" .
 
+om:kind a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "kind" .
+
 om:knowledgeBases a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "knowledgeBases" .
@@ -3240,6 +3235,10 @@ om:lastUsedAt a rdf:Property ;
 om:latestResult a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "latestResult" .
+
+om:layer a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "layer" .
 
 om:lifecycleAccessed a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3358,6 +3357,10 @@ om:nameSpace a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "nameSpace" .
 
+om:namespace a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "namespace" .
+
 om:namespaces a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "namespaces" .
@@ -3382,13 +3385,9 @@ om:odcsQualityRules a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "odcsQualityRules" .
 
-om:ontologyConfiguration a rdf:Property ;
+om:ontology a rdf:Property ;
     om:projectionStatus om:Stored ;
-    rdfs:label "ontologyConfiguration" .
-
-om:ontologySource a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "ontologySource" .
+    rdfs:label "ontology" .
 
 om:openMetadataServerConnection a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3401,6 +3400,10 @@ om:operations a rdf:Property ;
 om:ordinalPosition a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ordinalPosition" .
+
+om:outcomes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "outcomes" .
 
 om:outputPort a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3489,6 +3492,10 @@ om:portfolioPriority a rdf:Property ;
 om:prefix a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "prefix" .
+
+om:prefixes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "prefixes" .
 
 om:primaryEntity a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3598,12 +3605,6 @@ om:rdfPredicate a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "rdfPredicate" .
 
-om:realizedIn a rdf:Property ;
-    om:projectionStatus om:InferenceOnly ;
-    owl:deprecated true ;
-    rdfs:label "realizedIn" ;
-    rdfs:comment "Not emitted by the metadata projection. Realizations are projected as om:mappedTo plus om:hasPrimaryStore, om:hasDerivedAsset, or om:hasReplica. Graphs written by earlier releases hold this as a JSON literal until the term is next written or the graph is rebuilt." .
-
 om:recognizers a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "recognizers" .
@@ -3679,6 +3680,14 @@ om:reusedEntities a rdf:Property ;
 om:reviewTask a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "reviewTask" .
+
+om:reviewAuthor a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "reviewAuthor" .
+
+om:ontologyReview a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ontologyReview" .
 
 om:reviewers a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -3792,10 +3801,6 @@ om:sourceId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourceId" .
 
-om:sourceMemoryIds a rdf:Property ;
-    om:projectionStatus om:Stored ;
-    rdfs:label "sourceMemoryIds" .
-
 om:sourcePythonClass a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourcePythonClass" .
@@ -3871,6 +3876,10 @@ om:supportsIngestionRunner a rdf:Property ;
 om:supportsInterrupt a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "supportsInterrupt" .
+
+om:synonyms a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "synonyms" .
 
 om:system a rdf:Property ;
     om:projectionStatus om:Stored ;
@@ -4076,3 +4085,83 @@ om:workflowType a rdf:Property ;
 om:worksheetId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "worksheetId" .
+
+om:contentDigest a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "contentDigest" .
+
+om:logicalCheck a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "logicalCheck" .
+
+om:superClasses a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "superClasses" .
+
+om:subClasses a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "subClasses" .
+
+om:encodingVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "encodingVersion" .
+
+om:memberCount a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "memberCount" .
+
+om:ontologyIri a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "ontologyIri" .
+
+om:releaseRevision a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "releaseRevision" .
+
+om:baseReleaseId a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "baseReleaseId" .
+
+om:baseWorkingRevision a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "baseWorkingRevision" .
+
+om:sealedAt a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sealedAt" .
+
+om:sealedBy a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sealedBy" .
+
+om:sourceWorkingRevision a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourceWorkingRevision" .
+
+om:totalBytes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "totalBytes" .
+
+om:versionIri a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "versionIri" .
+
+om:enumValues a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "enumValues" .
+
+om:unit a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "unit" .
+
+om:isIdentifier a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "isIdentifier" .
+
+om:unitAnnotation a owl:AnnotationProperty ;
+    rdfs:label "unit annotation" ;
+    rdfs:comment "Authored unit IRI or display symbol, without conversion semantics." .
+
+om:identifierIntent a owl:AnnotationProperty ;
+    rdfs:label "identifier intent" ;
+    rdfs:comment "Authored identifier intent, without asserting functionality, an OWL key or source-data uniqueness." .
