@@ -6,7 +6,6 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.LongConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
@@ -30,7 +29,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
-import org.openmetadata.service.apps.scheduler.AppAlreadyRunningException;
+import org.openmetadata.service.apps.scheduler.AppTriggerRetry;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -42,9 +41,6 @@ import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 @Slf4j
 public class RunAppImpl {
   private static final String DATA_INSIGHTS_APPLICATION = "DataInsightsApplication";
-  private static final int MAX_TRIGGER_ATTEMPTS = 5;
-  private static final long INITIAL_BACKOFF_MILLIS = 10_000;
-  private static final long MAX_BACKOFF_MILLIS = 60_000;
 
   public boolean execute(
       PipelineServiceClientInterface pipelineServiceClient,
@@ -141,7 +137,7 @@ public class RunAppImpl {
       long startTime,
       long timeoutMillis) {
     boolean triggered =
-        triggerWithRetry(
+        AppTriggerRetry.trigger(
             app.getName(),
             () ->
                 ApplicationHandler.getInstance()
@@ -150,53 +146,9 @@ public class RunAppImpl {
                         Entity.getCollectionDAO(),
                         Entity.getSearchRepository(),
                         config,
-                        WorkflowEventConsumer.GOVERNANCE_BOT),
-            RunAppImpl::pauseBeforeRetry);
+                        WorkflowEventConsumer.GOVERNANCE_BOT));
     return triggered
         && (!waitForCompletion || waitForCompletion(repository, app, startTime, timeoutMillis));
-  }
-
-  /**
-   * Triggers the app, retrying with exponential backoff while a run of it is still in progress.
-   * Returns false if it is still running after the last attempt.
-   */
-  static boolean triggerWithRetry(String appName, Runnable trigger, LongConsumer pause) {
-    boolean triggered = tryTrigger(trigger);
-    int attempt = 1;
-    while (!triggered && attempt < MAX_TRIGGER_ATTEMPTS) {
-      long backoffMillis =
-          Math.min(INITIAL_BACKOFF_MILLIS * (1L << (attempt - 1)), MAX_BACKOFF_MILLIS);
-      LOG.warn(
-          "App is already running. Retrying in {} ms (attempt {}/{})",
-          backoffMillis,
-          attempt,
-          MAX_TRIGGER_ATTEMPTS);
-      pause.accept(backoffMillis);
-      triggered = tryTrigger(trigger);
-      attempt++;
-    }
-    if (!triggered) {
-      LOG.error("Failed to run app {} after {} attempts: still running", appName, attempt);
-    }
-    return triggered;
-  }
-
-  private static boolean tryTrigger(Runnable trigger) {
-    try {
-      trigger.run();
-      return true;
-    } catch (AppAlreadyRunningException e) {
-      return false;
-    }
-  }
-
-  private static void pauseBeforeRetry(long millis) {
-    try {
-      Thread.sleep(millis);
-    } catch (InterruptedException ie) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException("Retry interrupted", ie);
-    }
   }
 
   private boolean waitForCompletion(

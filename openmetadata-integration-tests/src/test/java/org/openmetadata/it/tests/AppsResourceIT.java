@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -373,8 +374,7 @@ public class AppsResourceIT {
     Awaitility.await("Trigger " + appName)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               Apps.trigger(appName).run();
@@ -418,8 +418,7 @@ public class AppsResourceIT {
         .atMost(Duration.ofMinutes(2))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(
