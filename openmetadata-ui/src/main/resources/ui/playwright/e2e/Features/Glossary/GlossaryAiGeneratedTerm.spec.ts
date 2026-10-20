@@ -180,3 +180,35 @@ test.describe('AI-generated glossary terms', () => {
     ).toHaveCount(0);
   });
 });
+
+test('pages a large queue of AI-generated glossary proposals', async ({
+  page,
+}) => {
+  const glossary = new Glossary();
+  const terms = Array.from({ length: 16 }, () => new GlossaryTerm(glossary));
+  await redirectToHomePage(page);
+  const { apiContext, afterAction } = await getApiContext(page);
+  await glossary.create(apiContext);
+
+  try {
+    for (const term of terms) {
+      await createTermAsBot(page, term);
+    }
+    await glossary.visitEntityPage(page);
+    const panel = page.getByTestId('pending-review-panel');
+    await expect(panel.getByTestId('proposal-card')).toHaveCount(14);
+    await expect(panel.getByTestId('proposal-card-expanded')).toBeVisible();
+
+    await panel.getByTestId('next').click();
+
+    await expect(panel.getByTestId('proposal-card')).toHaveCount(0);
+    await expect(panel.getByTestId('proposal-card-expanded')).toBeVisible();
+
+    await panel.getByTestId('previous').click();
+
+    await expect(panel.getByTestId('proposal-card')).toHaveCount(14);
+  } finally {
+    await glossary.delete(apiContext);
+    await afterAction();
+  }
+});

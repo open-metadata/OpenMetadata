@@ -94,6 +94,7 @@ const renderPanel = () =>
 describe('PendingReviewPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useGlossaryStore.getState().setSelectedProposalId(undefined);
     mockDecide.mockResolvedValue(true);
   });
 
@@ -156,5 +157,44 @@ describe('PendingReviewPanel', () => {
     expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
       'Escrow'
     );
+  });
+
+  it('pages a large review queue while keeping every proposal reachable', () => {
+    mockProposals(
+      Array.from({ length: 20 }, (_, index) => ({
+        term: pending(`Term ${index}`, ProviderType.Automation),
+        source: 'ai' as const,
+      }))
+    );
+    renderPanel();
+
+    expect(screen.getAllByTestId('proposal-card')).toHaveLength(14);
+    expect(screen.queryByText('Term 15')).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByTestId('pending-review-panel')).getByTestId('next')
+    );
+
+    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+      'Term 15'
+    );
+    expect(screen.queryByText('Term 0')).not.toBeInTheDocument();
+  });
+
+  it('opens the page containing the proposal selected from the terms table', () => {
+    mockProposals(
+      Array.from({ length: 20 }, (_, index) => ({
+        term: pending(`Term ${index}`, ProviderType.Automation),
+        source: 'ai' as const,
+      }))
+    );
+    renderPanel();
+
+    act(() => useGlossaryStore.getState().setSelectedProposalId('Term 18'));
+
+    expect(screen.getByTestId('proposal-card-expanded')).toHaveTextContent(
+      'Term 18'
+    );
+    expect(screen.queryByText('Term 0')).not.toBeInTheDocument();
   });
 });

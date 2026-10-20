@@ -14,11 +14,13 @@ import {
   Box,
   ButtonGroup,
   ButtonGroupItem,
+  PaginationCardWithControls,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   EntityStatus,
@@ -103,6 +105,7 @@ const PendingReviewPanel = () => {
     setSelectedProposalId,
   } = useGlossaryStore();
   const [filter, setFilter] = useState<ProposalFilter>('all');
+  const [page, setPage] = useState(1);
   const [resolved, setResolved] = useState<ResolvedProposal[]>([]);
   const scope = useMemo(
     () =>
@@ -117,10 +120,30 @@ const PendingReviewPanel = () => {
   );
   const { proposals, counts, isLoading, decide } = useGlossaryProposals(scope);
   const { canEditAll } = getDerivedPermissionFlags(permissions, data?.deleted);
-  const visible = filterProposals(proposals, filter);
+  const visible = useMemo(
+    () => filterProposals(proposals, filter),
+    [proposals, filter]
+  );
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE_BASE));
+  const currentPage = Math.min(page, totalPages);
+  const pageProposals = visible.slice(
+    (currentPage - 1) * PAGE_SIZE_BASE,
+    currentPage * PAGE_SIZE_BASE
+  );
+  const selectedIndex = visible.findIndex(
+    ({ term }) => term.id === selectedProposalId
+  );
+
+  useEffect(() => setPage(1), [filter, scope?.id]);
+  useEffect(() => {
+    if (selectedIndex >= 0) {
+      setPage(Math.floor(selectedIndex / PAGE_SIZE_BASE) + 1);
+    }
+  }, [selectedIndex, selectedProposalId]);
+
   const expandedId =
-    visible.find((proposal) => proposal.term.id === selectedProposalId)?.term
-      .id ?? visible[0]?.term.id;
+    pageProposals.find((proposal) => proposal.term.id === selectedProposalId)
+      ?.term.id ?? pageProposals[0]?.term.id;
 
   const decideProposal = async (
     proposal: GlossaryProposal,
@@ -191,7 +214,7 @@ const PendingReviewPanel = () => {
             {t('message.nothing-waiting-for-review')}
           </span>
         ) : (
-          visible.map((proposal) => (
+          pageProposals.map((proposal) => (
             <ProposalCard
               canDecide={
                 !data?.deleted &&
@@ -209,6 +232,14 @@ const PendingReviewPanel = () => {
           ))
         )}
       </Box>
+      {totalPages > 1 && (
+        <PaginationCardWithControls
+          minimal
+          page={currentPage}
+          total={totalPages}
+          onPageChange={setPage}
+        />
+      )}
       {resolved.length > 0 && <ResolvedList resolved={resolved} />}
     </div>
   );
