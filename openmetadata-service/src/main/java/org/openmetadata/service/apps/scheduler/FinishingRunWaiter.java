@@ -26,6 +26,8 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.quartz.Trigger;
+import org.quartz.TriggerKey;
 
 /**
  * Waits, for a bounded time, for a run that has already reported a terminal status but that Quartz
@@ -75,14 +77,16 @@ final class FinishingRunWaiter {
 
   /**
    * Waits for Quartz to delete a stored job whose identity a new trigger collided with. The active
-   * run is re-read on every poll, so a run that starts during the wait is reported as active.
+   * run is re-read on every poll, so a run that starts during the wait is reported as active, and a
+   * trigger that is still queued, accepted but not fired yet, counts as active too.
    */
-  StoredRelease awaitStoredRelease(JobKey jobKey, BooleanSupplier hasActiveRun)
+  StoredRelease awaitStoredRelease(
+      JobKey jobKey, TriggerKey triggerKey, BooleanSupplier hasActiveRun)
       throws SchedulerException {
     Budget budget = budgets.get();
-    Optional<StoredRelease> settled = settledState(jobKey, hasActiveRun);
+    Optional<StoredRelease> settled = settledState(jobKey, triggerKey, hasActiveRun);
     while (settled.isEmpty() && budget.awaitNextPoll()) {
-      settled = settledState(jobKey, hasActiveRun);
+      settled = settledState(jobKey, triggerKey, hasActiveRun);
     }
     return settled.orElse(StoredRelease.OUTLIVED_BUDGET);
   }
@@ -92,15 +96,21 @@ final class FinishingRunWaiter {
     return () -> System.nanoTime() < deadline && pauseUntilNextPoll();
   }
 
-  private Optional<StoredRelease> settledState(JobKey jobKey, BooleanSupplier hasActiveRun)
+  private Optional<StoredRelease> settledState(
+      JobKey jobKey, TriggerKey triggerKey, BooleanSupplier hasActiveRun)
       throws SchedulerException {
     Optional<StoredRelease> settled = Optional.empty();
     if (!scheduler.checkExists(jobKey)) {
       settled = Optional.of(StoredRelease.RELEASED);
-    } else if (hasActiveRun.getAsBoolean()) {
+    } else if (hasActiveRun.getAsBoolean() || isQueued(triggerKey)) {
       settled = Optional.of(StoredRelease.STILL_ACTIVE);
     }
     return settled;
+  }
+
+  /** A fired one-shot trigger is stored as COMPLETE; NORMAL means it is waiting to fire. */
+  private boolean isQueued(TriggerKey triggerKey) throws SchedulerException {
+    return scheduler.getTriggerState(triggerKey) == Trigger.TriggerState.NORMAL;
   }
 
   private List<JobExecutionContext> executingRuns(Set<JobKey> runKeys) throws SchedulerException {

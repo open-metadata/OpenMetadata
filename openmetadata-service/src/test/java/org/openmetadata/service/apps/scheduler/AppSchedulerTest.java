@@ -690,6 +690,32 @@ class AppSchedulerTest {
     verify(mockScheduler).scheduleJob(any(JobDetail.class), any(Trigger.class));
   }
 
+  @Test
+  void aTriggerStillQueuedIsNotClearedAsStale() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock(3);
+    App app = nonConcurrentApp("SearchIndexApp");
+    String onDemandIdentity = String.format("SearchIndexApp-%s", AppScheduler.ON_DEMAND_JOB);
+    when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(Collections.emptyList());
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class)))
+        .thenThrow(new ObjectAlreadyExistsException("queued"));
+    when(mockScheduler.checkExists(any(JobKey.class))).thenReturn(true);
+    when(mockScheduler.getTriggerState(
+            new TriggerKey(onDemandIdentity, AppScheduler.APPS_TRIGGER_GROUP)))
+        .thenReturn(Trigger.TriggerState.NORMAL);
+
+    AppRunRecord previousRun = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
+    try (MockedConstruction<AppRepository> ignored =
+        mockConstruction(
+            AppRepository.class,
+            (repo, context) ->
+                when(repo.getLatestAppRunsOptional(any(App.class)))
+                    .thenReturn(Optional.of(previousRun)))) {
+      assertRejectedAsRunning(appScheduler, app, new HashMap<>());
+    }
+
+    verify(mockScheduler, never()).deleteJob(any(JobKey.class));
+  }
+
   private static JobExecutionContext executingRun(String identity, AppRunRecord.Status status) {
     JobBuilder job =
         JobBuilder.newJob(Job.class).withIdentity(identity, AppScheduler.APPS_JOB_GROUP);

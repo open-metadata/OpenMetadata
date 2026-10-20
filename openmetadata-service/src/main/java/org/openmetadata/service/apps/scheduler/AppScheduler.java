@@ -432,7 +432,9 @@ public class AppScheduler {
         throw ex;
       }
       switch (finishingRunWaiter.awaitStoredRelease(
-          jobDetail.getKey(), activeRunProbe(application))) {
+          jobDetail.getKey(),
+          new TriggerKey(triggerIdentity, APPS_TRIGGER_GROUP),
+          activeRunProbe(application))) {
         case STILL_ACTIVE -> throw ex;
         case OUTLIVED_BUDGET -> clearStaleEntry(application, jobDetail.getKey(), triggerIdentity);
         case RELEASED -> LOG.debug("Previous run of {} released its job", application.getName());

@@ -26,9 +26,12 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -52,9 +55,13 @@ import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.scheduler.AppAlreadyRunningException;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.resources.apps.TestApp;
+import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.JobKey;
@@ -68,8 +75,8 @@ import org.slf4j.LoggerFactory;
  * Triggering an app that is already running is a 409, and a trigger sent right after a run reports
  * completion is accepted rather than refused while Quartz releases the finished job.
  *
- * <p>Each test installs its own app built on the no-op {@code TestApp} and holds its run inside a
- * Quartz listener on the embedded server, so the timing is deterministic.
+ * <p>Each test installs its own app and holds its run at one point, inside the run itself or inside
+ * a Quartz listener on the embedded server, so the timing is deterministic.
  */
 @Execution(ExecutionMode.SAME_THREAD)
 @Isolated
@@ -90,24 +97,32 @@ public class AppTriggerConflictIT {
   }
 
   @Test
-  void triggeringARunningAppIsAConflictAndNotAServerError(TestNamespace ns) throws Exception {
-    String appName = installManualApp(ns.prefix("conflictApp"));
+  void triggeringAnAppWhoseRunIsExecutingIsAConflict(TestNamespace ns) throws Exception {
+    String appName = installManualApp(ns.prefix("executingApp"), HeldExecutionApp.class);
+    HeldExecutionApp.holdNextRun(appName);
+    try {
+      Apps.trigger(appName).run();
+      HeldExecutionApp.awaitStarted(appName);
+
+      assertTriggerIsAConflictWithoutAnErrorLog(appName);
+    } finally {
+      HeldExecutionApp.release(appName);
+      awaitReleased(appName);
+      Apps.uninstall(appName, true);
+    }
+  }
+
+  /** The run is accepted but not executing yet, so only the stored job reveals it. */
+  @Test
+  void triggeringAnAppWhoseRunIsStartingIsAConflict(TestNamespace ns) throws Exception {
+    String appName = installManualApp(ns.prefix("startingApp"), TestApp.class);
     HeldRun hold = HeldRun.beforeExecution(appName);
-    ListAppender<ILoggingEvent> mapperLog = capture(CatalogGenericExceptionMapper.class);
     try {
       Apps.trigger(appName).run();
       hold.awaitEntered();
 
-      ConflictException conflict =
-          assertThrows(ConflictException.class, () -> Apps.trigger(appName).run());
-
-      assertEquals(409, conflict.getStatusCode());
-      assertEquals(new AppAlreadyRunningException(appName).getMessage(), conflict.getMessage());
-      assertTrue(
-          mapperLog.list.stream().noneMatch(event -> event.getLevel() == Level.ERROR),
-          "a busy app must not be logged as a server error");
+      assertTriggerIsAConflictWithoutAnErrorLog(appName);
     } finally {
-      release(mapperLog, CatalogGenericExceptionMapper.class);
       hold.releaseAndRemove();
       awaitReleased(appName);
       Apps.uninstall(appName, true);
@@ -116,7 +131,7 @@ public class AppTriggerConflictIT {
 
   @Test
   void aTriggerRightAfterTheRunReportsCompletionIsAccepted(TestNamespace ns) throws Exception {
-    String appName = installManualApp(ns.prefix("finishingApp"));
+    String appName = installManualApp(ns.prefix("finishingApp"), TestApp.class);
     HeldRun hold = HeldRun.afterExecution(appName);
     ListAppender<ILoggingEvent> schedulerLog = capture(AppScheduler.class.getPackageName());
     try {
@@ -146,7 +161,23 @@ public class AppTriggerConflictIT {
     }
   }
 
-  private static String installManualApp(String appName) {
+  private static void assertTriggerIsAConflictWithoutAnErrorLog(String appName) {
+    ListAppender<ILoggingEvent> mapperLog = capture(CatalogGenericExceptionMapper.class);
+    try {
+      ConflictException conflict =
+          assertThrows(ConflictException.class, () -> Apps.trigger(appName).run());
+
+      assertEquals(409, conflict.getStatusCode());
+      assertEquals(new AppAlreadyRunningException(appName).getMessage(), conflict.getMessage());
+      assertFalse(
+          anyEvent(mapperLog, event -> event.getLevel() == Level.ERROR),
+          "a busy app must not be logged as a server error");
+    } finally {
+      release(mapperLog, CatalogGenericExceptionMapper.class);
+    }
+  }
+
+  private static String installManualApp(String appName, Class<?> appClass) {
     CreateAppMarketPlaceDefinitionReq marketPlace =
         new CreateAppMarketPlaceDefinitionReq()
             .withName(appName)
@@ -157,7 +188,7 @@ public class AppTriggerConflictIT {
             .withDeveloperUrl("https://www.example.com")
             .withPrivacyPolicyUrl("https://www.example.com/privacy")
             .withSupportEmail("support@example.com")
-            .withClassName("org.openmetadata.service.resources.apps.TestApp")
+            .withClassName(appClass.getName())
             .withAppType(AppType.Internal)
             .withScheduleType(ScheduleType.OnlyManual)
             .withRuntime(new ScheduledExecutionContext().withEnabled(true))
@@ -190,10 +221,19 @@ public class AppTriggerConflictIT {
   }
 
   private static boolean hasWaited(ListAppender<ILoggingEvent> log, String appName) {
-    return log.list.stream()
-        .map(ILoggingEvent::getFormattedMessage)
-        .anyMatch(
-            message -> message.contains(WAITING_FOR_FINISHING_RUN) && message.contains(appName));
+    return anyEvent(
+        log,
+        event ->
+            event.getFormattedMessage().contains(WAITING_FOR_FINISHING_RUN)
+                && event.getFormattedMessage().contains(appName));
+  }
+
+  /** The server thread appends under the appender's lock, so read the list under it too. */
+  private static boolean anyEvent(
+      ListAppender<ILoggingEvent> log, Predicate<ILoggingEvent> matches) {
+    synchronized (log) {
+      return log.list.stream().anyMatch(matches);
+    }
   }
 
   private static ListAppender<ILoggingEvent> capture(Class<?> source) {
@@ -234,9 +274,10 @@ public class AppTriggerConflictIT {
 
   /**
    * Holds the first run of an app inside a Quartz listener callback until the test releases it.
-   * Quartz calls registered listeners in order, so this one runs after {@code OmAppJobListener}
-   * (which records the run) and before Quartz drops the job from its executing list. It never
-   * throws: a listener that throws leaves the job executing forever.
+   * Quartz calls registered listeners before its own, so this one runs after {@code
+   * OmAppJobListener} has recorded the run. Before execution, the run is not yet in Quartz's
+   * executing list; after execution, it still is. It never throws: a listener that throws leaves
+   * the job executing forever.
    */
   private static final class HeldRun implements JobListener {
     private final String name;
@@ -297,11 +338,49 @@ public class AppTriggerConflictIT {
 
     private void hold() {
       entered.countDown();
-      try {
-        released.await(HOLD_LIMIT.toSeconds(), TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+      awaitQuietly(released);
+    }
+  }
+
+  /** An app whose run waits inside its execution until the test releases it. */
+  public static final class HeldExecutionApp extends AbstractNativeApplication {
+    private static final Map<String, CountDownLatch> STARTED = new ConcurrentHashMap<>();
+    private static final Map<String, CountDownLatch> RELEASED = new ConcurrentHashMap<>();
+
+    public HeldExecutionApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+      super(collectionDAO, searchRepository);
+    }
+
+    static void holdNextRun(String appName) {
+      STARTED.put(appName, new CountDownLatch(1));
+      RELEASED.put(appName, new CountDownLatch(1));
+    }
+
+    static void awaitStarted(String appName) throws InterruptedException {
+      assertTrue(
+          STARTED.get(appName).await(RUN_TIMEOUT.toSeconds(), TimeUnit.SECONDS),
+          "the run never started");
+    }
+
+    static void release(String appName) {
+      RELEASED.get(appName).countDown();
+    }
+
+    @Override
+    public void startApp(JobExecutionContext jobExecutionContext) {
+      CountDownLatch started = STARTED.get(getApp().getName());
+      if (started != null) {
+        started.countDown();
+        awaitQuietly(RELEASED.get(getApp().getName()));
       }
+    }
+  }
+
+  private static void awaitQuietly(CountDownLatch latch) {
+    try {
+      latch.await(HOLD_LIMIT.toSeconds(), TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 }

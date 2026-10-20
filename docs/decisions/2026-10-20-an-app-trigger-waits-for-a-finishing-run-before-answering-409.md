@@ -27,8 +27,9 @@ none of these steps to a listener, so they can only be observed by polling.
   Quartz to release it, polling every **200 ms** for at most **10 s**, then proceeds; a run still
   held after that is a 409.
 - When scheduling collides with a stored job, the trigger first waits, under its own 10 s budget,
-  for Quartz to delete it, re-reading the latest run on every poll. A run that becomes active during
-  the wait is a 409; only a job that outlives the wait is stale and is cleared.
+  for Quartz to delete it, re-reading the latest run on every poll. A run that becomes active
+  during the wait, or a trigger still queued to fire (Quartz state `NORMAL`), is a 409; only a job
+  that outlives the wait is stale and is cleared.
 - "Terminal" is not treated as idle without that wait: `SearchIndexApp` still deletes orphaned
   indices after it writes its terminal status, so a new run started then could lose its staged
   indices.
@@ -38,8 +39,9 @@ none of these steps to a listener, so they can only be observed by polling.
 - A trigger right after "completed" is accepted, typically within 0 to 200 ms. A request thread can
   wait up to 10 s per phase, and only while a run is finishing or a stored job is stale.
 - Stale-entry recovery after a crashed pod now happens after about 10 s instead of at once.
-- On the same pod, stop followed by an immediate re-trigger waits for the stopping run and then
-  answers 409, where it used to start a second run once the stop deleted the job.
+- On the same pod, stop followed by an immediate re-trigger waits up to 10 s for the stopped run to
+  exit and answers 409 only if it is still executing then. It used to start a second run at once,
+  because the stop deletes the job.
 - A run on another pod that stays in its post-terminal cleanup for longer than 10 s can still be
   cleared as stale. Revisit this, for example with a database-backed run lease, if such cleanups grow
   or the stale-entry WARN appears outside crash recovery.
