@@ -24,7 +24,10 @@ import {
   listOntologyConcepts,
   listOntologyProperties,
 } from '../../../rest/ontologyAPI';
-import { useOntologyStudioModel } from './useOntologyStudioModel';
+import {
+  useAllOntologyStudioModels,
+  useOntologyStudioModel,
+} from './useOntologyStudioModel';
 
 jest.mock('../../../rest/ontologyAPI');
 
@@ -121,5 +124,121 @@ describe('useOntologyStudioModel', () => {
 
     expect(result.current.model).toBeUndefined();
     expect(mockListOntologyConcepts).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('all native ontology models', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    mockListOntologyConcepts.mockResolvedValue({
+      data: [concept('Order')],
+      paging: { total: 1 },
+    });
+    mockListOntologyProperties.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockListOntologyAxioms.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+  });
+
+  it('loads native definitions with their owning ontology', async () => {
+    const second = {
+      ...ontology,
+      id: 'other',
+      name: 'Other',
+      fullyQualifiedName: 'Other',
+    };
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [{ ...concept('Order'), id: params?.ontology + '-order' }],
+      paging: { total: 1 },
+    }));
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology, second], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.graph?.nodes).toHaveLength(2));
+
+    expect(result.current.graph?.nodes.map((node) => node.glossaryId)).toEqual([
+      ontology.id,
+      second.id,
+    ]);
+  });
+
+  it('fails instead of issuing an unscoped definition request for a missing name', async () => {
+    const { result } = renderHook(
+      () =>
+        useAllOntologyStudioModels(
+          [{ ...ontology, fullyQualifiedName: '' }],
+          true
+        ),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.graph).toBeNull();
+    expect(mockListOntologyConcepts).not.toHaveBeenCalled();
+  });
+
+  it('refuses too many ontologies before requesting definitions', async () => {
+    const { result } = renderHook(
+      () =>
+        useAllOntologyStudioModels(
+          Array.from({ length: 21 }, (_, id) => ({
+            ...ontology,
+            id: String(id),
+          })),
+          true
+        ),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isTooLarge).toBe(true));
+
+    expect(result.current.graph).toBeNull();
+    expect(mockListOntologyConcepts).not.toHaveBeenCalled();
+  });
+
+  it('refuses aggregate definition totals before fetching model bodies', async () => {
+    mockListOntologyConcepts.mockResolvedValue({
+      data: [],
+      paging: { total: 2001 },
+    });
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isTooLarge).toBe(true));
+
+    expect(result.current.graph).toBeNull();
+    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(1);
+  });
+
+  it('enforces the definition budget if totals change during loading', async () => {
+    mockListOntologyConcepts
+      .mockResolvedValueOnce({ data: [], paging: { total: 1 } })
+      .mockResolvedValueOnce({
+        data: Array.from({ length: 2001 }, () => concept('Order')),
+        paging: { total: 2001 },
+      });
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isTooLarge).toBe(true));
+
+    expect(result.current.graph).toBeNull();
+  });
+
+  it('never returns a partial graph when one model fails', async () => {
+    mockListOntologyAxioms.mockRejectedValue(new Error('Forbidden'));
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.graph).toBeNull();
   });
 });

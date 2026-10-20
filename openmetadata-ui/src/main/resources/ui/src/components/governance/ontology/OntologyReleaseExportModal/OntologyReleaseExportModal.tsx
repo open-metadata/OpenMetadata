@@ -14,9 +14,12 @@
 import {
   Box,
   Button,
+  CloseButton,
   Dialog,
   Modal,
   ModalOverlay,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
@@ -28,6 +31,7 @@ import {
   EXPORT_FORMAT_TO_FILE_EXTENSION,
   OntologyExportFormat,
 } from '../../../../rest/rdfAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
 import OntologyReleaseExportContent, {
@@ -70,7 +74,6 @@ const OntologyReleaseExportModal = ({
       content,
       isPreviewLoading,
       kind: 'ready',
-      release,
     };
   }
 
@@ -97,63 +100,85 @@ const OntologyReleaseExportModal = ({
         }
       }}>
       <Modal>
-        <Dialog
-          showCloseButton
-          dividers="scroll"
-          title={t('label.import-export-ontology')}
-          width={820}
-          onClose={onClose}>
-          <Dialog.Content>
-            <Box className="tw:mb-4" gap={2}>
-              <Button
-                aria-pressed={activeTab === 'export'}
-                color="tertiary"
-                data-testid="ontology-native-export-tab"
-                onPress={() => setActiveTab('export')}>
-                {t('label.export')}
-              </Button>
-              <Button
-                aria-pressed={activeTab === 'import'}
-                color="tertiary"
-                data-testid="ontology-native-import-tab"
-                onPress={() => setActiveTab('import')}>
-                {t('label.import')}
-              </Button>
-            </Box>
-            {activeTab === 'export' ? (
-              <OntologyReleaseExportContent
-                format={format}
-                ontology={ontology}
-                state={contentState}
-                onFormatChange={setFormat}
+        <Dialog dividers="scroll" width={820} onClose={onClose}>
+          <Tabs
+            selectedKey={activeTab}
+            onSelectionChange={(key) => {
+              if (key === 'export' || key === 'import') {
+                setActiveTab(key);
+              }
+            }}>
+            <Dialog.Header
+              className="tw:flex tw:flex-wrap tw:items-center tw:gap-3"
+              title={t('label.import-export-ontology')}>
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                <Typography className="tw:break-words" size="text-sm">
+                  {getEntityName(ontology)}
+                </Typography>
+                {release && (
+                  <Typography
+                    className="tw:break-words"
+                    color="secondary"
+                    size="text-xs">
+                    {`${t('label.active')}: ${getEntityName(release)}`}
+                  </Typography>
+                )}
+              </Box>
+              <Tabs.List
+                aria-label={t('label.import-export')}
+                size="sm"
+                type="button-border">
+                <Tabs.Item
+                  data-testid="ontology-native-export-tab"
+                  id="export"
+                  label={t('label.export')}
+                />
+                <Tabs.Item
+                  data-testid="ontology-native-import-tab"
+                  id="import"
+                  label={t('label.import')}
+                />
+              </Tabs.List>
+              <CloseButton
+                className="tw:ml-auto tw:shrink-0"
+                label={t('label.close')}
+                onPress={onClose}
               />
-            ) : (
-              <OntologyNativeImportPanel
-                canImport={canImport}
-                ontology={ontology}
-                onApplied={() => {
-                  onApplied?.();
-                  onClose();
-                }}
-              />
-            )}
-          </Dialog.Content>
-          <Dialog.Footer>
-            <Button color="secondary" onPress={onClose}>
-              {t('label.cancel')}
-            </Button>
-            {activeTab === 'export' && (
-              <Button
-                color="primary"
-                data-testid="ontology-run-release-export"
-                iconLeading={Download01}
-                isDisabled={!content || isError}
-                isLoading={isPreviewLoading}
-                onPress={handleExport}>
-                {t('label.export')}
-              </Button>
-            )}
-          </Dialog.Footer>
+            </Dialog.Header>
+            <Dialog.Content>
+              <Tabs.Panel id="export">
+                <OntologyReleaseExportContent
+                  format={format}
+                  state={contentState}
+                  onFormatChange={setFormat}
+                />
+              </Tabs.Panel>
+              <Tabs.Panel id="import">
+                <OntologyNativeImportPanel
+                  canImport={canImport}
+                  ontology={ontology}
+                  onApplied={() => {
+                    onApplied?.();
+                    onClose();
+                  }}
+                />
+              </Tabs.Panel>
+            </Dialog.Content>
+            <Dialog.Footer>
+              {activeTab === 'export' && (
+                <Button
+                  className="tw:mr-auto"
+                  color="primary"
+                  data-testid="ontology-run-release-export"
+                  iconLeading={Download01}
+                  isDisabled={!content || isError}
+                  isLoading={isPreviewLoading}
+                  onPress={handleExport}>
+                  {t('label.export')}
+                </Button>
+              )}
+            </Dialog.Footer>
+          </Tabs>
         </Dialog>
       </Modal>
     </ModalOverlay>

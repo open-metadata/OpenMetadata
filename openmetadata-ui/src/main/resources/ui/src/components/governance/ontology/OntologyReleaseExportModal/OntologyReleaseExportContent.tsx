@@ -15,14 +15,17 @@ import {
   Alert,
   Box,
   Button,
+  Grid,
+  RadioButton,
+  RadioGroup,
   Typography,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { Ontology } from '../../../../generated/entity/data/ontology';
-import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
-import { OntologyExportFormat } from '../../../../rest/rdfAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  EXPORT_FORMAT_TO_FILE_EXTENSION,
+  OntologyExportFormat,
+} from '../../../../rest/rdfAPI';
 import {
   ONTOLOGY_RELEASE_EXPORT_FORMATS,
   ONTOLOGY_RELEASE_PREVIEW_LIMIT,
@@ -36,19 +39,16 @@ export type OntologyReleaseExportContentState =
       readonly content?: string;
       readonly isPreviewLoading: boolean;
       readonly kind: 'ready';
-      readonly release: OntologyRelease;
     };
 
 interface OntologyReleaseExportContentProps {
   readonly format: OntologyExportFormat;
-  readonly ontology: Ontology;
   readonly state: OntologyReleaseExportContentState;
   readonly onFormatChange: (format: OntologyExportFormat) => void;
 }
 
 const OntologyReleaseExportContent = ({
   format,
-  ontology,
   state,
   onFormatChange,
 }: OntologyReleaseExportContentProps) => {
@@ -56,17 +56,6 @@ const OntologyReleaseExportContent = ({
 
   return (
     <Box direction="col" gap={5}>
-      <Box direction="col" gap={1}>
-        <Typography size="text-sm" weight="semibold">
-          {getEntityName(ontology)}
-        </Typography>
-        {state.kind === 'ready' ? (
-          <Typography color="secondary" size="text-xs">
-            {`${t('label.active')}: ${getEntityName(state.release)}`}
-          </Typography>
-        ) : null}
-      </Box>
-
       {state.kind === 'loading' ? (
         <Typography role="status">{t('label.loading')}</Typography>
       ) : null}
@@ -87,55 +76,54 @@ const OntologyReleaseExportContent = ({
       ) : null}
 
       {state.kind === 'ready' ? (
-        <Box className="tw:min-h-0" gap={5}>
-          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
-            <Typography color="secondary" size="text-xs" weight="semibold">
-              {t('label.format')}
-            </Typography>
-            {ONTOLOGY_RELEASE_EXPORT_FORMATS.map((option) => (
-              <Button
-                noTextPadding
-                aria-pressed={format === option.format}
+        <Grid className="tw:md:gap-x-5" rowGap="5">
+          <Grid.Item className="tw:min-w-0 tw:md:col-span-13">
+            <RadioGroup
+              label={t('label.format')}
+              value={format}
+              onChange={(value) => {
+                const option = ONTOLOGY_RELEASE_EXPORT_FORMATS.find(
+                  (candidate) => candidate.format === value
+                );
+                if (option) {
+                  onFormatChange(option.format);
+                }
+              }}>
+              {ONTOLOGY_RELEASE_EXPORT_FORMATS.map((option) => (
+                <RadioButton
+                  data-testid={`ontology-release-format-${option.format}`}
+                  hint={t(option.descriptionKey)}
+                  key={option.format}
+                  label={t(option.labelKey)}
+                  trailing={`.${
+                    EXPORT_FORMAT_TO_FILE_EXTENSION[option.format]
+                  }`}
+                  value={option.format}
+                  variant="card"
+                />
+              ))}
+            </RadioGroup>
+          </Grid.Item>
+          <Grid.Item className="tw:min-w-0 tw:md:col-span-11">
+            <Box className="tw:h-full" direction="col" gap={2}>
+              <Typography color="secondary" size="text-sm" weight="medium">
+                {t('label.preview')}
+              </Typography>
+              <pre
                 className={classNames(
-                  'tw:w-full tw:justify-start tw:rounded-lg tw:px-3 tw:py-2 tw:text-left',
-                  format === option.format
-                    ? 'tw:bg-brand-primary tw:after:outline-brand'
-                    : 'tw:bg-primary tw:after:outline-secondary'
+                  'tw:m-0 tw:min-h-64 tw:max-h-96 tw:flex-1 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary',
+                  'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
+                  'tw:whitespace-pre-wrap tw:break-words tw:text-primary_on-brand'
                 )}
-                color="tertiary"
-                data-testid={`ontology-release-format-${option.format}`}
-                key={option.format}
-                onPress={() => onFormatChange(option.format)}>
-                <Box className="tw:w-full" direction="col" gap={1}>
-                  <Typography size="text-sm" weight="semibold">
-                    {t(option.labelKey)}
-                  </Typography>
-                  <Typography color="secondary" size="text-xs">
-                    {t(option.descriptionKey)}
-                  </Typography>
-                </Box>
-              </Button>
-            ))}
-          </Box>
-
-          <Box className="tw:w-[340px] tw:min-w-0" direction="col" gap={2}>
-            <Typography color="secondary" size="text-xs" weight="semibold">
-              {t('label.preview')}
-            </Typography>
-            <pre
-              className={classNames(
-                'tw:min-h-64 tw:flex-1 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary',
-                'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
-                'tw:whitespace-pre-wrap tw:text-secondary_on-brand'
-              )}
-              data-testid="ontology-release-export-preview">
-              {state.isPreviewLoading
-                ? t('label.loading')
-                : state.content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ??
-                  '—'}
-            </pre>
-          </Box>
-        </Box>
+                data-testid="ontology-release-export-preview">
+                {state.isPreviewLoading
+                  ? t('label.loading')
+                  : state.content?.slice(0, ONTOLOGY_RELEASE_PREVIEW_LIMIT) ??
+                    '—'}
+              </pre>
+            </Box>
+          </Grid.Item>
+        </Grid>
       ) : null}
     </Box>
   );

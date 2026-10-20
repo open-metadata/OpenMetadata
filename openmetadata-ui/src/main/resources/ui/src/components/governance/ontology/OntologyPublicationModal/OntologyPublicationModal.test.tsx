@@ -13,16 +13,24 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyPublicationModal from './OntologyPublicationModal';
 
 const mockReleasePanel = jest.fn();
+jest.mock('../../../../hooks/useEntityPermissions/useEntityPermissions');
 
 jest.mock('../OntologyReleasePanel/OntologyReleasePanel', () => ({
   __esModule: true,
   default: (props: unknown) => {
     mockReleasePanel(props);
 
-    return <div data-testid="ontology-release-panel" />;
+    return (
+      <div data-testid="ontology-release-panel">
+        <input aria-label="draft notes" />
+      </div>
+    );
   },
 }));
 
@@ -35,7 +43,46 @@ const ontology: Ontology = {
 };
 
 describe('OntologyPublicationModal', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditAll: true,
+      ViewBasic: true,
+    };
+    (useEntityPermissions as jest.Mock).mockReturnValue({
+      permissions,
+      ...getDerivedPermissionFlags(permissions, false),
+      isLoading: false,
+      error: null,
+      refresh: jest.fn(),
+    });
+  });
+
+  it('requires an explicit native owner before showing release contents', () => {
+    const onSelectOntology = jest.fn();
+    render(
+      <OntologyPublicationModal
+        canEdit={false}
+        ontologies={[ontology]}
+        onClose={jest.fn()}
+        onSelectOntology={onSelectOntology}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
+    expect(mockReleasePanel).not.toHaveBeenCalled();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-publication-select-' + ontology.id)
+    );
+
+    expect(onSelectOntology).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-release-panel')).toBeVisible();
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ ontology, canEdit: true })
+    );
+  });
 
   it('opens on Changes and switches the same release workflow to Releases', () => {
     const onClose = jest.fn();
@@ -51,10 +98,19 @@ describe('OntologyPublicationModal', () => {
       expect.objectContaining({ view: 'changes' })
     );
 
+    fireEvent.change(screen.getByRole('textbox', { name: 'draft notes' }), {
+      target: { value: 'Keep these notes' },
+    });
     fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
 
     expect(mockReleasePanel).toHaveBeenLastCalledWith(
       expect.objectContaining({ view: 'releases' })
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-publication-tab-changes'));
+
+    expect(screen.getByRole('textbox', { name: 'draft notes' })).toHaveValue(
+      'Keep these notes'
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'label.close' }));

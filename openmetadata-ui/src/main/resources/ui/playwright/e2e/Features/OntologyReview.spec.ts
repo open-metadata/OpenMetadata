@@ -78,14 +78,8 @@ const approveReview = async (page: Page, task: Task) => {
 };
 
 const selectOntology = async (page: Page, ontology: Ontology) => {
-  const listing = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname === '/api/v1/ontologies' &&
-      response.request().method() === 'GET'
-  );
   const scopeMenu = page.getByTestId('ontology-scope-menu-trigger');
   await scopeMenu.click();
-  expect((await listing).status()).toBe(200);
   const node = page.getByTestId(`ontology-scope-${ontology.id}`);
   await expect(node).toBeVisible();
   await node.click();
@@ -162,7 +156,7 @@ test.describe(
   { tag: ['@Features', '@Governance'] },
   () => {
     for (const status of [403, 404]) {
-      test(`returns to glossary Studio when an ontology deep link fails with ${status}`, async ({
+      test(`preserves native scope and exposes recovery when a deep link fails with ${status}`, async ({
         freshUserPage: { page },
       }) => {
         const ontologyId = fullUuid();
@@ -178,14 +172,26 @@ test.describe(
         );
 
         expect((await loading).status()).toBe(status);
+        await expect(page).toHaveURL(new RegExp('ontology=' + ontologyId));
+        await expect(
+          page.getByTestId('ontology-studio-shell').getByRole('alert')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId('ontology-scope-menu-trigger')
+        ).toHaveText('Ontology');
+        await expect(page.getByTestId('ontology-explorer')).toHaveCount(0);
+        await expect(
+          page.getByRole('button', { name: 'Retry', exact: true })
+        ).toBeVisible();
+        await page
+          .getByRole('button', { name: 'All ontologies', exact: true })
+          .click();
         await expect(page).toHaveURL(
           /\/governance\/ontology\?source=context-center$/
         );
-        await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
-          'aria-selected',
-          'true'
-        );
-        await expect(page.getByTestId('ontology-explorer')).toBeVisible();
+        await expect(
+          page.getByTestId('ontology-scope-menu-trigger')
+        ).toHaveAttribute('data-scope-key', 'ontology:all');
       });
     }
 
@@ -366,6 +372,10 @@ test.describe(
           'Second published definition',
         ]) {
           await openPublication(author, ontology);
+          await author
+            .getByTestId('ontology-release-notes')
+            .getByRole('textbox')
+            .fill(description);
           const capture = author.waitForResponse(
             (response) =>
               response
@@ -381,6 +391,10 @@ test.describe(
             'Capture release in Studio'
           );
           expect(release.baseReleaseId).toBe(releases.at(-1)?.id);
+          expect(release.semanticVersion).toBe(
+            releases.length === 0 ? '1.0.0' : '1.1.0'
+          );
+          expect(release.releaseNotes).toBe(description);
           releases.push(release);
           expect(release.entityStatus).toBe('Draft');
           await expect(
@@ -449,8 +463,9 @@ test.describe(
 
           await openPublication(author, ontology);
           await author.getByTestId('ontology-publication-tab-releases').click();
-          await author.getByLabel('Ontology release', { exact: true }).click();
-          await author.getByTestId(`tree-node-${release.id}`).click();
+          await author
+            .getByTestId(`ontology-release-select-${release.id}`)
+            .click();
           await activateRelease(author, ontology, release, releases.length - 1);
         }
 
@@ -458,11 +473,17 @@ test.describe(
         await author.reload();
         await author.getByTestId('ontology-publication-trigger').click();
         await author.getByTestId('ontology-publication-tab-releases').click();
+        await author
+          .getByTestId(
+            `ontology-release-select-${releases[releases.length - 1].id}`
+          )
+          .click();
         await expect(author.getByTestId('ontology-active-release')).toHaveText(
           'Active'
         );
-        await author.getByLabel('Ontology release', { exact: true }).click();
-        await author.getByTestId(`tree-node-${firstRelease.id}`).click();
+        await author
+          .getByTestId(`ontology-release-select-${firstRelease.id}`)
+          .click();
         await activateRelease(author, ontology, firstRelease, 2);
         await author
           .getByTestId('ontology-release-definition')
@@ -503,7 +524,7 @@ test.describe(
         await author.getByTestId('ontology-publication-tab-changes').click();
         await expect(
           author.getByTestId('ontology-release-definition')
-        ).toHaveCount(0);
+        ).toBeVisible();
         await expect(
           author.getByRole('button', { name: 'Capture release', exact: true })
         ).toBeVisible();

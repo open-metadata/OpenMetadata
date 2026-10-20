@@ -19,25 +19,15 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CreateOntologyChangeSet } from '../../../../generated/api/data/createOntologyChangeSet';
 import { Format } from '../../../../generated/api/data/previewNativeOntologyImport';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
-import type { OntologyChangeSet } from '../../../../generated/entity/data/ontologyChangeSet';
-import {
-  OntologyChangeSetState,
-  OperationStatus,
-} from '../../../../generated/entity/data/ontologyChangeSet';
-import {
-  applyOntologyChangeSet,
-  createOntologyChangeSet,
-  getOntologyChangeSet,
-  previewNativeOntologyImport,
-} from '../../../../rest/ontologyAPI';
+import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
+import { previewNativeOntologyImport } from '../../../../rest/ontologyAPI';
 import { detectOntologyImportFormat } from '../../../../utils/OntologyImportUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { useOntologyEditLease } from '../../../OntologyExplorer/hooks/useOntologyEditLease';
 
 interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;
@@ -69,60 +59,15 @@ const OntologyNativeImportPanel = ({
   const [fileName, setFileName] = useState('');
   const [preview, setPreview] = useState<CreateOntologyChangeSet>();
   const [previewPage, setPreviewPage] = useState(0);
-  const [draftId, setDraftId] = useState<string>();
-  const [shouldApply, setShouldApply] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const lease = useOntologyEditLease({
-    isActive: Boolean(draftId),
-    resourceId: draftId,
-    resourceType: 'ontologyChangeSet',
-  });
-
-  const finishApply = useCallback(
-    (draft: OntologyChangeSet) => {
-      if (draft.state === OntologyChangeSetState.Applied) {
-        showSuccessToast(t('label.ontology-applied'));
-        onApplied();
-      } else {
-        setError(
-          draft.applicationResult?.results.find(
-            (result) => result.status === OperationStatus.Failed
-          )?.message ?? t('server.unexpected-error')
-        );
-      }
+  const apply = useOntologyChangeSetApply({
+    canApply: canImport,
+    onApplied: () => {
+      showSuccessToast(t('label.ontology-applied'));
+      onApplied();
     },
-    [onApplied, t]
-  );
-
-  useEffect(() => {
-    if (!shouldApply || !draftId || !lease.isOwned || !lease.lock) {
-      return;
-    }
-    setShouldApply(false);
-    setIsBusy(true);
-    const token = {
-      sessionId: lease.lock.sessionId,
-      version: lease.lock.version,
-    };
-    applyOntologyChangeSet(draftId, { lease: token })
-      .then(finishApply)
-      .catch(async (applyError: unknown) => {
-        const draft = await getOntologyChangeSet(draftId).catch(
-          () => undefined
-        );
-        if (draft?.state === OntologyChangeSetState.Applied) {
-          finishApply(draft);
-
-          return;
-        }
-        setError(t('server.unexpected-error'));
-        showErrorToast(
-          isAxiosError(applyError) ? applyError : t('server.unexpected-error')
-        );
-      })
-      .finally(() => setIsBusy(false));
-  }, [draftId, finishApply, lease.isOwned, lease.lock, shouldApply, t]);
+  });
 
   const handleFile = async (files: FileList | null) => {
     const file = files?.[0];
@@ -150,43 +95,6 @@ const OntologyNativeImportPanel = ({
       setError(t('server.unexpected-error'));
       showErrorToast(
         isAxiosError(previewError) ? previewError : t('server.unexpected-error')
-      );
-    } finally {
-      setIsBusy(false);
-    }
-  };
-
-  const handleApply = async () => {
-    if (!preview?.operations?.length || isBusy || !canImport) {
-      return;
-    }
-    setError(undefined);
-    setIsBusy(true);
-    try {
-      if (draftId) {
-        const draft = await getOntologyChangeSet(draftId);
-        if (draft.state === OntologyChangeSetState.Applied) {
-          finishApply(draft);
-
-          return;
-        }
-        if (
-          draft.state !== OntologyChangeSetState.Draft &&
-          draft.state !== OntologyChangeSetState.ApplyFailed
-        ) {
-          setError(t('server.unexpected-error'));
-
-          return;
-        }
-      } else {
-        const draft = await createOntologyChangeSet(preview);
-        setDraftId(draft.id);
-      }
-      setShouldApply(true);
-    } catch (applyError) {
-      setError(t('server.unexpected-error'));
-      showErrorToast(
-        isAxiosError(applyError) ? applyError : t('server.unexpected-error')
       );
     } finally {
       setIsBusy(false);
@@ -228,7 +136,7 @@ const OntologyNativeImportPanel = ({
               })}
           </ul>
         ) : (
-          <Alert variant="gray">{t('label.no-changes-to-save')}</Alert>
+          <Alert variant="gray">{t('message.no-changes-to-save')}</Alert>
         )}
         {Boolean(preview.operations?.length) && (
           <Box gap={2}>
@@ -256,7 +164,7 @@ const OntologyNativeImportPanel = ({
   };
 
   const renderFilePicker = () => {
-    if (draftId) {
+    if (apply.configurationLocked) {
       return null;
     }
 
@@ -274,36 +182,8 @@ const OntologyNativeImportPanel = ({
     );
   };
 
-  const renderLeaseStatus = () => {
-    if (!draftId) {
-      return null;
-    }
-    if (lease.state === 'acquiring') {
-      return <Typography role="status">{t('label.loading')}</Typography>;
-    }
-    if (lease.state === 'contended' || lease.state === 'lost') {
-      return (
-        <Box direction="col" gap={2}>
-          <Alert variant="warning">
-            {t('message.native-ontology-import-lease-unavailable')}
-          </Alert>
-          <Button color="secondary" onPress={lease.retry}>
-            {t('label.retry')}
-          </Button>
-        </Box>
-      );
-    }
-
-    return null;
-  };
-
-  const isApplyDisabled = () => {
-    if (!canImport || !preview?.operations?.length || isBusy) {
-      return true;
-    }
-
-    return Boolean(draftId && !lease.isOwned);
-  };
+  const isApplying =
+    apply.status.kind === 'busy' || apply.status.kind === 'applied';
 
   return (
     <Box direction="col" gap={4}>
@@ -314,14 +194,24 @@ const OntologyNativeImportPanel = ({
       {fileName && <Typography>{fileName}</Typography>}
       {renderPreview()}
       {error && <Alert variant="error">{error}</Alert>}
-      {renderLeaseStatus()}
+      {apply.status.kind === 'blocked' && (
+        <Alert variant="error">{apply.status.message}</Alert>
+      )}
       <Button
         color="primary"
         data-testid="ontology-native-import-apply"
-        isDisabled={isApplyDisabled()}
-        isLoading={isBusy}
-        onPress={() => void handleApply()}>
-        {draftId ? t('label.retry') : t('label.import')}
+        isDisabled={
+          !canImport || !preview?.operations?.length || isBusy || isApplying
+        }
+        isLoading={isBusy || apply.status.kind === 'busy'}
+        onPress={() => {
+          if (preview) {
+            void (apply.configurationLocked
+              ? apply.retry()
+              : apply.start(preview));
+          }
+        }}>
+        {apply.configurationLocked ? t('label.retry') : t('label.import')}
       </Button>
     </Box>
   );

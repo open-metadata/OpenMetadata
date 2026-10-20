@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { useQueries, useQuery } from '@tanstack/react-query';
-import { PagingResponse } from 'Models';
 import { useCallback, useMemo } from 'react';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { Ontology } from '../../../generated/entity/data/ontology';
@@ -21,6 +20,7 @@ import {
   listOntologyConcepts,
 } from '../../../rest/ontologyAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
 
 export const ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY =
   'ontology-studio-ontologies';
@@ -33,33 +33,9 @@ const byName = <T extends { name: string; displayName?: string }>(
   right: T
 ) => getEntityName(left).localeCompare(getEntityName(right));
 
-const listAllScopes = async <T>(
-  loadPage: (after?: string) => Promise<PagingResponse<T[]>>
-): Promise<T[]> => {
-  const items: T[] = [];
-  const cursors = new Set<string>();
-  let after: string | undefined;
-
-  for (let pageNumber = 0; pageNumber < MAX_SCOPE_PAGES; pageNumber++) {
-    const page = await loadPage(after);
-    items.push(...page.data);
-
-    const next = page.paging.after;
-    if (!next) {
-      return items;
-    }
-    if (cursors.has(next)) {
-      throw new Error('Scope pagination returned a repeated cursor');
-    }
-    cursors.add(next);
-    after = next;
-  }
-
-  throw new Error('Scope pagination exceeded its safe page limit');
-};
-
 interface UseOntologyStudioScopesOptions {
   enabled: boolean;
+  loadGlossaries?: boolean;
   knownGlossaries: Glossary[];
 }
 
@@ -67,15 +43,17 @@ interface UseOntologyStudioScopesOptions {
 export const useOntologyStudioScopes = ({
   enabled,
   knownGlossaries,
+  loadGlossaries = enabled,
 }: UseOntologyStudioScopesOptions) => {
-  const shouldLoadGlossaries = enabled && knownGlossaries.length === 0;
+  const shouldLoadGlossaries = loadGlossaries && knownGlossaries.length === 0;
   const ontologies = useQuery({
     queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
     enabled,
     gcTime: 30_000,
     queryFn: ({ signal }) =>
-      listAllScopes((after) =>
-        listOntologies({ after, limit: SCOPE_PAGE_SIZE }, signal)
+      listAllPages(
+        (after) => listOntologies({ after, limit: SCOPE_PAGE_SIZE }, signal),
+        MAX_SCOPE_PAGES
       ),
     retry: false,
   });
@@ -84,11 +62,13 @@ export const useOntologyStudioScopes = ({
     enabled: shouldLoadGlossaries,
     gcTime: 30_000,
     queryFn: ({ signal }) =>
-      listAllScopes((after) =>
-        getGlossariesList(
-          { after, fields: 'termCount', limit: SCOPE_PAGE_SIZE },
-          signal
-        )
+      listAllPages(
+        (after) =>
+          getGlossariesList(
+            { after, fields: 'termCount', limit: SCOPE_PAGE_SIZE },
+            signal
+          ),
+        MAX_SCOPE_PAGES
       ),
     retry: false,
   });
@@ -109,11 +89,13 @@ export const useOntologyStudioScopes = ({
         ].sort(byName),
       [glossaries.data, knownGlossaries]
     ),
+    isOntologyError: ontologies.isError,
+    isOntologyLoading: enabled && ontologies.isPending,
+    refetchOntologies: ontologies.refetch,
     isError: ontologies.isError || glossaries.isError,
     isLoading:
       enabled &&
-      (ontologies.isPending ||
-        (knownGlossaries.length === 0 && glossaries.isPending)),
+      (ontologies.isPending || (shouldLoadGlossaries && glossaries.isPending)),
     ontologies: useMemo(
       () => [...(ontologies.data ?? [])].sort(byName),
       [ontologies.data]

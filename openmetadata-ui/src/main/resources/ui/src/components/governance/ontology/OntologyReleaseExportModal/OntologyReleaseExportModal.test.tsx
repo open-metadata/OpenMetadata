@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   EncodingVersion,
@@ -100,6 +101,10 @@ describe('OntologyReleaseExportModal', () => {
 
     expect(await screen.findByText(/Release 1/)).toBeVisible();
     expect(
+      screen.getByRole('dialog', { name: 'label.import-export-ontology' })
+    ).toBeVisible();
+    expect(screen.getByText('Sales')).toBeVisible();
+    expect(
       await screen.findByTestId('ontology-release-export-preview')
     ).toHaveTextContent('<rdf>sealed release</rdf>');
 
@@ -122,6 +127,74 @@ describe('OntologyReleaseExportModal', () => {
       'text/turtle'
     );
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('supports keyboard tab navigation and keeps the selected format and import permission', async () => {
+    const user = userEvent.setup({
+      advanceTimers: jest.advanceTimersByTime,
+    });
+    renderWithQueryClient(
+      <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+    );
+    await screen.findByTestId('ontology-release-export-preview');
+    await user.click(screen.getByRole('radio', { name: /label.turtle/ }));
+    const exportTab = screen.getByRole('tab', { name: 'label.export' });
+    const importTab = screen.getByRole('tab', { name: 'label.import' });
+    await user.click(exportTab);
+    await user.keyboard('{ArrowRight}');
+
+    expect(importTab).toHaveFocus();
+    expect(importTab).toHaveAttribute('aria-selected', 'false');
+
+    await user.keyboard('{Enter}');
+
+    expect(
+      screen.getByRole('tabpanel', { name: 'label.import' })
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-native-import-file')).toBeDisabled();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+    expect(
+      screen.queryByTestId('ontology-run-release-export')
+    ).not.toBeInTheDocument();
+
+    await user.keyboard('{ArrowLeft}{Enter}');
+
+    expect(
+      screen.getByRole('tabpanel', { name: 'label.export' })
+    ).toBeVisible();
+    expect(screen.getByRole('radio', { name: /label.turtle/ })).toBeChecked();
+  });
+
+  it('resets the native import panel on a tab change and closes from the header', async () => {
+    const onClose = jest.fn();
+    renderWithQueryClient(
+      <OntologyReleaseExportModal
+        canImport
+        ontology={ontology}
+        onClose={onClose}
+      />
+    );
+    await screen.findByTestId('ontology-release-export-preview');
+    fireEvent.click(screen.getByRole('tab', { name: 'label.import' }));
+    const input = document.querySelector('input[type="file"]');
+    if (!input) {
+      throw new Error('Missing file input');
+    }
+    const file = new File([''], 'too-large.ttl');
+    Object.defineProperty(file, 'size', { value: 11 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [file] } });
+
+    expect(await screen.findByText('too-large.ttl')).toBeVisible();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.export' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'label.import' }));
+
+    expect(screen.queryByText('too-large.ttl')).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it('explains why export is unavailable when the ontology has no active release', async () => {

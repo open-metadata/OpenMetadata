@@ -33,6 +33,7 @@ import {
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import OntologyPublicationModal from '../OntologyPublicationModal/OntologyPublicationModal';
 import OntologyReleasePanel from './OntologyReleasePanel';
 
 jest.mock('../../../../rest/axiosClient', () => ({
@@ -61,6 +62,7 @@ const release: OntologyRelease = {
   ontology: { id: ontology.id, type: 'ontology' },
   entityStatus: EntityStatus.Draft,
   releaseRevision: 1,
+  semanticVersion: '1.2.3',
   sourceWorkingRevision: 7,
   sealedAt: 1,
   sealedBy: 'author',
@@ -80,7 +82,6 @@ const initialState: OntologyState = {
 };
 let currentState: OntologyState;
 let currentRelease: OntologyRelease;
-let currentOntology: Ontology;
 let nextWorkingPage: string | undefined;
 let nextPageState: OntologyState | undefined;
 let nextPageError: Error | undefined;
@@ -116,9 +117,8 @@ const renderPanel = async (
 
 const selectRelease = async () => {
   fireEvent.click(
-    screen.getByRole('button', { name: 'label.ontology-release' })
+    await screen.findByTestId('ontology-release-select-release-id')
   );
-  fireEvent.click(await screen.findByTestId('tree-node-release-id'));
 };
 
 const workingDiffPage = (after?: string) => {
@@ -176,14 +176,10 @@ describe('OntologyReleasePanel', () => {
       });
     currentState = { ...initialState };
     currentRelease = { ...release };
-    currentOntology = { ...ontology };
     nextWorkingPage = undefined;
     nextPageState = undefined;
     nextPageError = undefined;
     get.mockImplementation(async (url, config) => {
-      if (url === '/ontologies/ontology-id') {
-        return { data: currentOntology };
-      }
       if (url.endsWith('/state')) {
         return { data: currentState };
       }
@@ -198,7 +194,7 @@ describe('OntologyReleasePanel', () => {
       if (url.endsWith('/export')) {
         return { data: 'sealed release content' };
       }
-      if (url === '/ontologyReleases/release-id') {
+      if (url === `/ontologyReleases/${currentRelease.id}`) {
         return { data: currentRelease };
       }
       if (url === '/ontologyReleases/new-release-id') {
@@ -212,7 +208,21 @@ describe('OntologyReleasePanel', () => {
           },
         };
       }
-      if (url === '/ontologyReleases') {
+      if (url.endsWith('/structure')) {
+        return {
+          data: {
+            releaseId: currentRelease.id,
+            contentDigest: currentRelease.contentDigest,
+            valid: true,
+            violationCount: 0,
+            violations: [],
+          },
+        };
+      }
+      if (url.endsWith('/events')) {
+        return { data: { data: [], paging: { total: 0 } } };
+      }
+      if (url === '/ontologies/ontology-id/releases') {
         return { data: { data: [currentRelease], paging: { total: 1 } } };
       }
 
@@ -239,12 +249,34 @@ describe('OntologyReleasePanel', () => {
     cleanup();
     await renderPanel(true, 'releases');
 
-    expect(
-      await screen.findByRole('button', { name: 'label.ontology-release' })
-    ).toBeVisible();
+    expect(await screen.findByTestId('ontology-release-history')).toBeVisible();
     expect(
       screen.queryByRole('button', { name: 'label.capture-release' })
     ).not.toBeInTheDocument();
+  });
+
+  it('shows active release details only after selecting its history row', async () => {
+    currentState.activeReleaseId = release.id;
+    currentRelease.entityStatus = EntityStatus.Approved;
+    await renderPanel();
+
+    expect(
+      await screen.findByTestId('ontology-release-select-release-id')
+    ).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByTestId('ontology-release-definition')
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'label.export' })).toBeEnabled();
+
+    await selectRelease();
+
+    expect(
+      await screen.findByTestId('ontology-release-definition')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-active-release')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-release-select-release-id')
+    ).toHaveAttribute('aria-expanded', 'true');
   });
 
   it.each([
@@ -349,6 +381,9 @@ describe('OntologyReleasePanel', () => {
     expect(post).toHaveBeenCalledWith('/ontologies/ontology-id/releases', {
       expectedActivationRevision: 3,
       expectedWorkingRevision: 7,
+      expectedLatestReleaseRevision: 1,
+      versionBump: 'minor',
+      releaseNotes: '',
     });
     expect(put).not.toHaveBeenCalled();
     expect(
@@ -370,6 +405,64 @@ describe('OntologyReleasePanel', () => {
     expect(await screen.findByText(/Account/)).toBeVisible();
     expect(screen.getByText('2 label.pending-changes')).toBeVisible();
     expect(screen.queryByText(/Customer/)).not.toBeInTheDocument();
+  });
+
+  it('reports only the captured structural result and leaves logical consistency unchecked', async () => {
+    const requests = get.getMockImplementation();
+    get.mockImplementation(async (url, config) => {
+      if (url.endsWith('/structure')) {
+        return {
+          data: {
+            releaseId: release.id,
+            contentDigest: release.contentDigest,
+            valid: false,
+            violationCount: 2,
+            violations: [],
+          },
+        };
+      }
+      if (!requests) {
+        throw new Error('Missing API fixture');
+      }
+
+      return requests(url, config);
+    });
+    post.mockResolvedValue({ data: release });
+    await renderPanel(true, 'changes');
+
+    expect(screen.getAllByText(/label.not-checked/)).toHaveLength(2);
+    expect(get.mock.calls.some(([url]) => url.endsWith('/structure'))).toBe(
+      false
+    );
+
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-capture-release'))
+    );
+
+    expect(
+      await screen.findByText(/label.structural-validation.*label.failed/)
+    ).toBeVisible();
+    expect(
+      screen.getByText(/label.logical-consistency.*label.not-checked/)
+    ).toBeVisible();
+    expect(screen.queryByText(/label.passed/)).not.toBeInTheDocument();
+  });
+
+  it('does not submit review when the latest release fence rejects capture', async () => {
+    const conflict = new AxiosError('Latest release changed', '409');
+    post.mockRejectedValue(conflict);
+    await renderPanel(true, 'changes');
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-request-review'))
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(conflict);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/releases',
+      expect.objectContaining({ expectedLatestReleaseRevision: 1 })
+    );
+    expect(put).not.toHaveBeenCalled();
   });
 
   it('blocks capture on a stale cursor and retries from the first page', async () => {
@@ -489,6 +582,279 @@ describe('OntologyReleasePanel', () => {
     expect(put).not.toHaveBeenCalled();
   });
 
+  it.each([false, true])(
+    'retains one captured candidate across modal tabs and reconciles a lost task response: %s',
+    async (taskWasCreated) => {
+      let taskAttempts = 0;
+      post.mockImplementation(async (url) => {
+        if (url === '/ontologies/ontology-id/releases') {
+          currentRelease = {
+            ...release,
+            id: 'captured-id',
+            semanticVersion: '1.2.4',
+            releaseRevision: 2,
+            releaseNotes: 'Fix customer aliases',
+          };
+          currentState = { ...currentState, lastReleaseRevision: 2 };
+
+          return { data: currentRelease };
+        }
+        if (url === '/tasks') {
+          taskAttempts++;
+          if (taskAttempts === 1) {
+            if (taskWasCreated) {
+              currentRelease = {
+                ...currentRelease,
+                entityStatus: EntityStatus.InReview,
+                reviewTask: 'existing-task',
+              };
+            }
+
+            throw new AxiosError('Task response unavailable', '503');
+          }
+
+          return {
+            data: {
+              id: 'new-task',
+              category: 'Approval',
+              type: 'RequestApproval',
+              name: 'Review release',
+              status: 'Open',
+            },
+          };
+        }
+
+        throw new Error(`Unexpected write: ${url}`);
+      });
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <OntologyPublicationModal
+              canEdit
+              ontology={ontology}
+              onClose={jest.fn()}
+            />
+          </MemoryRouter>
+        );
+      });
+      fireEvent.click(
+        await screen.findByRole('radio', { name: /label.version-patch/ })
+      );
+      fireEvent.change(
+        screen.getByRole('textbox', { name: /label.release-notes/ }),
+        { target: { value: 'Fix customer aliases' } }
+      );
+
+      expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
+        '1.2.3 → 1.2.4'
+      );
+
+      await act(async () =>
+        fireEvent.click(
+          screen.getByRole('button', { name: 'label.request-review' })
+        )
+      );
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'label.retry-review' })
+        ).toBeEnabled()
+      );
+      await act(async () =>
+        fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'))
+      );
+      await screen.findByTestId('ontology-release-select-captured-id');
+      await act(async () =>
+        fireEvent.click(screen.getByTestId('ontology-publication-tab-changes'))
+      );
+
+      expect(
+        screen.getByRole('textbox', { name: /label.release-notes/ })
+      ).toHaveValue('Fix customer aliases');
+      expect(screen.getByTestId('ontology-version-preview')).toHaveTextContent(
+        '1.2.3 → 1.2.4'
+      );
+      expect(
+        screen.getByRole('button', { name: 'label.capture-release' })
+      ).toBeDisabled();
+
+      await act(async () =>
+        fireEvent.click(
+          screen.getByRole('button', { name: 'label.retry-review' })
+        )
+      );
+
+      expect(
+        post.mock.calls.filter(
+          ([url]) => url === '/ontologies/ontology-id/releases'
+        )
+      ).toEqual([
+        [
+          '/ontologies/ontology-id/releases',
+          {
+            expectedActivationRevision: 3,
+            expectedWorkingRevision: 7,
+            expectedLatestReleaseRevision: 1,
+            versionBump: 'patch',
+            releaseNotes: 'Fix customer aliases',
+          },
+        ],
+      ]);
+      expect(taskAttempts).toBe(taskWasCreated ? 1 : 2);
+      expect(get).toHaveBeenCalledWith('/ontologyReleases/captured-id', {
+        signal: undefined,
+      });
+      expect(put).not.toHaveBeenCalled();
+    }
+  );
+
+  it('loads newest-first owner history with numeric cursors and release events', async () => {
+    const originalGet = get.getMockImplementation();
+    get.mockImplementation(async (url, config) => {
+      if (url === '/ontologies/ontology-id/releases') {
+        const after = (config?.params as { after?: string })?.after;
+        const older = {
+          ...release,
+          id: 'older-id',
+          semanticVersion: '1.1.0',
+          releaseRevision: 1,
+        };
+
+        return {
+          data: {
+            data: after
+              ? [older]
+              : [
+                  {
+                    ...currentRelease,
+                    releaseRevision: 2,
+                    releaseNotes: 'Customer identity',
+                  },
+                ],
+            paging: { total: 2, after: after ? undefined : '2' },
+          },
+        };
+      }
+      if (url.endsWith('/events')) {
+        return {
+          data: {
+            data: [
+              {
+                id: 'event-id',
+                releaseId: currentRelease.id,
+                ontologyId: ontology.id,
+                eventType: 'APPROVED',
+                createdBy: 'reviewer',
+                createdAt: 1,
+                contentDigest: release.contentDigest,
+                voters: ['reviewer'],
+              },
+            ],
+            paging: { total: 1 },
+          },
+        };
+      }
+      if (!originalGet) {
+        throw new Error('Missing API fixture');
+      }
+
+      return originalGet(url, config);
+    });
+    await renderPanel();
+
+    expect(await screen.findByText('Customer identity')).toBeVisible();
+
+    await act(async () =>
+      fireEvent.click(screen.getByTestId('ontology-release-load-more'))
+    );
+
+    expect(
+      await screen.findByTestId('ontology-release-select-older-id')
+    ).toBeVisible();
+    expect(get).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/releases',
+      expect.objectContaining({ params: { limit: 25, after: '2' } })
+    );
+
+    await act(async () => selectRelease());
+
+    expect(
+      await screen.findByText(/label.ontology-event-approved/)
+    ).toBeVisible();
+    expect(get.mock.calls.some(([url]) => url === '/ontologyReleases')).toBe(
+      false
+    );
+  });
+
+  it.each([undefined, 'new-release-id'])(
+    'refreshes activation actor and time in the mounted release panel from %s',
+    async (activeReleaseId) => {
+      currentState.activeReleaseId = activeReleaseId;
+      currentRelease.entityStatus = EntityStatus.Approved;
+      let activated = false;
+      const originalGet = get.getMockImplementation();
+      get.mockImplementation(async (url, config) => {
+        if (url.endsWith('/events')) {
+          const data =
+            url === '/ontologyReleases/release-id/events'
+              ? [
+                  {
+                    id: 'captured-event',
+                    releaseId: release.id,
+                    eventType: 'CAPTURED',
+                    createdBy: 'capture-author',
+                    createdAt: 1000,
+                  },
+                  ...(activated
+                    ? [
+                        {
+                          id: 'activated-event',
+                          releaseId: release.id,
+                          eventType: 'ACTIVATED',
+                          createdBy: 'activation-author',
+                          createdAt: 2000,
+                        },
+                      ]
+                    : []),
+                ]
+              : [];
+
+          return { data: { data, paging: { total: data.length } } };
+        }
+        if (!originalGet) {
+          throw new Error('Missing API fixture');
+        }
+
+        return originalGet(url, config);
+      });
+      put.mockImplementation(async () => {
+        activated = true;
+        currentState = {
+          ...currentState,
+          activeReleaseId: release.id,
+          activationRevision: 4,
+        };
+
+        return { data: currentState };
+      });
+      await renderPanel();
+      await selectRelease();
+
+      expect(await screen.findByText(/capture-author/)).toBeVisible();
+      expect(screen.queryByText(/activation-author/)).not.toBeInTheDocument();
+
+      const mounted = screen.getByTestId('ontology-release-definition');
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.activate-release' })
+      );
+
+      expect(await screen.findByText(/activation-author/)).toHaveTextContent(
+        new Date(2000).toLocaleString()
+      );
+      expect(screen.getByTestId('ontology-release-definition')).toBe(mounted);
+      expect(screen.getByTestId('ontology-active-release')).toBeVisible();
+    }
+  );
+
   it('does not activate an already active release again', async () => {
     currentState.activeReleaseId = release.id;
     currentRelease.entityStatus = EntityStatus.Approved;
@@ -499,6 +865,7 @@ describe('OntologyReleasePanel', () => {
       return { data: currentState };
     });
     await renderPanel();
+    await selectRelease();
     await screen.findByTestId('ontology-release-definition');
 
     expect(
@@ -559,11 +926,8 @@ describe('OntologyReleasePanel', () => {
       return { data: currentState };
     });
     await renderPanel();
+    await selectRelease();
     await screen.findByTestId('ontology-release-definition');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.ontology-release' })
-    );
-    fireEvent.click(await screen.findByTestId('tree-node-release-id'));
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'label.activate-release' })
@@ -590,11 +954,8 @@ describe('OntologyReleasePanel', () => {
     const conflict = new AxiosError('Activation revision changed', '409');
     put.mockRejectedValue(conflict);
     await renderPanel();
+    await selectRelease();
     await screen.findByTestId('ontology-release-definition');
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.ontology-release' })
-    );
-    fireEvent.click(await screen.findByTestId('tree-node-release-id'));
     await waitFor(() =>
       expect(
         screen.getByRole('button', { name: 'label.activate-release' })

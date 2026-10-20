@@ -106,6 +106,41 @@ describe('useOntologyStudioScopes', () => {
     );
   });
 
+  it('loads native entry without requesting glossary scopes', async () => {
+    mockListOntologies.mockResolvedValue({ data: [], paging: { total: 0 } });
+    const { result } = renderHook(
+      () =>
+        useOntologyStudioScopes({
+          enabled: true,
+          loadGlossaries: false,
+          knownGlossaries: [],
+        }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isOntologyLoading).toBe(false));
+
+    expect(result.current.isOntologyError).toBe(false);
+    expect(mockGetGlossariesList).not.toHaveBeenCalled();
+  });
+
+  it('keeps native loading success independent of glossary failure', async () => {
+    mockListOntologies.mockResolvedValue({ data: [], paging: { total: 0 } });
+    mockGetGlossariesList.mockRejectedValue(new Error('Glossary forbidden'));
+    const { result } = renderHook(
+      () =>
+        useOntologyStudioScopes({
+          enabled: true,
+          loadGlossaries: true,
+          knownGlossaries: [],
+        }),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.isError).toBe(true));
+
+    expect(result.current.isOntologyError).toBe(false);
+    expect(result.current.ontologies).toEqual([]);
+  });
+
   it('does not fetch until the scope menu is opened', () => {
     renderHook(
       () => useOntologyStudioScopes({ enabled: false, knownGlossaries: [] }),

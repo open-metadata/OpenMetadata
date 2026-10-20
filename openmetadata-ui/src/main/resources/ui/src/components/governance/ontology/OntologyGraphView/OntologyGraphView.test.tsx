@@ -14,7 +14,6 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -39,6 +38,7 @@ import {
   createOntologyAxiom,
   createOntologyProperty,
 } from '../../../../rest/ontologyAPI';
+import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import {
   buildOntologyStudioGraph,
   getModelRelations,
@@ -81,6 +81,9 @@ jest.mock(
 );
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
+  getOntologyConceptBindings: jest
+    .fn()
+    .mockResolvedValue({ revision: 0, assets: [] }),
   createOntologyAxiom: jest.fn(),
   createOntologyProperty: jest.fn(),
 }));

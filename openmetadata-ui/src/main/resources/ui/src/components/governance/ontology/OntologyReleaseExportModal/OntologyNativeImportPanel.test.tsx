@@ -21,6 +21,7 @@ import {
   OntologyChangeSetState,
   OperationStatus,
 } from '../../../../generated/entity/data/ontologyChangeSet';
+import { useOntologyEditLease } from '../../../../hooks/governance/ontology/useOntologyEditLease';
 import {
   applyOntologyChangeSet,
   createOntologyChangeSet,
@@ -28,7 +29,6 @@ import {
   previewNativeOntologyImport,
 } from '../../../../rest/ontologyAPI';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
-import { useOntologyEditLease } from '../../../OntologyExplorer/hooks/useOntologyEditLease';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
@@ -41,7 +41,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
-jest.mock('../../../OntologyExplorer/hooks/useOntologyEditLease', () => ({
+jest.mock('../../../../hooks/governance/ontology/useOntologyEditLease', () => ({
   useOntologyEditLease: jest.fn(),
 }));
 
@@ -65,6 +65,13 @@ const preview = {
       state: OperationState.Active,
     },
   ],
+};
+const draft = {
+  ...preview,
+  id: 'draft-id',
+  ontology: { id: ontology.id, type: 'ontology', fullyQualifiedName: 'Sales' },
+  state: OntologyChangeSetState.Draft,
+  undoCursor: preview.operations.length,
 };
 
 const upload = async () => {
@@ -92,14 +99,13 @@ describe('OntologyNativeImportPanel', () => {
       })
     );
     (previewNativeOntologyImport as jest.Mock).mockResolvedValue(preview);
-    (createOntologyChangeSet as jest.Mock).mockResolvedValue({
-      id: 'draft-id',
-    });
+    (createOntologyChangeSet as jest.Mock).mockResolvedValue(draft);
     (getOntologyChangeSet as jest.Mock).mockResolvedValue({
-      id: 'draft-id',
+      ...draft,
       state: OntologyChangeSetState.ApplyFailed,
     });
     (applyOntologyChangeSet as jest.Mock).mockResolvedValue({
+      ...draft,
       state: OntologyChangeSetState.Applied,
     });
   });
@@ -154,13 +160,14 @@ describe('OntologyNativeImportPanel', () => {
     });
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(await screen.findByText('label.no-changes-to-save')).toBeVisible();
+    expect(await screen.findByText('message.no-changes-to-save')).toBeVisible();
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
     expect(createOntologyChangeSet).not.toHaveBeenCalled();
   });
 
   it('shows the failed operation reason and retains the draft for retry', async () => {
     (applyOntologyChangeSet as jest.Mock).mockResolvedValue({
+      ...draft,
       applicationResult: {
         results: [
           {
@@ -252,7 +259,10 @@ describe('OntologyNativeImportPanel', () => {
   it('checks the same draft before retrying an uncertain apply response', async () => {
     (applyOntologyChangeSet as jest.Mock)
       .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce({ state: OntologyChangeSetState.Applied });
+      .mockResolvedValueOnce({
+        ...draft,
+        state: OntologyChangeSetState.Applied,
+      });
     const onApplied = jest.fn();
     render(
       <OntologyNativeImportPanel
@@ -264,13 +274,16 @@ describe('OntologyNativeImportPanel', () => {
     await upload();
     fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
 
-    await waitFor(() => expect(getOntologyChangeSet).toHaveBeenCalledTimes(1));
+    await screen.findByRole('alert');
     fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
 
     await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
 
     expect(createOntologyChangeSet).toHaveBeenCalledTimes(1);
-    expect(getOntologyChangeSet).toHaveBeenCalledTimes(2);
+    expect(getOntologyChangeSet).toHaveBeenCalledWith(
+      'draft-id',
+      'operations,applicationResult'
+    );
     expect(applyOntologyChangeSet).toHaveBeenCalledTimes(2);
   });
 });

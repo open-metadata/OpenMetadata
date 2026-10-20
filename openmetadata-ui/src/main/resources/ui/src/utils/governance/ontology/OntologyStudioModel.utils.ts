@@ -52,6 +52,7 @@ export type OntologyRelationKind =
   | 'subClassOf'
   | 'restriction'
   | 'objectProperty'
+  | 'objectAssertion'
   | 'disjointWith'
   | 'equivalentClass';
 
@@ -105,7 +106,10 @@ export const ISOLATED_CONCEPT_NODE_TYPE = 'glossaryTermIsolated';
 export const CONCEPT_NODE_TYPE = 'ontologyConcept';
 
 const RELATION_TYPE_BY_KIND: Record<
-  Exclude<OntologyRelationKind, 'restriction' | 'objectProperty'>,
+  Exclude<
+    OntologyRelationKind,
+    'restriction' | 'objectProperty' | 'objectAssertion'
+  >,
   string
 > = {
   subClassOf: 'isA',
@@ -223,6 +227,24 @@ export const getModelRelations = (
     if (!from || axiom.deleted) {
       return;
     }
+    if (
+      axiom.axiomType === AxiomType.ObjectPropertyAssertion &&
+      axiom.propertyIri &&
+      axiom.targetIri
+    ) {
+      const to = conceptByIri.get(axiom.targetIri);
+      if (to) {
+        relations.push({
+          axiom,
+          from,
+          to,
+          key: `assertion:${axiom.id}`,
+          kind: 'objectAssertion',
+          property: propertyByIri.get(axiom.propertyIri),
+          propertyIri: axiom.propertyIri,
+        });
+      }
+    }
     const namedKind = NAMED_AXIOM_KINDS[axiom.axiomType];
     if (namedKind) {
       namedClassesOf(axiom).forEach((classIri, index) => {
@@ -293,7 +315,9 @@ export const getModelRelations = (
 export const getModelRelationLabel = (
   relation: OntologyModelRelation
 ): string =>
-  relation.kind === 'restriction' || relation.kind === 'objectProperty'
+  relation.kind === 'restriction' ||
+  relation.kind === 'objectProperty' ||
+  relation.kind === 'objectAssertion'
     ? getRelationPropertyLabel(relation)
     : RELATION_TYPE_BY_KIND[relation.kind];
 

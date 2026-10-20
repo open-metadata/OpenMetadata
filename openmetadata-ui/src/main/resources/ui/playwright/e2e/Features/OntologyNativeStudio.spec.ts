@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { SearchIndex } from '../../../src/enums/search.enum';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../src/generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
@@ -29,6 +30,7 @@ import {
   readGraphEdges,
   readNodePositions,
 } from '../../utils/ontologyStudio';
+import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -36,6 +38,120 @@ test.describe(
   'Native Ontology Studio',
   { tag: ['@Features', '@Governance'] },
   () => {
+    test('explores all native ontologies and chooses a publication owner', async ({
+      isolatedUserPage: page,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const ontologies: Ontology[] = [];
+      const concepts: OntologyConcept[] = [];
+      try {
+        for (const suffix of ['sales', 'finance']) {
+          const name = `pw_native_entry_${suffix}_${uuid()}`;
+          const ontology = await okJson<Ontology>(
+            await api.post('/api/v1/ontologies', {
+              data: { name, iri: `urn:${name}`, namespace: `urn:${name}:` },
+            }),
+            'Create native entry fixture'
+          );
+          ontologies.push(ontology);
+          concepts.push(
+            await okJson<OntologyConcept>(
+              await api.post('/api/v1/ontologyConcepts', {
+                data: {
+                  name: 'EntryConcept',
+                  ontology: ontology.fullyQualifiedName,
+                  conceptType: 'OWL_CLASS',
+                },
+              }),
+              'Create native concept fixture'
+            )
+          );
+        }
+        await test.step('Explore the native aggregate and open the concept owner', async () => {
+          await page.goto('/governance/ontology');
+          await expect(
+            page.getByTestId('ontology-scope-menu-trigger')
+          ).toHaveAttribute('data-scope-key', 'ontology:all');
+          await expect(page.getByTestId('all-ontologies-graph')).toBeVisible();
+          await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
+          await expect(
+            page.getByTestId('ontology-library-trigger')
+          ).toBeVisible();
+          await page.getByTestId('submode-tab-tree').click();
+          const owner = ontologies[1];
+          await page
+            .getByTestId('ontology-tree-term-' + concepts[1].id)
+            .click();
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText(concepts[1].iri);
+          await page.getByTestId('submode-tab-graph').click();
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toContainText(concepts[1].iri);
+          await page.getByTestId('mode-tab-edit').click();
+          await expect(page).toHaveURL(new RegExp('concept=' + concepts[1].id));
+          await expect(page).toHaveURL(new RegExp('ontology=' + owner.id));
+        });
+        await test.step('Choose the publication target from the default route', async () => {
+          await page.goto('/governance/ontology');
+          await page.getByTestId('ontology-publication-trigger').click();
+          await expect(
+            page.getByTestId('ontology-publication-picker')
+          ).toBeVisible();
+          await page
+            .getByTestId('ontology-publication-select-' + ontologies[0].id)
+            .click();
+          await expect(
+            page.getByTestId('ontology-publication-modal')
+          ).toContainText(ontologies[0].name);
+          await expect(
+            page.getByTestId('ontology-publication-tab-changes')
+          ).toBeVisible();
+          await page.getByTestId('ontology-publication-tab-releases').click();
+          await expect(
+            page.getByTestId('ontology-publication-tab-releases')
+          ).toHaveAttribute('aria-selected', 'true');
+        });
+        await test.step('Choose another publication owner without changing the workspace', async () => {
+          await page.keyboard.press('Escape');
+          await expect(
+            page.getByTestId('ontology-publication-modal')
+          ).toHaveCount(0);
+          await page.getByTestId('ontology-publication-trigger').click();
+          await page
+            .getByTestId('ontology-publication-select-' + ontologies[1].id)
+            .click();
+          await expect(
+            page.getByTestId('ontology-publication-modal')
+          ).toContainText(ontologies[1].name);
+          await expect(
+            page.getByTestId('ontology-publication-modal')
+          ).not.toContainText(ontologies[0].name);
+          await expect(
+            page.getByTestId('ontology-scope-menu-trigger')
+          ).toHaveAttribute('data-scope-key', 'ontology:all');
+        });
+        await test.step('Keep the explicit glossary experience available', async () => {
+          await page.goto('/governance/ontology?scope=glossary:all');
+          await expect(
+            page.getByTestId('ontology-scope-menu-trigger')
+          ).toHaveAttribute('data-scope-key', 'glossary:all');
+          await expect(
+            page.getByTestId('ontology-library-trigger')
+          ).toBeVisible();
+        });
+      } finally {
+        for (const ontology of ontologies)
+          await deleteFixtureEntity(
+            api,
+            '/api/v1/ontologies/' +
+              ontology.id +
+              '?recursive=true&hardDelete=true'
+          );
+      }
+    });
+
     test('authors a native model through the shared View, Edit, and Query shell', async ({
       isolatedUserPage: page,
       freshUserPage: { user: reviewer },
@@ -46,6 +162,14 @@ test.describe(
       let ontology: Ontology | undefined;
 
       try {
+        await waitForSearchIndexed(
+          api,
+          reviewer.responseData.name,
+          SearchIndex.USER,
+          {
+            matchBy: 'nameOrDisplayName',
+          }
+        );
         await test.step('Create a native ontology from the shared scope menu', async () => {
           await page.goto('/governance/ontology');
           await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
@@ -220,6 +344,7 @@ test.describe(
           ).toContainText('customer number');
 
           await inspector.getByTestId('ontology-add-relationship').click();
+          await clickIgnoringToasts(page.getByTestId('relation-type-isA'));
           const target = inspector.getByLabel('Target');
           await scrollIntoViewAndSettle(target);
           await selectOptionWithRetry(
@@ -232,7 +357,9 @@ test.describe(
               new URL(response.url()).pathname === '/api/v1/ontologyAxioms' &&
               response.request().method() === 'POST'
           );
-          await clickIgnoringToasts(page.getByTestId('relation-type-isA'));
+          await clickIgnoringToasts(
+            inspector.getByTestId('ontology-relationship-submit')
+          );
           const hierarchy = await okJson<OntologyAxiom>(
             await axiomCreated,
             'Create a subclass relation in Studio'

@@ -29,8 +29,10 @@ import {
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import {
   DataPropertyInput,
+  getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
   getModelRelationLabel,
@@ -50,22 +52,26 @@ import {
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import OntologyConceptAssets from './OntologyConceptAssets';
+import OntologyPropertyBindings from './OntologyPropertyBindings';
 
 interface OntologyConceptInspectorProps {
   readonly concept: OntologyConcept;
   readonly model: OntologyStudioModel;
   readonly relations: OntologyModelRelation[];
-  readonly canAddProperty: boolean;
-  readonly canAddRelation: boolean;
-  readonly canCreateRelationType: boolean;
-  readonly relationTypeGroups: RelationTypeOptionGroup[];
-  readonly onAddProperty: (input: DataPropertyInput) => Promise<boolean>;
-  readonly onAddRelation: (
+  readonly canAddProperty?: boolean;
+  readonly canAddRelation?: boolean;
+  readonly canCreateRelationType?: boolean;
+  readonly relationTypeGroups?: RelationTypeOptionGroup[];
+  readonly onAddProperty?: (input: DataPropertyInput) => Promise<boolean>;
+  readonly onAddRelation?: (
     targetId: string,
     relationType: string
   ) => Promise<boolean>;
   readonly onClose: () => void;
   readonly onEdit?: () => void;
+  readonly onEditMappings?: () => void;
+  readonly canEditBindings?: boolean;
   readonly onSelectConcept: (concept: OntologyConcept) => void;
 }
 
@@ -231,19 +237,20 @@ const RelationAuthoring = ({
 }: RelationAuthoringProps) => {
   const { t } = useTranslation();
   const [targetId, setTargetId] = useState('');
+  const [relationType, setRelationType] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const targetConcepts = useMemo(
     () => model.concepts.filter((candidate) => candidate.id !== concept.id),
     [concept.id, model.concepts]
   );
-  const target = targetConcepts.find((candidate) => candidate.id === targetId);
 
-  const save = async (relationType: string) => {
+  const save = async () => {
     setIsSaving(true);
     const saved = await onSave(targetId, relationType);
     setIsSaving(false);
     if (saved) {
       setTargetId('');
+      setRelationType('');
       onClose();
     }
   };
@@ -269,39 +276,65 @@ const RelationAuthoring = ({
       className="tw:rounded-lg tw:border tw:border-dashed tw:border-brand tw:bg-secondary tw:p-3"
       direction="col"
       gap={3}>
-      <Select
-        className="tw:w-full"
-        isDisabled={isSaving}
-        items={targetConcepts.map((candidate) => ({
-          id: candidate.id,
-          label: candidate.displayName ?? candidate.name,
-        }))}
-        label={t('label.target')}
-        size="sm"
-        value={targetId}
-        onChange={(key) => setTargetId(String(key))}>
-        {(item) => (
-          <Select.Item id={item.id} key={item.id} label={item.label} />
-        )}
-      </Select>
-      {target && !isSaving ? (
+      {relationType ? (
+        <>
+          <Box align="center" gap={2}>
+            <Badge color="brand" size="sm" type="pill-color">
+              {groups
+                .flatMap((group) => group.options)
+                .find((option) => option.id === relationType)?.label ??
+                humanizeName(relationType.replace(/^new:/, ''))}
+            </Badge>
+            <Button
+              color="link-gray"
+              size="xs"
+              onPress={() => setRelationType('')}>
+              {t('label.change')}
+            </Button>
+          </Box>
+          <Select
+            className="tw:w-full"
+            isDisabled={isSaving}
+            items={targetConcepts.map((candidate) => ({
+              id: candidate.id,
+              label: candidate.displayName ?? candidate.name,
+            }))}
+            label={t('label.target')}
+            size="sm"
+            value={targetId}
+            onChange={(key) => setTargetId(String(key))}>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select>
+          <Box gap={2}>
+            <Button
+              data-testid="ontology-relationship-submit"
+              isDisabled={!targetId}
+              isLoading={isSaving}
+              size="xs"
+              onPress={() => void save()}>
+              {t('label.add')}
+            </Button>
+            <Button
+              color="secondary"
+              isDisabled={isSaving}
+              size="xs"
+              onPress={onClose}>
+              {t('label.cancel')}
+            </Button>
+          </Box>
+        </>
+      ) : (
         <RelationshipTypePicker
           canCreateType={canCreateRelationType}
           groups={groups}
           sourceLabel={concept.displayName ?? concept.name}
-          targetLabel={target.displayName ?? target.name}
+          targetLabel={t('label.target')}
           onCancel={onClose}
-          onSelect={(relationType) => void save(relationType)}
+          onSelect={setRelationType}
         />
-      ) : null}
-      {isSaving ? (
-        <Typography role="status">{t('label.saving')}</Typography>
-      ) : null}
-      {!target ? (
-        <Button color="secondary" size="xs" onPress={onClose}>
-          {t('label.cancel')}
-        </Button>
-      ) : null}
+      )}
     </Box>
   );
 };
@@ -310,18 +343,25 @@ const OntologyConceptInspector = ({
   concept,
   model,
   relations,
-  canAddProperty,
-  canAddRelation,
-  canCreateRelationType,
-  relationTypeGroups,
+  canAddProperty = false,
+  canAddRelation = false,
+  canCreateRelationType = false,
+  relationTypeGroups = [],
   onAddProperty,
   onAddRelation,
   onClose,
   onEdit,
+  onEditMappings,
+  canEditBindings = false,
   onSelectConcept,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
+  const bindings = useOntologyConceptBindings(concept.id);
+  const ancestors = useMemo(
+    () => getConceptAncestors(relations, concept.id),
+    [relations, concept.id]
+  );
   const properties = useMemo(
     () => getConceptPropertyRows(model, relations, concept),
     [concept, model, relations]
@@ -332,9 +372,161 @@ const OntologyConceptInspector = ({
   );
   const mappings = concept.conceptMappings ?? [];
 
+  const renderProperties = () => (
+    <InspectorSection testId="ontology-concept-properties">
+      <InspectorSectionHeading
+        count={properties.length}
+        label={t('label.property-plural')}
+      />
+      {ancestors.length > 0 ? (
+        <Box align="center" gap={1} wrap="wrap">
+          <Typography color="secondary" size="text-xs">
+            {t('label.inherited-from')}
+          </Typography>
+          {ancestors.map((ancestor) => (
+            <Button
+              color="link-color"
+              key={ancestor.id}
+              size="xs"
+              onPress={() => onSelectConcept(ancestor)}>
+              {ancestor.displayName ?? ancestor.name}
+            </Button>
+          ))}
+        </Box>
+      ) : null}
+      {bindings.data ? (
+        <Typography color="secondary" size="text-xs">
+          {t('label.ontology-properties-bound', {
+            count: properties.filter(({ property }) =>
+              bindings.data?.assets.some((asset) =>
+                asset.columns.some(
+                  (column) =>
+                    column.propertyId === property.id &&
+                    column.state === 'resolved'
+                )
+              )
+            ).length,
+            total: properties.length,
+          })}
+        </Typography>
+      ) : null}
+      {properties.length > 0 ? (
+        <InspectorList>
+          {properties.map(({ datatype, inheritedFrom, property }) => (
+            <InspectorRow key={property.id}>
+              <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+                <Box align="center" gap={2}>
+                  <Typography
+                    className="tw:font-mono tw:text-primary"
+                    size="text-sm"
+                    weight="medium">
+                    {getPropertyLabel(property)}
+                  </Typography>
+                  {property.isIdentifier ? (
+                    <Badge color="warning" size="sm" type="pill-color">
+                      {t('label.identifier')}
+                    </Badge>
+                  ) : null}
+                </Box>
+                {inheritedFrom ? (
+                  <Typography color="secondary" size="text-xs">
+                    {t('label.inherited')} ·{' '}
+                    {inheritedFrom.displayName ?? inheritedFrom.name}
+                  </Typography>
+                ) : null}
+                <OntologyPropertyBindings
+                  bindings={bindings}
+                  canEdit={canEditBindings}
+                  conceptId={concept.id}
+                  key={concept.id}
+                  propertyId={property.id}
+                />
+              </Box>
+              <Typography
+                className="tw:font-mono tw:text-utility-brand-700"
+                size="text-xs"
+                weight="semibold">
+                {datatype}
+              </Typography>
+            </InspectorRow>
+          ))}
+        </InspectorList>
+      ) : (
+        <InspectorEmptyText>
+          {t('message.no-data-available')}
+        </InspectorEmptyText>
+      )}
+      {onAddProperty ? (
+        <PropertyAuthoring
+          isAvailable={canAddProperty}
+          isOpen={authoring === 'property'}
+          key={concept.id}
+          onClose={() => setAuthoring(undefined)}
+          onOpen={() => setAuthoring('property')}
+          onSave={onAddProperty}
+        />
+      ) : null}
+    </InspectorSection>
+  );
+
+  const renderRelationships = () => (
+    <InspectorSection testId="ontology-concept-relationships">
+      <InspectorSectionHeading
+        count={conceptRelations.length}
+        label={t('label.relationship-plural')}
+      />
+      {conceptRelations.length > 0 ? (
+        <InspectorList>
+          {conceptRelations.map(({ direction, other, relation }) => (
+            <InspectorRow key={`${direction}:${relation.key}`}>
+              {direction === 'outgoing' ? (
+                <Badge color="brand" size="sm" type="pill-color">
+                  {humanizeName(getModelRelationLabel(relation))}
+                </Badge>
+              ) : null}
+              <Button
+                noTextPadding
+                className="tw:min-w-0 tw:flex-1 tw:justify-start"
+                color="tertiary"
+                data-testid={`ontology-concept-relation-${other.id}`}
+                onPress={() => onSelectConcept(other)}>
+                <span className="tw:truncate">
+                  {other.displayName ?? other.name}
+                </span>
+              </Button>
+              {direction === 'incoming' ? (
+                <Badge color="brand" size="sm" type="pill-color">
+                  {humanizeName(getModelRelationLabel(relation))}
+                </Badge>
+              ) : null}
+            </InspectorRow>
+          ))}
+        </InspectorList>
+      ) : (
+        <InspectorEmptyText>
+          {t('message.no-data-available')}
+        </InspectorEmptyText>
+      )}
+      {onAddRelation ? (
+        <RelationAuthoring
+          canCreateRelationType={canCreateRelationType}
+          concept={concept}
+          groups={relationTypeGroups}
+          isAvailable={canAddRelation}
+          isOpen={authoring === 'relation'}
+          key={concept.id}
+          model={model}
+          onClose={() => setAuthoring(undefined)}
+          onOpen={() => setAuthoring('relation')}
+          onSave={onAddRelation}
+        />
+      ) : null}
+    </InspectorSection>
+  );
+
   return (
     <aside
-      className="tw:flex tw:h-full tw:w-96 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-primary"
+      className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
       data-testid="ontology-concept-inspector">
       <Box
         align="center"
@@ -367,18 +559,18 @@ const OntologyConceptInspector = ({
       </Box>
 
       <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5"
+        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4"
         direction="col"
-        gap={5}>
+        gap={3}>
         <Box direction="col" gap={2}>
-          <Typography as="h2" size="text-xl" weight="semibold">
+          <Typography as="h2" size="text-lg" weight="semibold">
             {concept.displayName ?? concept.name}
           </Typography>
           <Typography
             ellipsis
             className="tw:font-mono tw:text-xs"
             color="secondary">
-            {concept.fullyQualifiedName}
+            {concept.iri}
           </Typography>
           <Box gap={2} wrap="wrap">
             <Badge color="brand" size="sm" type="pill-color">
@@ -395,110 +587,9 @@ const OntologyConceptInspector = ({
           </Typography>
         </Box>
 
-        <InspectorSection testId="ontology-concept-properties">
-          <InspectorSectionHeading
-            count={properties.length}
-            label={t('label.property-plural')}
-          />
-          {properties.length > 0 ? (
-            <InspectorList>
-              {properties.map(({ datatype, inheritedFrom, property }) => (
-                <InspectorRow key={property.id}>
-                  <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
-                    <Box align="center" gap={2}>
-                      <Typography
-                        className="tw:font-mono tw:text-primary"
-                        size="text-sm"
-                        weight="medium">
-                        {getPropertyLabel(property)}
-                      </Typography>
-                      {property.isIdentifier ? (
-                        <Badge color="warning" size="sm" type="pill-color">
-                          {t('label.identifier')}
-                        </Badge>
-                      ) : null}
-                    </Box>
-                    {inheritedFrom ? (
-                      <Typography color="secondary" size="text-xs">
-                        {t('label.inherited')} ·{' '}
-                        {inheritedFrom.displayName ?? inheritedFrom.name}
-                      </Typography>
-                    ) : null}
-                  </Box>
-                  <Typography
-                    className="tw:font-mono tw:text-utility-brand-700"
-                    size="text-xs"
-                    weight="semibold">
-                    {datatype}
-                  </Typography>
-                </InspectorRow>
-              ))}
-            </InspectorList>
-          ) : (
-            <InspectorEmptyText>
-              {t('message.no-data-available')}
-            </InspectorEmptyText>
-          )}
-          <PropertyAuthoring
-            isAvailable={canAddProperty}
-            isOpen={authoring === 'property'}
-            key={concept.id}
-            onClose={() => setAuthoring(undefined)}
-            onOpen={() => setAuthoring('property')}
-            onSave={onAddProperty}
-          />
-        </InspectorSection>
+        {renderProperties()}
 
-        <InspectorSection testId="ontology-concept-relationships">
-          <InspectorSectionHeading
-            count={conceptRelations.length}
-            label={t('label.relationship-plural')}
-          />
-          {conceptRelations.length > 0 ? (
-            <InspectorList>
-              {conceptRelations.map(({ direction, other, relation }) => (
-                <InspectorRow key={`${direction}:${relation.key}`}>
-                  {direction === 'outgoing' ? (
-                    <Badge color="brand" size="sm" type="pill-color">
-                      {humanizeName(getModelRelationLabel(relation))}
-                    </Badge>
-                  ) : null}
-                  <Button
-                    noTextPadding
-                    className="tw:min-w-0 tw:flex-1 tw:justify-start"
-                    color="tertiary"
-                    data-testid={`ontology-concept-relation-${other.id}`}
-                    onPress={() => onSelectConcept(other)}>
-                    <span className="tw:truncate">
-                      {other.displayName ?? other.name}
-                    </span>
-                  </Button>
-                  {direction === 'incoming' ? (
-                    <Badge color="brand" size="sm" type="pill-color">
-                      {humanizeName(getModelRelationLabel(relation))}
-                    </Badge>
-                  ) : null}
-                </InspectorRow>
-              ))}
-            </InspectorList>
-          ) : (
-            <InspectorEmptyText>
-              {t('message.no-data-available')}
-            </InspectorEmptyText>
-          )}
-          <RelationAuthoring
-            canCreateRelationType={canCreateRelationType}
-            concept={concept}
-            groups={relationTypeGroups}
-            isAvailable={canAddRelation}
-            isOpen={authoring === 'relation'}
-            key={concept.id}
-            model={model}
-            onClose={() => setAuthoring(undefined)}
-            onOpen={() => setAuthoring('relation')}
-            onSave={onAddRelation}
-          />
-        </InspectorSection>
+        {renderRelationships()}
 
         <InspectorSection testId="ontology-concept-mappings">
           <InspectorSectionHeading
@@ -527,7 +618,22 @@ const OntologyConceptInspector = ({
               {t('message.no-data-available')}
             </InspectorEmptyText>
           )}
+          {onEditMappings ? (
+            <Button
+              color="secondary"
+              data-testid="ontology-add-mapping"
+              iconLeading={Plus}
+              size="xs"
+              onPress={onEditMappings}>
+              {t('label.add-entity', { entity: t('label.mapping') })}
+            </Button>
+          ) : null}
         </InspectorSection>
+        <OntologyConceptAssets
+          canEdit={canEditBindings}
+          conceptId={concept.id}
+          key={concept.id}
+        />
       </Box>
     </aside>
   );

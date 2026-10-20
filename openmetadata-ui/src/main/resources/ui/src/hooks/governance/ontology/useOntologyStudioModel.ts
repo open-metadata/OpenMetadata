@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query';
-import { PagingResponse } from 'Models';
 import { useMemo } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
 import {
@@ -19,6 +18,7 @@ import {
   listOntologyConcepts,
   listOntologyProperties,
 } from '../../../rest/ontologyAPI';
+import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
 import {
   buildOntologyStudioGraph,
   getModelRelations,
@@ -31,30 +31,129 @@ const PAGE_SIZE = 1000;
 const MAX_DEFINITIONS = 10000;
 const MAX_DEFINITION_PAGES = MAX_DEFINITIONS / PAGE_SIZE;
 
-const listAllPages = async <T>(
-  loadPage: (after?: string) => Promise<PagingResponse<T[]>>
-): Promise<T[]> => {
-  const items: T[] = [];
-  const cursors = new Set<string>();
-  let after: string | undefined;
+class AggregateCapacityError extends Error {}
 
-  for (let pageNumber = 0; pageNumber < MAX_DEFINITION_PAGES; pageNumber++) {
-    const page = await loadPage(after);
-    items.push(...page.data);
+// shortcut: larger catalogs require a server aggregate; users can always open one ontology.
+const MAX_AGGREGATE_ONTOLOGIES = 20;
+const MAX_AGGREGATE_DEFINITIONS = 2000;
 
-    const next = page.paging.after;
-    if (!next) {
-      return items;
+const loadOntologyStudioModel = async (
+  ontology: Ontology,
+  signal: AbortSignal,
+  consume?: (count: number) => void
+): Promise<OntologyStudioModel> => {
+  const loadPages: typeof listAllPages = (loadPage, maxPages) =>
+    listAllPages(async (after) => {
+      const page = await loadPage(after);
+      consume?.(page.data.length);
+
+      return page;
+    }, maxPages);
+  const params = {
+    ontology: ontology.fullyQualifiedName,
+    limit: PAGE_SIZE,
+  };
+  const [concepts, properties, axioms] = await Promise.all([
+    loadPages(
+      (after) =>
+        listOntologyConcepts(
+          {
+            ...params,
+            after,
+            fields: 'conceptMappings,owners,subClasses,superClasses',
+          },
+          signal
+        ),
+      MAX_DEFINITION_PAGES
+    ),
+    loadPages(
+      (after) => listOntologyProperties({ ...params, after }, signal),
+      MAX_DEFINITION_PAGES
+    ),
+    loadPages(
+      (after) =>
+        listOntologyAxioms(ontology.id, { limit: PAGE_SIZE, after }, signal),
+      MAX_DEFINITION_PAGES
+    ),
+  ]);
+
+  return { ontology, axioms, concepts, properties };
+};
+
+export const useAllOntologyStudioModels = (
+  ontologies: Ontology[],
+  enabled: boolean
+) => {
+  const query = useQuery({
+    queryKey: [
+      ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
+      'all',
+      ontologies.map(({ id }) => id),
+    ],
+    enabled,
+    gcTime: 30_000,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      if (ontologies.length > MAX_AGGREGATE_ONTOLOGIES) {
+        throw new AggregateCapacityError();
+      }
+      let total = 0;
+      for (const ontology of ontologies) {
+        if (!ontology.fullyQualifiedName) {
+          throw new Error('Missing ontology name');
+        }
+        const params = { ontology: ontology.fullyQualifiedName, limit: 1 };
+        const pages = await Promise.all([
+          listOntologyConcepts(params, signal),
+          listOntologyProperties(params, signal),
+          listOntologyAxioms(ontology.id, { limit: 1 }, signal),
+        ]);
+        for (const page of pages) {
+          if (!Number.isFinite(page.paging.total) || page.paging.total < 0) {
+            throw new Error('Missing definition count');
+          }
+          total += page.paging.total;
+        }
+        if (total > MAX_AGGREGATE_DEFINITIONS) {
+          throw new AggregateCapacityError();
+        }
+      }
+      let loaded = 0;
+      const consume = (count: number) => {
+        loaded += count;
+        if (loaded > MAX_AGGREGATE_DEFINITIONS) {
+          throw new AggregateCapacityError();
+        }
+      };
+      const models: OntologyStudioModel[] = [];
+      for (const ontology of ontologies) {
+        models.push(await loadOntologyStudioModel(ontology, signal, consume));
+      }
+
+      return models;
+    },
+  });
+  const graph = useMemo(() => {
+    if (!query.data || query.isError) {
+      return null;
     }
-    if (cursors.has(next)) {
-      throw new Error('Ontology model pagination returned a repeated cursor');
-    }
-    cursors.add(next);
-    after = next;
-  }
+    const graphs = query.data.map((model) => buildOntologyStudioGraph(model));
 
-  // shortcut: each definition type is capped; add server-side graph paging before raising it.
-  throw new Error('Ontology model exceeds the definition loading limit');
+    return {
+      nodes: graphs.flatMap((graph) => graph.nodes),
+      edges: graphs.flatMap((graph) => graph.edges),
+    };
+  }, [query.data, query.isError]);
+
+  return {
+    graph,
+    models: query.isError ? undefined : query.data,
+    isLoading: enabled && query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    isTooLarge: query.error instanceof AggregateCapacityError,
+    refetch: query.refetch,
+  };
 };
 
 /** Loads a native ontology's working concepts, properties and axioms as one model. */
@@ -63,40 +162,19 @@ export const useOntologyStudioModel = (ontology?: Ontology) => {
     queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id],
     enabled: Boolean(ontology),
     gcTime: 30_000,
+    staleTime: 30_000,
     retry: false,
     queryFn: async ({ signal }) => {
       if (!ontology) {
         throw new Error('Missing ontology');
       }
-      const params = {
-        ontology: ontology.fullyQualifiedName,
-        limit: PAGE_SIZE,
-      };
-      const [concepts, properties, axioms] = await Promise.all([
-        listAllPages((after) =>
-          listOntologyConcepts(
-            {
-              ...params,
-              after,
-              fields: 'conceptMappings,owners,subClasses,superClasses',
-            },
-            signal
-          )
-        ),
-        listAllPages((after) =>
-          listOntologyProperties({ ...params, after }, signal)
-        ),
-        listAllPages((after) =>
-          listOntologyAxioms(ontology.id, { limit: PAGE_SIZE, after }, signal)
-        ),
-      ]);
 
-      return { axioms, concepts, properties };
+      return loadOntologyStudioModel(ontology, signal);
     },
   });
 
   const model = useMemo<OntologyStudioModel | undefined>(
-    () => (ontology && query.data ? { ontology, ...query.data } : undefined),
+    () => (ontology && query.data ? { ...query.data, ontology } : undefined),
     [ontology, query.data]
   );
   const relations = useMemo(

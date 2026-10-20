@@ -54,6 +54,8 @@ export async function navigateToOntologyStudio(page: Page) {
   );
 
   await sidebarClick(page, SidebarItem.ONTOLOGY_EXPLORER);
+  await page.getByTestId('ontology-scope-menu-trigger').click();
+  await page.getByTestId('ontology-scope-all-glossaries').click();
   await glossaryResponse;
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
 }

@@ -19,6 +19,7 @@ import {
   releaseOntologyEditLock,
   renewOntologyEditLock,
 } from '../../../rest/ontologyAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useOntologyEditLease } from './useOntologyEditLease';
 
 jest.mock('../../../rest/ontologyAPI', () => ({
@@ -27,6 +28,8 @@ jest.mock('../../../rest/ontologyAPI', () => ({
   releaseOntologyEditLock: jest.fn(),
   renewOntologyEditLock: jest.fn(),
 }));
+
+jest.mock('../../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
 
 const mockAcquire = acquireOntologyEditLock as jest.MockedFunction<
   typeof acquireOntologyEditLock
@@ -52,7 +55,7 @@ const LOCK: OntologyEditLock = {
   version: 1,
 };
 
-describe('useOntologyEditLease', () => {
+describe('./useOntologyEditLease', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.useFakeTimers();
@@ -127,4 +130,29 @@ describe('useOntologyEditLease', () => {
     expect(result.current.state).toBe('idle');
     expect(mockAcquire).not.toHaveBeenCalled();
   });
+
+  it.each([404, 500])(
+    'settles cleanup when release returns %s',
+    async (status) => {
+      mockAcquire.mockResolvedValue(LOCK);
+      mockRelease.mockRejectedValue({
+        isAxiosError: true,
+        response: { status },
+      });
+      const { result, unmount } = renderHook(() =>
+        useOntologyEditLease({
+          isActive: true,
+          resourceId: 'draft-id',
+          resourceType: 'ontologyChangeSet',
+        })
+      );
+      await waitFor(() => expect(result.current.isOwned).toBe(true));
+      await act(async () => {
+        unmount();
+      });
+
+      expect(mockRelease).toHaveBeenCalledTimes(1);
+      expect(showErrorToast).toHaveBeenCalledTimes(status === 404 ? 0 : 1);
+    }
+  );
 });

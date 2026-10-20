@@ -72,6 +72,7 @@ import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipT
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
+import OntologyConceptDataGraph from '../OntologyGraphView/OntologyConceptDataGraph';
 
 const OntologyGraphG6 = lazy(
   () => import('../../../OntologyExplorer/OntologyGraphG6')
@@ -86,13 +87,15 @@ const FILTERS = {
 };
 const SETTINGS = { layout: LayoutType.Hierarchical, showEdgeLabels: true };
 const GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 interface OntologyGraphViewProps {
   readonly ontology: Ontology;
   readonly surface: 'graph' | 'tree';
   readonly createConceptRequestKey?: number;
   readonly isEditing?: boolean;
+  readonly selectedConceptId?: string;
+  readonly onSelectedConceptChange?: (id?: string) => void;
   readonly onRequestEdit?: () => void;
   readonly onStatsChange?: (stats: OntologyModelStats) => void;
   readonly onWorkingChange?: () => void;
@@ -114,6 +117,8 @@ const OntologyGraphView = ({
   surface,
   createConceptRequestKey = 0,
   isEditing = false,
+  selectedConceptId,
+  onSelectedConceptChange,
   onRequestEdit,
   onStatsChange,
   onWorkingChange,
@@ -122,17 +127,28 @@ const OntologyGraphView = ({
   const graphRef = useRef<OntologyGraphHandle>(null);
   const handledCreateConceptRequest = useRef(createConceptRequestKey);
   const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<string>();
+  const [graphMode, setGraphMode] = useState<'model' | 'data'>('model');
+  const [localSelectedId, setLocalSelectedId] = useState<string>();
+  const selectedId = onSelectedConceptChange
+    ? selectedConceptId
+    : localSelectedId;
+  const setSelectedId = onSelectedConceptChange ?? setLocalSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology);
   const groups = useMemo(
-    () => buildOntologyTreeGroups(graph, FILTERS, [], []),
-    [graph]
+    () =>
+      buildOntologyTreeGroups(
+        graph,
+        { ...FILTERS, searchQuery: search },
+        [],
+        []
+      ),
+    [graph, search]
   );
   const metrics = useMemo(
-    () => buildOntologyTreeMetrics(graph, FILTERS),
-    [graph]
+    () => buildOntologyTreeMetrics(graph, { ...FILTERS, searchQuery: search }),
+    [graph, search]
   );
   const health = useMemo(
     () => getOntologyHealthSummary(graph, FILTERS),
@@ -357,7 +373,7 @@ const OntologyGraphView = ({
       setSelectedId(undefined);
       setConceptEditor({});
     }
-  }, [createConceptRequestKey, isEditing]);
+  }, [createConceptRequestKey, isEditing, setSelectedId]);
 
   if (isError) {
     return (
@@ -379,50 +395,54 @@ const OntologyGraphView = ({
     onRequestEdit?.();
   };
 
-  const renderSidebar = () => {
+  const renderConceptEditor = () => {
     const editingConcept = model.concepts.find(
       (concept) => concept.id === conceptEditor?.conceptId
     );
 
+    return (
+      <aside
+        className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
+        data-testid="ontology-concept-authoring">
+        <Box
+          align="center"
+          className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
+          gap={2}>
+          <Typography className="tw:flex-1" size="text-sm" weight="semibold">
+            {editingConcept
+              ? t('label.edit-entity', { entity: t('label.concept') })
+              : t('label.add-entity', { entity: t('label.concept') })}
+          </Typography>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="ontology-concept-authoring-close"
+            icon={XClose}
+            size="sm"
+            tooltip={t('label.close')}
+            onClick={() => setConceptEditor(undefined)}
+          />
+        </Box>
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
+          <OntologyConceptEditor
+            canEdit={editingConcept ? canEditConcept : canCreateConcept}
+            concept={editingConcept}
+            key={editingConcept?.id ?? 'new'}
+            ontology={ontology}
+            onSaved={(saved) => {
+              setSelectedId(saved.id);
+              setConceptEditor(undefined);
+              onWorkingChange?.();
+              void refetch();
+            }}
+          />
+        </div>
+      </aside>
+    );
+  };
+
+  const renderSidebar = () => {
     if (conceptEditor && isEditing) {
-      return (
-        <aside
-          className="tw:flex tw:h-full tw:w-96 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-primary"
-          data-testid="ontology-concept-authoring">
-          <Box
-            align="center"
-            className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-            gap={2}>
-            <Typography className="tw:flex-1" size="text-sm" weight="semibold">
-              {editingConcept
-                ? t('label.edit-entity', { entity: t('label.concept') })
-                : t('label.add-entity', { entity: t('label.concept') })}
-            </Typography>
-            <ButtonUtility
-              color="tertiary"
-              data-testid="ontology-concept-authoring-close"
-              icon={XClose}
-              size="sm"
-              tooltip={t('label.close')}
-              onClick={() => setConceptEditor(undefined)}
-            />
-          </Box>
-          <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
-            <OntologyConceptEditor
-              canEdit={editingConcept ? canEditConcept : canCreateConcept}
-              concept={editingConcept}
-              key={editingConcept?.id ?? 'new'}
-              ontology={ontology}
-              onSaved={(saved) => {
-                setSelectedId(saved.id);
-                setConceptEditor(undefined);
-                onWorkingChange?.();
-                void refetch();
-              }}
-            />
-          </div>
-        </aside>
-      );
+      return renderConceptEditor();
     }
 
     if (selected) {
@@ -431,6 +451,7 @@ const OntologyGraphView = ({
           canAddProperty={canCreateProperty}
           canAddRelation={canCreateAxiom}
           canCreateRelationType={canCreateProperty}
+          canEditBindings={isEditing && canEditConcept}
           concept={selected}
           model={model}
           relationTypeGroups={relationTypeGroups}
@@ -448,6 +469,11 @@ const OntologyGraphView = ({
                 }
               : undefined
           }
+          onEditMappings={
+            isEditing && canEditConcept
+              ? () => setConceptEditor({ conceptId: selected.id })
+              : undefined
+          }
           onSelectConcept={(concept) => setSelectedId(concept.id)}
         />
       );
@@ -462,69 +488,118 @@ const OntologyGraphView = ({
     );
   };
 
+  const renderSurface = () => {
+    if (surface === 'tree') {
+      return (
+        <OntologyTreeView
+          density="compact"
+          emptyMessage={t('label.no-entity-found', {
+            entity: t('label.concept-plural'),
+          })}
+          groups={groups}
+          metrics={metrics}
+          selectedNodeId={selectedId}
+          onConnect={connectNode}
+          onSelect={selectNode}
+        />
+      );
+    }
+    if (graphMode === 'data') {
+      return (
+        <OntologyConceptDataGraph
+          concept={selected}
+          key={selected?.id}
+          model={model}
+        />
+      );
+    }
+
+    return (
+      <>
+        <div aria-hidden="true" className={GRAPH_BACKDROP_CLASS} />
+        <Suspense
+          fallback={
+            <Typography role="status">{t('label.loading')}</Typography>
+          }>
+          <OntologyGraphG6
+            studioMode
+            canCreateRelationType={canCreateProperty}
+            edges={graph.edges}
+            glossaries={[]}
+            glossaryColorMap={{}}
+            graphSearchHighlight={searchHighlight}
+            isEditMode={canCreateAxiom}
+            nodes={graph.nodes}
+            ref={graphRef}
+            relationColors={relationColors}
+            relationTypeGroups={relationTypeGroups}
+            selectedNodeId={selectedId}
+            settings={SETTINGS}
+            onCreateRelation={async (fromId, toId, relationType) => {
+              await createRelation(fromId, toId, relationType);
+            }}
+            onNodeClick={selectNode}
+            onNodeDoubleClick={selectNode}
+            onPaneClick={() => setSelectedId(undefined)}
+          />
+        </Suspense>
+        <Card
+          className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg"
+          data-testid="ontology-graph-controls"
+          variant="elevated">
+          <OntologyControlButtons
+            isLoading={isFetching}
+            onFitToScreen={() => void graphRef.current?.fitView()}
+            onRefresh={() => void refetch()}
+            onZoomIn={() => graphRef.current?.zoomIn()}
+            onZoomOut={() => graphRef.current?.zoomOut()}
+          />
+        </Card>
+      </>
+    );
+  };
+
+  const renderGraphMode = () =>
+    surface === 'graph' ? (
+      <Box
+        className="tw:absolute tw:top-3.5 tw:right-4 tw:z-10 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1"
+        gap={1}>
+        {(['model', 'data'] as const).map((mode) => (
+          <Button
+            aria-pressed={graphMode === mode}
+            color={graphMode === mode ? 'primary' : 'tertiary'}
+            data-testid={`ontology-graph-mode-${mode}`}
+            key={mode}
+            size="xs"
+            onPress={() => setGraphMode(mode)}>
+            {t(`label.${mode}`)}
+          </Button>
+        ))}
+      </Box>
+    ) : null;
+
   return (
     <div className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden">
-      <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:overflow-hidden">
-        {surface === 'tree' ? (
-          <OntologyTreeView
-            groups={groups}
-            metrics={metrics}
-            onConnect={connectNode}
-            onSelect={selectNode}
+      <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
+        <div
+          className={
+            surface === 'tree'
+              ? 'tw:px-6 tw:pt-4'
+              : 'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6'
+          }>
+          <Input
+            aria-label={t('label.find-concept')}
+            className="tw:w-54"
+            icon={Search}
+            inputDataTestId="ontology-graph-search"
+            placeholder={`${t('label.find-concept')}…`}
+            size="sm"
+            value={search}
+            onChange={setSearch}
           />
-        ) : (
-          <>
-            <div aria-hidden="true" className={GRAPH_BACKDROP_CLASS} />
-            <Input
-              aria-label={t('label.find-concept')}
-              className="tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:w-[216px]"
-              icon={Search}
-              inputDataTestId="ontology-graph-search"
-              placeholder={`${t('label.find-concept')}…`}
-              size="sm"
-              value={search}
-              onChange={setSearch}
-            />
-            <Suspense
-              fallback={
-                <Typography role="status">{t('label.loading')}</Typography>
-              }>
-              <OntologyGraphG6
-                studioMode
-                canCreateRelationType={canCreateProperty}
-                edges={graph.edges}
-                glossaries={[]}
-                glossaryColorMap={{}}
-                graphSearchHighlight={searchHighlight}
-                isEditMode={canCreateAxiom}
-                nodes={graph.nodes}
-                ref={graphRef}
-                relationColors={relationColors}
-                relationTypeGroups={relationTypeGroups}
-                selectedNodeId={selectedId}
-                settings={SETTINGS}
-                onCreateRelation={async (fromId, toId, relationType) => {
-                  await createRelation(fromId, toId, relationType);
-                }}
-                onNodeClick={selectNode}
-                onNodeDoubleClick={selectNode}
-                onPaneClick={() => setSelectedId(undefined)}
-              />
-            </Suspense>
-            <Card
-              className="tw:absolute tw:bottom-4 tw:left-4 tw:z-6 tw:flex tw:items-center tw:rounded-lg"
-              data-testid="ontology-graph-controls"
-              variant="elevated">
-              <OntologyControlButtons
-                isLoading={isFetching}
-                onFitToScreen={() => void graphRef.current?.fitView()}
-                onRefresh={() => void refetch()}
-                onZoomIn={() => graphRef.current?.zoomIn()}
-                onZoomOut={() => graphRef.current?.zoomOut()}
-              />
-            </Card>
-          </>
-        )}
+        </div>
+        {renderGraphMode()}
+        {renderSurface()}
       </div>
       {renderSidebar()}
     </div>

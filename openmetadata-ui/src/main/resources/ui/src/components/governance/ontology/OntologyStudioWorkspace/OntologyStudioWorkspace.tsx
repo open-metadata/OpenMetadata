@@ -32,6 +32,8 @@ interface OntologyStudioWorkspaceProps {
   initialDraftId?: string;
   mode: 'view' | 'edit' | 'definitions' | 'review';
   viewSurface: 'graph' | 'tree';
+  selectedConceptId?: string;
+  onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
@@ -50,6 +52,8 @@ const OntologyStudioWorkspace = ({
   initialDraftId,
   mode,
   viewSurface,
+  selectedConceptId,
+  onSelectedConceptChange,
   onSaved,
   onRequestEdit,
   onStatsChange,
@@ -126,8 +130,10 @@ const OntologyStudioWorkspace = ({
             isEditing={mode === 'edit'}
             key={revision}
             ontology={ontology}
+            selectedConceptId={selectedConceptId}
             surface={viewSurface}
             onRequestEdit={onRequestEdit}
+            onSelectedConceptChange={onSelectedConceptChange}
             onStatsChange={onStatsChange}
             onWorkingChange={onWorkingChange}
           />

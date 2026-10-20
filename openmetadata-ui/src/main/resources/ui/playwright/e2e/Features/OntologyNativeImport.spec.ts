@@ -84,14 +84,15 @@ test.describe(
               .endsWith(`/api/v1/ontologies/${ontology.id}/releases`) &&
             response.request().method() === 'POST'
         );
-        await page
-          .getByRole('button', { name: 'Capture release', exact: true })
-          .click();
+        await page.getByTestId('ontology-capture-release').click();
         const response = await capture;
         expect(response.ok()).toBeTruthy();
         expect(response.request().postDataJSON()).toEqual({
           expectedActivationRevision: state.activationRevision,
           expectedWorkingRevision: state.workingRevision,
+          expectedLatestReleaseRevision: state.lastReleaseRevision,
+          versionBump: 'major',
+          releaseNotes: '',
         });
       } finally {
         await deleteFixtureEntity(

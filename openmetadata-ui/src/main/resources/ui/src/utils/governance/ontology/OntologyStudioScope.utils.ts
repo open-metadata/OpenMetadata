@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-/** What the Studio shows: one native ontology, or the glossaries' business vocabulary. */
+/** URL-owned native and business-vocabulary scopes. */
 export type OntologyStudioScope =
+  | { readonly kind: 'allOntologies' }
   | { readonly kind: 'ontology'; readonly ontologyId: string }
   | { readonly kind: 'glossaries'; readonly glossaryId?: string };
 
@@ -21,10 +22,18 @@ export const ALL_GLOSSARIES_SCOPE: OntologyStudioScope = { kind: 'glossaries' };
 const ONTOLOGY_PREFIX = 'ontology:';
 const GLOSSARY_PREFIX = 'glossary:';
 
+export const ALL_ONTOLOGIES_SCOPE_KEY = 'ontology:all';
+export const ALL_ONTOLOGIES_SCOPE: OntologyStudioScope = {
+  kind: 'allOntologies',
+};
+
 export const ALL_GLOSSARIES_SCOPE_KEY = `${GLOSSARY_PREFIX}all`;
 export const NEW_ONTOLOGY_SCOPE_KEY = `${ONTOLOGY_PREFIX}new`;
 
 export const getScopeKey = (scope: OntologyStudioScope): string => {
+  if (scope.kind === 'allOntologies') {
+    return ALL_ONTOLOGIES_SCOPE_KEY;
+  }
   if (scope.kind === 'ontology') {
     return `${ONTOLOGY_PREFIX}${scope.ontologyId}`;
   }
@@ -36,6 +45,12 @@ export const getScopeKey = (scope: OntologyStudioScope): string => {
 
 /** The scope a menu key selects; undefined for actions such as creating an ontology. */
 export const parseScopeKey = (key: string): OntologyStudioScope | undefined => {
+  if (key === ALL_ONTOLOGIES_SCOPE_KEY) {
+    return ALL_ONTOLOGIES_SCOPE;
+  }
+  if (key === ONTOLOGY_PREFIX || key === GLOSSARY_PREFIX) {
+    return undefined;
+  }
   if (key === ALL_GLOSSARIES_SCOPE_KEY) {
     return ALL_GLOSSARIES_SCOPE;
   }
@@ -56,3 +71,21 @@ export const isOntologyScope = (
   scope: OntologyStudioScope
 ): scope is Extract<OntologyStudioScope, { kind: 'ontology' }> =>
   scope.kind === 'ontology';
+
+export const getStudioScope = (
+  params: URLSearchParams
+): OntologyStudioScope => {
+  const ontologyId = params.get('ontology');
+  if (ontologyId) {
+    return { kind: 'ontology', ontologyId };
+  }
+  const explicitScope = parseScopeKey(params.get('scope') ?? '');
+  if (explicitScope?.kind === 'glossaries') {
+    return explicitScope;
+  }
+  if (params.get('scope')?.startsWith(GLOSSARY_PREFIX)) {
+    return ALL_GLOSSARIES_SCOPE;
+  }
+
+  return params.has('draft') ? ALL_GLOSSARIES_SCOPE : ALL_ONTOLOGIES_SCOPE;
+};

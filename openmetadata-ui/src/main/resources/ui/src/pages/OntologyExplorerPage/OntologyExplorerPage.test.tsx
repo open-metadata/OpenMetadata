@@ -33,7 +33,7 @@ import OntologyExplorerPage from './OntologyExplorerPage';
 
 const render = renderWithQueryClient;
 
-let mockSearchParams = new URLSearchParams();
+let mockSearchParams = new URLSearchParams('scope=glossary:all');
 let mockUseRealRouter = false;
 
 jest.mock('react-router-dom', () => ({
@@ -41,11 +41,14 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: () =>
     mockUseRealRouter
       ? jest.requireActual('react-router-dom').useSearchParams()
-      : [mockSearchParams, jest.fn()],
+      : jest.requireActual('react').useState(mockSearchParams),
 }));
 
 jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
+  getOntologyConceptBindings: jest
+    .fn()
+    .mockResolvedValue({ revision: 0, assets: [] }),
   getOntology: jest.fn(),
   getOntologyWorkingDiff: jest.fn(),
   listOntologyAxioms: jest.fn(),
@@ -64,7 +67,23 @@ jest.mock('../../components/OntologyExplorer/OntologyGraphG6', () => {
 
   return {
     __esModule: true,
-    default: forwardRef(() => <div data-testid="native-canvas" />),
+    default: forwardRef(
+      (
+        {
+          nodes,
+          onNodeClick,
+        }: import('../../components/OntologyExplorer/OntologyExplorer.interface').OntologyGraphProps,
+        _ref
+      ) => (
+        <div data-testid="native-canvas">
+          {nodes.map((node) => (
+            <button key={node.id} onClick={() => onNodeClick(node)}>
+              {node.label}
+            </button>
+          ))}
+        </div>
+      )
+    ),
   };
 });
 
@@ -98,10 +117,6 @@ interface LibraryMockProps {
   onOpenGlossary?: (glossaryName: string) => void;
 }
 
-interface PublicationModalMockProps {
-  onClose: () => void;
-}
-
 const mockOntologyExplorer = jest.fn<void, [ExplorerMockProps]>();
 const mockQueryConsole = jest.fn<void, [QueryConsoleMockProps]>();
 const mockUseOntologyAiCapability = jest.fn(() => ({
@@ -119,6 +134,9 @@ const mockUseOntologyStudioScopes = jest.fn(() => ({
   glossaries: [] as Glossary[],
   isError: false,
   isLoading: false,
+  isOntologyError: false,
+  isOntologyLoading: false,
+  refetchOntologies: jest.fn(),
   ontologies: [] as Ontology[],
   refetch: jest.fn(),
 }));
@@ -162,13 +180,9 @@ jest.mock('../../hooks/governance/ontology/useOntologyStudioScopes', () => ({
   }),
 }));
 
-jest.mock(
-  '../../components/OntologyExplorer/hooks/useOntologyEditLease',
-  () => ({
-    useOntologyEditLease: (options: unknown) =>
-      mockUseOntologyEditLease(options),
-  })
-);
+jest.mock('../../hooks/governance/ontology/useOntologyEditLease', () => ({
+  useOntologyEditLease: (options: unknown) => mockUseOntologyEditLease(options),
+}));
 
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -273,16 +287,10 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal',
+  '../../components/governance/ontology/OntologyReleasePanel/OntologyReleasePanel',
   () => ({
     __esModule: true,
-    default: ({ onClose }: PublicationModalMockProps) => (
-      <div data-testid="ontology-publication-modal">
-        <button type="button" onClick={onClose}>
-          Close publication
-        </button>
-      </div>
-    ),
+    default: () => <div data-testid="ontology-release-panel" />,
   })
 );
 
@@ -311,7 +319,7 @@ describe('OntologyExplorerPage', () => {
     jest.clearAllMocks();
     (useEntityPermissions as jest.Mock).mockReturnValue({ canEditAll: true });
     mockUseRealRouter = false;
-    mockSearchParams = new URLSearchParams();
+    mockSearchParams = new URLSearchParams('scope=glossary:all');
     mockUseAuth.mockReturnValue({
       isAdminUser: true,
       isFirstTimeUser: false,
@@ -325,6 +333,9 @@ describe('OntologyExplorerPage', () => {
       glossaries: [],
       isError: false,
       isLoading: false,
+      isOntologyError: false,
+      isOntologyLoading: false,
+      refetchOntologies: jest.fn(),
       ontologies: [],
       refetch: jest.fn(),
     });
@@ -370,6 +381,9 @@ describe('OntologyExplorerPage', () => {
       glossaries: [],
       isError: false,
       isLoading: false,
+      isOntologyError: false,
+      isOntologyLoading: false,
+      refetchOntologies: jest.fn(),
       ontologies: [nativeOntology],
       refetch: jest.fn(),
     });
@@ -401,6 +415,78 @@ describe('OntologyExplorerPage', () => {
       </MemoryRouter>
     );
   };
+
+  it('shows the empty native catalog without glossary controls', async () => {
+    mockSearchParams = new URLSearchParams();
+    render(<OntologyExplorerPage />);
+
+    expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();
+    expect(mockOntologyExplorer).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+
+    expect(screen.getByTestId('ontology-publication-picker')).toHaveTextContent(
+      'message.no-data-available'
+    );
+  });
+
+  it('shows native list failure without falling back to glossary data', async () => {
+    mockSearchParams = new URLSearchParams();
+    mockUseOntologyStudioScopes.mockReturnValue({
+      glossaries: [],
+      isError: true,
+      isLoading: false,
+      isOntologyError: true,
+      isOntologyLoading: false,
+      ontologies: [],
+      refetch: jest.fn(),
+      refetchOntologies: jest.fn(),
+    });
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('all-ontologies-load-error')).toBeVisible();
+    expect(mockOntologyExplorer).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-publication-trigger')).toBeDisabled();
+  });
+
+  it('defaults to a read-only native graph and opens the owning ontology', async () => {
+    renderNativeStudio('');
+
+    expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
+    expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-edit-ontology')
+    ).not.toBeInTheDocument();
+    expect(mockOntologyExplorer).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
+    fireEvent.click(screen.getByTestId('ontology-concept-edit'));
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'ontology=native-sales'
+      )
+    );
+  });
+
+  it('chooses a publication owner from All ontologies before opening changes', async () => {
+    renderNativeStudio('');
+    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+
+    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-publication-select-native-sales')
+    );
+
+    expect(
+      await screen.findByTestId('ontology-publication-tab-changes')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-publication-modal')).toHaveTextContent(
+      nativeOntology.name
+    );
+    expect(screen.getByTestId('location')).not.toHaveTextContent('ontology=');
+  });
 
   it('switches from a glossary draft to a native tree and releases the glossary lease', async () => {
     renderNativeStudio('?draft=glossary-draft');
@@ -510,6 +596,9 @@ describe('OntologyExplorerPage', () => {
       glossaries: [],
       isError: false,
       isLoading: false,
+      isOntologyError: false,
+      isOntologyLoading: false,
+      refetchOntologies: jest.fn(),
       ontologies: [nativeOntology, otherOntology],
       refetch: jest.fn(),
     });
@@ -591,8 +680,8 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('uses the native console after leaving the glossary visual query builder', async () => {
-    renderNativeStudio('');
+  it('preserves the builder surface when changing from glossary to native scope', async () => {
+    renderNativeStudio('?scope=glossary:all');
     fireEvent.click(screen.getByTestId('mode-tab-query'));
     fireEvent.click(screen.getByTestId('submode-tab-builder'));
 
@@ -603,11 +692,11 @@ describe('OntologyExplorerPage', () => {
     await screen.findByTestId('native-canvas');
     fireEvent.click(screen.getByTestId('mode-tab-query'));
 
-    expect(screen.getByTestId('sparql-query-console')).toBeVisible();
+    expect(screen.getByTestId('visual-query-builder')).toBeVisible();
     expect(
-      screen.queryByTestId('visual-query-builder')
+      screen.queryByTestId('sparql-query-console')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('submode-tab-console')).toHaveAttribute(
+    expect(screen.getByTestId('submode-tab-builder')).toHaveAttribute(
       'aria-selected',
       'true'
     );
@@ -650,7 +739,7 @@ describe('OntologyExplorerPage', () => {
 
     expect(screen.getByTestId('ontology-publication-modal')).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close publication' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
 
     expect(
       screen.queryByTestId('ontology-publication-modal')
@@ -1051,7 +1140,7 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-memory-review-panel')).toBeVisible();
     expect(screen.queryByTestId('mode-tab-review')).not.toBeInTheDocument();
 
-    mockSearchParams = new URLSearchParams();
+    mockSearchParams = new URLSearchParams('scope=glossary:all');
   });
 
   it('does not expose an AI affordance when the effective flag is disabled', () => {

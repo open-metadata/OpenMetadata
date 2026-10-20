@@ -54,7 +54,9 @@ describe('OntologyImportExportMenu', () => {
       screen.queryByTestId('ontology-import-export-modal-stub')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
 
     expect(
       screen.getByTestId('ontology-import-export-modal-stub')
@@ -71,7 +73,9 @@ describe('OntologyImportExportMenu', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
 
     expect(
       screen.getByTestId('ontology-release-export-modal-stub')

@@ -23,12 +23,12 @@ export const ONTOLOGY_RELEASE_EXPORT_FORMATS = [
   {
     descriptionKey: 'message.ontology-format-owl-description',
     format: 'rdfxml',
-    labelKey: 'label.rdf-xml-rdf',
+    labelKey: 'label.rdf-xml',
   },
   {
-    descriptionKey: 'message.ontology-format-skos-description',
+    descriptionKey: 'message.ontology-format-turtle-description',
     format: 'turtle',
-    labelKey: 'label.turtle-ttl',
+    labelKey: 'label.turtle',
   },
   {
     descriptionKey: 'message.ontology-format-jsonld-description',
@@ -38,7 +38,7 @@ export const ONTOLOGY_RELEASE_EXPORT_FORMATS = [
   {
     descriptionKey: 'message.ontology-format-n-triples-description',
     format: 'ntriples',
-    labelKey: 'label.n-triples-nt',
+    labelKey: 'label.n-triples',
   },
 ] satisfies readonly OntologyReleaseExportFormatOption[];
 

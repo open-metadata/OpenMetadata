@@ -311,6 +311,40 @@ describe('OntologyStudioModel utils', () => {
     ).toEqual(['Customer', 'Party']);
   });
 
+  it('keeps SKOS broader as an exact object assertion without introducing class inheritance', () => {
+    const libraryModel = {
+      ...model,
+      properties: [],
+      axioms: [
+        {
+          ...model.axioms[0],
+          id: 'skos-broader',
+          axiomType: AxiomType.ObjectPropertyAssertion,
+          subjectIri: customer.iri,
+          propertyIri: 'http://www.w3.org/2004/02/skos/core#broader',
+          targetIri: party.iri,
+          expressions: [],
+        },
+      ],
+    };
+    const relations = getModelRelations(libraryModel);
+
+    expect(relations).toEqual([
+      expect.objectContaining({
+        kind: 'objectAssertion',
+        propertyIri: 'http://www.w3.org/2004/02/skos/core#broader',
+        from: customer,
+        to: party,
+      }),
+    ]);
+    expect(buildOntologyStudioGraph(libraryModel).edges[0]).toMatchObject({
+      from: customer.id,
+      to: party.id,
+      relationType: 'broader',
+    });
+    expect(getConceptAncestors(relations, customer.id)).toEqual([]);
+  });
+
   it('lists own data properties, then those inherited from superclasses', () => {
     const rows = getConceptPropertyRows(
       model,

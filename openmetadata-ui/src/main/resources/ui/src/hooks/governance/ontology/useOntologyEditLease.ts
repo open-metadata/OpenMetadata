@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { isAxiosError } from 'axios';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { OntologyEditLock } from '../../../generated/type/ontologyEditLock';
 import {
   acquireOntologyEditLock,
@@ -20,6 +22,7 @@ import {
   renewOntologyEditLock,
 } from '../../../rest/ontologyAPI';
 import { generateUUID } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 
 const LEASE_SECONDS = 60;
 const HEARTBEAT_MILLIS = 20_000;
@@ -42,6 +45,7 @@ export const useOntologyEditLease = ({
   resourceId,
   resourceType,
 }: UseOntologyEditLeaseOptions) => {
+  const { t } = useTranslation();
   const sessionId = useRef(generateUUID());
   const lock = useRef<OntologyEditLock>();
   const [visibleLock, setVisibleLock] = useState<OntologyEditLock>();
@@ -51,6 +55,7 @@ export const useOntologyEditLease = ({
   stateRef.current = state;
 
   useEffect(() => {
+    const leaseSessionId = sessionId.current;
     let isCurrent = true;
     let heartbeat: number | undefined;
 
@@ -59,8 +64,25 @@ export const useOntologyEditLease = ({
       leaseSeconds: LEASE_SECONDS,
       resourceId: resourceId ?? '',
       resourceType,
-      sessionId: sessionId.current,
+      sessionId: leaseSessionId,
     });
+
+    const release = async () => {
+      try {
+        await releaseOntologyEditLock(
+          resourceType,
+          resourceId ?? '',
+          leaseSessionId
+        );
+      } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 404) {
+          return;
+        }
+        showErrorToast(
+          isAxiosError(error) ? error : t('server.unexpected-error')
+        );
+      }
+    };
 
     const publishOwnedLock = (nextLock: OntologyEditLock) => {
       lock.current = nextLock;
@@ -95,11 +117,7 @@ export const useOntologyEditLease = ({
           publishOwnedLock(renewed);
           heartbeat = window.setTimeout(renew, HEARTBEAT_MILLIS);
         } else {
-          await releaseOntologyEditLock(
-            resourceType,
-            resourceId ?? '',
-            sessionId.current
-          );
+          await release();
         }
       } catch {
         // A transient heartbeat failure or a version drift should self-heal by
@@ -124,11 +142,7 @@ export const useOntologyEditLease = ({
           publishOwnedLock(acquired);
           heartbeat = window.setTimeout(renew, HEARTBEAT_MILLIS);
         } else {
-          await releaseOntologyEditLock(
-            resourceType,
-            resourceId ?? '',
-            sessionId.current
-          );
+          await release();
         }
       } catch {
         if (isCurrent) {
@@ -149,15 +163,11 @@ export const useOntologyEditLease = ({
       isCurrent = false;
       window.clearTimeout(heartbeat);
       if (lock.current && resourceId) {
-        void releaseOntologyEditLock(
-          resourceType,
-          resourceId,
-          sessionId.current
-        );
+        void release();
       }
       lock.current = undefined;
     };
-  }, [isActive, resourceId, resourceType, retryCount]);
+  }, [isActive, resourceId, resourceType, retryCount, t]);
 
   return {
     isOwned: state === 'owned',

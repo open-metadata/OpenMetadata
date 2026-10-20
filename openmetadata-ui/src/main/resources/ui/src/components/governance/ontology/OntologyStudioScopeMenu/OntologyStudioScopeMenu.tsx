@@ -25,6 +25,7 @@ import { useOntologyConceptCounts } from '../../../../hooks/governance/ontology/
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   ALL_GLOSSARIES_SCOPE_KEY,
+  ALL_ONTOLOGIES_SCOPE_KEY,
   getScopeKey,
   NEW_ONTOLOGY_SCOPE_KEY,
   OntologyStudioScope,
@@ -133,6 +134,17 @@ const OntologyStudioScopeMenu = ({
             <Dropdown.SectionHeader className={SECTION_HEADER_CLASS}>
               {t('label.ontology-plural')}
             </Dropdown.SectionHeader>
+            <Dropdown.Item
+              data-testid="ontology-scope-all-ontologies"
+              icon={Globe01}
+              id={ALL_ONTOLOGIES_SCOPE_KEY}
+              label={t('label.all-entity', {
+                entity: t('label.ontology-plural').toLocaleLowerCase(),
+              })}
+              textValue={t('label.all-entity', {
+                entity: t('label.ontology-plural').toLocaleLowerCase(),
+              })}
+            />
             {ontologies.map((ontology) => {
               const name = getEntityName(ontology);
               const count = conceptCounts[ontology.id];

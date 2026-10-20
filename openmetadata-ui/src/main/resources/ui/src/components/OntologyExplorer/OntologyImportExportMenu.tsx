@@ -12,7 +12,7 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
-import { Download01 } from '@openmetadata/ui-core-components/icons';
+import { SwitchVertical01 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Glossary } from '../../generated/entity/data/glossary';
@@ -71,13 +71,14 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   return (
     <>
       <Button
+        aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={Download01}
-        size="xs"
-        onPress={() => setIsOpen(true)}>
-        {t('label.import-export')}
-      </Button>
+        iconLeading={SwitchVertical01}
+        size="sm"
+        tooltip={t('label.import-export')}
+        onPress={() => setIsOpen(true)}
+      />
       {modal}
     </>
   );
