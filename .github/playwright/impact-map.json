@@ -318,6 +318,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
