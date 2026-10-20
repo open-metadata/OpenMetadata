@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ChevronRight, Column } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,8 +56,10 @@ const FeedFieldPath = ({
   }
 
   return (
-    <span
-      className="tw:inline-flex tw:min-w-0 tw:items-center tw:gap-1.5"
+    <Box
+      inline
+      align="center"
+      className="tw:min-w-0 tw:gap-1.5"
       data-testid="feed-field-path">
       {path?.child && <Separator />}
       {path?.child?.columnFqn && (
@@ -102,7 +104,7 @@ const FeedFieldPath = ({
           </Typography>
         </>
       )}
-    </span>
+    </Box>
   );
 };
 

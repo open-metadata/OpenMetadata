@@ -253,22 +253,25 @@ const ActivityFeedCardNew = ({
       );
     } else {
       return (
-        <span className="tw:inline-flex tw:min-w-0 tw:items-center tw:gap-1.5">
+        <Box inline align="center" className="tw:min-w-0 tw:gap-1.5">
           <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <div
-              className={classNames('text-sm flex-center gap-1', {
-                'max-one-line': !showThread,
-              })}>
+            <Box
+              align="center"
+              className="tw:min-w-0 text-sm"
+              gap={1}
+              justify="center">
               {searchClassBase.getEntityIcon(entityType ?? '') && (
-                <span className="d-inline-flex align-middle">
+                <Box inline align="center">
                   {searchClassBase.getEntityIcon(
                     entityType ?? '',
                     'tw:h-4 tw:w-4'
                   )}
-                </span>
+                </Box>
               )}
               <Link
-                className="break-word text-sm header-link"
+                className={classNames('break-word text-sm header-link', {
+                  'max-one-line': !showThread,
+                })}
                 data-testid="entity-link"
                 to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
                 <span>
@@ -277,14 +280,14 @@ const ActivityFeedCardNew = ({
                     : entityDisplayName(entityType, entityFQN)}
                 </span>
               </Link>
-            </div>
+            </Box>
           </EntityPopOverCard>
           <FeedFieldPath
             about={about}
             entityType={entityType}
             showField={!isActivityEvent}
           />
-        </span>
+        </Box>
       );
     }
   }, [
