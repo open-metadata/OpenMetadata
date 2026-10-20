@@ -54,6 +54,21 @@ on:
         required: false
         type: boolean
         default: true
+      changed_specs_only:
+        description: Run complete new or modified PostgreSQL specs on a PR.
+        required: false
+        type: boolean
+        default: false
+      pr_specs:
+        description: Collected PR spec files with public tests, after credential-only files are deferred.
+        required: false
+        type: string
+        default: ""
+      extra_specs:
+        description: Affected credential spec files selected from the complete queue candidate.
+        required: false
+        type: string
+        default: "[]"
       protocol:
         description: Application protocol used by Playwright (http | h2).
         required: false
@@ -140,11 +155,8 @@ on:
         value: ${{ jobs.prepare-playwright-fixture.result }}
       playwright_ci_result:
         description: Aggregate result of the sharded playwright-ci job.
-        value: ${{ jobs.playwright-ci.result }}
-    # No `secrets:` block: declaring it turns the reusable's secret access into
-    # a closed set. Callers use `secrets: inherit`, which requires the block
-    # to be absent so every caller-scoped secret (TEST_*, PLAYWRIGHT_*,
-    # E2E_SLACK_BOT_OAUTH_TOKEN, GITHUB_TOKEN) flows through unchanged.
+        value: ${{ github.event_name == 'pull_request' && jobs.playwright-pr-ci.result || jobs.playwright-ci.result }}
+    # Trusted callers inherit connector credentials; PR callers pass no secrets.
 
 permissions:
   actions: read
@@ -155,6 +167,8 @@ permissions:
 # reference below (docker compose file paths in the fixture builder, shard-run
 # diagnostics) resolves to the correct flavour without duplicating the ternary.
 env:
+  PLAYWRIGHT_SKIP_REQUIRES_SECRETS: ${{ github.event_name == 'pull_request' }}
+  PLAYWRIGHT_QUEUE_REQUIRES_SECRETS: ${{ github.event_name == 'merge_group' }}
   DB_COMPOSE_FILE: docker/development/docker-compose${{ inputs.database == 'postgresql' && '-postgres' || '' }}.yml
 
 concurrency:
@@ -168,8 +182,7 @@ concurrency:
   cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
-  # Playwright runs only in the merge queue (plus schedule / dispatch / main
-  # cache-warm pushes); callers skip this workflow on PR events.
+  # Callers start PR runs only when PostgreSQL specs changed.
   gate:
     runs-on: ubuntu-latest
     permissions: {}
@@ -182,7 +195,7 @@ jobs:
           EVENT: ${{ github.event_name }}
         run: |
           case "$EVENT" in
-            merge_group|schedule|workflow_dispatch|push) echo "should_run=true" >> "$GITHUB_OUTPUT" ;;
+            pull_request|merge_group|schedule|workflow_dispatch|push) echo "should_run=true" >> "$GITHUB_OUTPUT" ;;
             *) echo "should_run=false" >> "$GITHUB_OUTPUT" ;;
           esac
 
@@ -244,6 +257,7 @@ jobs:
               - '.github/scripts/merge_playwright_timings.py'
               - '.github/scripts/render_playwright_summary.cjs'
               - '.github/scripts/select_playwright_tests.py'
+              - '.github/scripts/generate_playwright_impact_map.py'
               - '.github/scripts/start_playwright_fast_environment.sh'
               - '.github/scripts/stop_playwright_fast_environment.sh'
               - '.github/scripts/summarize_playwright_requests.py'
@@ -264,7 +278,7 @@ jobs:
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
-      !github.event.pull_request.draft &&
+      (!github.event.pull_request.draft || inputs.changed_specs_only) &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
@@ -314,31 +328,13 @@ jobs:
     needs: [check-changes, cache-keys]
     runs-on: ubuntu-latest
     if: |
-      !github.event.pull_request.draft &&
+      (!github.event.pull_request.draft || inputs.changed_specs_only) &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     env:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
       BUNDLE_MODE: ${{ needs.cache-keys.outputs.bundle_mode }}
       BUILD_TOOLCHAIN: ${{ needs.cache-keys.outputs.toolchain }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
@@ -513,7 +509,7 @@ jobs:
     needs: check-changes
     runs-on: ubuntu-latest
     if: |
-      !github.event.pull_request.draft &&
+      (!github.event.pull_request.draft || inputs.changed_specs_only) &&
       (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
     outputs:
       mode: ${{ steps.select.outputs.mode }}
@@ -540,14 +536,43 @@ jobs:
         id: select
         env:
           ALL_FILES: ${{ steps.all-changes.outputs.all_changed_files }}
+          PR_SPECS: ${{ inputs.pr_specs }}
+          EXTRA_SPECS: ${{ inputs.extra_specs }}
+          EVENT_NAME: ${{ github.event_name }}
+          MERGE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MERGE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          CHANGED_SPECS_ONLY: ${{ inputs.changed_specs_only }}
         run: |
           mkdir -p "$RUNNER_TEMP/playwright-selection"
-          # shellcheck disable=SC2086
-          printf '%s\n' $ALL_FILES > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          if [[ "$EVENT_NAME" == 'merge_group' ]]; then
+            [[ -n "$MERGE_BASE_SHA" && -n "$MERGE_HEAD_SHA" ]] || {
+              echo 'Missing merge-group base or head SHA' >&2
+              exit 1
+            }
+            [[ "$(git rev-parse HEAD)" == "$MERGE_HEAD_SHA" ]] || {
+              echo 'The planner did not check out the merge-group candidate' >&2
+              exit 1
+            }
+            git diff --name-only --no-renames "$MERGE_BASE_SHA" "$MERGE_HEAD_SHA" \
+              > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          else
+            # shellcheck disable=SC2086
+            printf '%s\n' $ALL_FILES > "$RUNNER_TEMP/playwright-selection/changed-files.txt"
+          fi
+          python3 .github/scripts/generate_playwright_impact_map.py \
+            --output "$RUNNER_TEMP/playwright-selection/impact-map.generated.json"
+          spec_args=()
+          if [[ "$CHANGED_SPECS_ONLY" == 'true' ]]; then
+            spec_args=(--changed-specs-only)
+            if [[ -n "${PR_SPECS:-}" ]]; then spec_args+=(--pr-specs-json "$PR_SPECS"); fi
+          fi
           python3 .github/scripts/select_playwright_tests.py \
+            "${spec_args[@]}" \
+            --extra-specs-json "${EXTRA_SPECS:-[]}" \
             --event-name "${{ github.event_name }}" \
             --changed-files "$RUNNER_TEMP/playwright-selection/changed-files.txt" \
             --impact-map .github/playwright/impact-map.json \
+            --generated-impact-map "$RUNNER_TEMP/playwright-selection/impact-map.generated.json" \
             --full-suite "${{ inputs.full_suite }}" \
             --output "$RUNNER_TEMP/playwright-selection/selection.json" \
             --github-output "$GITHUB_OUTPUT"
@@ -558,10 +583,15 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: playwright-selection
-          path: ${{ runner.temp }}/playwright-selection/selection.json
+          path: |
+            ${{ runner.temp }}/playwright-selection/selection.json
+            ${{ runner.temp }}/playwright-selection/impact-map.generated.json
           retention-days: 1
 
   plan-playwright:
+    env:
+      PW_PROTOCOL: ${{ inputs.protocol }}
+      PLAYWRIGHT_RUN_CHANGED_NIGHTLY: ${{ inputs.changed_specs_only }}
     needs: [build, detect-changes]
     runs-on: ubuntu-latest
     outputs:
@@ -803,13 +833,19 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: "true"
+          PLAYWRIGHT_COLLECT_REQUIREMENTS: "true"
           PW_DEDICATED_INGESTION: "true"
           PW_DEDICATED_IMPORT_EXPORT: "true"
           PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
           PW_ENTITY_MATRIX: ${{ needs.detect-changes.outputs.entity_matrix }}
           PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
         run: |
+          extra_projects=()
+          if [[ "$PLAYWRIGHT_RUN_CHANGED_NIGHTLY" == 'true' ]]; then extra_projects+=(--project=changed-nightly); fi
+          if [[ "$PLAYWRIGHT_QUEUE_REQUIRES_SECRETS" == 'true' ]]; then extra_projects+=(--project=queue-credentials); fi
+          if [[ "$PW_PROTOCOL" == 'h2' ]]; then extra_projects+=(--project=chromium-h2); fi
           npx playwright test --list --reporter=json \
+            "${extra_projects[@]}" \
             --project=chromium \
             --project=Basic \
             --project="Data Insight" \
@@ -1353,7 +1389,7 @@ jobs:
     # `warm_caches_only` runs the pipeline for its cache side effects alone;
     # the shards are what makes it expensive and they prove nothing on a commit
     # the merge queue already tested.
-    if: ${{ !cancelled() && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
+    if: ${{ !cancelled() && github.event_name != 'pull_request' && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
     permissions:
       contents: read
@@ -1366,13 +1402,14 @@ jobs:
       PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
       PW_ENTITY_MATRIX: ${{ needs.detect-changes.outputs.entity_matrix }}
       PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
+      PLAYWRIGHT_RUN_CHANGED_NIGHTLY: ${{ inputs.changed_specs_only }}
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
       PW_SHARD_ID: ${{ matrix.shardId }}
       PW_PRESEEDED_STATE: "true"
-    strategy:
+    strategy: &playwright_shards
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan-playwright.outputs.matrix) }}
-    steps:
+    steps: &playwright_shard_steps
       - name: Mark shard start
         run: echo "PW_JOB_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
@@ -1691,54 +1728,67 @@ jobs:
           PW_WORKERS: ${{ matrix.workers }}
           PLAYWRIGHT_RETRIES: ${{ inputs.retries }}
           PLAYWRIGHT_IS_OSS: true
-          PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
-          PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
-          PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
-          PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
-          PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
-          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
-          PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
-          PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
-          PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
-          PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
-          PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
-          PLAYWRIGHT_BQ_CLIENT_ID: ${{ secrets.TEST_BQ_CLIENT_ID }}
-          PLAYWRIGHT_REDSHIFT_HOST: ${{ secrets.E2E_REDSHIFT_HOST_PORT }}
-          PLAYWRIGHT_REDSHIFT_USERNAME: ${{ secrets.E2E_REDSHIFT_USERNAME }}
-          PLAYWRIGHT_REDSHIFT_PASSWORD: ${{ secrets.E2E_REDSHIFT_PASSWORD }}
-          PLAYWRIGHT_REDSHIFT_DATABASE: ${{ secrets.TEST_REDSHIFT_DATABASE }}
-          PLAYWRIGHT_METABASE_USERNAME: ${{ secrets.TEST_METABASE_USERNAME }}
-          PLAYWRIGHT_METABASE_PASSWORD: ${{ secrets.TEST_METABASE_PASSWORD }}
-          PLAYWRIGHT_METABASE_DB_SERVICE_NAME: ${{ secrets.TEST_METABASE_DB_SERVICE_NAME }}
-          PLAYWRIGHT_METABASE_HOST_PORT: ${{ secrets.TEST_METABASE_HOST_PORT }}
-          PLAYWRIGHT_SUPERSET_USERNAME: ${{ secrets.TEST_SUPERSET_USERNAME }}
-          PLAYWRIGHT_SUPERSET_PASSWORD: ${{ secrets.TEST_SUPERSET_PASSWORD }}
-          PLAYWRIGHT_SUPERSET_HOST_PORT: ${{ secrets.TEST_SUPERSET_HOST_PORT }}
-          PLAYWRIGHT_KAFKA_BOOTSTRAP_SERVERS: ${{ secrets.TEST_KAFKA_BOOTSTRAP_SERVERS }}
-          PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL: ${{ secrets.TEST_KAFKA_SCHEMA_REGISTRY_URL }}
-          PLAYWRIGHT_GLUE_ACCESS_KEY: ${{ secrets.TEST_GLUE_ACCESS_KEY }}
-          PLAYWRIGHT_GLUE_SECRET_KEY: ${{ secrets.TEST_GLUE_SECRET_KEY }}
-          PLAYWRIGHT_GLUE_AWS_REGION: ${{ secrets.TEST_GLUE_AWS_REGION }}
-          PLAYWRIGHT_GLUE_ENDPOINT: ${{ secrets.TEST_GLUE_ENDPOINT }}
-          PLAYWRIGHT_GLUE_STORAGE_SERVICE: ${{ secrets.TEST_GLUE_STORAGE_SERVICE }}
-          PLAYWRIGHT_MYSQL_USERNAME: ${{ secrets.TEST_MYSQL_USERNAME }}
-          PLAYWRIGHT_MYSQL_PASSWORD: ${{ secrets.TEST_MYSQL_PASSWORD }}
-          PLAYWRIGHT_MYSQL_HOST_PORT: ${{ secrets.TEST_MYSQL_HOST_PORT }}
-          PLAYWRIGHT_MYSQL_DATABASE_SCHEMA: ${{ secrets.TEST_MYSQL_DATABASE_SCHEMA }}
-          PLAYWRIGHT_POSTGRES_USERNAME: ${{ secrets.TEST_POSTGRES_USERNAME }}
-          PLAYWRIGHT_POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
-          PLAYWRIGHT_POSTGRES_HOST_PORT: ${{ secrets.TEST_POSTGRES_HOST_PORT }}
-          PLAYWRIGHT_POSTGRES_DATABASE: ${{ secrets.TEST_POSTGRES_DATABASE }}
-          PLAYWRIGHT_AIRFLOW_HOST_PORT: ${{ secrets.TEST_AIRFLOW_HOST_PORT }}
-          PLAYWRIGHT_ML_MODEL_TRACKING_URI: ${{ secrets.TEST_ML_MODEL_TRACKING_URI }}
-          PLAYWRIGHT_ML_MODEL_REGISTRY_URI: ${{ secrets.TEST_ML_MODEL_REGISTRY_URI }}
-          PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID: ${{ secrets.TEST_S3_STORAGE_ACCESS_KEY_ID }}
-          PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY: ${{ secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY }}
-          PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ secrets.TEST_S3_STORAGE_END_POINT_URL }}
+          PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ github.event_name != 'pull_request' && secrets.TEST_SNOWFLAKE_USERNAME || '' }}
+          PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.TEST_SNOWFLAKE_PASSWORD || '' }}
+          PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ github.event_name != 'pull_request' && secrets.TEST_SNOWFLAKE_ACCOUNT || '' }}
+          PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ github.event_name != 'pull_request' && secrets.TEST_SNOWFLAKE_DATABASE || '' }}
+          PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ github.event_name != 'pull_request' && secrets.TEST_SNOWFLAKE_WAREHOUSE || '' }}
+          PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ github.event_name != 'pull_request' && secrets.TEST_SNOWFLAKE_PASSPHRASE || '' }}
+          PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ github.event_name != 'pull_request' && secrets.TEST_BQ_PRIVATE_KEY || '' }}
+          PLAYWRIGHT_BQ_PROJECT_ID: ${{ github.event_name != 'pull_request' && secrets.PLAYWRIGHT_BQ_PROJECT_ID || '' }}
+          PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ github.event_name != 'pull_request' && secrets.TEST_BQ_PRIVATE_KEY_ID || '' }}
+          PLAYWRIGHT_BQ_PROJECT_ID_TAXONOMY: ${{ github.event_name != 'pull_request' && secrets.TEST_BQ_PROJECT_ID_TAXONOMY || '' }}
+          PLAYWRIGHT_BQ_CLIENT_EMAIL: ${{ github.event_name != 'pull_request' && secrets.TEST_BQ_CLIENT_EMAIL || '' }}
+          PLAYWRIGHT_BQ_CLIENT_ID: ${{ github.event_name != 'pull_request' && secrets.TEST_BQ_CLIENT_ID || '' }}
+          PLAYWRIGHT_REDSHIFT_HOST: ${{ github.event_name != 'pull_request' && secrets.E2E_REDSHIFT_HOST_PORT || '' }}
+          PLAYWRIGHT_REDSHIFT_USERNAME: ${{ github.event_name != 'pull_request' && secrets.E2E_REDSHIFT_USERNAME || '' }}
+          PLAYWRIGHT_REDSHIFT_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.E2E_REDSHIFT_PASSWORD || '' }}
+          PLAYWRIGHT_REDSHIFT_DATABASE: ${{ github.event_name != 'pull_request' && secrets.TEST_REDSHIFT_DATABASE || '' }}
+          PLAYWRIGHT_METABASE_USERNAME: ${{ github.event_name != 'pull_request' && secrets.TEST_METABASE_USERNAME || '' }}
+          PLAYWRIGHT_METABASE_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.TEST_METABASE_PASSWORD || '' }}
+          PLAYWRIGHT_METABASE_DB_SERVICE_NAME: ${{ github.event_name != 'pull_request' && secrets.TEST_METABASE_DB_SERVICE_NAME || '' }}
+          PLAYWRIGHT_METABASE_HOST_PORT: ${{ github.event_name != 'pull_request' && secrets.TEST_METABASE_HOST_PORT || '' }}
+          PLAYWRIGHT_SUPERSET_USERNAME: ${{ github.event_name != 'pull_request' && secrets.TEST_SUPERSET_USERNAME || '' }}
+          PLAYWRIGHT_SUPERSET_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.TEST_SUPERSET_PASSWORD || '' }}
+          PLAYWRIGHT_SUPERSET_HOST_PORT: ${{ github.event_name != 'pull_request' && secrets.TEST_SUPERSET_HOST_PORT || '' }}
+          PLAYWRIGHT_KAFKA_BOOTSTRAP_SERVERS: ${{ github.event_name != 'pull_request' && secrets.TEST_KAFKA_BOOTSTRAP_SERVERS || '' }}
+          PLAYWRIGHT_KAFKA_SCHEMA_REGISTRY_URL: ${{ github.event_name != 'pull_request' && secrets.TEST_KAFKA_SCHEMA_REGISTRY_URL || '' }}
+          PLAYWRIGHT_GLUE_ACCESS_KEY: ${{ github.event_name != 'pull_request' && secrets.TEST_GLUE_ACCESS_KEY || '' }}
+          PLAYWRIGHT_GLUE_SECRET_KEY: ${{ github.event_name != 'pull_request' && secrets.TEST_GLUE_SECRET_KEY || '' }}
+          PLAYWRIGHT_GLUE_AWS_REGION: ${{ github.event_name != 'pull_request' && secrets.TEST_GLUE_AWS_REGION || '' }}
+          PLAYWRIGHT_GLUE_ENDPOINT: ${{ github.event_name != 'pull_request' && secrets.TEST_GLUE_ENDPOINT || '' }}
+          PLAYWRIGHT_GLUE_STORAGE_SERVICE: ${{ github.event_name != 'pull_request' && secrets.TEST_GLUE_STORAGE_SERVICE || '' }}
+          PLAYWRIGHT_MYSQL_USERNAME: ${{ github.event_name != 'pull_request' && secrets.TEST_MYSQL_USERNAME || '' }}
+          PLAYWRIGHT_MYSQL_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.TEST_MYSQL_PASSWORD || '' }}
+          PLAYWRIGHT_MYSQL_HOST_PORT: ${{ github.event_name != 'pull_request' && secrets.TEST_MYSQL_HOST_PORT || '' }}
+          PLAYWRIGHT_MYSQL_DATABASE_SCHEMA: ${{ github.event_name != 'pull_request' && secrets.TEST_MYSQL_DATABASE_SCHEMA || '' }}
+          PLAYWRIGHT_POSTGRES_USERNAME: ${{ github.event_name != 'pull_request' && secrets.TEST_POSTGRES_USERNAME || '' }}
+          PLAYWRIGHT_POSTGRES_PASSWORD: ${{ github.event_name != 'pull_request' && secrets.TEST_POSTGRES_PASSWORD || '' }}
+          PLAYWRIGHT_POSTGRES_HOST_PORT: ${{ github.event_name != 'pull_request' && secrets.TEST_POSTGRES_HOST_PORT || '' }}
+          PLAYWRIGHT_POSTGRES_DATABASE: ${{ github.event_name != 'pull_request' && secrets.TEST_POSTGRES_DATABASE || '' }}
+          PLAYWRIGHT_AIRFLOW_HOST_PORT: ${{ github.event_name != 'pull_request' && secrets.TEST_AIRFLOW_HOST_PORT || '' }}
+          PLAYWRIGHT_ML_MODEL_TRACKING_URI: ${{ github.event_name != 'pull_request' && secrets.TEST_ML_MODEL_TRACKING_URI || '' }}
+          PLAYWRIGHT_ML_MODEL_REGISTRY_URI: ${{ github.event_name != 'pull_request' && secrets.TEST_ML_MODEL_REGISTRY_URI || '' }}
+          PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID: ${{ github.event_name != 'pull_request' && secrets.TEST_S3_STORAGE_ACCESS_KEY_ID || '' }}
+          PLAYWRIGHT_S3_STORAGE_SECRET_ACCESS_KEY: ${{ github.event_name != 'pull_request' && secrets.TEST_S3_STORAGE_SECRET_ACCESS_KEY || '' }}
+          PLAYWRIGHT_S3_STORAGE_END_POINT_URL: ${{ github.event_name != 'pull_request' && secrets.TEST_S3_STORAGE_END_POINT_URL || '' }}
 
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify credential cases executed
+        if: ${{ always() && !cancelled() && github.event_name == 'merge_group' && steps.run-tests.outcome != 'skipped' }}
+        env:
+          SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
+        run: |
+          files=$(jq -c '.credentialFiles // []' "$SHARD_PLAN")
+          if [[ "$files" != '[]' ]]; then
+            ids=$(jq -c '.credentialTestIds' "$SHARD_PLAN")
+            python3 .github/scripts/verify_playwright_changed_specs.py \
+              --require-tag @requires-secrets --specs-json "$files" --required-test-ids-json "$ids" \
+              --report-glob 'openmetadata-ui/src/main/resources/ui/playwright/output/results.json'
+          fi
 
       - name: Verify shard coverage
         id: verify-shard-coverage
@@ -2029,6 +2079,32 @@ jobs:
         continue-on-error: true
         run: ./.github/scripts/stop_playwright_fast_environment.sh
 
+  # PR jobs never bind the secret-bearing test environment. The shared steps
+  # receive only public fixtures and a read-only built-in token.
+  playwright-pr-ci:
+    needs:
+      [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && !inputs.warm_caches_only && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
+    permissions:
+      contents: read
+    env:
+      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
+      # workers, retries). The production default of 5 active sessions per user would evict the
+      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
+      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
+      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
+      PW_EXECUTION_MODE: ${{ needs.detect-changes.outputs.mode }}
+      PW_ENTITY_MATRIX: ${{ needs.detect-changes.outputs.entity_matrix }}
+      PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
+      PLAYWRIGHT_RUN_CHANGED_NIGHTLY: ${{ inputs.changed_specs_only }}
+      PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
+      PW_SHARD_ID: ${{ matrix.shardId }}
+      PW_PRESEEDED_STATE: "true"
+    strategy: *playwright_shards
+    steps: *playwright_shard_steps
+
   # Optional Slack summary — preserved from the old nightly workflows so a
   # caller (mysql-nightly, on-demand postgres release-branch run) can still
   # post to the E2E channel by passing `send_slack_notification: true`.
@@ -2037,7 +2113,7 @@ jobs:
   slack-notify:
     name: Slack notification
     needs: [playwright-ci]
-    if: ${{ always() && inputs.send_slack_notification }}
+    if: ${{ always() && github.event_name != 'pull_request' && inputs.send_slack_notification }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

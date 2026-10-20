@@ -7,9 +7,11 @@ import argparse
 import fnmatch
 import json
 import os
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
 from typing import Any
-
 
 UI_ROOT = "openmetadata-ui/src/main/resources/ui/"
 RUNNABLE_SPEC_PREFIX = f"{UI_ROOT}playwright/e2e/"
@@ -59,13 +61,15 @@ def parse_args() -> argparse.Namespace:
         "--generated-impact-map",
         type=Path,
         help=(
-            "Optional path to the auto-generated source→spec map produced by "
-            ".github/scripts/generate_playwright_impact_map.py. Its mappings are "
-            "appended to the hand-authored map — hand-authored routing always "
-            "wins because the planner iterates in order and only adds specs."
+            "Use an explicitly generated source→spec artifact. Otherwise generate "
+            "a fresh map from the current checkout. Both maps only add coverage."
         ),
     )
     parser.add_argument("--full-suite", choices=("true", "false"), default="false")
+    parser.add_argument("--changed-specs-only", action="store_true")
+    parser.add_argument("--include-delegated", action="store_true")
+    parser.add_argument("--extra-specs-json", default="[]")
+    parser.add_argument("--pr-specs-json")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
     return parser.parse_args()
@@ -124,41 +128,80 @@ def write_github_output(path: Path, plan: dict[str, Any]) -> None:
         output.write(f"entity_matrix={plan.get('entityMatrix', 'full')}\n")
 
 
+def load_generated_map(path: Path | None, repo_root: Path) -> dict[str, Any]:
+    if path is not None:
+        return json.loads(path.read_text(encoding="utf-8"))
+    # A snapshot left by an older branch can silently omit newly added coverage.
+    with tempfile.TemporaryDirectory(prefix="playwright-impact-map-") as temporary:
+        generated = Path(temporary) / "impact-map.generated.json"
+        subprocess.run(
+            [
+                sys.executable,
+                str(Path(__file__).with_name("generate_playwright_impact_map.py")),
+                "--output",
+                str(generated),
+            ],
+            cwd=repo_root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        return json.loads(generated.read_text(encoding="utf-8"))
+
+
 def main() -> None:
     args = parse_args()
     repo_root = Path.cwd()
+    if (args.event_name == "merge_group" or args.changed_specs_only) and (
+        args.changed_files is None or not args.changed_files.is_file()
+    ):
+        raise SystemExit(
+            "merge_group requires --changed-files for the whole candidate diff"
+        )
     impact_map = json.loads(args.impact_map.read_text(encoding="utf-8"))
 
-    # Optional auto-generated map — merged by appending its mappings to the
-    # hand-authored ones. Both `add_selection` calls (below) union projects on
-    # collision, so a spec named by both maps still ends up in the union of
-    # both project sets. Generated mappings never carry `projects`; they
-    # default to ["auto"] and let the shard planner route each spec to
-    # whichever project it belongs to.
-    #
-    # Auto-detects a sibling `impact-map.generated.json` when the caller does
-    # not pass `--generated-impact-map`, so the workflow does not need to be
-    # taught about the new file — just committing the generated map is enough.
-    generated_path = args.generated_impact_map
-    if generated_path is None:
-        default_generated = args.impact_map.with_name("impact-map.generated.json")
-        if default_generated.exists():
-            generated_path = default_generated
-    if generated_path is not None and generated_path.exists():
-        generated = json.loads(generated_path.read_text(encoding="utf-8"))
-        impact_map["mappings"] = impact_map.get("mappings", []) + generated.get(
-            "mappings", []
-        )
+    generated = load_generated_map(args.generated_impact_map, repo_root)
+    impact_map["mappings"] = impact_map.get("mappings", []) + generated["mappings"]
     # `push` is the main-scoped cache warmer (populate-playwright-caches.yml).
     # It carries no PR diff to narrow against, and the fixture it warms has to be
     # the one a full merge-queue run restores — a targeted plan would leave
     # requires_airflow false and skip warming the ingestion image entirely.
-    full_event = args.event_name in {"merge_group", "schedule", "push"}
+    full_event = args.event_name in {"schedule", "push"}
     full_requested = (
         args.event_name == "workflow_dispatch" and args.full_suite == "true"
     )
 
-    if full_event or full_requested:
+    if args.changed_specs_only:
+        from plan_playwright_pr import route_spec
+
+        changed_files = args.changed_files.read_text().splitlines()
+        specs = sorted(
+            {
+                path.removeprefix(UI_ROOT)
+                for path in changed_files
+                if path.startswith(RUNNABLE_SPEC_PREFIX)
+                and path.endswith((".spec.ts", ".test.ts"))
+                and (repo_root / path).is_file()
+                and route_spec(path.removeprefix(UI_ROOT))
+                in {"normal", "http2", "nightly"}
+            }
+        )
+        if args.pr_specs_json is not None:
+            requested = set(json.loads(args.pr_specs_json))
+            if requested - set(specs):
+                raise SystemExit("PR specs must be existing changed PostgreSQL specs")
+            specs = [spec for spec in specs if spec in requested]
+        if not specs:
+            raise SystemExit("No changed PostgreSQL specs were selected for this PR")
+        plan = {
+            "version": 1,
+            "mode": "targeted",
+            "reason": "PR runs complete added or modified spec files",
+            "changedSpecsOnly": True,
+            "directChangedSpecs": specs,
+            "changedFiles": changed_files,
+            "selectors": [{"spec": spec, "projects": ["auto"]} for spec in specs],
+        }
+    elif full_event or full_requested:
         plan = {
             "version": 1,
             "mode": "full",
@@ -200,6 +243,8 @@ def main() -> None:
                     deleted_changed_specs.append(relative_spec)
                 elif matches(relative_spec, impact_map.get("delegatedSpecs", [])):
                     delegated_changed_specs.append(relative_spec)
+                    if args.include_delegated:
+                        selected.setdefault(relative_spec, set()).add("auto")
                 else:
                     direct_changed_specs.append(relative_spec)
                     selected.setdefault(relative_spec, set()).add("auto")
@@ -225,12 +270,17 @@ def main() -> None:
         # "run everything," which is strictly a coverage widening — every
         # mapping added later demotes its own paths from full back to
         # targeted, so this rule never blocks the map from shrinking again.
-        if unmapped_code_files:
+        shared_queue_change = (
+            args.event_name == "merge_group" and shared_infrastructure_changed
+        )
+        if unmapped_code_files or shared_queue_change:
             plan = {
                 "version": 1,
                 "mode": "full",
                 "reason": (
-                    "unmapped code paths changed — running the full suite so "
+                    "shared test infrastructure changed — running the full suite"
+                    if shared_queue_change
+                    else "unmapped code paths changed — running the full suite so "
                     "coverage does not depend on the impact-map being current"
                 ),
                 "directChangedSpecs": sorted(direct_changed_specs),
@@ -243,12 +293,13 @@ def main() -> None:
                 for entry in impact_map["canary"]:
                     add_selection(selected, entry, repo_root)
 
-            remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
+            if not args.include_delegated:
+                remove_delegated_specs(selected, impact_map.get("delegatedSpecs", []))
 
             plan = {
                 "version": 1,
                 "mode": "targeted",
-                "reason": "pull requests run smoke, changed specs, and impact-mapped coverage",
+                "reason": f"{args.event_name} runs smoke, changed specs, and impact-mapped coverage",
                 "sharedInfrastructureChanged": shared_infrastructure_changed,
                 "unmappedChange": unmapped_change,
                 "unmappedFiles": unmapped_files,
@@ -267,12 +318,24 @@ def main() -> None:
                 "selectors": [
                     {"spec": spec, "projects": sorted(projects)}
                     for spec, projects in sorted(selected.items())
-                    if not matches(spec, impact_map.get("delegatedSpecs", []))
+                    if args.include_delegated
+                    or not matches(spec, impact_map.get("delegatedSpecs", []))
                 ],
             }
 
+    if plan["mode"] == "targeted":
+        existing = {entry["spec"]: entry for entry in plan["selectors"]}
+        for spec in json.loads(args.extra_specs_json):
+            if spec in existing:
+                existing[spec]["projects"] = ["auto"]
+            else:
+                plan["selectors"].append({"spec": spec, "projects": ["auto"]})
+    plan["eventName"] = args.event_name
     plan["entityMatrix"] = (
-        "representative" if args.event_name in REPRESENTATIVE_ENTITY_EVENTS else "full"
+        "representative"
+        if args.event_name in REPRESENTATIVE_ENTITY_EVENTS
+        and not args.changed_specs_only
+        else "full"
     )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

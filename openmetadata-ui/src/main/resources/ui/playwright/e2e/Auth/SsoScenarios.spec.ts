@@ -166,7 +166,10 @@ for (const fixture of FIXTURES) {
   // "skipped" rows and satisfies `playwright/no-skipped-test`. The
   // reason is emitted so a missing IdP env var still shows up in the CI
   // log rather than disappearing silently.
-  if (!fixture.isAvailable()) {
+  if (
+    !fixture.isAvailable() &&
+    process.env.PLAYWRIGHT_COLLECT_REQUIREMENTS !== 'true'
+  ) {
     process.stderr.write(
       `[SsoScenarios] Skipping ${fixture.slug}: ${
         fixture.unavailableReason?.() ??
@@ -178,7 +181,14 @@ for (const fixture of FIXTURES) {
 
   test.describe(
     `SSO / ${fixture.name} [${fixture.slug}]`,
-    { tag: [`@${fixture.slug}`, '@sso-matrix', '@sso'] },
+    {
+      tag: [
+        `@${fixture.slug}`,
+        '@sso-matrix',
+        '@sso',
+        ...(fixture.slug === 'okta' ? ['@requires-secrets'] : []),
+      ],
+    },
     () => {
       // A test failure must NOT retry: retries re-run beforeAll, but the
       // backend is now on this fixture's provider and /api/v1/auth/login no

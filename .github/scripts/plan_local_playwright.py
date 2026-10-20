@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Plan, run, and report the Playwright specs a branch must pass locally.
 
-Pull-request checks no longer run Playwright; the merge queue runs the full
-suite. Before merging, developers run the impact-mapped subset locally. This
+Pull-request checks no longer run Playwright; the merge queue runs smoke and
+affected specs, with full fallback. Before merging, developers run the
+impact-mapped subset locally. This
 wrapper feeds the branch diff to ``select_playwright_tests.py`` — the same
-planner CI uses — so the local selection never drifts from the CI one.
+planner CI uses — which generates its source→spec map from the current tree.
+No generated map needs to be refreshed or committed.
 
     python .github/scripts/plan_local_playwright.py               # list + command
     python .github/scripts/plan_local_playwright.py --run         # run + write results
@@ -40,6 +42,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from playwright_test_requirements import SECRET_TAG, requirements
+
 SCRIPT_DIR = Path(__file__).resolve().parent
 SELECTOR_PATH = SCRIPT_DIR / "select_playwright_tests.py"
 UI_ROOT = "openmetadata-ui/src/main/resources/ui"
@@ -72,6 +76,7 @@ class LocalPlan:
     unmapped_code_files: list[str] = field(default_factory=list)
     delegated_changed_specs: list[str] = field(default_factory=list)
     deleted_changed_specs: list[str] = field(default_factory=list)
+    credential_deferred_specs: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -81,6 +86,7 @@ class LocalPlan:
             "unmappedCodeFiles": self.unmapped_code_files,
             "delegatedChangedSpecs": self.delegated_changed_specs,
             "deletedChangedSpecs": self.deleted_changed_specs,
+            "credentialDeferredSpecs": self.credential_deferred_specs,
         }
 
 
@@ -211,6 +217,7 @@ def playwright_env() -> dict[str, str]:
     # Collate-only ingestionRunners API and fails before any spec runs.
     env = {**os.environ}
     env.setdefault("PLAYWRIGHT_IS_OSS", "true")
+    env.setdefault("PLAYWRIGHT_SKIP_REQUIRES_SECRETS", "true")
     return env
 
 
@@ -223,6 +230,7 @@ class Listing:
     # Projects with a narrow testMatch (IntakeForm, DataAssetRulesDisabled, ...):
     # the only ones configured with dependencies on other test projects.
     dedicated: set[str] = field(default_factory=set)
+    credential_only: set[str] = field(default_factory=set)
 
 
 def list_run(ui_root: Path, specs: list[str]) -> Listing:
@@ -234,7 +242,11 @@ def list_run(ui_root: Path, specs: list[str]) -> Listing:
     result = subprocess.run(
         ["npx", "playwright", "test", "--list", "--reporter=json", *specs],
         cwd=ui_root,
-        env=playwright_env(),
+        env={
+            **playwright_env(),
+            "PLAYWRIGHT_COLLECT_REQUIREMENTS": "true",
+            "PLAYWRIGHT_SKIP_REQUIRES_SECRETS": "false",
+        },
         check=False,
         capture_output=True,
         text=True,
@@ -248,9 +260,14 @@ def list_run(ui_root: Path, specs: list[str]) -> Listing:
     report = json.loads(result.stdout[start:])
     test_dir = Path(report["config"]["rootDir"])
     projects: dict[str, set[str]] = {}
+    skip_secrets = playwright_env()["PLAYWRIGHT_SKIP_REQUIRES_SECRETS"] == "true"
 
     def collect(suite: dict[str, Any], names: set[str]) -> None:
         for spec in suite.get("specs", []):
+            if skip_secrets and SECRET_TAG in {
+                tag.lstrip("@") for tag in spec.get("tags", [])
+            }:
+                continue
             names.update(test["projectName"] for test in spec.get("tests", []))
         for child in suite.get("suites", []):
             collect(child, names)
@@ -268,7 +285,12 @@ def list_run(ui_root: Path, specs: list[str]) -> Listing:
         for project in report["config"].get("projects", [])
         if "*.@(spec|test)" not in " ".join(project.get("testMatch", []))
     }
-    return Listing(projects, dedicated)
+    public, secret = requirements([report])
+    return Listing(
+        projects,
+        dedicated,
+        secret - public if skip_secrets else set(),
+    )
 
 
 def unplanned_files(listing: Listing, plan_specs: list[str]) -> set[str]:
@@ -586,6 +608,23 @@ def main(argv: list[str] | None = None) -> int:
     if not plan.specs:
         # A bare `npx playwright test` is the full suite, never a plan.
         print("No Playwright specs selected for this diff; nothing to run.")
+        return 0
+
+    listing = list_run(ui_root, plan.specs)
+    plan.credential_deferred_specs = sorted(set(plan.specs) & listing.credential_only)
+    plan.specs = [spec for spec in plan.specs if spec not in listing.credential_only]
+    if plan.credential_deferred_specs and not args.json:
+        print(
+            "Credential-only specs deferred to the merge queue: "
+            + ", ".join(plan.credential_deferred_specs)
+        )
+    if not plan.specs:
+        if args.json:
+            print(
+                json.dumps(
+                    {**plan.to_json(), "isolatedSpecs": [], "commands": []}, indent=2
+                )
+            )
         return 0
 
     main_specs, isolated, extra_count = split_dependency_expanders(

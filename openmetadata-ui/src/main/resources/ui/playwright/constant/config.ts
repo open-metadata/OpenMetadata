@@ -15,6 +15,8 @@ export const PLAYWRIGHT_INGESTION_TAG_OBJ = {
   tag: '@ingestion',
 };
 
+export const PLAYWRIGHT_REQUIRES_SECRETS_TAG = '@requires-secrets';
+
 export const PLAYWRIGHT_SAMPLE_DATA_TAG_OBJ = {
   tag: '@sample-data',
 };

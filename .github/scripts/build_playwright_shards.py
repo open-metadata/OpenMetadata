@@ -17,6 +17,9 @@ from typing import Any, Iterable
 
 FULL_PROJECTS = {
     "chromium",
+    "chromium-h2",
+    "changed-nightly",
+    "queue-credentials",
     "Basic",
     "Data Insight",
     "Ingestion",
@@ -34,6 +37,9 @@ FULL_PROJECTS = {
 }
 PROJECT_LANES = {
     "chromium": "chromium",
+    "chromium-h2": "chromium",
+    "changed-nightly": "ingestion",
+    "queue-credentials": "ingestion",
     "Basic": "chromium",
     "Data Insight": "chromium",
     "Ingestion": "ingestion",
@@ -126,7 +132,10 @@ AUDITED_PARALLEL_SUITES = {
     # landed in main — split into per-spec units to stay within budget.
     ("Features/ContextCenterArticles.spec.ts", "Context Center Articles"),
     ("Features/CuratedAssets.spec.ts", "Curated Assets Widget"),
-    ("Pages/CustomProperties.spec.ts", "Add update and delete custom properties for dashboard"),
+    (
+        "Pages/CustomProperties.spec.ts",
+        "Add update and delete custom properties for dashboard",
+    ),
     ("Pages/DataContracts.spec.ts", "Data Contracts"),
     ("Pages/ExplorePageRightPanel.spec.ts", "Right Panel Test Suite"),
     ("Pages/Glossary.spec.ts", "Glossary tests"),
@@ -173,6 +182,7 @@ class Unit:
     test_names: dict[str, str] = field(default_factory=dict)
     weight_ms: int = 0
     weight_reserve_ms: int = 0
+    credential_test_ids: set[str] = field(default_factory=set)
 
     @property
     def key(self) -> str:
@@ -247,6 +257,8 @@ def add_specs_to_units(
         for spec, titles in specs_with_titles:
             if project in projects_for_spec(spec) and spec.get("id"):
                 unit.test_ids.add(spec["id"])
+                if "requires-secrets" in {tag.lstrip("@") for tag in spec.get("tags", [])}:
+                    unit.credential_test_ids.add(spec["id"])
                 unit.test_names[spec["id"]] = spec.get("title", "")
                 unit.grep_titles.add((project, file, *titles))
         units[unit.key] = unit
@@ -499,7 +511,10 @@ def emit_unweighted_warnings(
             stats[unit.file]["count"] += 1
     for file, entry in sorted(stats.items()):
         reserved_ms = entry["count"] * FALLBACK_TEST_MS
-        if entry["count"] < UNWEIGHTED_WARN_MIN_TESTS and reserved_ms < UNWEIGHTED_WARN_MIN_MS:
+        if (
+            entry["count"] < UNWEIGHTED_WARN_MIN_TESTS
+            and reserved_ms < UNWEIGHTED_WARN_MIN_MS
+        ):
             continue
         message = (
             f"{entry['count']} test(s) in {file} have no timing history; "
@@ -535,8 +550,7 @@ def stale_baseline_files_in_plan(
     return sorted(
         (file, by_file_planned[file])
         for file, planned in by_file_planned.items()
-        if planned >= STALE_BASELINE_MIN_TESTS
-        and by_file_unweighted[file] == planned
+        if planned >= STALE_BASELINE_MIN_TESTS and by_file_unweighted[file] == planned
     )
 
 
@@ -557,9 +571,7 @@ def misrouted_lane_hint_violations(
                 continue
             if unit.project == expected_project:
                 continue
-            violations.append(
-                (unit.file, unit.project, expected_project, expected_tag)
-            )
+            violations.append((unit.file, unit.project, expected_project, expected_tag))
             break  # one hint per file — first-match wins
     # Sort + dedupe: multiple units per file (audit-split) collapse to one line.
     return sorted(set(violations))
@@ -732,6 +744,8 @@ def write_plan(
         "planningReserveMs": sum(unit.weight_reserve_ms for unit in units),
         "testCount": sum(len(unit.test_ids) for unit in units),
         "testIds": sorted(test_id for unit in units for test_id in unit.test_ids),
+        "credentialTestIds": sorted(test_id for unit in units for test_id in unit.credential_test_ids),
+        "credentialFiles": sorted({f"playwright/e2e/{unit.file}" for unit in units if unit.credential_test_ids}),
         "units": [unit.key for unit in units],
     }
     filename = f"{shard_id}.json"
@@ -765,7 +779,7 @@ def main() -> None:
     # stale/typo'd path that matches nothing anywhere — keep failing on that.
     missing_selectors = []
     for spec in unmatched_selectors:
-        if spec_file_exists(spec):
+        if spec_file_exists(spec) and not selection.get("changedSpecsOnly"):
             print(
                 f"::warning file={spec}::Playwright selector matched no runnable "
                 "tests in this lane; skipping (it may run in a different lane).",
@@ -774,6 +788,11 @@ def main() -> None:
         else:
             missing_selectors.append(spec)
     if missing_selectors:
+        if selection.get("changedSpecsOnly"):
+            raise SystemExit(
+                "Changed PR specs have no runnable tests in their configured projects: "
+                + ", ".join(missing_selectors)
+            )
         raise SystemExit(
             "Playwright selectors reference specs that do not exist: "
             + ", ".join(missing_selectors)
@@ -786,7 +805,8 @@ def main() -> None:
     apply_history_weights(units, test_weights, identity_weights)
     emit_unweighted_warnings(units, test_weights, identity_weights)
 
-    # Only enforce the stale-baseline gate for targeted (PR-time) planning.
+    # Queue candidates must run new specs before nightly timing history exists.
+    # They use the same estimated weights as full runs and still obey shard budgets.
     # A full-mode run is what generates the new timing-history artifact in
     # the first place — the "wait for a nightly full-mode run" remediation
     # below requires that full-mode planning stay unblocked even when a
@@ -795,6 +815,8 @@ def main() -> None:
     stale_files = (
         stale_baseline_files_in_plan(units, test_weights, identity_weights)
         if selection["mode"] != "full"
+        and selection.get("eventName") != "merge_group"
+        and not selection.get("changedSpecsOnly")
         else []
     )
     if stale_files:

@@ -90,6 +90,7 @@ openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 openmetadata-ui/src/main/resources/ui/test-report.xml
 
 # Playwright artifacts
+.github/playwright/impact-map.generated.json
 openmetadata-ui/src/main/resources/ui/playwright/output/
 openmetadata-ui/src/main/resources/ui/playwright/e2e/.cache/
 openmetadata-ui/src/main/resources/ui/.env

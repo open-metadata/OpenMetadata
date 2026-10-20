@@ -17,7 +17,10 @@ import {
   PipelineState,
   PipelineStatus,
 } from '../../../src/generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
+import {
+  PLAYWRIGHT_INGESTION_TAG_OBJ,
+  PLAYWRIGHT_REQUIRES_SECRETS_TAG,
+} from '../../constant/config';
 import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
@@ -73,69 +76,80 @@ test.use({
 Object.entries(services).forEach(([key, ServiceClass]) => {
   const service = new ServiceClass();
 
-  test.describe.serial(key, PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
-    test.beforeEach('Visit entity details page', async ({ page }) => {
-      await redirectToHomePage(page);
-      await settingClick(
-        page,
-        service.category as unknown as SettingOptionsType
-      );
-    });
+  test.describe.serial(
+    key,
+    {
+      tag: [
+        PLAYWRIGHT_INGESTION_TAG_OBJ.tag,
+        ...(ServiceClass === ApiIngestionClass
+          ? []
+          : [PLAYWRIGHT_REQUIRES_SECRETS_TAG]),
+      ],
+    },
+    async () => {
+      test.beforeEach('Visit entity details page', async ({ page }) => {
+        await redirectToHomePage(page);
+        await settingClick(
+          page,
+          service.category as unknown as SettingOptionsType
+        );
+      });
 
-    test.afterAll('Delete service via API', async ({ browser }) => {
-      const { afterAction, apiContext } = await createNewPage(browser);
-      await service.deleteServiceByAPI(apiContext);
-      await afterAction();
-    });
+      test.afterAll('Delete service via API', async ({ browser }) => {
+        const { afterAction, apiContext } = await createNewPage(browser);
+        await service.deleteServiceByAPI(apiContext);
+        await afterAction();
+      });
 
-    /**
-     * Tests service creation and first ingestion run
-     * @description Creates the service and triggers ingestion
-     */
-    test(`Create & Ingest ${key} service`, async ({ page }) => {
-      test.slow();
-      await service.createService(page);
-    });
-
-    /**
-     * Tests description update persistence across reruns
-     * @description Updates service description and verifies it after rerun
-     */
-    test(`Update description and verify description after re-run`, async ({
-      page,
-    }) => {
-      test.slow();
-      await service.updateService(page);
-    });
-
-    /**
-     * Tests schedule option updates
-     * @description Updates ingestion schedule options and verifies they persist
-     */
-    test(`Update schedule options and verify`, async ({ page }) => {
-      await service.updateScheduleOptions(page);
-    });
-
-    if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
-        service.serviceType
-      )
-    ) {
       /**
-       * Tests database-specific ingestion behaviors
-       * @description Runs additional checks for Postgres, Redshift, and MySQL services
+       * Tests service creation and first ingestion run
+       * @description Creates the service and triggers ingestion
        */
-      test(
-        service.serviceType === MYSQL
-          ? 'Profiler ingestion workflow'
-          : `Service specific tests`,
-        async ({ page }) => {
-          test.slow();
-          await service.runAdditionalTests(page, test);
-        }
-      );
+      test(`Create & Ingest ${key} service`, async ({ page }) => {
+        test.slow();
+        await service.createService(page);
+      });
+
+      /**
+       * Tests description update persistence across reruns
+       * @description Updates service description and verifies it after rerun
+       */
+      test(`Update description and verify description after re-run`, async ({
+        page,
+      }) => {
+        test.slow();
+        await service.updateService(page);
+      });
+
+      /**
+       * Tests schedule option updates
+       * @description Updates ingestion schedule options and verifies they persist
+       */
+      test(`Update schedule options and verify`, async ({ page }) => {
+        await service.updateScheduleOptions(page);
+      });
+
+      if (
+        [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+          service.serviceType
+        )
+      ) {
+        /**
+         * Tests database-specific ingestion behaviors
+         * @description Runs additional checks for Postgres, Redshift, and MySQL services
+         */
+        test(
+          service.serviceType === MYSQL
+            ? 'Profiler ingestion workflow'
+            : `Service specific tests`,
+          async ({ page }) => {
+            test.slow();
+            await service.runAdditionalTests(page, test);
+          }
+        );
+      }
     }
-  });
+  );
 });
 
 test.describe('Service form', () => {
