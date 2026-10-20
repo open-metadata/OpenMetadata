@@ -1,7 +1,9 @@
 package org.openmetadata.service.context.center;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -95,6 +97,20 @@ class MemoryDerivationsTest {
             });
 
     assertTrue(found.isEmpty());
+  }
+
+  @Test
+  void refusesEvidenceAReviewerCouldNotRead() {
+    DerivationEvidence tooSure = new DerivationEvidence().withConfidence(1.5);
+    DerivationEvidence tooChatty =
+        new DerivationEvidence().withConfidence(0.9).withReasons(List.of("a", "b", "c", "d"));
+
+    assertThrows(IllegalArgumentException.class, () -> MemoryDerivations.requireValid(tooSure));
+    assertThrows(IllegalArgumentException.class, () -> MemoryDerivations.requireValid(tooChatty));
+    assertDoesNotThrow(
+        () ->
+            MemoryDerivations.requireValid(
+                new DerivationEvidence().withConfidence(1.0).withReasons(List.of("a", "b", "c"))));
   }
 
   @Test

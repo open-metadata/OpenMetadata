@@ -15,8 +15,12 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -29,9 +33,11 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -101,6 +107,62 @@ public class GlossaryTermAutomationDraftIT {
     assertEquals(EntityStatus.DRAFT, reload(draft).getEntityStatus());
   }
 
+  @Test
+  void aPersonsEditOfAnAutomationDraftGoesToItsReviewers(TestNamespace ns) {
+    EntityReference reviewer = SharedEntities.get().USER1.getEntityReference();
+    Glossary glossary = createGlossary(ns, "editedDraft", List.of(reviewer));
+    GlossaryTerm draft = createTermAsBot(glossary, ns.prefix("edited"), ProviderType.AUTOMATION);
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"A sharper definition\"}]";
+
+    SdkClients.adminClient().glossaryTerms().patch(draft.getId(), JsonUtils.readTree(patch));
+
+    // The approval workflow, not a person, moves the edited draft into review: it is not refused.
+    Task task = awaitOpenApprovalTask(draft);
+    assertEquals(EntityStatus.IN_REVIEW, reload(draft).getEntityStatus());
+    assertEquals(
+        List.of(reviewer.getId()),
+        task.getAssignees().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void onlyABotCanSayAnAutomationProvidesATerm(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "spoofed", List.of());
+
+    GlossaryTerm requested =
+        createTerm(
+            SdkClients.adminClient(), glossary, ns.prefix("spoofed"), ProviderType.AUTOMATION);
+    String patch = "[{\"op\":\"replace\",\"path\":\"/provider\",\"value\":\"automation\"}]";
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .glossaryTerms()
+                    .patch(requested.getId(), JsonUtils.readTree(patch)));
+
+    assertEquals(ProviderType.USER, requested.getProvider());
+    assertEquals(EntityStatus.APPROVED, requested.getEntityStatus());
+    assertEquals(400, refused.getStatusCode());
+    assertEquals(ProviderType.USER, reload(requested).getProvider());
+  }
+
+  @Test
+  void aBotCannotDecideAnAutomationDraft(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "botDecides", List.of());
+    GlossaryTerm draft =
+        createTermAsBot(glossary, ns.prefix("selfApproved"), ProviderType.AUTOMATION);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> setStatus(SdkClients.botClient(), draft, EntityStatus.APPROVED));
+
+    assertEquals(403, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("a bot cannot"), refused.getMessage());
+    assertEquals(EntityStatus.DRAFT, reload(draft).getEntityStatus());
+  }
+
   private static Glossary createGlossary(
       TestNamespace ns, String name, List<EntityReference> reviewers) {
     CreateGlossary create =
@@ -132,6 +194,27 @@ public class GlossaryTermAutomationDraftIT {
     String patch =
         "[{\"op\":\"replace\",\"path\":\"/entityStatus\",\"value\":\"" + status.value() + "\"}]";
     return client.glossaryTerms().patch(term.getId(), JsonUtils.readTree(patch));
+  }
+
+  private static Task awaitOpenApprovalTask(GlossaryTerm term) {
+    Map<String, String> filters =
+        Map.of(
+            "limit",
+            "100",
+            "status",
+            TaskEntityStatus.Open.value(),
+            "aboutEntity",
+            term.getFullyQualifiedName(),
+            "fields",
+            "assignees");
+    return Awaitility.await("open approval task for " + term.getFullyQualifiedName())
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> SdkClients.adminClient().tasks().listWithFilters(filters).getData(),
+            tasks -> !tasks.isEmpty())
+        .getFirst();
   }
 
   private static GlossaryTerm reload(GlossaryTerm term) {

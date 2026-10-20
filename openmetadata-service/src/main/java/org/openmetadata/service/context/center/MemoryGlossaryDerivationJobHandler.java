@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.jobs.BackgroundJob;
@@ -47,21 +48,25 @@ public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
 
   private final Supplier<Optional<MemoryGlossaryDeriver>> deriverSupplier;
   private final Function<UUID, Optional<ContextMemory>> memoryLoader;
+  private final Predicate<ContextMemory> readableByEveryone;
   private final JobDAO jobDao;
 
   public MemoryGlossaryDerivationJobHandler() {
     this(
         () -> AiProviderHolder.get().memoryGlossaryDeriver(),
         MemoryGlossaryDerivationJobHandler::loadMemory,
+        MemoryGlossaryDerivationJobHandler::isReadableByEveryone,
         Entity.getJobDAO());
   }
 
   MemoryGlossaryDerivationJobHandler(
       final Supplier<Optional<MemoryGlossaryDeriver>> deriverSupplier,
       final Function<UUID, Optional<ContextMemory>> memoryLoader,
+      final Predicate<ContextMemory> readableByEveryone,
       final JobDAO jobDao) {
     this.deriverSupplier = deriverSupplier;
     this.memoryLoader = memoryLoader;
+    this.readableByEveryone = readableByEveryone;
     this.jobDao = jobDao;
   }
 
@@ -88,13 +93,21 @@ public final class MemoryGlossaryDerivationJobHandler implements JobHandler {
   }
 
   // A memory can be deleted, retired, restricted or given a term between being queued and running.
+  // Every glossary reader sees a derived term, so only a memory every reader may see can define
+  // one: an anchored memory is restricted to its anchor's readers, unless that is an org-wide file.
   private List<ContextMemory> eligibleMemories(final List<UUID> memoryIds) {
     return listOrEmpty(memoryIds).stream()
         .distinct()
         .map(memoryLoader)
         .flatMap(Optional::stream)
         .filter(MemoryGlossaryDerivationJobHandler::isEligible)
+        .filter(readableByEveryone)
         .toList();
+  }
+
+  private static boolean isReadableByEveryone(final ContextMemory memory) {
+    return ((ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+        .hasOrgWideAnchor(memory);
   }
 
   static boolean isEligible(final ContextMemory memory) {

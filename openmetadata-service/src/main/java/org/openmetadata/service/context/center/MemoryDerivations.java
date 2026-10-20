@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
@@ -44,6 +45,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 @Slf4j
 public final class MemoryDerivations {
   public static final int MAX_ENTITIES = 100;
+  public static final int MAX_REASONS = 3;
   private static final String MEMORY_FIELDS = "owners,primaryEntity";
 
   private final Supplier<ContextMemoryRepository> memories;
@@ -68,6 +70,7 @@ public final class MemoryDerivations {
 
   /** Links {@code derived} to the memory it came from, keeping the agent's evidence on the link. */
   public void record(UUID memoryId, EntityReference derived, DerivationEvidence evidence) {
+    requireValid(evidence);
     memories
         .get()
         .addRelationship(
@@ -78,6 +81,19 @@ public final class MemoryDerivations {
             Relationship.DERIVED_FROM,
             JsonUtils.pojoToJson(evidence),
             false);
+  }
+
+  // A reviewer reads the evidence as is, so a bad deriver must fail its own write, not the panel.
+  static void requireValid(DerivationEvidence evidence) {
+    Double confidence = evidence.getConfidence();
+    if (confidence != null && !(confidence >= 0 && confidence <= 1)) {
+      throw new IllegalArgumentException(
+          "A derivation's confidence must be between 0 and 1, not " + confidence);
+    }
+    if (listOrEmpty(evidence.getReasons()).size() > MAX_REASONS) {
+      throw new IllegalArgumentException(
+          "A derivation carries at most " + MAX_REASONS + " reasons");
+    }
   }
 
   /**

@@ -1,3 +1,16 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -14,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -28,7 +42,9 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -49,6 +65,7 @@ import org.openmetadata.service.resources.context.ContextMemoryResource.MemoryDe
 public class MemoryDerivationIT {
 
   private static final String DERIVATIONS = "/v1/contextCenter/memories/derivations";
+  private static final String PII_SENSITIVE = "PII.Sensitive";
 
   @Test
   void evidenceIsReadOnlyThroughMemoriesTheCallerMaySee(TestNamespace ns) {
@@ -77,6 +94,29 @@ public class MemoryDerivationIT {
     assertEquals(0.92, seen.getEvidence().getConfidence());
     assertEquals(List.of("Defines a recurring metric"), seen.getEvidence().getReasons());
     assertEquals("Memory Glossary Agent", seen.getEvidence().getAgent());
+  }
+
+  @Test
+  void evidenceFollowsThePoliciesOnEachMemory(TestNamespace ns) {
+    ContextMemory open = createMemory(ns, "openMemory", MemoryVisibility.PUBLIC, List.of());
+    ContextMemory sensitive =
+        createMemory(ns, "sensitiveMemory", MemoryVisibility.PUBLIC, List.of(piiSensitive()));
+    Glossary glossary = createGlossary(ns);
+    GlossaryTerm fromOpen = createTerm(glossary, ns.prefix("fromOpen"));
+    GlossaryTerm fromSensitive = createTerm(glossary, ns.prefix("fromSensitive"));
+    MemoryDerivations derivations = new MemoryDerivations();
+    derivations.record(open.getId(), fromOpen.getEntityReference(), evidence(0.7, "Open"));
+    derivations.record(
+        sensitive.getId(), fromSensitive.getEntityReference(), evidence(0.9, "Sensitive"));
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("memdeny"),
+            Entity.CONTEXT_MEMORY,
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+
+    assertEquals(
+        Set.of(fromOpen.getId()), derivedIds(list(denied, List.of(fromOpen, fromSensitive))));
   }
 
   @Test
@@ -113,6 +153,14 @@ public class MemoryDerivationIT {
     }
   }
 
+  private static TagLabel piiSensitive() {
+    return new TagLabel()
+        .withTagFQN(PII_SENSITIVE)
+        .withSource(TagLabel.TagSource.CLASSIFICATION)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
   private static DerivationEvidence evidence(double confidence, String reason) {
     return new DerivationEvidence()
         .withAgent("Memory Glossary Agent")
@@ -145,6 +193,11 @@ public class MemoryDerivationIT {
 
   private static ContextMemory createMemory(
       TestNamespace ns, String name, MemoryVisibility visibility) {
+    return createMemory(ns, name, visibility, List.of());
+  }
+
+  private static ContextMemory createMemory(
+      TestNamespace ns, String name, MemoryVisibility visibility, List<TagLabel> tags) {
     CreateContextMemory create =
         new CreateContextMemory()
             .withName(ns.prefix(name))
@@ -153,7 +206,8 @@ public class MemoryDerivationIT {
             .withAnswer("A business concept a glossary term can hold.")
             .withEntityStatus(ContextMemoryStatus.APPROVED)
             .withOwners(List.of(SharedEntities.get().USER1_REF))
-            .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
+            .withShareConfig(new MemoryShareConfig().withVisibility(visibility))
+            .withTags(tags);
     return ns.trackRoot(
         Entity.CONTEXT_MEMORY,
         new ContextMemoryService(SdkClients.adminClient().getHttpClient()).create(create));

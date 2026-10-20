@@ -255,6 +255,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -1573,11 +1574,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
-    if (isStageDecidedByPeople(current, from)) {
+    if (isDecidedByPeople(current, change, from)) {
+      checkDecidedByAPerson(current, change);
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     } else {
       checkEntityStatusNotOwnedByWorkflow(current, change);
       checkReviewerLeavesReview(current, change, from, to);
+    }
+  }
+
+  // A workflow still moves the stages it opens on its own; only a direct change is left to people.
+  private boolean isDecidedByPeople(T current, T change, String from) {
+    return isStageDecidedByPeople(current, from) && !EntityStatusWorkflows.isWorkflowChange(change);
+  }
+
+  private void checkDecidedByAPerson(T current, T change) {
+    if (WorkflowEventConsumer.isBotChange(change.getUpdatedBy(), change.getImpersonatedBy())) {
+      throw new AuthorizationException(
+          String.format(
+              "A person must approve or reject %s '%s'; a bot cannot",
+              entityType, current.getFullyQualifiedName()));
     }
   }
 
@@ -1594,7 +1610,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Whether people move this entity out of {@code from} directly, even while a workflow owns its
    * stage, because no workflow will ever pick it up. Its reviewers decide when it has any; anyone
-   * allowed to edit it decides otherwise.
+   * allowed to edit it decides otherwise. A workflow's own writes still move it, and a bot never
+   * decides it.
    */
   protected boolean isStageDecidedByPeople(T current, String from) {
     return false;

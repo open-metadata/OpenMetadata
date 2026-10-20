@@ -27,6 +27,7 @@
           "items": {
             "type": "string"
           },
+          "maxItems": 3,
           "default": []
         },
         "derivedAt": {

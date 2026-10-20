@@ -88,6 +88,7 @@ import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -923,9 +924,28 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     if (!update) {
       checkDuplicateTerms(entity);
+      keepAutomationToBots(entity);
     }
 
     IntakeFormValidator.validate(entity, Entity.GLOSSARY_TERM);
+  }
+
+  /**
+   * An automation's term starts in Draft and is decided by people, so only an automation, which
+   * writes as a bot, may say it provides a term; a person's request for it gets a person's term.
+   */
+  private static void keepAutomationToBots(GlossaryTerm entity) {
+    if (isProvidedByAutomation(entity) && !isWrittenByBot(entity.getUpdatedBy())) {
+      entity.setProvider(ProviderType.USER);
+    }
+  }
+
+  private static boolean isWrittenByBot(String userName) {
+    User writer =
+        userName == null
+            ? null
+            : Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
+    return writer != null && Boolean.TRUE.equals(writer.getIsBot());
   }
 
   /**
@@ -2366,6 +2386,27 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      restrictAutomationProviderChange();
+    }
+
+    /**
+     * Only a bot may make a term an automation's or stop it being one: either way it decides who
+     * approves the term. A PATCH asking for it is refused; a PUT, whose provider defaults to user
+     * when omitted, keeps the stored provider instead, as for system entities.
+     */
+    private void restrictAutomationProviderChange() {
+      boolean changesAutomation =
+          !Objects.equals(original.getProvider(), updated.getProvider())
+              && (isProvidedByAutomation(original) || isProvidedByAutomation(updated));
+      if (changesAutomation && !isWrittenByBot(updated.getUpdatedBy())) {
+        if (operation.isPatch()) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Only a bot can change whether an automation provides glossary term '%s'",
+                  original.getFullyQualifiedName()));
+        }
+        updated.setProvider(original.getProvider());
+      }
     }
 
     /**

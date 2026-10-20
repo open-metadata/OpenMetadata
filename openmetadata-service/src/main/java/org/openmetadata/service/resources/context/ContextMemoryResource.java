@@ -78,6 +78,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -527,7 +528,31 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         derivations.find(
             derivedType,
             parseDerivedIds(entityIds),
-            memories -> ContextMemoryVisibility.filterByVisibility(memories, securityContext)));
+            memories -> readableMemories(memories, securityContext)));
+  }
+
+  /**
+   * The memories the caller may read, as a read of each would decide: its sharing and anchor, then
+   * the caller's policies on the memory itself, such as a domain-only role or a deny rule.
+   */
+  private List<ContextMemory> readableMemories(
+      List<ContextMemory> memories, SecurityContext securityContext) {
+    return ContextMemoryVisibility.filterByVisibility(memories, securityContext).stream()
+        .filter(memory -> mayView(memory, securityContext))
+        .toList();
+  }
+
+  private boolean mayView(ContextMemory memory, SecurityContext securityContext) {
+    boolean allowed = true;
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+          getResourceContextById(memory.getId()));
+    } catch (AuthorizationException e) {
+      allowed = false;
+    }
+    return allowed;
   }
 
   static List<UUID> parseDerivedIds(String entityIds) {
