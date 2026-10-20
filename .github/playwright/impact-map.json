@@ -117,6 +117,7 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
         "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
@@ -600,6 +601,8 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/EditConnectionFormPage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/ServiceInsights/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
         "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
@@ -804,6 +807,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/CustomMetricForm/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/MetricEntityUtils/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
@@ -969,6 +973,9 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavVisibility.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/PermissionsTab.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/SettingsSection.tsx",
         "openmetadata-ui/src/main/resources/ui/src/constants/Profile.constants.ts"
@@ -1148,6 +1155,25 @@
       "specs": [
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/SignUp/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Auth/SSOSelfSignup.spec.ts",
+        "playwright/e2e/Auth/OktaSelfSignupClaims.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/SwaggerPage/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Flow/ApiDocs.spec.ts"
       ]
     }
   ]
