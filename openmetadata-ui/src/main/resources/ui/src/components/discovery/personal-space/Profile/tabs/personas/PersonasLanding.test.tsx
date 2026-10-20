@@ -66,6 +66,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button type="button" onClick={() => onPageSizeChange(24)}>
         size
       </button>
+      <button type="button" onClick={() => onPageChange(3)}>
+        page-3
+      </button>
     </div>
   ),
 }));
@@ -215,6 +218,59 @@ describe('PersonasLanding', () => {
       expect(getAllPersonas).toHaveBeenLastCalledWith(
         expect.objectContaining({ after: undefined, before: undefined })
       )
+    );
+  });
+
+  it('jumps to a page it has not visited by walking the cursors in between', async () => {
+    (getAllPersonas as jest.Mock).mockImplementation(
+      ({ after }: { after?: string }) =>
+        Promise.resolve({
+          data: PERSONAS,
+          paging: {
+            total: 36,
+            after: after === 'cursor-2' ? 'cursor-3' : 'cursor-2',
+          },
+        })
+    );
+    render(<PersonasLanding onNavigate={mockOnNavigate} />);
+
+    expect(await screen.findByTestId('pagination')).toHaveTextContent('1/3');
+
+    fireEvent.click(screen.getByText('page-3'));
+
+    await waitFor(() =>
+      expect(mockSetPage).toHaveBeenLastCalledWith(3, 'after', 'cursor-3', 12)
+    );
+
+    expect(getAllPersonas).toHaveBeenCalledWith(
+      expect.objectContaining({ after: 'cursor-2' })
+    );
+
+    await waitFor(() =>
+      expect(getAllPersonas).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'cursor-3' })
+      )
+    );
+  });
+
+  it("goes back one page with the next page's before cursor", async () => {
+    (getAllPersonas as jest.Mock).mockResolvedValue({
+      data: PERSONAS,
+      paging: { total: 36, after: 'cursor-4', before: 'cursor-back-3' },
+    });
+    mockPagingParams({ page: 3, cursor: 'cursor-3', cursorType: 'after' });
+    render(<PersonasLanding onNavigate={mockOnNavigate} />);
+
+    expect(await screen.findByTestId('pagination')).toHaveTextContent('3/3');
+
+    fireEvent.click(screen.getByText('previous'));
+
+    // Page 3's `before` opens page 2 (page 2's own would open page 1).
+    expect(mockSetPage).toHaveBeenLastCalledWith(
+      2,
+      'before',
+      'cursor-back-3',
+      12
     );
   });
 

@@ -49,6 +49,9 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  private static final String ONTOLOGY_CONCEPT_TABLE = "ontology_concept_entity";
+  private static final String ONTOLOGY_PROPERTY_TABLE = "ontology_property_entity";
+  private static final String ONTOLOGY_RELEASE_TABLE = "ontology_release_entity";
   // An fqnHash joins one MD5 hex digest per FQN segment.
   private static final int FQN_HASH_SEGMENT_LENGTH = 32;
   private static final String FQN_HASH_COLUMN = "fqnHash";
@@ -169,21 +172,24 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     conditions.add(getAssetCondition());
-    conditions.add(getGlossaryIdCondition(tableName));
+    conditions.add(getOntologyIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
-  private String getGlossaryIdCondition(String tableName) {
-    String glossaryId = queryParams.get("glossaryId");
-    String condition = "";
-    if (!nullOrEmpty(glossaryId) && tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)) {
-      queryParams.put("glossaryIdParam", glossaryId);
-      condition = qualifyColumn(tableName, "glossaryId") + " = :glossaryIdParam";
+  private String getOntologyIdCondition(final String tableName) {
+    final String ontologyId = queryParams.get("ontologyId");
+    if (!nullOrEmpty(ontologyId)
+        && (tableMatches(tableName, ONTOLOGY_CONCEPT_TABLE)
+            || tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)
+            || tableMatches(tableName, ONTOLOGY_PROPERTY_TABLE)
+            || tableMatches(tableName, ONTOLOGY_RELEASE_TABLE))) {
+      queryParams.put("ontologyIdParam", ontologyId);
+      return qualifyColumn(tableName, "ontologyId") + " = :ontologyIdParam";
     }
-    return condition;
+    return "";
   }
 
   /** Matches any of the comma-separated states, each bound as its own parameter. */

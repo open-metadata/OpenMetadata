@@ -86,6 +86,11 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
+  public void replaceGraph(final String graph, final Model model) {
+    delegate().replaceGraph(graph, model);
+  }
+
+  @Override
   public List<String> getAllGraphs() {
     return delegate().getAllGraphs();
   }

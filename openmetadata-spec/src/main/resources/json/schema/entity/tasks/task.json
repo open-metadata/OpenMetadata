@@ -461,6 +461,10 @@
       "description": "When true indicates the entity has been soft deleted.",
       "type": "boolean",
       "default": false
+    },
+    "ontologyReview": {
+      "description": "Immutable, server-managed review target for ontology approval tasks.",
+      "$ref": "../../type/ontologyReviewTarget.json"
     }
   },
   "required": ["id", "name", "category", "type", "status", "createdBy"],

@@ -126,20 +126,14 @@ final class OntologyMemoryGlossarySelector {
     // create it would only fail when a steward applies the draft.
     final var named =
         repository.getByNameOrNull(
-            null,
-            proposed.getName(),
-            repository.getFields("ontologyConfiguration"),
-            Include.ALL,
-            false);
-    if (named.isPresent()
-        && !Boolean.TRUE.equals(named.get().getDeleted())
-        && isEditable(named.get())) {
+            null, proposed.getName(), repository.getFields(""), Include.ALL, false);
+    if (named.isPresent() && !Boolean.TRUE.equals(named.get().getDeleted())) {
       return new Selection(
           named.get(), false, match.confidence(), match.rationale(), completion.modelId());
     }
     if (named.isPresent()) {
       throw OntologyAiOutputValidator.invalid(
-          "proposed glossary name belongs to a read-only or deleted glossary");
+          "proposed glossary name belongs to a deleted glossary");
     }
     return new Selection(
         proposed, true, match.confidence(), match.rationale(), completion.modelId());
@@ -152,13 +146,12 @@ final class OntologyMemoryGlossarySelector {
     repository
         .listAfter(
             null,
-            repository.getFields("ontologyConfiguration"),
+            repository.getFields(""),
             new ListFilter(Include.NON_DELETED),
             MAX_CANDIDATES,
             null)
         .getData()
         .stream()
-        .filter(OntologyMemoryGlossarySelector::isEditable)
         .forEach(glossary -> candidates.putIfAbsent(glossary.getId(), glossary));
     return candidates.values().stream().limit(MAX_CANDIDATES).toList();
   }
@@ -199,16 +192,13 @@ final class OntologyMemoryGlossarySelector {
         ids.add(UUID.fromString(value));
       }
     }
-    return ids.stream()
-        .map(this::glossaryOrNull)
-        .filter(glossary -> glossary != null && isEditable(glossary))
-        .toList();
+    return ids.stream().map(this::glossaryOrNull).filter(glossary -> glossary != null).toList();
   }
 
   // The index can briefly lag a delete; one stale hit must not discard every other candidate.
   private Glossary glossaryOrNull(final UUID id) {
     try {
-      return repository.get(null, id, repository.getFields("ontologyConfiguration"));
+      return repository.get(null, id, repository.getFields(""));
     } catch (EntityNotFoundException exception) {
       return null;
     }
@@ -237,11 +227,6 @@ final class OntologyMemoryGlossarySelector {
     return description == null || description.length() <= MAX_GLOSSARY_DESCRIPTION_CHARS
         ? description
         : description.substring(0, MAX_GLOSSARY_DESCRIPTION_CHARS);
-  }
-
-  private static boolean isEditable(final Glossary glossary) {
-    return glossary.getOntologyConfiguration() == null
-        || !Boolean.TRUE.equals(glossary.getOntologyConfiguration().getReadOnly());
   }
 
   private static void requireValidMatch(

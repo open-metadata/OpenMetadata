@@ -14,10 +14,11 @@ import { useCallback, useRef, useState } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../constants/constants';
 
 export const usePageForSize = (
-  pageSize: number
+  pageSize: number,
+  initialPage = INITIAL_PAGING_VALUE
 ): [number, (page: number) => void] => {
   const [pageAtSize, setPageAtSize] = useState({
-    page: INITIAL_PAGING_VALUE,
+    page: initialPage,
     size: pageSize,
   });
 

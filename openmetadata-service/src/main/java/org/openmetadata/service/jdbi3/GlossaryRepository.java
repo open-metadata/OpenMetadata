@@ -79,7 +79,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
-import org.openmetadata.service.ontology.OntologyLayerValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
@@ -92,10 +91,8 @@ import org.openmetadata.service.util.IntakeFormValidator;
 
 @Slf4j
 public class GlossaryRepository extends EntityRepository<Glossary> {
-  private static final String ONTOLOGY_CONFIGURATION = "ontologyConfiguration";
-  private static final String UPDATE_FIELDS = ONTOLOGY_CONFIGURATION;
-  private static final String PATCH_FIELDS = ONTOLOGY_CONFIGURATION;
-  private final OntologyLayerValidator ontologyLayerValidator;
+  private static final String UPDATE_FIELDS = "";
+  private static final String PATCH_FIELDS = "";
 
   public GlossaryRepository() {
     super(
@@ -108,9 +105,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     quoteFqn = true;
     supportsSearch = true;
     renameAllowed = true;
-    ontologyLayerValidator =
-        new OntologyLayerValidator(
-            id -> Entity.getEntity(Entity.GLOSSARY, id, "", Include.NON_DELETED));
   }
 
   @Override
@@ -175,9 +169,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   }
 
   @Override
-  public void prepare(Glossary glossary, boolean update) {
-    ontologyLayerValidator.applyDefaultsAndValidate(glossary);
-  }
+  public void prepare(Glossary glossary, boolean update) {}
 
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
@@ -449,8 +441,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         EntityReference termRef =
             getEntityReference(printer, csvRecord, fieldNumber, GLOSSARY_TERM, termFqn);
         if (termRef != null) {
-          GlossaryTerm resolvedTerm =
-              Entity.getEntity(GLOSSARY_TERM, termRef.getId(), "", Include.NON_DELETED);
+          // By name, not id: an earlier row's term may not be in the DB yet (e.g. dry-run id)
+          GlossaryTerm resolvedTerm = (GlossaryTerm) getEntityByName(GLOSSARY_TERM, termFqn);
           if (resolvedTerm.getEntityStatus() != null
               && resolvedTerm.getEntityStatus() != EntityStatus.APPROVED) {
             importFailure(
@@ -677,10 +669,6 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("name", () -> updateName(updated));
-      recordChange(
-          ONTOLOGY_CONFIGURATION,
-          original.getOntologyConfiguration(),
-          updated.getOntologyConfiguration());
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
     }

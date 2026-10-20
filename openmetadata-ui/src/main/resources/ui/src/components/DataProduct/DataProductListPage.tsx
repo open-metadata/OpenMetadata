@@ -49,6 +49,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getVisibleStatusColumns } from '../../utils/EntityStatusUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
@@ -256,7 +257,14 @@ const DataProductListPage = ({
 
   const { renderDataProductCard } = useDomainCardTemplates();
 
-  const extraColumns = dataProductClassBase.getListingExtraColumns();
+  const extraColumns = useMemo(
+    () =>
+      getVisibleStatusColumns(
+        dataProductClassBase.getListingExtraColumns(),
+        dataProductListing.entities
+      ),
+    [dataProductListing.entities]
+  );
 
   const dataProductColumns: ColumnDef[] = useMemo(
     () => [

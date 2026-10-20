@@ -272,6 +272,7 @@ export const useListingData = <
     actionHandlers,
     filterOptions: {},
     aggregations: getAggregations(dataFetching.aggregations || {}),
+    baseFilter,
     handleSearchChange,
     handleFilterChange,
     handleClearAll: resetAll,

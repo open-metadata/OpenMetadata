@@ -67,6 +67,10 @@ import {
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   CARD_CONTAINER_CLASS_NAME,
@@ -242,15 +246,18 @@ const TaskFeedCardFromTask = ({
   const isApprovalWorkflowTask =
     isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
 
-  const getTransitionId = (resolutionType: TaskResolutionType) =>
+  const getTransition = (resolutionType: TaskResolutionType) =>
     task.availableTransitions?.find(
       (transition) => transition.resolutionType === resolutionType
-    )?.id ??
+    ) ??
     task.availableTransitions?.find((transition) =>
       resolutionType === TaskResolutionType.Rejected
         ? transition.id === 'reject'
         : transition.id === 'approve'
-    )?.id;
+    );
+
+  const canQuickResolve = () =>
+    task.status === TaskEntityStatus.Open && !isOntologyReviewTask(task);
 
   const updateTaskData = async (
     newValue: string,
@@ -260,11 +267,14 @@ const TaskFeedCardFromTask = ({
       return;
     }
     try {
-      const updatedTask = await resolveTaskAPI(task.id, {
-        transitionId: getTransitionId(resolutionType),
-        resolutionType,
-        newValue,
-      });
+      const updatedTask = await resolveTaskAPI(
+        task.id,
+        getTaskResolveBody(task, {
+          transitionId: getTransition(resolutionType)?.id,
+          resolutionType,
+          newValue,
+        })
+      );
       showSuccessToast(
         isTaskPendingFurtherApproval(updatedTask)
           ? 'Vote recorded.'
@@ -376,7 +386,7 @@ const TaskFeedCardFromTask = ({
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
         <Box gap={2}>
-          {task.status === TaskEntityStatus.Open && (
+          {canQuickResolve() && (
             <Button
               color="tertiary"
               data-testid="approve-button"
@@ -388,7 +398,7 @@ const TaskFeedCardFromTask = ({
               {t('label.approve')}
             </Button>
           )}
-          {task.status === TaskEntityStatus.Open && (
+          {canQuickResolve() && (
             <Button
               color="tertiary-destructive"
               data-testid="reject-button"

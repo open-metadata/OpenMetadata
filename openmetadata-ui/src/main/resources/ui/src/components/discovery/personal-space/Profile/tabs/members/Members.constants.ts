@@ -73,7 +73,7 @@ export const IMPORT_RESULT_DETAILS_KEY = 'details';
 export const IMPORT_RESULT_EMPTY_PLACEHOLDER = '--';
 
 export const WIDGET_CLASS =
-  'tw:flex tw:flex-1 tw:flex-col tw:gap-1 tw:min-w-[120px] tw:p-3';
+  'tw:flex tw:flex-1 tw:flex-col tw:gap-1 tw:min-w-[120px] tw:overflow-hidden tw:p-3';
 
 // Status-chip utility pairs (bg-utility-{c}-50 + text-utility-{c}-700) — these flip
 // together for dark mode; the plain bg-/fg- status tokens collapse to adjacent shades
@@ -83,3 +83,12 @@ export const STAGE_ICON_CLASS: Record<StageState, string> = {
   active: 'tw:bg-utility-brand-50 tw:text-utility-brand-700',
   pending: 'tw:bg-tertiary tw:text-fg-quaternary',
 };
+
+// Team detail tabs whose content is a borderless table drawn edge to edge in
+// the tab card; the rest get padding.
+export const TABLE_TABS = new Set<string>([
+  'teams',
+  'users',
+  'roles',
+  'policies',
+]);

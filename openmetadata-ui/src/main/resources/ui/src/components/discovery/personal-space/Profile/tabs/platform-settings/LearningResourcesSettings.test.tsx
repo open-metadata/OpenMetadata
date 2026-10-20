@@ -157,6 +157,117 @@ describe('Learning resources settings', () => {
     });
   });
 
+  it('restores its search and page after a preview, without resetting to page 1', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: 'video',
+            filterState: { type: ['Video'] },
+            currentPage: 2,
+            pageSize: 15,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(inputOf('search-resources')).toHaveValue('video');
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        searchText: 'video',
+        filterState: { type: ['Video'] },
+        currentPage: 2,
+        pageSize: 15,
+      })
+    );
+  });
+
+  it('starts at page 1 when the restored page was counted at a size no longer saved', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: 'video',
+            filterState: { type: ['Video'] },
+            currentPage: 2,
+            pageSize: 25,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentPage: 1, pageSize: 15 })
+    );
+  });
+
+  it('restarts at page 1 when the saved page is past what a remount can walk to', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: '',
+            filterState: {},
+            currentPage: 30,
+            pageSize: 15,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentPage: 1 })
+    );
+  });
+
+  it('reports its state so the panel can restore it, back on page 1 after a new search', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: '',
+            filterState: {},
+            currentPage: 3,
+            pageSize: 15,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('intro-video');
+
+    fireEvent.change(inputOf('search-resources'), {
+      target: { value: 'lineage' },
+    });
+
+    await waitFor(() =>
+      expect(onSaveState).toHaveBeenLastCalledWith(
+        expect.objectContaining({ searchText: 'lineage', currentPage: 1 })
+      )
+    );
+  });
+
   it('deletes a resource after confirmation', async () => {
     render(
       <MemoryRouter>
