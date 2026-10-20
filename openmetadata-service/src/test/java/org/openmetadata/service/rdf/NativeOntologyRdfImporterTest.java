@@ -5,23 +5,163 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.OntologyPackCatalog;
+import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 
 class NativeOntologyRdfImporterTest {
   private static final URI ROOT_IRI = URI.create("https://example.org/ontology");
   private static final URI CONCEPT_IRI = URI.create("https://example.org/Customer");
   private final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+
+  @Test
+  void bundledPacksPreviewAsNativeConceptsAndExactSkosRelations() {
+    final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
+    final var loader = new OntologyPackContentLoader(getClass().getClassLoader());
+    for (final var pack : catalog.list()) {
+      if (!Boolean.TRUE.equals(pack.getBundled())) {
+        continue;
+      }
+      final String rdf =
+          pack.getModules().stream()
+              .map(module -> loader.load(module.getResourcePath()).body())
+              .collect(Collectors.joining("\n"));
+      final var model = importer.parse(rdf, RdfSerializationFormat.TURTLE);
+      try {
+        final var root = root();
+        final var snapshot =
+            new OntologyWorkingSnapshot.Snapshot(
+                state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+        final var plan = importer.reconcile(model, snapshot);
+        final var concepts =
+            plan.getOperations().stream()
+                .filter(
+                    operation ->
+                        operation.getOperationType() == OntologyChangeOperationType.UPSERT_CONCEPT)
+                .toList();
+        final var relations =
+            plan.getOperations().stream()
+                .filter(
+                    operation ->
+                        operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM)
+                .toList();
+        assertEquals(
+            pack.getModules().stream().mapToInt(module -> module.getConceptCount()).sum(),
+            concepts.size(),
+            pack.getId());
+        assertEquals(
+            pack.getModules().stream().mapToInt(module -> module.getRelationshipCount()).sum(),
+            relations.size(),
+            pack.getId());
+        assertEquals(concepts.size() + relations.size(), plan.getOperations().size());
+        assertTrue(
+            concepts.stream()
+                .allMatch(operation -> operation.getConcept().getDisplayName() != null));
+        assertTrue(
+            relations.stream()
+                .allMatch(
+                    operation ->
+                        operation.getAxiom().getAxiomType()
+                                == OntologyAxiomType.OBJECT_PROPERTY_ASSERTION
+                            && SKOS.broader
+                                .getURI()
+                                .equals(operation.getAxiom().getPropertyIri().toString())));
+        final var entries = new ArrayList<>(snapshot.entries());
+        concepts.forEach(
+            operation ->
+                entries.add(
+                    new OntologyWorkingSnapshot.Entry(MemberKind.CONCEPT, operation.getConcept())));
+        relations.forEach(
+            operation ->
+                entries.add(
+                    new OntologyWorkingSnapshot.Entry(MemberKind.AXIOM, operation.getAxiom())));
+        assertEquals(
+            0,
+            importer
+                .reconcile(model, new OntologyWorkingSnapshot.Snapshot(state(root), entries))
+                .getOperations()
+                .size());
+      } finally {
+        model.close();
+      }
+    }
+  }
+
+  @Test
+  void matchingPlainSkosAndRdfsAnnotationsAreConsumedTogether() {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        <https://example.org/C> a skos:Concept; skos:prefLabel "Customer"; rdfs:label "Customer";
+          skos:definition "A customer."; rdfs:comment "A customer." .
+        """,
+            RdfSerializationFormat.TURTLE);
+    try {
+      final var concept =
+          importer.reconcile(model, snapshot).getOperations().getFirst().getConcept();
+      assertEquals("Customer", concept.getDisplayName());
+      assertEquals("A customer.", concept.getDescription());
+    } finally {
+      model.close();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "skos:prefLabel \"Customer\"; rdfs:label \"Conflicting\"",
+        "skos:prefLabel \"Customer\", \"Conflicting\"",
+        "skos:prefLabel \"Customer\"@en",
+        "skos:prefLabel 17",
+        "skos:definition \"A customer.\"; rdfs:comment \"Conflicting\"",
+        "skos:definition \"A customer.\", \"Conflicting\"",
+        "skos:definition \"A customer.\"@en",
+        "skos:definition 17",
+        "skos:hiddenLabel \"Unsupported\""
+      })
+  void ambiguousOrUnrepresentedSkosAnnotationsFailClosed(String labels) {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        <https://example.org/C> a skos:Concept; %s .
+        """
+                .formatted(labels),
+            RdfSerializationFormat.TURTLE);
+    try {
+      assertThrows(BadRequestException.class, () -> importer.reconcile(model, snapshot));
+    } finally {
+      model.close();
+    }
+  }
 
   @ParameterizedTest
   @EnumSource(RdfSerializationFormat.class)

@@ -75,13 +75,26 @@ public final class OntologyReleaseCapture {
       throw new PreconditionFailedException(
           "Ontology activation changed; reload its working diff before capture");
     }
+    OntologyReleasePublication.validate(request, state);
     final Ontology ontology = working.root();
     final OntologyRelease release = header(ontology, state, access.user());
+    setPublicationMetadata(release, request);
     final Members members = new Members(release.getId());
     working.entries().forEach(entry -> members.add(entry.kind(), entry.definition()));
     OntologyStructureValidator.requireValid(release, members.values);
     seal(release, state, members);
     return release;
+  }
+
+  private void setPublicationMetadata(
+      final OntologyRelease release, final CaptureOntologyRelease request) {
+    release.setReleaseNotes(request.getReleaseNotes());
+    if (request.getVersionBump() != null) {
+      final String latest =
+          dao.ontologyReleaseDAO().findLatestSemanticVersion(release.getOntology().getId());
+      release.setSemanticVersion(
+          OntologyReleasePublication.nextVersion(latest, request.getVersionBump()));
+    }
   }
 
   private OntologyRelease header(

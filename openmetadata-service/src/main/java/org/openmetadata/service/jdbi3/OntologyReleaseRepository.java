@@ -40,7 +40,7 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
         OntologyRelease.class,
         Entity.getCollectionDAO().ontologyReleaseDAO(),
         "/v1/ontologyReleases/",
-        "releaseRevision,sourceWorkingRevision,ontologyIri,versionIri,encodingVersion,contentDigest,baseReleaseId,memberCount,totalBytes,sealedAt,sealedBy");
+        "releaseRevision,semanticVersion,releaseNotes,sourceWorkingRevision,ontologyIri,versionIri,encodingVersion,contentDigest,baseReleaseId,memberCount,totalBytes,sealedAt,sealedBy");
   }
 
   public void recordCapture(final OntologyRelease release) {

@@ -19,6 +19,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -70,9 +72,12 @@ import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.OntologyPackCatalog;
+import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
+import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
@@ -97,9 +102,15 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   private final OntologyMapper mapper = new OntologyMapper();
   private final OntologyReleaseCapture releaseCapture;
   private final OntologyReleaseActivation releaseActivation;
+  private final OntologyReleaseHistory releaseHistory;
+  private final OntologyPackCatalog packCatalog;
+  private final OntologyPackContentLoader packContentLoader;
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
+    packCatalog = new OntologyPackCatalog(getClass().getClassLoader());
+    packContentLoader = new OntologyPackContentLoader(getClass().getClassLoader());
+    releaseHistory = new OntologyReleaseHistory(repository.getDaoCollection().ontologyReleaseDAO());
     releaseActivation =
         new OntologyReleaseActivation(
             repository,
@@ -236,6 +247,29 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   }
 
   @POST
+  @Path("/{id}/library/{packId}/preview")
+  @Operation(
+      operationId = "previewNativeOntologyPack",
+      summary = "Preview verified library modules as native ontology draft operations")
+  public CreateOntologyChangeSet previewLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final PreviewNativeOntologyPack request) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final var selected =
+        packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
+    return previewImport(
+        uriInfo,
+        securityContext,
+        id,
+        new PreviewNativeOntologyImport()
+            .withFormat(PreviewNativeOntologyImport.Format.fromValue(selected.format()))
+            .withData(selected.body()));
+  }
+
+  @POST
   @Path("/{id}/imports/preview")
   @Operation(
       operationId = "previewNativeOntologyImport",
@@ -289,6 +323,23 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       reference.setSource(context.getEntity().getEntityReference());
     }
     return references;
+  }
+
+  @GET
+  @Path("/{id}/releases")
+  @Operation(
+      operationId = "listOntologyReleaseHistory",
+      summary = "List this ontology's sealed releases, newest first")
+  public ResultList<OntologyRelease> listReleaseHistory(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(100) final int limit,
+      @QueryParam("after") final String after) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    final ResultList<OntologyRelease> page = releaseHistory.list(id, limit, after);
+    OntologyResourceAccess.requireView(authorizer, securityContext, page.getData());
+    return page;
   }
 
   @POST

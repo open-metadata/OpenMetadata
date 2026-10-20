@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 /**
  * Sealed ontology content, stored as immutable SQL members and reviewed through the
  * existing approval workflow.
@@ -49,6 +50,11 @@ export interface OntologyRelease {
     owners?:      EntityReference[];
     provider?:    ProviderType;
     /**
+     * Immutable publication notes preserved exactly as captured, independently of the semantic
+     * content digest.
+     */
+    releaseNotes?: string;
+    /**
      * Monotonic release number allocated under the owning ontology state lock.
      */
     releaseRevision: number;
@@ -61,9 +67,14 @@ export interface OntologyRelease {
      * Current approval task, assigned by the existing workflow infrastructure. Clients cannot
      * set this field.
      */
-    reviewTask?:           string;
-    sealedAt:              number;
-    sealedBy:              string;
+    reviewTask?: string;
+    sealedAt:    number;
+    sealedBy:    string;
+    /**
+     * Immutable semantic version allocated by the server. Absent on legacy releases;
+     * independent of entity version, release revision and version IRI.
+     */
+    semanticVersion?:      string;
     sourceWorkingRevision: number;
     /**
      * Total UTF-8 size of canonical member payloads.

@@ -427,8 +427,8 @@ public final class NativeOntologyRdfImporter {
                     owl && skos
                         ? OntologyConceptType.BOTH
                         : owl ? OntologyConceptType.OWL_CLASS : OntologyConceptType.SKOS_CONCEPT)
-                .withDisplayName(text(subject, RDFS.label))
-                .withDescription(text(subject, RDFS.comment));
+                .withDisplayName(conceptText(subject, SKOS.prefLabel, RDFS.label))
+                .withDescription(conceptText(subject, SKOS.definition, RDFS.comment));
         final Set<String> synonyms = new LinkedHashSet<>();
         for (final RDFNode synonym : takeAll(subject, SKOS.altLabel)) {
           synonyms.add(string(synonym));
@@ -555,6 +555,7 @@ public final class NativeOntologyRdfImporter {
           continue;
         }
         final Property predicate = statement.getPredicate();
+        final OntologyPropertyKind propertyKind = assertionPropertyKind(predicate.getURI(), kinds);
         final OntologyAxiomType type =
             predicate.equals(RDFS.subClassOf)
                 ? OntologyAxiomType.SUBCLASS_OF
@@ -564,9 +565,9 @@ public final class NativeOntologyRdfImporter {
                         ? OntologyAxiomType.DISJOINT_WITH
                         : predicate.equals(RDF.type) && isClassExpression(statement.getObject())
                             ? OntologyAxiomType.CLASS_ASSERTION
-                            : kinds.get(predicate.getURI()) == OntologyPropertyKind.OBJECT
+                            : propertyKind == OntologyPropertyKind.OBJECT
                                 ? OntologyAxiomType.OBJECT_PROPERTY_ASSERTION
-                                : kinds.get(predicate.getURI()) == OntologyPropertyKind.DATA
+                                : propertyKind == OntologyPropertyKind.DATA
                                     ? OntologyAxiomType.DATA_PROPERTY_ASSERTION
                                     : null;
         if (type == null) {
@@ -613,6 +614,16 @@ public final class NativeOntologyRdfImporter {
         }
       }
       return List.copyOf(grouped.values());
+    }
+
+    private static OntologyPropertyKind assertionPropertyKind(
+        final String iri, final Map<String, OntologyPropertyKind> kinds) {
+      return switch (OwlEntityDeclarations.vocabularyKind(iri)) {
+        case OBJECT_PROPERTY -> OntologyPropertyKind.OBJECT;
+        case DATA_PROPERTY -> OntologyPropertyKind.DATA;
+        case null -> kinds.get(iri);
+        default -> null;
+      };
     }
 
     private boolean isClassExpression(final RDFNode node) {
@@ -686,6 +697,17 @@ public final class NativeOntologyRdfImporter {
     private String text(final Resource subject, final Property predicate) {
       final RDFNode value = expressions.one(subject, predicate);
       return value == null ? null : string(value);
+    }
+
+    private String conceptText(
+        final Resource subject, final Property skosPredicate, final Property rdfsPredicate) {
+      final String skosText = text(subject, skosPredicate);
+      final String rdfsText = text(subject, rdfsPredicate);
+      if (skosText != null && rdfsText != null && !skosText.equals(rdfsText)) {
+        throw new BadRequestException(
+            "Conflicting concept annotations: " + skosPredicate + " and " + rdfsPredicate);
+      }
+      return skosText == null ? rdfsText : skosText;
     }
 
     private static String string(final RDFNode value) {
