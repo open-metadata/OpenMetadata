@@ -25,7 +25,11 @@ import {
   resolveTask,
   TaskEntityStatus,
 } from '../../../rest/tasksAPI';
-import { useGlossaryProposals } from './useGlossaryProposals';
+import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
+import {
+  useGlossaryPendingCounts,
+  useGlossaryProposals,
+} from './useGlossaryProposals';
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTerms: jest.fn(),
@@ -34,6 +38,10 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   getMemoryDerivations: jest.fn(),
+}));
+
+jest.mock('../../../rest/miscAPI', () => ({
+  postExactAggregateFieldOptions: jest.fn(),
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
@@ -179,5 +187,47 @@ describe('useGlossaryProposals', () => {
 
     expect(result.current.isLoading).toBe(false);
     expect(getGlossaryTerms).not.toHaveBeenCalled();
+  });
+
+  it('counts pending terms per glossary, and the AI ones apart', async () => {
+    const buckets = (counts: Record<string, number>) => ({
+      data: {
+        aggregations: {
+          'sterms#glossary.name.keyword': {
+            buckets: Object.entries(counts).map(([key, doc_count]) => ({
+              key,
+              doc_count,
+            })),
+          },
+        },
+      },
+    });
+    (postExactAggregateFieldOptions as jest.Mock)
+      .mockResolvedValueOnce(
+        buckets({ businessmetrics: 2, customersuccess: 1 })
+      )
+      .mockResolvedValueOnce(buckets({ businessmetrics: 1 }));
+
+    const { result } = renderHook(() => useGlossaryPendingCounts(), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current).toBeDefined());
+
+    expect(result.current).toEqual({
+      all: { businessmetrics: 2, customersuccess: 1 },
+      ai: { businessmetrics: 1 },
+    });
+    const [[allRequest], [aiRequest]] = (
+      postExactAggregateFieldOptions as jest.Mock
+    ).mock.calls;
+
+    expect(allRequest).toEqual(
+      expect.objectContaining({
+        fieldName: 'glossary.name.keyword',
+        fieldValue: '.*',
+      })
+    );
+    expect(aiRequest.query).toContain('provider.keyword');
   });
 });

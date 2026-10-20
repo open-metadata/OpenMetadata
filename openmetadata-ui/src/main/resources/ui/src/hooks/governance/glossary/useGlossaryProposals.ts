@@ -216,6 +216,8 @@ const countPendingTermsByGlossary = (
     {
       deleted: false,
       fieldName: GLOSSARY_NAME_FIELD,
+      // The include pattern is required: without one the server returns no buckets.
+      fieldValue: '.*',
       index: SearchIndex.GLOSSARY_TERM,
       query: JSON.stringify({ query: { bool: { must: filters } } }),
       size: MAX_GLOSSARY_BUCKETS,

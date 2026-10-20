@@ -59,6 +59,13 @@ const indexBy = <T>(items: T[], key: (item: T) => string | undefined) =>
     })
   );
 
+const SOURCE_ORDER: Record<ProposalSource, number> = { ai: 0, person: 1 };
+
+// AI proposals come first, as in the review design; within a source, the newest first.
+const byReviewOrder = (left: GlossaryProposal, right: GlossaryProposal) =>
+  SOURCE_ORDER[left.source] - SOURCE_ORDER[right.source] ||
+  (right.term.updatedAt ?? 0) - (left.term.updatedAt ?? 0);
+
 /** The terms still awaiting review, each with what explains it: evidence or an approval task. */
 export const toProposals = (
   terms: GlossaryTerm[],
@@ -71,20 +78,22 @@ export const toProposals = (
     (task) => task.about?.fullyQualifiedName
   );
 
-  return terms.flatMap((term) => {
-    const source = getProposalSource(term);
+  return terms
+    .flatMap((term) => {
+      const source = getProposalSource(term);
 
-    return source
-      ? [
-          {
-            term,
-            source,
-            derivation: derivationByTerm.get(term.id),
-            approvalTask: taskByTerm.get(term.fullyQualifiedName ?? ''),
-          },
-        ]
-      : [];
-  });
+      return source
+        ? [
+            {
+              term,
+              source,
+              derivation: derivationByTerm.get(term.id),
+              approvalTask: taskByTerm.get(term.fullyQualifiedName ?? ''),
+            },
+          ]
+        : [];
+    })
+    .sort(byReviewOrder);
 };
 
 export const countProposals = (

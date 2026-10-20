@@ -101,6 +101,22 @@ describe('GlossaryReview utils', () => {
     expect(filterProposals(proposals, 'all')).toBe(proposals);
   });
 
+  it('puts AI proposals first, then the newest', () => {
+    const older = term({ id: 'older', updatedAt: 1 });
+    const newer = term({ id: 'newer', updatedAt: 2 });
+    const ai = term({
+      id: 'ai',
+      provider: ProviderType.Automation,
+      updatedAt: 0,
+    });
+
+    expect(
+      toProposals([older, newer, ai], [], []).map(
+        (proposal) => proposal.term.id
+      )
+    ).toEqual(['ai', 'newer', 'older']);
+  });
+
   it('reads the confidence as a whole percentage and the author from the request', () => {
     const [ai, person] = toProposals(
       [aiDraft, personDraft],

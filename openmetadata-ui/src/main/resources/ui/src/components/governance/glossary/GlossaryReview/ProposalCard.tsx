@@ -62,7 +62,7 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
   return (
     <Box align="center" gap={2}>
       {proposal.source === 'ai' ? (
-        <span className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:text-utility-purple-700">
+        <span className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-utility-purple-700">
           <AskCollateSparkle aria-hidden className="tw:size-3" />
           {proposal.derivation?.evidence?.agent ?? t('label.ai-agent')}
         </span>
@@ -78,7 +78,7 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
           </Typography>
         </Box>
       )}
-      <span className="tw:text-xs tw:text-tertiary">
+      <span className="tw:text-xs tw:whitespace-nowrap tw:text-tertiary">
         {getShortRelativeTime(proposal.term.updatedAt)}
       </span>
     </Box>
