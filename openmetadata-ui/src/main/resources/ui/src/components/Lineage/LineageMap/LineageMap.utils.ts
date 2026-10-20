@@ -603,6 +603,21 @@ export const getRailStopLabelKey = (stop: LineageBand, lens: LineageLens) => {
   }
 };
 
+export const isSceneNodeDrillable = (
+  node?: LineageSceneNode
+): node is LineageSceneNode & {
+  fullyQualifiedName: string;
+  entityType: string;
+} => Boolean(node?.isExpandable && node.fullyQualifiedName && node.entityType);
+
+// The scene API marks every container expandable, even a service with no
+// assets left, so a blind rail drill prefers a node with children to land on.
+// The childrenCount check can go once the API stops marking empty containers.
+export const getRailDrillFallbackNode = (nodes: LineageSceneNode[]) =>
+  nodes.find(
+    (node) => isSceneNodeDrillable(node) && (node.childrenCount ?? 0) > 0
+  ) ?? nodes.find(isSceneNodeDrillable);
+
 export const getDrillBand = (node: LineageSceneNode) => {
   if (node.band === LineageBand.Layer) {
     return LineageBand.Asset;
