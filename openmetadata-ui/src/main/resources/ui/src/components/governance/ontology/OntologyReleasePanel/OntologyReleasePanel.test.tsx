@@ -948,6 +948,107 @@ describe('OntologyReleasePanel', () => {
     ).toBeInTheDocument();
   });
 
+  it('lists sealed releases when working definitions cannot be read', async () => {
+    const requests = get.getMockImplementation();
+    if (!requests) {
+      throw new Error('Missing API fixture');
+    }
+    get.mockImplementation((url, config) =>
+      url.endsWith('/working/diff')
+        ? Promise.reject(
+            new AxiosError('Working definitions unavailable', '403')
+          )
+        : requests(url, config)
+    );
+
+    await renderPanel(false);
+
+    expect(
+      screen.getByTestId('ontology-release-select-release-id')
+    ).toBeVisible();
+
+    await selectRelease();
+
+    expect(
+      await screen.findByTestId('ontology-release-definition')
+    ).toBeVisible();
+    expect(put).not.toHaveBeenCalled();
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('rolls back with the current activation revision after the working diff fails', async () => {
+    currentState.activeReleaseId = 'new-release-id';
+    currentRelease.entityStatus = EntityStatus.Approved;
+    const { queryClient } = await renderPanel();
+    await selectRelease();
+    await screen.findByTestId('ontology-release-definition');
+    currentState = { ...currentState, activationRevision: 4 };
+    const requests = get.getMockImplementation();
+    if (!requests) {
+      throw new Error('Missing API fixture');
+    }
+    get.mockImplementation((url, config) =>
+      url.endsWith('/working/diff')
+        ? Promise.reject(
+            new AxiosError('Working definitions unavailable', '403')
+          )
+        : requests(url, config)
+    );
+    put.mockImplementation(async () => {
+      currentState = {
+        ...currentState,
+        activeReleaseId: release.id,
+        activationRevision: 5,
+      };
+
+      return { data: currentState };
+    });
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'label.activate-release' })
+    ).toBeEnabled();
+
+    await act(async () =>
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.activate-release' })
+      )
+    );
+
+    expect(put).toHaveBeenCalledWith('/ontologies/ontology-id/activation', {
+      releaseId: 'release-id',
+      expectedActivationRevision: 4,
+    });
+    expect(await screen.findByTestId('ontology-active-release')).toBeVisible();
+  });
+
+  it('blocks capture when the working diff is unavailable', async () => {
+    const requests = get.getMockImplementation();
+    if (!requests) {
+      throw new Error('Missing API fixture');
+    }
+    get.mockImplementation((url, config) =>
+      url.endsWith('/working/diff')
+        ? Promise.reject(
+            new AxiosError('Working definitions unavailable', '403')
+          )
+        : requests(url, config)
+    );
+    await renderPanel(true, 'changes');
+
+    expect(
+      await screen.findByText('message.ontology-review-unavailable')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-capture-release')).toBeDisabled();
+    expect(screen.getByTestId('ontology-request-review')).toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('ontology-capture-release'));
+
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it('keeps the active pointer unchanged when the server rejects a stale activation', async () => {
     currentState.activeReleaseId = 'new-release-id';
     currentRelease.entityStatus = EntityStatus.Approved;

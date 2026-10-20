@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
+import {
+  OperationState,
+  OperationType,
+} from '../../../../generated/api/data/createOntologyChangeSet';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import {
+  OntologyChangeSet,
+  OntologyChangeSetState,
+} from '../../../../generated/entity/data/ontologyChangeSet';
 import {
   EncodingVersion,
   EntityStatus,
@@ -21,18 +30,35 @@ import {
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
 import {
+  acquireOntologyEditLock,
+  applyOntologyChangeSet,
+  createOntologyChangeSet,
   exportOntologyRelease,
+  getOntologyChangeSet,
   getOntologyRelease,
   getOntologyState,
+  previewNativeOntologyImport,
+  releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { downloadFile } from '../../../../utils/Export/ExportUtils';
 import OntologyReleaseExportModal from './OntologyReleaseExportModal';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
+  acquireOntologyEditLock: jest.fn(),
+  applyOntologyChangeSet: jest.fn(),
+  createOntologyChangeSet: jest.fn(),
+  getOntologyChangeSet: jest.fn(),
+  previewNativeOntologyImport: jest.fn(),
+  releaseOntologyEditLock: jest.fn(),
   exportOntologyRelease: jest.fn(),
   getOntologyRelease: jest.fn(),
   getOntologyState: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../../../utils/Export/ExportUtils', () => ({
@@ -233,4 +259,176 @@ describe('OntologyReleaseExportModal', () => {
     expect(await screen.findByText(/Release 1/)).toBeVisible();
     expect(mockGetOntologyState).toHaveBeenCalledTimes(2);
   });
+});
+
+const importPlan = {
+  baseWorkingRevision: 7,
+  name: 'native-import-one',
+  ontology: 'Sales',
+  operations: [
+    {
+      id: 'operation-id',
+      operationType: OperationType.UpsertConcept,
+      state: OperationState.Active,
+    },
+  ],
+};
+const importDraft: OntologyChangeSet = {
+  ...importPlan,
+  id: 'draft-id',
+  ontology: { id: ontology.id, type: 'ontology', fullyQualifiedName: 'Sales' },
+  state: OntologyChangeSetState.Draft,
+  undoCursor: 1,
+};
+
+const dismissImportModal = async (
+  action: string,
+  user: ReturnType<typeof userEvent.setup>
+) => {
+  if (action === 'Export tab') {
+    await user.click(screen.getByRole('tab', { name: 'label.export' }));
+  } else if (action === 'header close') {
+    await user.click(screen.getByRole('button', { name: 'label.close' }));
+  } else if (action === 'Escape') {
+    await user.click(screen.getByRole('tab', { name: 'label.import' }));
+    await user.keyboard('{Escape}');
+  } else if (action === 'outside click') {
+    const overlay = screen.getByRole('dialog').parentElement?.parentElement;
+    if (!overlay) {
+      throw new Error('Missing modal overlay');
+    }
+    await user.click(overlay);
+  }
+};
+
+const ImportModalOwner = ({
+  onApplied,
+  onClose,
+}: {
+  onApplied: () => void;
+  onClose: () => void;
+}) => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return isOpen ? (
+    <OntologyReleaseExportModal
+      canImport
+      ontology={ontology}
+      onApplied={onApplied}
+      onClose={() => {
+        setIsOpen(false);
+        onClose();
+      }}
+    />
+  ) : null;
+};
+
+describe('OntologyReleaseExportModal import lifetime', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(getOntologyState).mockResolvedValue({
+      activationRevision: 1,
+      activeReleaseId: release.id,
+      lastReleaseRevision: 1,
+      ontologyId: ontology.id,
+      workingRevision: 7,
+    });
+    jest.mocked(getOntologyRelease).mockResolvedValue(release);
+    jest
+      .mocked(exportOntologyRelease)
+      .mockResolvedValue('<rdf>sealed release</rdf>');
+    jest.mocked(previewNativeOntologyImport).mockResolvedValue(importPlan);
+    jest.mocked(getOntologyChangeSet).mockResolvedValue(importDraft);
+    jest.mocked(applyOntologyChangeSet).mockResolvedValue({
+      ...importDraft,
+      state: OntologyChangeSetState.Applied,
+    });
+    jest
+      .mocked(acquireOntologyEditLock)
+      .mockImplementation(async (request) => ({
+        ...request,
+        version: 2,
+        acquiredAt: 1,
+        renewedAt: 1,
+        expiresAt: 60001,
+        holder: { id: 'author', type: 'user' },
+      }));
+    jest.mocked(releaseOntologyEditLock).mockResolvedValue(undefined);
+  });
+
+  it.each([
+    'no navigation',
+    'Export tab',
+    'header close',
+    'Escape',
+    'outside click',
+  ])(
+    'finishes one import after %s is attempted while draft creation is pending',
+    async (action) => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const onApplied = jest.fn();
+      const onClose = jest.fn();
+      let resolveCreate: (draft: OntologyChangeSet) => void = jest.fn();
+      jest.mocked(createOntologyChangeSet).mockReturnValue(
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        })
+      );
+      renderWithQueryClient(
+        <ImportModalOwner onApplied={onApplied} onClose={onClose} />
+      );
+      await screen.findByTestId('ontology-release-export-preview');
+      await user.click(screen.getByRole('tab', { name: 'label.import' }));
+      const input = document.querySelector('input[type="file"]');
+      if (!input) {
+        throw new Error('Missing file input');
+      }
+      const file = new File(['<urn:Customer> a <urn:Class> .'], 'sales.nt');
+      Object.defineProperty(file, 'text', {
+        value: jest.fn().mockResolvedValue('<urn:Customer> a <urn:Class> .'),
+      });
+      fireEvent.change(input, { target: { files: [file] } });
+      await screen.findByTestId('ontology-native-import-preview');
+      await user.click(screen.getByTestId('ontology-native-import-apply'));
+      await waitFor(() =>
+        expect(createOntologyChangeSet).toHaveBeenCalledTimes(1)
+      );
+
+      await dismissImportModal(action, user);
+      await act(async () => resolveCreate(importDraft));
+
+      await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+      expect(createOntologyChangeSet).toHaveBeenCalledTimes(1);
+      expect(acquireOntologyEditLock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resourceId: 'draft-id',
+          resourceType: 'ontologyChangeSet',
+        })
+      );
+      expect(applyOntologyChangeSet).toHaveBeenCalledTimes(1);
+      expect(applyOntologyChangeSet).toHaveBeenCalledWith('draft-id', {
+        lease: { sessionId: expect.any(String), version: 2 },
+      });
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    }
+  );
+
+  it.each(['header close', 'Escape', 'outside click'])(
+    'allows %s to dismiss an idle modal',
+    async (action) => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      const onClose = jest.fn();
+      renderWithQueryClient(
+        <ImportModalOwner onApplied={jest.fn()} onClose={onClose} />
+      );
+      await screen.findByTestId('ontology-release-export-preview');
+
+      await dismissImportModal(action, user);
+
+      expect(onClose).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    }
+  );
 });

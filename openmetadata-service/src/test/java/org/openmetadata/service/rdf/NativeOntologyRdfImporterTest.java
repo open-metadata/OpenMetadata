@@ -12,8 +12,12 @@ import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.api.data.ConceptMapping.ConceptMappingType;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAxiomType;
@@ -21,6 +25,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
@@ -200,6 +205,112 @@ class NativeOntologyRdfImporterTest {
     }
   }
 
+  @ParameterizedTest
+  @EnumSource(ConceptMappingType.class)
+  void labelChangePreservesAllSavedMappingsForSurvivingKeys(ConceptMappingType type) {
+    final var mappings = List.of(richMapping(type, "first"), richMapping(type, "second"));
+    final var concept = mappedConcept(mappings);
+    final var snapshot = conceptSnapshot(concept);
+    final String before = JsonUtils.pojoToJson(concept);
+    final String statement =
+        "<%s> <https://external.example/Customer>"
+            .formatted(OntologyRdfVocabulary.mapping(type).getURI());
+
+    final var operations = mappingPreview(snapshot, "Updated customer", statement).getOperations();
+
+    assertEquals(before, JsonUtils.pojoToJson(concept));
+    assertEquals(1, operations.size());
+    final var operation = operations.getFirst();
+    assertEquals(OntologyChangeOperationType.UPSERT_CONCEPT, operation.getOperationType());
+    assertEquals(concept.getId(), operation.getTargetId());
+    assertEquals(concept.getVersion(), operation.getBaseVersion());
+    assertEquals(concept.getId(), operation.getConcept().getId());
+    assertEquals("Updated customer", operation.getConcept().getDisplayName());
+    assertEquals(mappings, operation.getConcept().getConceptMappings());
+    operation.getConcept().getConceptMappings().getFirst().setSource("Changed preview");
+    assertEquals(before, JsonUtils.pojoToJson(concept));
+  }
+
+  @Test
+  void unchangedRichMappingsReimportIsNoOp() {
+    final var concept =
+        mappedConcept(
+            List.of(
+                richMapping(ConceptMappingType.EXACT_MATCH, "first"),
+                richMapping(ConceptMappingType.EXACT_MATCH, "second")));
+    final var snapshot = conceptSnapshot(concept);
+    final String before = JsonUtils.pojoToJson(concept);
+
+    assertEquals(
+        0,
+        mappingPreview(snapshot, "Customer", "skos:exactMatch <https://external.example/Customer>")
+            .getOperations()
+            .size());
+    assertEquals(before, JsonUtils.pojoToJson(concept));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "closeMatch, https://external.example/Customer, CLOSE_MATCH",
+    "exactMatch, https://external.example/Other, EXACT_MATCH"
+  })
+  void changedMappingTypeOrTargetDoesNotInheritSavedMetadata(
+      String predicate, String target, ConceptMappingType type) {
+    final var concept =
+        mappedConcept(List.of(richMapping(ConceptMappingType.EXACT_MATCH, "saved")));
+    final var snapshot = conceptSnapshot(concept);
+    final String before = JsonUtils.pojoToJson(concept);
+    final var operations =
+        mappingPreview(snapshot, "Customer", "skos:%s <%s>".formatted(predicate, target))
+            .getOperations();
+
+    assertEquals(1, operations.size());
+    assertEquals(
+        List.of(new ConceptMapping().withMappingType(type).withConceptIri(URI.create(target))),
+        operations.getFirst().getConcept().getConceptMappings());
+    assertEquals(before, JsonUtils.pojoToJson(concept));
+  }
+
+  @Test
+  void mappingAdditionsAndRemovalsKeepOnlySurvivingSavedMetadata() {
+    final var retained = richMapping(ConceptMappingType.EXACT_MATCH, "retained");
+    final var removed = richMapping(ConceptMappingType.CLOSE_MATCH, "removed");
+    final var concept = mappedConcept(List.of(retained, removed));
+    final var snapshot = conceptSnapshot(concept);
+    final String before = JsonUtils.pojoToJson(concept);
+    final var operations =
+        mappingPreview(
+                snapshot,
+                "Customer",
+                "skos:exactMatch <https://external.example/Customer>; "
+                    + "skos:relatedMatch <https://external.example/Other>")
+            .getOperations();
+
+    assertEquals(1, operations.size());
+    final var mappings = operations.getFirst().getConcept().getConceptMappings();
+    assertEquals(2, mappings.size());
+    assertTrue(mappings.contains(retained));
+    assertTrue(
+        mappings.contains(
+            new ConceptMapping()
+                .withMappingType(ConceptMappingType.RELATED_MATCH)
+                .withConceptIri(URI.create("https://external.example/Other"))));
+    assertEquals(before, JsonUtils.pojoToJson(concept));
+  }
+
+  @Test
+  void removingAllRdfMappingsRemovesSavedMappings() {
+    final var concept =
+        mappedConcept(List.of(richMapping(ConceptMappingType.EXACT_MATCH, "saved")));
+    final var snapshot = conceptSnapshot(concept);
+    final String before = JsonUtils.pojoToJson(concept);
+    final var operations = mappingPreview(snapshot, "Customer", "").getOperations();
+
+    assertEquals(1, operations.size());
+    assertTrue(operations.getFirst().getConcept().getConceptMappings().isEmpty());
+    assertEquals(before, JsonUtils.pojoToJson(concept));
+  }
+
   @Test
   void rejectsUnrepresentedTripleInsteadOfLosingIt() {
     final var root = root();
@@ -367,6 +478,55 @@ class NativeOntologyRdfImporterTest {
             RdfSerializationFormat.TURTLE);
     try {
       assertEquals(1, importer.reconcile(model, snapshot).getOperations().size());
+    } finally {
+      model.close();
+    }
+  }
+
+  private static ConceptMapping richMapping(ConceptMappingType type, String source) {
+    return new ConceptMapping()
+        .withMappingType(type)
+        .withConceptIri(URI.create("https://external.example/Customer"))
+        .withSchemeIri(URI.create("https://external.example/scheme/" + source))
+        .withSource(source);
+  }
+
+  private static OntologyConcept mappedConcept(List<ConceptMapping> mappings) {
+    return new OntologyConcept()
+        .withId(UUID.randomUUID())
+        .withName("Customer")
+        .withFullyQualifiedName("Imported.Customer")
+        .withDisplayName("Customer")
+        .withIri(CONCEPT_IRI)
+        .withConceptType(OntologyConceptType.OWL_CLASS)
+        .withConceptMappings(mappings)
+        .withVersion(0.3);
+  }
+
+  private static OntologyWorkingSnapshot.Snapshot conceptSnapshot(OntologyConcept concept) {
+    final var root = root();
+    return new OntologyWorkingSnapshot.Snapshot(
+        state(root),
+        List.of(
+            new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root),
+            new OntologyWorkingSnapshot.Entry(
+                MemberKind.CONCEPT, concept.withOntology(root.getEntityReference()))));
+  }
+
+  private CreateOntologyChangeSet mappingPreview(
+      OntologyWorkingSnapshot.Snapshot snapshot, String label, String statements) {
+    final var model =
+        importer.parse(
+            """
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+            <https://example.org/Customer> a owl:Class; rdfs:label "%s"; %s .
+            """
+                .formatted(label, statements),
+            RdfSerializationFormat.TURTLE);
+    try {
+      return importer.reconcile(model, snapshot);
     } finally {
       model.close();
     }

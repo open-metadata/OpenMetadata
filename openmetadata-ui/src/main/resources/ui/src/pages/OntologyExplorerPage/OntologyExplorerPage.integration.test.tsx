@@ -476,6 +476,74 @@ describe('Ontology Studio mode-switch integration', () => {
     ).toBeVisible();
   });
 
+  it.each(['pending', 'resolved'])(
+    'hydrates Settings from detail when the request is %s',
+    async (status) => {
+      const header: Ontology = {
+        id: 'retail',
+        name: 'Retail',
+        fullyQualifiedName: 'Retail',
+        iri: 'urn:retail',
+        namespace: 'urn:retail:',
+        version: 0.3,
+      };
+      let resolveDetail: ((ontology: Ontology) => void) | undefined;
+      mockGetOntology.mockReturnValue(
+        new Promise((resolve) => {
+          resolveDetail = resolve;
+        })
+      );
+      mockListOntologies.mockResolvedValue({
+        data: [header],
+        paging: { total: 1 },
+      });
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <OntologyExplorerPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+      await screen.findByTestId('all-ontologies-graph');
+      fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+      fireEvent.click(await screen.findByTestId('ontology-scope-retail'));
+      fireEvent.click(screen.getByTestId('mode-tab-edit'));
+
+      if (status === 'pending') {
+        const definitions = screen.queryByTestId('submode-tab-definitions');
+        if (definitions) {
+          fireEvent.click(definitions);
+          fireEvent.click(
+            screen.getByRole('tab', { name: 'label.setting-plural' })
+          );
+        }
+
+        expect(
+          screen.queryByTestId('ontology-create-form')
+        ).not.toBeInTheDocument();
+
+        return;
+      }
+
+      await act(async () => {
+        resolveDetail?.({
+          ...header,
+          owners: [{ id: 'owner', type: 'user', name: 'Saved owner' }],
+          reviewers: [{ id: 'reviewer', type: 'user', name: 'Saved reviewer' }],
+        });
+      });
+      fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
+      fireEvent.click(
+        await screen.findByRole('tab', { name: 'label.setting-plural' })
+      );
+
+      const form = within(await screen.findByTestId('ontology-create-form'));
+
+      expect(form.getByText('Saved owner')).toBeVisible();
+      expect(form.getByText('Saved reviewer')).toBeVisible();
+    }
+  );
+
   it.each([403, 404])(
     'preserves failed native deep links and exposes recovery for %s',
     async (status) => {

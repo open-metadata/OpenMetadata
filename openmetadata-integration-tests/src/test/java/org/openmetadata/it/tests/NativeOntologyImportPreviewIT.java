@@ -18,6 +18,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
+import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
@@ -157,6 +158,62 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
             .previewImport(ontology.getId(), graphTurtle(baseIri))
             .getOperations()
             .size());
+  }
+
+  @Test
+  void applyingLabelChangePreservesSavedMappingMetadata(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final URI conceptIri =
+        URI.create("https://example.org/model/" + ns.shortPrefix() + "/Customer");
+    final var mappings =
+        List.of(
+            new ConceptMapping()
+                .withMappingType(ConceptMapping.ConceptMappingType.EXACT_MATCH)
+                .withConceptIri(URI.create("https://external.example/Customer"))
+                .withSchemeIri(URI.create("https://external.example/scheme"))
+                .withSource("External catalog"));
+    final OntologyConcept saved =
+        client
+            .ontologyConcepts()
+            .create(
+                new CreateOntologyConcept()
+                    .withOntology(ontology.getFullyQualifiedName())
+                    .withName("Customer")
+                    .withDisplayName("Customer")
+                    .withIri(conceptIri)
+                    .withConceptType(OntologyConceptType.OWL_CLASS)
+                    .withConceptMappings(mappings));
+    final var request =
+        new PreviewNativeOntologyImport()
+            .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+            .withData(
+                """
+                @prefix owl: <http://www.w3.org/2002/07/owl#> .
+                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+                @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+                <%s> a owl:Class; rdfs:label "Updated customer";
+                  skos:exactMatch <https://external.example/Customer> .
+                """
+                    .formatted(conceptIri));
+    final var preview = client.ontologies().previewImport(ontology.getId(), request);
+    assertEquals(1, preview.getOperations().size());
+    assertEquals(saved.getId(), preview.getOperations().getFirst().getTargetId());
+    assertEquals(mappings, client.ontologyConcepts().get(saved.getId()).getConceptMappings());
+    final var draft =
+        ns.trackRoot(
+            "ontologyChangeSet",
+            client.ontologyChangeSets().create(preview.withName(ns.prefix("mappingImport"))));
+
+    final var applied =
+        OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "mappingEditor");
+
+    assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
+    final var updated = client.ontologyConcepts().get(saved.getId());
+    assertEquals("Updated customer", updated.getDisplayName());
+    assertEquals(mappings, updated.getConceptMappings());
+    assertEquals(
+        0, client.ontologies().previewImport(ontology.getId(), request).getOperations().size());
   }
 
   @Test
