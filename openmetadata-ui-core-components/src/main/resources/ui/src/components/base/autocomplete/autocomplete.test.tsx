@@ -21,10 +21,14 @@ const OPTIONS: SelectItemType[] = [
   { id: 'tier1', label: 'Tier 1' },
 ];
 
-const renderAutocomplete = (onItemInserted: (id: unknown) => void) =>
+const renderAutocomplete = (
+  onItemInserted: (id: unknown) => void,
+  multiple = true
+) =>
   render(
     <Autocomplete
       items={OPTIONS}
+      multiple={multiple}
       placeholder="Select"
       selectedItems={[]}
       onItemInserted={onItemInserted}>
@@ -61,10 +65,8 @@ describe('Autocomplete – selection commit', () => {
     expect(onItemInserted).toHaveBeenCalledWith('pii');
   });
 
-  // react-aria's ComboBox commits the focused option when the input loses focus,
-  // and the listbox focuses whatever option the pointer last passed over — so
-  // tabbing out inserted a value the user never picked. In a query builder that
-  // silently changes what the filter means.
+  // react-aria commits the focused option when Tab leaves the input, so tabbing out inserted a
+  // value nobody picked. In a query builder that silently changes what the filter means.
   it('inserts nothing when focus leaves the input', async () => {
     const onItemInserted = vi.fn();
     renderAutocomplete(onItemInserted);
@@ -74,6 +76,59 @@ describe('Autocomplete – selection commit', () => {
     await userEvent.tab();
 
     expect(onItemInserted).not.toHaveBeenCalled();
+  });
+
+  it('inserts nothing when focus leaves backwards or after typing', async () => {
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab({ shift: true });
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('Tier');
+    await userEvent.tab();
+
+    expect(onItemInserted).not.toHaveBeenCalled();
+  });
+
+  // A browser runs queued microtasks between React's capture and bubble listeners; a guard that
+  // waits for one is gone by the time react-aria commits.
+  it('inserts nothing even when microtasks run between the key listeners', async () => {
+    vi.stubGlobal('queueMicrotask', (task: () => void) => task());
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab();
+
+    expect(onItemInserted).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('inserts exactly the picked option when Tab follows a pick', async () => {
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}{Enter}');
+    await userEvent.tab();
+
+    expect(onItemInserted).toHaveBeenCalledTimes(1);
+    expect(onItemInserted).toHaveBeenCalledWith('pii');
+  });
+
+  // One value only: Tab accepts the focused option, as a single-select combobox does.
+  it('takes the focused option on Tab when it holds one value', async () => {
+    const onItemInserted = vi.fn();
+    renderAutocomplete(onItemInserted, false);
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{ArrowDown}');
+    await userEvent.tab();
+
+    expect(onItemInserted).toHaveBeenCalledWith('pii');
   });
 });
 
