@@ -34,7 +34,6 @@ on:
       - "openmetadata-mcp/**"
       - "common/**"
       - "pom.xml"
-      - "yarn.lock"
       - "Makefile"
       - "bootstrap/**"
   pull_request:

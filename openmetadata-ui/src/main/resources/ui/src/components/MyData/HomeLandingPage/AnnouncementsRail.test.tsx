@@ -12,14 +12,20 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import React from 'react';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { queryClient } from '../../../queryClient';
 import {
   AnnouncementEntity,
-  getActiveAnnouncements,
   listAnnouncements,
+  ListAnnouncementsParams,
 } from '../../../rest/announcementsAPI';
 import { ALL_ANNOUNCEMENTS_PAGE_SIZE } from './AllAnnouncementsDialog';
 import AnnouncementsRail from './AnnouncementsRail';
@@ -44,7 +50,6 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 }));
 
 jest.mock('../../../rest/announcementsAPI', () => ({
-  getActiveAnnouncements: jest.fn(),
   listAnnouncements: jest.fn(),
 }));
 
@@ -167,11 +172,17 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const mockGetActiveAnnouncements =
-  getActiveAnnouncements as jest.MockedFunction<typeof getActiveAnnouncements>;
-const mockListAnnouncements = listAnnouncements as jest.MockedFunction<
+const mockListAnnouncementsApi = listAnnouncements as jest.MockedFunction<
   typeof listAnnouncements
 >;
+// One endpoint serves both reads, and both ask for live announcements, so route
+// by page size: the dialog pages at ALL_ANNOUNCEMENTS_PAGE_SIZE, the rail does not.
+const mockGetActiveAnnouncements = jest.fn();
+const mockListAnnouncements = jest.fn();
+const routeListAnnouncements = (params?: ListAnnouncementsParams) =>
+  params?.limit === ALL_ANNOUNCEMENTS_PAGE_SIZE
+    ? mockListAnnouncements(params)
+    : mockGetActiveAnnouncements(params);
 
 const USER_ID = 'user-1';
 const ANNOUNCEMENT_ID = 'announcement-1';
@@ -258,6 +269,7 @@ const renderWithQueryClient = (children: React.ReactNode) =>
 describe('AnnouncementsRail cache integration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -266,6 +278,18 @@ describe('AnnouncementsRail cache integration', () => {
       data: [makeAnnouncement(ANNOUNCEMENT_ID)],
     } as never);
     mockListAnnouncements.mockResolvedValue({ data: [] } as never);
+  });
+
+  it('lists only asset announcements, leaving system ones to the critical banner', async () => {
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    await waitFor(() => {
+      expect(mockGetActiveAnnouncements).toHaveBeenCalledWith({
+        active: true,
+        limit: 100,
+        system: false,
+      });
+    });
   });
 
   it('deduplicates concurrent active-announcement requests', async () => {
@@ -364,6 +388,7 @@ describe('AnnouncementsRail cache integration', () => {
 describe('AnnouncementsRail rail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -462,6 +487,32 @@ describe('AnnouncementsRail rail', () => {
     expect(screen.getByTestId(VIEW_ALL_BTN)).toBeInTheDocument();
   });
 
+  it('gives a lone announcement the full width, and two-up otherwise', async () => {
+    const halfWidth = 'tw:@2xl:basis-[calc(50%-0.4375rem)]';
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('solo')],
+    } as never);
+
+    const { unmount } = renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(await screen.findByTestId(cardId('solo'))).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('solo')).closest('li')).not.toHaveClass(
+      halfWidth
+    );
+
+    unmount();
+    queryClient.clear();
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
+    } as never);
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(await screen.findByTestId(cardId('a1'))).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('a1')).closest('li')).toHaveClass(
+      halfWidth
+    );
+  });
+
   it('hides the whole section when nothing is active', async () => {
     mockGetActiveAnnouncements.mockResolvedValue({ data: [] } as never);
 
@@ -493,6 +544,7 @@ describe('AnnouncementsRail rail', () => {
 describe('AnnouncementsRail type badge', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -553,6 +605,7 @@ describe('AnnouncementsRail type badge', () => {
 describe('AnnouncementsRail all-announcements dialog', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.sessionStorage.clear();
     window.localStorage.clear();
@@ -561,11 +614,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       data: [makeAnnouncement('a1')],
     } as never);
     mockListAnnouncements.mockResolvedValue({
-      data: [
-        makeAnnouncement('old', EXPIRED_WINDOW),
-        makeAnnouncement('a1'),
-        makeAnnouncement('soon', SCHEDULED_WINDOW),
-      ],
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
     } as never);
   });
 
@@ -599,35 +648,35 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     });
   });
 
-  it('lists expired and scheduled announcements the rail leaves out', async () => {
+  // The section only appears while something is live, so the dialog is no
+  // place for expired or scheduled announcements; it lists every live one.
+  it('asks only for live announcements, every one of them dismissible', async () => {
     await openDialog();
+
+    expect(mockListAnnouncements).toHaveBeenCalledWith(
+      expect.objectContaining({ active: true, system: false })
+    );
 
     const list = screen.getByTestId('all-announcements-list');
 
-    expect(list).toContainElement(screen.getByTestId(cardId('old')));
-    expect(list).toContainElement(screen.getByTestId(cardId('soon')));
-    // Active first, then Scheduled, then Expired.
+    expect(list).toContainElement(screen.getByTestId(cardId('a2')));
     expect(
-      Array.from(list.children).map((li) =>
-        li.firstElementChild?.getAttribute('data-testid')
-      )
-    ).toEqual([cardId('a1'), cardId('soon'), cardId('old')]);
+      within(list).queryByTestId('announcement-status')
+    ).not.toBeInTheDocument();
+    expect(within(list).getAllByLabelText(DISMISS_LABEL)).toHaveLength(2);
   });
 
-  it('offers no dismiss on announcements that are no longer live', async () => {
+  it('closes itself when an announcement in it is opened', async () => {
     await openDialog();
 
-    const expired = screen.getByTestId(cardId('old'));
-    const scheduled = screen.getByTestId(cardId('soon'));
+    const list = screen.getByTestId('all-announcements-list');
+    fireEvent.click(within(list).getAllByRole('link')[0]);
 
-    expect(expired).toHaveTextContent('label.in-active');
-    expect(scheduled).toHaveTextContent('label.scheduled');
-    expect(
-      expired.querySelector(`[aria-label="${DISMISS_LABEL}"]`)
-    ).not.toBeInTheDocument();
-    expect(
-      scheduled.querySelector(`[aria-label="${DISMISS_LABEL}"]`)
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('all-announcements-list')
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('keeps a dismissal from the rail out of the dialog', async () => {
@@ -640,9 +689,12 @@ describe('AnnouncementsRail all-announcements dialog', () => {
   });
 
   // The dialog used to live inside the rail's section, so dismissing the last
-  // live card emptied the rail, unmounted the section and closed the dialog on
-  // the scheduled and expired announcements it was still listing.
+  // live card emptied the rail, unmounted the section and closed the dialog
+  // under the user.
   it('stays open when the last live announcement is dismissed from it', async () => {
+    mockListAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1')],
+    } as never);
     await openDialog();
 
     const list = screen.getByTestId('all-announcements-list');
@@ -653,43 +705,44 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     expect(
       screen.queryByTestId('announcements-section')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('all-announcements-list')).toBeInTheDocument();
-    expect(screen.getByTestId(cardId('old'))).toBeInTheDocument();
-    expect(screen.getByTestId(cardId('soon'))).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-active-announcements')
+    ).toBeInTheDocument();
   });
 
   it('pages past the first batch instead of silently truncating', async () => {
     mockListAnnouncements
       .mockResolvedValueOnce({
-        data: [
-          makeAnnouncement('a1'),
-          makeAnnouncement('soon', SCHEDULED_WINDOW),
-        ],
+        data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
         paging: { after: 'cursor-2', total: 3 },
       } as never)
       .mockResolvedValueOnce({
-        data: [makeAnnouncement('old', EXPIRED_WINDOW)],
+        data: [makeAnnouncement('a3')],
         paging: { total: 3 },
       } as never);
 
     await openDialog();
 
     expect(mockListAnnouncements).toHaveBeenLastCalledWith({
+      active: true,
       after: undefined,
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+      system: false,
     });
     // The badge counts the whole list, not just the page on screen.
     expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
       '3'
     );
-    expect(screen.queryByTestId(cardId('old'))).not.toBeInTheDocument();
+    expect(screen.queryByTestId(cardId('a3'))).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('all-announcements-load-more'));
 
-    expect(await screen.findByTestId(cardId('old'))).toBeInTheDocument();
+    expect(await screen.findByTestId(cardId('a3'))).toBeInTheDocument();
     expect(mockListAnnouncements).toHaveBeenLastCalledWith({
+      active: true,
       after: 'cursor-2',
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
+      system: false,
     });
     expect(
       screen.queryByTestId('all-announcements-load-more')
@@ -702,6 +755,7 @@ describe('AnnouncementsRail persisted dismissals', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.localStorage.clear();
     mockCurrentUser = { id: USER_ID };
@@ -755,55 +809,40 @@ describe('AnnouncementsRail persisted dismissals', () => {
   });
 });
 
-describe('AnnouncementsRail entry point with nothing live', () => {
+describe('AnnouncementsRail with nothing live', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockListAnnouncementsApi.mockImplementation(routeListAnnouncements);
     queryClient.clear();
     window.localStorage.clear();
     mockGetActiveAnnouncements.mockResolvedValue({ data: [] } as never);
     mockListAnnouncements.mockResolvedValue({
-      data: [makeAnnouncement('soon', SCHEDULED_WINDOW)],
+      data: [
+        makeAnnouncement('soon', SCHEDULED_WINDOW),
+        makeAnnouncement('old', EXPIRED_WINDOW),
+      ],
     } as never);
   });
 
-  it('keeps a compact "View all" for an admin when there are announcements to list', async () => {
-    mockCurrentUser = { id: USER_ID, isAdmin: true };
+  it.each([
+    ['an admin', { id: USER_ID, isAdmin: true }],
+    ['everyone else', { id: USER_ID }],
+  ])(
+    'shows %s no section even with scheduled or expired ones',
+    async (_, user) => {
+      mockCurrentUser = user;
 
-    renderWithQueryClient(<AnnouncementsRail />);
+      renderWithQueryClient(<AnnouncementsRail />);
 
-    fireEvent.click(await screen.findByTestId(VIEW_ALL_BTN));
+      await waitFor(() => {
+        expect(mockGetActiveAnnouncements).toHaveBeenCalled();
+      });
 
-    expect(await screen.findByTestId(cardId('soon'))).toBeInTheDocument();
-    expect(screen.queryByTestId(RAIL_TESTID)).not.toBeInTheDocument();
-  });
-
-  it('shows an admin nothing when there is nothing at all to list', async () => {
-    mockCurrentUser = { id: USER_ID, isAdmin: true };
-    mockListAnnouncements.mockResolvedValue({ data: [] } as never);
-
-    renderWithQueryClient(<AnnouncementsRail />);
-
-    await waitFor(() => {
-      expect(mockListAnnouncements).toHaveBeenCalledWith({ limit: 1 });
-    });
-
-    expect(
-      screen.queryByTestId('announcements-section')
-    ).not.toBeInTheDocument();
-  });
-
-  it('stands the section down for everyone else, without asking', async () => {
-    mockCurrentUser = { id: USER_ID };
-
-    renderWithQueryClient(<AnnouncementsRail />);
-
-    await waitFor(() => {
-      expect(mockGetActiveAnnouncements).toHaveBeenCalled();
-    });
-
-    expect(
-      screen.queryByTestId('announcements-section')
-    ).not.toBeInTheDocument();
-    expect(mockListAnnouncements).not.toHaveBeenCalled();
-  });
+      expect(
+        screen.queryByTestId('announcements-section')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId(VIEW_ALL_BTN)).not.toBeInTheDocument();
+      expect(mockListAnnouncements).not.toHaveBeenCalled();
+    }
+  );
 });

@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
@@ -182,7 +182,7 @@
     <dependency>
       <groupId>com.auth0</groupId>
       <artifactId>java-jwt</artifactId>
-      <version>4.4.0</version>
+      <version>${java-jwt.version}</version>
       <scope>test</scope>
     </dependency>
     <!-- Playwright Java for UI integration tests (*UIIT.java) -->
@@ -318,6 +318,12 @@
                 <include>org/openmetadata/it/bench/**</include>
                 <include>org/openmetadata/playwright/**</include>
                 <include>org/openmetadata/it/tests/BaseEntityIT*</include>
+                <!-- The consumers the services file registers, so a server loading the harness
+                     can build every consumer it lists. -->
+                <include>org/openmetadata/it/tests/alerts/TestConsumers*</include>
+                <include>org/openmetadata/it/tests/alerts/LatchedConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/ReportingConsumer*</include>
+                <include>org/openmetadata/it/tests/alerts/FailingCommitConsumer*</include>
                 <include>private_key.der</include>
                 <include>public_key.der</include>
                 <include>openmetadata-secure-test.yaml</include>
@@ -443,6 +449,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -453,6 +465,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -493,6 +507,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -504,6 +524,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -575,6 +597,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -585,6 +613,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -625,6 +655,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -636,6 +672,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -708,6 +746,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -718,6 +762,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -759,6 +805,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -770,6 +822,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -842,6 +896,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -852,6 +912,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -892,6 +954,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -903,6 +971,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -974,6 +1044,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -984,6 +1060,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1024,6 +1102,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1035,6 +1119,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1105,6 +1191,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1115,6 +1207,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1156,6 +1250,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1167,6 +1267,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1254,6 +1356,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1264,6 +1372,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1306,6 +1416,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1317,6 +1433,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1394,6 +1512,12 @@
                     <include>**/TagRecognizerFeedbackIT.java</include>
                     <include>**/UserMetricsResourceIT.java</include>
                     <include>**/WorkflowDefinitionResourceIT.java</include>
+                    <include>**/ChangeRequestAdmissionIT.java</include>
+                    <include>**/ChangeRequestApplyIT.java</include>
+                    <include>**/ChangeRequestDecisionIT.java</include>
+                    <include>**/ChangeRequestImportAndBulkIT.java</include>
+                    <include>**/ChangeRequestLifecycleIT.java</include>
+                    <include>**/ChangeRequestResourceIT.java</include>
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
@@ -1404,6 +1528,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1445,6 +1571,12 @@
                     <exclude>**/TagRecognizerFeedbackIT.java</exclude>
                     <exclude>**/UserMetricsResourceIT.java</exclude>
                     <exclude>**/WorkflowDefinitionResourceIT.java</exclude>
+                    <exclude>**/ChangeRequestAdmissionIT.java</exclude>
+                    <exclude>**/ChangeRequestApplyIT.java</exclude>
+                    <exclude>**/ChangeRequestDecisionIT.java</exclude>
+                    <exclude>**/ChangeRequestImportAndBulkIT.java</exclude>
+                    <exclude>**/ChangeRequestLifecycleIT.java</exclude>
+                    <exclude>**/ChangeRequestResourceIT.java</exclude>
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
@@ -1456,6 +1588,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>

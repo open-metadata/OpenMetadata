@@ -91,6 +91,8 @@ export interface FieldPropsMap {
   children?: ReactNode;
   colors?: string[];
   'data-testid'?: string;
+  /** TEXT / PASSWORD / NUMBER only: test id on the inner `<input>`, not the wrapper. */
+  inputDataTestId?: string;
   defaultCamera?: 'environment' | 'user';
   defaultIcon?: { component: FC };
   disabled?: boolean;

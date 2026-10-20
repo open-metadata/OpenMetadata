@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -49,9 +50,6 @@ from metadata.generated.schema.entity.services.connections.database.couchbaseCon
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeType,
 )
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeType,
-)
 from metadata.generated.schema.entity.services.connections.database.domoDatabaseConnection import (
     DomoDatabaseType,
 )
@@ -63,6 +61,9 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 )
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBType,
+)
+from metadata.generated.schema.entity.services.connections.database.neo4jConnection import (
+    Neo4jType,
 )
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceType,
@@ -126,6 +127,12 @@ NO_ACCESS_TOKEN = "no_token"
 
 SAMPLE_DATA_DEFAULT_COUNT = 50
 
+# Auto-classification may read up to SAMPLE_DATA_MAX_COUNT rows, but only
+# SAMPLE_DATA_MAX_STORED_COUNT of them are persisted, so raising the classification
+# budget never grows the stored sample. Bounds rows returned, not database scan cost.
+SAMPLE_DATA_MAX_COUNT = 1_000
+SAMPLE_DATA_MAX_STORED_COUNT = 50
+
 # Max length for any individual cell value in sample data.
 # Prevents OOM when tables contain large TEXT/CLOB columns.
 SAMPLE_DATA_MAX_CELL_LENGTH = 5_000
@@ -179,6 +186,7 @@ ENTITY_REFERENCE_CLASS_MAP = {
     "metric": Metric,
     "glossary": Glossary,
     "glossaryTerm": GlossaryTerm,
+    "dataContract": DataContract,
     "eventSubscription": EventSubscription,
 }
 
@@ -190,11 +198,11 @@ NON_SQA_DATABASE_CONNECTIONS = (
     DatalakeType.Datalake.value,
     BigtableType.BigTable.value,
     CouchbaseType.Couchbase.value,
-    DeltaLakeType.DeltaLake.value,
     DomoDatabaseType.DomoDatabase.value,
     DynamoDBType.DynamoDB.value,
     GlueType.Glue.value,
     MongoDBType.MongoDB.value,
+    Neo4jType.Neo4j.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,
     SasType.SAS.value,

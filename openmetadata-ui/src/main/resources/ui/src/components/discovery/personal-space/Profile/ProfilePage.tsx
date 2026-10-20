@@ -44,7 +44,6 @@ import { useApplicationsProvider } from '../../../Settings/Applications/Applicat
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
-  APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
   FEATURES_NAV_ITEMS,
   ProfileHeaderOverride,
@@ -267,21 +266,11 @@ const ProfilePage: React.FC = () => {
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
-    const applicationItems = APPLICATION_NAV_ITEMS.filter(
-      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
-    );
-
     const featuresItems = FEATURES_NAV_ITEMS.filter(
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
-    return [
-      ...coreItems,
-      ...workspaceItems,
-      ...applicationItems,
-      ...featuresItems,
-      ...contributed,
-    ];
+    return [...coreItems, ...workspaceItems, ...featuresItems, ...contributed];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
   // Clear header override whenever the user switches nav items. The profile tab
@@ -373,6 +362,7 @@ const ProfilePage: React.FC = () => {
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}
             meta={headerOverride?.meta}
+            tabs={headerOverride?.tabs}
             title={headerTitle}
             titleInput={headerOverride?.titleInput}
             titleSuffix={headerOverride?.titleSuffix}

@@ -170,10 +170,11 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   }
 
   /**
-   * Clicks the zoom control until the map crosses its semantic-zoom threshold. The threshold is an
-   * absolute zoom level, and a root scene of a few hundred services fits the view far further out
-   * than one of twenty, so a fixed number of clicks only works for small graphs. A click or two
-   * past the crossing is harmless: the map suppresses semantic zoom right after every scene load.
+   * Clicks the zoom control until the map crosses its semantic-zoom threshold. The threshold is
+   * screen fill — zoom out once the whole graph fills under a third of the viewport, zoom in once
+   * a card fills most of it, with the zoom min/max as a fallback — not a fixed zoom level. A
+   * click or two past the crossing is harmless: the map suppresses semantic zoom right after
+   * every scene load.
    */
   private LineageMapPage semanticZoom(final String zoomTestId, final String expectedBand) {
     requireBandChange(expectedBand);

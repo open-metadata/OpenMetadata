@@ -298,7 +298,7 @@ export const addAssetsToGlossaryTerm = async (
 
   const response = await APIClient.put<
     AddGlossaryToAssetsRequest,
-    AxiosResponse<GlossaryTerm>
+    AxiosResponse<BulkOperationResult>
   >(`/glossaryTerms/${glossaryTerm.id}/assets/add`, data);
 
   return response.data;

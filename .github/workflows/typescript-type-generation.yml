@@ -128,30 +128,36 @@ jobs:
         with:
           node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
 
-      - name: Install dependencies
-        run: |
-          yarn install --frozen-lockfile
-
       - name: Generate TypeScript types
+        # json2ts-generate-all.sh fetches its pinned quicktype via npx. A branch
+        # still on the old script expects a root node_modules this job no longer
+        # installs; it then "succeeds" with zero types, so fail rather than push
+        # the deletion of every generated file.
         run: |
-          cd openmetadata-ui/src/main/resources/ui
-          # Create a symlink to the root node_modules
-          ln -sf ../../../../../node_modules .
-          ./json2ts-generate-all.sh -l true
+          ./openmetadata-ui/src/main/resources/ui/json2ts-generate-all.sh -l true
+          [ -n "$(find openmetadata-ui/src/main/resources/ui/src/generated -name '*.ts' -print -quit 2>/dev/null)" ] || {
+            echo "::error::No TypeScript types were generated — rebase the branch on main."
+            exit 1
+          }
 
       - name: Generate dereferenced JSON schemas
         run: |
           cd openmetadata-ui/src/main/resources/ui
-          # json2ts-generate-all.sh resolves quicktype through the root node_modules
-          # symlink above, but parseSchemas.js needs the UI package's own dependencies
-          # (@apidevtools/json-schema-ref-parser, fs-extra), which are not hoisted to
-          # the root. Drop the symlink and install the UI workspace for real.
+          # parseSchemas.js needs the UI package's own dependencies
+          # (@apidevtools/json-schema-ref-parser, fs-extra).
           # --frozen-lockfile pins the versions a contributor resolves locally, so the
           # committed output is byte-identical whoever regenerates it; --ignore-scripts
           # skips preinstall (core-components build) and postinstall (js-antlr), neither
           # of which parseSchemas.js needs.
-          rm -f node_modules
-          yarn install --frozen-lockfile --ignore-scripts
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --ignore-scripts --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
           yarn parse-schema
 
       - name: Check for changes

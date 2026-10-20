@@ -362,13 +362,6 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             return row._asdict().get(Metrics.rowCount.name)
         return None
 
-    def _get_strategy(self):
-        return self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "strategy",
-            Strategy,
-        )
-
     def fetch_failed_rows_sample(self):
         cols, rows = self._get_custom_sql_failed_rows()
         return TableData(columns=cols, rows=rows)

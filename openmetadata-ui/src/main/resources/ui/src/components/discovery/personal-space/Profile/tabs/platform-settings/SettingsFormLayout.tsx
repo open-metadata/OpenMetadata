@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  Card,
   HookForm,
   Skeleton,
   Typography,
@@ -36,15 +37,17 @@ export const SettingsFormSection = ({
   <Box direction="col" gap={3}>
     {title && (
       <Typography
-        className="tw:px-1 tw:text-primary-900 tw:uppercase"
+        className="tw:px-1 tw:text-primary tw:uppercase"
         size="text-xs"
         weight="medium">
         {title}
       </Typography>
     )}
-    <div className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-5 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-surface tw:p-6 tw:md:grid-cols-2">
-      {children}
-    </div>
+    <Card variant="muted">
+      <Card.Content className="tw:grid tw:grid-cols-1 tw:gap-x-8 tw:gap-y-5 tw:md:grid-cols-2">
+        {children}
+      </Card.Content>
+    </Card>
   </Box>
 );
 
@@ -90,7 +93,7 @@ const SettingsFormLayout = <T extends FieldValues>({
         </Box>
       </div>
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
         direction="row"
         gap={3}
         justify="end">
@@ -117,13 +120,11 @@ const SettingsFormLayout = <T extends FieldValues>({
 export default SettingsFormLayout;
 
 export const SettingsSkeleton = ({ rows = 4 }: { rows?: number }) => (
-  <Box
-    className="tw:rounded-[10px] tw:border tw:border-secondary tw:p-5"
-    data-testid="settings-skeleton"
-    direction="col"
-    gap={4}>
-    {Array.from({ length: rows }, (_, index) => (
-      <Skeleton height={20} key={index} variant="rounded" width="100%" />
-    ))}
-  </Box>
+  <Card data-testid="settings-skeleton" variant="muted">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4">
+      {Array.from({ length: rows }, (_, index) => (
+        <Skeleton height={20} key={index} variant="rounded" width="100%" />
+      ))}
+    </Card.Content>
+  </Card>
 );

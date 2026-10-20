@@ -224,7 +224,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       </div>
 
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         data-testid="add-bot-footer"
         direction="row"
         gap={3}

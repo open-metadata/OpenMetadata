@@ -11,90 +11,28 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  AxiomType,
-  EntityStatus,
-  ExpressionKind,
-  Provenance,
-} from '../../generated/api/data/createOntologyAxiom';
-import { Glossary } from '../../generated/entity/data/glossary';
-import {
-  createOntologyAxiom,
-  validateOntologyAxiom,
-} from '../../rest/ontologyAPI';
+import { fireEvent, render, screen } from '@testing-library/react';
 import OntologyAxiomPanel from './OntologyAxiomPanel';
 
-jest.mock('../../rest/ontologyAPI', () => ({
-  createOntologyAxiom: jest.fn(),
-  validateOntologyAxiom: jest.fn(),
-}));
+jest.mock(
+  '../governance/ontology/OntologyPicker/OntologyPicker',
+  () =>
+    ({ onChange }: { onChange: (value: { id: string }) => void }) =>
+      <button onClick={() => onChange({ id: 'native' })}>select</button>
+);
+jest.mock(
+  '../governance/ontology/OntologyAxiomWorkspace/OntologyAxiomWorkspace',
+  () =>
+    ({ ontology }: { ontology: { id: string } }) =>
+      <span>{ontology.id}</span>
+);
 
-const mockCreate = createOntologyAxiom as jest.MockedFunction<
-  typeof createOntologyAxiom
->;
-const mockValidate = validateOntologyAxiom as jest.MockedFunction<
-  typeof validateOntologyAxiom
->;
-const GLOSSARY: Glossary = {
-  description: 'Governed axiom',
-  displayName: 'Governed glossary',
-  fullyQualifiedName: 'GovernedGlossary',
-  id: 'glossary-id',
-  name: 'GovernedGlossary',
-};
+it('selects a native ontology before opening the formal axiom workbench', () => {
+  render(<OntologyAxiomPanel />);
 
-describe('OntologyAxiomPanel', () => {
-  it('creates only after the live OWL profile guard accepts the typed axiom', async () => {
-    mockValidate.mockResolvedValue({ valid: true, violations: [] });
-    mockCreate.mockResolvedValue({
-      axiomType: AxiomType.SubclassOf,
-      description: GLOSSARY.description,
-      displayName: GLOSSARY.displayName ?? GLOSSARY.name,
-      entityStatus: EntityStatus.Draft,
-      expressions: [
-        {
-          classIri: 'https://example.test/Class',
-          kind: ExpressionKind.NamedClass,
-        },
-      ],
-      fullyQualifiedName: 'GovernedGlossary.axiom-GovernedGlossary',
-      glossary: { id: GLOSSARY.id, type: 'glossary' },
-      id: 'axiom-id',
-      name: 'axiom-GovernedGlossary',
-      provenance: Provenance.Manual,
-      subjectIri: 'https://example.test/Subject',
-    });
-    render(<OntologyAxiomPanel glossary={GLOSSARY} />);
+  expect(screen.queryByText('native')).not.toBeInTheDocument();
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'label.subject' }), {
-      target: { value: 'https://example.test/Subject' },
-    });
-    fireEvent.change(
-      screen.getByRole('textbox', { name: /label\.concept-iri/ }),
-      { target: { value: 'https://example.test/Class' } }
-    );
-    fireEvent.click(screen.getByTestId('ontology-axiom-validate'));
+  fireEvent.click(screen.getByRole('button', { name: 'select' }));
 
-    await screen.findByText('label.validation-passed');
-    fireEvent.click(screen.getByTestId('ontology-axiom-submit'));
-
-    await waitFor(() => expect(mockCreate).toHaveBeenCalledTimes(1));
-
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        axiomType: AxiomType.SubclassOf,
-        entityStatus: EntityStatus.Draft,
-        expressions: [
-          {
-            classIri: 'https://example.test/Class',
-            kind: ExpressionKind.NamedClass,
-          },
-        ],
-        glossary: GLOSSARY.fullyQualifiedName,
-        provenance: Provenance.Manual,
-        subjectIri: 'https://example.test/Subject',
-      })
-    );
-  });
+  expect(screen.getByText('native')).toBeInTheDocument();
 });

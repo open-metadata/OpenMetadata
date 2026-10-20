@@ -19,16 +19,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ArrowUpRight,
-  Hint,
-  SingleSignOn,
-} from '@openmetadata/ui-core-components/icons';
+import { Hint, SingleSignOn } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AuthProvider } from '../../../../../../generated/settings/settings';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getSecurityConfiguration,
@@ -42,6 +37,7 @@ import {
 } from '../../../../../../utils/SSOUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import SettingsSourceBanner from '../../../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
+import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProviderIcon';
 import { useSecuritySettingsSource } from '../../../../../SettingsSso/useSecuritySettingsSource';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
@@ -64,10 +60,10 @@ const ProviderLogo = ({ provider }: { provider: string }) => {
 
   return (
     <span
-      className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-primary"
+      className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
       data-testid="sso-provider-logo">
       {icon ? (
-        <img alt="" height={24} src={icon} width={24} />
+        <SsoProviderIcon icon={icon} />
       ) : (
         <SingleSignOn className="tw:size-6 tw:text-fg-quaternary" />
       )}
@@ -85,7 +81,6 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   const { state: hashState, setHash } = useSettingsHash();
   const [config, setConfig] = useState<SecurityConfiguration>();
   const [isLoading, setIsLoading] = useState(true);
-  const [pickedProvider, setPickedProvider] = useState<AuthProvider>();
   const [showHint, setShowHint] = useState(false);
   const {
     sources,
@@ -212,27 +207,14 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       </Box>
     );
 
-    const actions = canPickProvider ? (
-      <Button
-        color="primary"
-        data-testid="sso-configure-provider"
-        iconTrailing={ArrowUpRight}
-        isDisabled={!pickedProvider}
-        size="sm"
-        onPress={() =>
-          pickedProvider &&
-          onNavigate({ type: 'new', provider: pickedProvider })
-        }>
-        {t('label.configure')}
-      </Button>
-    ) : (
+    const actions = canPickProvider ? undefined : (
       <Box align="center" direction="row" gap={4}>
         {showsForm && hintToggle}
         {canChangeProvider && (
           <Button
             color="secondary"
             data-testid="change-provider-button"
-            size="sm"
+            size="xs"
             onPress={() => onNavigate({ type: 'providers' })}>
             {t('label.change-provider')}
           </Button>
@@ -262,7 +244,6 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     isLoading,
     onHeaderChange,
     onNavigate,
-    pickedProvider,
     showHint,
     showsForm,
     t,
@@ -296,10 +277,9 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
 
     if (view.type === 'providers') {
       return (
-        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8">
+        <div className="tw:flex-1 tw:px-8 tw:pb-8">
           <SsoProviderGrid
-            selectedProvider={pickedProvider}
-            onSelect={setPickedProvider}
+            onSelect={(provider) => onNavigate({ type: 'new', provider })}
           />
         </div>
       );
@@ -320,7 +300,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
 
     return (
       <Tabs
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:gap-6"
+        className="tw:flex tw:flex-1 tw:flex-col tw:gap-6"
         selectedKey={view.type}
         onSelectionChange={(key) => {
           if (key === 'overview') {
@@ -329,7 +309,10 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
           }
           onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
         }}>
-        <Tabs.List className="tw:px-8" size="sm" type="underline">
+        <Tabs.List
+          className="tw:sticky tw:top-0 tw:z-10 tw:bg-surface tw:px-8"
+          size="sm"
+          type="underline">
           <Tabs.Item data-testid="sso-tab-overview" id="overview">
             {t('label.overview')}
           </Tabs.Item>
@@ -346,9 +329,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
             onSelfSignupChange={handleSelfSignupChange}
           />
         </Tabs.Panel>
-        <Tabs.Panel
-          className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
-          id="configure">
+        <Tabs.Panel className="tw:flex tw:flex-1 tw:flex-col" id="configure">
           <SsoConfigureForm
             isReadOnly={isReadOnly}
             managedPaths={managedPaths}
@@ -363,7 +344,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
 
   return (
     <Box
-      className="tw:min-h-0 tw:flex-1 tw:overflow-hidden"
+      className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
       data-testid="sso-panel"
       direction="col">
       <SettingsSourceBanner

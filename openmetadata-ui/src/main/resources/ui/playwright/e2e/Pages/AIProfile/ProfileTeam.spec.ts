@@ -14,6 +14,7 @@
 import { APIRequestContext } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
+import { TableClass } from '../../../support/entity/TableClass';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -28,6 +29,7 @@ import {
   waitForTeamPatch,
 } from '../../../utils/aiProfile';
 import { uuid } from '../../../utils/common';
+import { waitForOwnedAssetCount } from '../../../utils/polling';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
@@ -260,6 +262,37 @@ test.describe('AI Profile Team Detail', () => {
     await openCreatedTeam(page, team);
 
     await expect(page.getByTestId('team-user-count')).toContainText('1');
+  });
+
+  test('Should show a sub-team asset count from the team asset counts', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const parent = await makeTeam(apiContext, { teamType: 'Department' });
+    const child = await makeTeam(apiContext, {
+      parents: [parent.responseData.id ?? ''],
+    });
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    try {
+      await table.setOwner(apiContext, {
+        id: child.responseData.id ?? '',
+        type: 'team',
+      });
+      // The sub-teams table reads the counts once, when the parent team opens.
+      await waitForOwnedAssetCount(apiContext, child.responseData.id, 1);
+
+      await openCreatedTeam(page, parent);
+
+      await expect(
+        page.getByTestId(`team-asset-count-${child.responseData.name}`)
+      ).toHaveText('1');
+    } finally {
+      await table.delete(apiContext);
+      await afterAction();
+    }
   });
 
   test('Should toggle show-deleted child teams', async ({ page }) => {
