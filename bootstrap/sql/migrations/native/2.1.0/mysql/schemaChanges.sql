@@ -1096,10 +1096,6 @@ DELETE FROM entity_relationship WHERE
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration'));
 
--- Glossary-term derivation replaced the unreleased ontology memory derivation job type; a leftover
--- row of the old type would no longer map to a job type and would stall the background-job poller.
-DELETE FROM background_jobs WHERE jobType = 'ONTOLOGY_MEMORY_DERIVATION';
-
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

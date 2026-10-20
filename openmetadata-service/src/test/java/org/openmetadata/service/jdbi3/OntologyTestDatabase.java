@@ -117,7 +117,6 @@ final class OntologyTestDatabase {
                       "(?s).*CREATE TABLE IF NOT EXISTS (workflow_definition_entity|task_entity|custom_property_reference|ontology_axiom_entity|ontology_change_set_entity|change_request) \\(.*"))
           .forEach(handle::execute);
     }
-    migrateBackgroundJobs(handle, dialect);
     migrateTableColumns(handle, dialect, "1.13.0", "entity_relationship", "relationType");
     migrateTableColumns(handle, dialect, "1.1.0", "tag_usage", "tagFQNHash");
     migrateTableColumns(handle, dialect, "1.1.0", "tag", "fqnHash");
@@ -126,22 +125,6 @@ final class OntologyTestDatabase {
     migrateTableColumns(handle, dialect, "1.11.0", "tag_usage", "targetfqnhash_lower");
     migrateTableColumns(handle, dialect, "1.11.5", "tag_usage", "appliedAt");
     migrateTableColumns(handle, dialect, "1.12.0", "tag_usage", "metadata");
-  }
-
-  private static void migrateBackgroundJobs(Handle handle, ConnectionType dialect) {
-    Path migration =
-        repositoryRoot()
-            .resolve("bootstrap/sql/migrations/native/1.6.2")
-            .resolve(dialect == ConnectionType.MYSQL ? "mysql" : "postgres")
-            .resolve("schemaChanges.sql");
-    MigrationFile.parseSQLFile(migration.toFile(), dialect).stream()
-        .filter(statement -> statement.contains("CREATE TABLE background_jobs ("))
-        .map(
-            statement ->
-                statement.replace(
-                    "CREATE TABLE background_jobs (",
-                    "CREATE TABLE IF NOT EXISTS background_jobs ("))
-        .forEach(handle::execute);
   }
 
   private static void migrateTableColumns(

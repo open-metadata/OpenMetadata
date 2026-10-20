@@ -60,9 +60,9 @@ edit of a Draft term: it approves the term when the editor is a reviewer or the 
 reviewers, so the panel's Edit acts as edit-and-approve for whoever may decide, and otherwise sends
 the term to its reviewers with an approval request.
 
-The Ontology AI memory endpoints, the proposal-status schema and the derivation flag are gone, and
-leftover `ONTOLOGY_MEMORY_DERIVATION` jobs are deleted by the 2.1.0 migration. Collate must keep
-its copy of the job type enum in step with this one. Bringing derivation back to OpenMetadata
+The Ontology AI memory endpoints, the proposal-status schema and the derivation flag are gone.
+The former job type was never released, so replacing it requires no data migration. Collate must
+keep its copy of the job type enum in step with this one. Bringing derivation back to OpenMetadata
 means giving the built-in provider a deriver, not a new switch.
 
 Context Center no longer links memory-sourced Studio drafts (`?draft=`); native memory drafts are
