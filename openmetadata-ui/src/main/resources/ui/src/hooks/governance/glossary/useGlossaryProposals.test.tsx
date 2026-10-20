@@ -20,12 +20,12 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { getMemoryDerivations } from '../../../rest/contextMemoryAPI';
 import { getGlossaryTerms, patchGlossaryTerm } from '../../../rest/glossaryAPI';
+import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
   listTasks,
   resolveTask,
   TaskEntityStatus,
 } from '../../../rest/tasksAPI';
-import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
   useGlossaryPendingCounts,
   useGlossaryProposals,
@@ -133,6 +133,75 @@ describe('useGlossaryProposals', () => {
     expect(result.current.proposals[0].derivation).toBeUndefined();
   });
 
+  it('includes pending terms and their evidence beyond the first page', async () => {
+    const terms = Array.from({ length: 101 }, (_, index) => ({
+      ...aiDraft,
+      id: `ai-${index}`,
+      fullyQualifiedName: `Customers.Term${index}`,
+    }));
+    (getGlossaryTerms as jest.Mock)
+      .mockResolvedValueOnce({
+        data: terms.slice(0, 100),
+        paging: { after: 'next-terms', total: terms.length },
+      })
+      .mockResolvedValue({
+        data: terms.slice(100),
+        paging: { total: terms.length },
+      });
+    (getMemoryDerivations as jest.Mock).mockImplementation(
+      async (_entityType: string, ids: string[]) => {
+        if (ids.length > 100) {
+          throw new Error('The derivations API accepts at most 100 IDs');
+        }
+
+        return ids.map((id) => ({
+          ...derivation,
+          entity: { id, type: 'glossaryTerm' },
+        }));
+      }
+    );
+
+    const { result } = renderHook(() => useGlossaryProposals(scope), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.counts).toEqual({ all: 101, ai: 101, person: 0 });
+    expect(
+      result.current.proposals.find(({ term }) => term.id === 'ai-100')
+        ?.derivation?.entity.id
+    ).toBe('ai-100');
+  });
+
+  it('finds approval requests beyond the first task page', async () => {
+    (listTasks as jest.Mock)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            ...approvalTask,
+            id: 'other-task',
+            about: {
+              fullyQualifiedName: 'Customers.Other',
+              type: 'glossaryTerm',
+            },
+          },
+        ],
+        paging: { after: 'next-tasks', total: 2 },
+      })
+      .mockResolvedValue({ data: [approvalTask], paging: { total: 2 } });
+    const { result } = renderHook(() => useGlossaryProposals(scope), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(
+      result.current.proposals.find(({ term }) => term.id === personDraft.id)
+        ?.approvalTask
+    ).toEqual(approvalTask);
+  });
+
   it('decides an AI draft on the term and a person proposal through its request', async () => {
     (patchGlossaryTerm as jest.Mock).mockResolvedValue({});
     (resolveTask as jest.Mock).mockResolvedValue({
@@ -218,6 +287,7 @@ describe('useGlossaryProposals', () => {
       all: { businessmetrics: 2, customersuccess: 1 },
       ai: { businessmetrics: 1 },
     });
+
     const [[allRequest], [aiRequest]] = (
       postExactAggregateFieldOptions as jest.Mock
     ).mock.calls;

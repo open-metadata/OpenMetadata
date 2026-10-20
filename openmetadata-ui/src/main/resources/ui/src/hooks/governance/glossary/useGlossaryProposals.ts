@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { chunk } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import {
   PAGE_SIZE_EXTRA_LARGE,
@@ -29,6 +30,7 @@ import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
   listTasks,
   resolveTask,
+  Task,
   TaskCategory,
   TaskEntityStatus,
   TaskEntityType,
@@ -77,35 +79,60 @@ const getApprovalTasks = async (
   if (!terms.some((term) => term.entityStatus === EntityStatus.InReview)) {
     return [];
   }
-  const { data } = await listTasks({
-    status: TaskEntityStatus.Open,
-    category: TaskCategory.Approval,
-    type: TaskEntityType.RequestApproval,
-    aboutEntity: scope.fullyQualifiedName,
-    limit: PAGE_SIZE_LARGE,
-    fields: 'about,assignees,createdBy',
-  });
+  const tasks: Task[] = [];
+  let after: string | undefined;
 
-  return data;
+  do {
+    const response = await listTasks({
+      status: TaskEntityStatus.Open,
+      category: TaskCategory.Approval,
+      type: TaskEntityType.RequestApproval,
+      aboutEntity: scope.fullyQualifiedName,
+      limit: PAGE_SIZE_LARGE,
+      fields: 'about,assignees,createdBy',
+      after,
+    });
+    tasks.push(...response.data);
+    after = response.paging?.after;
+  } while (after);
+
+  return tasks;
 };
 
 // The evidence is an extra: a caller who may not read memories still reviews the terms.
 const getEvidence = (terms: GlossaryTerm[]) =>
-  getMemoryDerivations(
-    EntityType.GLOSSARY_TERM,
-    terms
-      .filter((term) => getProposalSource(term) === 'ai')
-      .map((term) => term.id)
-  ).catch(() => []);
+  Promise.all(
+    chunk(
+      terms
+        .filter((term) => getProposalSource(term) === 'ai')
+        .map((term) => term.id),
+      PAGE_SIZE_EXTRA_LARGE
+    ).map((ids) =>
+      getMemoryDerivations(EntityType.GLOSSARY_TERM, ids).catch(() => [])
+    )
+  ).then((derivations) => derivations.flat());
+
+const getPendingTerms = async (scope: ProposalScope) => {
+  const terms: GlossaryTerm[] = [];
+  let after: string | undefined;
+
+  do {
+    const response = await getGlossaryTerms({
+      ...(scope.isGlossary ? { glossary: scope.id } : { parent: scope.id }),
+      entityStatus: PENDING_REVIEW_STATUSES.join(','),
+      fields: 'reviewers,parent',
+      limit: PAGE_SIZE_EXTRA_LARGE,
+      after,
+    });
+    terms.push(...response.data.filter((term) => getProposalSource(term)));
+    after = response.paging?.after;
+  } while (after);
+
+  return terms;
+};
 
 const fetchProposals = async (scope: ProposalScope) => {
-  const { data } = await getGlossaryTerms({
-    ...(scope.isGlossary ? { glossary: scope.id } : { parent: scope.id }),
-    entityStatus: PENDING_REVIEW_STATUSES.join(','),
-    fields: 'reviewers,parent',
-    limit: PAGE_SIZE_EXTRA_LARGE,
-  });
-  const terms = data.filter((term) => getProposalSource(term));
+  const terms = await getPendingTerms(scope);
   const [derivations, approvalTasks] = await Promise.all([
     getEvidence(terms),
     getApprovalTasks(scope, terms),
