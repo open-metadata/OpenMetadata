@@ -217,11 +217,11 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
   it('ends the breadcrumb with the data product itself', () => {
     render(<DataProductsDetailsPage {...defaultProps} />);
 
-    const breadcrumb = screen.getAllByTestId('breadcrumb')[0];
+    const crumbs = within(screen.getAllByTestId('breadcrumb')[0]).getAllByRole(
+      'listitem'
+    );
 
-    expect(
-      within(breadcrumb).getByText('Test Data Product')
-    ).toBeInTheDocument();
+    expect(crumbs[crumbs.length - 1]).toHaveTextContent('Test Data Product');
   });
 
   it('delegates the DAR button to dataProductClassBase', () => {
