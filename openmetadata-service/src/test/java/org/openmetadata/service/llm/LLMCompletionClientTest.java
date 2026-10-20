@@ -2,6 +2,7 @@ package org.openmetadata.service.llm;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -155,5 +156,10 @@ class LLMCompletionClientTest {
   })
   void supportsTemperatureFollowsModelId(String modelId, boolean expected) {
     assertEquals(expected, LLMCompletionClient.supportsTemperature(modelId));
+  }
+
+  @Test
+  void supportsTemperatureWhenModelIdIsUnset() {
+    assertTrue(LLMCompletionClient.supportsTemperature(null));
   }
 }

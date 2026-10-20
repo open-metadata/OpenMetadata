@@ -28,6 +28,11 @@ temperature. The Bedrock default in `conf/openmetadata.yaml` is `eu.anthropic.cl
 ## Consequences
 Switching to a rejecting model no longer needs a config change, and a configured `temperature`
 is silently ignored for those models. Every new model family that rejects sampling params has to
-be added to the list here and in CAIP, or its first call fails. Revisit this if the providers
+be added to the list here and in CAIP, or its first call fails. The check only sees the model
+id, so it misses ids that don't name the model. One example is a Bedrock application inference
+profile ARN (`arn:aws:bedrock:…:application-inference-profile/<id>`) wrapping Haiku 5.5. Another
+is an Azure OpenAI deployment whose `modelId` doesn't say `o3`. Both still get `temperature` and
+fail. The workaround is to configure an id that names the model: the foundation model or a
+system inference profile on Bedrock, the underlying model name as `modelId` on Azure. Revisit this if the providers
 expose model capabilities, or if a model starts rejecting `top_p` or another param these clients
 send.
