@@ -14,7 +14,11 @@ import { FeedCounts } from '../interface/feed.interface';
 import { getEntityActivityByFqn } from '../rest/activityAPI';
 import { listConversations } from '../rest/conversationsAPI';
 import { getTaskCounts } from '../rest/tasksAPI';
-import { getFeedCounts, getFeedTotalCount } from './FeedUtilsPure';
+import {
+  fetchEntityActivityCountInto,
+  getFeedCounts,
+  getFeedTotalCount,
+} from './FeedUtilsPure';
 
 jest.mock('../rest/activityAPI', () => ({
   getEntityActivityByFqn: jest.fn(),
@@ -59,6 +63,12 @@ describe('getFeedCounts', () => {
     expect(received.conversationCount).toBe(1);
     expect(received.activityCount).toBe(2);
     expect(received.totalCount).toBe(3);
+    // Conversations on the entity's fields count toward the entity.
+    expect(listConversations).toHaveBeenCalledWith({
+      entityLink: '<#E::dashboard::sample_superset.10>',
+      includeFields: true,
+      limit: 1,
+    });
   });
 
   it('uses the server conversation total instead of the loaded page length', async () => {
@@ -131,5 +141,26 @@ describe('getFeedTotalCount', () => {
         openTaskCount: 0,
       })
     ).toBe(0);
+  });
+});
+
+describe('fetchEntityActivityCountInto', () => {
+  it('counts the conversations on the entity fields too', async () => {
+    (listConversations as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 1 },
+    });
+    (getEntityActivityByFqn as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    await fetchEntityActivityCountInto('pipeline', 'svc.p', jest.fn());
+
+    expect(listConversations).toHaveBeenCalledWith({
+      entityLink: '<#E::pipeline::svc.p>',
+      includeFields: true,
+      limit: 1,
+    });
   });
 });
