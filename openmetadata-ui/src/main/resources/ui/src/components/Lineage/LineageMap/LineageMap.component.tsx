@@ -18,7 +18,6 @@ import {
   Button,
   ButtonUtility,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Typography,
@@ -28,13 +27,21 @@ import {
   Home02,
   InfoCircle,
   LayersThree01,
+  PlatformLineage,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import type { LayoutOptions } from 'elkjs/lib/elk.bundled.js';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, {
@@ -94,7 +101,8 @@ import { onEdgeClick } from '../../../utils/Lineage/handlers/edgeMutations';
 import { onPaneClick } from '../../../utils/Lineage/handlers/nodeMutations';
 import ELKLayout from '../../../utils/Lineage/Layout/ELKUtil/ELKUtil';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
-import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import CustomNodeV1 from '../../Entity/EntityLineage/CustomNodeV1.component';
 import LineageControlButtons from '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
@@ -112,6 +120,7 @@ import {
   getConnectedLineagePathHighlight,
   getDrillBand,
   getLensRootLabelKey,
+  getLineageMapEmptyState,
   getParentSceneRequest,
   getRailDrillFallbackNode,
   getRailStop,
@@ -127,6 +136,7 @@ import {
   getSemanticZoomDirection,
   isContainerSceneNode,
   isSceneNodeDrillable,
+  LineageMapEmptyState,
   LINEAGE_MAP_RAIL_STOPS,
   type LineageSceneRequest,
 } from './LineageMap.utils';
@@ -160,10 +170,6 @@ const SCENE_FIT_VIEW_MAX_ZOOM = 1;
 // in every band; assets keep the wider default for their column lists.
 const CONTAINER_NODE_WIDTH = 340;
 const SCENE_LAYER_NODE_HEIGHT = 66;
-// The lineage canvas is already the surface, so empty states inside it only fill it
-// (`tw:relative tw:size-full`) rather than drawing their own card.
-const LINEAGE_MAP_EMPTY_CLASSES =
-  'lineage-map-empty tw:absolute tw:inset-0 tw:z-1 tw:grid tw:place-items-center tw:bg-transparent tw:text-tertiary';
 const LINEAGE_MAP_RAIL_CLASSES = [
   'lineage-map-rail tw:group tw:absolute tw:right-6 tw:z-10 tw:flex tw:-translate-y-1/2',
   'tw:items-stretch tw:gap-2',
@@ -934,60 +940,6 @@ const LineageMapStatusPanel = ({
         <Alert title={t('message.something-went-wrong')} variant="error" />
       )}
     </Panel>
-  );
-};
-
-const LineageMapPlaceholder = ({
-  scene,
-  loading,
-  error,
-  onRetry,
-}: {
-  scene?: LineageScene;
-  loading: boolean;
-  error?: AxiosError;
-  onRetry: () => void;
-}) => {
-  const { t } = useTranslation();
-  if (loading && !scene) {
-    return <LineageSkeleton />;
-  }
-  if (error && !scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <div className="tw:relative tw:size-full">
-          <EmptyPlaceholder
-            data-testid="no-data-placeholder"
-            footer={
-              <>
-                <span>{t('message.something-went-wrong')}</span>
-                <Button data-testid="lineage-map-retry" onClick={onRetry}>
-                  {t('label.try-again')}
-                </Button>
-              </>
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-  if (!scene) {
-    return (
-      <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-        <span>{t('message.no-lineage-data-available')}</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className={LINEAGE_MAP_EMPTY_CLASSES}>
-      <div className="tw:relative tw:size-full">
-        <NoSearchResultsPlaceholder
-          data-testid="search-error-placeholder"
-          description={t('message.no-lineage-data-available')}
-        />
-      </div>
-    </div>
   );
 };
 
@@ -1963,13 +1915,35 @@ const LineageMapCanvas = ({
   );
 
   if (!scene || scene.nodes.length === 0) {
+    const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
+      loading: <LineageSkeleton />,
+      error: (
+        <SomethingWentWrongPlaceholder
+          onReload={() => fetchScene(request, { bypassCache: true })}
+        />
+      ),
+      empty: (
+        <NoDataPlaceholder
+          description={t('message.no-lineage-data-available')}
+          icon={<PlatformLineage className="tw:text-secondary" />}
+        />
+      ),
+    };
+
+    // The placeholders fill their nearest positioned ancestor; this wrapper
+    // keeps them to the canvas rather than the card that also holds the toolbar.
     return (
-      <LineageMapPlaceholder
-        error={sceneError}
-        loading={loading}
-        scene={scene}
-        onRetry={() => fetchScene(request, { bypassCache: true })}
-      />
+      <div className="tw:relative tw:h-full tw:w-full">
+        {
+          emptyStates[
+            getLineageMapEmptyState({
+              scene,
+              loading,
+              hasError: Boolean(sceneError),
+            })
+          ]
+        }
+      </div>
     );
   }
 
