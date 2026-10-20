@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box } from '@openmetadata/ui-core-components';
 import { Card, Col, Input, Skeleton, Space, Tooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -49,6 +50,7 @@ import ActivityEventFooter from '../ActivityFeedCardV2/FeedCardFooter/ActivityEv
 import FeedCardFooterNew from '../ActivityFeedCardV2/FeedCardFooter/FeedCardFooterNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import '../ActivityFeedTab/activity-feed-tab.less';
+import FeedFieldPath from '../Shared/FeedFieldPath/FeedFieldPath';
 import CommentCard from './CommentCard.component';
 const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
@@ -85,14 +87,14 @@ const ActivityFeedCardNew = ({
 }: ActivityFeedCardNewProps) => {
   const isActivityEvent = !isUndefined(activity);
 
-  const { entityFQN, entityType } = useMemo(() => {
+  const { entityFQN, entityType, about } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
     const entityFQN =
       getEntityFQN(aboutValue) ?? activity?.entity?.fullyQualifiedName ?? '';
     const entityType =
       getEntityType(aboutValue) ?? (activity?.entity?.type as EntityType) ?? '';
 
-    return { entityFQN, entityType };
+    return { entityFQN, entityType, about: aboutValue };
   }, [feed?.about, activity?.about, activity?.entity]);
 
   const createdBy = useMemo(() => {
@@ -171,40 +173,53 @@ const ActivityFeedCardNew = ({
       );
     } else {
       return (
-        <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-          <div
-            className={classNames('text-sm flex-center gap-1', {
-              'max-one-line': !showThread,
-            })}>
-            {searchClassBase.getEntityIcon(entityType ?? '') && (
-              <span className="d-inline-flex align-middle">
-                {searchClassBase.getEntityIcon(
-                  entityType ?? '',
-                  'tw:h-4 tw:w-4'
-                )}
-              </span>
-            )}
-            <Link
-              className="break-word text-sm header-link"
-              data-testid="entity-link"
-              to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-              <span>
-                {entityRef
-                  ? getEntityName(entityRef)
-                  : entityDisplayName(entityType, entityFQN)}
-              </span>
-            </Link>
-          </div>
-        </EntityPopOverCard>
+        <Box inline align="center" className="tw:min-w-0 tw:gap-1.5">
+          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+            <Box
+              align="center"
+              className="tw:min-w-0 text-sm"
+              gap={1}
+              justify="center">
+              {searchClassBase.getEntityIcon(entityType ?? '') && (
+                <Box inline align="center">
+                  {searchClassBase.getEntityIcon(
+                    entityType ?? '',
+                    'tw:h-4 tw:w-4'
+                  )}
+                </Box>
+              )}
+              <Link
+                className={classNames('break-word text-sm header-link', {
+                  'max-one-line': !showThread,
+                })}
+                data-testid="entity-link"
+                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                <span>
+                  {entityRef
+                    ? getEntityName(entityRef)
+                    : entityDisplayName(entityType, entityFQN)}
+                </span>
+              </Link>
+            </Box>
+          </EntityPopOverCard>
+          <FeedFieldPath
+            about={about}
+            entityType={entityType}
+            showField={!isActivityEvent}
+          />
+        </Box>
       );
     }
   }, [
     feed?.cardStyle,
     entityType,
     entityFQN,
+    about,
+    isActivityEvent,
     isUserOrTeam,
     entityRef,
     createdBy,
+    showThread,
   ]);
 
   const feedHeaderText = useMemo(() => {
