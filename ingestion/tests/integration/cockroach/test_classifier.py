@@ -12,6 +12,8 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
+pytestmark = [pytest.mark.metadata, pytest.mark.profiler]
+
 logger = getLogger(__name__)
 
 

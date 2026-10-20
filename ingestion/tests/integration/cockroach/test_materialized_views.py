@@ -31,6 +31,8 @@ from sqlalchemy import text
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.source.database.common_pg_mappings import RELKIND_MAP
 
+pytestmark = pytest.mark.metadata
+
 SCHEMA = "matview_test"
 
 

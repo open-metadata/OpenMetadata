@@ -71,6 +71,11 @@ show_contexts = true
 
 [tool.pytest.ini_options]
 markers = [
+    "metadata: connector metadata ingestion and reflection",
+    "lineage: connector lineage extraction and ingestion",
+    "usage: connector query usage ingestion",
+    "profiler: connector profiling, sampling, and metric computation",
+    "dataquality: connector data quality validation",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "xdist_group(name): group tests to run on the same xdist worker"
 ]

@@ -26,6 +26,8 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.runner import QueryRunner
 
+pytestmark = pytest.mark.profiler
+
 
 class Base(DeclarativeBase):
     pass

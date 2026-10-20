@@ -3,6 +3,7 @@ import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from testcontainers.cockroachdb import CockroachDBContainer  # noqa: TID251
 from testcontainers.core.config import testcontainers_config
 from testcontainers.core.waiting_utils import wait_for_logs
@@ -22,7 +23,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 COCKROACH_IMAGE = "cockroachdb/cockroach:v24.3.0"
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="package")
 def cockroach_container():
     old_max_tries = testcontainers_config.max_tries
     testcontainers_config.max_tries = 240
@@ -38,11 +39,21 @@ def cockroach_container():
 
 @pytest.fixture(scope="module")
 def cockroach_engine(cockroach_container):
-    engine = create_engine(cockroach_container.get_connection_url())
+    url = make_url(cockroach_container.get_connection_url())
+    admin_engine = create_engine(url.set(database="defaultdb"), isolation_level="AUTOCOMMIT")
+    database = admin_engine.dialect.identifier_preparer.quote(cockroach_container.dbname)
     try:
-        yield engine
+        with admin_engine.connect() as conn:
+            conn.execute(text(f"DROP DATABASE IF EXISTS {database} CASCADE"))
+            conn.execute(text(f"CREATE DATABASE {database}"))
+            engine = create_engine(url)
+            try:
+                yield engine
+            finally:
+                engine.dispose()
+                conn.execute(text(f"DROP DATABASE {database} CASCADE"))
     finally:
-        engine.dispose()
+        admin_engine.dispose()
 
 
 @pytest.fixture(scope="module")
@@ -68,7 +79,7 @@ def user_profiles(cockroach_engine):
 
 
 @pytest.fixture(scope="module")
-def create_service_request(cockroach_container):
+def create_service_request(cockroach_container, cockroach_engine):
     return CreateDatabaseServiceRequest(
         name=f"docker_test_cockroach_{uuid.uuid4().hex[:8]}",
         serviceType=DatabaseServiceType.Cockroach,
