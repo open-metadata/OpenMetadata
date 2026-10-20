@@ -12,7 +12,7 @@
  */
 
 import type { NodeData } from '@antv/g6';
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import {
   BookClosed,
   CheckCircle,
@@ -153,12 +153,11 @@ function CustomNode({
         <Box align="center" className="tw:w-full tw:min-w-0" gap={2}>
           <Box
             align="center"
-            className="node-icon tw:rounded-md tw:border"
+            className="node-icon tw:rounded-md"
             justify="center"
             style={{
               color,
               backgroundColor: data.colorLight as string | undefined,
-              borderColor: color,
             }}>
             <Icon aria-hidden="true" size={isRoot ? 18 : 16} />
           </Box>
@@ -166,12 +165,24 @@ function CustomNode({
             className="tw:min-w-0 tw:flex-1 tw:text-left"
             direction="col"
             gap={0}>
-            <span className="kg-node-name tw:truncate" data-testid="label">
+            <Typography
+              ellipsis
+              as="span"
+              className="tw:text-primary"
+              data-testid="label"
+              size={isRoot ? 'text-md' : 'text-sm'}
+              weight="medium">
               {label}
-            </span>
-            <span className="kg-node-type" data-testid="type-tag">
+            </Typography>
+            <Typography
+              as="span"
+              className="tw:block"
+              color="secondary"
+              data-testid="type-tag"
+              size="text-xs"
+              weight="regular">
               {typeLabel}
-            </span>
+            </Typography>
           </Box>
           {members && (
             <span

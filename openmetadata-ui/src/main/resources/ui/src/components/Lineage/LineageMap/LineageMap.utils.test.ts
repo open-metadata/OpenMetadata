@@ -31,6 +31,7 @@ import {
   getDrillBand,
   getLensRootLabelKey,
   getParentSceneRequest,
+  getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
   getSceneFocus,
@@ -415,6 +416,37 @@ describe('LineageMap utils', () => {
           levelKind,
         } as LineageSceneNode)
       ).toBe(LineageBand.Asset);
+    });
+  });
+
+  describe('getRailDrillFallbackNode', () => {
+    const service = (name: string, childrenCount: number): LineageSceneNode =>
+      ({
+        id: `service:${name}`,
+        label: name,
+        fullyQualifiedName: name,
+        entityType: EntityType.DATABASE_SERVICE,
+        band: LineageBand.Layer,
+        levelKind: LineageLevelKind.Service,
+        isExpandable: true,
+        childrenCount,
+      } as LineageSceneNode);
+
+    it('skips an empty service listed first for one that has assets', () => {
+      expect(
+        getRailDrillFallbackNode([service('empty', 0), service('full', 64)])
+          ?.fullyQualifiedName
+      ).toBe('full');
+    });
+
+    it('falls back to the first drillable node when none report children', () => {
+      expect(
+        getRailDrillFallbackNode([
+          { ...service('ghost', 5), isExpandable: false },
+          service('first', 0),
+          service('second', 0),
+        ])?.fullyQualifiedName
+      ).toBe('first');
     });
   });
 
