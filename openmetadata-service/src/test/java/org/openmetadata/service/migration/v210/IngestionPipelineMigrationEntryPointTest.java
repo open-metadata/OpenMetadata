@@ -46,7 +46,6 @@ import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationU
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
-import org.openmetadata.service.migration.utils.v210.PipelineBotRedeployMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
 class IngestionPipelineMigrationEntryPointTest {
@@ -91,9 +90,7 @@ class IngestionPipelineMigrationEntryPointTest {
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
-                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class);
-        MockedStatic<PipelineBotRedeployMigration> pipelineBotRedeploy =
-            mockStatic(PipelineBotRedeployMigration.class)) {
+                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class)) {
       migration.runDataMigration();
 
       deltaLakeRetirement.verify(
@@ -113,8 +110,6 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               org.openmetadata.service.migration.utils.v206.MigrationUtil
                   .addContractAndStatusToActivityFeedAlert(handle));
-      pipelineBotRedeploy.verify(
-          () -> PipelineBotRedeployMigration.markAutoPilotAgentsForRedeploy(collectionDAO));
     }
   }
 

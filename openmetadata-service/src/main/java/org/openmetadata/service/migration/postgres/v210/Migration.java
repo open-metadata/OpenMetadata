@@ -32,7 +32,6 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exempt
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill.backfillMlFeatureTags;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
-import static org.openmetadata.service.migration.utils.v210.PipelineBotRedeployMigration.markAutoPilotAgentsForRedeploy;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
 
@@ -47,7 +46,6 @@ import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
-import org.openmetadata.service.migration.utils.v210.PipelineBotRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -134,12 +132,5 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
-    // AutoPilot deployed its agents as ingestion-bot; mark them for a redeploy as their own bot,
-    // which the server runs once the pipeline service is reachable.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        PipelineBotRedeployMigration.STEP_NAME,
-        () -> markAutoPilotAgentsForRedeploy(collectionDAO));
   }
 }

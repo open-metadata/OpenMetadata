@@ -163,7 +163,6 @@ import org.openmetadata.service.resources.csv.CsvDocumentationResource;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
-import org.openmetadata.service.resources.services.ingestionpipelines.PipelineBotRedeployScheduler;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.resources.system.DiagnosticsResource;
 import org.openmetadata.service.resources.system.IndexResource;
@@ -494,12 +493,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
     environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
-
-    environment
-        .lifecycle()
-        .manage(
-            new PipelineBotRedeployScheduler(
-                jdbi.onDemand(CollectionDAO.class).entityExtensionDAO(), catalogConfig));
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);
