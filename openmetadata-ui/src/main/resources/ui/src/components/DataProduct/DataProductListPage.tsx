@@ -370,7 +370,7 @@ const DataProductListPage = ({
 
     const pagination = dataProductListing.totalEntities > 0 && (
       <Box
-        className="tw:border-t tw:border-secondary tw:p-3 tw:bg-surface tw:shrink-0"
+        className="tw:border-t tw:border-secondary tw:p-3 tw:shrink-0"
         justify="center">
         <NextPrevious
           isNumberBased
